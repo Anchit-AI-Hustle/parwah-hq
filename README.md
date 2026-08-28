@@ -13,11 +13,12 @@ and supplier terms must never land in a public-facing repo.
 | Path | What it is |
 |---|---|
 | `MASTER_PROMPT.md` | Master Prompt v2.0 — the single source of truth for any AI session running a phase of the Parwah build. Paste it whole into a fresh session. |
-| `site/index.html` | Minimal pre-launch placeholder page (deployed to the Vercel project `parwah`). Contains no internal content. |
+| `site/index.html` | Minimal pre-launch placeholder page, live at <https://parwah-hq.anchit-tandon.com> (Vercel project `parwah`). Contains no internal content. |
 
 ## Linked infrastructure
 
-- **Vercel** — team "Anchit's AI Hustle": project `parwah` (placeholder page from `site/`).
+- **Vercel** — team "Anchit's AI Hustle": project `parwah`, serving `site/` at
+  the canonical URL <https://parwah-hq.anchit-tandon.com>.
 - **Supabase** — org "Anchit's AI Hustle": project `Parwah` (waitlist / light data, created when a trigger fires).
 - **Commerce** never lives here — Shopify only.
 
