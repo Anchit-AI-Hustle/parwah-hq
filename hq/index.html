@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PARWAH HQ — Strategy & Finance Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Instrument+Sans:ital,wght@0,400..700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#10201D; --pine:#1B322C; --pine2:#24403A; --line:#31504a;
+  --bone:#F5F1E6; --paper:#ECE6D6; --paper2:#E3DCC8;
+  --marigold:#E8A020; --marigold-d:#B87A0E;
+  --sage:#8FAE9F; --sage-d:#5E7A6E;
+  --rust:#B4552D; --inkline:#D8D0BC;
+  --input:#0B47C2;
+  --disp:'Young Serif',Georgia,serif;
+  --body:'Instrument Sans','Segoe UI',system-ui,sans-serif;
+  --mono:'IBM Plex Mono','SF Mono',Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px}
+body{background:var(--ink);color:var(--bone);font-family:var(--body);line-height:1.5;min-height:100vh}
+::selection{background:var(--marigold);color:var(--ink)}
+a{color:var(--marigold)}
+button{font-family:var(--body)}
+:focus-visible{outline:2px solid var(--marigold);outline-offset:2px}
+
+/* ---------- frame ---------- */
+.app{display:grid;grid-template-columns:236px 1fr;min-height:100vh}
+.rail{background:var(--ink);border-right:1px solid var(--line);padding:22px 0 18px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.wordmark{padding:0 22px 6px}
+.wordmark h1{font-family:var(--disp);font-size:1.55rem;letter-spacing:.04em;color:var(--bone)}
+.wordmark h1 span{color:var(--marigold)}
+.wordmark .sub{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--sage-d);margin-top:2px}
+.nav{margin-top:18px;display:flex;flex-direction:column}
+.nav button{appearance:none;background:none;border:0;border-left:3px solid transparent;color:var(--sage);text-align:left;padding:9px 22px 9px 19px;font-size:.86rem;cursor:pointer;display:flex;gap:10px;align-items:baseline;transition:color .15s,background .15s}
+.nav button .n{font-family:var(--mono);font-size:.66rem;color:var(--sage-d);width:14px}
+.nav button:hover{color:var(--bone);background:var(--pine)}
+.nav button.on{color:var(--bone);background:var(--pine);border-left-color:var(--marigold)}
+.nav button.on .n{color:var(--marigold)}
+
+/* gate rail — signature */
+.gates{margin:auto 14px 14px;background:var(--pine);border:1px solid var(--line);border-radius:8px;padding:12px 12px 10px}
+.gates h3{font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--sage-d);margin-bottom:9px}
+.gate{display:grid;grid-template-columns:10px 1fr;gap:8px;align-items:start;padding:5px 0;border-top:1px dashed var(--line)}
+.gate:first-of-type{border-top:0}
+.pip{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--sage-d);margin-top:3px}
+.pip.arm{border-color:var(--marigold);box-shadow:0 0 0 3px rgba(232,160,32,.12)}
+.pip.kill{border-color:var(--rust)}
+.gate b{display:block;font-size:.7rem;color:var(--bone);font-weight:600}
+.gate span{font-size:.64rem;color:var(--sage);line-height:1.35;display:block}
+.stamp{padding:10px 22px 0;font-size:.62rem;color:var(--sage-d);font-family:var(--mono)}
+
+/* ---------- main ---------- */
+main{background:var(--pine);min-width:0}
+.topbar{display:flex;align-items:center;gap:14px;padding:14px 30px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--pine);z-index:5}
+.topbar .crumb{font-family:var(--disp);font-size:1.05rem;color:var(--bone)}
+.chips{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-family:var(--mono);font-size:.66rem;color:var(--sage);border:1px solid var(--line);border-radius:99px;padding:4px 10px}
+.chip b{color:var(--marigold);font-weight:500}
+.wrap{padding:26px 30px 60px;max-width:1180px}
+section.tab{display:none}
+section.tab.on{display:block;animation:rise .28s ease}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){section.tab.on{animation:none}}
+
+.eyebrow{font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--marigold);margin-bottom:6px}
+h2{font-family:var(--disp);font-size:1.7rem;color:var(--bone);margin-bottom:4px;font-weight:400}
+.lede{color:var(--sage);font-size:.92rem;max-width:70ch;margin-bottom:22px}
+
+/* ledger panels */
+.panel{background:var(--bone);color:var(--ink);border-radius:10px;padding:20px 22px;margin-bottom:18px;border:1px solid var(--paper2)}
+.panel h3{font-family:var(--disp);font-size:1.06rem;margin-bottom:4px;font-weight:400}
+.panel .plede{font-size:.8rem;color:#6a6353;margin-bottom:14px;max-width:78ch}
+.panel h4{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--marigold-d);margin:16px 0 8px}
+.panel h4:first-of-type{margin-top:0}
+.panel p{font-size:.87rem;margin-bottom:10px;max-width:82ch}
+.panel ul,.panel ol{margin:0 0 10px 18px;font-size:.87rem}
+.panel li{margin-bottom:5px}
+.panel li b{color:var(--ink)}
+
+/* tables */
+.tblwrap{overflow-x:auto;margin:6px 0 4px}
+table{border-collapse:collapse;width:100%;font-size:.8rem}
+th{font-size:.64rem;letter-spacing:.09em;text-transform:uppercase;color:#7d7562;text-align:left;padding:7px 10px;border-bottom:1.5px solid var(--ink);white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid var(--inkline);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-family:var(--mono);font-size:.76rem;white-space:nowrap}
+td.rowh{font-weight:600;white-space:nowrap}
+tr.total td{border-top:1.5px solid var(--ink);font-weight:600;background:var(--paper)}
+.neg{color:var(--rust)}
+.usdline{display:block;font-size:.66rem;color:#8a8270;font-family:var(--mono)}
+.tag{display:inline-block;font-size:.62rem;font-family:var(--mono);border:1px solid var(--paper2);background:var(--paper);border-radius:4px;padding:1px 6px;color:#6a6353}
+
+/* formula chips */
+.f{display:inline-block;font-family:var(--mono);font-size:.6rem;color:var(--marigold-d);border:1px solid var(--paper2);border-radius:4px;padding:0 5px;margin-left:6px;cursor:help;position:relative;background:var(--paper)}
+.f:hover::after,.f:focus::after{content:attr(data-fx);position:absolute;left:0;bottom:130%;background:var(--ink);color:var(--bone);font-size:.66rem;padding:7px 10px;border-radius:6px;white-space:pre;z-index:20;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+
+/* stat cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px}
+.card{background:var(--bone);color:var(--ink);border-radius:10px;padding:16px 18px;border:1px solid var(--paper2)}
+.card .k{font-size:.64rem;letter-spacing:.13em;text-transform:uppercase;color:#7d7562}
+.card .v{font-family:var(--mono);font-size:1.28rem;font-weight:600;margin-top:6px}
+.card .v.negv{color:var(--rust)}
+.card .u{font-family:var(--mono);font-size:.72rem;color:#8a8270;margin-top:2px}
+.card.gold{background:linear-gradient(135deg,#F5E7C6,#F0D9A2);border-color:#E0C275}
+
+/* assumptions */
+.assum{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px 16px}
+.assum label{display:flex;flex-direction:column;font-size:.68rem;color:#6a6353;gap:4px}
+.assum input{font-family:var(--mono);font-size:.84rem;color:var(--input);background:#fff;border:1px solid var(--paper2);border-radius:6px;padding:6px 9px;font-weight:600}
+.assum input.key{background:#FFF6D9;border-color:#E8CE7A}
+.assum input:focus{border-color:var(--marigold);outline:none;box-shadow:0 0 0 3px rgba(232,160,32,.18)}
+.legend{font-size:.7rem;color:#6a6353;margin:10px 0 0}
+.legend i{font-style:normal;color:var(--input);font-weight:600}
+.btnrow{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.btn{border:1px solid var(--ink);background:var(--ink);color:var(--bone);border-radius:7px;padding:7px 14px;font-size:.78rem;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn:hover{background:var(--marigold);border-color:var(--marigold);color:var(--ink)}
+.flag{border-left:3px solid var(--rust);background:var(--paper);padding:10px 12px;font-size:.8rem;border-radius:0 6px 6px 0;margin-top:12px}
+.okflag{border-left-color:#3d7a4f}
+
+/* master prompt */
+pre.mp{font-family:var(--mono);font-size:.72rem;line-height:1.55;background:var(--ink);color:#DCE7E2;border:1px solid var(--line);border-radius:10px;padding:18px;white-space:pre-wrap;max-height:560px;overflow:auto}
+.copied{color:var(--marigold);font-family:var(--mono);font-size:.72rem;margin-left:8px}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:960px){.two{grid-template-columns:1fr}}
+
+/* brand-axis matrix */
+.unres{display:inline-block;font-family:var(--mono);font-size:.64rem;letter-spacing:.1em;color:var(--rust);border:1px solid var(--rust);border-radius:99px;padding:3px 10px;margin-left:10px;vertical-align:middle}
+.mx{display:grid;grid-template-columns:96px repeat(6,minmax(86px,1fr));gap:3px;font-size:.62rem;min-width:660px}
+.mxwrap{overflow-x:auto;padding-bottom:4px}
+.mx .h{font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:#7d7562;padding:6px 4px;text-align:center;align-self:end}
+.mx .rh{font-size:.66rem;font-weight:600;color:var(--ink);padding:8px 6px;display:flex;align-items:center}
+.mx .c{border-radius:6px;padding:7px 5px;text-align:center;line-height:1.3;border:1px solid var(--paper2);background:#FBF8F0;color:#8a8270;display:flex;flex-direction:column;justify-content:center;min-height:46px}
+.mx .c b{font-size:.72rem;display:block;color:inherit}
+.mx .launch{background:var(--marigold);border-color:var(--marigold-d);color:var(--ink);font-weight:600}
+.mx .p2{background:#F5E7C6;border-color:#E0C275;color:#6b5410}
+.mx .contest{background:#F1E3DB;border-color:#DCC0B0;color:var(--rust)}
+.mxlegend{display:flex;gap:16px;flex-wrap:wrap;font-size:.68rem;color:#6a6353;margin-top:10px}
+.mxlegend span::before{content:'';display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1px solid var(--paper2)}
+.mxlegend .l1::before{background:var(--marigold);border-color:var(--marigold-d)}
+.mxlegend .l2::before{background:#F5E7C6;border-color:#E0C275}
+.mxlegend .l3::before{background:#FBF8F0}
+.mxlegend .l4::before{background:#F1E3DB;border-color:#DCC0B0}
+.verdict{border-left:3px solid var(--marigold);background:var(--paper);padding:12px 14px;border-radius:0 6px 6px 0;font-size:.85rem;margin-top:12px}
+
+/* asset map */
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:960px){.three{grid-template-columns:1fr}}
+.kitcard{background:var(--paper);border:1px solid var(--paper2);border-radius:8px;padding:14px 15px}
+.kitcard .kn{font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;color:#9a916f;display:block;margin-bottom:4px}
+.kitcard h4{margin:0 0 6px}
+.kitcard p{font-size:.78rem;margin:0 0 8px;color:#4a4638}
+.chip{font-family:var(--mono);font-size:.56rem;letter-spacing:.08em;border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:1px;white-space:nowrap}
+.chipC{background:var(--marigold);color:var(--ink);border:1px solid var(--marigold-d)}
+.chipS{background:#DCE8E3;color:#22443B;border:1px solid #A9C4BA}
+.ip{font-family:var(--mono);font-size:.6rem;color:#8a8270;white-space:nowrap}
+.ip.flag{color:var(--rust)}
+.exstrip{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.exstrip span{font-size:.68rem;background:#EFEAE0;border:1px solid var(--paper2);border-radius:99px;padding:4px 11px;color:#6a6353}
+@media(max-width:840px){
+  .app{grid-template-columns:1fr}
+  .rail{position:static;height:auto;flex-direction:column}
+  .nav{flex-direction:row;flex-wrap:wrap;gap:2px;padding:0 12px}
+  .nav button{border-left:0;border-bottom:2px solid transparent;padding:8px 10px}
+  .nav button.on{border-bottom-color:var(--marigold)}
+  .gates{display:none}
+  .wrap{padding:20px 16px 50px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="wordmark">
+      <h1>PARWAH<span>.</span></h1>
+      <div class="sub">Founder Console · v1.0</div>
+    </div>
+    <nav class="nav" id="nav" aria-label="Sections">
+      <button class="on" data-tab="overview"><span class="n">00</span>Overview</button>
+      <button data-tab="map"><span class="n">01</span>MAP Strategy</button>
+      <button data-tab="mvp"><span class="n">02</span>MVP Plan</button>
+      <button data-tab="roadmap"><span class="n">03</span>Roadmap</button>
+      <button data-tab="prd"><span class="n">04</span>PRD</button>
+      <button data-tab="finance"><span class="n">05</span>Finance Engine</button>
+      <button data-tab="prompt"><span class="n">06</span>Master Prompt</button>
+      <button data-tab="axis"><span class="n">07</span>Brand Axis</button>
+      <button data-tab="assets"><span class="n">08</span>Asset Map</button>
+    </nav>
+    <div class="gates" aria-label="Validation gates">
+      <h3>Gate Rail</h3>
+      <div class="gate"><span class="pip arm"></span><div><b>G1 · end M2</b><span>CAC ≤ ₹700 · ROAS ≥ 2.2 → scale +30%/mo</span></div></div>
+      <div class="gate"><span class="pip"></span><div><b>G2 · end M3</b><span>Repeat ≥ 4% of buyers → launch T2 supplements</span></div></div>
+      <div class="gate"><span class="pip"></span><div><b>G3 · end M4</b><span>25× 4.5★ reviews · returns ≤ 6% → q-commerce talks</span></div></div>
+      <div class="gate"><span class="pip kill"></span><div><b>Kill · end M6</b><span>&lt; ₹8L/mo after 2 creative resets → stop &amp; liquidate</span></div></div>
+    </div>
+    <div class="stamp">status: planning · exec not started<br>verified 28 Aug 2026 · 21/21 checks</div>
+  </aside>
+
+  <main>
+    <div class="topbar">
+      <div class="crumb" id="crumb">Overview</div>
+      <div class="chips">
+        <span class="chip">FX <b>₹85 / USD</b></span>
+        <span class="chip">Model <b>live · editable</b></span>
+        <span class="chip">Sort <b>descending</b></span>
+      </div>
+    </div>
+
+    <div class="wrap">
+
+    <!-- ================= OVERVIEW ================= -->
+    <section class="tab on" id="tab-overview">
+      <div class="eyebrow">The thesis</div>
+      <h2>Buy the catalog. Build the brand. Own the child-buyer.</h2>
+      <p class="lede">White-label the entire senior daily-living catalog — already manufactured at scale by Tynor/Vissco-class OEMs, nutra CMs and ODMs — wrap it in a dignity-first brand sold to the 35–50 metro/NRI adult child, and take the empty "care for the people who raised you" slot before AGEasy or a funded entrant does. Zero R&amp;D. Trust is the product.</p>
+      <div class="cards" id="ovCards"></div>
+      <div class="two">
+        <div class="panel">
+          <h3>Why now</h3>
+          <ul>
+            <li><b>Demand curve:</b> India 60+ ≈ 138M (2021) → 319M by 2050. Compounds for 25 years.</li>
+            <li><b>Market being educated for free:</b> services layer funded — Age Care Labs ₹85 Cr Series B1 (Rainmatter), Primus, Samarth, Portea.</li>
+            <li><b>Product layer unbranded:</b> one corporate entrant (AGEasy diaper pants, Mar '26); Seniority (~$1M raised) absorbed by HCAH 2022. No digital-first indie brand.</li>
+            <li><b>Supply is ready:</b> the full catalog exists as OEM/ODM white-label — this is a curation + trust + distribution play.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>Operating posture</h3>
+          <ul>
+            <li><b>Hard gates, pre-decided</b> — G1–G3 and an M6 kill rule (see Gate Rail). No funding losses past the gate.</li>
+            <li><b>One deliverable closed at a time</b>; test everything before handover; dual currency ₹ + $ @ ₹85.</li>
+            <li><b>Never fight on diapers</b> — enter incontinence phase 2 via hygiene CM once trust exists.</li>
+            <li><b>Next action:</b> P0 sourcing shortlist — named OEM contacts, MOQs, target landed costs (master prompt first action).</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= MAP ================= -->
+    <section class="tab" id="tab-map">
+      <div class="eyebrow">01 · Strategy</div>
+      <h2>MAP — Market · Angle · Product</h2>
+      <p class="lede">Where the demand is, the hook that wins it, and what is sold — all white-label.</p>
+
+      <div class="panel">
+        <h3>Market — where the demand is</h3>
+        <div class="tblwrap"><table>
+          <tr><th>Signal</th><th>Data</th><th>Implication</th></tr>
+          <tr><td class="rowh">Demographic curve</td><td>India 60+ ≈ 138M (2021) → 319M by 2050 (LASI)</td><td>Largest structural consumer wave in India</td></tr>
+          <tr><td class="rowh">Category funding</td><td>Elder-care <i>services</i> funded: Age Care Labs ₹85 Cr B1, Primus, Samarth, Portea</td><td>Others pay to educate the market; product layer open</td></tr>
+          <tr><td class="rowh">Incontinence market</td><td>$162.6M (2025) → $317M by 2034 · 7.7% CAGR (IMARC)</td><td>Proven replenishment; enter phase 2, not as wedge</td></tr>
+          <tr><td class="rowh">Competition</td><td>AGEasy (Antara/Max) launched Mar '26; Seniority fizzled into HCAH '22</td><td>Slot open but closing — speed matters</td></tr>
+          <tr><td class="rowh">Supply side</td><td>Tynor/Vissco/Flamingo OEM · Baddi/Ahmedabad nutra CMs · Alibaba/Canton ODM · Tirupur adaptive wear</td><td>Entire catalog readily bought at scale — zero R&amp;D</td></tr>
+          <tr><td class="rowh">Buyer</td><td>35–50 metro + NRI adult children</td><td>Highest income, most online-native, guilt+love purchase, zero incumbent loyalty</td></tr>
+        </table></div>
+        <p style="margin-top:10px"><b>Serviceable wedge (Y1–2):</b> DLA hardware + ortho comfort + senior nutrition bought online by metro/NRI children — conservatively ₹800–1,200 Cr ($94–141M) annual and unbranded.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Angle — dignity-first love brand</h3>
+        <p><b>Positioning:</b> not a medical brand, a love brand. "They spent 30 years taking care of you. Parwah is how you take care back."</p>
+        <h4>Creative territories — test all three, kill to winner</h4>
+        <ul>
+          <li><b>Guilt + Love (child-facing):</b> "You can't be there every day. Parwah can." NRI/metro targeting; Diwali, Parents' Day, anniversary spikes.</li>
+          <li><b>Independence (parent-facing UGC):</b> before/after of a parent bathing safely, walking to the park alone. "Not help. Freedom."</li>
+          <li><b>Problem–solution demos:</b> 15-sec reels — slippery bathroom, unreachable sock, stuck jar → the product.</li>
+        </ul>
+        <h4>Structural angles</h4>
+        <ul>
+          <li><b>Gift-to-parent flow as the product</b> — buy in Mumbai/Dubai, ship to Indore, printed card, Hindi phone setup. Nobody does this.</li>
+          <li><b>WhatsApp-first for the parent</b> — reorder, how-to videos, human voice notes. Seniors don't do apps.</li>
+          <li><b>Trust stack:</b> physio/geriatrician panel badges, load-test certs, COD default, 10-day no-questions returns.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h3>Product — 3-tier white-label architecture</h3>
+        <div class="tblwrap"><table>
+          <tr><th>Tier</th><th>Role</th><th>SKUs</th><th>Source</th><th class="num">Landed / MRP</th><th class="num">Gross margin</th></tr>
+          <tr><td class="rowh">T1 · Wedge (M1)</td><td>Traffic + AOV, high margin</td><td>Knee/back supports, cervical pillows, insoles, compression socks · grab bars, shower stool, anti-slip mats, raised toilet seat · reacher, sock aid, jar opener, pill organizer, foldable LED walking stick</td><td>Tynor / Vissco / Flamingo OEM · Alibaba ODM · Arcatron</td><td class="num">25–35%</td><td class="num">60–72%</td></tr>
+          <tr><td class="rowh">T2 · Retention (M3–4)</td><td>Subscription revenue</td><td>Bone/joint supplement, senior protein, sleep-friendly blends — zero therapeutic claims</td><td>Baddi / Ahmedabad nutra CM</td><td class="num">15–25%</td><td class="num">70–80%</td></tr>
+          <tr><td class="rowh">T3 · Brand (M6+)</td><td>Differentiation, PR, AOV</td><td>Adaptive-wear capsule (magnetic shirts, seated-fit pants), gifting boxes, fall-alert wearable, hip protectors</td><td>Tirupur CM · ODM electronics</td><td class="num">30–40%</td><td class="num">55–65%</td></tr>
+        </table></div>
+        <p style="margin-top:10px"><b>Explicitly not in MVP:</b> adult diapers (AGEasy/Friends war, thin margin — phase 2), hearing aids proper, any Class C/D device, anything needing a therapeutic claim.</p>
+        <p><b>Regulatory posture:</b> sell ortho under OEM's CDSCO license (Parwah = brand owner/marketer) · supplements on CM's FSSAI + Parwah marketer license, ASCI-safe copy only · Legal Metrology declarations on every pack · BIS check per imported SKU.</p>
+      </div>
+    </section>
+
+    <!-- ================= MVP ================= -->
+    <section class="tab" id="tab-mvp">
+      <div class="eyebrow">02 · Build</div>
+      <h2>MVP — 18 SKUs live in 6 weeks on ₹15L ($17.6K)</h2>
+      <p class="lede">MVP = D2C Shopify store + Amazon/Flipkart listings, gift-to-parent flow v1, manual WhatsApp concierge, ₹3.5L ads across two months, and a validated CAC/repeat signal.</p>
+      <div class="panel">
+        <h3>Week-by-week</h3>
+        <div class="tblwrap"><table>
+          <tr><th>Week</th><th>Workstream</th><th>Exit criteria</th></tr>
+          <tr><td class="rowh">W1</td><td>Sourcing + entity</td><td>Pvt Ltd + GST + FSSAI marketer · 3 OEMs shortlisted per category · samples for 25 candidate SKUs · trademark filed</td></tr>
+          <tr><td class="rowh">W2</td><td>Catalog lock</td><td>18 SKUs locked on sample QC (drop/load tests on safety SKUs) · POs at MOQ (₹4.5L opening inventory) · dielines to print</td></tr>
+          <tr><td class="rowh">W3</td><td>Brand + store</td><td>Brand kit final · Shopify live (PDP video, size guides, doctor badge) · Razorpay + Shiprocket live</td></tr>
+          <tr><td class="rowh">W4</td><td>Content engine</td><td>18 PDP shoots · 12 reels + 9 statics (3 territories × 3 formats) · Amazon A+ drafts</td></tr>
+          <tr><td class="rowh">W5</td><td>Soft launch</td><td>Friends/family + 2 senior RWAs · ₹50K ($588) test across territories · funnel leaks fixed</td></tr>
+          <tr><td class="rowh">W6</td><td>Launch</td><td>₹1.5L/mo ($1,765) Meta on winning territory · marketplaces live · WA concierge SOP · PR pitch to 10 outlets</td></tr>
+        </table></div>
+      </div>
+      <div class="panel">
+        <h3>Validation gates — binding</h3>
+        <ul>
+          <li><b>G1 (end M2):</b> blended CAC ≤ ₹700 ($8.2) and ROAS ≥ 2.2 → scale spend 30%/mo. Fail → freeze, re-cut creative/offer, retest 4 wks.</li>
+          <li><b>G2 (end M3):</b> ≥ 4% of M1–2 buyers reordered → greenlight T2 supplements. Fail → pivot to occasion/gifting brand.</li>
+          <li><b>G3 (end M4):</b> ≥ 25 unsolicited 4.5★+ reviews and returns ≤ 6% → open quick-commerce talks. Fail → SKU cull, fix quality first.</li>
+          <li><b>Kill (end M6):</b> run-rate &lt; ₹8L/mo ($9.4K) after 4 months of ≥ ₹1.5L/mo spend and two creative resets → stop paid, liquidate via marketplace deals, keep learnings.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ================= ROADMAP ================= -->
+    <section class="tab" id="tab-roadmap">
+      <div class="eyebrow">03 · Sequence</div>
+      <h2>Roadmap — launch M0–M6, scale M7–M24</h2>
+      <p class="lede">Launch proves the machine; scale buys distribution depth, then moat, then category + geography.</p>
+      <div class="panel">
+        <h3>Launch · M0 → M6</h3>
+        <div class="tblwrap"><table>
+          <tr><th>Month</th><th>Focus</th><th>Targets (base case)</th></tr>
+          <tr><td class="rowh">M0</td><td>MVP build (6 wks)</td><td>Store live · 18 SKUs · ₹15L deployed</td></tr>
+          <tr><td class="rowh">M1</td><td>Meta 70 / Google 20 / organic 10</td><td>₹4–5L rev ($4.7–5.9K) · first CAC read</td></tr>
+          <tr><td class="rowh">M2</td><td>Weekly creative iteration · Amazon ads · email/WA flows</td><td>Pass G1</td></tr>
+          <tr><td class="rowh">M3</td><td>T2 supplements + subscribe-and-save (−10%) · Diwali box build starts</td><td>Pass G2 · repeat ≥ 8% of revenue</td></tr>
+          <tr><td class="rowh">M4</td><td>15 midlife/family creators · physio advisory panel announced</td><td>₹10–12L/mo ($11.8–14.1K)</td></tr>
+          <tr><td class="rowh">M5</td><td>Diwali gifting (₹1,999 / ₹3,499 / ₹5,999 bundles) · corporate gifting × 50 HRs</td><td>Seasonal 1.6–2×</td></tr>
+          <tr><td class="rowh">M6</td><td>Cut bottom-quartile SKUs, double winners · Blinkit/Zepto pilot pitch (6 hero SKUs)</td><td>₹14–16L/mo ($16.5–18.8K) · raise-ready pack</td></tr>
+        </table></div>
+      </div>
+      <div class="two">
+        <div class="panel">
+          <h3>Scale · M7 → M24</h3>
+          <ul>
+            <li><b>M7–12 — Distribution depth</b> (seed ₹2.5 Cr / $294K): quick commerce in 3 metros; Amazon flywheel (200+ reviews/hero, S&amp;S, brand store); T3 adaptive-wear + fall-alert PR moment; team of 3. Exit: ₹35–45L/mo ($41–53K), ≥ 20% repeat/subscription revenue.</li>
+            <li><b>M13–18 — Moat + margin:</b> exclusive molds/colorways with OEMs; 300 pharmacy counters; 2 senior-living experience corners (Primus/Antara pitch); caregiver CRM with festival auto-reminders.</li>
+            <li><b>M19–24 — Category + geography:</b> incontinence line via hygiene CM; GCC export (UAE/KSA — NRI child already knows the brand); optional zero-inventory services referrals. Exit: ₹1.2–1.5 Cr/mo ($141–176K) → Series A or profitable independence.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3>KPI stack (weekly, descending)</h3>
+          <ol>
+            <li>Blended CAC (₹/$) and MER</li>
+            <li>Repeat + subscription revenue share %</li>
+            <li>Contribution per order after CAC (₹/$)</li>
+            <li>Hero-SKU review velocity + rating</li>
+            <li>Return / RTO rate %</li>
+            <li>Quick-commerce fill rate + doors (M7+)</li>
+            <li>WhatsApp concierge CSAT</li>
+          </ol>
+          <h4>Risks · pre-decided responses (descending)</h4>
+          <ol>
+            <li><b>Funded entrant outspends</b> → out-position on child-buyer slot; speed on q-commerce; never fight on diapers.</li>
+            <li><b>CAC blowout</b> → shift to Google Shopping + Amazon intent; occasion spikes; UGC whitelisting.</li>
+            <li><b>Safety-SKU quality incident</b> → per-batch load-test certs, ₹50L liability cover day 1, recall SOP pre-written.</li>
+            <li><b>Regulatory (claims/devices)</b> → OEM licenses, ASCI-clean copy, quarterly review, claims checklist gate.</li>
+            <li><b>Inventory misbuy</b> → MOQ-min buys, reorder on 30-day sell-through, cull bottom quartile every 8 wks.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PRD ================= -->
+    <section class="tab" id="tab-prd">
+      <div class="eyebrow">04 · Product spec</div>
+      <h2>PRD — the buyer ≠ user commerce system</h2>
+      <p class="lede">The digital product that sells the physical catalog: storefront, gift-to-parent flow, no-login subscriptions, WhatsApp concierge, analytics. v1 targets: CAC ≤ ₹700, gift-flow ≥ 25% of orders, 60-day repeat ≥ 4%, senior served with zero app dependency.</p>
+      <div class="two">
+        <div class="panel">
+          <h3>Personas &amp; jobs</h3>
+          <ul>
+            <li><b>P1 Buyer-child (primary):</b> 35–50, metro/NRI, time-poor, guilt-motivated. "Help me tangibly care for Mum/Dad from far away, without a research project."</li>
+            <li><b>P2 Senior end-user:</b> 60+, WhatsApp-capable, app-averse, dignity-sensitive, COD-leaning. "Let me stay independent without feeling like a patient."</li>
+            <li><b>P3 Caregiver:</b> manages daily use, low English. "Show me exactly how to use this, in Hindi, in 60 seconds."</li>
+          </ul>
+          <h4>Non-goals v1</h4>
+          <p>Native app · services marketplace · international checkout · incontinence SKUs · Class C/D devices · AI medical-advice chat (hard exclusion).</p>
+        </div>
+        <div class="panel">
+          <h3>Must-have stories (v1)</h3>
+          <ul>
+            <li>Ship-to-different-address with NRI prepaid smooth (US1)</li>
+            <li>Free printed gift card with personal message (US2)</li>
+            <li>Problem-first bundles — "Bathroom safety kit", "Knee relief kit", "Diwali care box" (US3)</li>
+            <li>QR → 60-sec Hindi/English how-to video on every product + delivery (US4)</li>
+            <li>Opt-in WhatsApp thread: setup help, reorder, Hindi callback (US5)</li>
+            <li>Subscribe at −10% via magic link, no login (US6)</li>
+            <li>COD for India + 10-day no-questions returns, WA pickup (US7)</li>
+          </ul>
+          <p><b>Should (v1.1):</b> caregiver accounts (2 parent profiles), festival/birthday auto-reminders, expandable "why we chose this" physio notes. <b>Could (v1.2):</b> q-commerce sync, referral credits, Hindi storefront.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Functional blocks F1–F6</h3>
+        <ul>
+          <li><b>F1 Storefront (Shopify):</b> problem-first nav (Mobility / Bathroom Safety / Pain &amp; Comfort / Daily Aids / Nutrition / Gifting); PDP = ≤30s hero video, in-use senior imagery, load-rating spec, doctor badge, "completes the kit"; Razorpay + PayPal (NRI).</li>
+          <li><b>F2 Gift flow:</b> gift toggle → 240-char printed message → delivery-day "your child sent you this" WA/SMS → buyer gets delivery photo.</li>
+          <li><b>F3 Subscriptions:</b> Appstle-class app, magic-link manage, dunning 2 retries + WA nudge, cancel reasons captured.</li>
+          <li><b>F4 WhatsApp concierge (WATI-class BSP):</b> order status · how-to D+1 · satisfaction D+7 · replenish D+30/45 · human handoff ≤ 2 hrs (10:00–19:00 IST) · Hindi + English.</li>
+          <li><b>F5 Reviews &amp; trust:</b> D+10 ask, ₹100 photo-review credit, hosted NABL/load-test certs per SKU.</li>
+          <li><b>F6 Tracking:</b> GA4 + Meta CAPI + server-side; canonical events incl. add_gift_message, wa_optin, wa_reorder, subscribe_start; UTM discipline; weekly KPI board.</li>
+        </ul>
+        <h4>Non-functional</h4>
+        <p>WCAG 2.1 AA (≥16px base, 4.5:1 contrast, keyboard nav) · LCP ≤ 2.5s on 4G mid-range Android · zero therapeutic claims with ASCI gate · Legal Metrology fields on PDP · DPDP consent for WA · 99.5% uptime · order→WA latency ≤ 5 min.</p>
+        <h4>Success metrics (90 days, descending)</h4>
+        <p>CVR ≥ 1.6% blended (≥ 2.4% gifting LPs) → CAC ≤ ₹700 / MER ≥ 2.2 → gift-flow ≥ 25% → WA opt-in ≥ 55%, video open ≥ 60% → 60-day repeat ≥ 4% → returns ≤ 6%, RTO ≤ 12% of COD.</p>
+        <h4>Releases &amp; open questions</h4>
+        <p>v0.1 (W3–4) internal → v1.0 (W5–6) public with gift flow + concierge + tracking → v1.1 (M3) subscriptions + caregiver profiles → v1.2 (M6–7) Hindi + referrals + q-commerce sync. Open by W2: trademark clearance + fallback name; OEM license coverage letter; PayPal vs Razorpay-intl test; ₹50L liability cover bound before first safety-SKU sale.</p>
+      </div>
+    </section>
+
+    <!-- ================= FINANCE ================= -->
+    <section class="tab" id="tab-finance">
+      <div class="eyebrow">05 · Live model</div>
+      <h2>Finance engine — edit blue, everything recomputes</h2>
+      <p class="lede">Mirrors Parwah_04_Financial_Model.xlsx exactly (engine verified 21/21 against it). Hover any <span class="f" tabindex="0" data-fx="chips like this reveal the row's formula">ƒ</span> chip for the formula. Costs negative in rust. Dual currency throughout @ your FX input.</p>
+
+      <div class="panel">
+        <h3>Assumptions</h3>
+        <p class="plede">Yellow = key levers (matches the spreadsheet). Values persist while this page is open; Reset restores base case.</p>
+        <div class="assum" id="assumGrid"></div>
+        <p class="legend"><i>Blue</i> = editable input · black = computed · rust = negative. Base case excludes founder salary (set draw &gt; 0 to stress-test).</p>
+        <div class="btnrow">
+          <button class="btn ghost" id="resetBtn">Reset to base case</button>
+        </div>
+        <div id="cashFlag"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Year 1 — monthly engine</h3>
+        <div class="tblwrap"><table id="tblMonthly"></table></div>
+      </div>
+
+      <div class="two">
+        <div class="panel">
+          <h3>Three-year summary</h3>
+          <div class="tblwrap"><table id="tbl3y"></table></div>
+        </div>
+        <div class="panel">
+          <h3>Investment</h3>
+          <div class="tblwrap"><table id="tblInvest"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= MASTER PROMPT ================= -->
+    <section class="tab" id="tab-prompt">
+      <div class="eyebrow">06 · Execution spec</div>
+      <h2>Master prompt — paste into any AI session</h2>
+      <p class="lede">Single source of truth for running any build phase (Claude / Cowork / Claude Code). Supersedes ad-hoc instructions except Anchit's live messages.</p>
+      <div class="panel">
+        <div class="btnrow" style="margin:0 0 12px">
+          <button class="btn" id="copyBtn">Copy full prompt</button><span class="copied" id="copied" hidden>Copied ✓</span>
+        </div>
+<pre class="mp" id="mpText">ROLE
+You are the Build &amp; Growth Operator for PARWAH — an India D2C brand of senior daily-living
+products (white-label: ortho comfort, bathroom safety, daily living aids, senior nutrition,
+later adaptive wear). You execute like a founding growth+product team: performance marketing,
+CRO, lifecycle/CRM, brand, ops SOPs, and light code. Anchit Tandon is the founder and final
+approver.
+
+MISSION
+Take Parwah from zero to a validated D2C brand: 18 SKUs live in 6 weeks on ₹15L, pass the
+validation gates, then scale to ₹35–45L/mo run-rate by M12 per the roadmap. You optimise for
+speed of validated learning, not polish.
+
+CONTEXT PACK (canonical facts — do not re-derive)
+- Buyer: 35–50 metro/NRI adult child buying for parents. End-user: 60+ parent, WhatsApp-only.
+- Positioning: dignity-first love brand. Tagline territory: &quot;They took care of you. Take care back.&quot;
+- Catalog: T1 wedge (ortho comfort + bathroom safety + daily aids, 60–72% GM, Tynor/Vissco/
+  Flamingo OEM + Alibaba ODM + Arcatron), T2 supplements (nutra CM, subscriptions, M3),
+  T3 adaptive wear + fall-alert (M6+). NO diapers, NO hearing aids, NO Class C/D devices in v1.
+- Stack: Shopify + Razorpay(+PayPal NRI) + Shiprocket + WATI-class WhatsApp BSP + GA4/Meta CAPI.
+- Channels: Meta 70 / Google 20 / organic-influencer 10 at launch; Amazon+Flipkart in M1–2;
+  quick commerce from M7.
+- Financial base case + gates: see Parwah_04_Financial_Model.xlsx and Doc 01 §2. Gates G1–G3
+  and the M6 kill rule are binding.
+- INFRA (live): GitHub → ONE private monorepo Anchit-AI-Hustle/parwah-hq: hq/ (console +
+  financial model — never deployed publicly) and site/ (public pre-launch site). Root
+  CLAUDE.md carries the rules + 7-item backlog — obey it; tests at site/tests/test_site.py.
+  Vercel team &quot;Anchit&#x27;s AI Hustle&quot; (Pro): project parwah-site builds from Root Directory
+  site/ (public); any hq/ deployment only behind Vercel Authentication. Supabase (free org):
+  project `parwah` for waitlist/light data when a trigger fires; existing `hey-yaara`
+  project reserved for the Yaara pilot. Commerce NEVER lives in this repo — Shopify only.
+- BRAND AXIS (unresolved — locked into the M6 raise pack as one sentence): expansion runs
+  user-axis or vertical-axis, decided by data, not opinion. Pre-decided rules: ≥60% of repeat
+  revenue same-buyer cross-vertical → lock user-axis; any vertical &gt;40% of revenue at &gt;75% GM
+  → sub-brand it, don&#x27;t re-architect; cross-user inbound &gt;15% of tickets AND wedge won
+  (₹50L+/mo, repeat ≥20%) → second user cell M18+ earliest; never both axes on one P&amp;L.
+  TM filing list: classes 5/10/20/21/25/31/35 + 9/42 (&quot;Yaara&quot;).
+- ASSET MAP LAW: internal systems are pulled by trigger, never pushed; default answer &quot;not
+  yet&quot;. Launch kit is exactly 3: Parwah Care Flow v1 (5-touch lifecycle), Parwah Story Page 01
+  (LIVE at /story/), Parwah Content Rhythm. Shelf triggers: LP Factory &gt;10 variants (M2–3) ·
+  Hook Engine &gt;10 creatives/wk (M3) · Mailer Hub &gt;10 live templates (M3) · Monthly Review at
+  first G2 read (M3, raise pack M6) · Ads Console spend ≥₹5L/mo or 2+ accounts (M4–5) ·
+  Auto-Publisher when organic proven (M4+) · Parwah Brain team&gt;1 or SKUs&gt;40 (M4+) · B2B
+  Outreach at gifting push (M5) · Seed Deck at raise (M6). All system names Parwah-native.
+- YAARA (confirmed): senior companion voice agent — music, games, stories, reminiscence +
+  family ping (&quot;Mummy seemed low — call her&quot;). Path: seed-deck demo slide M6 → pilot M7–M9
+  with 50–100 existing customer families (WhatsApp voice or Yaara Box gift SKU) → launch M13+
+  only on measured retention lift. Guardrails before any senior talks to it: medical-question
+  deflection, emergency escalation script, consent via the child, zero health advice.
+  Parwah Voice Stack (TTS + agent orchestration + safety layer) may be licensed outside;
+  external use never merges onto Parwah&#x27;s P&amp;L.
+
+OPERATING RULES (non-negotiable, Anchit&#x27;s standing rules)
+1. One step at a time: deliver one instruction/artifact, wait for result, then next. Never dump
+   a 10-step wall unless explicitly asked for a full plan.
+2. Test everything before handover: code runs, links resolve, numbers reconcile to the model,
+   copy passes the claims checklist. State what you tested and how.
+3. Every deploy/push verified green before reporting done (git status clean, build success,
+   live URL checked).
+4. Minimal, clean implementation. No over-engineering. Single &lt;style&gt; block for CSS overrides.
+5. Dual currency everywhere money appears: INR + USD @ ₹85/USD. Descending sorts in all tables.
+6. Never change or rename Anchit&#x27;s data/fields. Show formulas live in any sheet.
+7. One deliverable closed (approved) before opening the next.
+8. Execution-first: infer scope from this prompt; ask only questions that block execution.
+9. Repo law: respect the CLAUDE.md of any repo you touch; run its test suite after every
+   change (python site/tests/test_site.py) — all green before commit. Never move anything
+   from hq/ — financials, this prompt, supplier terms — into site/ or any public surface.
+
+HARD GUARDRAILS (category-specific — override everything else)
+- ZERO medical/therapeutic claims. Banned words in any copy: cure, treat, heal, therapy,
+  arthritis relief, diabetes control, clinically proven (unless we hold the study), doctor
+  recommended (unless named panel member signed off). Allowed: comfort, support, stability,
+  ease, confidence, independence.
+- Every safety SKU (grab bar, stool, seat) ships copy with its load rating and install guidance;
+  never publish a safety SKU without its batch load-test cert on file.
+- ASCI + Legal Metrology + FSSAI (supplements) checklist gate before any page/ad goes live.
+- Respect the senior: no infantilising imagery, no pity creative, no &quot;elderly burden&quot; framing.
+- Privacy: DPDP-compliant consent for WhatsApp; never message the parent without buyer opt-in.
+
+PHASE PLAN (execute strictly in order; each phase has an exit gate)
+P0 SOURCING &amp; ENTITY (W1–2) → exit: 18 SKUs locked w/ landed costs in the model, POs placed,
+   entity+FSSAI+trademark filed. Deliverables: OEM comparison sheet, QC spec per SKU, PO tracker.
+P1 BRAND (W2–3) → exit: Anchit approves brand kit. Deliverables: name check, logo suite,
+   palette/type, voice doc (10 do/don&#x27;t lines), packaging dielines, brand one-pager.
+P2 STORE (W3–4) → exit: v0.1 live on Shopify, test order placed+refunded, tracking events
+   firing (GA4 DebugView + Meta test events). site/ stays the brand home + advertorial +
+   launch list; point paid traffic there only until the store is live.
+P3 CONTENT ENGINE (W4) → exit: 18 PDPs complete, 12 reels + 9 statics in the 3×3 matrix
+   (3 territories × 3 formats), Amazon A+ drafts. Story Page 01 already live — build on it.
+   Every asset tagged for tracking.
+P4 LAUNCH (W5–6) → exit: soft launch ₹50K test read → winning territory scaled to ₹1.5L/mo;
+   WhatsApp concierge SOP live; PR pitch sent to 10 outlets. Soft-launch audience seeds from
+   the launch list captured since W1.
+P5 OPTIMISE TO GATES (M1–3) → weekly loop: creative iteration (kill &lt;0.8× median ROAS ads),
+   CRO test queue (one test/wk), email/WA flows live, supplements launch at G2 pass.
+P6 SCALE (M4+) → per Doc 01 §3–4: gifting season build, influencer layer, quick-commerce pitch
+   pack, raise-metrics pack at M6 (includes the Brand Axis sentence + the Yaara demo slide).
+
+STANDING DELIVERABLE SPECS
+- Ad creative: hook in first 1.5s; senior faces with agency (doing, not receiving); price+offer
+  in frame by sec 8; 9:16 primary. Name files {territory}_{format}_{hook}_{vN}.
+- PDP copy: problem headline → 3 benefit bullets → spec table → how-to video → reviews →
+  &quot;completes the kit&quot; cross-sell. Grade-6 reading level.
+- Email/WA flows: welcome(2), post-delivery how-to(D+1), satisfaction(D+7), review ask(D+10),
+  replenish(D+30/45), winback(D+75), festival calendar (Diwali, Parents&#x27; Day, Raksha Bandhan,
+  New Year). Hindi + English variants for WA.
+- Weekly report (Mondays): KPI stack from Doc 01 §5, descending, INR+USD, vs gate thresholds,
+  one decision-needed list ≤5 items.
+
+DECISION RIGHTS
+You decide: creative iterations, bid/budget moves ≤±20%/wk, copy, CRO tests, SOP drafts.
+Anchit decides: brand kit, SKU adds/kills, spend moves &gt;20%, pricing, partnerships, the gates.
+
+FIRST ACTION
+Confirm which phase you are being run for. If unspecified, begin P0 step 1: produce the OEM
+comparison sheet template + the 25-candidate SKU longlist with target landed costs, and stop
+for approval.</pre>
+      </div>
+    </section>
+
+    <!-- ================= BRAND AXIS ================= -->
+    <section class="tab" id="tab-axis">
+      <div class="eyebrow">07 · Open question</div>
+      <h2>Brand axis — divide by user, or by vertical?<span class="unres">UNRESOLVED · decide by M6</span></h2>
+      <p class="lede">"Parwah" is elastic — it can care for elders, kids, pets, anyone; or become Parwah Health, Parwah Food, Parwah Sanitation. The confusion to settle: when the brand expands, does it expand along <b>WHO it cares for</b> or <b>WHAT it cares about</b>? This tab holds the question until the data answers it.</p>
+
+      <div class="panel">
+        <h3>What this decision does — and doesn't — touch</h3>
+        <ul>
+          <li><b>Doesn't block anything now.</b> The launch cell is fixed regardless of axis: <b>Elders × Daily-Living</b>. P0 sourcing proceeds unchanged.</li>
+          <li><b>Determines at scale:</b> catalog logic, ad-account structure, sub-brand naming, trademark class strategy, hiring shape, and the one-sentence seed pitch ("Parwah is care commerce for ___").</li>
+          <li><b>Hedge already in place:</b> file the wordmark across classes 5 (supplements), 10 (ortho/medical aids), 20/21 (household aids), 25 (clothing), 31 (pet), 35 (retail) now — a few thousand rupees per class keeps both doors open without picking one.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h3>The map — users × verticals</h3>
+        <p class="plede">Every possible Parwah lives in one of these cells. The fight is over which direction the arrows point after the launch cell wins: <b>along the row</b> (same user, more verticals) or <b>down the column</b> (same vertical, more users).</p>
+        <div class="mxwrap"><div class="mx">
+          <div></div>
+          <div class="h">Daily-Living / Mobility</div><div class="h">Health / Supplements</div><div class="h">Medical Devices</div><div class="h">Sanitation / Hygiene</div><div class="h">Food / Nutrition</div><div class="h">Fitness</div>
+          <div class="rh">Elders</div>
+          <div class="c launch"><b>●</b>LAUNCH<br>18 SKUs, M1</div>
+          <div class="c p2"><b>◐</b>T2 · M3<br>subscriptions</div>
+          <div class="c p2"><b>◐</b>Class A only<br>selective</div>
+          <div class="c p2"><b>◐</b>Ph-2 · M19+<br>incontinence</div>
+          <div class="c">○ open<br>senior meals?</div>
+          <div class="c">○ open<br>mobility-adjacent</div>
+          <div class="rh">Kids</div>
+          <div class="c contest">✕ FirstCry / R for Rabbit</div>
+          <div class="c contest">✕ Mamaearth</div>
+          <div class="c contest">✕ + strict BIS</div>
+          <div class="c contest">✕ SuperBottoms</div>
+          <div class="c contest">✕ Slurrp Farm</div>
+          <div class="c">○ thin demand</div>
+          <div class="rh">Pets</div>
+          <div class="c contest">✕ HUFT / Supertails</div>
+          <div class="c contest">✕ Supertails Rx</div>
+          <div class="c contest">✕ vet channel</div>
+          <div class="c contest">✕ crowded</div>
+          <div class="c contest">✕ Drools et al</div>
+          <div class="c">— (Animind = own lane)</div>
+          <div class="rh">Adults / All</div>
+          <div class="c">○ generic → no angle</div>
+          <div class="c contest">✕ Plix / OZiva / 1mg</div>
+          <div class="c contest">✕ Dr Trust / Omron</div>
+          <div class="c contest">✕ Pee Safe etc.</div>
+          <div class="c contest">✕ saturated</div>
+          <div class="c contest">✕ cult.fit world</div>
+        </div></div>
+        <div class="mxlegend">
+          <span class="l1">● Launch cell</span><span class="l2">◐ Phased — same buyer, already in roadmap</span><span class="l3">○ Open — undecided</span><span class="l4">✕ Contested by funded incumbents</span>
+        </div>
+        <p style="margin-top:12px">Read the map honestly: the <b>Elders row is the only row with open, uncontested cells</b>. Every other row means fighting a funded incumbent on arrival. The ◐ cells show the pack's existing plan is already a <i>row-wise</i> (vertical-within-user) expansion — the confusion is whether that stays the rule.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Three architectures on the table</h3>
+        <div class="tblwrap"><table>
+          <tr><th>Option</th><th>Logic &amp; promise</th><th>Precedents</th><th>For</th><th>Against</th></tr>
+          <tr><td class="rowh">A · User-axis<br><span class="tag">segment brand</span></td><td>Parwah = care for a <b>person</b>. Win elders completely, then (maybe) a second user cell. Promise: "we understand this person."</td><td>FirstCry (kids), Supertails (pets), Mamaearth's baby-first origin</td><td>One coherent buyer → ad account learns fast, CAC stays sane; trust compounds; matches the guilt+love angle</td><td>TAM capped per segment; sideways jumps restart trust from zero</td></tr>
+          <tr><td class="rowh">B · Vertical-axis<br><span class="tag">category house</span></td><td>Parwah Health, Parwah Food, Parwah Sanitation… care as a <b>quality standard</b> across all users.</td><td>Himalaya, Patanjali, Tata house-of-brands</td><td>Bigger TAM per line; supply-side leverage with CMs/OEMs</td><td>Fights every category incumbent at once; no coherent buyer for ads; a compliance stack per vertical; "for everyone" dissolves the emotional angle that makes CAC work</td></tr>
+          <tr><td class="rowh">C · Hybrid<br><span class="tag">masterbrand · leaning</span></td><td>Masterbrand elastic, launch one cell, let repeat-purchase data pick the axis. Name whispers the future; brand shouts one thing.</td><td>Amazon (books→everything), Mamaearth (baby→beauty)</td><td>Keeps optionality free (TM filings); defers the call to evidence instead of opinion</td><td>Demands discipline — "optionality" becomes drift if the M6 decision isn't actually made</td></tr>
+        </table></div>
+      </div>
+
+      <div class="two">
+        <div class="panel">
+          <h3>Decision matrix (criteria descending by weight)</h3>
+          <div class="tblwrap"><table>
+            <tr><th>Criterion</th><th>A · User</th><th>B · Vertical</th><th>C · Hybrid</th></tr>
+            <tr><td class="rowh">CAC coherence / ad learning</td><td>Strong</td><td class="neg">Weak</td><td>Strong</td></tr>
+            <tr><td class="rowh">Trust transfer across SKUs</td><td>Strong</td><td>Medium</td><td>Strong</td></tr>
+            <tr><td class="rowh">Ops + compliance load</td><td>Strong</td><td class="neg">Weak</td><td>Strong</td></tr>
+            <tr><td class="rowh">Competitive contest</td><td>Strong</td><td class="neg">Weak</td><td>Strong</td></tr>
+            <tr><td class="rowh">TAM ceiling</td><td>Medium</td><td>Strong</td><td>Strong</td></tr>
+            <tr><td class="rowh">Moat depth at scale</td><td>Medium</td><td>Medium</td><td>Strong</td></tr>
+          </table></div>
+          <p style="margin-top:10px;font-size:.8rem;color:#6a6353">B wins only on TAM — and TAM is the one criterion a ₹15L launch cannot spend. Everything execution-critical points A/C.</p>
+        </div>
+        <div class="panel">
+          <h3>How the confusion gets resolved — evidence, not opinion</h3>
+          <h4>Signals to collect M1–M6</h4>
+          <ul>
+            <li><b>Repeat direction:</b> do grab-bar buyers return for supplements (row-wise) — or ask "do you have this for my kid/dog" (column-wise)?</li>
+            <li><b>Language:</b> share of reviews/support tickets saying "for my mother/father" vs product-generic ("good knee support").</li>
+            <li><b>WA concierge inbound:</b> % of tickets requesting other-user products.</li>
+            <li><b>CAC by territory:</b> does the child-buyer emotional angle keep beating problem-generic creative?</li>
+          </ul>
+          <h4>Pre-decided rules</h4>
+          <ul>
+            <li>≥60% of repeat revenue is same-buyer cross-vertical → <b>lock user-axis</b>; verticals stay departments, never brands.</li>
+            <li>A vertical &gt;40% of revenue at &gt;75% GM (likely supplements) → <b>sub-brand it</b> (Parwah Health), don't re-architect.</li>
+            <li>Cross-user inbound &gt;15% of tickets <i>and</i> elder wedge won (₹50L+/mo, repeat ≥20%) → open a second user cell, <b>M18+ earliest</b>.</li>
+            <li>Never both axes at once on one P&amp;L.</li>
+          </ul>
+          <div class="verdict"><b>Current leaning — Option C:</b> masterbrand, elders-only launch, broad TM filings now, axis locked into the M6 raise-metrics pack as one sentence: "Parwah is care commerce for ___." Until then this tab stays marked UNRESOLVED.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ASSET MAP ================= -->
+    <section class="tab" id="tab-assets">
+      <div class="eyebrow">08 · Asset Map</div>
+      <h2>Parwah systems — launch kit + the shelf</h2>
+      <p class="lede">Every capability Parwah can switch on, named as what it is <b>inside Parwah</b>. Provenance exists only in the IP column. Three systems run at launch; everything else waits on its trigger.</p>
+
+      <div class="verdict"><b>Operating rule:</b> systems are <b>pulled by trigger, never pushed</b> because they exist. Default answer for everything below the launch kit: <i>not yet.</i> And a fired trigger still has to beat the do-nothing alternative.</div>
+
+      <div class="panel" style="margin-top:18px">
+        <h3>Launch Kit — the only 3 systems live W1–W6</h3>
+        <div class="three">
+          <div class="kitcard"><span class="kn">KIT 01</span><h4>Parwah Care Flow v1</h4><p>5-touch lifecycle: welcome → order confirm → delivery + QR how-to → review ask → replenish nudge. Runs on Klaviyo, anchored to Shopify order-paid. The remaining 35 touches stay shelved until G2 proves repeat behaviour.</p><span class="ip flag">pattern rebuild · IP-clean</span></div>
+          <div class="kitcard"><span class="kn">KIT 02</span><h4>Parwah Story Page 01</h4><p>One hand-built guilt+love advertorial → PDP funnel. Grade-6 copy, dignity-first imagery, zero claims. Clone-reskin move only if a specific competitor reference earns it.</p><span class="ip">method only · clean</span></div>
+          <div class="kitcard"><span class="kn">KIT 03</span><h4>Parwah Content Rhythm</h4><p>Weekly batch-shoot day + 30-day organic calendar across 3 lanes (educate / emotion / product). No agents, no automation — a calendar and a camera.</p><span class="ip">own · clean</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>The Shelf — trigger-sorted (pull order, earliest first)</h3>
+        <div class="tblwrap"><table>
+          <tr><th>Parwah system</th><th>v1 implementation</th><th>Pull trigger</th><th>Earliest</th><th>Lift</th><th>IP</th></tr>
+          <tr><td class="rowh">Parwah LP Factory</td><td>Config-driven generator: territory × SKU landing pages off one Parwah bible page; hand-build the first 3 until then</td><td>&gt;10 LP variants needed</td><td>M2–M3</td><td>M</td><td><span class="ip flag">employer-built · gate</span></td></tr>
+          <tr><td class="rowh">Parwah Hook Engine</td><td>Research-first hook + reel scripts per territory, feeding the 3×3 creative matrix</td><td>Creative velocity &gt;10/wk</td><td>M3</td><td>S</td><td><span class="ip">own · clean</span></td></tr>
+          <tr><td class="rowh">Parwah Mailer Hub</td><td>Single repo as source of truth: brand kit, product catalog, festival configs, email templates</td><td>&gt;10 live templates</td><td>M3</td><td>S</td><td><span class="ip flag">employer-built · gate</span></td></tr>
+          <tr><td class="rowh">Parwah Monthly Review</td><td>8-lens business diagnostic + reconciliation + risk ledger; grows into the M6 raise-metrics pack</td><td>First G2 read; then raise pack</td><td>M3 / M6</td><td>M</td><td><span class="ip flag">employer-built · gate</span></td></tr>
+          <tr><td class="rowh">Parwah Ads Console</td><td>Programmatic ad-data pull → Monday KPI board (a sheet beats a pipeline until the threshold)</td><td>Spend ≥ ₹5L/mo or 2+ accounts</td><td>M4–M5</td><td>M</td><td><span class="ip flag">employer-built · gate</span></td></tr>
+          <tr><td class="rowh">Parwah Auto-Publisher</td><td>Cron pipeline for daily senior-tip reels / quote cards with human curation gate + failure alerts</td><td>Organic proven as a channel</td><td>M4+</td><td>M</td><td><span class="ip">own · clean</span></td></tr>
+          <tr><td class="rowh">Parwah Brain</td><td>Internal KB + analysis engine + rolling content calendar + asset generation, human-in-the-loop</td><td>Team &gt;1 or SKUs &gt;40</td><td>M4+</td><td>L</td><td><span class="ip flag">employer-built · gate</span></td></tr>
+          <tr><td class="rowh">Parwah B2B Outreach</td><td>Corporate-gifting outbound: 50 HR heads, sequenced follow-ups, gifting-catalog one-pager</td><td>Gifting push begins</td><td>M5</td><td>S</td><td><span class="ip">own · clean</span></td></tr>
+          <tr><td class="rowh">Parwah Seed Deck</td><td>12-slide skeleton pre-filled from the Monthly Review pack</td><td>Raise opens</td><td>M6</td><td>S</td><td><span class="ip">own · clean</span></td></tr>
+          <tr><td class="rowh">Parwah Yaara<span class="chip chipC">CONFIRMED</span></td><td>Senior companion voice agent: music, games, stories, reminiscence + family ping ("Mummy seemed low — call her"). Path: deck slide M6 → 50–100-family pilot M7–M9 (WhatsApp voice or Yaara Box gift SKU) → launch on retention lift. Guardrails before any senior talks to it: medical-question deflection, emergency escalation, consent via the child, zero health advice.</td><td>Seed closed + G1–G3 passed</td><td>M6 / M7–M9 / M13+</td><td>L</td><td><span class="ip">own repo · clean</span></td></tr>
+          <tr><td class="rowh">Parwah Voice Stack<span class="chip chipS">SHARED</span></td><td>Streaming TTS + agent orchestration + safety layer beneath Yaara. Any use outside Parwah is licensed out — never merged onto Parwah's P&amp;L.</td><td>Yaara pilot start</td><td>M7+</td><td>L</td><td><span class="ip">own · clean</span></td></tr>
+          <tr><td class="rowh">Parwah Meals</td><td>Elders × Food cell concept (senior tiffin / soft-diet subscriptions); separate P&amp;L per Brand Axis rules. Cheap pre-test: "meal week for parents" card in the Diwali box</td><td>Wedge won: ₹50L+/mo, repeat ≥20%</td><td>M18+</td><td>L</td><td><span class="ip">own · clean</span></td></tr>
+          <tr><td class="rowh">Parwah Build Agents</td><td>Optional: agent tracks generating docs + creative for P0–P6. This is an ops business, not a code business</td><td>Only if wanted</td><td>Optional</td><td>M</td><td><span class="ip">own · clean</span></td></tr>
+          <tr><td class="rowh">Parwah Accounts Shell</td><td>Caregiver-accounts contingency (auth + profiles) — only if Parwah ever leaves Shopify-native accounts; security blockers must close first</td><td>Off-Shopify accounts decision</td><td>Likely never</td><td>L</td><td><span class="ip flag">own · blockers open</span></td></tr>
+        </table></div>
+      </div>
+
+      <div class="two">
+        <div class="panel">
+          <h3>Excluded — not Parwah</h3>
+          <div class="exstrip"><span>Markets Pro</span><span>SHOUTOUT</span><span>Animind — own lane; may license Voice Stack</span><span>MusicGenAI</span><span>AI CCTV — ideation</span><span>Veltro / Nexara</span></div>
+          <p style="margin-top:12px;font-size:.8rem;color:#6a6353">These stay off this map entirely. The Pets row is contested and interpretation tech has its own home; nothing here becomes a Parwah feature.</p>
+        </div>
+        <div class="panel">
+          <h3>Flags before anything moves</h3>
+          <ul>
+            <li><b>IP gate</b> — every row tagged <span class="ip flag">employer-built · gate</span> traces to work product built in employment. Rebuild-from-pattern is always clean; wholesale repo copy needs written ownership confirmation first.</li>
+            <li><b>TM additions</b> — add classes <b>9</b> (software) and <b>42</b> (SaaS) for "Yaara" to the Parwah filing list (5/10/20/21/25/31/35).</li>
+            <li><b>Yaara IP confirm</b> — verify the companion-agent repo sits in a personal account before it enters the seed deck.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    </div><!-- /wrap -->
+  </main>
+</div>
+
+<script>
+/* ================= PARWAH FINANCE ENGINE =================
+   Mirrors Parwah_04_Financial_Model.xlsx. Pure function; verified. */
+const BASE = {
+  fx:85, aov:1400, gm:0.60, fees:0.12, ful:95, cac:550, org:0.12, rr:0.055,
+  fix1:120000, fix2:200000, draw:0,
+  y2x:3.5, y3x:2.4, gm2:0.62, gm3:0.62, mk2:0.30, mk3:0.26, ff2:0.07, ff3:0.065,
+  fx2c:11000000, fx3c:22000000,
+  ad:[150000,200000,250000,300000,350000,400000,450000,500000,550000,600000,700000,800000],
+  boot:[90000,200000,60000,100000,450000,350000,250000],
+  seed:25000000, uof:[0.30,0.25,0.20,0.15,0.10]
+};
+function computeModel(a){
+  const m=[]; let opening=0, cum=0;
+  const bootTotal=a.boot.reduce((s,v)=>s+v,0);
+  for(let i=0;i<12;i++){
+    const ad=a.ad[i];
+    const nw=(ad/a.cac)*(1+a.org);
+    const rep=opening*a.rr;
+    const orders=nw+rep;
+    const rev=orders*a.aov;
+    const cogs=-rev*(1-a.gm), fee=-rev*a.fees, ful=-orders*a.ful, mkt=-ad;
+    const contrib=rev+cogs+fee+ful+mkt;
+    const fix=-(i<6?a.fix1:a.fix2), draw=-a.draw;
+    const ebitda=contrib+fix+draw;
+    cum+=ebitda;
+    m.push({mo:i+1,ad,nw,opening,rep,close:opening+nw,orders,rev,cogs,fee,ful,mkt,contrib,
+      cpct:rev?contrib/rev:0,fix,draw,ebitda,cum,cash:-bootTotal+cum});
+    opening+=nw;
+  }
+  const T=k=>m.reduce((s,r)=>s+r[k],0);
+  const y1={rev:T('rev'),orders:T('orders'),nw:T('nw'),rep:T('rep'),cogs:T('cogs'),fee:T('fee'),
+    ful:T('ful'),mkt:T('mkt'),contrib:T('contrib'),fix:T('fix')+T('draw'),ebitda:T('ebitda')};
+  y1.gmv=y1.rev+y1.cogs;
+  const y2rev=y1.rev*a.y2x, y3rev=y2rev*a.y3x;
+  const y2={rev:y2rev,gmv:y2rev*a.gm2,mkt:-y2rev*a.mk2,fee:-y2rev*a.fees,ful:-y2rev*a.ff2,fix:-a.fx2c};
+  y2.ebitda=y2.gmv+y2.mkt+y2.fee+y2.ful+y2.fix;
+  const y3={rev:y3rev,gmv:y3rev*a.gm3,mkt:-y3rev*a.mk3,fee:-y3rev*a.fees,ful:-y3rev*a.ff3,fix:-a.fx3c};
+  y3.ebitda=y3.gmv+y3.mkt+y3.fee+y3.ful+y3.fix;
+  const peakCash=Math.min(...m.map(r=>r.cash));
+  const uofAmt=a.uof.map(p=>a.seed*p);
+  return {m,y1,y2,y3,bootTotal,peakCash,uofAmt,uofSum:uofAmt.reduce((s,v)=>s+v,0),
+    uofPct:a.uof.reduce((s,v)=>s+v,0)};
+}
+/* ================= END ENGINE ================= */
+
+const inr=new Intl.NumberFormat('en-IN',{maximumFractionDigits:0});
+const usd=new Intl.NumberFormat('en-US',{maximumFractionDigits:0});
+function fI(v){const n=Math.round(v);return n<0?`(${inr.format(-n)})`:inr.format(n)}
+function fU(v){const n=Math.round(v);return n<0?`($${usd.format(-n)})`:'$'+usd.format(n)}
+function fN(v){return inr.format(Math.round(v))}
+function fP(v){return (v*100).toFixed(1)+'%'}
+function cls(v){return v<0?' class="num neg"':' class="num"'}
+function cr(v){const c=v/1e7;return (c<0?'(₹'+Math.abs(c).toFixed(2)+' Cr)':'₹'+c.toFixed(2)+' Cr')}
+
+let A=structuredClone(BASE);
+
+const FIELDS=[
+  ['fx','FX rate (₹ per USD)',1,true],['aov','AOV (₹)',1,true],
+  ['gm','Gross margin % (post-COGS)',100,true],['fees','Fees % of revenue',100,false],
+  ['ful','Fulfillment ₹ / order',1,false],['cac','CAC ₹ / new customer',1,true],
+  ['org','Organic uplift %',100,false],['rr','Monthly reorder rate %',100,true],
+  ['fix1','Fixed opex/mo M1–6 (₹)',1,false],['fix2','Fixed opex/mo M7–12 (₹)',1,false],
+  ['draw','Founder draw/mo (₹)',1,false],['y2x','Y2 growth × Y1',1,true],
+  ['y3x','Y3 growth × Y2',1,true],['gm2','Y2 gross margin %',100,false],
+  ['mk2','Y2 marketing % rev',100,false],['mk3','Y3 marketing % rev',100,false],
+  ['seed','Seed round (₹)',1,true]
+];
+function buildAssum(){
+  const g=document.getElementById('assumGrid');g.innerHTML='';
+  FIELDS.forEach(([k,label,scale,key])=>{
+    const l=document.createElement('label');
+    l.innerHTML=`${label}<input ${key?'class="key"':''} data-k="${k}" data-s="${scale}" inputmode="decimal" value="${A[k]*scale}">`;
+    g.appendChild(l);
+  });
+  g.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{
+    const v=parseFloat(inp.value);
+    if(!isFinite(v))return;
+    A[inp.dataset.k]=v/parseFloat(inp.dataset.s);
+    render();
+  }));
+}
+
+function render(){
+  const R=computeModel(A), fx=A.fx||85;
+  /* overview cards */
+  const oc=document.getElementById('ovCards');
+  const cardData=[
+    ['Y1 revenue',R.y1.rev,false,'gold'],['Y1 EBITDA',R.y1.ebitda,false,''],
+    ['Y2 revenue',R.y2.rev,false,''],['Y3 revenue',R.y3.rev,false,'gold'],
+    ['Y3 EBITDA',R.y3.ebitda,false,''],['Bootstrap need',R.bootTotal,false,''],
+  ];
+  oc.innerHTML=cardData.map(([k,v,_,g])=>`<div class="card ${g}"><div class="k">${k}</div><div class="v${v<0?' negv':''}">${cr(v)}</div><div class="u">${fU(v/fx)} · @₹${fN(fx)}/$</div></div>`).join('');
+
+  /* monthly table */
+  const M=R.m, mt=document.getElementById('tblMonthly');
+  const th='<tr><th>Line</th>'+M.map(r=>`<th class="num">M${r.mo}</th>`).join('')+'<th class="num">Total / Y-end</th></tr>';
+  const row=(label,fx2,vals,tot,fmt,neg)=>{
+    fmt=fmt||fI;
+    return `<tr><td class="rowh">${label}${fx2?`<span class="f" tabindex="0" data-fx="${fx2}">ƒ</span>`:''}</td>`+
+      vals.map(v=>`<td${neg||v<0?cls(v):' class="num"'}>${fmt(v)}</td>`).join('')+
+      `<td${tot<0?cls(tot):' class="num"'}><b>${fmt(tot)}</b></td></tr>`;
+  };
+  const S=k=>M.reduce((s,r)=>s+r[k],0);
+  mt.innerHTML=th
+    +row('Ad spend (₹) <span class="tag">input</span>','',M.map(r=>r.ad),S('ad'))
+    +row('New customers','= Ad spend ÷ CAC × (1 + organic uplift)',M.map(r=>r.nw),S('nw'),fN)
+    +row('Repeat orders','= Opening customer base × reorder rate',M.map(r=>r.rep),S('rep'),fN)
+    +row('Total orders','= New customers + Repeat orders',M.map(r=>r.orders),S('orders'),fN)
+    +row('Revenue (₹)','= Total orders × AOV',M.map(r=>r.rev),R.y1.rev)
+    +row('Revenue (USD)','= Revenue ₹ ÷ FX',M.map(r=>r.rev/fx),R.y1.rev/fx,fU)
+    +row('COGS','= −Revenue × (1 − gross margin %)',M.map(r=>r.cogs),R.y1.cogs)
+    +row('Fees','= −Revenue × fees %',M.map(r=>r.fee),R.y1.fee)
+    +row('Fulfillment','= −Orders × ₹/order',M.map(r=>r.ful),R.y1.ful)
+    +row('Marketing','= −Ad spend',M.map(r=>r.mkt),R.y1.mkt)
+    +row('Contribution','= Revenue − COGS − Fees − Fulfillment − Marketing',M.map(r=>r.contrib),R.y1.contrib)
+    +row('Contribution %','= Contribution ÷ Revenue',M.map(r=>r.cpct),R.y1.rev?R.y1.contrib/R.y1.rev:0,fP)
+    +row('Fixed opex + draw','= −(M1–6 or M7–12 opex) − founder draw',M.map(r=>r.fix+r.draw),R.y1.fix)
+    +`<tr class="total"><td class="rowh">EBITDA (₹)<span class="f" tabindex="0" data-fx="= Contribution − Fixed opex − Founder draw">ƒ</span></td>`
+      +M.map(r=>`<td${cls(r.ebitda)}>${fI(r.ebitda)}</td>`).join('')
+      +`<td${cls(R.y1.ebitda)}><b>${fI(R.y1.ebitda)}</b></td></tr>`
+    +row('EBITDA (USD)','= EBITDA ₹ ÷ FX',M.map(r=>r.ebitda/fx),R.y1.ebitda/fx,fU)
+    +row('Cumulative cash, pre-WC','= −Bootstrap total + cumulative EBITDA',M.map(r=>r.cash),M[11].cash);
+
+  /* 3Y table */
+  const t3=document.getElementById('tbl3y');
+  const yrow=(label,fx3,v1,v2,v3,fmt)=>{fmt=fmt||fI;
+    return `<tr><td class="rowh">${label}${fx3?`<span class="f" tabindex="0" data-fx="${fx3}">ƒ</span>`:''}</td><td${cls(v1)}>${fmt(v1)}</td><td${cls(v2)}>${fmt(v2)}</td><td${cls(v3)}>${fmt(v3)}</td></tr>`};
+  t3.innerHTML='<tr><th></th><th class="num">Y1 (FY27)</th><th class="num">Y2 (FY28)</th><th class="num">Y3 (FY29)</th></tr>'
+    +yrow('Revenue (₹)','Y2 = Y1 × growth multiple · Y3 = Y2 × growth multiple',R.y1.rev,R.y2.rev,R.y3.rev)
+    +yrow('Revenue (USD)','= ₹ ÷ FX',R.y1.rev/fx,R.y2.rev/fx,R.y3.rev/fx,fU)
+    +yrow('Gross margin','= Revenue × GM%',R.y1.gmv,R.y2.gmv,R.y3.gmv)
+    +yrow('Marketing','Y1 actual · Y2/Y3 = −Rev × mkt%',R.y1.mkt,R.y2.mkt,R.y3.mkt)
+    +yrow('Fees','= −Rev × fees%',R.y1.fee,R.y2.fee,R.y3.fee)
+    +yrow('Fulfillment','Y1 actual · Y2/Y3 = −Rev × ful%',R.y1.ful,R.y2.ful,R.y3.ful)
+    +yrow('Fixed opex','Y1 actual · Y2/Y3 annual inputs',R.y1.fix,R.y2.fix,R.y3.fix)
+    +`<tr class="total"><td class="rowh">EBITDA (₹)</td><td${cls(R.y1.ebitda)}>${fI(R.y1.ebitda)}</td><td${cls(R.y2.ebitda)}>${fI(R.y2.ebitda)}</td><td${cls(R.y3.ebitda)}>${fI(R.y3.ebitda)}</td></tr>`
+    +yrow('EBITDA (USD)','= ₹ ÷ FX',R.y1.ebitda/fx,R.y2.ebitda/fx,R.y3.ebitda/fx,fU)
+    +yrow('EBITDA margin %','= EBITDA ÷ Revenue',R.y1.rev?R.y1.ebitda/R.y1.rev:0,R.y2.rev?R.y2.ebitda/R.y2.rev:0,R.y3.rev?R.y3.ebitda/R.y3.rev:0,fP);
+
+  /* investment */
+  const bootLabels=['Entity + compliance + trademark','Brand kit + packaging design & print','Store build + apps + tools (3-mo float)','Content production (shoots, reels, statics)','Opening inventory — 18 SKUs at MOQ','Launch ads float (M1–M2)','Working-capital & contingency buffer'];
+  const uofLabels=['Inventory depth + new category buys','Performance marketing scale','Quick-commerce entry','Team (growth, ops/supply, CX)','Brand, content & PR'];
+  const ti=document.getElementById('tblInvest');
+  let html='<tr><th>Phase 0 — Bootstrap</th><th class="num">INR</th><th class="num">USD</th></tr>';
+  A.boot.forEach((v,i)=>{html+=`<tr><td>${bootLabels[i]}</td><td class="num">${fI(v)}</td><td class="num">${fU(v/fx)}</td></tr>`});
+  html+=`<tr class="total"><td>Total bootstrap</td><td class="num">${fI(R.bootTotal)}</td><td class="num">${fU(R.bootTotal/fx)}</td></tr>`;
+  html+=`<tr><td>Peak cash need, pre-WC<span class="f" tabindex="0" data-fx="= MIN of monthly cumulative cash">ƒ</span></td><td${cls(R.peakCash)}>${fI(R.peakCash)}</td><td${cls(R.peakCash)}>${fU(R.peakCash/fx)}</td></tr>`;
+  html+=`<tr><th style="padding-top:16px">Seed — target M9–12 · use of funds</th><th class="num" style="padding-top:16px">INR</th><th class="num" style="padding-top:16px">USD</th></tr>`;
+  A.uof.forEach((p,i)=>{html+=`<tr><td>${uofLabels[i]} <span class="tag">${fP(p)}</span></td><td class="num">${fI(R.uofAmt[i])}</td><td class="num">${fU(R.uofAmt[i]/fx)}</td></tr>`});
+  html+=`<tr class="total"><td>Seed total <span class="tag">${fP(R.uofPct)}</span></td><td class="num">${fI(R.uofSum)}</td><td class="num">${fU(R.uofSum/fx)}</td></tr>`;
+  ti.innerHTML=html;
+
+  /* cash flag */
+  const gap=R.peakCash+R.bootTotal; // peak beyond bootstrap if peak < -boot
+  const flag=document.getElementById('cashFlag');
+  if(R.peakCash < -R.bootTotal){
+    flag.innerHTML=`<div class="flag"><b>Cash flag:</b> peak need ${fI(R.peakCash)} (${fU(R.peakCash/fx)}) runs ${fI(-gap)} past the ${fI(R.bootTotal)} bootstrap before repeat revenue covers it. Hold ≈ ₹20L incl. inventory WC headroom.</div>`;
+  }else{
+    flag.innerHTML=`<div class="flag okflag"><b>Cash OK:</b> peak need ${fI(R.peakCash)} sits inside the ${fI(R.bootTotal)} bootstrap at current assumptions.</div>`;
+  }
+}
+
+/* tabs */
+const nav=document.getElementById('nav');
+nav.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  nav.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('section.tab').forEach(s=>s.classList.toggle('on',s.id==='tab-'+b.dataset.tab));
+  document.getElementById('crumb').textContent=b.textContent.replace(/^\d+/,'').trim();
+  window.scrollTo({top:0});
+});
+
+/* copy master prompt */
+document.getElementById('copyBtn').addEventListener('click',async()=>{
+  const t=document.getElementById('mpText').textContent;
+  try{await navigator.clipboard.writeText(t)}catch(e){
+    const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
+  }
+  const c=document.getElementById('copied');c.hidden=false;setTimeout(()=>c.hidden=true,1800);
+});
+
+document.getElementById('resetBtn').addEventListener('click',()=>{A=structuredClone(BASE);buildAssum();render()});
+
+buildAssum();render();
+</script>
+</body>
+</html>

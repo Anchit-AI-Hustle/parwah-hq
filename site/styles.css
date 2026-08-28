@@ -1,0 +1,132 @@
+/* ============================================================
+   PARWAH — pre-launch site
+   Palette: neem-dusk #182622 · pine #24463C · day #FAF7EF ·
+            bone #EFE8D8 · marigold #E8A23D · sindoor #A64B2A · ink #241F17
+   Type: Fraunces (display) · Albert Sans (body/UI) · Tiro Devanagari Hindi (परवाह)
+   Signature: the garland thread — a marigold line strung through the page.
+   ============================================================ */
+:root{
+  --dusk:#182622; --pine:#24463C; --pine-2:#1E3A31;
+  --day:#FAF7EF; --bone:#EFE8D8; --bone-2:#E3D9C2;
+  --marigold:#E8A23D; --marigold-d:#C9861F; --sindoor:#A64B2A;
+  --ink:#241F17; --ink-soft:#4C4437; --cream-on-dusk:#EFE8D8; --dim-on-dusk:#A8B3A6;
+  --disp:"Fraunces",Georgia,serif; --body:"Albert Sans",system-ui,sans-serif; --dev:"Tiro Devanagari Hindi",serif;
+  --max:1080px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);color:var(--ink);background:var(--day);line-height:1.6;font-size:16px;-webkit-font-smoothing:antialiased}
+img,svg{display:block;max-width:100%}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--marigold);outline-offset:3px;border-radius:4px}
+
+/* ---------- shells ---------- */
+.wrap{max-width:var(--max);margin:0 auto;padding:0 24px}
+.dusk{background:var(--dusk);color:var(--cream-on-dusk)}
+.dusk ::selection{background:var(--marigold);color:var(--dusk)}
+section{position:relative}
+
+/* ---------- garland thread (signature) ---------- */
+.thread{position:absolute;left:34px;top:0;bottom:0;width:2px;background:linear-gradient(var(--marigold) 60%,transparent 0) top/2px 14px repeat-y;opacity:.5;pointer-events:none}
+.thread::before,.thread::after{content:"";position:absolute;left:50%;transform:translateX(-50%);width:9px;height:9px;border-radius:50%;background:var(--marigold)}
+.thread::before{top:-4px}.thread::after{bottom:-4px}
+@media(max-width:760px){.thread{display:none}}
+
+/* ---------- nav ---------- */
+.nav{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+.mark{display:flex;flex-direction:column;line-height:1;text-decoration:none}
+.mark .dev{font-family:var(--dev);font-size:.8rem;color:var(--marigold);letter-spacing:.35em;margin-bottom:3px}
+.mark .latin{font-family:var(--disp);font-weight:600;font-size:1.45rem;letter-spacing:.01em}
+.nav a.link{font-size:.86rem;text-decoration:none;color:var(--dim-on-dusk);border-bottom:1px solid transparent;padding-bottom:2px}
+.nav a.link:hover{color:var(--cream-on-dusk);border-color:var(--marigold)}
+
+/* ---------- hero ---------- */
+.hero{padding:72px 0 96px;overflow:hidden;position:relative}
+.hero .ghost{position:absolute;right:-2%;top:8%;font-family:var(--dev);font-size:clamp(180px,30vw,340px);color:var(--pine-2);opacity:.55;line-height:1;user-select:none;pointer-events:none}
+.hero h1{font-family:var(--disp);font-weight:560;font-size:clamp(2.4rem,5.4vw,4.1rem);line-height:1.08;letter-spacing:-.01em;max-width:15ch;position:relative}
+.hero h1 em{font-style:italic;color:var(--marigold)}
+.hero .sub{margin-top:22px;max-width:52ch;font-size:1.06rem;color:var(--dim-on-dusk);position:relative}
+.hero .ctas{margin-top:36px;display:flex;gap:14px;flex-wrap:wrap;position:relative}
+.hero .quiet{margin-top:26px;font-size:.8rem;color:var(--dim-on-dusk);letter-spacing:.04em;position:relative}
+.hero .quiet b{color:var(--marigold);font-weight:600}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;gap:10px;text-decoration:none;font-weight:600;font-size:.95rem;padding:14px 24px;border-radius:999px;transition:transform .15s ease,box-shadow .15s ease}
+.btn:hover{transform:translateY(-1px)}
+.btn-wa{background:var(--marigold);color:var(--dusk);box-shadow:0 6px 22px rgba(232,162,61,.28)}
+.btn-wa:hover{box-shadow:0 10px 26px rgba(232,162,61,.38)}
+.btn-ghost{border:1.5px solid var(--pine);color:var(--cream-on-dusk)}
+.btn-ghost:hover{border-color:var(--marigold)}
+.on-day .btn-ghost{border-color:var(--bone-2);color:var(--ink)}
+
+/* ---------- section scaffolding ---------- */
+.sec{padding:88px 0}
+.eyebrow{font-size:.72rem;letter-spacing:.22em;text-transform:uppercase;color:var(--sindoor);font-weight:700}
+.dusk .eyebrow{color:var(--marigold)}
+.sec h2{font-family:var(--disp);font-weight:560;font-size:clamp(1.7rem,3.4vw,2.5rem);line-height:1.15;margin:14px 0 18px;max-width:24ch}
+.sec .lede{max-width:58ch;color:var(--ink-soft);font-size:1.02rem}
+.dusk .lede{color:var(--dim-on-dusk)}
+
+/* ---------- worry cards ---------- */
+.worries{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:44px}
+@media(max-width:860px){.worries{grid-template-columns:1fr}}
+.worry{background:#fff;border:1px solid var(--bone-2);border-radius:14px;padding:26px 24px;display:flex;flex-direction:column;gap:12px}
+.worry .w-no{font-family:var(--dev);color:var(--marigold-d);font-size:.95rem}
+.worry h3{font-family:var(--disp);font-weight:600;font-size:1.25rem;line-height:1.25}
+.worry p{font-size:.92rem;color:var(--ink-soft)}
+.worry .coming{margin-top:auto;padding-top:14px;border-top:1px dashed var(--bone-2);font-size:.8rem;color:var(--sindoor);font-weight:600;letter-spacing:.03em}
+
+/* ---------- gifting steps ---------- */
+.gift{background:var(--bone)}
+.steps{counter-reset:s;display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:44px}
+@media(max-width:860px){.steps{grid-template-columns:1fr}}
+.step{position:relative;padding-left:20px;border-left:2px solid var(--marigold)}
+.step h3{font-family:var(--disp);font-weight:600;font-size:1.1rem;margin-bottom:8px}
+.step p{font-size:.92rem;color:var(--ink-soft)}
+.step::before{counter-increment:s;content:counter(s,devanagari);position:absolute;left:-16px;top:-6px;background:var(--marigold);color:var(--dusk);font-weight:700;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+
+/* ---------- promise strip ---------- */
+.promise .lines{margin-top:40px;display:grid;gap:0}
+.pline{display:flex;gap:18px;align-items:baseline;padding:20px 0;border-bottom:1px solid var(--pine-2);font-family:var(--disp);font-size:clamp(1.05rem,2.2vw,1.45rem);font-weight:500}
+.pline:last-child{border-bottom:0}
+.pline .dot{width:9px;height:9px;border-radius:50%;background:var(--marigold);flex:none;transform:translateY(-2px)}
+.pline small{display:block;font-family:var(--body);font-size:.82rem;color:var(--dim-on-dusk);font-weight:400;margin-top:4px}
+
+/* ---------- launch list ---------- */
+.launch{text-align:center}
+.launch h2{margin-left:auto;margin-right:auto}
+.launch .lede{margin:0 auto}
+.launch .ctas{margin-top:34px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.launch .alt{margin-top:18px;font-size:.86rem;color:var(--ink-soft)}
+.launch .alt a{color:var(--sindoor);font-weight:600}
+.founder{display:inline-block;margin-top:34px;background:#fff;border:1px dashed var(--marigold-d);color:var(--marigold-d);border-radius:10px;padding:10px 18px;font-size:.84rem;font-weight:600;letter-spacing:.02em}
+
+/* ---------- story page ---------- */
+.story-hero{padding:64px 0 40px}
+.story-hero h1{font-family:var(--disp);font-weight:560;font-size:clamp(2rem,4.6vw,3.3rem);line-height:1.12;max-width:20ch}
+.story-hero .byline{margin-top:16px;font-size:.82rem;letter-spacing:.12em;text-transform:uppercase;color:var(--dim-on-dusk)}
+.article{max-width:680px;margin:0 auto;padding:64px 24px 40px;font-size:1.06rem}
+.article p{margin-bottom:1.5em;color:var(--ink-soft)}
+.article p.lead{font-size:1.18rem;color:var(--ink)}
+.article p.lead::first-letter{font-family:var(--disp);font-size:3.4em;float:left;line-height:.82;padding:6px 10px 0 0;color:var(--sindoor)}
+.article h2{font-family:var(--disp);font-weight:600;font-size:1.5rem;margin:2em 0 .7em;color:var(--ink)}
+.pull{border-left:3px solid var(--marigold);padding:6px 0 6px 22px;margin:2.2em 0;font-family:var(--disp);font-size:1.35rem;line-height:1.4;color:var(--pine);font-weight:500}
+.article .sig{margin-top:2.6em;font-family:var(--dev);color:var(--sindoor);font-size:1.1rem}
+
+/* ---------- footer ---------- */
+footer{padding:56px 0 40px}
+.f-grid{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;align-items:flex-start}
+.f-grid .mark .latin{font-size:1.2rem}
+.f-links{display:flex;gap:22px;font-size:.86rem}
+.f-links a{color:var(--dim-on-dusk);text-decoration:none}
+.f-links a:hover{color:var(--marigold)}
+.legal{margin-top:34px;padding-top:22px;border-top:1px solid var(--pine-2);font-size:.74rem;color:var(--dim-on-dusk);max-width:72ch;line-height:1.7}
+
+/* ---------- reveal motion ---------- */
+.rv{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.rv.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .rv{opacity:1;transform:none;transition:none}
+  .btn{transition:none}
+}
