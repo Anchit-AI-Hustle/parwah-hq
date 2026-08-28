@@ -62,10 +62,12 @@ for p in PAGES:
     hits = sorted({b for b in BANNED if b in text})
     check(f"zero-claims scan: {p.relative_to(ROOT)}", not hits, ", ".join(hits))
 
-# ---------- 5. Placeholder guard (fails loudly until real number set) ----------
+# ---------- 5. WhatsApp number guard (real number live; placeholder must never return) ----------
+WA_NUMBER = "919873945238"
 ph = sum(p.read_text(encoding="utf-8").count("91XXXXXXXXXX") for p in PAGES)
-print(f"NOTE  WhatsApp number placeholder present in {ph} link(s) — replace before go-live (backlog #1)")
-check("wa.me links present and consistent", ph == 3, f"expected 3 placeholder links pre-launch, found {ph}")
+wa = sum(p.read_text(encoding="utf-8").count(f"wa.me/{WA_NUMBER}") for p in PAGES)
+check("wa.me placeholder fully replaced", ph == 0, f"found {ph} leftover placeholder link(s)")
+check("wa.me links present and consistent", wa == 3, f"expected 3 links to wa.me/{WA_NUMBER}, found {wa}")
 
 # ---------- 6. A11y basics ----------
 for p in PAGES:

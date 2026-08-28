@@ -40,7 +40,7 @@ Commerce is NOT built here. Per the locked PRD, Shopify is the commerce layer at
 - site/tests/test_site.py — the site test suite.
 
 ## Backlog (strict order — do not reorder without Anchit)
-1. Replace `91XXXXXXXXXX` in all wa.me links (3×) with the real WhatsApp Business number.
+1. ~~Replace `91XXXXXXXXXX` in all wa.me links (3×) with the real WhatsApp Business number.~~ DONE — real number live in all 3 links; test suite guards it.
 2. Domain: buy + connect (parwah.in first choice); update care@parwah.in if it differs.
 3. Analytics: GA4 + Meta Pixel base events (page_view; WA CTA click as join_waitlist).
 4. OG/social cards per page (1200×630, brand system).
