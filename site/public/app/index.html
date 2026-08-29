@@ -127,7 +127,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 <div class="wrap" id="main" hidden>
   <h1 id="m-title"></h1>
   <p class="lede">Circle code: <span class="codechip" id="m-code"></span></p>
-  <p class="hint" id="m-hint">Share this code with family so they can join.</p>
+  <button class="go" id="btn-invite" style="margin-top:4px">🧡 Invite your family to this circle</button>
+  <p class="hint" id="m-hint">One tap — they join with your circle code.</p>
 
   <div id="seniorui" hidden>
     <button class="big ok" id="btn-checkin">All is well ✅<span class="sub">One tap — the whole family relaxes</span></button>
@@ -284,6 +285,29 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       .catch(function(){ $('j-go').disabled = false; $('ob-err').textContent = 'No connection — try again.'; });
   });
 
+  // ---------- invite (native share) ----------
+  function inviteText(){
+    return 'I just made a private circle for our family on Parwah — ' + state.circleName + '.\n\n' +
+      'One tap of “All is well ✅” each morning and everyone relaxes. An SOS that reaches all of us in seconds. Our own little feed — no groups full of strangers, no forwards. Just us, looking out for each other.\n\n' +
+      'They took care of us. Our turn now. 🧡\n\n' +
+      'Join in 1 minute — open the link and use our circle code ' + state.code + ':';
+  }
+  function inviteUrl(){
+    return 'https://parwah-hq.anchit-tandon.com/app/?join=' + encodeURIComponent(state.code);
+  }
+  $('btn-invite').addEventListener('click', function(){
+    var text = inviteText(), url = inviteUrl();
+    if (navigator.share) {
+      navigator.share({ title: 'Join our family circle on Parwah', text: text, url: url }).catch(function(){});
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text + '\n' + url)
+        .then(function(){ toast('Invite copied — paste it in WhatsApp'); })
+        .catch(function(){ window.open('https://wa.me/?text=' + encodeURIComponent(text + '\n' + url)); });
+    } else {
+      window.open('https://wa.me/?text=' + encodeURIComponent(text + '\n' + url));
+    }
+  });
+
   // ---------- senior actions ----------
   $('btn-checkin').addEventListener('click', function(){
     var b = this;
@@ -317,6 +341,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   }
   state = loadState();
   if (state && state.code && state.memberId) enterMain();
+  else {
+    // arriving from an invite link — prefill the join code
+    try {
+      var jc = new URLSearchParams(location.search).get('join');
+      if (jc) { $('j-code').value = jc.toUpperCase().slice(0, 6); $('j-name').focus(); }
+    } catch (e) {}
+  }
 })();
 </script>
 </body>
