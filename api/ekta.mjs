@@ -158,7 +158,11 @@ function isOverload(e) {
 
 // The cascade driver, shared by the API handler and /api/ekta-selftest.
 export async function ektaTurn(sql, circle, me, history) {
-  const client = new Anthropic();
+  // Identity-linked API keys (the newer Console key type) must name the
+  // workspace they act in; classic workspace keys ignore this header.
+  const client = new Anthropic(process.env.ANTHROPIC_WORKSPACE_ID
+    ? { defaultHeaders: { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID } }
+    : {});
   const tiers = [MODEL_PRIMARY, MODEL_DEEP, MODEL_FALLBACK];
   const actions = [];
   let lastErr = null, last = null;
