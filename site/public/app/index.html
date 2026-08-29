@@ -825,7 +825,6 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         else toast(j.error || 'Could not send — try again');
       })
       .catch(function(){ toast('No connection — try again'); });
-    loadMsgs();
   }
   $('send').addEventListener('click', sendMsg);
   $('msg').addEventListener('keydown', function(e){ if (e.key === 'Enter') sendMsg(); });
