@@ -29,6 +29,8 @@ async function listChats(sql, circle, me) {
       (select string_agg(mm.name, ', ')
          from chat_members cm join members mm on mm.id = cm.member_id
         where cm.chat_id = c.id and mm.id <> ${me.id}) as others,
+      (select mm2.phone from chat_members cm3 join members mm2 on mm2.id = cm3.member_id
+        where cm3.chat_id = c.id and mm2.id <> ${me.id} and mm2.phone is not null limit 1) as other_phone,
       (select count(*)::int from chat_members cm2 where cm2.chat_id = c.id) as member_count
     from chats c
     where c.circle_id = ${circle.id}
@@ -39,7 +41,9 @@ async function listChats(sql, circle, me) {
   let previews = [];
   if (ids.length) {
     previews = await sql`
-      select distinct on (m.chat_id) m.chat_id, m.text, m.created_at,
+      select distinct on (m.chat_id) m.chat_id,
+             (case when m.kind = 'image' then '📷 Photo' else m.text end) as text,
+             m.created_at,
              coalesce(mem.name, 'Ekta') as name
       from messages m left join members mem on mem.id = m.member_id
       where m.chat_id = any(${ids})
@@ -50,7 +54,8 @@ async function listChats(sql, circle, me) {
   return chats.map(c => ({
     id: c.id, kind: c.kind,
     name: c.kind === 'dm' ? (c.others || 'Personal chat') : (c.name || 'Group'),
-    others: c.others, memberCount: c.member_count,
+    others: c.others, otherPhone: c.kind === 'dm' ? c.other_phone : null,
+    memberCount: c.member_count,
     last: pmap[c.id] || null
   }));
 }
@@ -102,7 +107,7 @@ export default async function handler(req, res) {
         const chat = await chatForMember(sql, circle, q.chat, me.id);
         if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
         const msgs = await sql`
-          select m.id, m.text, m.created_at, m.member_id,
+          select m.id, m.text, m.kind, m.created_at, m.member_id,
                  coalesce(mem.name, 'Ekta') as name
           from messages m left join members mem on mem.id = m.member_id
           where m.chat_id = ${chat.id}
@@ -123,10 +128,19 @@ export default async function handler(req, res) {
     if (action === 'send') {
       const chat = await chatForMember(sql, circle, body.chatId, me.id);
       if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
-      const text = String(body.text || '').trim().slice(0, 1000);
-      if (!text) return res.status(400).json({ ok: false, error: 'Empty message' });
-      await sql`insert into messages (chat_id, member_id, text) values (${chat.id}, ${me.id}, ${text})`;
-      const ekta = await maybeEktaReply(sql, circle, me, chat, text);
+      const kind = body.kind === 'image' ? 'image' : 'text';
+      let text;
+      if (kind === 'image') {
+        text = String(body.text || '');
+        if (!/^data:image\/(jpeg|png|webp);base64,/.test(text) || text.length > 800000) {
+          return res.status(400).json({ ok: false, error: 'Bad image' });
+        }
+      } else {
+        text = String(body.text || '').trim().slice(0, 1000);
+        if (!text) return res.status(400).json({ ok: false, error: 'Empty message' });
+      }
+      await sql`insert into messages (chat_id, member_id, text, kind) values (${chat.id}, ${me.id}, ${text}, ${kind})`;
+      const ekta = kind === 'text' ? await maybeEktaReply(sql, circle, me, chat, text) : null;
       return res.status(201).json({ ok: true, ekta: ekta ? true : false });
     }
 

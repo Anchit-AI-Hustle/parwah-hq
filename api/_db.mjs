@@ -74,6 +74,16 @@ export async function ensureSchema(sql) {
   )`;
   await sql`create index if not exists messages_chat_time on messages (chat_id, created_at desc)`;
   await sql`alter table reminders add column if not exists due_date date`;
+  await sql`alter table members add column if not exists phone text`;
+  await sql`alter table messages add column if not exists kind text not null default 'text'`;
+  await sql`create table if not exists games (
+    id uuid primary key default gen_random_uuid(),
+    circle_id uuid not null references circles(id) on delete cascade,
+    kind text not null default 'snakes',
+    status text not null default 'active',
+    state jsonb not null,
+    created_at timestamptz not null default now()
+  )`;
   schemaReady = true;
 }
 

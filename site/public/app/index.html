@@ -85,7 +85,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .inputbar .inner{max-width:560px;margin:0 auto;display:flex;gap:8px;width:100%}
 .inputbar input{flex:1;border:1px solid var(--bone-2);border-radius:12px;padding:12px;font-size:.95rem;background:#fff}
 .inputbar button{border:0;background:var(--marigold);color:var(--dusk);font-weight:700;border-radius:12px;padding:0 20px;cursor:pointer}
-#ektabar button{background:var(--dusk);color:var(--marigold)}
+
 
 /* care: reminders + requests */
 .crow{background:#fff;border:1px solid var(--bone-2);border-radius:12px;padding:12px 14px;font-size:.92rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap;box-shadow:0 1px 2px rgba(36,31,23,.03),0 6px 16px rgba(36,31,23,.04)}
@@ -119,7 +119,12 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .ektahead .dev{font-family:var(--dev);color:var(--marigold-d);font-size:1.3rem}
 .ektahead b{font-family:var(--disp)}
 .ektahead small{display:block;color:var(--ink-soft);font-size:.78rem}
-.emsgs{display:flex;flex-direction:column;gap:10px;min-height:200px}
+.emsgs{display:flex;flex-direction:column;gap:10px;min-height:200px;max-height:calc(100dvh - 330px);overflow-y:auto;padding-right:2px}
+.dsep{align-self:center;background:var(--bone);color:var(--ink-soft);font-size:.68rem;font-weight:700;letter-spacing:.08em;border-radius:99px;padding:4px 12px;margin:4px 0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chips button{border:1px solid var(--bone-2);background:#fff;border-radius:99px;padding:8px 14px;font-family:var(--body);font-size:.82rem;font-weight:600;color:var(--ink);cursor:pointer;box-shadow:0 1px 2px rgba(36,31,23,.04)}
+.chips button:active{background:var(--bone)}
+.herostatus{margin-top:10px;font-size:.9rem;background:rgba(250,247,239,.12);border:1px solid rgba(250,247,239,.18);border-radius:12px;padding:9px 12px}
 .em{max-width:85%;border-radius:14px;padding:10px 14px;font-size:.93rem;white-space:pre-wrap}
 .em.u{align-self:flex-end;background:var(--marigold);color:var(--dusk);border-bottom-right-radius:4px}
 .em.a{align-self:flex-start;background:#fff;border:1px solid var(--bone-2);border-bottom-left-radius:4px}
@@ -163,7 +168,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .gchk{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--bone-2);border-radius:99px;padding:6px 12px;font-size:.85rem;font-weight:600}
 
 /* Ekta voice */
-#emic{border:0;background:var(--bone);color:var(--ink);border-radius:12px;padding:0 16px;font-size:1.1rem;cursor:pointer}
+#emic,#ecam{border:0;background:var(--bone);color:var(--ink);border-radius:12px;padding:0 16px;font-size:1.1rem;cursor:pointer}
 #emic.rec{background:var(--alert);color:#fff;animation:pulse 1.2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
 @media(prefers-reduced-motion:reduce){#emic.rec{animation:none}}
@@ -171,6 +176,25 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 
 /* Ekta floating icon — on every screen, one tap away */
 .fab{position:fixed;right:16px;bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom));z-index:7;border:0;border-radius:99px;background:var(--dusk);color:var(--marigold);font-family:var(--dev);font-size:1.5rem;width:58px;height:58px;cursor:pointer;box-shadow:0 10px 26px rgba(24,38,34,.4)}
+
+/* game board */
+#board{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;margin-top:6px}
+.cell{aspect-ratio:1;background:#fff;border:1px solid var(--bone-2);border-radius:4px;font-size:.48rem;color:var(--ink-soft);position:relative;display:flex;align-items:flex-start;justify-content:flex-end;padding:1px 3px}
+.cell.sn{background:#FDF1EF}.cell.ld{background:#E7F2EA}
+.cell .tok{position:absolute;bottom:1px;left:1px;display:flex;flex-wrap:wrap;gap:1px;max-width:90%}
+.cell .tok i{width:9px;height:9px;border-radius:50%;display:block;border:1px solid #fff}
+/* plans */
+.plan{background:#fff;border:1px solid var(--bone-2);border-radius:14px;padding:13px 14px;box-shadow:0 1px 2px rgba(36,31,23,.03),0 6px 16px rgba(36,31,23,.04)}
+.plan b{display:block;font-size:.95rem}
+.plan small{color:var(--ink-soft);font-size:.76rem;display:block;margin-top:2px}
+.plan .prow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.pkind{display:flex;gap:8px;margin-top:6px}
+.pkind button{flex:1;border:1.5px solid var(--bone-2);background:#fff;border-radius:12px;padding:9px 4px;font-family:var(--body);font-weight:600;font-size:.8rem;cursor:pointer;color:var(--ink)}
+.pkind button.sel{border-color:var(--marigold);background:#FDF4E3}
+.callbtn{text-decoration:none;margin-left:2px}
+.hero2{display:flex;gap:10px}
+.hero2 .go{flex:1}
+.go.callgo{background:var(--pine);color:var(--cream)}
 
 /* home hero card */
 .homehero{background:linear-gradient(135deg,var(--dusk) 0%,var(--pine) 78%);color:var(--cream);border-radius:20px;padding:22px 20px 20px;margin-bottom:18px;position:relative;overflow:hidden;box-shadow:0 14px 34px rgba(24,38,34,.28)}
@@ -225,6 +249,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <input type="text" id="c-name" maxlength="60" placeholder="e.g. Rohan">
     <label for="c-circle">Circle name</label>
     <input type="text" id="c-circle" maxlength="60" placeholder="e.g. Sharma Family">
+    <label for="c-phone">Phone (optional — so family can call you in one tap)</label>
+    <input type="tel" id="c-phone" maxlength="20" placeholder="+91 98765 43210">
     <label>You are</label>
     <div class="rolepick" id="c-role">
       <button type="button" data-role="family" class="sel">Son / daughter / family</button>
@@ -239,6 +265,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <input type="text" id="j-code" maxlength="6" placeholder="6 letters, e.g. KJM4PW" style="text-transform:uppercase;letter-spacing:.2em">
     <label for="j-name">Your name</label>
     <input type="text" id="j-name" maxlength="60" placeholder="e.g. Papa">
+    <label for="j-phone">Phone (optional — so family can call you in one tap)</label>
+    <input type="tel" id="j-phone" maxlength="20" placeholder="+91 98765 43210">
     <label>You are</label>
     <div class="rolepick" id="j-role">
       <button type="button" data-role="family" class="sel">Son / daughter / family</button>
@@ -257,7 +285,11 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <div class="homehero">
       <h1 id="m-title"></h1>
       <p class="lede" style="margin-bottom:12px">Circle code: <span class="codechip" id="m-code"></span></p>
-      <button class="go invitebtn">🧡 Invite your family to this circle</button>
+      <p class="herostatus" id="hero-status">…</p>
+      <div class="hero2">
+        <button class="go invitebtn">🧡 Invite family</button>
+        <button class="go callgo" id="callnow">📹 Family call</button>
+      </div>
       <p class="hint">One tap — they join with your circle code.</p>
     </div>
 
@@ -272,10 +304,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <button class="widget" data-goto="care"><span class="wic" aria-hidden="true">🤝</span><b>Help requests</b><small id="w-req">Loading…</small></button>
       <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b>Chats</b><small id="w-chat">Family + personal</small></button>
       <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check — just ask</small></button>
+      <button class="widget" data-goto="fun"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi — play together</small></button>
+      <button class="widget" data-goto="fun"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
     </div>
-
-    <p class="eyebrow">Today in your circle</p>
-    <div class="feed" id="today"><div class="ev">Loading…</div></div>
 
     <p class="eyebrow">Family activity</p>
     <div class="feed" id="feed"><div class="ev">Loading…</div></div>
@@ -330,11 +361,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         <button class="go" id="g-create">Create group</button>
       </div>
       <p class="hint">Mention <b>Ekta</b> in any chat and she replies right there.</p>
+      <button class="linkbtn" id="askhelp">Need something done? Ask the circle for help →</button>
     </div>
     <div id="chatview" hidden>
       <div class="ektahead">
         <button class="cbtn ghost" id="chatback" aria-label="Back to chats">←</button>
-        <span><b id="cv-name"></b><small id="cv-sub"></small></span>
+        <span style="flex:1"><b id="cv-name"></b><small id="cv-sub"></small></span>
+        <a class="cbtn ghost" id="cv-call" hidden>📞</a>
       </div>
       <div class="emsgs" id="cmsgs"></div>
     </div>
@@ -349,6 +382,69 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     </div>
     <div class="emsgs" id="emsgs">
       <div class="em a">Namaste! 🙏 Main Ekta hoon. I can answer about your circle, set reminders (for others they'll be asked first), or raise a help request. What can I do for you?</div>
+    </div>
+    <div class="chips" id="echips">
+      <button data-chip="Kya sab theek hai? Give me a quick update on my circle.">💛 Circle update</button>
+      <button data-chip="Set a daily reminder for me to check in every morning at 9 am.">🔔 Daily check-in reminder</button>
+      <button data-chip="I got a message asking for an OTP for a payment. Is it a scam?">🛡 Scam check</button>
+      <button data-chip="Please ask the circle for help with something I need.">🤝 Ask for help</button>
+    </div>
+  </section>
+
+  <!-- TOGETHER: calls, plans, games -->
+  <section id="pane-fun" hidden>
+    <div class="ektahead"><span style="font-size:1.4rem" aria-hidden="true">🎉</span><span><b>Together</b><small>Calls, plans and games — distance is just a number</small></span></div>
+
+    <div class="card">
+      <h3>Family call 📹</h3>
+      <p>One tap opens a video room for the whole circle — free, works everywhere in the world. Share your screen to watch or listen to something together.</p>
+      <button class="go" id="callnow2">📹 Start a call now</button>
+    </div>
+
+    <p class="eyebrow">Plans</p>
+    <div class="feed" id="plist"><div class="ev">Loading…</div></div>
+    <div class="card" style="margin-top:14px">
+      <h3>Plan something 🎈</h3>
+      <input type="text" id="p-title" maxlength="100" placeholder="What's the plan? e.g. Sunday video call, Diwali dinner" aria-label="Plan title">
+      <div class="pkind" id="p-kind">
+        <button type="button" data-kind="call" class="sel">📹 Call</button>
+        <button type="button" data-kind="party">🎶 Watch/listen party</button>
+        <button type="button" data-kind="meet">🤗 Meet up</button>
+      </div>
+      <div class="pickrow">
+        <label class="pick"><span>Date</span><input type="date" id="p-date" aria-label="Plan date"></label>
+        <label class="pick"><span>Time</span><input type="time" id="p-time" aria-label="Plan time"></label>
+      </div>
+      <input type="text" id="p-place" maxlength="120" placeholder="Place (for meet-ups) — optional" style="margin-top:10px" aria-label="Plan place">
+      <button class="go" id="p-add" style="margin-top:14px">Set the plan</button>
+      <p class="hint">Everyone sees it in their own timezone — perfect when family is abroad. Add it to Google Calendar in one tap.</p>
+    </div>
+
+    <p class="eyebrow">Games</p>
+    <div id="game-none">
+      <div class="card">
+        <h3>Saanp Seedhi 🐍🪜</h3>
+        <p>Snakes & Ladders with the whole circle — everyone's already in, one tap to roll. Turns work across any timezone.</p>
+        <button class="go" id="g-start">🎲 Start a game</button>
+      </div>
+      <div class="widgets">
+        <div class="widget"><span class="wic" aria-hidden="true">🎯</span><b>Ludo</b><small>Coming soon</small></div>
+        <div class="widget"><span class="wic" aria-hidden="true">🃏</span><b>Card party</b><small>Coming soon</small></div>
+        <div class="widget"><span class="wic" aria-hidden="true">🏠</span><b>Property game</b><small>Coming soon</small></div>
+        <div class="widget"><span class="wic" aria-hidden="true">⭕</span><b>Tic-tac-toe</b><small>Coming soon</small></div>
+      </div>
+    </div>
+    <div id="game-on" hidden>
+      <div class="card">
+        <h3>Saanp Seedhi 🐍🪜</h3>
+        <p class="hint" id="g-status" style="margin:4px 0 8px"></p>
+        <div id="board"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="go" id="g-roll" style="margin-top:0">🎲 Roll</button>
+          <button class="cbtn no" id="g-quit">End game</button>
+        </div>
+        <p class="hint" id="g-last"></p>
+      </div>
     </div>
   </section>
 
@@ -398,18 +494,14 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   </section>
 </div>
 
-<!-- fixed input bars -->
+<!-- the one input bar — contextual: the open chat, or Ekta -->
 <div class="inputbar" id="composer" hidden>
   <div class="inner">
-    <input type="text" id="msg" maxlength="300" placeholder="Message the circle…" aria-label="Message the circle">
+    <button id="emic" hidden aria-label="Speak to Ekta">🎤</button>
+    <button id="ecam" hidden aria-label="Send a photo">📷</button>
+    <input type="file" id="photoin" accept="image/*" capture="environment" hidden>
+    <input type="text" id="msg" maxlength="500" placeholder="Message…" aria-label="Message">
     <button id="send">Send</button>
-  </div>
-</div>
-<div class="inputbar" id="ektabar" hidden>
-  <div class="inner">
-    <button id="emic" aria-label="Speak to Ekta">🎤</button>
-    <input type="text" id="einput" maxlength="500" placeholder="Ask Ekta — or tap the mic and talk" aria-label="Message Ekta">
-    <button id="esend">Send</button>
   </div>
 </div>
 
@@ -433,11 +525,12 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats' };
-  var TABS = ['home','care','chat','ekta','profile'];
+  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans' };
+  var TABS = ['home','care','chat','ekta','profile','fun'];
   var state = null;
   var pollTimer = null, toastTimer = null;
   var curChat = null, chatsCache = [], membersCache = [];
+  var curTab = 'home', curGame = null, gameTimer = null, planKind = 'call';
 
   function loadState(){ try { return JSON.parse(localStorage.getItem('parwah') || 'null'); } catch(e){ return null; } }
   function saveState(s){ try { localStorage.setItem('parwah', JSON.stringify(s)); } catch(e){} }
@@ -470,13 +563,23 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     document.querySelectorAll('#tabs button').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-tab') === t);
     });
-    $('composer').hidden = !(t === 'chat' && curChat);
-    $('ektabar').hidden = t !== 'ekta';
+    curTab = t;
+    setInputMode();
     $('ekta-fab').hidden = !document.body.classList.contains('inapp') || t === 'ekta' || (t === 'chat' && !!curChat);
     if (t !== 'ekta' && window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (e) {} }
+    if (t === 'fun') { refreshFun(); clearInterval(gameTimer); gameTimer = setInterval(refreshFun, 3000); }
+    else clearInterval(gameTimer);
     try { history.replaceState(null, '', '#' + t); } catch(e) {}
-    if (t === 'ekta' || (t === 'chat' && curChat)) window.scrollTo(0, document.body.scrollHeight);
-    else window.scrollTo(0, 0);
+    window.scrollTo(0, 0);
+  }
+  function chatShort(c){ return c ? (c.kind === 'circle' ? 'everyone' : c.name) : ''; }
+  function setInputMode(){
+    var ekta = curTab === 'ekta';
+    var chat = curTab === 'chat' && !!curChat;
+    $('composer').hidden = !(ekta || chat);
+    $('emic').hidden = !(ekta && typeof rec !== 'undefined' && rec);
+    $('ecam').hidden = !chat;
+    $('msg').placeholder = ekta ? 'Ask Ekta — type or tap the mic' : (chat ? 'Message ' + chatShort(curChat) + '…' : 'Message…');
   }
   $('tabs').addEventListener('click', function(e){
     var b = e.target.closest('button'); if (b) switchTab(b.getAttribute('data-tab'));
@@ -539,7 +642,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('p-circle').textContent = data.circleName;
     var mh = '';
     data.members.forEach(function(m){
-      mh += '<span class="member">' + esc(m.name) + ' <em>· ' + (m.role === 'parent' ? 'parent' : 'family') + '</em></span>';
+      mh += '<span class="member">' + esc(m.name) + ' <em>· ' + (m.role === 'parent' ? 'parent' : 'family') + '</em>' +
+            (m.phone ? ' <a class="callbtn" href="tel:' + encodeURIComponent(m.phone) + '" aria-label="Call ' + esc(m.name) + '">📞</a>' : '') + '</span>';
     });
     $('members').innerHTML = mh;
 
@@ -552,15 +656,16 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     });
     $('feed').innerHTML = fh;
 
-    // today only (Home tab) — check-ins, pills and SOS from today
-    var today = new Date().toDateString(), th = '';
+    // hero status: who checked in today, at a glance
+    var today = new Date().toDateString(), ins = [], sos = false;
     data.events.forEach(function(e){
       if (new Date(e.created_at).toDateString() !== today) return;
-      if (e.type !== 'checkin' && e.type !== 'pill' && e.type !== 'sos') return;
-      var l = evLine(e);
-      th += '<div class="ev ' + l.cls + '">' + esc(l.text) + '<small>' + esc(fmtTime(e.created_at)) + '</small></div>';
+      if (e.type === 'sos') sos = true;
+      if (e.type === 'checkin' && e.member_name && ins.indexOf(e.member_name) < 0) ins.push(e.member_name);
     });
-    $('today').innerHTML = th || '<div class="ev">No check-ins yet today.</div>';
+    $('hero-status').textContent = sos ? '🆘 SOS today — see Family activity and call now'
+      : ins.length ? '✅ ' + ins.join(' & ') + ' checked in today'
+      : '🕊 No check-ins yet today — say good morning in chat';
   }
 
   function refresh(){
@@ -615,6 +720,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('cv-name').textContent = chatTitle(c);
     $('cv-sub').textContent = c.kind === 'dm' ? 'Personal chat — mention Ekta to bring her in'
       : 'Whole ' + (c.kind === 'circle' ? 'circle' : 'group') + ' — mention Ekta and she joins in';
+    var call = $('cv-call');
+    if (c.kind === 'dm' && c.otherPhone) { call.href = 'tel:' + encodeURIComponent(c.otherPhone); call.hidden = false; }
+    else call.hidden = true;
     switchTab('chat');
     loadMsgs();
   }
@@ -630,16 +738,21 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       .then(function(r){ return r.json(); })
       .then(function(j){
         if (!j.ok || !curChat) return;
-        var h = '';
+        var h = '', lastDay = '';
         j.messages.forEach(function(m){
+          var day = fmtDue(String(m.created_at).slice(0, 10));
+          if (day && day !== lastDay) { h += '<div class="dsep">' + esc(day) + '</div>'; lastDay = day; }
           var mine = m.member_id === state.memberId;
           var ekta = !m.member_id;
+          var body = (m.kind === 'image' && /^data:image\//.test(m.text))
+            ? '<img src="' + m.text + '" alt="Photo" style="max-width:100%;border-radius:10px;display:block">'
+            : esc(m.text);
           h += '<div class="em ' + (mine ? 'u' : 'a') + (ekta ? ' ekta' : '') + '">' +
-               (mine ? '' : '<span class="from">' + esc(m.name) + '</span>') + esc(m.text) +
+               (mine ? '' : '<span class="from">' + esc(m.name) + '</span>') + body +
                '<small class="mt">' + esc(fmtTime(m.created_at)) + '</small></div>';
         });
         $('cmsgs').innerHTML = h || '<div class="em a">Say hello 🧡</div>';
-        window.scrollTo(0, document.body.scrollHeight);
+        var box = $('cmsgs'); box.scrollTop = box.scrollHeight;
       }).catch(function(){});
   }
 
@@ -717,9 +830,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 
     var qh = '';
     data.requests.forEach(function(q){
-      var right = q.status === 'open'
+      var talk = '<button class="cbtn ghost" data-qtalk="' + esc(q.title) + '" aria-label="Discuss in chat">💬</button>';
+      var right = (q.status === 'open'
         ? '<button class="cbtn" data-qclaim="' + q.id + '">I’m on it</button>'
-        : '<span class="badge on">' + esc(q.claimed_name || 'Someone') + ' is on it</span><button class="cbtn ghost" data-qdone="' + q.id + '">Done ✔</button>';
+        : '<span class="badge on">' + esc(q.claimed_name || 'Someone') + ' is on it</span><button class="cbtn ghost" data-qdone="' + q.id + '">Done ✔</button>') + talk;
       qh += '<div class="crow"><span class="txt">' + esc(q.title) + '<small>asked by ' + esc(q.by_name || 'someone') + '</small></span>' + right + '</div>';
     });
     $('qlist').innerHTML = qh || '<div class="ev">None open — ask below when you need a hand.</div>';
@@ -745,6 +859,11 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     if (b.dataset.qdone)  carePost({ action:'request_done', requestId:b.dataset.qdone });
     if (b.dataset.open)   openChat(b.dataset.open);
     if (b.dataset.goto)   switchTab(b.dataset.goto);
+    if (b.dataset.qtalk)  {
+      var fam = null; chatsCache.forEach(function(x){ if (x.kind === 'circle') fam = x; });
+      if (fam) { openChat(fam.id); $('msg').value = 'About "' + b.dataset.qtalk + '": '; $('msg').focus(); }
+    }
+    if (b.dataset.chip)   { $('msg').value = b.dataset.chip; ektaSend(); }
   });
 
   function enterMain(){
@@ -759,7 +878,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('p-name').textContent = state.name;
     $('p-role').textContent = state.role === 'parent' ? 'Parent (senior mode)' : 'Family';
     $('p-senior').textContent = state.role === 'parent' ? 'On — big buttons on Home' : 'Off (for members who join as Parent)';
-    try { $('r-date').min = new Date().toISOString().slice(0, 10); } catch (e) {}
+    try {
+      var td = new Date().toISOString().slice(0, 10);
+      $('r-date').min = td; $('p-date').min = td;
+    } catch (e) {}
     switchTab(location.hash.replace('#','') || 'home');
     refresh();
     refreshChats();
@@ -787,7 +909,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var name = $('c-name').value.trim();
     if (!name) { $('ob-err').textContent = 'Please enter your name.'; return; }
     this.disabled = true; $('ob-err').textContent = '';
-    post(API.circle, { action:'create', memberName:name, circleName:$('c-circle').value.trim(), role:cRole() })
+    post(API.circle, { action:'create', memberName:name, circleName:$('c-circle').value.trim(), phone:$('c-phone').value.trim(), role:cRole() })
       .then(function(j){
         $('c-go').disabled = false;
         if (!j.ok) { $('ob-err').textContent = j.error || 'Could not create the circle.'; return; }
@@ -802,7 +924,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var name = $('j-name').value.trim(), code = $('j-code').value.trim().toUpperCase();
     if (!code || !name) { $('ob-err').textContent = 'Please enter the code and your name.'; return; }
     this.disabled = true; $('ob-err').textContent = '';
-    post(API.circle, { action:'join', memberName:name, code:code, role:jRole() })
+    post(API.circle, { action:'join', memberName:name, code:code, phone:$('j-phone').value.trim(), role:jRole() })
       .then(function(j){
         $('j-go').disabled = false;
         if (!j.ok) { $('ob-err').textContent = j.error || 'Could not join.'; return; }
@@ -913,13 +1035,12 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       rec.lang = 'en-IN'; rec.interimResults = false; rec.maxAlternatives = 1;
       rec.onresult = function(e){
         var t = e.results && e.results[0] && e.results[0][0] ? e.results[0][0].transcript : '';
-        if (t) { $('einput').value = t; ektaSend(); }
+        if (t) { $('msg').value = t; ektaSend(); }
       };
       rec.onend = function(){ listening = false; $('emic').classList.remove('rec'); };
       rec.onerror = function(){ listening = false; $('emic').classList.remove('rec'); };
     } catch (e) { rec = null; }
   }
-  if (!rec) $('emic').hidden = true; // browser without speech input: type instead
   $('emic').addEventListener('click', function(){
     if (!rec) return;
     if (listening) { try { rec.stop(); } catch (e) {} return; }
@@ -936,12 +1057,12 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     d.className = 'em ' + (role === 'user' ? 'u' : 'a') + (cls ? ' ' + cls : '');
     d.textContent = text;
     $('emsgs').appendChild(d);
-    window.scrollTo(0, document.body.scrollHeight);
+    $('emsgs').scrollTop = $('emsgs').scrollHeight;
     return d;
   }
   function ektaSend(){
-    var v = $('einput').value.trim(); if (!v) return;
-    $('einput').value = '';
+    var v = $('msg').value.trim(); if (!v) return;
+    $('msg').value = '';
     ektaMsgs.push({ role:'user', content:v });
     ektaAppend('user', v);
     var wait = ektaAppend('assistant', 'Ekta soch rahi hai…', 'thinking');
@@ -959,8 +1080,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       })
       .catch(function(){ wait.remove(); ektaAppend('assistant', 'No connection — try again.', 'thinking'); });
   }
-  $('esend').addEventListener('click', ektaSend);
-  $('einput').addEventListener('keydown', function(e){ if (e.key === 'Enter') ektaSend(); });
+
 
   // ---------- messages (into the open chat) ----------
   function sendMsg(){
@@ -973,8 +1093,163 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       })
       .catch(function(){ toast('No connection — try again'); });
   }
-  $('send').addEventListener('click', sendMsg);
-  $('msg').addEventListener('keydown', function(e){ if (e.key === 'Enter') sendMsg(); });
+  function onSend(){ if (curTab === 'ekta') ektaSend(); else sendMsg(); }
+  $('send').addEventListener('click', onSend);
+  $('msg').addEventListener('keydown', function(e){ if (e.key === 'Enter') onSend(); });
+  $('askhelp').addEventListener('click', function(){ switchTab('care'); setTimeout(function(){ try { $('q-title').focus(); } catch (e) {} }, 100); });
+
+  // ---------- camera: share a photo into the open chat ----------
+  $('ecam').addEventListener('click', function(){ if (curChat) $('photoin').click(); });
+  $('photoin').addEventListener('change', function(){
+    var f = this.files && this.files[0]; this.value = '';
+    if (!f || !curChat) return;
+    var url = URL.createObjectURL(f), img = new Image();
+    img.onload = function(){
+      var maxSide = 900, sc = Math.min(1, maxSide / Math.max(img.width, img.height));
+      var cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(img.width * sc));
+      cv.height = Math.max(1, Math.round(img.height * sc));
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      var data = cv.toDataURL('image/jpeg', 0.7);
+      URL.revokeObjectURL(url);
+      post(API.chats, { code: state.code, memberId: state.memberId, action: 'send', chatId: curChat.id, kind: 'image', text: data })
+        .then(function(j){ if (j.ok) { loadMsgs(); refreshChats(); } else toast(j.error || 'Could not send the photo'); })
+        .catch(function(){ toast('No connection — try again'); });
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); toast('Could not read that photo'); };
+    img.src = url;
+  });
+
+  // ---------- family call: instant video room, shared into Everyone chat ----------
+  function startCall(){
+    var room = 'https://meet.jit.si/parwah-' + state.code.toLowerCase() + '-' + Math.random().toString(36).slice(2, 8);
+    var fam = null; chatsCache.forEach(function(x){ if (x.kind === 'circle') fam = x; });
+    if (fam) {
+      post(API.chats, { code: state.code, memberId: state.memberId, action: 'send', chatId: fam.id,
+                        text: '📹 ' + state.name + ' started a family call — tap to join: ' + room })
+        .then(function(){ refreshChats(); }).catch(function(){});
+    }
+    window.open(room, '_blank');
+    toast('Call room opened — the link is in the family chat 🧡');
+  }
+  $('callnow').addEventListener('click', startCall);
+  $('callnow2').addEventListener('click', startCall);
+
+  // ---------- plans ----------
+  $('p-kind').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    planKind = b.getAttribute('data-kind');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
+  });
+  function gcalLink(p){
+    var st = new Date(p.at), en = new Date(st.getTime() + 3600000);
+    var f = function(d){ return d.toISOString().replace(/[-:]|\.\d{3}/g, ''); };
+    return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(p.title + ' · Parwah') +
+      '&dates=' + f(st) + '/' + f(en) +
+      '&details=' + encodeURIComponent((p.room ? 'Join: ' + p.room + '\n' : '') + 'Planned on Parwah by ' + (p.by_name || 'family')) +
+      (p.place ? '&location=' + encodeURIComponent(p.place) : '');
+  }
+  function renderPlans(plans){
+    var h = '';
+    plans.forEach(function(p){
+      var when = new Date(p.at);
+      var whenTxt = fmtDue(when.toISOString().slice(0, 10)) + ', ' + when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      var mine = (p.going || []).indexOf(state.memberId) >= 0;
+      var icon = p.kind === 'call' ? '📹' : p.kind === 'party' ? '🎶' : p.kind === 'meet' ? '🤗' : '🗓';
+      h += '<div class="plan"><b>' + icon + ' ' + esc(p.title) + '</b>' +
+        '<small>' + esc(whenTxt) + ' (your time) · by ' + esc(p.by_name || 'family') +
+        (p.place ? ' · ' + esc(p.place) : '') +
+        (p.going_names ? '<br>Going: ' + esc(p.going_names) : '') + '</small>' +
+        '<div class="prow">' +
+        (p.room ? '<a class="cbtn" href="' + esc(p.room) + '" target="_blank" rel="noopener">Join room</a>' : '') +
+        '<button class="cbtn ' + (mine ? 'ghost' : '') + '" data-rsvp="' + p.id + '">' + (mine ? 'Going ✔' : 'I\'m in 🙌') + '</button>' +
+        '<a class="cbtn ghost" href="' + esc(gcalLink(p)) + '" target="_blank" rel="noopener">🗓 Calendar</a>' +
+        (p.by_member === state.memberId ? '<button class="cbtn no" data-pcancel="' + p.id + '">Cancel</button>' : '') +
+        '</div></div>';
+    });
+    $('plist').innerHTML = h || '<div class="ev">Nothing planned yet — make the first plan below 🎈</div>';
+    $('w-plan').textContent = plans.length ? plans.length + ' coming up — next: ' + plans[0].title : 'Calls, parties, get-togethers';
+  }
+  $('p-add').addEventListener('click', function(){
+    var t = $('p-title').value.trim();
+    if (!t) { toast('Give the plan a name'); return; }
+    var d = $('p-date').value, tm = $('p-time').value;
+    if (!d || !tm) { toast('Pick the date and time'); return; }
+    var at = new Date(d + 'T' + tm);
+    post(API.plans, { code: state.code, memberId: state.memberId, action: 'create', title: t, kind: planKind, at: at.toISOString(), place: $('p-place').value.trim() })
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not set the plan'); return; }
+        $('p-title').value = ''; $('p-place').value = '';
+        toast('Plan set — the circle can see it 🎉');
+        refreshFun();
+      })
+      .catch(function(){ toast('No connection — try again'); });
+  });
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b || !state) return;
+    if (b.dataset.rsvp) post(API.plans, { code: state.code, memberId: state.memberId, action: 'rsvp', planId: b.dataset.rsvp }).then(refreshFun).catch(function(){});
+    if (b.dataset.pcancel && confirm('Cancel this plan for everyone?')) post(API.plans, { code: state.code, memberId: state.memberId, action: 'cancel', planId: b.dataset.pcancel }).then(refreshFun).catch(function(){});
+  });
+
+  // ---------- games: Saanp Seedhi ----------
+  var SN = { 99:41, 95:75, 92:88, 89:68, 74:53, 64:60, 62:19, 49:11, 46:25, 16:6 };
+  var LD = { 2:38, 7:14, 8:31, 15:26, 21:42, 28:84, 36:44, 51:67, 71:91, 78:98, 87:94 };
+  var TOKC = ['#E8A23D', '#24463C', '#A64B2A', '#2F7A4D', '#B3372B', '#4C4437'];
+  function renderBoard(st){
+    var by = {};
+    st.players.forEach(function(pl, i){ (by[pl.pos] = by[pl.pos] || []).push(i); });
+    var h = '';
+    for (var rt = 0; rt < 10; rt++) {
+      var rb = 9 - rt;
+      for (var cIdx = 0; cIdx < 10; cIdx++) {
+        var n = (rb % 2 === 0) ? rb * 10 + 1 + cIdx : (rb + 1) * 10 - cIdx;
+        var cls = SN[n] ? ' sn' : LD[n] ? ' ld' : '';
+        var toks = '';
+        (by[n] || []).forEach(function(i){ toks += '<i style="background:' + TOKC[i % TOKC.length] + '"></i>'; });
+        h += '<div class="cell' + cls + '">' + n + (SN[n] ? '🐍' : '') + (LD[n] ? '🪜' : '') +
+             (toks ? '<span class="tok">' + toks + '</span>' : '') + '</div>';
+      }
+    }
+    $('board').innerHTML = h;
+  }
+  function renderGame(g){
+    curGame = g;
+    $('game-none').hidden = !!g;
+    $('game-on').hidden = !g;
+    $('w-game').textContent = g ? 'Game on! ' + (g.state.winner ? g.state.winner + ' won 🎉' : g.state.players[g.state.turn].name + "'s turn") : 'Saanp Seedhi — play together';
+    if (!g) return;
+    var st = g.state;
+    renderBoard(st);
+    var myTurn = !st.winner && st.players[st.turn] && st.players[st.turn].id === state.memberId;
+    $('g-status').textContent = st.winner ? '🎉 ' + st.winner + ' won! Well played, everyone.'
+      : myTurn ? 'Your turn — roll the dice!' : 'Waiting for ' + st.players[st.turn].name + '…';
+    $('g-roll').disabled = !myTurn;
+    $('g-roll').textContent = myTurn ? '🎲 Roll' : '⏳ ' + (st.winner ? 'Game over' : st.players[st.turn].name + "'s turn");
+    $('g-last').textContent = st.last ? st.last.by + ' rolled ' + st.last.roll + ' → ' + st.last.to + (st.last.event ? ' (' + st.last.event + ')' : '') : '';
+  }
+  function refreshFun(){
+    if (!state) return;
+    fetch(API.games + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
+      .then(function(r){ return r.json(); }).then(function(j){ if (j.ok) renderGame(j.game); }).catch(function(){});
+    fetch(API.plans + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
+      .then(function(r){ return r.json(); }).then(function(j){ if (j.ok) renderPlans(j.plans); }).catch(function(){});
+  }
+  $('g-start').addEventListener('click', function(){
+    post(API.games, { code: state.code, memberId: state.memberId, action: 'start' })
+      .then(function(j){ if (j.ok) renderGame(j.game); else toast(j.error || 'Could not start'); })
+      .catch(function(){ toast('No connection — try again'); });
+  });
+  $('g-roll').addEventListener('click', function(){
+    if (!curGame) return;
+    post(API.games, { code: state.code, memberId: state.memberId, action: 'roll', gameId: curGame.id })
+      .then(function(j){ if (j.ok) renderGame(j.game); else toast(j.error || 'Could not roll'); })
+      .catch(function(){ toast('No connection — try again'); });
+  });
+  $('g-quit').addEventListener('click', function(){
+    if (!curGame || !confirm('End the game for everyone?')) return;
+    post(API.games, { code: state.code, memberId: state.memberId, action: 'end', gameId: curGame.id })
+      .then(function(){ curGame = null; refreshFun(); }).catch(function(){});
+  });
   $('chatback').addEventListener('click', closeChat);
   $('ekta-fab').addEventListener('click', function(){ switchTab('ekta'); });
   $('newgroup').addEventListener('click', function(){ $('groupform').hidden = !$('groupform').hidden; });
