@@ -109,6 +109,14 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .seg{display:flex;background:var(--bone);border-radius:12px;padding:3px}
 .seg button{flex:1;border:0;background:none;border-radius:10px;padding:9px;font-family:var(--body);font-weight:700;font-size:.85rem;cursor:pointer;color:var(--ink-soft)}
 .seg button.sel{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.pageseg{margin:0 0 16px}
+.pageseg button{padding:11px 6px;font-size:.88rem}
+.twist{border-radius:14px;padding:13px 15px;margin-top:10px;font-size:.92rem;border:1.5px solid}
+.twist b{display:block;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px}
+.twist.dare{background:#FDF1EF;border-color:var(--sindoor);color:var(--ink)}
+.twist.dare b{color:var(--sindoor)}
+.twist.reward{background:#E7F2EA;border-color:var(--ok);color:var(--ink)}
+.twist.reward b{color:var(--ok)}
 .gtitle{font-size:.76rem;font-weight:700;letter-spacing:.06em;color:var(--ink-soft);margin:16px 0 8px}
 .gtitle:first-child{margin-top:0}
 .crow.late small{color:var(--sindoor);font-weight:600}
@@ -300,12 +308,12 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     </div>
 
     <div class="widgets">
-      <button class="widget" data-goto="care"><span class="wic" aria-hidden="true">🔔</span><b>Reminders</b><small id="w-rem">Loading…</small></button>
-      <button class="widget" data-goto="care"><span class="wic" aria-hidden="true">🤝</span><b>Help requests</b><small id="w-req">Loading…</small></button>
+      <button class="widget" data-goto="care" data-sec="rem"><span class="wic" aria-hidden="true">🔔</span><b>Reminders</b><small id="w-rem">Loading…</small></button>
+      <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true">🤝</span><b>Help requests</b><small id="w-req">Loading…</small></button>
       <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b>Chats</b><small id="w-chat">Family + personal</small></button>
       <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check — just ask</small></button>
-      <button class="widget" data-goto="fun"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi — play together</small></button>
-      <button class="widget" data-goto="fun"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
+      <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi — play together</small></button>
+      <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
     </div>
 
     <p class="eyebrow">Family activity</p>
@@ -314,7 +322,11 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 
   <!-- CARE -->
   <section id="pane-care" hidden>
-    <p class="eyebrow" style="margin-top:0">Reminders</p>
+    <div class="seg pageseg" id="care-seg" role="tablist" aria-label="Care sections">
+      <button data-sec="rem" class="sel">🔔 Reminders</button>
+      <button data-sec="req">🤝 Help requests</button>
+    </div>
+    <div class="subsec" data-sec="rem">
     <div class="feed" id="rlist"><div class="ev">None yet.</div></div>
 
     <div class="card" style="margin-top:16px">
@@ -334,12 +346,15 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <button class="go" id="r-add" style="margin-top:14px">Set reminder</button>
       <p class="hint">For someone else, it arrives as a request — it only starts once they accept it.</p>
     </div>
+    </div>
 
-    <p class="eyebrow">Help requests</p>
+    <div class="subsec" data-sec="req" hidden>
     <div class="feed" id="qlist"><div class="ev">None open.</div></div>
     <div class="addrow">
       <input type="text" id="q-title" maxlength="200" placeholder="Ask the circle… e.g. book gas refill" aria-label="Request title">
       <button class="cbtn" id="q-add">Ask</button>
+    </div>
+    <p class="hint">Anyone in the circle can tap "I'm on it" — and 💬 discusses it in the family chat.</p>
     </div>
   </section>
 
@@ -395,6 +410,11 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   <section id="pane-fun" hidden>
     <div class="ektahead"><span style="font-size:1.4rem" aria-hidden="true">🎉</span><span><b>Together</b><small>Calls, plans and games — distance is just a number</small></span></div>
 
+    <div class="seg pageseg" id="fun-seg" role="tablist" aria-label="Together sections">
+      <button data-sec="plans" class="sel">🗓 Plans & calls</button>
+      <button data-sec="games">🎲 Games</button>
+    </div>
+    <div class="subsec" data-sec="plans">
     <div class="card">
       <h3>Family call 📹</h3>
       <p>One tap opens a video room for the whole circle — free, works everywhere in the world. Share your screen to watch or listen to something together.</p>
@@ -419,8 +439,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <button class="go" id="p-add" style="margin-top:14px">Set the plan</button>
       <p class="hint">Everyone sees it in their own timezone — perfect when family is abroad. Add it to Google Calendar in one tap.</p>
     </div>
+    </div>
 
-    <p class="eyebrow">Games</p>
+    <div class="subsec" data-sec="games" hidden>
     <div id="game-none">
       <div class="card">
         <h3>Saanp Seedhi 🐍🪜</h3>
@@ -444,7 +465,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
           <button class="cbtn no" id="g-quit">End game</button>
         </div>
         <p class="hint" id="g-last"></p>
+        <div class="twist" id="g-twist" hidden></div>
       </div>
+    </div>
     </div>
   </section>
 
@@ -574,6 +597,16 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     window.scrollTo(0, 0);
   }
   function chatShort(c){ return c ? (c.kind === 'circle' ? 'everyone' : c.name) : ''; }
+  function setSec(pane, sec){
+    var seg = $(pane + '-seg'); if (!seg) return;
+    seg.querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-sec') === sec); });
+    document.querySelectorAll('#pane-' + pane + ' .subsec').forEach(function(d){ d.hidden = d.getAttribute('data-sec') !== sec; });
+  }
+  ['care', 'fun'].forEach(function(pane){
+    $(pane + '-seg').addEventListener('click', function(e){
+      var b = e.target.closest('button'); if (b) setSec(pane, b.getAttribute('data-sec'));
+    });
+  });
   function setInputMode(){
     var ekta = curTab === 'ekta';
     var chat = curTab === 'chat' && !!curChat;
@@ -859,7 +892,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     if (b.dataset.qclaim) carePost({ action:'request_claim', requestId:b.dataset.qclaim }, function(){ toast('Thank you — the circle knows you’re on it'); });
     if (b.dataset.qdone)  carePost({ action:'request_done', requestId:b.dataset.qdone });
     if (b.dataset.open)   openChat(b.dataset.open);
-    if (b.dataset.goto)   switchTab(b.dataset.goto);
+    if (b.dataset.goto)   { switchTab(b.dataset.goto); if (b.dataset.sec) setSec(b.dataset.goto, b.dataset.sec); }
     if (b.dataset.qtalk)  {
       var fam = null; chatsCache.forEach(function(x){ if (x.kind === 'circle') fam = x; });
       if (fam) { openChat(fam.id); $('msg').value = 'About "' + b.dataset.qtalk + '": '; $('msg').focus(); }
@@ -1227,6 +1260,16 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('g-roll').disabled = !myTurn;
     $('g-roll').textContent = myTurn ? '🎲 Roll' : '⏳ ' + (st.winner ? 'Game over' : st.players[st.turn].name + "'s turn");
     $('g-last').textContent = st.last ? st.last.by + ' rolled ' + st.last.roll + ' → ' + st.last.to + (st.last.event ? ' (' + st.last.event + ')' : '') : '';
+    var tw = $('g-twist');
+    if (st.last && st.last.challenge) {
+      tw.className = 'twist dare';
+      tw.innerHTML = '<b>' + (st.last.challenge.type === 'truth' ? '🎤 Truth for ' : '🎭 Dare for ') + esc(st.last.by) + '</b>' + esc(st.last.challenge.text) + ' <span class="hint">(do it in the family chat!)</span>';
+      tw.hidden = false;
+    } else if (st.last && st.last.reward) {
+      tw.className = 'twist reward';
+      tw.innerHTML = '<b>🎁 Reward for ' + esc(st.last.by) + '</b>' + esc(st.last.reward);
+      tw.hidden = false;
+    } else tw.hidden = true;
   }
   function refreshFun(){
     if (!state) return;
