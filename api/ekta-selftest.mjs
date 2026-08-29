@@ -11,8 +11,13 @@ export default async function handler(req, res) {
   if (((req.query || {}).run) !== 'ekta') {
     return res.status(400).json({ ok: false, error: 'Add ?run=ekta to run this test' });
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(503).json({ ok: false, error: 'ANTHROPIC_API_KEY is missing on the server' });
+  // Presence booleans only — never values. Helps diagnose env-var setup.
+  const env = {
+    ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
+    ANTHROPIC_WORKSPACE_ID: !!(process.env.ANTHROPIC_WORKSPACE_ID && String(process.env.ANTHROPIC_WORKSPACE_ID).trim())
+  };
+  if (!env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ ok: false, error: 'ANTHROPIC_API_KEY is missing on the server', env });
   }
   const steps = {};
   let sql, circleId;
@@ -50,9 +55,9 @@ export default async function handler(req, res) {
     steps.cleanup_cascade = left.length === 0;
 
     const ok = !!(steps.setup && steps.replied && steps.reminder_action && steps.reminder_in_db && steps.cleanup_cascade);
-    return res.status(ok ? 200 : 500).json({ ok, steps });
+    return res.status(ok ? 200 : 500).json({ ok, steps, env });
   } catch (e) {
     try { if (sql && circleId) await sql`delete from circles where id = ${circleId}`; } catch (e2) {}
-    return res.status(500).json({ ok: false, error: String(e && e.message || e).slice(0, 300), steps });
+    return res.status(500).json({ ok: false, error: String(e && e.message || e).slice(0, 300), steps, env });
   }
 }
