@@ -1,7 +1,7 @@
 // GET /api/selftest — end-to-end test of the app backend against the live
 // database: creates a throwaway circle, exercises every event type, verifies
 // reads, then deletes the circle (cascades to members and events).
-import { db, ensureSchema, makeCode } from './_db.mjs';
+import { db, ensureSchema, makeCode, ensureCircleChat } from './_db.mjs';
 
 export default async function handler(req, res) {
   const steps = {};
@@ -31,9 +31,32 @@ export default async function handler(req, res) {
     steps.read_feed = feed.length === 4 &&
       feed.map(f => f.type).sort().join(',') === 'checkin,message,pill,sos';
 
+    // chats: default circle chat, a group, a 1:1, and messages in each
+    const everyoneId = await ensureCircleChat(sql, circleId);
+    const again = await ensureCircleChat(sql, circleId);
+    steps.chat_default = !!everyoneId && everyoneId === again;
+
+    const g = await sql`insert into chats (circle_id, kind, name) values (${circleId}, 'group', 'Test Group') returning id`;
+    await sql`insert into chat_members (chat_id, member_id) values (${g[0].id}, ${papa[0].id})`;
+    await sql`insert into chat_members (chat_id, member_id) values (${g[0].id}, ${beta[0].id})`;
+    const d = await sql`insert into chats (circle_id, kind, name) values (${circleId}, 'dm', null) returning id`;
+    await sql`insert into chat_members (chat_id, member_id) values (${d[0].id}, ${papa[0].id})`;
+    await sql`insert into chat_members (chat_id, member_id) values (${d[0].id}, ${beta[0].id})`;
+    steps.chat_create = true;
+
+    await sql`insert into messages (chat_id, member_id, text) values (${everyoneId}, ${beta[0].id}, 'Hello everyone')`;
+    await sql`insert into messages (chat_id, member_id, text) values (${g[0].id}, ${papa[0].id}, 'Group hello')`;
+    await sql`insert into messages (chat_id, member_id, text) values (${d[0].id}, null, 'Namaste from Ekta')`;
+    const msgs = await sql`
+      select coalesce(m2.name, 'Ekta') as name from messages m
+      left join members m2 on m2.id = m.member_id
+      join chats c on c.id = m.chat_id where c.circle_id = ${circleId}`;
+    steps.chat_messages = msgs.length === 3 && msgs.some(m => m.name === 'Ekta');
+
     await sql`delete from circles where id = ${circleId}`;
     const leftover = await sql`select id from events where circle_id = ${circleId}`;
-    steps.cleanup_cascade = leftover.length === 0;
+    const leftChats = await sql`select id from chats where circle_id = ${circleId}`;
+    steps.cleanup_cascade = leftover.length === 0 && leftChats.length === 0;
     circleId = null;
 
     const ok = Object.values(steps).every(Boolean);

@@ -53,7 +53,35 @@ export async function ensureSchema(sql) {
     claimed_by uuid references members(id) on delete set null,
     created_at timestamptz not null default now()
   )`;
+  await sql`create table if not exists chats (
+    id uuid primary key default gen_random_uuid(),
+    circle_id uuid not null references circles(id) on delete cascade,
+    kind text not null default 'group',
+    name text,
+    created_at timestamptz not null default now()
+  )`;
+  await sql`create table if not exists chat_members (
+    chat_id uuid not null references chats(id) on delete cascade,
+    member_id uuid not null references members(id) on delete cascade,
+    primary key (chat_id, member_id)
+  )`;
+  await sql`create table if not exists messages (
+    id uuid primary key default gen_random_uuid(),
+    chat_id uuid not null references chats(id) on delete cascade,
+    member_id uuid references members(id) on delete set null,
+    text text not null,
+    created_at timestamptz not null default now()
+  )`;
+  await sql`create index if not exists messages_chat_time on messages (chat_id, created_at desc)`;
   schemaReady = true;
+}
+
+// Every circle has one default chat with everyone in it, created lazily.
+export async function ensureCircleChat(sql, circleId) {
+  const rows = await sql`select id from chats where circle_id = ${circleId} and kind = 'circle'`;
+  if (rows[0]) return rows[0].id;
+  const c = await sql`insert into chats (circle_id, kind, name) values (${circleId}, 'circle', 'Everyone') returning id`;
+  return c[0].id;
 }
 
 // Join codes avoid look-alike characters so seniors can read them out on a call.

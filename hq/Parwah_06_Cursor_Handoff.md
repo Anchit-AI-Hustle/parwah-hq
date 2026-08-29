@@ -51,6 +51,9 @@ big type, ≤3 actions per screen, Hindi-first), never a tracked subject.
 
 ### Database schema (Neon Postgres)
 circles(id uuid pk, code text unique 6-char, name, created_at)
+chats(id, circle_id fk cascade, kind 'circle'|'group'|'dm', name, created_at)
+chat_members(chat_id fk, member_id fk, pk both)
+messages(id, chat_id fk, member_id fk nullable — null = Ekta, text, created_at)
 members(id uuid pk, circle_id fk cascade, name, role 'parent'|'family', created_at)
 events(id uuid pk, circle_id fk, member_id fk, type 'checkin'|'sos'|'pill'|'message'|'join'|'care', text, created_at)
 reminders(id, circle_id, for_member fk, by_member fk, title, time_of_day text,
@@ -65,7 +68,13 @@ requests(id, circle_id, by_member, title, status 'open'|'claimed'|'done', claime
 - GET  /api/care?circle=CODE → {ok, reminders[], requests[]}
 - POST /api/care {code, memberId, action:'reminder_create'|'reminder_respond'|
   'reminder_done'|'request_create'|'request_claim'|'request_done', ...}
-- POST /api/ekta {code, memberId, messages:[{role,content}]} → {ok, reply, actions[]}
+- POST /api/ekta {code, memberId, messages:[{role,content}]} → {ok, reply, actions[], model}
+- GET  /api/chats?circle=CODE&member=UUID → {ok, chats[]} (default 'Everyone'
+  circle chat + groups + personal 1:1s, each with last-message preview)
+- GET  /api/chats?circle=CODE&member=UUID&chat=UUID → {ok, chat, messages[≤50]}
+  (messages with member_id null are Ekta's)
+- POST /api/chats {code, memberId, action:'send'|'create_group'|'open_dm', ...}
+  — mentioning "Ekta" in a sent message makes her reply into the chat itself
 
 ### Design system (do not drift)
 Palette: neem-dusk #182622 · pine #24463C · day #FAF7EF · bone #EFE8D8 ·
