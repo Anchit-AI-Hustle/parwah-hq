@@ -5,6 +5,7 @@
     "build": "rm -rf public && cp -r site/public public"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^0.10.4"
+    "@neondatabase/serverless": "^0.10.4",
+    "@anthropic-ai/sdk": "^0.122.0"
   }
 }

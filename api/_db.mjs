@@ -33,6 +33,26 @@ export async function ensureSchema(sql) {
     created_at timestamptz not null default now()
   )`;
   await sql`create index if not exists events_circle_time on events (circle_id, created_at desc)`;
+  await sql`create table if not exists reminders (
+    id uuid primary key default gen_random_uuid(),
+    circle_id uuid not null references circles(id) on delete cascade,
+    for_member uuid not null references members(id) on delete cascade,
+    by_member uuid references members(id) on delete set null,
+    title text not null,
+    time_of_day text,
+    recurrence text not null default 'once',
+    status text not null default 'pending',
+    created_at timestamptz not null default now()
+  )`;
+  await sql`create table if not exists requests (
+    id uuid primary key default gen_random_uuid(),
+    circle_id uuid not null references circles(id) on delete cascade,
+    by_member uuid references members(id) on delete set null,
+    title text not null,
+    status text not null default 'open',
+    claimed_by uuid references members(id) on delete set null,
+    created_at timestamptz not null default now()
+  )`;
   schemaReady = true;
 }
 
