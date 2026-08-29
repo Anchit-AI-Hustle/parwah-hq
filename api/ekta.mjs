@@ -164,27 +164,32 @@ function isOverload(e) {
 // persona and hard rules, no tools — so they can never double an action.
 const BACKUP_NOTE = '\n\nNOTE: your circle tools are temporarily unavailable — answer from the conversation only, and if the user wants a reminder or request set, warmly point them to the Care tab where they can set it themselves.';
 
+// One adapter covers every OpenAI-compatible provider (OpenAI, Grok/xAI,
+// Kimi/Moonshot, Ollama, ...). `tokParam` differs: OpenAI now wants
+// max_completion_tokens, the compatible clones still take max_tokens.
+function openaiCompat(o) {
+  return { model: o.model, run: async function (sys, history) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (o.key) headers['Authorization'] = 'Bearer ' + o.key;
+    const body = { model: o.model, messages: [{ role: 'system', content: sys }].concat(history) };
+    body[o.tokParam || 'max_tokens'] = 512;
+    const r = await fetch(o.url, { method: 'POST', headers: headers, body: JSON.stringify(body) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(o.model + ': ' + JSON.stringify(j).slice(0, 160));
+    const t = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+    if (!t) throw new Error(o.model + ': empty reply');
+    return t.trim();
+  }};
+}
+
 function textBackups() {
   const list = [];
-  if (process.env.OPENAI_API_KEY) {
-    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-    list.push({ model: model, run: async function (sys, history) {
-      const r = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + process.env.OPENAI_API_KEY },
-        body: JSON.stringify({
-          model: model,
-          max_completion_tokens: 512,
-          messages: [{ role: 'system', content: sys }].concat(history)
-        })
-      });
-      const j = await r.json();
-      if (!r.ok) throw new Error(model + ': ' + JSON.stringify(j).slice(0, 160));
-      const t = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-      if (!t) throw new Error(model + ': empty reply');
-      return t.trim();
-    }});
-  }
+  if (process.env.OPENAI_API_KEY) list.push(openaiCompat({
+    url: 'https://api.openai.com/v1/chat/completions',
+    key: process.env.OPENAI_API_KEY,
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    tokParam: 'max_completion_tokens'
+  }));
   const gkey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (gkey) {
     const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
@@ -206,6 +211,23 @@ function textBackups() {
       return t;
     }});
   }
+  const xkey = process.env.XAI_API_KEY || process.env.GROK_API_KEY;
+  if (xkey) list.push(openaiCompat({
+    url: 'https://api.x.ai/v1/chat/completions',
+    key: xkey,
+    model: process.env.XAI_MODEL || process.env.GROK_MODEL || 'grok-3-mini'
+  }));
+  const kkey = process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY;
+  if (kkey) list.push(openaiCompat({
+    url: (process.env.KIMI_BASE_URL || 'https://api.moonshot.ai/v1') + '/chat/completions',
+    key: kkey,
+    model: process.env.KIMI_MODEL || 'moonshot-v1-8k'
+  }));
+  if (process.env.OLLAMA_URL) list.push(openaiCompat({
+    url: String(process.env.OLLAMA_URL).replace(/\/+$/, '') + '/v1/chat/completions',
+    key: process.env.OLLAMA_API_KEY || null,
+    model: process.env.OLLAMA_MODEL || 'llama3.1'
+  }));
   return list;
 }
 

@@ -32,9 +32,12 @@ export default async function handler(req, res) {
     ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
     ANTHROPIC_WORKSPACE_ID: !!(process.env.ANTHROPIC_WORKSPACE_ID && String(process.env.ANTHROPIC_WORKSPACE_ID).trim()),
     OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
-    GEMINI_API_KEY: !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)
+    GEMINI_API_KEY: !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY),
+    XAI_API_KEY: !!(process.env.XAI_API_KEY || process.env.GROK_API_KEY),
+    KIMI_API_KEY: !!(process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY),
+    OLLAMA_URL: !!process.env.OLLAMA_URL
   };
-  if (!env.ANTHROPIC_API_KEY && !env.OPENAI_API_KEY && !env.GEMINI_API_KEY) {
+  if (!env.ANTHROPIC_API_KEY && !env.OPENAI_API_KEY && !env.GEMINI_API_KEY && !env.XAI_API_KEY && !env.KIMI_API_KEY && !env.OLLAMA_URL) {
     return res.status(503).json({ ok: false, error: 'No model API key is configured on the server', env });
   }
   // ?probe=1 → only test which workspace-header values this key accepts.
