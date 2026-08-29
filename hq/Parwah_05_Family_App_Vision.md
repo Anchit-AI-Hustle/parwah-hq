@@ -131,6 +131,19 @@ partner APIs; circle/consent/senior-mode UX/AI orchestration → build (this is
 the moat). Tech: mobile app (React Native or Flutter), Supabase backend to
 start, WhatsApp Business API for reach.
 
+**Field note (Aug 2026, user interview via founder's friend):** the money
+module must work **internationally**, not just India-to-India. NRI children
+sending money home is a real, recurring pain (bank wires are slow/opaque,
+remittance apps are disconnected from the care context). This strengthens the
+P3 thesis: the buyer persona is often abroad, and "I paid for Papa's gas
+refill from Boston, inside the same app that told me he checked in" is the
+killer moment. Path stays partner-led — a licensed cross-border remittance
+partner (e.g. Wise Platform / Remitly-style API) for wallet top-ups, plus the
+simpler near-term wedge: **pay-for-outcomes** (the child abroad funds a
+specific circle request — bill, refill, driver — settled to the vendor or the
+claiming family member) which rides on partner rails and needs no wallet
+license of our own. Never build money movement in-house.
+
 **What this platform is NOT:** a general social network, a public feed, a
 surveillance tool, or a medical device. Family only, consent only, dignity
 always.

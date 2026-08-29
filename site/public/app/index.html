@@ -21,6 +21,7 @@
   --marigold:#E8A23D; --marigold-d:#C9861F; --sindoor:#A64B2A;
   --ink:#241F17; --ink-soft:#4C4437; --cream:#EFE8D8; --dim:#A8B3A6;
   --ok:#2F7A4D; --alert:#B3372B;
+  --tabs-h:62px;
   --disp:"Fraunces",Georgia,serif; --body:"Albert Sans",system-ui,sans-serif; --dev:"Tiro Devanagari Hindi",serif;
 }
 *{margin:0;padding:0;box-sizing:border-box}
@@ -32,12 +33,13 @@ body{font-family:var(--body);background:var(--day);color:var(--ink);min-height:1
 .bar .dev{font-family:var(--dev);color:var(--marigold);font-size:1.05rem}
 .bar b{font-family:var(--disp);font-weight:600}
 .bar .who{margin-left:auto;font-size:.78rem;color:var(--dim);text-align:right}
-.bar .who a{color:var(--marigold);text-decoration:none;cursor:pointer}
-.wrap{max-width:560px;margin:0 auto;padding:20px 16px;padding-bottom:calc(130px + env(safe-area-inset-bottom))}
+.wrap{max-width:560px;margin:0 auto;padding:20px 16px;padding-bottom:calc(var(--tabs-h) + 96px + env(safe-area-inset-bottom))}
 h1{font-family:var(--disp);font-weight:600;font-size:1.5rem;margin-bottom:6px}
 .lede{color:var(--ink-soft);font-size:.95rem;margin-bottom:20px}
 .card{background:#fff;border:1px solid var(--bone-2);border-radius:16px;padding:18px;margin-bottom:14px}
 .card h3{font-family:var(--disp);font-size:1.05rem;margin-bottom:10px}
+.card p{font-size:.9rem;color:var(--ink-soft)}
+.card ul{margin:8px 0 0 18px;font-size:.9rem;color:var(--ink-soft)}
 label{display:block;font-size:.85rem;font-weight:600;margin:10px 0 4px}
 input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;padding:13px;font-family:var(--body);font-size:1rem;background:var(--day)}
 .rolepick{display:flex;gap:10px;margin-top:6px}
@@ -59,6 +61,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .big.pill.done{background:#E7F2EA;border-color:var(--ok)}
 .big.sos{background:var(--alert);color:#fff;font-family:var(--body);font-size:1.25rem;letter-spacing:.05em}
 .senior .feed .ev{font-size:1.02rem}
+.senior .tabs button{font-size:.8rem}
 
 /* feed */
 .eyebrow{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--sindoor);font-weight:700;margin:18px 0 10px}
@@ -70,11 +73,14 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .members{display:flex;flex-wrap:wrap;gap:8px}
 .member{background:#fff;border:1px solid var(--bone-2);border-radius:99px;padding:7px 14px;font-size:.85rem;font-weight:600}
 .member em{font-style:normal;color:var(--ink-soft);font-weight:400}
-.composer{position:fixed;left:0;right:0;bottom:0;background:var(--day);border-top:1px solid var(--bone-2);display:flex;gap:8px;z-index:6;
-  padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom))}
-.composer .inner{max-width:560px;margin:0 auto;display:flex;gap:8px;width:100%}
-.composer input{flex:1;border:1px solid var(--bone-2);border-radius:12px;padding:12px;font-size:.95rem;background:#fff}
-.composer button{border:0;background:var(--marigold);color:var(--dusk);font-weight:700;border-radius:12px;padding:0 20px;cursor:pointer}
+
+/* fixed input bars (chat + Ekta) sit above the tab bar */
+.inputbar{position:fixed;left:0;right:0;bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom));background:var(--day);border-top:1px solid var(--bone-2);display:flex;gap:8px;z-index:6;padding:10px 16px}
+.inputbar .inner{max-width:560px;margin:0 auto;display:flex;gap:8px;width:100%}
+.inputbar input{flex:1;border:1px solid var(--bone-2);border-radius:12px;padding:12px;font-size:.95rem;background:#fff}
+.inputbar button{border:0;background:var(--marigold);color:var(--dusk);font-weight:700;border-radius:12px;padding:0 20px;cursor:pointer}
+#ektabar button{background:var(--dusk);color:var(--marigold)}
+
 /* care: reminders + requests */
 .crow{background:#fff;border:1px solid var(--bone-2);border-radius:12px;padding:12px 14px;font-size:.92rem;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .crow .txt{flex:1;min-width:180px}
@@ -90,28 +96,38 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .addrow select{border:1px solid var(--bone-2);border-radius:12px;padding:12px;font-family:var(--body);font-size:.9rem;background:var(--day)}
 .addrow label.chk{display:flex;align-items:center;gap:6px;font-size:.85rem;margin:0}
 
-/* Ekta */
-.fab{position:fixed;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:7;border:0;border-radius:99px;background:var(--dusk);color:var(--marigold);font-family:var(--dev);font-size:1.05rem;font-weight:700;padding:14px 20px;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.3)}
-.sheet{position:fixed;inset:0;background:rgba(24,38,34,.55);z-index:20;display:flex;align-items:flex-end;justify-content:center}
-.sheet .panel{background:var(--day);width:100%;max-width:560px;border-radius:20px 20px 0 0;max-height:84vh;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
-.sheet .head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--bone-2)}
-.sheet .head .dev{font-family:var(--dev);color:var(--marigold-d);font-size:1.15rem}
-.sheet .head b{font-family:var(--disp)}
-.sheet .head small{color:var(--ink-soft);font-size:.75rem}
-.sheet .head .x{margin-left:auto;border:0;background:var(--bone);border-radius:99px;width:32px;height:32px;font-size:1rem;cursor:pointer}
-.emsgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;min-height:180px}
+/* Ekta pane */
+.ektahead{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.ektahead .dev{font-family:var(--dev);color:var(--marigold-d);font-size:1.3rem}
+.ektahead b{font-family:var(--disp)}
+.ektahead small{display:block;color:var(--ink-soft);font-size:.78rem}
+.emsgs{display:flex;flex-direction:column;gap:10px;min-height:200px}
 .em{max-width:85%;border-radius:14px;padding:10px 14px;font-size:.93rem;white-space:pre-wrap}
 .em.u{align-self:flex-end;background:var(--marigold);color:var(--dusk);border-bottom-right-radius:4px}
 .em.a{align-self:flex-start;background:#fff;border:1px solid var(--bone-2);border-bottom-left-radius:4px}
 .em.thinking{color:var(--ink-soft);font-style:italic}
-.erow{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--bone-2)}
-.erow input{flex:1;border:1px solid var(--bone-2);border-radius:12px;padding:12px;font-size:.95rem;background:#fff}
-.erow button{border:0;background:var(--dusk);color:var(--marigold);font-weight:700;border-radius:12px;padding:0 18px;cursor:pointer}
 
-.toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(160px);background:var(--pine);color:var(--cream);padding:11px 18px;border-radius:99px;font-size:.85rem;transition:.25s;box-shadow:0 10px 30px rgba(0,0,0,.35);z-index:9;max-width:92vw;text-align:center}
+/* profile */
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:.9rem;padding:7px 0;border-bottom:1px dashed var(--bone-2)}
+.kv:last-child{border-bottom:0}
+.kv b{font-weight:600}
+.kv span{color:var(--ink-soft);text-align:right}
+.plantag{display:inline-block;background:#E7F2EA;color:var(--ok);font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;border-radius:99px;padding:4px 12px;margin-bottom:8px}
+.linkbtn{border:0;background:none;color:var(--sindoor);font-family:var(--body);font-weight:700;font-size:.88rem;cursor:pointer;padding:0;margin-top:10px;text-decoration:underline}
+
+/* bottom tab bar */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:8;background:var(--dusk);border-top:1px solid var(--pine-2);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom)}
+.tabs .inner{display:flex;width:100%;max-width:560px}
+.tabs button{flex:1;height:var(--tabs-h);border:0;background:none;color:var(--dim);font-family:var(--body);font-size:.68rem;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;position:relative}
+.tabs button .ic{font-size:1.25rem;line-height:1}
+.tabs button.sel{color:var(--marigold)}
+.tabs button.sel::after{content:"";position:absolute;top:0;left:25%;right:25%;height:3px;border-radius:0 0 3px 3px;background:var(--marigold)}
+.tabs .dot{position:absolute;top:9px;right:calc(50% - 18px);min-width:16px;height:16px;border-radius:99px;background:var(--sindoor);color:#fff;font-size:.62rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;font-style:normal}
+
+.toast{position:fixed;left:50%;bottom:calc(var(--tabs-h) + 14px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(160px);background:var(--pine);color:var(--cream);padding:11px 18px;border-radius:99px;font-size:.85rem;transition:.25s;box-shadow:0 10px 30px rgba(0,0,0,.35);z-index:9;max-width:92vw;text-align:center}
 .toast.show{transform:translateX(-50%) translateY(0)}
 [hidden]{display:none!important}
-@media(prefers-reduced-motion:reduce){.big:active{transform:none}}
+@media(prefers-reduced-motion:reduce){.big:active{transform:none}.toast{transition:none}}
 </style>
 </head>
 <body>
@@ -156,67 +172,135 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   <p class="err" id="ob-err"></p>
 </div>
 
-<!-- ============ MAIN ============ -->
+<!-- ============ MAIN (tabbed) ============ -->
 <div class="wrap" id="main" hidden>
-  <h1 id="m-title"></h1>
-  <p class="lede">Circle code: <span class="codechip" id="m-code"></span></p>
-  <button class="go" id="btn-invite" style="margin-top:4px">🧡 Invite your family to this circle</button>
-  <p class="hint" id="m-hint">One tap — they join with your circle code.</p>
 
-  <div id="seniorui" hidden>
-    <button class="big ok" id="btn-checkin">All is well ✅<span class="sub">One tap — the whole family relaxes</span></button>
-    <button class="big pill" id="btn-pill">Pills taken? Yes ✔</button>
-    <button class="big sos" id="btn-sos">🆘 SOS — need help now<span class="sub">Everyone in the circle is told instantly</span></button>
-  </div>
+  <!-- HOME -->
+  <section id="pane-home">
+    <h1 id="m-title"></h1>
+    <p class="lede" style="margin-bottom:12px">Circle code: <span class="codechip" id="m-code"></span></p>
 
-  <p class="eyebrow">Reminders</p>
-  <div class="feed" id="rlist"><div class="ev">None yet.</div></div>
-  <div class="addrow">
-    <input type="text" id="r-title" maxlength="140" placeholder="Remind about… e.g. BP pills" aria-label="Reminder title">
-    <input type="text" id="r-time" maxlength="20" placeholder="Time, e.g. 9 am" style="max-width:110px" aria-label="Reminder time">
-    <select id="r-for" aria-label="Reminder for"></select>
-    <label class="chk"><input type="checkbox" id="r-daily"> daily</label>
-    <button class="cbtn" id="r-add">Set</button>
-  </div>
+    <div id="seniorui" hidden>
+      <button class="big ok" id="btn-checkin">All is well ✅<span class="sub">One tap — the whole family relaxes</span></button>
+      <button class="big pill" id="btn-pill">Pills taken? Yes ✔</button>
+      <button class="big sos" id="btn-sos">🆘 SOS — need help now<span class="sub">Everyone in the circle is told instantly</span></button>
+    </div>
 
-  <p class="eyebrow">Help requests</p>
-  <div class="feed" id="qlist"><div class="ev">None open.</div></div>
-  <div class="addrow">
-    <input type="text" id="q-title" maxlength="200" placeholder="Ask the circle… e.g. book gas refill" aria-label="Request title">
-    <button class="cbtn" id="q-add">Ask</button>
-  </div>
+    <p class="eyebrow">Today in your circle</p>
+    <div class="feed" id="today"><div class="ev">Loading…</div></div>
 
-  <p class="eyebrow">Circle members</p>
-  <div class="members" id="members"></div>
+    <button class="go invitebtn">🧡 Invite your family to this circle</button>
+    <p class="hint">One tap — they join with your circle code.</p>
+  </section>
 
-  <p class="eyebrow">Circle feed</p>
-  <div class="feed" id="feed"><div class="ev">Loading…</div></div>
-</div>
+  <!-- CARE -->
+  <section id="pane-care" hidden>
+    <p class="eyebrow" style="margin-top:0">Reminders</p>
+    <div class="feed" id="rlist"><div class="ev">None yet.</div></div>
+    <div class="addrow">
+      <input type="text" id="r-title" maxlength="140" placeholder="Remind about… e.g. BP pills" aria-label="Reminder title">
+      <input type="text" id="r-time" maxlength="20" placeholder="Time, e.g. 9 am" style="max-width:110px" aria-label="Reminder time">
+      <select id="r-for" aria-label="Reminder for"></select>
+      <label class="chk"><input type="checkbox" id="r-daily"> daily</label>
+      <button class="cbtn" id="r-add">Set</button>
+    </div>
+    <p class="hint">A reminder set for someone else reaches them as a request — it only starts once they accept it.</p>
 
-<button class="fab" id="ekta-fab" hidden>एकता · Ask Ekta</button>
-<div class="sheet" id="ekta-sheet" hidden>
-  <div class="panel">
-    <div class="head">
+    <p class="eyebrow">Help requests</p>
+    <div class="feed" id="qlist"><div class="ev">None open.</div></div>
+    <div class="addrow">
+      <input type="text" id="q-title" maxlength="200" placeholder="Ask the circle… e.g. book gas refill" aria-label="Request title">
+      <button class="cbtn" id="q-add">Ask</button>
+    </div>
+  </section>
+
+  <!-- CHAT -->
+  <section id="pane-chat" hidden>
+    <p class="eyebrow" style="margin-top:0">Circle feed</p>
+    <div class="feed" id="feed"><div class="ev">Loading…</div></div>
+  </section>
+
+  <!-- EKTA -->
+  <section id="pane-ekta" hidden>
+    <div class="ektahead">
       <span class="dev" aria-hidden="true">एकता</span>
-      <span><b>Ekta</b><br><small>Your circle's helper — Hindi ya English, kuch bhi poochhiye</small></span>
-      <button class="x" id="ekta-close" aria-label="Close">✕</button>
+      <span><b>Ekta</b><small>Your circle's helper — Hindi ya English, kuch bhi poochhiye</small></span>
     </div>
     <div class="emsgs" id="emsgs">
       <div class="em a">Namaste! 🙏 Main Ekta hoon. I can answer about your circle, set reminders (for others they'll be asked first), or raise a help request. What can I do for you?</div>
     </div>
-    <div class="erow">
-      <input type="text" id="einput" maxlength="500" placeholder="Ask Ekta…" aria-label="Message Ekta">
-      <button id="esend">Send</button>
+  </section>
+
+  <!-- PROFILE -->
+  <section id="pane-profile" hidden>
+    <div class="card">
+      <h3>You</h3>
+      <div class="kv"><b>Name</b><span id="p-name"></span></div>
+      <div class="kv"><b>Role</b><span id="p-role"></span></div>
+      <div class="kv"><b>Circle</b><span id="p-circle"></span></div>
+      <button class="linkbtn" id="leave">Switch to a different circle</button>
     </div>
-  </div>
+
+    <div class="card">
+      <h3>Your circle</h3>
+      <p style="margin-bottom:10px">Code: <span class="codechip" id="p-code"></span></p>
+      <div class="members" id="members"></div>
+      <button class="go invitebtn" style="margin-top:14px">🧡 Invite family</button>
+    </div>
+
+    <div class="card">
+      <h3>Plan</h3>
+      <span class="plantag">Free · Beta</span>
+      <p>Everything in Parwah is free while we're in beta — for every member of your circle.</p>
+      <p style="margin-top:8px"><b style="color:var(--ink)">Parwah Plus (coming soon):</b></p>
+      <ul>
+        <li>Reminder and SOS push alerts on your phone</li>
+        <li>Emergency card for each parent</li>
+        <li>More than one circle per account</li>
+        <li>Priority Ekta</li>
+      </ul>
+      <p style="margin-top:8px">There are no payments inside the app today, and nothing will ever start costing money without asking you first.</p>
+    </div>
+
+    <div class="card">
+      <h3>Settings</h3>
+      <div class="kv"><b>Language</b><span>English · Hindi toggle coming soon</span></div>
+      <div class="kv"><b>Senior mode</b><span id="p-senior"></span></div>
+      <div class="kv"><b>Alerts</b><span>In-app now · phone push coming soon</span></div>
+      <p style="margin-top:10px"><b style="color:var(--ink)">Install as an app:</b> Android — Chrome menu → <i>Install app</i>. iPhone — Share → <i>Add to Home Screen</i>.</p>
+    </div>
+
+    <div class="card">
+      <h3>Privacy promise</h3>
+      <p>Your circle is private. No ads, no data selling, no public feed. Everything shared here is visible only to the people in your circle — and anything set <i>for</i> someone starts only when they accept it.</p>
+    </div>
+  </section>
 </div>
 
-<div class="composer" id="composer" hidden>
+<!-- fixed input bars -->
+<div class="inputbar" id="composer" hidden>
   <div class="inner">
     <input type="text" id="msg" maxlength="300" placeholder="Message the circle…" aria-label="Message the circle">
     <button id="send">Send</button>
   </div>
 </div>
+<div class="inputbar" id="ektabar" hidden>
+  <div class="inner">
+    <input type="text" id="einput" maxlength="500" placeholder="Ask Ekta…" aria-label="Message Ekta">
+    <button id="esend">Send</button>
+  </div>
+</div>
+
+<!-- bottom tabs -->
+<nav class="tabs" id="tabs" hidden aria-label="App sections">
+  <div class="inner">
+    <button data-tab="home" class="sel"><span class="ic" aria-hidden="true">🏠</span>Home</button>
+    <button data-tab="care"><span class="ic" aria-hidden="true">🔔</span>Care<i class="dot" id="care-dot" hidden></i></button>
+    <button data-tab="chat"><span class="ic" aria-hidden="true">💬</span>Chat</button>
+    <button data-tab="ekta"><span class="ic" aria-hidden="true">✨</span>Ekta</button>
+    <button data-tab="profile"><span class="ic" aria-hidden="true">👤</span>Profile</button>
+  </div>
+</nav>
 
 <div class="toast" id="toast" role="status"></div>
 
@@ -224,6 +308,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 (function(){
   var $ = function(id){ return document.getElementById(id); };
   var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta' };
+  var TABS = ['home','care','chat','ekta','profile'];
   var state = null;
   var pollTimer = null, toastTimer = null;
 
@@ -251,6 +336,26 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     return function(){ return box.querySelector('.sel').getAttribute('data-role'); };
   }
 
+  // ---------- tabs ----------
+  function switchTab(t){
+    if (TABS.indexOf(t) < 0) t = 'home';
+    TABS.forEach(function(n){ $('pane-' + n).hidden = n !== t; });
+    document.querySelectorAll('#tabs button').forEach(function(b){
+      b.classList.toggle('sel', b.getAttribute('data-tab') === t);
+    });
+    $('composer').hidden = t !== 'chat';
+    $('ektabar').hidden = t !== 'ekta';
+    try { history.replaceState(null, '', '#' + t); } catch(e) {}
+    if (t === 'ekta') window.scrollTo(0, document.body.scrollHeight);
+    else window.scrollTo(0, 0);
+  }
+  $('tabs').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (b) switchTab(b.getAttribute('data-tab'));
+  });
+  window.addEventListener('hashchange', function(){
+    if (state) switchTab(location.hash.replace('#',''));
+  });
+
   function fmtTime(iso){
     var d = new Date(iso);
     if (isNaN(d)) return '';
@@ -274,11 +379,15 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   function render(data){
     $('m-title').textContent = data.circleName;
     $('m-code').textContent = data.code;
+    $('p-code').textContent = data.code;
+    $('p-circle').textContent = data.circleName;
     var mh = '';
     data.members.forEach(function(m){
       mh += '<span class="member">' + esc(m.name) + ' <em>· ' + (m.role === 'parent' ? 'parent' : 'family') + '</em></span>';
     });
     $('members').innerHTML = mh;
+
+    // full feed (Chat tab)
     var fh = '';
     if (!data.events.length) fh = '<div class="ev">Nothing yet — the first check-in will appear here.</div>';
     data.events.forEach(function(e){
@@ -286,6 +395,16 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       fh += '<div class="ev ' + l.cls + '">' + esc(l.text) + '<small>' + esc(fmtTime(e.created_at)) + '</small></div>';
     });
     $('feed').innerHTML = fh;
+
+    // today only (Home tab) — check-ins, pills and SOS from today
+    var today = new Date().toDateString(), th = '';
+    data.events.forEach(function(e){
+      if (new Date(e.created_at).toDateString() !== today) return;
+      if (e.type !== 'checkin' && e.type !== 'pill' && e.type !== 'sos') return;
+      var l = evLine(e);
+      th += '<div class="ev ' + l.cls + '">' + esc(l.text) + '<small>' + esc(fmtTime(e.created_at)) + '</small></div>';
+    });
+    $('today').innerHTML = th || '<div class="ev">No check-ins yet today.</div>';
   }
 
   function refresh(){
@@ -317,9 +436,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   }
 
   function renderCare(data){
-    var rh = '';
+    var rh = '', waiting = 0;
     data.reminders.forEach(function(r){
       var mine = r.for_id === state.memberId;
+      if (r.status === 'pending' && mine) waiting++;
       var meta = (r.by_name && r.by_name !== r.for_name ? 'by ' + r.by_name + ' · ' : '') +
                  'for ' + r.for_name + (r.time_of_day ? ' · ' + r.time_of_day : '') + (r.recurrence === 'daily' ? ' · daily' : '');
       var right = '';
@@ -344,6 +464,11 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       qh += '<div class="crow"><span class="txt">' + esc(q.title) + '<small>asked by ' + esc(q.by_name || 'someone') + '</small></span>' + right + '</div>';
     });
     $('qlist').innerHTML = qh || '<div class="ev">None open — ask below when you need a hand.</div>';
+
+    // consent-waiting count on the Care tab
+    var dot = $('care-dot');
+    if (waiting > 0) { dot.textContent = waiting; dot.hidden = false; }
+    else dot.hidden = true;
   }
 
   document.addEventListener('click', function(e){
@@ -358,18 +483,22 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   function enterMain(){
     $('onboard').hidden = true;
     $('main').hidden = false;
-    $('composer').hidden = false;
-    $('ekta-fab').hidden = false;
+    $('tabs').hidden = false;
     document.body.classList.toggle('senior', state.role === 'parent');
     $('seniorui').hidden = state.role !== 'parent';
-    $('who').innerHTML = esc(state.name) + ' · ' + esc(state.code) + '<br><a id="leave">switch circle</a>';
-    $('leave').addEventListener('click', function(){
-      if (confirm('Leave this device’s circle view? (The circle itself stays.)')) { clearState(); location.reload(); }
-    });
+    $('who').textContent = state.name + ' · ' + state.code;
+    $('p-name').textContent = state.name;
+    $('p-role').textContent = state.role === 'parent' ? 'Parent (senior mode)' : 'Family';
+    $('p-senior').textContent = state.role === 'parent' ? 'On — big buttons on Home' : 'Off (for members who join as Parent)';
+    switchTab(location.hash.replace('#','') || 'home');
     refresh();
     clearInterval(pollTimer);
     pollTimer = setInterval(refresh, 12000);
   }
+
+  $('leave').addEventListener('click', function(){
+    if (confirm('Leave this device’s circle view? (The circle itself stays.)')) { clearState(); location.hash = ''; location.reload(); }
+  });
 
   function sendEvent(type, text, after){
     post(API.events, { code: state.code, memberId: state.memberId, type: type, text: text || '' })
@@ -423,17 +552,19 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   function inviteUrl(){
     return 'https://parwah-hq.anchit-tandon.com/app/?join=' + encodeURIComponent(state.code);
   }
-  $('btn-invite').addEventListener('click', function(){
-    var text = inviteText(), url = inviteUrl();
-    if (navigator.share) {
-      navigator.share({ title: 'Join our family circle on Parwah', text: text, url: url }).catch(function(){});
-    } else if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text + '\n' + url)
-        .then(function(){ toast('Invite copied — paste it in WhatsApp'); })
-        .catch(function(){ window.open('https://wa.me/?text=' + encodeURIComponent(text + '\n' + url)); });
-    } else {
-      window.open('https://wa.me/?text=' + encodeURIComponent(text + '\n' + url));
-    }
+  document.querySelectorAll('.invitebtn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var text = inviteText(), url = inviteUrl();
+      if (navigator.share) {
+        navigator.share({ title: 'Join our family circle on Parwah', text: text, url: url }).catch(function(){});
+      } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text + '\n' + url)
+          .then(function(){ toast('Invite copied — paste it in WhatsApp'); })
+          .catch(function(){ window.open('https://wa.me/?text=' + encodeURIComponent(text + '\n' + url)); });
+      } else {
+        window.open('https://wa.me/?text=' + encodeURIComponent(text + '\n' + url));
+      }
+    });
   });
 
   // ---------- senior actions ----------
@@ -470,16 +601,12 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 
   // ---------- Ekta ----------
   var ektaMsgs = [];
-  $('ekta-fab').addEventListener('click', function(){ $('ekta-sheet').hidden = false; $('einput').focus(); });
-  $('ekta-close').addEventListener('click', function(){ $('ekta-sheet').hidden = true; });
-  $('ekta-sheet').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });
-
   function ektaAppend(role, text, cls){
     var d = document.createElement('div');
     d.className = 'em ' + (role === 'user' ? 'u' : 'a') + (cls ? ' ' + cls : '');
     d.textContent = text;
     $('emsgs').appendChild(d);
-    $('emsgs').scrollTop = $('emsgs').scrollHeight;
+    window.scrollTo(0, document.body.scrollHeight);
     return d;
   }
   function ektaSend(){
