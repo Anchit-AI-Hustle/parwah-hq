@@ -5,7 +5,7 @@ from pathlib import Path
 from html.parser import HTMLParser
 
 ROOT = Path(__file__).resolve().parents[1]
-PAGES = [ROOT / "index.html", ROOT / "story" / "index.html"]
+PAGES = [ROOT / "index.html", ROOT / "story" / "index.html", ROOT / "launch" / "index.html"]
 FAILS = []
 
 def check(name, ok, detail=""):
