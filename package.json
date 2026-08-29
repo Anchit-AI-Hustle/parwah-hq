@@ -1,0 +1,10 @@
+{
+  "name": "parwah",
+  "private": true,
+  "scripts": {
+    "build": "rm -rf public && cp -r site/public public"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4"
+  }
+}
