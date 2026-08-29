@@ -6,8 +6,10 @@ Two halves with different exposure:
 - `hq/` — internal console with the full financial model and operating playbook.
   NEVER deployed publicly. If deployed at all, only behind Vercel Authentication.
 - `site/` — public pre-launch site. Its only job: convert an adult child's worry into a
-  launch-list join (WhatsApp primary, email secondary). Deploys on Vercel with
-  Root Directory = `site`.
+  launch-list join (WhatsApp primary, email secondary). Deploys on Vercel — ONE project
+  only, named `parwah-hq` (team "Anchit's AI Hustle"), live ONLY at
+  parwah-hq.anchit-tandon.com, Root Directory = `site`. No other Vercel projects or
+  GitHub repos for Parwah; this monorepo is the single source.
 
 Commerce is NOT built here. Per the locked PRD, Shopify is the commerce layer at launch.
 `site/` stays brand home + advertorial + demand capture: no cart, no checkout, no product DB.
