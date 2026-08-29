@@ -1,11 +1,24 @@
 // POST /api/ekta — Ekta, the circle's own assistant.
 // She can read the circle, set reminders and raise requests — always through
 // the same consent flow as any family member. {code, memberId, messages[]}
+//
+// Model cascade — the right model per task, not one model for everything:
+//   1. Sonnet (primary)  — fast, warm, reliable tool use; right-sized for
+//      short phone-friendly replies. Handles almost every turn.
+//   2. Opus (escalation) — only when Sonnet signals it ran out of depth
+//      (hit its token ceiling or exhausted the tool loop) AND no
+//      side-effecting action has run yet, so nothing executes twice.
+//   3. Haiku (safety net) — keeps Ekta answering when bigger models are
+//      overloaded (429/5xx), rather than going silent on the family.
+// Beneath all three, the API's server-side fallback adds an infra layer.
 import Anthropic from '@anthropic-ai/sdk';
 import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
 import { careState, createReminder, createRequest } from './care.mjs';
 
 const ASSISTANT_NAME = 'Ekta'; // one-line swap if the persona name changes
+const MODEL_PRIMARY  = 'claude-sonnet-5';
+const MODEL_DEEP     = 'claude-opus-5';
+const MODEL_FALLBACK = 'claude-haiku-4-5-20251001';
 
 const TOOLS = [
   {
@@ -89,6 +102,83 @@ async function runTool(sql, circle, me, name, input) {
   return JSON.stringify({ error: 'Unknown tool' });
 }
 
+// One full agent loop on one model. Mutates `actions` (so callers know about
+// side effects even if a later API call throws). Returns
+// { reply, actions, model, escalate } — escalate means "a bigger model
+// should retry this turn" and is only ever true when no action has run.
+async function runLoop(client, model, sql, circle, me, history, actions) {
+  let convo = history;
+  let served = model;
+  for (let turn = 0; turn < 5; turn++) {
+    const response = await client.beta.messages.create({
+      model: model,
+      max_tokens: 1024,
+      system: systemPrompt(me, circle),
+      tools: TOOLS,
+      messages: convo,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default'
+    });
+    served = response.model || model;
+
+    if (response.stop_reason === 'refusal') {
+      return { reply: 'Main is baare mein madad nahin kar sakti. Kuch aur poochhiye? 🧡', actions, model: served, escalate: false };
+    }
+
+    const toolUses = response.content.filter(b => b.type === 'tool_use');
+    if (response.stop_reason !== 'tool_use' || !toolUses.length) {
+      const text = response.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+      // Ran out of tokens mid-answer with nothing done yet → a deeper model
+      // should take this turn instead.
+      if (response.stop_reason === 'max_tokens' && !actions.length) {
+        return { reply: text || '…', actions, model: served, escalate: true };
+      }
+      return { reply: text || '…', actions, model: served, escalate: false };
+    }
+
+    convo = convo.concat([{ role: 'assistant', content: response.content }]);
+    const results = [];
+    for (const tu of toolUses) {
+      let out;
+      try { out = await runTool(sql, circle, me, tu.name, tu.input || {}); }
+      catch (e) { out = JSON.stringify({ error: String(e && e.message || e) }); }
+      if (tu.name !== 'get_circle') actions.push(tu.name);
+      results.push({ type: 'tool_result', tool_use_id: tu.id, content: out });
+    }
+    convo = convo.concat([{ role: 'user', content: results }]);
+  }
+  // Loop exhausted without a final answer — retryable only if nothing ran.
+  return { reply: 'Ho gaya! Check the circle feed for what I set up. 🧡', actions, model: served, escalate: !actions.length };
+}
+
+function isOverload(e) {
+  const s = e && (e.status || e.statusCode);
+  return s === 429 || (typeof s === 'number' && s >= 500);
+}
+
+// The cascade driver, shared by the API handler and /api/ekta-selftest.
+export async function ektaTurn(sql, circle, me, history) {
+  const client = new Anthropic();
+  const tiers = [MODEL_PRIMARY, MODEL_DEEP, MODEL_FALLBACK];
+  const actions = [];
+  let lastErr = null, last = null;
+  for (let i = 0; i < tiers.length; i++) {
+    try {
+      last = await runLoop(client, tiers[i], sql, circle, me, history, actions);
+      if (last.escalate && tiers[i] === MODEL_PRIMARY && !actions.length) continue; // Sonnet → Opus
+      return last;
+    } catch (e) {
+      lastErr = e;
+      // Only drop a tier for overload/availability errors, and never retry
+      // once a side-effecting action has already run.
+      if (isOverload(e) && !actions.length) continue;
+      throw e;
+    }
+  }
+  if (last) return last;
+  throw lastErr;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -117,44 +207,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: 'Say something to ' + ASSISTANT_NAME });
   }
 
-  const client = new Anthropic();
-  let convo = history;
-  const actions = [];
-
   try {
-    for (let turn = 0; turn < 5; turn++) {
-      const response = await client.beta.messages.create({
-        model: 'claude-opus-5',
-        max_tokens: 1024,
-        system: systemPrompt(me, circle),
-        tools: TOOLS,
-        messages: convo,
-        betas: ['server-side-fallback-2026-07-01'],
-        fallbacks: 'default'
-      });
-
-      if (response.stop_reason === 'refusal') {
-        return res.status(200).json({ ok: true, reply: 'Main is baare mein madad nahin kar sakti. Kuch aur poochhiye? 🧡', actions });
-      }
-
-      const toolUses = response.content.filter(b => b.type === 'tool_use');
-      if (response.stop_reason !== 'tool_use' || !toolUses.length) {
-        const text = response.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
-        return res.status(200).json({ ok: true, reply: text || '…', actions });
-      }
-
-      convo = convo.concat([{ role: 'assistant', content: response.content }]);
-      const results = [];
-      for (const tu of toolUses) {
-        let out;
-        try { out = await runTool(sql, circle, me, tu.name, tu.input || {}); }
-        catch (e) { out = JSON.stringify({ error: String(e && e.message || e) }); }
-        if (tu.name !== 'get_circle') actions.push(tu.name);
-        results.push({ type: 'tool_result', tool_use_id: tu.id, content: out });
-      }
-      convo = convo.concat([{ role: 'user', content: results }]);
-    }
-    return res.status(200).json({ ok: true, reply: 'Ho gaya! Check the circle feed for what I set up. 🧡', actions });
+    const out = await ektaTurn(sql, circle, me, history);
+    return res.status(200).json({ ok: true, reply: out.reply, actions: out.actions, model: out.model });
   } catch (e) {
     return res.status(502).json({ ok: false, error: 'Ekta could not reach her brain right now — try again in a moment.', detail: String(e && e.message || e).slice(0, 200) });
   }

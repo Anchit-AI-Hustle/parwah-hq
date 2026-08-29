@@ -24,7 +24,7 @@ big type, ≤3 actions per screen, Hindi-first), never a tracked subject.
 - `api/*.mjs` — Vercel Node serverless functions (ESM, `@neondatabase/serverless`):
   `circle.mjs` (create/join), `events.mjs` (feed + check-in/sos/pill/message),
   `care.mjs` (reminders + requests, the consent protocol), `ekta.mjs`
-  (assistant, Claude API `claude-opus-5`, tool use), `health.mjs`, `waitlist.mjs`,
+  (assistant, Claude API, tool use), `health.mjs`, `waitlist.mjs`,
   `selftest.mjs` (full backend round-trip test), `_db.mjs` (schema + helpers).
 - Root `package.json` build (`cp -r site/public public`) + `vercel.json` +
   `.vercelignore` (NEVER remove its rules — `hq/` is confidential and once
@@ -39,7 +39,15 @@ big type, ≤3 actions per screen, Hindi-first), never a tracked subject.
   integration. Schema is created idempotently by `_db.mjs ensureSchema()`.
 - Verify any backend change against `GET /api/selftest` (must return ok:true)
   and the app flow at `/app/`.
-- Ekta needs `ANTHROPIC_API_KEY` in Vercel project env vars.
+- Ekta needs `ANTHROPIC_API_KEY` in Vercel project env vars (already set).
+- **Model policy (keep it):** pick the model per task, cascade for resilience.
+  Ekta chat runs `claude-sonnet-5` first (fast, warm, reliable tool use),
+  escalates to `claude-opus-5` only when Sonnet runs out of depth and no
+  side-effecting tool has run, and falls back to `claude-haiku-4-5-20251001`
+  on overload so she never goes silent. Cheap mechanical jobs you add later
+  (summaries, classification, cron digests) go straight to Haiku; deep
+  one-off reasoning goes to Opus. Verify with GET /api/ekta-selftest?run=ekta
+  (live round-trip incl. which model answered; self-cleaning).
 
 ### Database schema (Neon Postgres)
 circles(id uuid pk, code text unique 6-char, name, created_at)

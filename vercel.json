@@ -1,6 +1,7 @@
 {
   "cleanUrls": true,
   "trailingSlash": true,
+  "functions": { "api/*.mjs": { "maxDuration": 60 } },
   "headers": [
     {
       "source": "/(.*)",
