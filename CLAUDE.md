@@ -1,8 +1,13 @@
 # CLAUDE.md — parwah-hq monorepo
 
 ## What this repo is
-Single PRIVATE repo for **Parwah** (परवाह), a senior daily-living D2C brand for India.
-Two halves with different exposure:
+Single PRIVATE repo for **Parwah** (परवाह) — a **family-care platform for India**:
+*"Apni family ki parwah karein."* Parents are the primary care-receivers; the family
+is the unit. The full product vision and feature map (care circle, presence & safety,
+messaging, wallet & transfers, bookings, shopping & gifting, Parwah AI concierge)
+lives in `hq/Parwah_05_Family_App_Vision.md` — Anchit's directive, 2026-08-29.
+The senior daily-living D2C catalog is the platform's Shopping & Gifting module and
+the current revenue wedge. Two halves with different exposure:
 - `hq/` — internal console with the full financial model and operating playbook.
   NEVER deployed publicly. If deployed at all, only behind Vercel Authentication.
 - `site/` — public pre-launch site. Its only job: convert an adult child's worry into a
