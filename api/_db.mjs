@@ -73,6 +73,7 @@ export async function ensureSchema(sql) {
     created_at timestamptz not null default now()
   )`;
   await sql`create index if not exists messages_chat_time on messages (chat_id, created_at desc)`;
+  await sql`alter table reminders add column if not exists due_date date`;
   schemaReady = true;
 }
 

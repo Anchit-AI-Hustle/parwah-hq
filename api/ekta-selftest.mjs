@@ -4,8 +4,24 @@
 // verifies the reminder landed in the database, then deletes the circle
 // (cascade removes everything). Self-cleaning; safe to run any time.
 // The ?run=ekta gate keeps crawlers from burning model tokens.
+import Anthropic from '@anthropic-ai/sdk';
 import { db, ensureSchema, makeCode } from './_db.mjs';
 import { ektaTurn } from './ekta.mjs';
+
+// One-token probe: does this key work with a given anthropic-workspace-id
+// header value? Returns 'ok' or the API's error message.
+async function probeWorkspace(headerValue) {
+  try {
+    const client = new Anthropic(headerValue
+      ? { defaultHeaders: { 'anthropic-workspace-id': headerValue } }
+      : {});
+    await client.messages.create({
+      model: 'claude-haiku-4-5-20251001', max_tokens: 1,
+      messages: [{ role: 'user', content: 'hi' }]
+    });
+    return 'ok';
+  } catch (e) { return String(e && e.message || e).slice(0, 180); }
+}
 
 export default async function handler(req, res) {
   if (((req.query || {}).run) !== 'ekta') {
@@ -18,6 +34,14 @@ export default async function handler(req, res) {
   };
   if (!env.ANTHROPIC_API_KEY) {
     return res.status(503).json({ ok: false, error: 'ANTHROPIC_API_KEY is missing on the server', env });
+  }
+  // ?probe=1 → only test which workspace-header values this key accepts.
+  if ((req.query || {}).probe) {
+    const probes = {};
+    probes.no_header = await probeWorkspace(null);
+    probes.literal_default = await probeWorkspace('default');
+    if (process.env.ANTHROPIC_WORKSPACE_ID) probes.env_value = await probeWorkspace(process.env.ANTHROPIC_WORKSPACE_ID);
+    return res.status(200).json({ ok: true, env, probes });
   }
   const steps = {};
   let sql, circleId;

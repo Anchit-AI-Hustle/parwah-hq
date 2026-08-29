@@ -102,6 +102,18 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .addrow select{border:1px solid var(--bone-2);border-radius:12px;padding:12px;font-family:var(--body);font-size:.9rem;background:var(--day)}
 .addrow label.chk{display:flex;align-items:center;gap:6px;font-size:.85rem;margin:0}
 
+/* reminder composer (structured inputs) */
+.pickrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.pick span{display:block;font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px}
+.pick input,.pick select{width:100%;border:1px solid var(--bone-2);border-radius:12px;padding:11px;font-family:var(--body);font-size:.95rem;background:var(--day);color:var(--ink)}
+.seg{display:flex;background:var(--bone);border-radius:12px;padding:3px}
+.seg button{flex:1;border:0;background:none;border-radius:10px;padding:9px;font-family:var(--body);font-weight:700;font-size:.85rem;cursor:pointer;color:var(--ink-soft)}
+.seg button.sel{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.gtitle{font-size:.76rem;font-weight:700;letter-spacing:.06em;color:var(--ink-soft);margin:16px 0 8px}
+.gtitle:first-child{margin-top:0}
+.crow.late small{color:var(--sindoor);font-weight:600}
+.em .mt{display:block;font-size:.64rem;opacity:.65;margin-top:3px;text-align:right}
+
 /* Ekta pane */
 .ektahead{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .ektahead .dev{font-family:var(--dev);color:var(--marigold-d);font-size:1.3rem}
@@ -149,6 +161,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .em.ekta{border-color:var(--marigold);background:#FDF7EA}
 .em.ekta .from{color:var(--marigold-d)}
 .gchk{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--bone-2);border-radius:99px;padding:6px 12px;font-size:.85rem;font-weight:600}
+
+/* Ekta voice */
+#emic{border:0;background:var(--bone);color:var(--ink);border-radius:12px;padding:0 16px;font-size:1.1rem;cursor:pointer}
+#emic.rec{background:var(--alert);color:#fff;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+@media(prefers-reduced-motion:reduce){#emic.rec{animation:none}}
+#evoice{margin-left:auto}
 
 /* Ekta floating icon — on every screen, one tap away */
 .fab{position:fixed;right:16px;bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom));z-index:7;border:0;border-radius:99px;background:var(--dusk);color:var(--marigold);font-family:var(--dev);font-size:1.5rem;width:58px;height:58px;cursor:pointer;box-shadow:0 10px 26px rgba(24,38,34,.4)}
@@ -266,14 +285,24 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   <section id="pane-care" hidden>
     <p class="eyebrow" style="margin-top:0">Reminders</p>
     <div class="feed" id="rlist"><div class="ev">None yet.</div></div>
-    <div class="addrow">
-      <input type="text" id="r-title" maxlength="140" placeholder="Remind about… e.g. BP pills" aria-label="Reminder title">
-      <input type="text" id="r-time" maxlength="20" placeholder="Time, e.g. 9 am" style="max-width:110px" aria-label="Reminder time">
-      <select id="r-for" aria-label="Reminder for"></select>
-      <label class="chk"><input type="checkbox" id="r-daily"> daily</label>
-      <button class="cbtn" id="r-add">Set</button>
+
+    <div class="card" style="margin-top:16px">
+      <h3>New reminder</h3>
+      <input type="text" id="r-title" maxlength="140" placeholder="What should we remember? e.g. BP pills" aria-label="Reminder title">
+      <div class="pickrow">
+        <label class="pick" id="r-datewrap"><span>Date</span><input type="date" id="r-date" aria-label="Reminder date"></label>
+        <label class="pick"><span>Time</span><input type="time" id="r-time" aria-label="Reminder time"></label>
+        <label class="pick"><span>For</span><select id="r-for" aria-label="Reminder for"></select></label>
+        <label class="pick"><span>Repeat</span>
+          <div class="seg" id="r-seg" role="group" aria-label="Repeat">
+            <button type="button" data-rep="once" class="sel">Once</button>
+            <button type="button" data-rep="daily">Daily</button>
+          </div>
+        </label>
+      </div>
+      <button class="go" id="r-add" style="margin-top:14px">Set reminder</button>
+      <p class="hint">For someone else, it arrives as a request — it only starts once they accept it.</p>
     </div>
-    <p class="hint">A reminder set for someone else reaches them as a request — it only starts once they accept it.</p>
 
     <p class="eyebrow">Help requests</p>
     <div class="feed" id="qlist"><div class="ev">None open.</div></div>
@@ -315,7 +344,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   <section id="pane-ekta" hidden>
     <div class="ektahead">
       <span class="dev" aria-hidden="true">एकता</span>
-      <span><b>Ekta</b><small>Your circle's helper — Hindi ya English, kuch bhi poochhiye</small></span>
+      <span><b>Ekta</b><small>Your circle's helper — type or talk, Hindi ya English</small></span>
+      <button class="cbtn ghost" id="evoice" aria-label="Toggle spoken replies">🔊 Voice on</button>
     </div>
     <div class="emsgs" id="emsgs">
       <div class="em a">Namaste! 🙏 Main Ekta hoon. I can answer about your circle, set reminders (for others they'll be asked first), or raise a help request. What can I do for you?</div>
@@ -377,7 +407,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 </div>
 <div class="inputbar" id="ektabar" hidden>
   <div class="inner">
-    <input type="text" id="einput" maxlength="500" placeholder="Ask Ekta…" aria-label="Message Ekta">
+    <button id="emic" aria-label="Speak to Ekta">🎤</button>
+    <input type="text" id="einput" maxlength="500" placeholder="Ask Ekta — or tap the mic and talk" aria-label="Message Ekta">
     <button id="esend">Send</button>
   </div>
 </div>
@@ -442,6 +473,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('composer').hidden = !(t === 'chat' && curChat);
     $('ektabar').hidden = t !== 'ekta';
     $('ekta-fab').hidden = !document.body.classList.contains('inapp') || t === 'ekta' || (t === 'chat' && !!curChat);
+    if (t !== 'ekta' && window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (e) {} }
     try { history.replaceState(null, '', '#' + t); } catch(e) {}
     if (t === 'ekta' || (t === 'chat' && curChat)) window.scrollTo(0, document.body.scrollHeight);
     else window.scrollTo(0, 0);
@@ -472,6 +504,33 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   }
 
   function esc(s){ var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  // "14:30" → "2:30 pm"; anything non-standard passes through untouched.
+  function fmtClock(t){
+    if (!t) return '';
+    var m = /^(\d{1,2}):(\d{2})/.exec(String(t));
+    if (!m) return String(t);
+    var h = +m[1], ap = h >= 12 ? 'pm' : 'am'; h = h % 12 || 12;
+    return h + ':' + m[2] + ' ' + ap;
+  }
+  // "2026-09-02" → Today / Tomorrow / "2 Sep"
+  function fmtDue(d){
+    if (!d) return '';
+    var ds = String(d).slice(0, 10);
+    var dt = new Date(ds + 'T00:00:00');
+    if (isNaN(dt)) return ds;
+    var today = new Date(); today.setHours(0,0,0,0);
+    var diff = Math.round((dt - today) / 86400000);
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Tomorrow';
+    if (diff === -1) return 'Yesterday';
+    return dt.toLocaleDateString([], { day:'numeric', month:'short' });
+  }
+  function isOverdue(d){
+    if (!d) return false;
+    var today = new Date(); today.setHours(0,0,0,0);
+    return new Date(String(d).slice(0,10) + 'T23:59:59') < today;
+  }
 
   function render(data){
     $('m-title').textContent = data.circleName;
@@ -576,7 +635,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
           var mine = m.member_id === state.memberId;
           var ekta = !m.member_id;
           h += '<div class="em ' + (mine ? 'u' : 'a') + (ekta ? ' ekta' : '') + '">' +
-               (mine ? '' : '<span class="from">' + esc(m.name) + '</span>') + esc(m.text) + '</div>';
+               (mine ? '' : '<span class="from">' + esc(m.name) + '</span>') + esc(m.text) +
+               '<small class="mt">' + esc(fmtTime(m.created_at)) + '</small></div>';
         });
         $('cmsgs').innerHTML = h || '<div class="em a">Say hello 🧡</div>';
         window.scrollTo(0, document.body.scrollHeight);
@@ -608,25 +668,51 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     }).catch(function(){ toast('No connection — try again'); });
   }
 
+  function reminderRow(r){
+    var mine = r.for_id === state.memberId;
+    var bits = [];
+    if (r.due_date) bits.push(fmtDue(r.due_date));
+    if (r.time_of_day) bits.push(fmtClock(r.time_of_day));
+    if (r.recurrence === 'daily') bits.push('every day');
+    bits.push('for ' + r.for_name);
+    if (r.by_name && r.by_name !== r.for_name) bits.push('by ' + r.by_name);
+    var right = '';
+    if (r.status === 'pending' && mine) {
+      right = '<button class="cbtn" data-racc="' + r.id + '">Accept</button><button class="cbtn no" data-rdec="' + r.id + '">No thanks</button>';
+    } else if (r.status === 'pending') {
+      right = '<span class="badge pend">Waiting for ' + esc(r.for_name) + '</span>';
+    } else if (mine) {
+      right = '<button class="cbtn ghost" data-rdone="' + r.id + '">Done ✔</button>';
+    } else {
+      right = '<span class="badge on">Active</span>';
+    }
+    var late = r.status === 'accepted' && r.recurrence !== 'daily' && isOverdue(r.due_date);
+    return '<div class="crow' + (late ? ' late' : '') + '"><span class="txt">' + esc(r.title) +
+           '<small>' + esc(bits.join(' · ')) + (late ? ' · overdue' : '') + '</small></span>' + right + '</div>';
+  }
+
   function renderCare(data){
-    var rh = '', waiting = 0;
+    var mine = [], active = [], others = [], waiting = 0;
     data.reminders.forEach(function(r){
-      var mine = r.for_id === state.memberId;
-      if (r.status === 'pending' && mine) waiting++;
-      var meta = (r.by_name && r.by_name !== r.for_name ? 'by ' + r.by_name + ' · ' : '') +
-                 'for ' + r.for_name + (r.time_of_day ? ' · ' + r.time_of_day : '') + (r.recurrence === 'daily' ? ' · daily' : '');
-      var right = '';
-      if (r.status === 'pending' && mine) {
-        right = '<button class="cbtn" data-racc="' + r.id + '">Accept</button><button class="cbtn no" data-rdec="' + r.id + '">No thanks</button>';
-      } else if (r.status === 'pending') {
-        right = '<span class="badge pend">Waiting for ' + esc(r.for_name) + '</span>';
-      } else if (mine) {
-        right = '<button class="cbtn ghost" data-rdone="' + r.id + '">Done ✔</button>';
-      } else {
-        right = '<span class="badge on">Active</span>';
-      }
-      rh += '<div class="crow"><span class="txt">' + esc(r.title) + '<small>' + esc(meta) + '</small></span>' + right + '</div>';
+      if (r.status === 'pending' && r.for_id === state.memberId) { mine.push(r); waiting++; }
+      else if (r.status === 'pending') others.push(r);
+      else active.push(r);
     });
+    var bySchedule = function(a, b){
+      var ka = (a.due_date ? String(a.due_date).slice(0,10) : '9999-12-31') + ' ' + (a.time_of_day || '99:99');
+      var kb = (b.due_date ? String(b.due_date).slice(0,10) : '9999-12-31') + ' ' + (b.time_of_day || '99:99');
+      return ka < kb ? -1 : ka > kb ? 1 : 0;
+    };
+    var rh = '';
+    var group = function(title, arr){
+      if (!arr.length) return;
+      arr.sort(bySchedule);
+      rh += '<div class="gtitle">' + title + '</div>';
+      arr.forEach(function(r){ rh += reminderRow(r); });
+    };
+    group('Needs your yes 🧡', mine);
+    group('Active', active);
+    group('Waiting for others', others);
     $('rlist').innerHTML = rh || '<div class="ev">None yet — set one below.</div>';
 
     var qh = '';
@@ -673,6 +759,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('p-name').textContent = state.name;
     $('p-role').textContent = state.role === 'parent' ? 'Parent (senior mode)' : 'Family';
     $('p-senior').textContent = state.role === 'parent' ? 'On — big buttons on Home' : 'Off (for members who join as Parent)';
+    try { $('r-date').min = new Date().toISOString().slice(0, 10); } catch (e) {}
     switchTab(location.hash.replace('#','') || 'home');
     refresh();
     refreshChats();
@@ -770,17 +857,76 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   });
 
   // ---------- add reminder / request ----------
+  var repeatMode = 'once';
+  $('r-seg').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    repeatMode = b.getAttribute('data-rep');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
+    $('r-datewrap').hidden = repeatMode === 'daily'; // a daily reminder has no single date
+  });
   $('r-add').addEventListener('click', function(){
-    var t = $('r-title').value.trim(); if (!t) return;
-    carePost({ action:'reminder_create', title:t, timeOfDay:$('r-time').value.trim(),
+    var t = $('r-title').value.trim();
+    if (!t) { toast('Give the reminder a name'); return; }
+    carePost({ action:'reminder_create', title:t,
+               timeOfDay:$('r-time').value || undefined,
+               dueDate: repeatMode === 'once' ? ($('r-date').value || undefined) : undefined,
                forMemberId:$('r-for').value || undefined,
-               recurrence: $('r-daily').checked ? 'daily' : 'once' },
-      function(j){ $('r-title').value=''; $('r-time').value='';
+               recurrence: repeatMode },
+      function(j){ $('r-title').value=''; $('r-time').value=''; $('r-date').value='';
         toast(j.status === 'pending' ? 'Sent — they’ll be asked to accept it' : 'Reminder set 🧡'); });
   });
   $('q-add').addEventListener('click', function(){
     var t = $('q-title').value.trim(); if (!t) return;
     carePost({ action:'request_create', title:t }, function(){ $('q-title').value=''; toast('The circle has been asked 🧡'); });
+  });
+
+  // ---------- Ekta: voice (JARVIS mode on the web platform) ----------
+  var voiceOn = true;
+  try { voiceOn = localStorage.getItem('parwah-voice') !== 'off'; } catch (e) {}
+  function voiceLabel(){ $('evoice').textContent = voiceOn ? '🔊 Voice on' : '🔇 Voice off'; }
+  $('evoice').addEventListener('click', function(){
+    voiceOn = !voiceOn;
+    try { localStorage.setItem('parwah-voice', voiceOn ? 'on' : 'off'); } catch (e) {}
+    if (!voiceOn && window.speechSynthesis) try { speechSynthesis.cancel(); } catch (e) {}
+    voiceLabel();
+  });
+  voiceLabel();
+  function speak(text){
+    if (!voiceOn || !window.speechSynthesis) return;
+    try {
+      speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(String(text).replace(/[🧡🙏✨✔✅🆘💊]/g, '').trim());
+      u.lang = 'en-IN'; u.rate = 0.95;
+      var vs = speechSynthesis.getVoices() || [];
+      var v = null;
+      vs.forEach(function(x){ if (!v && /en-IN|hi-IN/i.test(x.lang)) v = x; });
+      if (!v) vs.forEach(function(x){ if (!v && /^en/i.test(x.lang)) v = x; });
+      if (v) u.voice = v;
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var rec = null, listening = false;
+  if (SR) {
+    try {
+      rec = new SR();
+      rec.lang = 'en-IN'; rec.interimResults = false; rec.maxAlternatives = 1;
+      rec.onresult = function(e){
+        var t = e.results && e.results[0] && e.results[0][0] ? e.results[0][0].transcript : '';
+        if (t) { $('einput').value = t; ektaSend(); }
+      };
+      rec.onend = function(){ listening = false; $('emic').classList.remove('rec'); };
+      rec.onerror = function(){ listening = false; $('emic').classList.remove('rec'); };
+    } catch (e) { rec = null; }
+  }
+  if (!rec) $('emic').hidden = true; // browser without speech input: type instead
+  $('emic').addEventListener('click', function(){
+    if (!rec) return;
+    if (listening) { try { rec.stop(); } catch (e) {} return; }
+    try {
+      if (window.speechSynthesis) speechSynthesis.cancel();
+      rec.start(); listening = true; $('emic').classList.add('rec');
+    } catch (e) { listening = false; $('emic').classList.remove('rec'); }
   });
 
   // ---------- Ekta ----------
@@ -805,6 +951,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         if (j.ok) {
           ektaMsgs.push({ role:'assistant', content:j.reply });
           ektaAppend('assistant', j.reply);
+          speak(j.reply);
           if (j.actions && j.actions.length) refresh();
         } else {
           ektaAppend('assistant', j.error || 'Kuch gadbad ho gayi — try again?', 'thinking');

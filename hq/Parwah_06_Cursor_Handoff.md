@@ -117,6 +117,12 @@ Mobile-first always; safe-area insets; `prefers-reduced-motion` respected.
    (names only, no advice), doctor contact, address; consent-gated; auto-shown
    on SOS to all members.
 6. **Hindi UI toggle** for the whole app (senior mode defaults to Hindi).
+6b. **Ekta full voice (JARVIS) on native** — web already has tap-to-talk
+   (Web Speech API) + spoken replies (speechSynthesis, en-IN). On Capacitor
+   use native STT/TTS plugins for reliability, add wake-word/continuous
+   conversation mode there. Keep structured inputs everywhere: times as
+   HH:MM time pickers, dates as calendar date pickers (reminders already
+   send time_of_day 'HH:MM' + due_date 'YYYY-MM-DD').
 7. Keep `api/selftest.mjs` extended to cover every new backend feature.
 
 Work incrementally: one feature per PR/commit, tests green, deployed, verified

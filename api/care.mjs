@@ -9,7 +9,7 @@ async function feed(sql, circleId, memberId, text) {
 
 export async function careState(sql, circleId) {
   const reminders = await sql`
-    select r.id, r.title, r.time_of_day, r.recurrence, r.status, r.created_at,
+    select r.id, r.title, r.time_of_day, r.due_date, r.recurrence, r.status, r.created_at,
            f.name as for_name, f.id as for_id, b.name as by_name
     from reminders r
     join members f on f.id = r.for_member
@@ -27,7 +27,7 @@ export async function careState(sql, circleId) {
   return { reminders, requests };
 }
 
-export async function createReminder(sql, circle, me, { forMemberId, title, timeOfDay, recurrence }) {
+export async function createReminder(sql, circle, me, { forMemberId, title, timeOfDay, dueDate, recurrence }) {
   const t = String(title || '').trim().slice(0, 140);
   if (!t) return { error: 'The reminder needs a title' };
   const target = isUuid(forMemberId) ? forMemberId : me.id;
@@ -35,13 +35,20 @@ export async function createReminder(sql, circle, me, { forMemberId, title, time
   if (!forRow[0]) return { error: 'That person is not in this circle' };
   const self = target === me.id;
   const rec = recurrence === 'daily' ? 'daily' : 'once';
-  const tod = String(timeOfDay || '').trim().slice(0, 20) || null;
+  // Time arrives from a standard time input (HH:MM or HH:MM:SS, 24h);
+  // legacy free text (e.g. from older clients) is kept as-is, capped.
+  let tod = String(timeOfDay || '').trim().slice(0, 20) || null;
+  if (tod && /^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(tod)) tod = tod.slice(0, 8);
+  // Date arrives from a calendar input as YYYY-MM-DD; daily reminders have no date.
+  let due = String(dueDate || '').trim();
+  due = (rec === 'once' && /^\d{4}-\d{2}-\d{2}$/.test(due)) ? due : null;
   const status = self ? 'accepted' : 'pending'; // for someone else it is a REQUEST until they accept
-  const r = await sql`insert into reminders (circle_id, for_member, by_member, title, time_of_day, recurrence, status)
-            values (${circle.id}, ${target}, ${me.id}, ${t}, ${tod}, ${rec}, ${status}) returning id`;
+  const r = await sql`insert into reminders (circle_id, for_member, by_member, title, time_of_day, due_date, recurrence, status)
+            values (${circle.id}, ${target}, ${me.id}, ${t}, ${tod}, ${due}, ${rec}, ${status}) returning id`;
+  const when = (due ? ' · ' + due : '') + (tod ? ' · ' + tod : '') + (rec === 'daily' ? ' · daily' : '');
   await feed(sql, circle.id, me.id, self
-    ? `${me.name} set a reminder: ${t}${tod ? ' · ' + tod : ''}`
-    : `${me.name} asked ${forRow[0].name} to accept a reminder: ${t}${tod ? ' · ' + tod : ''}`);
+    ? `${me.name} set a reminder: ${t}${when}`
+    : `${me.name} asked ${forRow[0].name} to accept a reminder: ${t}${when}`);
   return { ok: true, id: r[0].id, status };
 }
 

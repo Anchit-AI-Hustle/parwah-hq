@@ -35,7 +35,8 @@ const TOOLS = [
       properties: {
         for_member_name: { type: 'string', description: 'Exact name of the circle member the reminder is for; omit or use the current user\'s name for a self reminder' },
         title: { type: 'string', description: 'What to remind, short and warm' },
-        time_of_day: { type: 'string', description: 'e.g. "9:00 am" or "after dinner"; optional' },
+        time_of_day: { type: 'string', description: '24-hour time as HH:MM, e.g. "09:00" or "20:30"; optional' },
+        date: { type: 'string', description: 'Date for a one-time reminder as YYYY-MM-DD (calendar date); omit for today or for daily reminders' },
         recurrence: { type: 'string', enum: ['once', 'daily'] }
       },
       additionalProperties: false,
@@ -91,7 +92,7 @@ async function runTool(sql, circle, me, name, input) {
       forId = rows[0].id;
     }
     const out = await createReminder(sql, circle, me, {
-      forMemberId: forId, title: input.title, timeOfDay: input.time_of_day, recurrence: input.recurrence
+      forMemberId: forId, title: input.title, timeOfDay: input.time_of_day, dueDate: input.date, recurrence: input.recurrence
     });
     return JSON.stringify(out);
   }
