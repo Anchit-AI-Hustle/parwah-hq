@@ -43,6 +43,88 @@ const REWARDS = [
 ];
 const WIN_REWARD = '🏆 Champion! Every member must post one favourite memory with the winner in the family chat 🧡';
 
+// ---------- Antakshari (call-companion: app is referee + scorekeeper) ----------
+const LETTERS = 'ABCDGHJKMNPRSTV';
+export function antakshariStart(members) {
+  return {
+    kind: 'antakshari',
+    players: members.map(m => ({ id: m.id, name: m.name, score: 0 })),
+    turn: 0,
+    letter: LETTERS[Math.floor(Math.random() * LETTERS.length)],
+    last: null, winner: null
+  };
+}
+export function antakshariTurn(st, memberId, action, nextLetter) {
+  const idx = st.players.findIndex(p => p.id === memberId);
+  if (idx < 0) return { error: 'You are not in this game' };
+  if (idx !== st.turn) return { error: 'Not your turn yet' };
+  const me = st.players[idx];
+  if (action === 'sang') {
+    const L = String(nextLetter || '').trim().toUpperCase();
+    if (!/^[A-Z]$/.test(L)) return { error: 'Type the single letter the song ended on' };
+    me.score += 1;
+    st.last = { by: me.name, did: 'sang', letter: st.letter };
+    st.letter = L;
+    st.turn = (idx + 1) % st.players.length;
+    return { announce: '🎶 ' + me.name + ' sang on "' + st.last.letter + '"! Score +1. Next up: ' + st.players[st.turn].name + ' — letter "' + L + '"' };
+  }
+  if (action === 'pass') {
+    st.last = { by: me.name, did: 'pass', letter: st.letter };
+    st.turn = (idx + 1) % st.players.length;
+    return { announce: '😅 ' + me.name + ' passed on "' + st.last.letter + '". ' + st.players[st.turn].name + ', your stage — same letter!' };
+  }
+  return { error: 'Unknown move' };
+}
+
+// ---------- Dumb Charades (app deals a secret movie to the actor) ----------
+const MOVIES = ['Sholay','DDLJ','3 Idiots','Lagaan','Dangal','Mother India','Anand','Golmaal','Chupke Chupke','Hera Pheri','Munna Bhai MBBS','Swades','Taare Zameen Par','Chak De India','Queen','PK','Bajrangi Bhaijaan','Zindagi Na Milegi Dobara','Dil Chahta Hai','Kabhi Khushi Kabhie Gham','Hum Aapke Hain Koun','Andaz Apna Apna','Jab We Met','Barfi','Piku','Drishyam','Gully Boy','Mughal-e-Azam'];
+export function charadesStart(members) {
+  return {
+    kind: 'charades',
+    players: members.map(m => ({ id: m.id, name: m.name, score: 0 })),
+    turn: 0, prompt: null, last: null, winner: null
+  };
+}
+export function charadesTurn(st, memberId, action, rng) {
+  const idx = st.players.findIndex(p => p.id === memberId);
+  if (idx < 0) return { error: 'You are not in this game' };
+  const me = st.players[idx];
+  const R = rng || Math.random;
+  if (action === 'draw') {
+    if (idx !== st.turn) return { error: 'Only the actor can draw' };
+    if (st.prompt) return { error: 'You already have a movie — act it out!' };
+    st.prompt = MOVIES[Math.floor(R() * MOVIES.length) % MOVIES.length];
+    return { announce: '🎭 ' + me.name + ' has drawn a movie and is about to act. No talking, ' + me.name + '!' };
+  }
+  if (action === 'guessed' || action === 'flop') {
+    if (idx !== st.turn) return { error: 'Only the actor can close the round' };
+    if (!st.prompt) return { error: 'Draw a movie first' };
+    const movie = st.prompt;
+    let announce;
+    if (action === 'guessed') {
+      me.score += 1;
+      announce = '🎬 Got it! The movie was "' + movie + '" — ' + me.name + ' +1.';
+    } else {
+      announce = '🙈 Nobody guessed "' + movie + '"! Better luck, ' + me.name + '.';
+    }
+    st.prompt = null;
+    st.last = { by: me.name, movie: movie, did: action };
+    st.turn = (idx + 1) % st.players.length;
+    return { announce: announce + ' Next actor: ' + st.players[st.turn].name };
+  }
+  return { error: 'Unknown move' };
+}
+
+// Never leak the secret movie to anyone but the actor.
+export function publicState(game, memberId) {
+  if (!game || game.kind !== 'charades' || !game.state || !game.state.prompt) return game;
+  const actor = game.state.players[game.state.turn];
+  if (actor && actor.id === memberId) return game;
+  const st = JSON.parse(JSON.stringify(game.state));
+  st.prompt = '(hidden — only the actor sees it)';
+  return { ...game, state: st };
+}
+
 // Pure turn engine — deterministic under an injected rng, so it is testable.
 export function playTurn(st, memberId, rng) {
   const idx = st.players.findIndex(p => p.id === memberId);
@@ -111,26 +193,51 @@ export default async function handler(req, res) {
 
     if (req.method === 'GET') {
       const g = await activeGame(sql, circle.id);
-      return res.status(200).json({ ok: true, game: g });
+      return res.status(200).json({ ok: true, game: publicState(g ? { ...g, kind: g.state.kind || g.kind } : null, me.id) });
     }
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'GET, POST');
       return res.status(405).json({ ok: false, error: 'GET or POST only' });
     }
 
-    if (body.action === 'start') {
+    const STARTS = {
+      start:            { kind: 'snakes',     label: 'Saanp Seedhi 🎲' },
+      start_antakshari: { kind: 'antakshari', label: 'Antakshari 🎤' },
+      start_charades:   { kind: 'charades',   label: 'Dumb Charades 🎭' }
+    };
+    if (STARTS[body.action]) {
       const existing = await activeGame(sql, circle.id);
-      if (existing) return res.status(200).json({ ok: true, game: existing });
+      if (existing) return res.status(200).json({ ok: true, game: publicState({ ...existing, kind: existing.state.kind || existing.kind }, me.id) });
       const members = await sql`select id, name from members where circle_id = ${circle.id} order by created_at`;
-      const state = {
-        players: members.map(m => ({ id: m.id, name: m.name, pos: 0 })),
-        turn: 0, last: null, winner: null
-      };
+      const kind = STARTS[body.action].kind;
+      const state = kind === 'antakshari' ? antakshariStart(members)
+        : kind === 'charades' ? charadesStart(members)
+        : { kind: 'snakes', players: members.map(m => ({ id: m.id, name: m.name, pos: 0 })), turn: 0, last: null, winner: null };
       const g = await sql`insert into games (circle_id, kind, status, state)
-                          values (${circle.id}, 'snakes', 'active', ${JSON.stringify(state)}::jsonb)
+                          values (${circle.id}, ${kind}, 'active', ${JSON.stringify(state)}::jsonb)
                           returning id, kind, status, state, created_at`;
-      await feed(sql, circle.id, me.id, `${me.name} started Saanp Seedhi 🎲 — everyone's in, come play!`);
-      return res.status(201).json({ ok: true, game: g[0] });
+      await feed(sql, circle.id, me.id, `${me.name} started ${STARTS[body.action].label} — everyone's in, come play!`);
+      return res.status(201).json({ ok: true, game: publicState(g[0], me.id) });
+    }
+
+    if (body.action === 'sang' || body.action === 'pass' || body.action === 'draw' || body.action === 'guessed' || body.action === 'flop') {
+      if (!isUuid(body.gameId)) return res.status(400).json({ ok: false, error: 'Bad game id' });
+      const rows = await sql`select id, kind, status, state from games where id = ${body.gameId} and circle_id = ${circle.id}`;
+      const g = rows[0];
+      if (!g || g.status !== 'active') return res.status(404).json({ ok: false, error: 'Game not found or over' });
+      const st = g.state;
+      const out = (body.action === 'sang' || body.action === 'pass')
+        ? antakshariTurn(st, me.id, body.action, body.letter)
+        : charadesTurn(st, me.id, body.action);
+      if (out.error) return res.status(409).json({ ok: false, error: out.error });
+      await sql`update games set state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
+      if (out.announce) {
+        try {
+          const chatId = await ensureCircleChat(sql, circle.id);
+          await sql`insert into messages (chat_id, member_id, text) values (${chatId}, null, ${out.announce})`;
+        } catch (e) { /* the move stands even if the announcement fails */ }
+      }
+      return res.status(200).json({ ok: true, game: publicState({ id: g.id, kind: g.kind, status: 'active', state: st }, me.id) });
     }
 
     if (body.action === 'roll' || body.action === 'end') {
@@ -141,6 +248,16 @@ export default async function handler(req, res) {
 
       if (body.action === 'end') {
         await sql`update games set status = 'done' where id = ${g.id}`;
+        try {
+          const st = g.state;
+          if (st && st.players && st.players[0] && typeof st.players[0].score === 'number') {
+            const top = st.players.slice().sort((a, b) => b.score - a.score)[0];
+            if (top && top.score > 0) {
+              const chatId = await ensureCircleChat(sql, circle.id);
+              await sql`insert into messages (chat_id, member_id, text) values (${chatId}, null, ${'🏆 Game over! Top scorer: ' + top.name + ' with ' + top.score + ' — treat the family to something sweet 🧡'})`;
+            }
+          }
+        } catch (e) {}
         return res.status(200).json({ ok: true });
       }
 

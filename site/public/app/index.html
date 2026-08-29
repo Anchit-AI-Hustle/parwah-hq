@@ -111,6 +111,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .seg button.sel{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .pageseg{margin:0 0 16px}
 .pageseg button{padding:11px 6px;font-size:.88rem}
+.bigletter{font-family:var(--disp);font-size:2.6rem;font-weight:700;color:var(--sindoor);text-align:center;background:#fff;border:2px dashed var(--marigold);border-radius:16px;padding:12px;margin:10px 0;letter-spacing:.1em}
+.bigletter.small{font-size:1.3rem;letter-spacing:0}
 .twist{border-radius:14px;padding:13px 15px;margin-top:10px;font-size:.92rem;border:1.5px solid}
 .twist b{display:block;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px}
 .twist.dare{background:#FDF1EF;border-color:var(--sindoor);color:var(--ink)}
@@ -445,8 +447,18 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <div id="game-none">
       <div class="card">
         <h3>Saanp Seedhi 🐍🪜</h3>
-        <p>Snakes & Ladders with the whole circle — everyone's already in, one tap to roll. Turns work across any timezone.</p>
-        <button class="go" id="g-start">🎲 Start a game</button>
+        <p>Snakes & Ladders with a twist — snakes cost you a truth-or-dare, ladders earn rewards. Turns work across any timezone.</p>
+        <button class="go" id="g-start">🎲 Start Saanp Seedhi</button>
+      </div>
+      <div class="card">
+        <h3>Antakshari 🎤</h3>
+        <p>The classic song game, on a family call — the app keeps the letter, the turns and the score. Seniors' home turf!</p>
+        <button class="go" id="ga-start">🎤 Start Antakshari</button>
+      </div>
+      <div class="card">
+        <h3>Dumb Charades 🎭</h3>
+        <p>Act it out on the video call — the app secretly deals your Bollywood movie and keeps score. No talking!</p>
+        <button class="go" id="gc-start">🎭 Start Charades</button>
       </div>
       <div class="widgets">
         <div class="widget"><span class="wic" aria-hidden="true">🎯</span><b>Ludo</b><small>Coming soon</small></div>
@@ -456,7 +468,35 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       </div>
     </div>
     <div id="game-on" hidden>
-      <div class="card">
+      <div class="card" id="g-ant" hidden>
+        <h3>Antakshari 🎤</h3>
+        <p class="hint" id="a-status" style="margin:4px 0 4px"></p>
+        <div class="bigletter" id="a-letter"></div>
+        <div class="members" id="a-scores"></div>
+        <div id="a-mine" hidden>
+          <div class="addrow">
+            <input type="text" id="a-next" maxlength="1" placeholder="Song ended on… (one letter)" style="text-transform:uppercase" aria-label="Next letter">
+            <button class="cbtn" id="a-sang">🎶 I sang it! +1</button>
+            <button class="cbtn no" id="a-pass">Pass 😅</button>
+          </div>
+        </div>
+        <p class="hint">Sing on the call or in the room — the app referees.</p>
+        <button class="cbtn no" id="a-end" style="margin-top:10px">End game</button>
+      </div>
+      <div class="card" id="g-cha" hidden>
+        <h3>Dumb Charades 🎭</h3>
+        <p class="hint" id="c-status" style="margin:4px 0 4px"></p>
+        <div class="bigletter small" id="c-prompt" hidden></div>
+        <div class="members" id="c-scores"></div>
+        <div id="c-mine" hidden style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button class="cbtn" id="c-draw">🎬 Draw a movie</button>
+          <button class="cbtn" id="c-guessed" hidden>They guessed it! +1</button>
+          <button class="cbtn no" id="c-flop" hidden>Nobody got it 🙈</button>
+        </div>
+        <p class="hint">Only the actor sees the movie. Act on the call — the app scores.</p>
+        <button class="cbtn no" id="c-end" style="margin-top:10px">End game</button>
+      </div>
+      <div class="card" id="g-snakes" hidden>
         <h3>Saanp Seedhi 🐍🪜</h3>
         <p class="hint" id="g-status" style="margin:4px 0 8px"></p>
         <div id="board"></div>
@@ -1246,13 +1286,46 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     }
     $('board').innerHTML = h;
   }
+  function scoreChips(st){
+    return st.players.map(function(p, i){
+      return '<span class="member" style="border-left:3px solid ' + TOKC[i % TOKC.length] + '">' + esc(p.name) + ' <em>· ' + (p.score || 0) + '</em></span>';
+    }).join('');
+  }
   function renderGame(g){
     curGame = g;
     $('game-none').hidden = !!g;
     $('game-on').hidden = !g;
-    $('w-game').textContent = g ? 'Game on! ' + (g.state.winner ? g.state.winner + ' won 🎉' : g.state.players[g.state.turn].name + "'s turn") : 'Saanp Seedhi — play together';
-    if (!g) return;
-    var st = g.state;
+    ['g-snakes', 'g-ant', 'g-cha'].forEach(function(id){ $(id).hidden = true; });
+    if (!g) { $('w-game').textContent = '3 games live — play together'; return; }
+    var st = g.state, kind = st.kind || g.kind;
+    var turnP = st.players[st.turn], meTurn = turnP && turnP.id === state.memberId;
+    if (kind === 'antakshari') {
+      $('g-ant').hidden = false;
+      $('a-letter').textContent = st.letter;
+      $('a-scores').innerHTML = scoreChips(st);
+      $('a-status').textContent = meTurn ? 'Your stage — sing a song starting with "' + st.letter + '"!' : 'On stage: ' + turnP.name + ' · letter "' + st.letter + '"';
+      $('a-mine').hidden = !meTurn;
+      $('w-game').textContent = 'Antakshari on! ' + (meTurn ? 'Your turn 🎤' : turnP.name + "'s turn");
+      return;
+    }
+    if (kind === 'charades') {
+      $('g-cha').hidden = false;
+      $('c-scores').innerHTML = scoreChips(st);
+      var holding = !!st.prompt && String(st.prompt).indexOf('hidden') < 0;
+      $('c-prompt').hidden = !(meTurn && holding);
+      if (meTurn && holding) $('c-prompt').textContent = '🤫 ' + st.prompt;
+      $('c-status').textContent = meTurn
+        ? (holding ? 'Act it out — not a word!' : 'You are the actor — draw a movie')
+        : (st.prompt ? turnP.name + ' is acting… guess on the call!' : 'Waiting for ' + turnP.name + ' to draw');
+      $('c-mine').hidden = !meTurn;
+      $('c-draw').hidden = holding;
+      $('c-guessed').hidden = !holding;
+      $('c-flop').hidden = !holding;
+      $('w-game').textContent = 'Charades on! Actor: ' + turnP.name;
+      return;
+    }
+    $('g-snakes').hidden = false;
+    $('w-game').textContent = st.winner ? st.winner + ' won 🎉' : 'Saanp Seedhi: ' + turnP.name + "'s turn";
     renderBoard(st);
     var myTurn = !st.winner && st.players[st.turn] && st.players[st.turn].id === state.memberId;
     $('g-status').textContent = st.winner ? '🎉 ' + st.winner + ' won! Well played, everyone.'
@@ -1278,11 +1351,30 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     fetch(API.plans + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); }).then(function(j){ if (j.ok) renderPlans(j.plans); }).catch(function(){});
   }
-  $('g-start').addEventListener('click', function(){
-    post(API.games, { code: state.code, memberId: state.memberId, action: 'start' })
-      .then(function(j){ if (j.ok) renderGame(j.game); else toast(j.error || 'Could not start'); })
+  function gamePost(body, after){
+    body.code = state.code; body.memberId = state.memberId;
+    if (curGame && !body.gameId && body.action !== 'start' && body.action.indexOf('start_') !== 0) body.gameId = curGame.id;
+    post(API.games, body)
+      .then(function(j){ if (j.ok) { if (j.game) renderGame(j.game); if (after) after(j); } else toast(j.error || 'Could not do that'); })
       .catch(function(){ toast('No connection — try again'); });
+  }
+  $('g-start').addEventListener('click', function(){ gamePost({ action: 'start' }); });
+  $('ga-start').addEventListener('click', function(){ gamePost({ action: 'start_antakshari' }); });
+  $('gc-start').addEventListener('click', function(){ gamePost({ action: 'start_charades' }); });
+  $('a-sang').addEventListener('click', function(){
+    var L = $('a-next').value.trim();
+    gamePost({ action: 'sang', letter: L }, function(){ $('a-next').value = ''; });
   });
+  $('a-pass').addEventListener('click', function(){ gamePost({ action: 'pass' }); });
+  $('c-draw').addEventListener('click', function(){ gamePost({ action: 'draw' }); });
+  $('c-guessed').addEventListener('click', function(){ gamePost({ action: 'guessed' }); });
+  $('c-flop').addEventListener('click', function(){ gamePost({ action: 'flop' }); });
+  function endGame(){
+    if (!curGame || !confirm('End the game for everyone?')) return;
+    gamePost({ action: 'end', gameId: curGame.id }, function(){ curGame = null; refreshFun(); });
+  }
+  $('a-end').addEventListener('click', endGame);
+  $('c-end').addEventListener('click', endGame);
   $('g-roll').addEventListener('click', function(){
     if (!curGame) return;
     post(API.games, { code: state.code, memberId: state.memberId, action: 'roll', gameId: curGame.id })
