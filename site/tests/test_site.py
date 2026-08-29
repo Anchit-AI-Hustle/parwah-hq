@@ -5,7 +5,7 @@ from pathlib import Path
 from html.parser import HTMLParser
 
 ROOT = Path(__file__).resolve().parents[1]
-PAGES = [ROOT / "index.html", ROOT / "story" / "index.html", ROOT / "launch" / "index.html"]
+PAGES = [ROOT / "public" / "index.html", ROOT / "public" / "story" / "index.html", ROOT / "public" / "launch" / "index.html"]
 FAILS = []
 
 def check(name, ok, detail=""):
@@ -75,7 +75,7 @@ for p in PAGES:
     ok = ('lang="en"' in html and 'name="viewport"' in html
           and html.count("<h1") == 1 and 'aria-label' in html)
     check(f"a11y basics (lang/viewport/single-h1/aria): {p.relative_to(ROOT)}", ok)
-css = (ROOT/"styles.css").read_text(encoding="utf-8")
+css = (ROOT/"public"/"styles.css").read_text(encoding="utf-8")
 check("a11y: focus-visible style", ":focus-visible" in css)
 check("a11y: reduced motion respected", "prefers-reduced-motion" in css)
 
