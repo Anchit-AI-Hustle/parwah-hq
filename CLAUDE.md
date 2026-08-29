@@ -12,8 +12,11 @@ the current revenue wedge. Two halves with different exposure:
   NEVER deployed publicly. If deployed at all, only behind Vercel Authentication.
 - `site/` — public pre-launch site. Its only job: convert an adult child's worry into a
   launch-list join (WhatsApp primary, email secondary). Deploys on Vercel — ONE project
-  only, named `parwah-hq` (team "Anchit's AI Hustle"), live ONLY at
-  parwah-hq.anchit-tandon.com, Root Directory = `site`. No other Vercel projects or
+  (team "Anchit's AI Hustle"), git-linked to this repo, live ONLY at
+  parwah-hq.anchit-tandon.com. Every push to main auto-deploys: the root
+  package.json build copies site/public into the output, API functions live in
+  root api/, and .vercelignore keeps hq/, .claude/ and supabase/ out of every
+  upload — never remove those ignore rules. No other Vercel projects or
   GitHub repos for Parwah; this monorepo is the single source.
 
 Commerce is NOT built here. Per the locked PRD, Shopify is the commerce layer at launch.
