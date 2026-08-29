@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parwah App</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Albert+Sans:wght@400;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
+<style>
+:root{
+  --dusk:#182622; --pine:#24463C; --pine-2:#1E3A31;
+  --day:#FAF7EF; --bone:#EFE8D8; --bone-2:#E3D9C2;
+  --marigold:#E8A23D; --marigold-d:#C9861F; --sindoor:#A64B2A;
+  --ink:#241F17; --ink-soft:#4C4437; --cream:#EFE8D8; --dim:#A8B3A6;
+  --ok:#2F7A4D; --alert:#B3372B;
+  --disp:"Fraunces",Georgia,serif; --body:"Albert Sans",system-ui,sans-serif; --dev:"Tiro Devanagari Hindi",serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--body);background:var(--day);color:var(--ink);min-height:100vh;line-height:1.5}
+.bar{background:var(--dusk);color:var(--cream);padding:14px 18px;display:flex;align-items:center;gap:10px}
+.bar .dev{font-family:var(--dev);color:var(--marigold);font-size:1.05rem}
+.bar b{font-family:var(--disp);font-weight:600}
+.bar .who{margin-left:auto;font-size:.78rem;color:var(--dim);text-align:right}
+.bar .who a{color:var(--marigold);text-decoration:none;cursor:pointer}
+.wrap{max-width:560px;margin:0 auto;padding:20px 16px 70px}
+h1{font-family:var(--disp);font-weight:600;font-size:1.5rem;margin-bottom:6px}
+.lede{color:var(--ink-soft);font-size:.95rem;margin-bottom:20px}
+.card{background:#fff;border:1px solid var(--bone-2);border-radius:16px;padding:18px;margin-bottom:14px}
+.card h3{font-family:var(--disp);font-size:1.05rem;margin-bottom:10px}
+label{display:block;font-size:.85rem;font-weight:600;margin:10px 0 4px}
+input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;padding:13px;font-family:var(--body);font-size:1rem;background:var(--day)}
+.rolepick{display:flex;gap:10px;margin-top:6px}
+.rolepick button{flex:1;border:1.5px solid var(--bone-2);background:#fff;border-radius:12px;padding:12px;font-family:var(--body);font-weight:600;font-size:.9rem;cursor:pointer;color:var(--ink)}
+.rolepick button.sel{border-color:var(--marigold);background:#FDF4E3}
+.go{border:0;width:100%;margin-top:16px;background:var(--marigold);color:var(--dusk);font-weight:700;font-size:1rem;border-radius:999px;padding:15px;cursor:pointer}
+.go:disabled{opacity:.6}
+.err{color:var(--alert);font-size:.85rem;margin-top:10px;min-height:1.2em}
+.codechip{display:inline-block;background:var(--dusk);color:var(--marigold);font-family:var(--disp);font-weight:700;letter-spacing:.25em;border-radius:10px;padding:8px 14px;font-size:1.15rem}
+.hint{font-size:.8rem;color:var(--ink-soft);margin-top:8px}
+
+/* senior mode */
+.big{border:0;width:100%;border-radius:20px;padding:26px 16px;font-family:var(--disp);font-weight:700;font-size:1.5rem;cursor:pointer;margin-bottom:14px}
+.big:active{transform:scale(.98)}
+.big .sub{display:block;font-family:var(--body);font-size:.82rem;font-weight:600;margin-top:6px}
+.big.ok{background:var(--marigold);color:var(--dusk);box-shadow:0 8px 24px rgba(232,162,61,.35)}
+.big.ok.done{background:var(--ok);color:#fff}
+.big.pill{background:#fff;color:var(--ink);border:1.5px solid var(--bone-2);font-size:1.2rem}
+.big.pill.done{background:#E7F2EA;border-color:var(--ok)}
+.big.sos{background:var(--alert);color:#fff;font-family:var(--body);font-size:1.25rem;letter-spacing:.05em}
+.senior .feed .ev{font-size:1.02rem}
+
+/* feed */
+.eyebrow{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--sindoor);font-weight:700;margin:18px 0 10px}
+.feed{display:flex;flex-direction:column;gap:10px}
+.ev{background:#fff;border:1px solid var(--bone-2);border-left:3px solid var(--marigold);border-radius:12px;padding:12px 14px;font-size:.92rem}
+.ev small{display:block;color:var(--ink-soft);font-size:.72rem;margin-top:3px}
+.ev.good{border-left-color:var(--ok)}
+.ev.bad{border-left-color:var(--alert);background:#FDF1EF;font-weight:600}
+.members{display:flex;flex-wrap:wrap;gap:8px}
+.member{background:#fff;border:1px solid var(--bone-2);border-radius:99px;padding:7px 14px;font-size:.85rem;font-weight:600}
+.member em{font-style:normal;color:var(--ink-soft);font-weight:400}
+.composer{position:fixed;left:0;right:0;bottom:0;background:var(--day);border-top:1px solid var(--bone-2);padding:10px 16px;display:flex;gap:8px}
+.composer .inner{max-width:560px;margin:0 auto;display:flex;gap:8px;width:100%}
+.composer input{flex:1;border:1px solid var(--bone-2);border-radius:12px;padding:12px;font-size:.95rem;background:#fff}
+.composer button{border:0;background:var(--marigold);color:var(--dusk);font-weight:700;border-radius:12px;padding:0 20px;cursor:pointer}
+.toast{position:fixed;left:50%;bottom:74px;transform:translateX(-50%) translateY(90px);background:var(--pine);color:var(--cream);padding:11px 18px;border-radius:99px;font-size:.85rem;transition:.25s;box-shadow:0 10px 30px rgba(0,0,0,.35);z-index:9;max-width:92vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+[hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){.big:active{transform:none}}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span class="dev" aria-hidden="true">परवाह</span><b>Parwah</b>
+  <span class="who" id="who"></span>
+</div>
+
+<!-- ============ ONBOARDING ============ -->
+<div class="wrap" id="onboard">
+  <h1>Your family's circle</h1>
+  <p class="lede">One private circle for your family. Check-ins, SOS and messages reach everyone in it — and only them.</p>
+
+  <div class="card">
+    <h3>Start a new circle</h3>
+    <label for="c-name">Your name</label>
+    <input type="text" id="c-name" maxlength="60" placeholder="e.g. Rohan">
+    <label for="c-circle">Circle name</label>
+    <input type="text" id="c-circle" maxlength="60" placeholder="e.g. Sharma Family">
+    <label>You are</label>
+    <div class="rolepick" id="c-role">
+      <button type="button" data-role="family" class="sel">Son / daughter / family</button>
+      <button type="button" data-role="parent">Parent (senior mode)</button>
+    </div>
+    <button class="go" id="c-go">Create the circle</button>
+  </div>
+
+  <div class="card">
+    <h3>Join with a code</h3>
+    <label for="j-code">Circle code</label>
+    <input type="text" id="j-code" maxlength="6" placeholder="6 letters, e.g. KJM4PW" style="text-transform:uppercase;letter-spacing:.2em">
+    <label for="j-name">Your name</label>
+    <input type="text" id="j-name" maxlength="60" placeholder="e.g. Papa">
+    <label>You are</label>
+    <div class="rolepick" id="j-role">
+      <button type="button" data-role="family" class="sel">Son / daughter / family</button>
+      <button type="button" data-role="parent">Parent (senior mode)</button>
+    </div>
+    <button class="go" id="j-go">Join the circle</button>
+  </div>
+  <p class="err" id="ob-err"></p>
+</div>
+
+<!-- ============ MAIN ============ -->
+<div class="wrap" id="main" hidden>
+  <h1 id="m-title"></h1>
+  <p class="lede">Circle code: <span class="codechip" id="m-code"></span></p>
+  <p class="hint" id="m-hint">Share this code with family so they can join.</p>
+
+  <div id="seniorui" hidden>
+    <button class="big ok" id="btn-checkin">All is well ✅<span class="sub">One tap — the whole family relaxes</span></button>
+    <button class="big pill" id="btn-pill">Pills taken? Yes ✔</button>
+    <button class="big sos" id="btn-sos">🆘 SOS — need help now<span class="sub">Everyone in the circle is told instantly</span></button>
+  </div>
+
+  <p class="eyebrow">Circle members</p>
+  <div class="members" id="members"></div>
+
+  <p class="eyebrow">Circle feed</p>
+  <div class="feed" id="feed"><div class="ev">Loading…</div></div>
+</div>
+
+<div class="composer" id="composer" hidden>
+  <div class="inner">
+    <input type="text" id="msg" maxlength="300" placeholder="Message the circle…" aria-label="Message the circle">
+    <button id="send">Send</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var API = { circle: '../api/circle', events: '../api/events' };
+  var state = null;
+  var pollTimer = null, toastTimer = null;
+
+  function loadState(){ try { return JSON.parse(localStorage.getItem('parwah') || 'null'); } catch(e){ return null; } }
+  function saveState(s){ try { localStorage.setItem('parwah', JSON.stringify(s)); } catch(e){} }
+  function clearState(){ try { localStorage.removeItem('parwah'); } catch(e){} }
+
+  function toast(t){
+    var el = $('toast'); el.textContent = t; el.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 2800);
+  }
+
+  function post(url, body){
+    return fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) })
+      .then(function(r){ return r.json().then(function(j){ j._status = r.status; return j; }); });
+  }
+
+  function rolePicker(id){
+    var box = $(id);
+    box.addEventListener('click', function(e){
+      var b = e.target.closest('button'); if(!b) return;
+      box.querySelectorAll('button').forEach(function(x){ x.classList.remove('sel'); });
+      b.classList.add('sel');
+    });
+    return function(){ return box.querySelector('.sel').getAttribute('data-role'); };
+  }
+
+  function fmtTime(iso){
+    var d = new Date(iso);
+    if (isNaN(d)) return '';
+    var now = new Date();
+    var t = d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
+    return d.toDateString() === now.toDateString() ? 'Today, ' + t : d.toLocaleDateString([], { day:'numeric', month:'short' }) + ', ' + t;
+  }
+
+  function evLine(e){
+    var who = e.member_name || 'Someone';
+    if (e.type === 'checkin') return { cls:'good', text: who + ' checked in — all is well ✅' };
+    if (e.type === 'pill')    return { cls:'good', text: who + ' took their pills 💊' };
+    if (e.type === 'sos')     return { cls:'bad',  text: '🆘 SOS from ' + who + ' — call now!' };
+    if (e.type === 'message') return { cls:'',     text: who + ': ' + (e.text || '') };
+    if (e.type === 'join')    return { cls:'',     text: e.text || (who + ' joined') };
+    return { cls:'', text: e.text || '' };
+  }
+
+  function esc(s){ var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  function render(data){
+    $('m-title').textContent = data.circleName;
+    $('m-code').textContent = data.code;
+    var mh = '';
+    data.members.forEach(function(m){
+      mh += '<span class="member">' + esc(m.name) + ' <em>· ' + (m.role === 'parent' ? 'parent' : 'family') + '</em></span>';
+    });
+    $('members').innerHTML = mh;
+    var fh = '';
+    if (!data.events.length) fh = '<div class="ev">Nothing yet — the first check-in will appear here.</div>';
+    data.events.forEach(function(e){
+      var l = evLine(e);
+      fh += '<div class="ev ' + l.cls + '">' + esc(l.text) + '<small>' + esc(fmtTime(e.created_at)) + '</small></div>';
+    });
+    $('feed').innerHTML = fh;
+  }
+
+  function refresh(){
+    if (!state) return;
+    fetch(API.events + '?circle=' + encodeURIComponent(state.code))
+      .then(function(r){ return r.json(); })
+      .then(function(j){ if (j.ok) render(j); })
+      .catch(function(){ /* offline — keep last render */ });
+  }
+
+  function enterMain(){
+    $('onboard').hidden = true;
+    $('main').hidden = false;
+    $('composer').hidden = false;
+    document.body.classList.toggle('senior', state.role === 'parent');
+    $('seniorui').hidden = state.role !== 'parent';
+    $('who').innerHTML = esc(state.name) + ' · ' + esc(state.code) + '<br><a id="leave">switch circle</a>';
+    $('leave').addEventListener('click', function(){
+      if (confirm('Leave this device’s circle view? (The circle itself stays.)')) { clearState(); location.reload(); }
+    });
+    refresh();
+    clearInterval(pollTimer);
+    pollTimer = setInterval(refresh, 12000);
+  }
+
+  function sendEvent(type, text, after){
+    post(API.events, { code: state.code, memberId: state.memberId, type: type, text: text || '' })
+      .then(function(j){
+        if (j.ok) { refresh(); if (after) after(); }
+        else toast(j.error || 'Could not send — try again');
+      })
+      .catch(function(){ toast('No connection — try again'); });
+  }
+
+  // ---------- onboarding ----------
+  var cRole = rolePicker('c-role'), jRole = rolePicker('j-role');
+
+  $('c-go').addEventListener('click', function(){
+    var name = $('c-name').value.trim();
+    if (!name) { $('ob-err').textContent = 'Please enter your name.'; return; }
+    this.disabled = true; $('ob-err').textContent = '';
+    post(API.circle, { action:'create', memberName:name, circleName:$('c-circle').value.trim(), role:cRole() })
+      .then(function(j){
+        $('c-go').disabled = false;
+        if (!j.ok) { $('ob-err').textContent = j.error || 'Could not create the circle.'; return; }
+        state = { code:j.code, circleName:j.circleName, memberId:j.memberId, name:name, role:j.role };
+        saveState(state); enterMain();
+        toast('Circle created — share code ' + j.code + ' with family');
+      })
+      .catch(function(){ $('c-go').disabled = false; $('ob-err').textContent = 'No connection — try again.'; });
+  });
+
+  $('j-go').addEventListener('click', function(){
+    var name = $('j-name').value.trim(), code = $('j-code').value.trim().toUpperCase();
+    if (!code || !name) { $('ob-err').textContent = 'Please enter the code and your name.'; return; }
+    this.disabled = true; $('ob-err').textContent = '';
+    post(API.circle, { action:'join', memberName:name, code:code, role:jRole() })
+      .then(function(j){
+        $('j-go').disabled = false;
+        if (!j.ok) { $('ob-err').textContent = j.error || 'Could not join.'; return; }
+        state = { code:j.code, circleName:j.circleName, memberId:j.memberId, name:name, role:j.role };
+        saveState(state); enterMain();
+        toast('Welcome to ' + j.circleName);
+      })
+      .catch(function(){ $('j-go').disabled = false; $('ob-err').textContent = 'No connection — try again.'; });
+  });
+
+  // ---------- senior actions ----------
+  $('btn-checkin').addEventListener('click', function(){
+    var b = this;
+    sendEvent('checkin', '', function(){
+      b.classList.add('done');
+      b.innerHTML = 'Thank you ✅<span class="sub">Your check-in reached the whole family</span>';
+      toast('The whole circle knows you are okay');
+    });
+  });
+  $('btn-pill').addEventListener('click', function(){
+    var b = this;
+    sendEvent('pill', '', function(){ b.classList.add('done'); b.textContent = 'Taken ✔ Well done!'; });
+  });
+  $('btn-sos').addEventListener('click', function(){
+    if (!confirm('Send SOS to the whole circle?')) return;
+    sendEvent('sos', '', function(){ toast('SOS sent — the circle has been told'); });
+  });
+
+  // ---------- messages ----------
+  function sendMsg(){
+    var v = $('msg').value.trim(); if (!v) return;
+    $('msg').value = '';
+    sendEvent('message', v);
+  }
+  $('send').addEventListener('click', sendMsg);
+  $('msg').addEventListener('keydown', function(e){ if (e.key === 'Enter') sendMsg(); });
+
+  // ---------- boot ----------
+  state = loadState();
+  if (state && state.code && state.memberId) enterMain();
+})();
+</script>
+</body>
+</html>
