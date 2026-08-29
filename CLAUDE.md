@@ -46,8 +46,9 @@ Commerce is NOT built here. Per the locked PRD, Shopify is the commerce layer at
 2. Domain: buy + connect (parwah.in first choice); update care@parwah.in if it differs.
 3. Analytics: GA4 + Meta Pixel base events (page_view; WA CTA click as join_waitlist).
 4. OG/social cards per page (1200×630, brand system).
-5. Waitlist backend: when Supabase project `parwah` is live — waitlist table
-   (email, city, source, created_at) + minimal endpoint; only then ship an email form.
+5. Waitlist backend: when Supabase project `parwah` is live — apply the ready
+   migration at `supabase/migrations/0001_waitlist.sql` (waitlist table + insert-only
+   RLS, ported from the retired parwah-site repo); only then ship an email form.
 6. Photography: real dignity-first shots per the master prompt; no stock placeholders.
 7. LP variants: come from Parwah LP Factory when its trigger fires (>10 variants);
    hand-build max 3 here.
