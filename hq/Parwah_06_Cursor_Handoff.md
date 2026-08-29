@@ -40,6 +40,12 @@ big type, ≤3 actions per screen, Hindi-first), never a tracked subject.
 - Verify any backend change against `GET /api/selftest` (must return ok:true)
   and the app flow at `/app/`.
 - Ekta needs `ANTHROPIC_API_KEY` in Vercel project env vars (already set).
+- Cross-provider backup cascade: if every Anthropic tier fails, Ekta falls
+  through to `OPENAI_API_KEY` (model `OPENAI_MODEL`, default gpt-4o-mini)
+  then `GEMINI_API_KEY`/`GOOGLE_API_KEY` (model `GEMINI_MODEL`, default
+  gemini-2.0-flash) — plain REST, text-only (no tools, so no double
+  actions), same persona + hard rules. Whichever key answers becomes the
+  final model, reported in the response's `model` field.
 - **Model policy (keep it):** pick the model per task, cascade for resilience.
   Ekta chat runs `claude-sonnet-5` first (fast, warm, reliable tool use),
   escalates to `claude-opus-5` only when Sonnet runs out of depth and no

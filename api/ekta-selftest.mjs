@@ -30,10 +30,12 @@ export default async function handler(req, res) {
   // Presence booleans only — never values. Helps diagnose env-var setup.
   const env = {
     ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
-    ANTHROPIC_WORKSPACE_ID: !!(process.env.ANTHROPIC_WORKSPACE_ID && String(process.env.ANTHROPIC_WORKSPACE_ID).trim())
+    ANTHROPIC_WORKSPACE_ID: !!(process.env.ANTHROPIC_WORKSPACE_ID && String(process.env.ANTHROPIC_WORKSPACE_ID).trim()),
+    OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
+    GEMINI_API_KEY: !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)
   };
-  if (!env.ANTHROPIC_API_KEY) {
-    return res.status(503).json({ ok: false, error: 'ANTHROPIC_API_KEY is missing on the server', env });
+  if (!env.ANTHROPIC_API_KEY && !env.OPENAI_API_KEY && !env.GEMINI_API_KEY) {
+    return res.status(503).json({ ok: false, error: 'No model API key is configured on the server', env });
   }
   // ?probe=1 → only test which workspace-header values this key accepts.
   if ((req.query || {}).probe) {

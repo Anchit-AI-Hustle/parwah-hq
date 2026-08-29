@@ -158,31 +158,99 @@ function isOverload(e) {
   return s === 429 || (typeof s === 'number' && s >= 500);
 }
 
+// ---------- cross-provider text backups (no extra dependencies) ----------
+// If every Anthropic tier fails (credits, auth, outage), Ekta keeps talking
+// through any other configured provider key. Backups run text-only: same
+// persona and hard rules, no tools — so they can never double an action.
+const BACKUP_NOTE = '\n\nNOTE: your circle tools are temporarily unavailable — answer from the conversation only, and if the user wants a reminder or request set, warmly point them to the Care tab where they can set it themselves.';
+
+function textBackups() {
+  const list = [];
+  if (process.env.OPENAI_API_KEY) {
+    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+    list.push({ model: model, run: async function (sys, history) {
+      const r = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + process.env.OPENAI_API_KEY },
+        body: JSON.stringify({
+          model: model,
+          max_completion_tokens: 512,
+          messages: [{ role: 'system', content: sys }].concat(history)
+        })
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(model + ': ' + JSON.stringify(j).slice(0, 160));
+      const t = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+      if (!t) throw new Error(model + ': empty reply');
+      return t.trim();
+    }});
+  }
+  const gkey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  if (gkey) {
+    const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+    list.push({ model: model, run: async function (sys, history) {
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(gkey), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: sys }] },
+          contents: history.map(function (m) { return { role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }; }),
+          generationConfig: { maxOutputTokens: 512 }
+        })
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(model + ': ' + JSON.stringify(j).slice(0, 160));
+      const c = j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts;
+      const t = c && c.map(function (p) { return p.text || ''; }).join('').trim();
+      if (!t) throw new Error(model + ': empty reply');
+      return t;
+    }});
+  }
+  return list;
+}
+
 // The cascade driver, shared by the API handler and /api/ekta-selftest.
+// Order: Anthropic Sonnet → Opus → Haiku (full tools), then every other
+// configured provider key (text-only) until one answers. The final model
+// is whichever link in the chain actually replied.
 export async function ektaTurn(sql, circle, me, history) {
-  // Identity-linked API keys (the newer Console key type) must name the
-  // workspace they act in; classic workspace keys ignore this header.
-  const client = new Anthropic(process.env.ANTHROPIC_WORKSPACE_ID
-    ? { defaultHeaders: { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID } }
-    : {});
-  const tiers = [MODEL_PRIMARY, MODEL_DEEP, MODEL_FALLBACK];
   const actions = [];
-  let lastErr = null, last = null;
-  for (let i = 0; i < tiers.length; i++) {
+  const failures = [];
+  let last = null;
+
+  if (process.env.ANTHROPIC_API_KEY) {
+    // Identity-linked API keys may name a workspace; the default workspace
+    // needs no header at all.
+    const client = new Anthropic(process.env.ANTHROPIC_WORKSPACE_ID
+      ? { defaultHeaders: { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID } }
+      : {});
+    const tiers = [MODEL_PRIMARY, MODEL_DEEP, MODEL_FALLBACK];
+    for (let i = 0; i < tiers.length; i++) {
+      try {
+        last = await runLoop(client, tiers[i], sql, circle, me, history, actions);
+        if (last.escalate && tiers[i] === MODEL_PRIMARY && !actions.length) continue; // Sonnet -> Opus
+        return last;
+      } catch (e) {
+        failures.push(tiers[i] + ': ' + String(e && e.message || e).slice(0, 120));
+        // Once a side-effecting action has run, never retry anywhere —
+        // surfacing the error beats double-creating a reminder.
+        if (actions.length) throw e;
+        continue; // any failure with nothing done → try the next tier/provider
+      }
+    }
+    if (last) return last;
+  }
+
+  const backups = textBackups();
+  for (let i = 0; i < backups.length; i++) {
     try {
-      last = await runLoop(client, tiers[i], sql, circle, me, history, actions);
-      if (last.escalate && tiers[i] === MODEL_PRIMARY && !actions.length) continue; // Sonnet → Opus
-      return last;
+      const reply = await backups[i].run(systemPrompt(me, circle) + BACKUP_NOTE, history);
+      return { reply: reply, actions: actions, model: backups[i].model, escalate: false };
     } catch (e) {
-      lastErr = e;
-      // Only drop a tier for overload/availability errors, and never retry
-      // once a side-effecting action has already run.
-      if (isOverload(e) && !actions.length) continue;
-      throw e;
+      failures.push(String(e && e.message || e).slice(0, 140));
     }
   }
-  if (last) return last;
-  throw lastErr;
+  throw new Error('All providers failed -> ' + (failures.join(' | ') || 'no API keys configured'));
 }
 
 export default async function handler(req, res) {
