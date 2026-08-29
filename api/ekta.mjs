@@ -111,14 +111,15 @@ async function runLoop(client, model, sql, circle, me, history, actions) {
   let convo = history;
   let served = model;
   for (let turn = 0; turn < 5; turn++) {
-    const response = await client.beta.messages.create({
+    // Standard endpoint: works with identity-linked keys on the default
+    // workspace (no anthropic-workspace-id header needed); our own model
+    // cascade below provides the fallback behaviour.
+    const response = await client.messages.create({
       model: model,
       max_tokens: 1024,
       system: systemPrompt(me, circle),
       tools: TOOLS,
-      messages: convo,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default'
+      messages: convo
     });
     served = response.model || model;
 
