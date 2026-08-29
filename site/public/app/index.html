@@ -113,6 +113,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .pageseg button{padding:11px 6px;font-size:.88rem}
 .bigletter{font-family:var(--disp);font-size:2.6rem;font-weight:700;color:var(--sindoor);text-align:center;background:#fff;border:2px dashed var(--marigold);border-radius:16px;padding:12px;margin:10px 0;letter-spacing:.1em}
 .bigletter.small{font-size:1.3rem;letter-spacing:0}
+#tboard{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:250px;margin:12px 0}
+.tcell{aspect-ratio:1;font-size:1.7rem;font-weight:700;background:#fff;border:1px solid var(--bone-2);border-radius:12px;cursor:pointer;font-family:var(--disp)}
+.tcell.x{color:var(--sindoor)}.tcell.o{color:var(--pine)}
+.tcell:disabled{cursor:default;opacity:.9}
 .twist{border-radius:14px;padding:13px 15px;margin-top:10px;font-size:.92rem;border:1.5px solid}
 .twist b{display:block;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px}
 .twist.dare{background:#FDF1EF;border-color:var(--sindoor);color:var(--ink)}
@@ -229,6 +233,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   .tabs button.sel::after{display:none}
   .tabs .dot{position:static;margin-left:auto}
   .side-user{margin-top:auto;color:var(--dim);font-size:.82rem;padding:14px 10px 6px;border-top:1px solid var(--pine-2)}
+  .subnav{flex-direction:column;gap:0;margin:-4px 0 2px}
+  .subnav button{padding:7px 12px 7px 44px;font-size:.82rem;font-weight:600;color:var(--dim);border-radius:9px;position:relative}
+  .subnav button::before{content:"›";position:absolute;left:30px;opacity:.6}
+  .subnav button.sel{color:var(--marigold);background:none}
   body.inapp{padding-left:var(--side-w)}
   body.inapp .bar{display:none}
   body.inapp .wrap{max-width:700px;padding-top:30px;padding-bottom:170px}
@@ -418,9 +426,16 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     </div>
     <div class="subsec" data-sec="plans">
     <div class="card">
-      <h3>Family call 📹</h3>
-      <p>One tap opens a video room for the whole circle — free, works everywhere in the world. Share your screen to watch or listen to something together.</p>
-      <button class="go" id="callnow2">📹 Start a call now</button>
+      <h3>Get together now 📹</h3>
+      <p>Opens a free video room for the whole circle — works everywhere in the world. Pick the vibe:</p>
+      <div class="pkind" id="call-mode">
+        <button type="button" data-mode="talk" class="sel">📞 Just talk</button>
+        <button type="button" data-mode="music">🎶 Music party</button>
+        <button type="button" data-mode="watch">🎬 Movie/OTT night</button>
+      </div>
+      <input type="text" id="call-link" maxlength="300" placeholder="Optional: paste a YouTube / song / show link to share" style="margin-top:10px" aria-label="Link to share" hidden>
+      <button class="go" id="callnow2" style="margin-top:12px">📹 Start now</button>
+      <p class="hint" id="call-hint">Everyone joins from chat. For music or a show: play it on your device and share your screen/tab with audio in the room — each person watches on their own subscription.</p>
     </div>
 
     <p class="eyebrow">Plans</p>
@@ -437,7 +452,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         <label class="pick"><span>Date</span><input type="date" id="p-date" aria-label="Plan date"></label>
         <label class="pick"><span>Time</span><input type="time" id="p-time" aria-label="Plan time"></label>
       </div>
-      <input type="text" id="p-place" maxlength="120" placeholder="Place (for meet-ups) — optional" style="margin-top:10px" aria-label="Plan place">
+      <div class="pickrow" style="margin-top:10px">
+        <label class="pick"><span>How many joining?</span><input type="number" id="p-count" min="2" max="50" placeholder="e.g. 6" aria-label="Expected people"></label>
+        <label class="pick"><span>Place (meet-ups)</span><input type="text" id="p-place" maxlength="120" placeholder="optional" aria-label="Plan place"></label>
+      </div>
       <button class="go" id="p-add" style="margin-top:14px">Set the plan</button>
       <p class="hint">Everyone sees it in their own timezone — perfect when family is abroad. Add it to Google Calendar in one tap.</p>
     </div>
@@ -445,6 +463,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 
     <div class="subsec" data-sec="games" hidden>
     <div id="game-none">
+      <p class="eyebrow" style="margin-top:0">Whole family · 2–12 players</p>
       <div class="card">
         <h3>Saanp Seedhi 🐍🪜</h3>
         <p>Snakes & Ladders with a twist — snakes cost you a truth-or-dare, ladders earn rewards. Turns work across any timezone.</p>
@@ -460,6 +479,16 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         <p>Act it out on the video call — the app secretly deals your Bollywood movie and keeps score. No talking!</p>
         <button class="go" id="gc-start">🎭 Start Charades</button>
       </div>
+      <p class="eyebrow">Quick duel · 2 players</p>
+      <div class="card">
+        <h3>Tic-Tac-Toe ⭕✕</h3>
+        <p>Challenge one person to a lightning duel — grandchild vs Dadi is the classic.</p>
+        <div class="addrow">
+          <select id="t-vs" aria-label="Challenge who"><option value="">Challenge…</option></select>
+          <button class="cbtn" id="gt-start">⚔️ Start duel</button>
+        </div>
+      </div>
+      <p class="eyebrow">More coming</p>
       <div class="widgets">
         <div class="widget"><span class="wic" aria-hidden="true">🎯</span><b>Ludo</b><small>Coming soon</small></div>
         <div class="widget"><span class="wic" aria-hidden="true">🃏</span><b>Card party</b><small>Coming soon</small></div>
@@ -495,6 +524,12 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         </div>
         <p class="hint">Only the actor sees the movie. Act on the call — the app scores.</p>
         <button class="cbtn no" id="c-end" style="margin-top:10px">End game</button>
+      </div>
+      <div class="card" id="g-ttt" hidden>
+        <h3>Tic-Tac-Toe ⭕✕</h3>
+        <p class="hint" id="t-status" style="margin:4px 0 4px"></p>
+        <div id="tboard"></div>
+        <button class="cbtn no" id="t-end">End game</button>
       </div>
       <div class="card" id="g-snakes" hidden>
         <h3>Saanp Seedhi 🐍🪜</h3>
@@ -547,7 +582,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <div class="kv"><b>Language</b><span>English · Hindi toggle coming soon</span></div>
       <div class="kv"><b>Senior mode</b><span id="p-senior"></span></div>
       <div class="kv"><b>Alerts</b><span>In-app now · phone push coming soon</span></div>
-      <p style="margin-top:10px"><b style="color:var(--ink)">Install as an app:</b> Android — Chrome menu → <i>Install app</i>. iPhone — Share → <i>Add to Home Screen</i>.</p>
+      <p style="margin-top:10px"><b style="color:var(--ink)">Install as an app:</b> Android — Chrome menu → <i>Install app</i>. iPhone — Share → <i>Add to Home Screen</i>. <a href="../get/" target="_blank" rel="noopener">Full install guide →</a></p>
     </div>
 
     <div class="card">
@@ -574,9 +609,17 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <div class="side-brand side-only"><span class="dev" aria-hidden="true">परवाह</span><span>Parwah</span></div>
     <button data-tab="home" class="sel"><span class="ic" aria-hidden="true">🏠</span>Home</button>
     <button data-tab="care"><span class="ic" aria-hidden="true">🔔</span>Care<i class="dot" id="care-dot" hidden></i></button>
+    <div class="subnav side-only" data-parent="care">
+      <button data-tab="care" data-sec="rem">Reminders</button>
+      <button data-tab="care" data-sec="req">Help requests</button>
+    </div>
     <button data-tab="chat"><span class="ic" aria-hidden="true">💬</span>Chat</button>
     <button data-tab="ekta"><span class="ic" aria-hidden="true">✨</span>Ekta</button>
     <button data-tab="fun"><span class="ic" aria-hidden="true">🎉</span>Together</button>
+    <div class="subnav side-only" data-parent="fun">
+      <button data-tab="fun" data-sec="plans">Plans &amp; calls</button>
+      <button data-tab="fun" data-sec="games">Games</button>
+    </div>
     <button data-tab="profile"><span class="ic" aria-hidden="true">👤</span>Profile</button>
     <div class="side-user side-only" id="side-user"></div>
   </div>
@@ -624,9 +667,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   function switchTab(t){
     if (TABS.indexOf(t) < 0) t = 'home';
     TABS.forEach(function(n){ $('pane-' + n).hidden = n !== t; });
-    document.querySelectorAll('#tabs button').forEach(function(b){
+    document.querySelectorAll('#tabs .inner > button').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-tab') === t);
     });
+    if (t === 'care' || t === 'fun') {
+      var seg = $(t + '-seg'), cur = seg && seg.querySelector('.sel');
+      if (cur) setSec(t, cur.getAttribute('data-sec'));
+    }
     curTab = t;
     setInputMode();
     $('ekta-fab').hidden = !document.body.classList.contains('inapp') || t === 'ekta' || (t === 'chat' && !!curChat);
@@ -641,6 +688,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var seg = $(pane + '-seg'); if (!seg) return;
     seg.querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-sec') === sec); });
     document.querySelectorAll('#pane-' + pane + ' .subsec').forEach(function(d){ d.hidden = d.getAttribute('data-sec') !== sec; });
+    document.querySelectorAll('#tabs .subnav[data-parent="' + pane + '"] button').forEach(function(b){
+      b.classList.toggle('sel', b.getAttribute('data-sec') === sec);
+    });
   }
   ['care', 'fun'].forEach(function(pane){
     $(pane + '-seg').addEventListener('click', function(e){
@@ -656,7 +706,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('msg').placeholder = ekta ? 'Ask Ekta — type or tap the mic' : (chat ? 'Message ' + chatShort(curChat) + '…' : 'Message…');
   }
   $('tabs').addEventListener('click', function(e){
-    var b = e.target.closest('button'); if (b) switchTab(b.getAttribute('data-tab'));
+    var b = e.target.closest('button'); if (!b) return;
+    switchTab(b.getAttribute('data-tab'));
+    if (b.dataset.sec) setSec(b.getAttribute('data-tab'), b.dataset.sec);
   });
   window.addEventListener('hashchange', function(){
     if (state) switchTab(location.hash.replace('#',''));
@@ -844,6 +896,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     });
     sel.innerHTML = h; if (cur) sel.value = cur;
     dm.innerHTML = dh;
+    $('t-vs').innerHTML = '<option value="">Challenge…</option>' + dh.split('</option>').slice(1).join('</option>');
     $('g-mem').innerHTML = gm || '<span class="hint">Invite more family first — a group needs people.</span>';
   }
 
@@ -1195,16 +1248,29 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   });
 
   // ---------- family call: instant video room, shared into Everyone chat ----------
+  var callMode = 'talk';
+  $('call-mode').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    callMode = b.getAttribute('data-mode');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
+    $('call-link').hidden = callMode === 'talk';
+  });
   function startCall(){
     var room = 'https://meet.jit.si/parwah-' + state.code.toLowerCase() + '-' + Math.random().toString(36).slice(2, 8);
+    var link = ($('call-link').value || '').trim().slice(0, 300);
+    var head = callMode === 'music' ? '🎶 ' + state.name + ' started a MUSIC PARTY'
+             : callMode === 'watch' ? '🎬 ' + state.name + ' started a MOVIE/OTT NIGHT'
+             : '📹 ' + state.name + ' started a family call';
+    var msgTxt = head + ' — tap to join: ' + room +
+      (link && callMode !== 'talk' ? '\n▶ We are playing: ' + link : '') +
+      (callMode !== 'talk' ? '\n(Host: play it on your device and share your screen/tab with audio in the room)' : '');
     var fam = null; chatsCache.forEach(function(x){ if (x.kind === 'circle') fam = x; });
     if (fam) {
-      post(API.chats, { code: state.code, memberId: state.memberId, action: 'send', chatId: fam.id,
-                        text: '📹 ' + state.name + ' started a family call — tap to join: ' + room })
+      post(API.chats, { code: state.code, memberId: state.memberId, action: 'send', chatId: fam.id, text: msgTxt })
         .then(function(){ refreshChats(); }).catch(function(){});
     }
     window.open(room, '_blank');
-    toast('Call room opened — the link is in the family chat 🧡');
+    toast((callMode === 'talk' ? 'Call room' : 'Party room') + ' opened — the invite is in the family chat 🧡');
   }
   $('callnow').addEventListener('click', startCall);
   $('callnow2').addEventListener('click', startCall);
@@ -1232,7 +1298,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       var icon = p.kind === 'call' ? '📹' : p.kind === 'party' ? '🎶' : p.kind === 'meet' ? '🤗' : '🗓';
       h += '<div class="plan"><b>' + icon + ' ' + esc(p.title) + '</b>' +
         '<small>' + esc(whenTxt) + ' (your time) · by ' + esc(p.by_name || 'family') +
-        (p.place ? ' · ' + esc(p.place) : '') +
+        (p.place ? ' · ' + esc(p.place) : '') + (p.expected ? ' · ~' + p.expected + ' people' : '') +
         (p.going_names ? '<br>Going: ' + esc(p.going_names) : '') + '</small>' +
         '<div class="prow">' +
         (p.room ? '<a class="cbtn" href="' + esc(p.room) + '" target="_blank" rel="noopener">Join room</a>' : '') +
@@ -1250,7 +1316,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var d = $('p-date').value, tm = $('p-time').value;
     if (!d || !tm) { toast('Pick the date and time'); return; }
     var at = new Date(d + 'T' + tm);
-    post(API.plans, { code: state.code, memberId: state.memberId, action: 'create', title: t, kind: planKind, at: at.toISOString(), place: $('p-place').value.trim() })
+    post(API.plans, { code: state.code, memberId: state.memberId, action: 'create', title: t, kind: planKind, at: at.toISOString(), place: $('p-place').value.trim(), expected: $('p-count').value })
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not set the plan'); return; }
         $('p-title').value = ''; $('p-place').value = '';
@@ -1295,7 +1361,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     curGame = g;
     $('game-none').hidden = !!g;
     $('game-on').hidden = !g;
-    ['g-snakes', 'g-ant', 'g-cha'].forEach(function(id){ $(id).hidden = true; });
+    ['g-snakes', 'g-ant', 'g-cha', 'g-ttt'].forEach(function(id){ $(id).hidden = true; });
     if (!g) { $('w-game').textContent = '3 games live — play together'; return; }
     var st = g.state, kind = st.kind || g.kind;
     var turnP = st.players[st.turn], meTurn = turnP && turnP.id === state.memberId;
@@ -1306,6 +1372,24 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       $('a-status').textContent = meTurn ? 'Your stage — sing a song starting with "' + st.letter + '"!' : 'On stage: ' + turnP.name + ' · letter "' + st.letter + '"';
       $('a-mine').hidden = !meTurn;
       $('w-game').textContent = 'Antakshari on! ' + (meTurn ? 'Your turn 🎤' : turnP.name + "'s turn");
+      return;
+    }
+    if (kind === 'ttt') {
+      $('g-ttt').hidden = false;
+      var iAmIn = st.players.some(function(p){ return p.id === state.memberId; });
+      var over = st.winner || st.draw;
+      $('t-status').textContent = st.winner ? '🏆 ' + st.winner + ' wins!'
+        : st.draw ? '🤝 A draw — rematch?'
+        : (meTurn ? 'Your move (' + (st.turn === 0 ? '✕' : '◯') + ')' : (iAmIn ? turnP.name + "'s move…" : st.players[0].name + ' vs ' + st.players[1].name));
+      var bh = '';
+      st.board.forEach(function(v, i){
+        var sym = v === 0 ? '✕' : v === 1 ? '◯' : '';
+        var cls = v === 0 ? ' x' : v === 1 ? ' o' : '';
+        var dis = (v !== null || over || !meTurn || !iAmIn) ? ' disabled' : '';
+        bh += '<button class="tcell' + cls + '" data-tcell="' + i + '"' + dis + '>' + sym + '</button>';
+      });
+      $('tboard').innerHTML = bh;
+      $('w-game').textContent = over ? 'Duel over — start the next game!' : 'Tic-Tac-Toe: ' + st.players[0].name + ' vs ' + st.players[1].name;
       return;
     }
     if (kind === 'charades') {
@@ -1361,6 +1445,15 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   $('g-start').addEventListener('click', function(){ gamePost({ action: 'start' }); });
   $('ga-start').addEventListener('click', function(){ gamePost({ action: 'start_antakshari' }); });
   $('gc-start').addEventListener('click', function(){ gamePost({ action: 'start_charades' }); });
+  $('gt-start').addEventListener('click', function(){
+    var vs = $('t-vs').value;
+    if (!vs) { toast('Pick who to challenge'); return; }
+    gamePost({ action: 'start_ttt', vsId: vs });
+  });
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-tcell]'); if (!b || !curGame) return;
+    gamePost({ action: 'move', cell: b.getAttribute('data-tcell') });
+  });
   $('a-sang').addEventListener('click', function(){
     var L = $('a-next').value.trim();
     gamePost({ action: 'sang', letter: L }, function(){ $('a-next').value = ''; });
@@ -1375,6 +1468,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   }
   $('a-end').addEventListener('click', endGame);
   $('c-end').addEventListener('click', endGame);
+  $('t-end').addEventListener('click', endGame);
   $('g-roll').addEventListener('click', function(){
     if (!curGame) return;
     post(API.games, { code: state.code, memberId: state.memberId, action: 'roll', gameId: curGame.id })

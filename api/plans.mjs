@@ -32,6 +32,7 @@ export default async function handler(req, res) {
       going uuid[] not null default '{}',
       created_at timestamptz not null default now()
     )`;
+    await sql`alter table plans add column if not exists expected int`;
   } catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
 
   try {
@@ -48,7 +49,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'GET') {
       const plans = await sql`
-        select p.id, p.title, p.kind, p.at, p.place, p.room, p.going, p.by_member,
+        select p.id, p.title, p.kind, p.at, p.place, p.room, p.going, p.by_member, p.expected,
                b.name as by_name,
                (select string_agg(g.name, ', ') from members g where g.id = any(p.going)) as going_names
         from plans p left join members b on b.id = p.by_member
@@ -71,8 +72,10 @@ export default async function handler(req, res) {
       }
       const place = String(body.place || '').trim().slice(0, 120) || null;
       const room = (kind === 'call' || kind === 'party') ? roomUrl(circle.code) : null;
-      const p = await sql`insert into plans (circle_id, by_member, title, kind, at, place, room, going)
-                          values (${circle.id}, ${me.id}, ${title}, ${kind}, ${at.toISOString()}, ${place}, ${room}, ${'{' + me.id + '}'})
+      let expected = parseInt(body.expected, 10);
+      expected = (expected >= 2 && expected <= 50) ? expected : null;
+      const p = await sql`insert into plans (circle_id, by_member, title, kind, at, place, room, going, expected)
+                          values (${circle.id}, ${me.id}, ${title}, ${kind}, ${at.toISOString()}, ${place}, ${room}, ${'{' + me.id + '}'}, ${expected})
                           returning id`;
       await feed(sql, circle.id, me.id, `${me.name} planned: ${title} 🗓`);
       return res.status(201).json({ ok: true, id: p[0].id });

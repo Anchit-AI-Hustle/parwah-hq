@@ -115,6 +115,34 @@ export function charadesTurn(st, memberId, action, rng) {
   return { error: 'Unknown move' };
 }
 
+// ---------- Tic-Tac-Toe (quick 2-player duel) ----------
+const TTT_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+export function tttStart(a, b) {
+  return { kind: 'ttt', players: [{ id: a.id, name: a.name }, { id: b.id, name: b.name }],
+           turn: 0, board: [null,null,null,null,null,null,null,null,null], winner: null, draw: false, last: null };
+}
+export function tttMove(st, memberId, cell) {
+  const idx = st.players.findIndex(p => p.id === memberId);
+  if (idx < 0) return { error: 'This duel is between ' + st.players[0].name + ' and ' + st.players[1].name };
+  if (st.winner || st.draw) return { error: 'The game is over' };
+  if (idx !== st.turn) return { error: 'Not your turn yet' };
+  const c = Number(cell);
+  if (!(c >= 0 && c <= 8) || st.board[c] !== null) return { error: 'Pick an empty square' };
+  st.board[c] = idx;
+  st.last = { by: st.players[idx].name, cell: c };
+  const won = TTT_LINES.some(L => L.every(i => st.board[i] === idx));
+  if (won) {
+    st.winner = st.players[idx].name;
+    return { announce: '⭕ ' + st.winner + ' beat ' + st.players[1 - idx].name + ' at Tic-Tac-Toe! Rematch, anyone?' };
+  }
+  if (st.board.every(v => v !== null)) {
+    st.draw = true;
+    return { announce: '🤝 Tic-Tac-Toe ends in a draw between ' + st.players[0].name + ' and ' + st.players[1].name + '!' };
+  }
+  st.turn = 1 - idx;
+  return {};
+}
+
 // Never leak the secret movie to anyone but the actor.
 export function publicState(game, memberId) {
   if (!game || game.kind !== 'charades' || !game.state || !game.state.prompt) return game;
@@ -205,6 +233,37 @@ export default async function handler(req, res) {
       start_antakshari: { kind: 'antakshari', label: 'Antakshari 🎤' },
       start_charades:   { kind: 'charades',   label: 'Dumb Charades 🎭' }
     };
+    if (body.action === 'start_ttt') {
+      const existing = await activeGame(sql, circle.id);
+      if (existing) return res.status(200).json({ ok: true, game: publicState({ ...existing, kind: existing.state.kind || existing.kind }, me.id) });
+      if (!isUuid(body.vsId) || body.vsId === me.id) return res.status(400).json({ ok: false, error: 'Pick who to challenge' });
+      const vs = await sql`select id, name from members where id = ${body.vsId} and circle_id = ${circle.id}`;
+      if (!vs[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+      const state = tttStart(me, vs[0]);
+      const g = await sql`insert into games (circle_id, kind, status, state)
+                          values (${circle.id}, 'ttt', 'active', ${JSON.stringify(state)}::jsonb)
+                          returning id, kind, status, state, created_at`;
+      await feed(sql, circle.id, me.id, `${me.name} challenged ${vs[0].name} to Tic-Tac-Toe ⭕✕`);
+      return res.status(201).json({ ok: true, game: g[0] });
+    }
+    if (body.action === 'move') {
+      if (!isUuid(body.gameId)) return res.status(400).json({ ok: false, error: 'Bad game id' });
+      const rows = await sql`select id, kind, status, state from games where id = ${body.gameId} and circle_id = ${circle.id}`;
+      const g = rows[0];
+      if (!g || g.status !== 'active') return res.status(404).json({ ok: false, error: 'Game not found or over' });
+      const st = g.state;
+      const out = tttMove(st, me.id, body.cell);
+      if (out.error) return res.status(409).json({ ok: false, error: out.error });
+      const done = !!(st.winner || st.draw);
+      await sql`update games set status = ${done ? 'done' : 'active'}, state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
+      if (out.announce) {
+        try {
+          const chatId = await ensureCircleChat(sql, circle.id);
+          await sql`insert into messages (chat_id, member_id, text) values (${chatId}, null, ${out.announce})`;
+        } catch (e) {}
+      }
+      return res.status(200).json({ ok: true, game: { id: g.id, kind: 'ttt', status: done ? 'done' : 'active', state: st } });
+    }
     if (STARTS[body.action]) {
       const existing = await activeGame(sql, circle.id);
       if (existing) return res.status(200).json({ ok: true, game: publicState({ ...existing, kind: existing.state.kind || existing.kind }, me.id) });
