@@ -82,6 +82,16 @@ export async function ensureSchema(sql) {
     created_at timestamptz not null default now()
   )`;
   await sql`alter table members add column if not exists user_id uuid references users(id) on delete set null`;
+  await sql`create table if not exists chat_reads (
+    chat_id uuid not null references chats(id) on delete cascade,
+    member_id uuid not null references members(id) on delete cascade,
+    read_at timestamptz not null default now(),
+    primary key (chat_id, member_id)
+  )`;
+  await sql`create table if not exists notif_seen (
+    member_id uuid primary key references members(id) on delete cascade,
+    seen_at timestamptz not null default now()
+  )`;
   await sql`alter table messages add column if not exists kind text not null default 'text'`;
   await sql`create table if not exists games (
     id uuid primary key default gen_random_uuid(),

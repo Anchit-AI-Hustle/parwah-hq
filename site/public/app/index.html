@@ -215,6 +215,30 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 @media(prefers-reduced-motion:reduce){#emic.rec{animation:none}}
 #evoice{margin-left:auto}
 
+/* notifications */
+#bell{margin-left:auto;position:relative;border:0;background:none;color:var(--cream);font-size:1.15rem;cursor:pointer;padding:2px 6px}
+#getapp{font-size:1.15rem;text-decoration:none;padding:2px 6px;line-height:1}
+#bell[hidden]~#getapp{margin-left:auto}
+@media(display-mode:standalone){#getapp{display:none}}
+#bell .dot,#side-nb .dot{position:absolute;top:-2px;right:-2px;min-width:15px;height:15px;border-radius:99px;background:var(--sindoor);color:#fff;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px;font-style:normal}
+.bar .who{margin-left:10px}
+.nrow{background:#fff;border:1px solid var(--bone-2);border-left:3px solid var(--bone-2);border-radius:12px;padding:12px 14px;font-size:.92rem;display:flex;gap:10px;align-items:flex-start;cursor:pointer;box-shadow:0 1px 2px rgba(36,31,23,.03)}
+.nrow.unread{border-left-color:var(--sindoor);background:#FFFDF8}
+.nrow .nic{font-size:1.1rem}
+.nrow small{display:block;color:var(--ink-soft);font-size:.72rem;margin-top:2px}
+
+/* drawing board */
+#dboard{width:100%;aspect-ratio:4/3;background:#fff;border:1px solid var(--bone-2);border-radius:16px;touch-action:none;display:block;box-shadow:0 1px 2px rgba(36,31,23,.03),0 8px 22px rgba(36,31,23,.05)}
+.dtools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.dcol{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer}
+.dcol.sel{border-color:var(--ink);transform:scale(1.12)}
+.dsize{border:1px solid var(--bone-2);background:#fff;border-radius:99px;padding:5px 12px;font-family:var(--body);font-size:.8rem;font-weight:700;cursor:pointer}
+.dsize.sel{background:var(--dusk);color:var(--marigold)}
+
+/* read receipts */
+.em .rr{display:block;font-size:.62rem;opacity:.75;margin-top:2px;text-align:right}
+.seenline{align-self:flex-end;font-size:.68rem;color:var(--ink-soft);margin-top:-4px}
+
 /* member profile sheet */
 .msheet{position:fixed;inset:0;background:rgba(24,38,34,.55);z-index:25;display:flex;align-items:center;justify-content:center;padding:20px}
 .msheet .mp{background:var(--day);border-radius:20px;max-width:380px;width:100%;padding:22px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.35)}
@@ -226,7 +250,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .member{cursor:pointer}
 
 /* Ekta floating icon — on every screen, one tap away */
-.fab{position:fixed;right:16px;bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom));z-index:7;border:0;border-radius:99px;background:var(--dusk);color:var(--marigold);font-family:var(--dev);font-size:1.5rem;width:58px;height:58px;cursor:pointer;box-shadow:0 10px 26px rgba(24,38,34,.4)}
+.fab{position:fixed;right:16px;bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom));z-index:7;border:0;border-radius:99px;background:var(--dusk);color:var(--marigold);font-family:var(--body);font-weight:700;font-size:1rem;padding:15px 20px;cursor:pointer;box-shadow:0 10px 26px rgba(24,38,34,.4)}
 
 /* game board */
 #board{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;margin-top:6px}
@@ -294,6 +318,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 <div class="bar">
   <button id="hamb" hidden aria-label="Open menu">☰</button>
   <span class="dev" aria-hidden="true">परवाह</span><b>Parwah</b>
+  <button id="bell" hidden aria-label="Notifications">🔔<i class="dot" id="bell-dot" hidden></i></button>
+  <a id="getapp" href="../get/" target="_blank" rel="noopener" aria-label="Install the Parwah app" title="Install the app">📲</a>
   <span class="who" id="who"></span>
 </div>
 
@@ -476,6 +502,25 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     </div>
   </section>
 
+  <!-- NOTIFICATIONS -->
+  <section id="pane-notifs" hidden>
+    <div id="nlist-view">
+      <p class="eyebrow" style="margin-top:0">Notifications</p>
+      <div class="feed" id="nlist"><div class="ev">Loading…</div></div>
+    </div>
+    <div id="ndetail" hidden>
+      <div class="ektahead">
+        <button class="cbtn ghost" id="nback" aria-label="Back to notifications">←</button>
+        <span><b id="nd-title"></b><small id="nd-time"></small></span>
+      </div>
+      <div class="card">
+        <p id="nd-body" style="font-size:1.02rem;color:var(--ink)"></p>
+        <p class="hint" id="nd-meta"></p>
+        <button class="go" id="nd-go" style="margin-top:14px"></button>
+      </div>
+    </div>
+  </section>
+
   <!-- TOGETHER: calls, plans, games -->
   <section id="pane-fun" hidden>
     <div class="ektahead"><span style="font-size:1.4rem" aria-hidden="true">🎉</span><span><b>Together</b><small>Calls, plans and games — distance is just a number</small></span></div>
@@ -483,13 +528,15 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <div class="seg pageseg" id="fun-seg" role="tablist" aria-label="Together sections">
       <button data-sec="plans" class="sel">🗓 Plans & calls</button>
       <button data-sec="games">🎲 Games</button>
+      <button data-sec="board">🎨 Board</button>
     </div>
     <div class="subsec" data-sec="plans">
     <div class="card">
       <h3>Get together now 📹</h3>
       <p>Opens a free video room for the whole circle — works everywhere in the world. Pick the vibe:</p>
       <div class="pkind" id="call-mode">
-        <button type="button" data-mode="talk" class="sel">📞 Just talk</button>
+        <button type="button" data-mode="talk" class="sel">📹 Video</button>
+        <button type="button" data-mode="audio">🎙 Voice only</button>
         <button type="button" data-mode="music">🎶 Music party</button>
         <button type="button" data-mode="watch">🎬 Movie/OTT night</button>
       </div>
@@ -608,10 +655,38 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       </div>
     </div>
     </div>
+
+    <div class="subsec" data-sec="board" hidden>
+    <div class="card">
+      <h3>Family drawing board 🎨</h3>
+      <p class="hint" style="margin:2px 0 10px">One shared canvas for the whole circle — doodle together on a call, leave little drawings for each other.</p>
+      <canvas id="dboard"></canvas>
+      <div class="dtools" id="dtools">
+        <button class="dcol sel" data-dc="#241F17" style="background:#241F17" aria-label="Ink"></button>
+        <button class="dcol" data-dc="#A64B2A" style="background:#A64B2A" aria-label="Sindoor"></button>
+        <button class="dcol" data-dc="#E8A23D" style="background:#E8A23D" aria-label="Marigold"></button>
+        <button class="dcol" data-dc="#24463C" style="background:#24463C" aria-label="Pine"></button>
+        <button class="dcol" data-dc="#3B6FB5" style="background:#3B6FB5" aria-label="Blue"></button>
+        <button class="dcol" data-dc="#FFFFFF" style="background:#fff;border-color:var(--bone-2)" aria-label="Eraser"></button>
+        <button class="dsize sel" data-ds="4">Fine</button>
+        <button class="dsize" data-ds="10">Bold</button>
+        <button class="dsize" data-ds="20">Big</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="cbtn" id="d-share">📤 Share to family chat</button>
+        <button class="cbtn no" id="d-clear">Wipe the board</button>
+      </div>
+    </div>
+    </div>
   </section>
 
   <!-- PROFILE -->
   <section id="pane-profile" hidden>
+    <div class="seg pageseg" id="profile-seg" role="tablist" aria-label="Profile sections">
+      <button data-sec="me" class="sel">👤 My profile</button>
+      <button data-sec="family">👨‍👩‍👧 Family members</button>
+    </div>
+    <div class="subsec" data-sec="me">
     <div class="card">
       <h3>You</h3>
       <div class="kv"><b>Name</b><span id="p-name"></span></div>
@@ -635,13 +710,17 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       </div>
     </div>
 
+    </div>
+    <div class="subsec" data-sec="family">
     <div class="card">
       <h3>Your circle</h3>
       <p style="margin-bottom:10px">Code: <span class="codechip" id="p-code"></span></p>
       <div class="members" id="members"></div>
       <button class="go invitebtn" style="margin-top:14px">🧡 Invite family</button>
+      <p class="hint" style="margin-top:10px">Tap any member to see their profile — call, message privately or set a reminder for them.</p>
     </div>
-
+    </div>
+        <div class="subsec" data-sec="me">
     <div class="card">
       <h3>Plan</h3>
       <span class="plantag">Free · Beta</span>
@@ -668,6 +747,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <h3>Privacy promise</h3>
       <p>Your circle is private. No ads, no data selling, no public feed. Everything shared here is visible only to the people in your circle — and anything set <i>for</i> someone starts only when they accept it.</p>
     </div>
+    </div>
   </section>
 </div>
 
@@ -687,6 +767,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   <div class="inner">
     <div class="side-brand side-only"><span class="dev" aria-hidden="true">परवाह</span><span>Parwah</span></div>
     <button data-tab="home" class="sel"><span class="ic" aria-hidden="true">🏠</span>Home</button>
+    <button data-tab="notifs" class="deskonly" id="side-nb" style="position:relative"><span class="ic" aria-hidden="true">🔔</span>Notifications<i class="dot" id="nb-dot2" hidden></i></button>
     <button data-tab="care"><span class="ic" aria-hidden="true">🔔</span>Care<i class="dot" id="care-dot" hidden></i></button>
     <div class="subnav side-only" data-parent="care">
       <button data-tab="care" data-sec="rem">Reminders</button>
@@ -698,8 +779,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <div class="subnav side-only" data-parent="fun">
       <button data-tab="fun" data-sec="plans">Plans &amp; calls</button>
       <button data-tab="fun" data-sec="games">Games</button>
+      <button data-tab="fun" data-sec="board">Drawing board</button>
     </div>
     <button data-tab="profile" class="deskonly"><span class="ic" aria-hidden="true">👤</span>Profile</button>
+    <div class="subnav side-only" data-parent="profile">
+      <button data-tab="profile" data-sec="me">My profile</button>
+      <button data-tab="profile" data-sec="family">Family members</button>
+    </div>
     <div class="side-user side-only" id="side-user"></div>
   </div>
 </nav>
@@ -724,6 +810,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   <div class="dpanel">
     <div class="dhead"><span class="dev" aria-hidden="true">परवाह</span> Parwah <button class="x" id="drawer-x" aria-label="Close menu">✕</button></div>
     <button class="ditem" data-tab="home">🏠 Home</button>
+    <button class="ditem" data-tab="notifs">🔔 Notifications</button>
     <div class="dgroup">
       <button class="ditem dparent" data-grp="care">🔔 Care <span class="caret">▾</span></button>
       <div class="dsub">
@@ -738,15 +825,22 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <div class="dsub">
         <button class="ditem sub" data-tab="fun" data-sec="plans">Plans &amp; calls</button>
         <button class="ditem sub" data-tab="fun" data-sec="games">Games</button>
+        <button class="ditem sub" data-tab="fun" data-sec="board">Drawing board</button>
       </div>
     </div>
-    <button class="ditem" data-tab="profile">👤 Profile</button>
+    <div class="dgroup">
+      <button class="ditem dparent" data-grp="profile">👤 Profile <span class="caret">▾</span></button>
+      <div class="dsub">
+        <button class="ditem sub" data-tab="profile" data-sec="me">My profile</button>
+        <button class="ditem sub" data-tab="profile" data-sec="family">Family members</button>
+      </div>
+    </div>
     <a class="ditem" href="../get/" target="_blank" rel="noopener">📲 Get the app</a>
     <div class="dfoot" id="d-user"></div>
   </div>
 </div>
 
-<button class="fab" id="ekta-fab" hidden aria-label="Ask Ekta">ए</button>
+<button class="fab" id="ekta-fab" hidden aria-label="Ask Ekta">✨ Ekta</button>
 
 <div class="toast" id="toast" role="status"></div>
 
@@ -754,11 +848,12 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 (function(){
   var $ = function(id){ return document.getElementById(id); };
   var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth' };
-  var TABS = ['home','care','chat','ekta','profile','fun'];
+  var TABS = ['home','care','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
   var curChat = null, chatsCache = [], membersCache = [];
   var authUser = null, pendingJoin = null;
+  var seenAt = null, notifsCache = [], curNotif = null;
   function loadAuth(){ try { return JSON.parse(localStorage.getItem('parwah-user') || 'null'); } catch (e) { return null; } }
   function saveAuth(u){ try { localStorage.setItem('parwah-user', JSON.stringify(u)); } catch (e) {} }
   function clearAuth(){ try { localStorage.removeItem('parwah-user'); } catch (e) {} }
@@ -798,7 +893,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     document.querySelectorAll('#drawer .ditem[data-tab]').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-tab') === t && !b.dataset.sec);
     });
-    if (t === 'care' || t === 'fun') {
+    if (t === 'care' || t === 'fun' || t === 'profile') {
       var seg = $(t + '-seg'), cur = seg && seg.querySelector('.sel');
       if (cur) setSec(t, cur.getAttribute('data-sec'));
     }
@@ -806,8 +901,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     setInputMode();
     $('ekta-fab').hidden = !document.body.classList.contains('inapp') || t === 'ekta' || (t === 'chat' && !!curChat);
     if (t !== 'ekta' && window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (e) {} }
-    if (t === 'fun') { refreshFun(); clearInterval(gameTimer); gameTimer = setInterval(refreshFun, 3000); }
+    if (t === 'fun') { refreshFun(); boardSync(); clearInterval(gameTimer); gameTimer = setInterval(function(){ refreshFun(); boardSync(); }, 3000); }
     else clearInterval(gameTimer);
+    if (t === 'notifs') { $('ndetail').hidden = true; $('nlist-view').hidden = false; renderNotifs(); markSeen(); }
     try { history.replaceState(null, '', '#' + t); } catch(e) {}
     window.scrollTo(0, 0);
   }
@@ -820,7 +916,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       b.classList.toggle('sel', b.getAttribute('data-sec') === sec);
     });
   }
-  ['care', 'fun'].forEach(function(pane){
+  ['care', 'fun', 'profile'].forEach(function(pane){
     $(pane + '-seg').addEventListener('click', function(e){
       var b = e.target.closest('button'); if (b) setSec(pane, b.getAttribute('data-sec'));
     });
@@ -934,13 +1030,86 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('hero-status').textContent = sos ? '🆘 SOS today — see Family activity and call now'
       : ins.length ? '✅ ' + ins.join(' & ') + ' checked in today'
       : '🕊 No check-ins yet today — say good morning in chat';
+
+    notifsCache = data.events;
+    renderNotifs();
   }
+
+  // ---------- notifications ----------
+  function notifIcon(e){
+    if (e.type === 'sos') return '🆘';
+    if (e.type === 'checkin') return '✅';
+    if (e.type === 'pill') return '💊';
+    if (e.type === 'join') return '🙋';
+    var t = (e.text || '');
+    if (/reminder/i.test(t)) return '🔔';
+    if (/asked the circle|is on it|finished/i.test(t)) return '🤝';
+    if (/Saanp|Antakshari|Charades|Tic-Tac|game/i.test(t)) return '🎲';
+    if (/planned|cancelled|is in for/i.test(t)) return '🗓';
+    if (/board/i.test(t)) return '🎨';
+    return '🧡';
+  }
+  function notifDest(e){
+    var t = (e.text || '');
+    if (e.type === 'sos' || e.type === 'checkin' || e.type === 'pill') return { tab: 'home', label: 'Open Home' };
+    if (/reminder/i.test(t)) return { tab: 'care', sec: 'rem', label: 'Open Reminders' };
+    if (/asked the circle|is on it|finished/i.test(t)) return { tab: 'care', sec: 'req', label: 'Open Help requests' };
+    if (/Saanp|Antakshari|Charades|Tic-Tac|game/i.test(t)) return { tab: 'fun', sec: 'games', label: 'Open Games' };
+    if (/planned|cancelled|is in for/i.test(t)) return { tab: 'fun', sec: 'plans', label: 'Open Plans' };
+    if (/board/i.test(t)) return { tab: 'fun', sec: 'board', label: 'Open the Board' };
+    if (e.type === 'join') return { tab: 'profile', label: 'See the circle' };
+    return { tab: 'chat', label: 'Open Chat' };
+  }
+  function isUnread(e){
+    if (e.member_id === state.memberId) return false;
+    return !seenAt || new Date(e.created_at) > new Date(seenAt);
+  }
+  function renderNotifs(){
+    var unread = 0, h = '';
+    notifsCache.forEach(function(e, i){
+      var un = isUnread(e);
+      if (un) unread++;
+      var l = evLine(e);
+      h += '<div class="nrow' + (un ? ' unread' : '') + '" data-notif="' + i + '"><span class="nic" aria-hidden="true">' + notifIcon(e) + '</span><span style="flex:1">' + esc(l.text) + '<small>' + esc(fmtTime(e.created_at)) + '</small></span></div>';
+    });
+    $('nlist').innerHTML = h || '<div class="ev">All quiet — nothing yet.</div>';
+    [$('bell-dot'), $('nb-dot2')].forEach(function(d){
+      if (!d) return;
+      if (unread > 0) { d.textContent = unread > 9 ? '9+' : unread; d.hidden = false; }
+      else d.hidden = true;
+    });
+  }
+  function openNotif(i){
+    var e = notifsCache[i]; if (!e) return;
+    curNotif = e;
+    var l = evLine(e);
+    $('nd-title').textContent = notifIcon(e) + ' ' + (e.member_name || 'Circle update');
+    $('nd-time').textContent = fmtTime(e.created_at);
+    $('nd-body').textContent = l.text;
+    $('nd-meta').textContent = 'Type: ' + e.type + (e.member_role ? ' · from a ' + e.member_role + ' member' : '');
+    var d = notifDest(e);
+    $('nd-go').textContent = d.label + ' →';
+    $('nd-go').onclick = function(){ switchTab(d.tab); if (d.sec) setSec(d.tab, d.sec); };
+    $('nlist-view').hidden = true;
+    $('ndetail').hidden = false;
+  }
+  document.addEventListener('click', function(e){
+    var n = e.target.closest('[data-notif]');
+    if (n) openNotif(+n.getAttribute('data-notif'));
+  });
+  $('nback').addEventListener('click', function(){ $('ndetail').hidden = true; $('nlist-view').hidden = false; });
+  function markSeen(){
+    post(API.events, { code: state.code, memberId: state.memberId, type: 'seen' })
+      .then(function(){ seenAt = new Date().toISOString(); [$('bell-dot'), $('nb-dot2')].forEach(function(d){ if (d) d.hidden = true; }); })
+      .catch(function(){});
+  }
+  $('bell').addEventListener('click', function(){ switchTab('notifs'); });
 
   function refresh(){
     if (!state) return;
-    fetch(API.events + '?circle=' + encodeURIComponent(state.code))
+    fetch(API.events + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); })
-      .then(function(j){ if (j.ok) { render(j); renderForSelect(j.members); } })
+      .then(function(j){ if (j.ok) { seenAt = j.seenAt || seenAt; render(j); renderForSelect(j.members); } })
       .catch(function(){ /* offline — keep last render */ });
     fetch(API.care + '?circle=' + encodeURIComponent(state.code))
       .then(function(r){ return r.json(); })
@@ -1006,8 +1175,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       .then(function(r){ return r.json(); })
       .then(function(j){
         if (!j.ok || !curChat) return;
+        var reads = (j.reads || []).filter(function(r){ return r.member_id !== state.memberId; });
         var h = '', lastDay = '';
-        j.messages.forEach(function(m){
+        j.messages.forEach(function(m, mi){
           var day = fmtDue(String(m.created_at).slice(0, 10));
           if (day && day !== lastDay) { h += '<div class="dsep">' + esc(day) + '</div>'; lastDay = day; }
           var mine = m.member_id === state.memberId;
@@ -1015,9 +1185,14 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
           var body = (m.kind === 'image' && /^data:image\//.test(m.text))
             ? '<img src="' + m.text + '" alt="Photo" style="max-width:100%;border-radius:10px;display:block">'
             : esc(m.text);
+          var seenBy = reads.filter(function(r){ return r.member_id !== m.member_id && new Date(r.read_at) >= new Date(m.created_at); });
+          var tick = mine ? '<span class="rr">' + (seenBy.length ? '✓✓ seen' : '✓ sent') + '</span>' : '';
           h += '<div class="em ' + (mine ? 'u' : 'a') + (ekta ? ' ekta' : '') + '">' +
                (mine ? '' : '<span class="from">' + esc(m.name) + '</span>') + body +
-               '<small class="mt">' + esc(fmtTime(m.created_at)) + '</small></div>';
+               '<small class="mt">' + esc(fmtTime(m.created_at)) + '</small>' + tick + '</div>';
+          if (mi === j.messages.length - 1 && seenBy.length) {
+            h += '<div class="seenline">Seen by ' + esc(seenBy.map(function(r){ return r.name; }).join(', ')) + '</div>';
+          }
         });
         $('cmsgs').innerHTML = h || '<div class="em a">Say hello 🧡</div>';
         var box = $('cmsgs'); box.scrollTop = box.scrollHeight;
@@ -1146,6 +1321,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('side-user').textContent = state.name + ' · ' + state.code;
     $('d-user').textContent = state.name + ' · ' + state.code;
     $('hamb').hidden = false;
+    $('bell').hidden = false;
     $('p-name').textContent = state.name;
     $('p-phone').textContent = (authUser && authUser.phone) || '—';
     $('p-role').textContent = state.role === 'parent' ? 'Parent (senior mode)' : 'Family';
@@ -1467,13 +1643,15 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var b = e.target.closest('button'); if (!b) return;
     callMode = b.getAttribute('data-mode');
     this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
-    $('call-link').hidden = callMode === 'talk';
+    $('call-link').hidden = callMode === 'talk' || callMode === 'audio';
   });
   function startCall(){
     var room = 'https://meet.jit.si/parwah-' + state.code.toLowerCase() + '-' + Math.random().toString(36).slice(2, 8);
     var link = ($('call-link').value || '').trim().slice(0, 300);
+    if (callMode === 'audio') room += '#config.startAudioOnly=true&config.startWithVideoMuted=true';
     var head = callMode === 'music' ? '🎶 ' + state.name + ' started a MUSIC PARTY'
              : callMode === 'watch' ? '🎬 ' + state.name + ' started a MOVIE/OTT NIGHT'
+             : callMode === 'audio' ? '🎙 ' + state.name + ' started a family VOICE call (no camera needed)'
              : '📹 ' + state.name + ' started a family call';
     var msgTxt = head + ' — tap to join: ' + room +
       (link && callMode !== 'talk' ? '\n▶ We are playing: ' + link : '') +
@@ -1859,6 +2037,110 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
             .catch(function(){ toast('No connection — try again'); });
         } else done();
       })
+      .catch(function(){ toast('No connection — try again'); });
+  });
+
+  // ---------- drawing board ----------
+  var API_BOARD = '../api/board';
+  var dColor = '#241F17', dSize = 4, dLastTs = null, dStrokeIds = {}, drawing = null, dReady = false;
+  function boardCanvas(){ return $('dboard'); }
+  function boardCtx(){ return boardCanvas().getContext('2d'); }
+  function boardFit(){
+    var cv = boardCanvas(), w = cv.clientWidth;
+    if (!w) return;
+    var dpr = window.devicePixelRatio || 1, h = Math.round(w * 0.75);
+    if (cv.width !== Math.round(w * dpr)) {
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      boardCtx().scale(dpr, dpr);
+      dLastTs = null; dStrokeIds = {}; // repaint everything at the new size
+    }
+  }
+  function drawStroke(st){
+    var cv = boardCanvas(), ctx = boardCtx(), w = cv.clientWidth, h = cv.clientHeight;
+    if (!st || !st.p || st.p.length < 2) return;
+    ctx.strokeStyle = st.c; ctx.lineWidth = st.s; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(st.p[0][0] * w, st.p[0][1] * h);
+    for (var i = 1; i < st.p.length; i++) ctx.lineTo(st.p[i][0] * w, st.p[i][1] * h);
+    ctx.stroke();
+  }
+  var dClearedAt = null;
+  function boardSync(){
+    if (!state || $('pane-fun').hidden) return;
+    var sec = document.querySelector('#pane-fun .subsec[data-sec="board"]');
+    if (!sec || sec.hidden) return;
+    boardFit();
+    var url = API_BOARD + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + (dLastTs ? '&after=' + encodeURIComponent(dLastTs) : '');
+    fetch(url).then(function(r){ return r.json(); }).then(function(j){
+      if (!j.ok) return;
+      if (j.clearedAt && j.clearedAt !== dClearedAt) {
+        if (dClearedAt !== null) { var cv = boardCanvas(); boardCtx().clearRect(0, 0, cv.clientWidth, cv.clientHeight); dStrokeIds = {}; dLastTs = null; }
+        dClearedAt = j.clearedAt;
+        if (dLastTs === null && j.strokes && !j.strokes.length) return;
+      }
+      (j.strokes || []).forEach(function(row){
+        if (dStrokeIds[row.id]) return;
+        dStrokeIds[row.id] = 1;
+        drawStroke(row.stroke);
+        dLastTs = row.created_at;
+      });
+    }).catch(function(){});
+  }
+  (function(){
+    var cv = boardCanvas();
+    function pos(e){
+      var r = cv.getBoundingClientRect();
+      return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height];
+    }
+    cv.addEventListener('pointerdown', function(e){
+      e.preventDefault(); cv.setPointerCapture(e.pointerId);
+      drawing = { p: [pos(e)], c: dColor, s: dSize };
+    });
+    cv.addEventListener('pointermove', function(e){
+      if (!drawing) return;
+      var p = pos(e);
+      var last = drawing.p[drawing.p.length - 1];
+      drawing.p.push(p);
+      var ctx = boardCtx(), w = cv.clientWidth, h = cv.clientHeight;
+      ctx.strokeStyle = drawing.c; ctx.lineWidth = drawing.s; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(last[0] * w, last[1] * h); ctx.lineTo(p[0] * w, p[1] * h); ctx.stroke();
+    });
+    function up(){
+      if (!drawing) return;
+      var st = drawing; drawing = null;
+      if (st.p.length < 2) return;
+      post(API_BOARD, { code: state.code, memberId: state.memberId, action: 'stroke', points: st.p, color: st.c, size: st.s })
+        .then(function(j){ if (j.ok) { dStrokeIds[j.id] = 1; dLastTs = j.created_at; } })
+        .catch(function(){ toast('Stroke not saved — no connection'); });
+    }
+    cv.addEventListener('pointerup', up);
+    cv.addEventListener('pointercancel', function(){ drawing = null; });
+  })();
+  $('dtools').addEventListener('click', function(e){
+    var c = e.target.closest('.dcol');
+    if (c) { dColor = c.getAttribute('data-dc'); this.querySelectorAll('.dcol').forEach(function(x){ x.classList.toggle('sel', x === c); }); return; }
+    var z = e.target.closest('.dsize');
+    if (z) { dSize = +z.getAttribute('data-ds'); this.querySelectorAll('.dsize').forEach(function(x){ x.classList.toggle('sel', x === z); }); }
+  });
+  $('d-clear').addEventListener('click', function(){
+    if (!confirm('Wipe the board for everyone?')) return;
+    post(API_BOARD, { code: state.code, memberId: state.memberId, action: 'clear' })
+      .then(function(j){
+        if (j.ok) { var cv = boardCanvas(); boardCtx().clearRect(0, 0, cv.clientWidth, cv.clientHeight); dStrokeIds = {}; dLastTs = null; toast('Board wiped 🎨'); }
+      }).catch(function(){ toast('No connection — try again'); });
+  });
+  $('d-share').addEventListener('click', function(){
+    var cv = boardCanvas();
+    var out = document.createElement('canvas');
+    out.width = cv.width; out.height = cv.height;
+    var octx = out.getContext('2d');
+    octx.fillStyle = '#FFFFFF'; octx.fillRect(0, 0, out.width, out.height);
+    octx.drawImage(cv, 0, 0);
+    var data = out.toDataURL('image/jpeg', 0.8);
+    var fam = null; chatsCache.forEach(function(x){ if (x.kind === 'circle') fam = x; });
+    if (!fam) { toast('Chat not ready yet — try again'); return; }
+    post(API.chats, { code: state.code, memberId: state.memberId, action: 'send', chatId: fam.id, kind: 'image', text: data })
+      .then(function(j){ if (j.ok) { toast('Masterpiece shared to the family chat 🧡'); refreshChats(); } else toast(j.error || 'Could not share'); })
       .catch(function(){ toast('No connection — try again'); });
   });
 

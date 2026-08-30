@@ -19,13 +19,28 @@ export default async function handler(req, res) {
         from events e left join members m on m.id = e.member_id
         where e.circle_id = ${circle.id}
         order by e.created_at desc limit 50`;
-      return res.status(200).json({ ok: true, circleName: circle.name, code: circle.code, members, events });
+      let seenAt = null;
+      const member = req.query && req.query.member;
+      if (isUuid(member)) {
+        const sr = await sql`select ns.seen_at from notif_seen ns join members m on m.id = ns.member_id
+                             where ns.member_id = ${member} and m.circle_id = ${circle.id}`;
+        seenAt = sr[0] ? sr[0].seen_at : null;
+      }
+      return res.status(200).json({ ok: true, circleName: circle.name, code: circle.code, members, events, seenAt });
     }
 
     if (req.method === 'POST') {
       const { code, memberId, type, text } = req.body || {};
       const circle = await circleByCode(sql, code);
       if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
+      if (type === 'seen') {
+        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        const mm = await sql`select id from members where id = ${memberId} and circle_id = ${circle.id}`;
+        if (!mm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        await sql`insert into notif_seen (member_id, seen_at) values (${memberId}, now())
+                  on conflict (member_id) do update set seen_at = now()`;
+        return res.status(200).json({ ok: true });
+      }
       if (!TYPES.includes(type)) return res.status(400).json({ ok: false, error: 'Unknown event type' });
       if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
       const member = await sql`select id from members where id = ${memberId} and circle_id = ${circle.id}`;

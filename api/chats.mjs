@@ -112,7 +112,14 @@ export default async function handler(req, res) {
           from messages m left join members mem on mem.id = m.member_id
           where m.chat_id = ${chat.id}
           order by m.created_at desc limit 50`;
-        return res.status(200).json({ ok: true, chat: { id: chat.id, kind: chat.kind, name: chat.name }, messages: msgs.reverse() });
+        // Viewing the chat marks it read — receipts are always on, by design.
+        await sql`insert into chat_reads (chat_id, member_id, read_at) values (${chat.id}, ${me.id}, now())
+                  on conflict (chat_id, member_id) do update set read_at = now()`;
+        const reads = await sql`
+          select r.member_id, r.read_at, m.name
+          from chat_reads r join members m on m.id = r.member_id
+          where r.chat_id = ${chat.id}`;
+        return res.status(200).json({ ok: true, chat: { id: chat.id, kind: chat.kind, name: chat.name }, messages: msgs.reverse(), reads });
       }
       const chats = await listChats(sql, circle, me);
       return res.status(200).json({ ok: true, chats });
