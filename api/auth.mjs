@@ -11,7 +11,8 @@ import { db, ensureSchema, isUuid, normPhone, phoneError } from './_db.mjs';
 
 async function circlesOf(sql, userId) {
   return await sql`
-    select c.code, c.name as "circleName", m.id as "memberId", m.role, m.name as "memberName"
+    select c.code, c.name as "circleName", m.id as "memberId", m.role, m.name as "memberName",
+           (select count(*)::int from members mm where mm.circle_id = c.id) as "memberCount"
     from members m join circles c on c.id = m.circle_id
     where m.user_id = ${userId}
     order by m.created_at desc`;

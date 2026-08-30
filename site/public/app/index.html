@@ -411,9 +411,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   <div id="circle-step" hidden>
     <div class="card">
       <h3 id="cs-hello">Welcome back! 🧡</h3>
-      <p class="hint" style="margin:0 0 10px">Your circles:</p>
+      <p class="hint" id="cs-sub" style="margin:0 0 10px">Your families and groups:</p>
       <div class="feed" id="cs-list"></div>
       <button class="linkbtn" id="cs-new">＋ Create or join another circle</button>
+      <button class="linkbtn" id="cs-out" style="margin-left:16px;color:var(--alert)">Sign out</button>
     </div>
   </div>
 
@@ -1772,12 +1773,22 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       try { $('j-name').focus(); } catch (e) {}
       return;
     }
-    if (circles && circles.length === 1) { enterCircle(circles[0]); return; }
-    if (circles && circles.length > 1) {
+    // Signing in always lands on the list of families and groups this number
+    // belongs to — never straight into one of them, even when there is only
+    // one, so the person can always see and choose where they are going.
+    if (circles && circles.length) {
       $('cs-hello').textContent = 'Welcome back, ' + authUser.name + '! 🧡';
+      $('cs-sub').textContent = circles.length === 1
+        ? 'You are in 1 circle — tap to open it.'
+        : 'You are in ' + circles.length + ' circles — tap any one to open it.';
       var h = '';
       circles.forEach(function(c, i){
-        h += '<button class="chatrow" data-encircle="' + i + '"><span class="cic" aria-hidden="true">🧡</span><span class="txt"><b>' + esc(c.circleName) + '</b><small>code ' + esc(c.code) + ' · as ' + esc(c.memberName || authUser.name) + '</small></span></button>';
+        var n = c.memberCount || 0;
+        h += '<button class="chatrow" data-encircle="' + i + '"><span class="cic" aria-hidden="true">🧡</span>' +
+             '<span class="txt"><b>' + esc(c.circleName) + '</b><small>' +
+             (n ? n + (n === 1 ? ' member' : ' members') + ' · ' : '') +
+             'code ' + esc(c.code) + ' · you are ' + esc(c.memberName || authUser.name) +
+             '</small></span></button>';
       });
       $('cs-list').innerHTML = h;
       window._authCircles = circles;
@@ -1825,6 +1836,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     }
   }
   $('signout').addEventListener('click', doSignOut);
+  $('cs-out').addEventListener('click', doSignOut);
   $('side-so').addEventListener('click', doSignOut);
   $('d-so').addEventListener('click', doSignOut);
 
