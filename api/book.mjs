@@ -14,7 +14,7 @@
 //   doctor / meds / allergies / blood group / emergency contact / insurance
 //   are recorded, missing, or due a re-check.
 // POST /api/book {code, memberId, action:'add'|'update'|'remove'|'verify'}
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, normPhone, phoneError } from './_db.mjs';
 
 const KINDS = ['contact', 'address', 'med', 'fact', 'insurance'];
 const CATS = ['housework', 'doctor', 'vet', 'driver', 'shops', 'repairs', 'emergency', 'other'];
@@ -128,7 +128,11 @@ export default async function handler(req, res) {
         about = aRow[0].id;
       }
       let phone = clean(body.phone, 20);
-      if (phone && !/^[+()\-\s0-9]{7,20}$/.test(phone)) return res.status(400).json({ ok: false, error: 'That does not look like a phone number' });
+      if (phone) {
+        const pp = normPhone(phone, body.phoneCc);
+        if (!pp) return res.status(400).json({ ok: false, error: phoneError(body.phoneCc) });
+        phone = pp.e164;
+      }
       const address = clean(body.address, 300);
       const forwhat = clean(body.forwhat, 160);
       const notes = clean(body.notes, 300);

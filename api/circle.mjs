@@ -1,5 +1,5 @@
 // POST /api/circle — create a care circle or join one with its code.
-import { db, ensureSchema, makeCode, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, makeCode, circleByCode, isUuid, normPhone, phoneError } from './_db.mjs';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -28,9 +28,15 @@ export default async function handler(req, res) {
   const uid = isUuid(userId) ? userId : null;
   const name = String(memberName || '').trim().slice(0, 60);
   const r = role === 'parent' ? 'parent' : 'family';
-  // Optional phone number — powers the 📞 call buttons; digits/+/()/-/space only.
-  let ph = String(phone || '').trim();
-  ph = /^[+()\-\s0-9]{7,20}$/.test(ph) ? ph : null;
+  // Optional phone — country code kept separate, local number validated
+  // against that country's rules. Invalid input is REJECTED, never silently
+  // dropped, so a typo cannot masquerade as "no number".
+  let ph = null, phCc = null, phLocal = null;
+  if (String(phone || '').trim()) {
+    const pp = normPhone(phone, req.body.phoneCc);
+    if (!pp) return res.status(400).json({ ok: false, error: phoneError(req.body.phoneCc) });
+    ph = pp.e164; phCc = pp.cc; phLocal = pp.local;
+  }
   const NAMELESS = ['update_member', 'leave', 'set_code'];
   if (!name && !NAMELESS.includes(action)) return res.status(400).json({ ok: false, error: 'Please tell us your name' });
 
@@ -42,6 +48,8 @@ export default async function handler(req, res) {
       user = u[0] || null;
     }
     const memberPhone = ph || (user && user.phone) || null;
+    const mp = memberPhone ? normPhone(memberPhone) : null;
+    const memberCc = mp ? mp.cc : null, memberLocal = mp ? mp.local : null;
     if (action === 'create') {
       const cname = String(circleName || '').trim().slice(0, 60) || (name + "'s family");
       let circle = null;
@@ -53,7 +61,7 @@ export default async function handler(req, res) {
         } catch (e) { /* code collision — retry with a new code */ }
       }
       if (!circle) return res.status(500).json({ ok: false, error: 'Could not create the circle, please try again' });
-      const m = await sql`insert into members (circle_id, name, role, phone, user_id, relation) values (${circle.id}, ${name}, ${r}, ${memberPhone}, ${user ? user.id : null}, ${relation}) returning id`;
+      const m = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation) values (${circle.id}, ${name}, ${r}, ${memberPhone}, ${memberCc}, ${memberLocal}, ${user ? user.id : null}, ${relation}) returning id`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${m[0].id}, 'join', ${name + ' created the circle'})`;
       return res.status(201).json({ ok: true, code: circle.code, circleName: circle.name, memberId: m[0].id, role: r });
@@ -72,7 +80,8 @@ export default async function handler(req, res) {
         const myDigits = String(user.phone).replace(/\D/g, '').slice(-10);
         const legacy = unlinked.find(x => String(x.phone).replace(/\D/g, '').slice(-10) === myDigits);
         if (legacy) {
-          await sql`update members set user_id = ${user.id}, phone = ${user.phone} where id = ${legacy.id}`;
+          const lp = normPhone(user.phone);
+          await sql`update members set user_id = ${user.id}, phone = ${user.phone}, phone_cc = ${lp ? lp.cc : null}, phone_local = ${lp ? lp.local : null} where id = ${legacy.id}`;
           return res.status(200).json({ ok: true, code: circle.code, circleName: circle.name, memberId: legacy.id, role: legacy.role });
         }
       }
@@ -84,7 +93,7 @@ export default async function handler(req, res) {
         const dupPhone = await sql`select id from members where circle_id = ${circle.id} and phone = ${memberPhone}`;
         if (dupPhone[0]) return res.status(409).json({ ok: false, error: 'This mobile number is already in the circle — sign in with it instead' });
       }
-      const m = await sql`insert into members (circle_id, name, role, phone, user_id, relation) values (${circle.id}, ${name}, ${r}, ${memberPhone}, ${user ? user.id : null}, ${relation}) returning id`;
+      const m = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation) values (${circle.id}, ${name}, ${r}, ${memberPhone}, ${memberCc}, ${memberLocal}, ${user ? user.id : null}, ${relation}) returning id`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${m[0].id}, 'join', ${name + ' joined the circle'})`;
       return res.status(200).json({ ok: true, code: circle.code, circleName: circle.name, memberId: m[0].id, role: r });
@@ -147,7 +156,8 @@ export default async function handler(req, res) {
       const newCountry = req.body.country !== undefined
         ? (/^[A-Z]{2}$/.test(String(req.body.country || '')) ? req.body.country : null)
         : cur.country;
-      await sql`update members set name = ${newName}, role = ${newRole}, phone = ${newPhone}, place = ${newPlace}, country = ${newCountry}, relation = ${newRelation}, gift_info = ${newGift ? JSON.stringify(newGift) : null}::jsonb where id = ${cur.id}`;
+      const npm = newPhone ? normPhone(newPhone) : null;
+      await sql`update members set name = ${newName}, role = ${newRole}, phone = ${newPhone}, phone_cc = ${npm ? npm.cc : null}, phone_local = ${npm ? npm.local : null}, place = ${newPlace}, country = ${newCountry}, relation = ${newRelation}, gift_info = ${newGift ? JSON.stringify(newGift) : null}::jsonb where id = ${cur.id}`;
       // One person, one home, one number — keep their other family/group
       // memberships consistent. Place/country always follow the person;
       // the phone follows only rows still carrying the old value (a circle
@@ -161,7 +171,7 @@ export default async function handler(req, res) {
           await sql`update members set gift_info = ${newGift ? JSON.stringify(newGift) : null}::jsonb where user_id = ${cur.user_id} and id <> ${cur.id}`;
         }
         if (ph !== null && ph !== cur.phone) {
-          await sql`update members set phone = ${ph} where user_id = ${cur.user_id} and id <> ${cur.id} and (phone is null or phone = ${cur.phone})`;
+          await sql`update members set phone = ${ph}, phone_cc = ${phCc}, phone_local = ${phLocal} where user_id = ${cur.user_id} and id <> ${cur.id} and (phone is null or phone = ${cur.phone})`;
         }
       }
       if (newName !== cur.name || newRole !== cur.role) {

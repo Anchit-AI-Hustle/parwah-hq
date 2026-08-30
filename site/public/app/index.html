@@ -238,6 +238,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .sidehead{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);padding:16px 14px 2px}
 .side-so{border:0;background:none;color:var(--dim);font-family:var(--body);font-size:.8rem;text-align:left;padding:8px 14px 14px;cursor:pointer}
 .side-so:hover{color:#E8A23D}
+.phrow{display:flex;gap:8px}
+.phrow .ccsel{width:118px;min-width:118px;flex:0 0 auto}
+.phrow input{flex:1;min-width:0}
 .mentionbox{position:absolute;bottom:100%;left:0;right:0;background:#fff;border:1px solid var(--bone-2);border-radius:14px 14px 0 0;box-shadow:0 -6px 18px rgba(36,31,23,.1);display:flex;flex-wrap:wrap;gap:6px;padding:10px}
 .mentionbox button{border:1px solid var(--bone-2);background:var(--day);border-radius:99px;padding:6px 12px;font-family:var(--body);font-weight:600;font-size:.85rem;cursor:pointer;color:var(--ink)}
 .mentionbox button:hover{border-color:var(--marigold);background:#FDF4E3}
@@ -393,7 +396,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   <div class="card" id="auth-step">
     <h3>Sign in with your mobile number</h3>
     <label for="au-phone">Mobile number</label>
-    <input type="tel" id="au-phone" maxlength="20" placeholder="+91 98765 43210" autocomplete="tel">
+    <div class="phrow">
+      <select id="au-cc" class="ccsel" aria-label="Country code"></select>
+      <input type="tel" id="au-phone" maxlength="14" placeholder="98765 43210" autocomplete="tel">
+    </div>
     <div id="au-namewrap" hidden>
       <label for="au-name">Your name — new number, we'll create your profile</label>
       <input type="text" id="au-name" maxlength="60" placeholder="e.g. Rohan" autocomplete="name">
@@ -602,7 +608,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
             <option value="other" selected>📦 Other</option>
           </select>
           <label for="b-phone">Phone</label>
-          <input type="tel" id="b-phone" maxlength="20" placeholder="e.g. 98100 12345">
+          <div class="phrow">
+            <select id="b-cc" class="ccsel" aria-label="Country code"></select>
+            <input type="tel" id="b-phone" maxlength="14" placeholder="e.g. 98100 12345">
+          </div>
         </div>
         <div id="bf-address" hidden>
           <label for="b-address">Full address</label>
@@ -904,7 +913,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         <label for="e-name">Name in this circle</label>
         <input type="text" id="e-name" maxlength="60">
         <label for="e-phone">Mobile number (your sign-in)</label>
-        <input type="tel" id="e-phone" maxlength="20">
+        <div class="phrow">
+          <select id="e-cc" class="ccsel" aria-label="Country code"></select>
+          <input type="tel" id="e-phone" maxlength="14">
+        </div>
         <label for="e-place">Where do you stay? (city)</label>
         <input type="text" id="e-place" maxlength="80" placeholder="e.g. Pune">
         <label for="e-country">Country</label>
@@ -1756,10 +1768,11 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     showStep('setup');
   }
   $('au-go').addEventListener('click', function(){
-    var phone = $('au-phone').value.trim();
-    if (!phone) { $('ob-err').textContent = 'Please enter your mobile number.'; return; }
+    var phone = $('au-phone').value.trim(), cc = $('au-cc').value;
+    var perr = phoneCheck(cc, phone);
+    if (perr) { $('ob-err').textContent = perr; return; }
     var btn = this; btn.disabled = true; $('ob-err').textContent = '';
-    post(API.auth, { action: 'enter', phone: phone, name: $('au-name').value.trim() })
+    post(API.auth, { action: 'enter', phone: phone, cc: cc, name: $('au-name').value.trim() })
       .then(function(j){
         btn.disabled = false;
         if (!j.ok) { $('ob-err').textContent = j.error || 'Could not sign you in.'; return; }
@@ -2024,11 +2037,15 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   $('b-save').addEventListener('click', function(){
     var nm = $('b-name').value.trim();
     if (!nm) { toast('Give the entry a name'); return; }
+    if (bKind === 'contact' && $('b-phone').value.trim()) {
+      var bperr = phoneCheck($('b-cc').value, $('b-phone').value.trim());
+      if (bperr) { toast(bperr); return; }
+    }
     var body = { code: state.code, memberId: state.memberId, action: bEditId ? 'update' : 'add', id: bEditId || undefined,
                  kind: bKind, name: nm,
                  category: bKind === 'fact' ? $('b-factcat').value : $('b-cat').value,
                  aboutId: $('b-about').value || undefined,
-                 phone: $('b-phone').value.trim() || undefined,
+                 phone: $('b-phone').value.trim() || undefined, phoneCc: $('b-cc').value,
                  address: $('b-address').value.trim() || undefined, forwhat: $('b-for').value.trim() || undefined,
                  notes: $('b-notes').value.trim() || undefined };
     post(API.book, body)
@@ -2066,7 +2083,11 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var e = bookEntry($('book-detail').dataset.bid); if (!e) return;
     setBKind(e.kind);
     bEditId = e.id;
-    $('b-name').value = e.name; $('b-phone').value = e.phone || ''; $('b-address').value = e.address || '';
+    $('b-name').value = e.name;
+    var bsp = splitE164(e.phone);
+    $('b-cc').value = bsp ? bsp.cc : '+91';
+    $('b-phone').value = bsp ? bsp.local : (e.phone || '');
+    $('b-address').value = e.address || '';
     $('b-for').value = e.forwhat || ''; $('b-notes').value = e.notes || '';
     if (e.kind === 'fact') { if (e.category) $('b-factcat').value = e.category; }
     else if (e.category) $('b-cat').value = e.category;
@@ -2100,6 +2121,49 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   });
 
   // ---------- device alerts (Web Push) ----------
+  // Country codes are kept SEPARATE from local numbers; each country has
+  // its own validation (mirror of the server rules in api/_db.mjs).
+  var CC_LIST = [
+    ['+91', '🇮🇳 +91'], ['+1', '🇺🇸 +1'], ['+44', '🇬🇧 +44'], ['+971', '🇦🇪 +971'],
+    ['+61', '🇦🇺 +61'], ['+65', '🇸🇬 +65'], ['+49', '🇩🇪 +49'], ['+81', '🇯🇵 +81'],
+    ['+86', '🇨🇳 +86'], ['+92', '🇵🇰 +92'], ['+880', '🇧🇩 +880'], ['+977', '🇳🇵 +977'], ['+94', '🇱🇰 +94']
+  ];
+  var CC_RULES = {
+    '+91': { min: 10, max: 10, re: /^[6-9]\d{9}$/, name: 'India' },
+    '+1': { min: 10, max: 10, re: /^[2-9]\d{9}$/, name: 'USA / Canada' },
+    '+44': { min: 9, max: 10, name: 'UK' }, '+971': { min: 8, max: 9, name: 'UAE' },
+    '+61': { min: 9, max: 9, name: 'Australia' }, '+65': { min: 8, max: 8, re: /^[3689]\d{7}$/, name: 'Singapore' },
+    '+49': { min: 7, max: 11, name: 'Germany' }, '+81': { min: 9, max: 10, name: 'Japan' },
+    '+86': { min: 11, max: 11, name: 'China' }, '+92': { min: 10, max: 10, name: 'Pakistan' },
+    '+880': { min: 10, max: 10, name: 'Bangladesh' }, '+977': { min: 10, max: 10, name: 'Nepal' },
+    '+94': { min: 9, max: 9, name: 'Sri Lanka' }
+  };
+  function fillCc(id, def){
+    var el = $(id); if (!el || el.options.length) return;
+    el.innerHTML = CC_LIST.map(function(c){ return '<option value="' + c[0] + '">' + c[1] + '</option>'; }).join('');
+    el.value = def || '+91';
+  }
+  ['au-cc', 'e-cc', 'b-cc'].forEach(function(id){ fillCc(id, '+91'); });
+  function splitE164(v){
+    var raw = String(v || '');
+    if (raw.charAt(0) !== '+') return null;
+    var ks = CC_LIST.map(function(c){ return c[0]; }).sort(function(a, b){ return b.length - a.length; });
+    for (var i = 0; i < ks.length; i++) if (raw.indexOf(ks[i]) === 0) return { cc: ks[i], local: raw.slice(ks[i].length) };
+    return null;
+  }
+  // returns an error message, or null when the number fits its country
+  function phoneCheck(cc, local){
+    var d = String(local || '').replace(/[()\-\s.]/g, '');
+    if (!d) return 'Please enter the mobile number';
+    if (!/^\d+$/.test(d)) return 'Digits only — the country code is picked separately';
+    var r = CC_RULES[cc];
+    if (!r) return d.length >= 6 && d.length <= 12 ? null : 'That number does not look right';
+    if (d.length < r.min || d.length > r.max) {
+      return 'A ' + r.name + ' number has ' + (r.min === r.max ? r.min : r.min + '-' + r.max) + ' digits after ' + cc;
+    }
+    if (r.re && !r.re.test(d)) return 'That does not look like a valid ' + r.name + ' mobile number';
+    return null;
+  }
   function pushSupported(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
   function urlB64(v){
     var pad = '='.repeat((4 - v.length % 4) % 4);
@@ -2991,7 +3055,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     f.hidden = !f.hidden;
     if (!f.hidden) {
       $('e-name').value = state.name;
-      $('e-phone').value = (authUser && authUser.phone) || '';
+      var sp = splitE164(authUser && authUser.phone);
+      $('e-cc').value = sp ? sp.cc : '+91';
+      $('e-phone').value = sp ? sp.local : ((authUser && authUser.phone) || '');
       var meM = null; membersCache.forEach(function(x){ if (x.id === state.memberId) meM = x; });
       $('e-place').value = (meM && meM.place) || '';
       $('e-country').value = (meM && meM.country) || '';
@@ -3015,8 +3081,12 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var role = $('e-senior').checked ? 'parent' : 'family';
     var relation = eRole();
     var newPhone = $('e-phone').value.trim();
+    if (newPhone) {
+      var perr = phoneCheck($('e-cc').value, newPhone);
+      if (perr) { toast(perr); return; }
+    }
     // Phone goes to the member row too, so the 📞 buttons the family sees update.
-    post(API.circle, { action: 'update_member', code: state.code, memberId: state.memberId, memberName: nm, role: role, relation: relation, phone: newPhone || undefined, place: $('e-place').value.trim(), country: $('e-country').value || '',
+    post(API.circle, { action: 'update_member', code: state.code, memberId: state.memberId, memberName: nm, role: role, relation: relation, phone: newPhone || undefined, phoneCc: $('e-cc').value, place: $('e-place').value.trim(), country: $('e-country').value || '',
       giftInfo: { clothes: $('e-clothes').value.trim(), shoe: $('e-shoe').value.trim(), ring: $('e-ring').value.trim(), color: $('e-color').value.trim(), likes: $('e-likes').value.trim(), wishlist: $('e-wish').value.trim() } })
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not save'); return; }

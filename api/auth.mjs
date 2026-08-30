@@ -7,7 +7,7 @@
 //                     can ask for it.
 // No OTP yet (SMS provider is a roadmap item) — the shape is ready for an
 // OTP check to slot in here without any client-flow change.
-import { db, ensureSchema, isUuid, normPhone } from './_db.mjs';
+import { db, ensureSchema, isUuid, normPhone, phoneError } from './_db.mjs';
 
 async function circlesOf(sql, userId) {
   return await sql`
@@ -34,34 +34,36 @@ export default async function handler(req, res) {
       const u = await sql`select id, name, phone from users where id = ${body.userId}`;
       if (!u[0]) return res.status(404).json({ ok: false, error: 'Profile not found' });
       const newName = String(body.name || '').trim().slice(0, 60) || u[0].name;
-      let newPhone = u[0].phone;
+      let newPhone = u[0].phone, newCc = null, newLocal = null;
       if (body.phone) {
-        const np = normPhone(body.phone);
-        if (!np) return res.status(400).json({ ok: false, error: 'That does not look like a mobile number' });
-        newPhone = np;
+        const np = normPhone(body.phone, body.cc);
+        if (!np) return res.status(400).json({ ok: false, error: phoneError(body.cc) });
+        newPhone = np.e164; newCc = np.cc; newLocal = np.local;
       }
       try {
-        await sql`update users set name = ${newName}, phone = ${newPhone} where id = ${u[0].id}`;
+        if (newCc) await sql`update users set name = ${newName}, phone = ${newPhone}, phone_cc = ${newCc}, phone_local = ${newLocal} where id = ${u[0].id}`;
+        else await sql`update users set name = ${newName} where id = ${u[0].id}`;
       } catch (e) {
         return res.status(409).json({ ok: false, error: 'That number is already registered to another profile' });
       }
       // Keep memberships that carried the old number in step with the profile.
-      if (newPhone !== u[0].phone) {
-        await sql`update members set phone = ${newPhone} where user_id = ${u[0].id} and (phone is null or phone = ${u[0].phone})`;
+      if (newCc && newPhone !== u[0].phone) {
+        await sql`update members set phone = ${newPhone}, phone_cc = ${newCc}, phone_local = ${newLocal} where user_id = ${u[0].id} and (phone is null or phone = ${u[0].phone})`;
       }
       return res.status(200).json({ ok: true, user: { id: u[0].id, name: newName, phone: newPhone } });
     }
 
     if (body.action !== 'enter') return res.status(400).json({ ok: false, error: 'Unknown action' });
-    const phone = normPhone(body.phone);
-    if (!phone) return res.status(400).json({ ok: false, error: 'That does not look like a mobile number' });
+    const np = normPhone(body.phone, body.cc);
+    if (!np) return res.status(400).json({ ok: false, error: phoneError(body.cc) });
+    const phone = np.e164;
 
     let rows = await sql`select id, name, phone from users where phone = ${phone}`;
     if (!rows[0]) {
       const name = String(body.name || '').trim().slice(0, 60);
       if (!name) return res.status(200).json({ ok: true, exists: false });
       try {
-        rows = await sql`insert into users (phone, name) values (${phone}, ${name}) returning id, name, phone`;
+        rows = await sql`insert into users (phone, phone_cc, phone_local, name) values (${phone}, ${np.cc}, ${np.local}, ${name}) returning id, name, phone`;
       } catch (e) {
         // raced with another signup for the same phone — fall through to sign-in
         rows = await sql`select id, name, phone from users where phone = ${phone}`;
