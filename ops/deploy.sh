@@ -39,8 +39,18 @@ log() { printf '%s  %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"; }
 die() { log "FAILED: $*"; exit 1; }
 
 # One deploy at a time, however often cron fires.
-exec 9>"$LOCK" || die "cannot open lock $LOCK"
-flock -n 9 || { log "another deploy is running — skipping this tick"; exit 0; }
+if command -v flock >/dev/null 2>&1; then
+  exec 9>"$LOCK" || die "cannot open lock $LOCK"
+  flock -n 9 || { log "another deploy is running — skipping this tick"; exit 0; }
+else
+  # macOS ships no flock. A stale-tolerant directory lock does the same job:
+  # mkdir is atomic everywhere, and the trap releases it however we exit.
+  if ! mkdir "$LOCK.d" 2>/dev/null; then
+    if [ -n "$(find "$LOCK.d" -maxdepth 0 -mmin +30 2>/dev/null)" ]; then rmdir "$LOCK.d" 2>/dev/null && mkdir "$LOCK.d" 2>/dev/null
+    else log "another deploy is running — skipping this tick"; exit 0; fi
+  fi
+  trap 'rmdir "$LOCK.d" 2>/dev/null' EXIT
+fi
 
 cd "$REPO" || die "no repo at $REPO"
 
@@ -66,12 +76,32 @@ if [ "$HEAD_SHA" = "$LAST" ] && [ "$FORCE" -eq 0 ]; then
 fi
 log "deploying $(git log -1 --format='%h %s' | cut -c1-72)"
 
-# 2. the gate — a red tree must never reach production
-bash scripts/checks.sh >/dev/null 2>&1 || {
-  log "gate FAILED — not deploying. Re-run 'bash scripts/checks.sh' to see why."
-  bash scripts/checks.sh 2>&1 | grep -E '^FAIL|CHECK\(S\) FAILED' | head -20
+# Dependencies, if this clone has none yet. Vercel installs them during its
+# build; a machine running the gate locally has to do the same.
+if [ ! -d node_modules ] || [ package.json -nt node_modules ]; then
+  log "installing dependencies"
+  npm install --no-audit --no-fund --silent >/dev/null 2>&1 \
+    || die "npm install failed — run 'npm install' here to see why"
+fi
+
+# 2. the gate — a red tree must never reach production.
+# On failure SHOW the failure. Grepping for known-shaped lines hides every
+# problem that does not have that shape, which is exactly the case where you
+# need the output most.
+GATE_LOG="$(mktemp "${TMPDIR:-/tmp}/parwah-gate.XXXXXX")"
+if ! bash scripts/checks.sh > "$GATE_LOG" 2>&1; then
+  RC=$?
+  log "gate FAILED (exit $RC) — not deploying. Full output:"
+  echo "------------------------------------------------------------"
+  if grep -qE '^FAIL' "$GATE_LOG"; then grep -E '^FAIL|CHECK\(S\) FAILED' "$GATE_LOG"; echo "---"; fi
+  tail -40 "$GATE_LOG"
+  echo "------------------------------------------------------------"
+  echo "Saved in full at: $GATE_LOG"
+  command -v node    >/dev/null 2>&1 || echo "note: node is not on PATH for this shell"
+  command -v python3 >/dev/null 2>&1 || echo "note: python3 is not on PATH — the site suite cannot run"
   exit 1
-}
+fi
+rm -f "$GATE_LOG"
 log "gate passed"
 
 if [ "$DRY" -eq 1 ]; then log "dry run — stopping before deploy"; exit 0; fi

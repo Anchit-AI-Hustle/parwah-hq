@@ -280,6 +280,25 @@ check("pricing: no payment rails, and the page says so",
 check("pricing: Indian digit grouping is not hand-rolled",
       "Intl.NumberFormat('en-IN')" in appsrc)
 
+# 10n. THE GATE MUST RUN ON A FRESH CLONE.
+# It failed on a real machine because the phone unit test imported _db.mjs,
+# which imports the database driver — absent before npm install.
+phonesrc = (REPO / "site/tests/phonetest.mjs").read_text(encoding="utf-8")
+phonemod = (API_DIR / "_phone.mjs").read_text(encoding="utf-8")
+check("gate: the phone unit test does not need the database driver",
+      "_phone.mjs" in phonesrc and "_db.mjs" not in phonesrc)
+check("gate: the phone rules module has no imports at all",
+      not re.search(r"^\s*import\s", phonemod, re.M))
+check("gate: _db still re-exports the phone helpers for everything else",
+      "export { PHONE_CC, normPhone, phoneError } from './_phone.mjs'" in dbsrc)
+deploysh = (REPO / "ops/deploy.sh").read_text(encoding="utf-8")
+check("deploy: dependencies are installed before the gate runs",
+      "npm install" in deploysh and "node_modules" in deploysh)
+check("deploy: a gate failure shows its output instead of hiding it",
+      "tail -40" in deploysh and "Full output" in deploysh)
+check("deploy: works on a machine without flock (macOS)",
+      "command -v flock" in deploysh and 'mkdir "$LOCK.d"' in deploysh)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

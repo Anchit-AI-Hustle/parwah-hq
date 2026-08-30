@@ -2,7 +2,10 @@
 # Deploy gate — runs inside every Vercel build. A deployment cannot go live
 # unless every serverless function parses and the site test suite passes.
 set -e
+# Syntax only — never resolves imports, so this works with nothing installed.
 for f in api/*.mjs; do node --check "$f"; done
+# Pure unit test: imports api/_phone.mjs, which has no dependencies on purpose,
+# so a fresh clone can run the gate before npm install.
 node site/tests/phonetest.mjs
 test -f site/tests/test_site.py || { echo "site test suite missing from build input"; exit 1; }
 if command -v python3 >/dev/null 2>&1; then

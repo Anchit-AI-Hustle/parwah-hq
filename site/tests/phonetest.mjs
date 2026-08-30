@@ -1,4 +1,4 @@
-import { normPhone, phoneError } from '../../api/_db.mjs';
+import { normPhone, phoneError } from '../../api/_phone.mjs';
 let pass = 0, fail = 0;
 const ok = (c, n) => { c ? pass++ : (fail++, console.log('FAIL', n)); };
 const eq = (a, b, n) => ok(JSON.stringify(a) === JSON.stringify(b), n + ' → ' + JSON.stringify(a));
