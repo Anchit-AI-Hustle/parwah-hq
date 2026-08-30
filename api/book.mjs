@@ -17,6 +17,7 @@
 import { db, ensureSchema, circleByCode, isUuid, normPhone, phoneError } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import boardApi from './_boardapi.mjs';
+import vaultApi from './_vaultapi.mjs';
 
 const KINDS = ['contact', 'address', 'med', 'fact', 'insurance'];
 const CATS = ['housework', 'doctor', 'vet', 'driver', 'shops', 'repairs', 'emergency', 'other'];
@@ -26,8 +27,11 @@ const STALE_DAYS = 180; // meds/insurance/facts older than this ask to be re-che
 function clean(v, max) { const s = String(v || '').trim().slice(0, max); return s || null; }
 
 export default async function handler(req, res) {
-  // the shared drawing board rides along on this function (12-function cap)
-  if (String((req.query && req.query.area) || '') === 'board') return boardApi(req, res);
+  // The drawing board and the family vault ride along on this function: the
+  // plan allows 12 serverless functions, so related surfaces share a route.
+  const area = String((req.query && req.query.area) || (req.body && req.body.area) || '');
+  if (area === 'board') return boardApi(req, res);
+  if (area === 'vault' || area === 'pay') return vaultApi(req, res);
   let sql;
   try {
     sql = db(); await ensureSchema(sql);

@@ -2,6 +2,7 @@
 // database: creates a throwaway circle, exercises every event type, verifies
 // reads, then deletes the circle (cascades to members and events).
 import { db, ensureSchema, makeCode, ensureCircleChat } from './_db.mjs';
+import { ensureVaultSchema, ensurePaySchema, checkNumber } from './_vaultapi.mjs';
 
 export default async function handler(req, res) {
   const steps = {};
@@ -84,13 +85,67 @@ export default async function handler(req, res) {
     try { await sql`update circles set code = ${custom} where id = ${circleId}`; } catch (e) { dupBlocked = true; }
     steps.custom_code = back[0].code === custom && dupBlocked;
 
+    // THE VAULT — the access rules are proved against the real database,
+    // not just asserted in the interface.
+    await ensureVaultSchema(sql); await ensurePaySchema(sql);
+    const nosy = await sql`insert into members (circle_id, name, role) values (${circleId}, 'Test Nosy', 'family') returning id`;
+    steps.vault_schema = true;
+
+    // A real Aadhaar shape passes; the same number with one digit changed does not.
+    const good = checkNumber('aadhaar', '234567890124');
+    const bad = checkNumber('aadhaar', '234567890125');
+    steps.vault_checksum = good.ok === true && good.last4 === '0124' && bad.ok === false;
+
+    const doc = await sql`
+      insert into vault_docs (circle_id, about_member, kind, label, last4, format_ok, file_name, file_mime, file_size, by_member)
+      values (${circleId}, ${papa[0].id}, 'passport', 'Selftest passport', '4567', true, 'p.pdf', 'application/pdf', 5, ${beta[0].id})
+      returning id, last4`;
+    await sql`insert into vault_files (doc_id, bytes) values (${doc[0].id}, decode(${'aGVsbG8='}, 'base64'))`;
+    const back2 = await sql`select encode(bytes, 'base64') as b64 from vault_files where doc_id = ${doc[0].id}`;
+    steps.vault_store = doc[0].last4 === '4567' && back2[0].b64 === 'aGVsbG8=';
+
+    // The visibility rule itself: a member with no grant gets nothing back.
+    const seenBy = (who) => sql`
+      select d.id from vault_docs d
+      left join vault_access a on a.doc_id = d.id and a.member_id = ${who}
+      where d.circle_id = ${circleId}
+        and (d.about_member = ${who} or d.by_member = ${who} or a.member_id is not null)`;
+    const beforeGrant = await seenBy(nosy[0].id);
+    await sql`insert into vault_access (doc_id, member_id, level, granted_by)
+              values (${doc[0].id}, ${nosy[0].id}, 'view', ${papa[0].id})`;
+    const afterGrant = await seenBy(nosy[0].id);
+    const ownerSees = await seenBy(papa[0].id);
+    steps.vault_permission = beforeGrant.length === 0 && afterGrant.length === 1 && ownerSees.length === 1;
+
+    await sql`insert into vault_log (doc_id, member_id, action) values (${doc[0].id}, ${nosy[0].id}, 'opened')`;
+    const alog = await sql`select action from vault_log where doc_id = ${doc[0].id}`;
+    steps.vault_audit = alog.length === 1 && alog[0].action === 'opened';
+
+    // Payment permissions: allowed for one person, not another.
+    const pm = await sql`insert into pay_methods (circle_id, owner_member, kind, label, handle, per_txn_cap)
+                         values (${circleId}, ${papa[0].id}, 'upi', 'Selftest UPI', 'test@okbank', 5000) returning id`;
+    await sql`insert into pay_perms (method_id, member_id, per_txn_cap, granted_by)
+              values (${pm[0].id}, ${beta[0].id}, 2000, ${papa[0].id})`;
+    const canUse = (who) => sql`
+      select (p.owner_member = ${who} or pp.member_id is not null) as can_use
+      from pay_methods p left join pay_perms pp on pp.method_id = p.id and pp.member_id = ${who}
+      where p.id = ${pm[0].id}`;
+    const betaUse = await canUse(beta[0].id);
+    const nosyUse = await canUse(nosy[0].id);
+    const ownerUse = await canUse(papa[0].id);
+    steps.pay_permission = betaUse[0].can_use === true && nosyUse[0].can_use === false && ownerUse[0].can_use === true;
+
     await sql`delete from circles where id = ${c2[0].id}`;
     await sql`delete from users where id = ${u[0].id}`;
     await sql`delete from circles where id = ${circleId}`;
     const leftover = await sql`select id from events where circle_id = ${circleId}`;
     const leftChats = await sql`select id from chats where circle_id = ${circleId}`;
     const leftReads = await sql`select chat_id from chat_reads where chat_id = ${everyoneId}`;
-    steps.cleanup_cascade = leftover.length === 0 && leftChats.length === 0 && leftReads.length === 0;
+    const leftDocs = await sql`select id from vault_docs where circle_id = ${circleId}`;
+    const leftFiles = await sql`select doc_id from vault_files where doc_id = ${doc[0].id}`;
+    const leftPay = await sql`select id from pay_methods where circle_id = ${circleId}`;
+    steps.cleanup_cascade = leftover.length === 0 && leftChats.length === 0 && leftReads.length === 0
+      && leftDocs.length === 0 && leftFiles.length === 0 && leftPay.length === 0;
     circleId = null;
 
     const ok = Object.values(steps).every(Boolean);

@@ -527,6 +527,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true">🤝</span><b>Help requests</b><small id="w-req">Loading…</small></button>
       <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b>Chats</b><small id="w-chat">Family + personal</small></button>
       <button class="widget" data-goto="memory"><span class="wic" aria-hidden="true">📒</span><b>Family memory</b><small id="w-book">Contacts, addresses, meds-map, facts</small></button>
+      <button class="widget" data-goto="vault" data-sec="docs"><span class="wic" aria-hidden="true">🔐</span><b>Family vault</b><small id="w-vault">Aadhaar, PAN, passport, health papers</small></button>
+      <button class="widget" data-goto="vault" data-sec="pay"><span class="wic" aria-hidden="true">💳</span><b>Payments</b><small id="w-pay">Who may use which way of paying</small></button>
       <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check — just ask</small></button>
       <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi — play together</small></button>
       <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
@@ -682,6 +684,112 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
           <button class="cbtn ghost" id="bd-edit">✏️ Edit</button>
           <button class="cbtn no" id="bd-remove">🗑 Remove</button>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- THE FAMILY VAULT — papers and money, with a permission on every one -->
+  <section id="pane-vault" hidden>
+    <div class="seg pageseg" id="vault-seg" role="tablist" aria-label="Vault sections">
+      <button data-sec="docs" class="sel">🔐 Documents</button>
+      <button data-sec="pay">💳 Payments</button>
+    </div>
+
+    <div class="subsec" data-sec="docs">
+      <div class="ektahead"><span style="font-size:1.4rem" aria-hidden="true">🔐</span><span><b>Family vault</b><small>Aadhaar, PAN, passport, licence, health and birth papers — each one shared with exactly who you choose</small></span></div>
+      <div id="vd-list-view">
+        <select id="vd-who" aria-label="Whose documents" style="margin-bottom:10px"><option value="">Everyone's documents</option></select>
+        <div class="feed" id="vdlist"><div class="ev">Nothing in the vault yet — add the family's first document below 🔐</div></div>
+        <div class="card" style="margin-top:14px">
+          <h3 id="vd-ftitle">Add a document</h3>
+          <label for="vd-kind">What is it</label>
+          <select id="vd-kind"></select>
+          <label for="vd-about">Whose document</label>
+          <select id="vd-about"></select>
+          <label for="vd-label">Call it</label>
+          <input type="text" id="vd-label" maxlength="90" placeholder="e.g. Papa's passport">
+          <label for="vd-number" id="vd-number-l">Number <span class="hint" style="display:inline">— checked, then only the last 4 are kept</span></label>
+          <input type="text" id="vd-number" maxlength="30" autocomplete="off" placeholder="e.g. ABCDE1234F">
+          <div class="pickrow">
+            <label class="pick"><span>Issued</span><input type="date" id="vd-issued" aria-label="Issued on"></label>
+            <label class="pick"><span>Expires</span><input type="date" id="vd-expires" aria-label="Expires on"></label>
+          </div>
+          <label for="vd-file">Photo or PDF of the document</label>
+          <input type="file" id="vd-file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf">
+          <p class="hint" id="vd-fname" style="margin-top:4px">Up to 2 MB. Kept in the vault itself — never a public link.</p>
+          <label for="vd-notes">Notes</label>
+          <input type="text" id="vd-notes" maxlength="300" placeholder="e.g. renewal due before the Dubai trip">
+          <button class="go" id="vd-save">Put it in the vault</button>
+          <button class="linkbtn" id="vd-cancel" hidden style="margin-top:8px">Cancel editing</button>
+          <p class="hint">Only you and the person it belongs to can open it, until they share it. Every time someone opens it, they are told.</p>
+        </div>
+      </div>
+
+      <div id="vd-detail" hidden>
+        <button class="cbtn ghost" id="vd-back">← Family vault</button>
+        <div class="card" style="margin-top:12px">
+          <h3 id="vdd-label"></h3>
+          <p class="hint" id="vdd-kind" style="margin:2px 0 8px"></p>
+          <div class="kv"><b>Belongs to</b><span id="vdd-about"></span></div>
+          <div class="kv" id="vdd-num-row" hidden><b>Number</b><span id="vdd-num"></span></div>
+          <div class="kv" id="vdd-issued-row" hidden><b>Issued</b><span id="vdd-issued"></span></div>
+          <div class="kv" id="vdd-exp-row" hidden><b>Expires</b><span id="vdd-exp"></span></div>
+          <div class="kv"><b>Checked</b><span id="vdd-status"></span></div>
+          <div class="kv" id="vdd-notes-row" hidden><b>Notes</b><span id="vdd-notes"></span></div>
+          <div class="kv"><b>Added by</b><span id="vdd-by"></span></div>
+          <div class="prow2" style="margin-top:12px">
+            <button class="cbtn" id="vdd-open" hidden>📂 Open the document</button>
+            <button class="cbtn" id="vdd-verify" hidden>✅ I have checked it</button>
+            <button class="cbtn ghost" id="vdd-flag" hidden>⚠️ Something is wrong</button>
+            <button class="cbtn ghost" id="vdd-edit" hidden>✏️ Edit</button>
+            <button class="cbtn no" id="vdd-remove" hidden>🗑 Remove</button>
+          </div>
+        </div>
+        <div class="card" id="vdd-share-card" hidden>
+          <h3>Who can see this</h3>
+          <div class="feed" id="vdd-shares"></div>
+          <label for="vdd-share-who">Share with</label>
+          <select id="vdd-share-who"></select>
+          <div class="seg" id="vdd-level" role="group" aria-label="How much access" style="margin:8px 0">
+            <button type="button" data-lv="view" class="sel">👀 Can see it exists</button>
+            <button type="button" data-lv="full">📂 Can open it</button>
+          </div>
+          <button class="cbtn" id="vdd-share">Share</button>
+          <p class="hint">Only you decide who sees your papers. You can take access back at any time.</p>
+        </div>
+        <div class="card" id="vdd-log-card" hidden>
+          <h3>Who opened it, and when</h3>
+          <div class="feed" id="vdd-log"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="subsec" data-sec="pay" hidden>
+      <div class="ektahead"><span style="font-size:1.4rem" aria-hidden="true">💳</span><span><b>Payments</b><small>Your ways of paying, and exactly who in the family may use each one</small></span></div>
+      <div class="feed" id="vplist"><div class="ev">No payment methods saved yet.</div></div>
+      <div class="card" style="margin-top:14px">
+        <h3 id="vp-ftitle">Add a way of paying</h3>
+        <label for="vp-kind">Kind</label>
+        <select id="vp-kind"></select>
+        <label for="vp-label">Call it</label>
+        <input type="text" id="vp-label" maxlength="80" placeholder="e.g. Papa's HDFC UPI">
+        <label for="vp-bank">Bank or provider</label>
+        <input type="text" id="vp-bank" maxlength="60" placeholder="e.g. HDFC Bank">
+        <label for="vp-handle">UPI ID, or the last 4 digits of the card</label>
+        <input type="text" id="vp-handle" maxlength="60" autocomplete="off" placeholder="e.g. papa@okhdfc  ·  ••••4321">
+        <div class="pickrow">
+          <label class="pick"><span>Cap per payment ₹</span><input type="number" id="vp-cap" min="0" step="100" aria-label="Cap per payment"></label>
+          <label class="pick"><span>Cap per month ₹</span><input type="number" id="vp-mcap" min="0" step="100" aria-label="Cap per month"></label>
+        </div>
+        <label for="vp-note">Notes</label>
+        <input type="text" id="vp-note" maxlength="200" placeholder="e.g. for the chemist and groceries only">
+        <button class="go" id="vp-save">Save this method</button>
+        <button class="linkbtn" id="vp-cancel" hidden style="margin-top:8px">Cancel editing</button>
+        <p class="hint">Parwah never stores a full card number, CVV, PIN or password — only a name, a permission, and what was spent.</p>
+      </div>
+      <div class="card" id="vp-log-card" hidden>
+        <h3>Recent activity</h3>
+        <div class="feed" id="vplog"></div>
       </div>
     </div>
   </section>
@@ -1060,6 +1168,11 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <button data-tab="notifs" class="deskonly" id="side-nb" style="position:relative"><span class="ic" aria-hidden="true">🔔</span>Notifications<i class="dot" id="nb-dot2" hidden></i></button>
     <button data-tab="people"><span class="ic" aria-hidden="true">👨‍👩‍👧</span>People</button>
     <button data-tab="memory"><span class="ic" aria-hidden="true">📒</span>Memory</button>
+    <button data-tab="vault" class="deskonly"><span class="ic" aria-hidden="true">🔐</span>Vault</button>
+    <div class="subnav side-only" data-parent="vault">
+      <button data-tab="vault" data-sec="docs">Documents</button>
+      <button data-tab="vault" data-sec="pay">Payments</button>
+    </div>
     <button data-tab="care"><span class="ic" aria-hidden="true">🔔</span>Care<i class="dot" id="care-dot" hidden></i></button>
     <div class="subnav side-only" data-parent="care">
       <button data-tab="care" data-sec="rem">Reminders</button>
@@ -1120,6 +1233,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <button class="ditem" data-tab="people">👨‍👩‍👧 People</button>
     <button class="ditem" data-tab="memory">📒 Family memory</button>
     <div class="dgroup">
+      <button class="ditem dparent" data-grp="vault">🔐 Family vault <span class="caret">▾</span></button>
+      <div class="dsub">
+        <button class="ditem sub" data-tab="vault" data-sec="docs">Documents</button>
+        <button class="ditem sub" data-tab="vault" data-sec="pay">Payments</button>
+      </div>
+    </div>
+    <div class="dgroup">
       <button class="ditem dparent" data-grp="care">🔔 Care <span class="caret">▾</span></button>
       <div class="dsub">
         <button class="ditem sub" data-tab="care" data-sec="rem">Reminders</button>
@@ -1173,8 +1293,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', push: '../api/settings?area=push', keys: '../api/settings?area=keys' };
-  var TABS = ['home','people','memory','care','chat','ekta','profile','fun','notifs'];
+  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', vault: '../api/book?area=vault', pay: '../api/book?area=pay', push: '../api/settings?area=push', keys: '../api/settings?area=keys' };
+  var TABS = ['home','people','memory','vault','care','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
   var curChat = null, chatsCache = [], membersCache = [];
@@ -1258,7 +1378,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     document.querySelectorAll('#drawer .ditem[data-tab]').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-tab') === t && !b.dataset.sec);
     });
-    if (t === 'care' || t === 'fun') {
+    if (t === 'care' || t === 'fun' || t === 'vault') {
       var seg = $(t + '-seg'), cur = seg && seg.querySelector('.sel');
       if (cur) setSec(t, cur.getAttribute('data-sec'));
     }
@@ -1268,6 +1388,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     if (t !== 'ekta' && window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (e) {} }
     if (t === 'fun') { refreshFun(); boardSync(); clearInterval(gameTimer); gameTimer = setInterval(function(){ refreshFun(); boardSync(); }, 3000); }
     else clearInterval(gameTimer);
+    if (t === 'vault') refreshVault();
     if (t === 'notifs') { $('ndetail').hidden = true; $('nlist-view').hidden = false; renderNotifs(); markSeen(); }
     try { history.replaceState(null, '', '#' + t); } catch(e) {}
     window.scrollTo(0, 0);
@@ -1286,7 +1407,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       b.classList.toggle('sel', b.getAttribute('data-sec') === sec);
     });
   }
-  ['care', 'fun'].forEach(function(pane){
+  ['care', 'fun', 'vault'].forEach(function(pane){
     $(pane + '-seg').addEventListener('click', function(e){
       var b = e.target.closest('button'); if (b) setSec(pane, b.getAttribute('data-sec'));
     });
@@ -3458,6 +3579,347 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     post(API.chats, { code: state.code, memberId: state.memberId, action: 'send', chatId: fam.id, kind: 'image', text: data })
       .then(function(j){ if (j.ok) { toast('Masterpiece shared to the family chat 🧡'); refreshChats(); } else toast(j.error || 'Could not share'); })
       .catch(function(){ toast('No connection — try again'); });
+  });
+
+  // ---------- the family vault: documents + payment permissions ----------
+  var vDocs = [], vGrants = [], vLog = [], vKinds = {}, vOpenId = null, vEditId = null, vLevel = 'view';
+  var vPay = [], vPerms = [], vPayLog = [], vPayKinds = {}, vPayEditId = null, vFileData = null;
+
+  function vFillSelect(sel, obj, keep){
+    var cur = keep ? sel.value : '';
+    var h = '';
+    Object.keys(obj).forEach(function(k){ h += '<option value="' + k + '">' + obj[k].icon + ' ' + esc(obj[k].label) + '</option>'; });
+    sel.innerHTML = h;
+    if (cur) sel.value = cur;
+  }
+  function vMembersInto(sel, firstLabel){
+    var h = firstLabel ? '<option value="">' + esc(firstLabel) + '</option>' : '';
+    (membersCache || []).forEach(function(m){
+      h += '<option value="' + m.id + '">' + esc(m.name) + (m.id === state.memberId ? ' (you)' : '') + '</option>';
+    });
+    var cur = sel.value; sel.innerHTML = h; if (cur) sel.value = cur;
+  }
+  function vDoc(id){ var d = null; vDocs.forEach(function(x){ if (x.id === id) d = x; }); return d; }
+  function vMeth(id){ var m = null; vPay.forEach(function(x){ if (x.id === id) m = x; }); return m; }
+  function vDate(s){ if (!s) return ''; var d = new Date(s); return isNaN(d) ? '' : d.toLocaleDateString([], { day:'numeric', month:'short', year:'numeric' }); }
+  function vExpiry(d){
+    if (!d.expires_on) return '';
+    var days = Math.round((new Date(d.expires_on) - Date.now()) / 86400000);
+    if (days < 0) return ' · <em style="color:var(--sindoor);font-style:normal">expired</em>';
+    if (days < 90) return ' · <em style="color:var(--sindoor);font-style:normal">expires in ' + days + ' days</em>';
+    return '';
+  }
+  function vStatusChip(d){
+    if (d.status === 'verified') return '✅ checked by ' + esc(d.verified_name || 'family') + ' · ' + vDate(d.verified_at);
+    if (d.status === 'rejected') return '⚠️ flagged' + (d.verify_note ? ' — ' + esc(d.verify_note) : '');
+    return '🟡 not checked by anyone yet';
+  }
+
+  function refreshVault(){
+    if (!state) return;
+    var qs = '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId);
+    fetch(API.vault + qs).then(function(r){ return r.json(); }).then(function(j){
+      if (!j.ok) return;
+      vDocs = j.docs || []; vGrants = j.grants || []; vLog = j.log || []; vKinds = j.kinds || {};
+      if (!$('vd-kind').options.length) vFillSelect($('vd-kind'), vKinds);
+      vMembersInto($('vd-about'), '');
+      vMembersInto($('vd-who'), "Everyone's documents");
+      vMembersInto($('vdd-share-who'), 'Choose a family member');
+      if (!vEditId && !$('vd-about').value) $('vd-about').value = state.memberId;
+      renderDocs();
+      if (vOpenId) openDoc(vOpenId, true);
+    }).catch(function(){});
+    fetch(API.pay + qs).then(function(r){ return r.json(); }).then(function(j){
+      if (!j.ok) return;
+      vPay = j.methods || []; vPerms = j.perms || []; vPayLog = j.log || []; vPayKinds = j.kinds || {};
+      if (!$('vp-kind').options.length) vFillSelect($('vp-kind'), vPayKinds);
+      renderPay();
+    }).catch(function(){});
+  }
+
+  function renderDocs(){
+    var who = $('vd-who').value;
+    var list = vDocs.filter(function(d){ return !who || d.about_member === who; });
+    var h = '';
+    list.forEach(function(d){
+      var k = vKinds[d.kind] || { icon:'📄', label:'Document' };
+      var bits = [esc(d.about_name)];
+      if (d.last4) bits.push('••••' + esc(d.last4));
+      bits.push(d.my_level === 'full' ? 'you can open it' : 'you can see it exists');
+      h += '<div class="ev" data-vopen="' + d.id + '" role="button" tabindex="0" style="cursor:pointer">' +
+           k.icon + ' <b>' + esc(d.label) + '</b>' + vExpiry(d) +
+           '<small>' + bits.join(' · ') + '</small></div>';
+    });
+    $('vdlist').innerHTML = h || '<div class="ev">' + (who ? 'Nothing of theirs is in the vault, or shared with you.' : 'Nothing in the vault yet — add the family\'s first document below 🔐') + '</div>';
+  }
+
+  function openDoc(id, keepScroll){
+    var d = vDoc(id); if (!d) { closeDoc(); return; }
+    vOpenId = id;
+    $('vd-list-view').hidden = true; $('vd-detail').hidden = false;
+    var k = vKinds[d.kind] || { icon:'📄', label:'Document' };
+    $('vdd-label').textContent = d.label;
+    $('vdd-kind').innerHTML = k.icon + ' ' + esc(k.label) + (d.file_name ? ' · 📎 ' + esc(d.file_name) : ' · no file uploaded');
+    $('vdd-about').textContent = d.about_name;
+    $('vdd-num-row').hidden = !d.last4;
+    $('vdd-num').textContent = d.last4 ? '•••• •••• ' + d.last4 + (d.format_ok ? '  (format checks out)' : '') : '';
+    $('vdd-issued-row').hidden = !d.issued_on; $('vdd-issued').textContent = vDate(d.issued_on);
+    $('vdd-exp-row').hidden = !d.expires_on; $('vdd-exp').innerHTML = vDate(d.expires_on) + vExpiry(d);
+    $('vdd-status').innerHTML = vStatusChip(d);
+    $('vdd-notes-row').hidden = !d.notes; $('vdd-notes').textContent = d.notes || '';
+    $('vdd-by').textContent = (d.by_name || 'Someone') + ' · ' + vDate(d.created_at);
+    var full = d.my_level === 'full', mine = d.about_member === state.memberId, uploader = d.by_member === state.memberId;
+    $('vdd-open').hidden = !(full && d.file_name);
+    $('vdd-verify').hidden = !(full && !(uploader && !mine));
+    $('vdd-flag').hidden = $('vdd-verify').hidden;
+    $('vdd-edit').hidden = !full;
+    $('vdd-remove').hidden = !(mine || uploader);
+    $('vdd-share-card').hidden = !mine;
+    if (mine) {
+      var gs = vGrants.filter(function(g){ return g.doc_id === d.id; });
+      $('vdd-shares').innerHTML = gs.length ? gs.map(function(g){
+        return '<div class="ev">' + (g.level === 'full' ? '📂' : '👀') + ' <b>' + esc(g.name) + '</b>' +
+               '<small>' + (g.level === 'full' ? 'can open it' : 'can see it exists') +
+               ' — <button class="linkbtn" data-vrevoke="' + g.member_id + '">take access back</button></small></div>';
+      }).join('') : '<div class="ev">Only you' + (d.by_member !== state.memberId && d.by_name ? ' and ' + esc(d.by_name) + ' (who added it)' : '') + '. Nobody else.</div>';
+      var ls = vLog.filter(function(l){ return l.doc_id === d.id; });
+      $('vdd-log-card').hidden = !ls.length;
+      $('vdd-log').innerHTML = ls.map(function(l){
+        return '<div class="ev">' + esc(l.name || 'Someone') + ' — ' + esc(l.action) + '<small>' + fmtTime(l.at) + '</small></div>';
+      }).join('');
+    } else { $('vdd-log-card').hidden = true; }
+    if (!keepScroll) window.scrollTo(0, 0);
+  }
+  function closeDoc(){ vOpenId = null; $('vd-detail').hidden = true; $('vd-list-view').hidden = false; }
+
+  $('vd-who').addEventListener('change', renderDocs);
+  $('vdlist').addEventListener('click', function(e){
+    var b = e.target.closest('[data-vopen]'); if (b) openDoc(b.getAttribute('data-vopen'));
+  });
+  $('vd-back').addEventListener('click', closeDoc);
+  $('vdd-level').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    vLevel = b.getAttribute('data-lv');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
+  });
+  $('vd-file').addEventListener('change', function(){
+    var f = this.files && this.files[0];
+    vFileData = null;
+    if (!f) { $('vd-fname').textContent = 'Up to 2 MB. Kept in the vault itself — never a public link.'; return; }
+    if (f.size > 2 * 1024 * 1024) { $('vd-fname').textContent = 'That file is larger than 2 MB — please photograph it again at a smaller size.'; this.value = ''; return; }
+    var fr = new FileReader();
+    fr.onload = function(){
+      vFileData = { data: String(fr.result), name: f.name, mime: f.type || 'image/jpeg' };
+      $('vd-fname').textContent = '📎 ' + f.name + ' — ready to go into the vault';
+    };
+    fr.readAsDataURL(f);
+  });
+  function vdReset(){
+    vEditId = null; vFileData = null;
+    ['vd-label','vd-number','vd-issued','vd-expires','vd-notes'].forEach(function(id){ $(id).value = ''; });
+    $('vd-file').value = '';
+    $('vd-fname').textContent = 'Up to 2 MB. Kept in the vault itself — never a public link.';
+    $('vd-ftitle').textContent = 'Add a document';
+    $('vd-save').textContent = 'Put it in the vault';
+    $('vd-cancel').hidden = true;
+  }
+  $('vd-cancel').addEventListener('click', vdReset);
+  $('vdd-edit').addEventListener('click', function(){
+    var d = vDoc(vOpenId); if (!d) return;
+    vEditId = d.id;
+    $('vd-kind').value = d.kind; $('vd-about').value = d.about_member;
+    $('vd-label').value = d.label; $('vd-number').value = '';
+    $('vd-issued').value = d.issued_on ? String(d.issued_on).slice(0, 10) : '';
+    $('vd-expires').value = d.expires_on ? String(d.expires_on).slice(0, 10) : '';
+    $('vd-notes').value = d.notes || '';
+    $('vd-ftitle').textContent = 'Edit ' + d.label;
+    $('vd-save').textContent = 'Save changes';
+    $('vd-cancel').hidden = false;
+    closeDoc();
+    $('vd-label').scrollIntoView({ block:'center' });
+  });
+  $('vd-save').addEventListener('click', function(){
+    if (!state) return;
+    var body = {
+      code: state.code, memberId: state.memberId, area: 'vault',
+      action: vEditId ? 'update' : 'add', id: vEditId,
+      kind: $('vd-kind').value, aboutId: $('vd-about').value,
+      label: $('vd-label').value, number: $('vd-number').value,
+      issuedOn: $('vd-issued').value, expiresOn: $('vd-expires').value,
+      notes: $('vd-notes').value
+    };
+    if (vFileData) { body.file = vFileData.data; body.fileName = vFileData.name; body.fileMime = vFileData.mime; }
+    if (!body.label.trim()) { toast('Give the document a name'); return; }
+    if (!body.aboutId) { toast('Say whose document this is'); return; }
+    $('vd-save').disabled = true;
+    post(API.vault, body).then(function(j){
+      $('vd-save').disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not save'); return; }
+      toast(vEditId ? 'Updated 🔐' : 'Safe in the vault 🔐');
+      vdReset(); refreshVault();
+    }).catch(function(){ $('vd-save').disabled = false; toast('No connection — try again'); });
+  });
+  function vAct(body, okMsg, then){
+    post(API.vault, Object.assign({ code: state.code, memberId: state.memberId, area: 'vault' }, body))
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not do that'); return; }
+        if (okMsg) toast(okMsg);
+        if (then) then(j); else refreshVault();
+      }).catch(function(){ toast('No connection — try again'); });
+  }
+  $('vdd-open').addEventListener('click', function(){
+    var d = vDoc(vOpenId); if (!d) return;
+    vAct({ action:'open', id: d.id }, null, function(j){
+      try {
+        var bin = atob(j.file), arr = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        var url = URL.createObjectURL(new Blob([arr], { type: j.mime || 'application/octet-stream' }));
+        window.open(url, '_blank');
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+      } catch (e) { toast('Could not open the file'); }
+      refreshVault();
+    });
+  });
+  $('vdd-verify').addEventListener('click', function(){
+    vAct({ action:'verify', id: vOpenId }, 'Marked as checked ✅');
+  });
+  $('vdd-flag').addEventListener('click', function(){
+    var note = prompt('What is wrong with it?');
+    if (note === null) return;
+    vAct({ action:'reject', id: vOpenId, note: note }, 'Flagged — the owner has been told');
+  });
+  $('vdd-remove').addEventListener('click', function(){
+    var d = vDoc(vOpenId); if (!d) return;
+    if (!confirm('Remove ' + d.label + ' from the vault? The file is deleted for good.')) return;
+    vAct({ action:'remove', id: d.id }, 'Removed from the vault', function(){ closeDoc(); refreshVault(); });
+  });
+  $('vdd-share').addEventListener('click', function(){
+    var who = $('vdd-share-who').value;
+    if (!who) { toast('Choose a family member'); return; }
+    vAct({ action:'grant', id: vOpenId, memberId: who, level: vLevel }, 'Shared 🔐');
+  });
+  $('vdd-shares').addEventListener('click', function(e){
+    var b = e.target.closest('[data-vrevoke]'); if (!b) return;
+    vAct({ action:'revoke', id: vOpenId, memberId: b.getAttribute('data-vrevoke') }, 'Access taken back');
+  });
+
+  // ----- payments: who may use which way of paying -----
+  function renderPay(){
+    var h = '';
+    vPay.forEach(function(p){
+      var k = vPayKinds[p.kind] || { icon:'💳', label:'Payment' };
+      var allowed = vPerms.filter(function(x){ return x.method_id === p.id; });
+      var whoLine = allowed.length
+        ? allowed.map(function(a){ return esc(a.name) + (a.per_txn_cap ? ' (≤₹' + a.per_txn_cap + ')' : '') + (a.needs_ok ? ' · asks first' : ''); }).join(', ')
+        : 'nobody else yet';
+      h += '<div class="ev"><b>' + k.icon + ' ' + esc(p.label) + '</b>' +
+           '<small>' + esc(p.owner_name) + (p.mine ? ' (you)' : '') +
+           (p.bank ? ' · ' + esc(p.bank) : '') + (p.handle ? ' · ' + esc(p.handle) : '') +
+           (p.per_txn_cap ? ' · up to ₹' + p.per_txn_cap + ' a payment' : '') + '</small>' +
+           '<small>👥 Can use it: ' + whoLine + '</small>';
+      if (p.mine) {
+        h += '<div class="prow2" style="margin-top:8px">' +
+             '<button class="cbtn ghost" data-vpperm="' + p.id + '">👥 Who can use it</button>' +
+             '<button class="cbtn ghost" data-vpedit="' + p.id + '">✏️ Edit</button>' +
+             '<button class="cbtn no" data-vpdel="' + p.id + '">🗑 Remove</button></div>' +
+             '<div class="permbox" id="perm-' + p.id + '" hidden style="margin-top:10px">' +
+             '<select data-vpwho="' + p.id + '" aria-label="Family member"></select>' +
+             '<div class="pickrow" style="margin-top:8px">' +
+             '<label class="pick"><span>Cap per payment ₹</span><input type="number" min="0" step="100" data-vpcap="' + p.id + '" aria-label="Cap per payment"></label>' +
+             '<label class="pick"><span>Ask first</span><input type="checkbox" data-vpask="' + p.id + '" aria-label="Ask first"></label></div>' +
+             '<button class="cbtn" data-vpallow="' + p.id + '" style="margin-top:8px">Let them use it</button>' +
+             (allowed.length ? '<div style="margin-top:8px">' + allowed.map(function(a){
+               return '<div class="ev">' + esc(a.name) + '<small><button class="linkbtn" data-vpstop="' + p.id + '|' + a.member_id + '">take this back</button></small></div>';
+             }).join('') + '</div>' : '') + '</div>';
+      }
+      if (p.can_use) {
+        h += '<div class="addrow" style="margin-top:8px">' +
+             '<input type="number" min="1" step="1" data-vpamt="' + p.id + '" placeholder="₹ amount" aria-label="Amount">' +
+             '<input type="text" maxlength="160" data-vpnote="' + p.id + '" placeholder="What for?" aria-label="What for">' +
+             '<button class="cbtn" data-vpuse="' + p.id + '">Record</button></div>';
+      }
+      h += '</div>';
+    });
+    $('vplist').innerHTML = h || '<div class="ev">No payment methods saved yet. Add your own below — you decide who else may use it.</div>';
+    vPay.forEach(function(p){
+      var sel = document.querySelector('[data-vpwho="' + p.id + '"]');
+      if (sel) vMembersInto(sel, 'Choose a family member');
+    });
+    $('vp-log-card').hidden = !vPayLog.length;
+    $('vplog').innerHTML = vPayLog.map(function(l){
+      var m = vMeth(l.method_id);
+      return '<div class="ev">' + esc(l.name || 'Someone') + ' ' + esc(l.action) +
+             (l.amount ? ' ₹' + l.amount : '') + (m ? ' · ' + esc(m.label) : '') +
+             '<small>' + (l.note ? esc(l.note) + ' · ' : '') + fmtTime(l.at) + '</small></div>';
+    }).join('');
+  }
+  function vPayAct(body, okMsg){
+    post(API.pay, Object.assign({ code: state.code, memberId: state.memberId, area: 'pay' }, body))
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not do that'); return; }
+        if (okMsg) toast(okMsg);
+        refreshVault();
+      }).catch(function(){ toast('No connection — try again'); });
+  }
+  function vpReset(){
+    vPayEditId = null;
+    ['vp-label','vp-bank','vp-handle','vp-cap','vp-mcap','vp-note'].forEach(function(id){ $(id).value = ''; });
+    $('vp-ftitle').textContent = 'Add a way of paying';
+    $('vp-save').textContent = 'Save this method';
+    $('vp-cancel').hidden = true;
+  }
+  $('vp-cancel').addEventListener('click', vpReset);
+  $('vp-save').addEventListener('click', function(){
+    if (!state) return;
+    if (!$('vp-label').value.trim()) { toast('Give it a name'); return; }
+    vPayAct({
+      action: vPayEditId ? 'update' : 'add', id: vPayEditId,
+      kind: $('vp-kind').value, label: $('vp-label').value, bank: $('vp-bank').value,
+      handle: $('vp-handle').value, perTxnCap: $('vp-cap').value, monthlyCap: $('vp-mcap').value,
+      note: $('vp-note').value
+    }, vPayEditId ? 'Updated 💳' : 'Saved 💳');
+    vpReset();
+  });
+  $('vplist').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    var id;
+    if ((id = b.getAttribute('data-vpperm'))) { var box = $('perm-' + id); box.hidden = !box.hidden; return; }
+    if ((id = b.getAttribute('data-vpedit'))) {
+      var p = vMeth(id); if (!p) return;
+      vPayEditId = id;
+      $('vp-kind').value = p.kind; $('vp-label').value = p.label; $('vp-bank').value = p.bank || '';
+      $('vp-handle').value = p.handle || ''; $('vp-cap').value = p.per_txn_cap || '';
+      $('vp-mcap').value = p.monthly_cap || ''; $('vp-note').value = p.note || '';
+      $('vp-ftitle').textContent = 'Edit ' + p.label;
+      $('vp-save').textContent = 'Save changes';
+      $('vp-cancel').hidden = false;
+      $('vp-label').scrollIntoView({ block:'center' });
+      return;
+    }
+    if ((id = b.getAttribute('data-vpdel'))) {
+      var pm = vMeth(id); if (!pm) return;
+      if (!confirm('Remove ' + pm.label + '? Everyone you allowed loses it.')) return;
+      vPayAct({ action:'remove', id: id }, 'Removed'); return;
+    }
+    if ((id = b.getAttribute('data-vpallow'))) {
+      var who = document.querySelector('[data-vpwho="' + id + '"]').value;
+      if (!who) { toast('Choose a family member'); return; }
+      vPayAct({ action:'allow', id: id, memberId: who,
+        perTxnCap: document.querySelector('[data-vpcap="' + id + '"]').value,
+        needsOk: document.querySelector('[data-vpask="' + id + '"]').checked }, 'They can use it now 💳');
+      return;
+    }
+    if ((id = b.getAttribute('data-vpstop'))) {
+      var parts = id.split('|');
+      vPayAct({ action:'disallow', id: parts[0], memberId: parts[1] }, 'Taken back'); return;
+    }
+    if ((id = b.getAttribute('data-vpuse'))) {
+      var amt = document.querySelector('[data-vpamt="' + id + '"]').value;
+      if (!amt) { toast('How much is it for?'); return; }
+      vPayAct({ action:'use', id: id, amount: amt,
+        note: document.querySelector('[data-vpnote="' + id + '"]').value }, 'Written down 💳');
+      return;
+    }
   });
 
   // ---------- boot ----------

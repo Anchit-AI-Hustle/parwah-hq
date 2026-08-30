@@ -131,7 +131,7 @@ for need in ("X-Content-Type-Options", "X-Frame-Options", "Referrer-Policy"):
 
 # 10c. every data endpoint proves circle membership before touching data
 # every module that touches circle data must prove membership first
-GUARDED = ["_boardapi", "_keysapi", "_pushapi", "book", "care", "chats", "circle", "events", "games", "plans"]
+GUARDED = ["_boardapi", "_keysapi", "_pushapi", "_vaultapi", "book", "care", "chats", "circle", "events", "games", "plans"]
 for name in GUARDED:
     f = API_DIR / f"{name}.mjs"
     if not f.exists():
@@ -151,6 +151,31 @@ sw = (REPO / "site/public/app/sw.js").read_text(encoding="utf-8")
 check("security: service worker bypasses /api/", "/api/" in sw)
 app_html = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
 check("security: no eval in app", "eval(" not in app_html and "new Function(" not in app_html)
+
+# 10f. THE VAULT — the promises made to the family are checked here, not
+# trusted to the interface. A change that breaks one of these cannot deploy.
+vault = (API_DIR / "_vaultapi.mjs").read_text(encoding="utf-8")
+check("vault: a full identity number is never stored",
+      "last4" in vault and not re.search(r"(number|aadhaar|pan)\s*(text|=\s*clean\()", vault),
+      "only the last four digits may be persisted")
+check("vault: Aadhaar numbers are checksum-verified", "verhoeffOk" in vault and "V_D" in vault)
+check("vault: card credentials are refused outright",
+      "credentialRisk" in vault and "cvv" in vault.lower() and "never stores a full card number" in vault)
+check("vault: a document is invisible without a grant",
+      "a.member_id is not null" in vault and "not shared with you" in vault)
+check("vault: only the owner decides who sees their papers",
+      "Only the person this document belongs to can decide who sees it" in vault)
+check("vault: opening a document is logged and the owner is told",
+      "'opened'" in vault and "every open is recorded" in vault)
+check("vault: you cannot verify a document you uploaded yourself",
+      "someone else in the family needs to check it" in vault)
+check("vault: only the owner re-permissions their payment method",
+      "ownedMethod" in vault and "owner_member !== me.id" in vault)
+check("vault: uploads are size- and type-limited",
+      "MAX_FILE" in vault and "OK_MIME" in vault)
+app_src = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+check("vault: the app never renders more than a masked number",
+      "'•••• •••• '" in app_src and "'••••' + esc(d.last4)" in app_src)
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
