@@ -54,6 +54,28 @@ export default async function handler(req, res) {
     await sql`alter table family_book add column if not exists about_member uuid references members(id) on delete cascade`;
     await sql`alter table family_book add column if not exists last_verified_at timestamptz not null default now()`;
     await sql`alter table family_book add column if not exists updated_by uuid references members(id) on delete set null`;
+    // Consent, per entry. Default 'circle' keeps a plumber's number shared
+    // with everyone; 'private' means only the person it is about, whoever
+    // wrote it, and the people they have named one at a time.
+    await sql`alter table family_book add column if not exists visibility text not null default 'circle'`;
+    await sql`create table if not exists book_access (
+      entry_id uuid not null references family_book(id) on delete cascade,
+      member_id uuid not null references members(id) on delete cascade,
+      granted_by uuid references members(id) on delete set null,
+      granted_at timestamptz not null default now(),
+      primary key (entry_id, member_id)
+    )`;
+    // The ledger the subject of an entry can read: every change to who may
+    // see something about them, and who made it.
+    await sql`create table if not exists book_consent (
+      id uuid primary key default gen_random_uuid(),
+      entry_id uuid references family_book(id) on delete cascade,
+      circle_id uuid not null references circles(id) on delete cascade,
+      member_id uuid references members(id) on delete set null,
+      action text not null,
+      at timestamptz not null default now()
+    )`;
+    await sql`create index if not exists book_consent_entry on book_consent (entry_id, at desc)`;
   } catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
 
   try {
@@ -69,22 +91,48 @@ export default async function handler(req, res) {
     const me = meRow[0];
 
     if (req.method === 'GET') {
-      const entries = await sql`
+      // Everything in this circle, each row marked with whether the caller
+      // may actually read it. Private rows are stripped below rather than
+      // filtered out of the count, so preparedness stays truthful without
+      // leaking what is inside.
+      const all = await sql`
         select b.id, b.kind, b.name, b.category, b.phone, b.address, b.forwhat, b.notes,
-               b.about_member, b.last_verified_at, b.created_at, b.updated_at,
-               m.name as by_name, am.name as about_name, um.name as updated_by_name
+               b.about_member, b.by_member, b.visibility, b.last_verified_at, b.created_at, b.updated_at,
+               m.name as by_name, am.name as about_name, um.name as updated_by_name,
+               (b.visibility = 'circle' or b.about_member = ${memberId} or b.by_member = ${memberId}
+                or ba.member_id is not null) as can_see
         from family_book b
         left join members m on m.id = b.by_member
         left join members am on am.id = b.about_member
         left join members um on um.id = b.updated_by
+        left join book_access ba on ba.entry_id = b.id and ba.member_id = ${memberId}
         where b.circle_id = ${circle.id}
         order by b.kind, lower(b.name) limit 500`;
+      const entries = all.filter(e => e.can_see).map(e => {
+        const { can_see, ...rest } = e; return rest;
+      });
+      // Who the caller has shared their own entries with, and the ledger of
+      // every consent change on anything recorded about them.
+      const mineIds = all.filter(e => e.about_member === memberId).map(e => e.id);
+      const access = mineIds.length
+        ? await sql`select ba.entry_id, ba.member_id, m.name
+                    from book_access ba join members m on m.id = ba.member_id
+                    where ba.entry_id = any(${mineIds}::uuid[])`
+        : [];
+      const consent = mineIds.length
+        ? await sql`select c.entry_id, c.action, c.at, m.name
+                    from book_consent c left join members m on m.id = c.member_id
+                    where c.entry_id = any(${mineIds}::uuid[]) order by c.at desc limit 60`
+        : [];
       const members = await sql`select id, name, relation from members where circle_id = ${circle.id} order by created_at`;
       const staleBefore = Date.now() - STALE_DAYS * 86400000;
       const isStale = (e) => new Date(e.last_verified_at).getTime() < staleBefore;
       // Preparedness: information readiness per person — never a medical score.
       const prep = members.map(mm => {
-        const mine = entries.filter(e => e.about_member === mm.id);
+        // Deliberately computed over every entry, not only the readable ones:
+        // the family should know Papa HAS recorded his medicines even when
+        // he has kept what they are to himself.
+        const mine = all.filter(e => e.about_member === mm.id);
         const chk = (pred) => {
           const hits = mine.filter(pred);
           if (!hits.length) return 'missing';
@@ -104,17 +152,85 @@ export default async function handler(req, res) {
         return { memberId: mm.id, name: mm.name, relation: mm.relation,
                  pct: Math.round(okN / keys.length * 100), attention, items };
       });
-      return res.status(200).json({ ok: true, entries, prep, staleDays: STALE_DAYS });
+      return res.status(200).json({ ok: true, entries, prep, access, consent, staleDays: STALE_DAYS });
     }
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'GET, POST');
       return res.status(405).json({ ok: false, error: 'GET or POST only' });
     }
 
+    // Consent lives with the person a thing is about — not with whoever
+    // happened to type it in, and not with an admin, because there isn't one.
+    async function subjectOf(id) {
+      if (!isUuid(id)) return { err: 'Bad entry id' };
+      const r = await sql`select id, name, about_member, by_member, visibility from family_book
+                          where id = ${id} and circle_id = ${circle.id}`;
+      if (!r[0]) return { err: 'Entry not found' };
+      const owner = r[0].about_member || r[0].by_member;
+      if (owner !== me.id) {
+        return { err: r[0].about_member
+          ? 'Only the person this is about can decide who sees it'
+          : 'Only whoever added this can decide who sees it' };
+      }
+      return { e: r[0] };
+    }
+
+    if (body.action === 'visibility') {
+      const found = await subjectOf(body.id);
+      if (found.err) return res.status(403).json({ ok: false, error: found.err });
+      const vis = body.visibility === 'private' ? 'private' : 'circle';
+      await sql`update family_book set visibility = ${vis}, updated_at = now() where id = ${found.e.id}`;
+      await sql`insert into book_consent (entry_id, circle_id, member_id, action)
+                values (${found.e.id}, ${circle.id}, ${me.id}, ${vis === 'private'
+                  ? 'made it private' : 'shared it with the whole circle'})`;
+      return res.status(200).json({ ok: true, visibility: vis });
+    }
+
+    if (body.action === 'share' || body.action === 'unshare') {
+      const found = await subjectOf(body.id);
+      if (found.err) return res.status(403).json({ ok: false, error: found.err });
+      if (!isUuid(body.memberId)) return res.status(400).json({ ok: false, error: 'Pick a family member' });
+      const t = await sql`select id, name from members where id = ${body.memberId} and circle_id = ${circle.id}`;
+      if (!t[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+      if (t[0].id === me.id) return res.status(400).json({ ok: false, error: 'It is already yours' });
+      if (body.action === 'unshare') {
+        await sql`delete from book_access where entry_id = ${found.e.id} and member_id = ${t[0].id}`;
+        await sql`insert into book_consent (entry_id, circle_id, member_id, action)
+                  values (${found.e.id}, ${circle.id}, ${me.id}, ${'took access back from ' + t[0].name})`;
+        return res.status(200).json({ ok: true });
+      }
+      await sql`insert into book_access (entry_id, member_id, granted_by)
+                values (${found.e.id}, ${t[0].id}, ${me.id})
+                on conflict (entry_id, member_id) do nothing`;
+      await sql`insert into book_consent (entry_id, circle_id, member_id, action)
+                values (${found.e.id}, ${circle.id}, ${me.id}, ${'shared it with ' + t[0].name})`;
+      await pushCircle(sql, circle.id, {
+        title: '📒 ' + me.name + ' shared something with you',
+        body: found.e.name + ' — open Family memory to see it'
+      }, { only: t[0].id });
+      return res.status(200).json({ ok: true });
+    }
+
+    // Reading, editing and verifying all require the caller to be allowed to
+    // see the entry in the first place.
+    async function readable(id) {
+      if (!isUuid(id)) return { err: 'Bad entry id' };
+      const r = await sql`
+        select b.id, b.name, b.about_member, b.by_member, b.visibility,
+               (b.visibility = 'circle' or b.about_member = ${me.id} or b.by_member = ${me.id}
+                or ba.member_id is not null) as can_see
+        from family_book b
+        left join book_access ba on ba.entry_id = b.id and ba.member_id = ${me.id}
+        where b.id = ${id} and b.circle_id = ${circle.id}`;
+      if (!r[0]) return { err: 'Entry not found' };
+      if (!r[0].can_see) return { err: 'That is not shared with you' };
+      return { e: r[0] };
+    }
+
     if (body.action === 'verify') {
-      if (!isUuid(body.id)) return res.status(400).json({ ok: false, error: 'Bad entry id' });
-      const ex = await sql`select id, name from family_book where id = ${body.id} and circle_id = ${circle.id}`;
-      if (!ex[0]) return res.status(404).json({ ok: false, error: 'Entry not found' });
+      const rd = await readable(body.id);
+      if (rd.err) return res.status(rd.err === 'Entry not found' ? 404 : 403).json({ ok: false, error: rd.err });
+      const ex = [rd.e];
       await sql`update family_book set last_verified_at = now(), updated_by = ${me.id} where id = ${ex[0].id}`;
       // Freshness is the whole point of the memory — pay for it, once a month per entry.
       await award(sql, circle.id, me.id, 'memory_ok', ex[0].id + ':' + new Date().toISOString().slice(0, 7));
@@ -148,9 +264,10 @@ export default async function handler(req, res) {
       const forwhat = clean(body.forwhat, 160);
       const notes = clean(body.notes, 300);
 
+      const vis = body.visibility === 'private' ? 'private' : 'circle';
       if (body.action === 'add') {
-        const r = await sql`insert into family_book (circle_id, kind, name, category, phone, address, forwhat, notes, by_member, about_member, updated_by)
-                            values (${circle.id}, ${kind}, ${name}, ${category}, ${phone}, ${address}, ${forwhat}, ${notes}, ${me.id}, ${about}, ${me.id})
+        const r = await sql`insert into family_book (circle_id, kind, name, category, phone, address, forwhat, notes, by_member, about_member, updated_by, visibility)
+                            values (${circle.id}, ${kind}, ${name}, ${category}, ${phone}, ${address}, ${forwhat}, ${notes}, ${me.id}, ${about}, ${me.id}, ${vis})
                             returning id`;
         const label = kind === 'contact' ? '☎️' : kind === 'address' ? '📍' : kind === 'med' ? '💊' : kind === 'fact' ? '🩸' : '🛡';
         await sql`insert into events (circle_id, member_id, type, text)
@@ -162,9 +279,9 @@ export default async function handler(req, res) {
         await award(sql, circle.id, me.id, 'memory_add', r[0].id);
         return res.status(201).json({ ok: true, id: r[0].id });
       }
-      if (!isUuid(body.id)) return res.status(400).json({ ok: false, error: 'Bad entry id' });
-      const ex = await sql`select id from family_book where id = ${body.id} and circle_id = ${circle.id}`;
-      if (!ex[0]) return res.status(404).json({ ok: false, error: 'Entry not found' });
+      const rdU = await readable(body.id);
+      if (rdU.err) return res.status(rdU.err === 'Entry not found' ? 404 : 403).json({ ok: false, error: rdU.err });
+      const ex = [rdU.e];
       // editing an entry re-verifies it: someone just looked and confirmed
       await sql`update family_book set kind = ${kind}, name = ${name}, category = ${category}, phone = ${phone},
                 address = ${address}, forwhat = ${forwhat}, notes = ${notes}, about_member = ${about},
@@ -174,9 +291,9 @@ export default async function handler(req, res) {
     }
 
     if (body.action === 'remove') {
-      if (!isUuid(body.id)) return res.status(400).json({ ok: false, error: 'Bad entry id' });
-      const ex = await sql`select id, name from family_book where id = ${body.id} and circle_id = ${circle.id}`;
-      if (!ex[0]) return res.status(404).json({ ok: false, error: 'Entry not found' });
+      const rdR = await readable(body.id);
+      if (rdR.err) return res.status(rdR.err === 'Entry not found' ? 404 : 403).json({ ok: false, error: rdR.err });
+      const ex = [rdR.e];
       await sql`delete from family_book where id = ${ex[0].id}`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${me.id}, 'care', ${me.name + ' removed ' + ex[0].name + ' from the family memory'})`;

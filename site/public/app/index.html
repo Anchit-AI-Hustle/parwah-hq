@@ -712,6 +712,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         </div>
         <label for="b-notes">Notes</label>
         <input type="text" id="b-notes" maxlength="300" placeholder="e.g. after breakfast · comes on Tuesdays · gate code 4321">
+        <label class="seniorchk"><input type="checkbox" id="b-private"> Keep this private — only me and anyone I name</label>
         <button class="go" id="b-save">Save to the family memory</button>
         <button class="linkbtn" id="b-cancel" hidden style="margin-top:8px">Cancel editing</button>
         <p class="hint">Shared with the whole circle — everyone can add, edit and keep it current.</p>
@@ -736,6 +737,22 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
           <button class="cbtn ghost" id="bd-edit">✏️ Edit</button>
           <button class="cbtn no" id="bd-remove">🗑 Remove</button>
         </div>
+      </div>
+      <div class="card" id="bd-consent-card" hidden>
+        <h3>Who can see this</h3>
+        <p class="hint" id="bd-vis-state" style="margin:2px 0 10px"></p>
+        <button class="cbtn ghost" id="bd-vis-toggle" style="margin-bottom:10px"></button>
+        <div id="bd-share-wrap" hidden>
+          <div class="feed" id="bd-shares"></div>
+          <label for="bd-share-who">Share with</label>
+          <select id="bd-share-who"></select>
+          <button class="cbtn" id="bd-share" style="margin-top:8px">Share</button>
+        </div>
+        <p class="hint" style="margin-top:10px">This is about you, so it is yours to decide. Preparedness still counts it — the family knows it is recorded, without reading it.</p>
+      </div>
+      <div class="card" id="bd-ledger-card" hidden>
+        <h3>Consent history</h3>
+        <div class="feed" id="bd-ledger"></div>
       </div>
     </div>
   </section>
@@ -2388,7 +2405,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   });
 
   // ---------- Family book: contacts, addresses, meds-map ----------
-  var bookCache = [], prepCache = [], bkFilter = 'all', bkAbout = '', bEditId = null, bKind = 'contact', bookStaleDays = 180;
+  var bookCache = [], prepCache = [], bookAccess = [], bookConsent = [], bkFilter = 'all', bkAbout = '', bEditId = null, bKind = 'contact', bookStaleDays = 180;
   var BK_ICON = { contact: '☎️', address: '📍', med: '💊', fact: '🩸', insurance: '🛡' };
   var BK_LABEL = { contact: 'Contact', address: 'Address', med: 'Meds', fact: 'Health fact', insurance: 'Insurance' };
   var FRESH_KINDS = { med: 1, fact: 1, insurance: 1 };
@@ -2447,7 +2464,11 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     if (!state) return;
     fetch(API.book + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); })
-      .then(function(j){ if (j.ok) { bookCache = j.entries || []; prepCache = j.prep || []; bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); ecSave(); } })
+      .then(function(j){ if (j.ok) { bookCache = j.entries || []; prepCache = j.prep || []; bookAccess = j.access || []; bookConsent = j.consent || []; bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); ecSave();
+          var openId = $('book-detail').hidden ? null : $('book-detail').dataset.bid;
+          if (openId && bookEntry(openId)) openBookDetail(openId);
+          else if (openId) { $('book-detail').hidden = true; $('book-list-view').hidden = false; }
+        } })
       .catch(function(){});
   }
   function bookEntry(id){ var e = null; bookCache.forEach(function(x){ if (x.id === id) e = x; }); return e; }
@@ -2506,6 +2527,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     bEditId = null;
     $('b-name').value = ''; $('b-phone').value = ''; $('b-address').value = ''; $('b-for').value = ''; $('b-notes').value = '';
     $('b-cat').value = 'other';
+    $('b-private').checked = false;
     $('bf-title').textContent = 'Add to the family book';
     $('b-cancel').hidden = true;
   }
@@ -2523,7 +2545,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
                  aboutId: $('b-about').value || undefined,
                  phone: $('b-phone').value.trim() || undefined, phoneCc: $('b-cc').value,
                  address: $('b-address').value.trim() || undefined, forwhat: $('b-for').value.trim() || undefined,
-                 notes: $('b-notes').value.trim() || undefined };
+                 notes: $('b-notes').value.trim() || undefined,
+                 visibility: $('b-private').checked ? 'private' : 'circle' };
     post(API.book, body)
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not save'); return; }
@@ -2549,7 +2572,66 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('bd-verify').hidden = !FRESH_KINDS[e.kind];
     if (e.phone) { $('bd-call').href = 'tel:' + encodeURIComponent(e.phone); $('bd-call').hidden = false; } else $('bd-call').hidden = true;
     if (e.address) { $('bd-map').href = 'https://maps.google.com/?q=' + encodeURIComponent(e.address); $('bd-map').hidden = false; } else $('bd-map').hidden = true;
+    renderBookConsent(e);
   }
+
+  // Consent belongs to the person a thing is ABOUT — not to whoever typed it,
+  // and not to an admin, because a Parwah circle has none.
+  function renderBookConsent(e){
+    var subject = e.about_member ? e.about_member === state.memberId : e.by_member === state.memberId;
+    var priv = e.visibility === 'private';
+    $('bd-consent-card').hidden = !subject;
+    $('bd-ledger-card').hidden = true;
+    if (!subject) return;
+    var shares = bookAccess.filter(function(a){ return a.entry_id === e.id; });
+    $('bd-vis-state').textContent = priv
+      ? (shares.length
+          ? 'Private — you, and ' + shares.map(function(a){ return a.name; }).join(', ')
+          : 'Private — only you')
+      : 'Everyone in the circle can see this';
+    $('bd-vis-toggle').textContent = priv ? '🔓 Share with the whole circle' : '🔒 Make this private';
+    $('bd-share-wrap').hidden = !priv;
+    if (priv) {
+      $('bd-shares').innerHTML = shares.length ? shares.map(function(a){
+        return '<div class="ev">' + esc(a.name) + '<small><button class="linkbtn" data-bunshare="' + a.member_id + '">take access back</button></small></div>';
+      }).join('') : '<div class="ev">Nobody else. Only you.</div>';
+      var opts = '<option value="">Choose a family member</option>';
+      (membersCache || []).forEach(function(m){
+        if (m.id !== state.memberId) opts += '<option value="' + m.id + '">' + esc(m.name) + '</option>';
+      });
+      $('bd-share-who').innerHTML = opts;
+    }
+    var log = bookConsent.filter(function(c){ return c.entry_id === e.id; });
+    $('bd-ledger-card').hidden = !log.length;
+    $('bd-ledger').innerHTML = log.map(function(c){
+      return '<div class="ev">' + esc(c.name || 'Someone') + ' ' + esc(c.action) + '<small>' + fmtTime(c.at) + '</small></div>';
+    }).join('');
+  }
+  function bookConsentAct(body, okMsg){
+    post(API.book, Object.assign({ code: state.code, memberId: state.memberId }, body))
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not do that'); return; }
+        toast(okMsg);
+        refreshBook();
+      }).catch(function(){ toast('No connection — try again'); });
+  }
+  $('bd-vis-toggle').addEventListener('click', function(){
+    var e = bookEntry($('book-detail').dataset.bid); if (!e) return;
+    var next = e.visibility === 'private' ? 'circle' : 'private';
+    bookConsentAct({ action:'visibility', id: e.id, visibility: next },
+      next === 'private' ? 'Private now 🔒' : 'Shared with the circle');
+  });
+  $('bd-share').addEventListener('click', function(){
+    var e = bookEntry($('book-detail').dataset.bid); if (!e) return;
+    var who = $('bd-share-who').value;
+    if (!who) { toast('Choose a family member'); return; }
+    bookConsentAct({ action:'share', id: e.id, memberId: who }, 'Shared 📒');
+  });
+  $('bd-shares').addEventListener('click', function(ev){
+    var b = ev.target.closest('[data-bunshare]'); if (!b) return;
+    var e = bookEntry($('book-detail').dataset.bid); if (!e) return;
+    bookConsentAct({ action:'unshare', id: e.id, memberId: b.getAttribute('data-bunshare') }, 'Access taken back');
+  });
   document.addEventListener('click', function(e){
     var r = e.target.closest('[data-bopen]');
     if (r) openBookDetail(r.getAttribute('data-bopen'));
@@ -2568,6 +2650,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     if (e.kind === 'fact') { if (e.category) $('b-factcat').value = e.category; }
     else if (e.category) $('b-cat').value = e.category;
     $('b-about').value = e.about_member || '';
+    $('b-private').checked = e.visibility === 'private';
     $('bf-title').textContent = 'Edit: ' + e.name;
     $('b-cancel').hidden = false;
     $('book-detail').hidden = true; $('book-list-view').hidden = false;

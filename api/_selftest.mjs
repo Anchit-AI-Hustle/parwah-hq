@@ -159,6 +159,55 @@ export default async function handler(req, res) {
     await sql`delete from rate_limit where bucket = 'selftest' and k = ${rlKey}`;
     steps.rate_limit = first === true && second === true && third === false && rolled === true;
 
+    // MEMORY CONSENT — a private entry is invisible without a grant, but
+    // preparedness still knows it is recorded.
+    await sql`create table if not exists family_book (
+      id uuid primary key default gen_random_uuid(),
+      circle_id uuid not null references circles(id) on delete cascade,
+      kind text not null, name text not null, category text, phone text, address text,
+      forwhat text, notes text, by_member uuid references members(id) on delete set null,
+      created_at timestamptz not null default now(), updated_at timestamptz not null default now())`;
+    await sql`alter table family_book add column if not exists about_member uuid references members(id) on delete cascade`;
+    await sql`alter table family_book add column if not exists visibility text not null default 'circle'`;
+    await sql`create table if not exists book_access (
+      entry_id uuid not null references family_book(id) on delete cascade,
+      member_id uuid not null references members(id) on delete cascade,
+      granted_by uuid references members(id) on delete set null,
+      granted_at timestamptz not null default now(), primary key (entry_id, member_id))`;
+    await sql`create table if not exists book_consent (
+      id uuid primary key default gen_random_uuid(),
+      entry_id uuid references family_book(id) on delete cascade,
+      circle_id uuid not null references circles(id) on delete cascade,
+      member_id uuid references members(id) on delete set null,
+      action text not null, at timestamptz not null default now())`;
+    const priv = await sql`insert into family_book (circle_id, kind, name, by_member, about_member, visibility)
+                           values (${circleId}, 'med', 'Selftest private medicine', ${papa[0].id}, ${papa[0].id}, 'private')
+                           returning id`;
+    const shared = await sql`insert into family_book (circle_id, kind, name, by_member, about_member, visibility)
+                             values (${circleId}, 'contact', 'Selftest plumber', ${papa[0].id}, null, 'circle')
+                             returning id`;
+    const visibleTo = (who) => sql`
+      select b.id from family_book b
+      left join book_access ba on ba.entry_id = b.id and ba.member_id = ${who}
+      where b.circle_id = ${circleId}
+        and (b.visibility = 'circle' or b.about_member = ${who} or b.by_member = ${who} or ba.member_id is not null)`;
+    const betaSees = await visibleTo(beta[0].id);
+    const papaSees = await visibleTo(papa[0].id);
+    steps.memory_private = betaSees.length === 1 && betaSees[0].id === shared[0].id && papaSees.length === 2;
+
+    await sql`insert into book_access (entry_id, member_id, granted_by)
+              values (${priv[0].id}, ${beta[0].id}, ${papa[0].id})`;
+    await sql`insert into book_consent (entry_id, circle_id, member_id, action)
+              values (${priv[0].id}, ${circleId}, ${papa[0].id}, 'shared it with Test Beta')`;
+    const betaAfter = await visibleTo(beta[0].id);
+    const ledger = await sql`select action from book_consent where entry_id = ${priv[0].id}`;
+    steps.memory_consent = betaAfter.length === 2 && ledger.length === 1;
+
+    // The family still knows a medicine IS recorded for Papa, without reading it.
+    const prepCount = await sql`select count(*)::int as n from family_book
+                                where circle_id = ${circleId} and about_member = ${papa[0].id} and kind = 'med'`;
+    steps.memory_prep_truthful = prepCount[0].n === 1;
+
     // MULTI-CIRCLE SIGNALS — what a person sees before opening a family.
     const unreadFor = (who) => sql`
       select count(*)::int as n from messages ms
@@ -212,8 +261,9 @@ export default async function handler(req, res) {
     const leftPay = await sql`select id from pay_methods where circle_id = ${circleId}`;
     const leftJoin = await sql`select id from join_requests where circle_id = ${circleId}`;
     const leftCoins = await sql`select id from coins where circle_id = ${circleId}`;
+    const leftBook = await sql`select id from family_book where circle_id = ${circleId}`;
     steps.cleanup_cascade = leftover.length === 0 && leftChats.length === 0 && leftReads.length === 0
-      && leftDocs.length === 0 && leftFiles.length === 0 && leftPay.length === 0 && leftJoin.length === 0 && leftCoins.length === 0;
+      && leftDocs.length === 0 && leftFiles.length === 0 && leftPay.length === 0 && leftJoin.length === 0 && leftCoins.length === 0 && leftBook.length === 0;
     circleId = null;
 
     const ok = Object.values(steps).every(Boolean);

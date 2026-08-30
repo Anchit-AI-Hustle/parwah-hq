@@ -220,6 +220,18 @@ appsrc = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
 check("circles: the sign-in list leads with the circle that needs you",
       "circleSignals" in appsrc and "needsyou" in appsrc)
 
+# 10j. MEMORY CONSENT — a fact about a person is that person's to share.
+book = (API_DIR / "book.mjs").read_text(encoding="utf-8")
+check("memory: entries can be private to their subject",
+      "visibility text not null default 'circle'" in book and "book_access" in book)
+check("memory: consent belongs to the person it is about, not the author",
+      "Only the person this is about can decide who sees it" in book and "subjectOf" in book)
+check("memory: a private entry cannot be read, edited or removed without a grant",
+      book.count("readable(") >= 4 and "That is not shared with you" in book)
+check("memory: every consent change is written to a ledger", "book_consent" in book)
+check("memory: preparedness counts private entries without exposing them",
+      "const mine = all.filter" in book and "can_see" in book)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]
