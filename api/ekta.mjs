@@ -14,6 +14,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
 import { careState, createReminder, createRequest } from './care.mjs';
+import { providerKeys } from './_keys.mjs';
 
 const ASSISTANT_NAME = 'Ekta'; // one-line swap if the persona name changes
 const MODEL_PRIMARY  = 'claude-sonnet-5';
@@ -224,15 +225,18 @@ function openaiCompat(o) {
   }};
 }
 
-function textBackups() {
+// `vault` carries keys saved in the app (env still wins inside providerKeys).
+function textBackups(vault) {
+  const V = vault || {};
   const list = [];
-  if (process.env.OPENAI_API_KEY) list.push(openaiCompat({
+  const okey = V.openai;
+  if (okey) list.push(openaiCompat({
     url: 'https://api.openai.com/v1/chat/completions',
-    key: process.env.OPENAI_API_KEY,
+    key: okey,
     model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
     tokParam: 'max_completion_tokens'
   }));
-  const gkey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const gkey = V.gemini;
   if (gkey) {
     const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
     list.push({ model: model, run: async function (sys, history) {
@@ -253,13 +257,13 @@ function textBackups() {
       return t;
     }});
   }
-  const xkey = process.env.XAI_API_KEY || process.env.GROK_API_KEY;
+  const xkey = V.grok;
   if (xkey) list.push(openaiCompat({
     url: 'https://api.x.ai/v1/chat/completions',
     key: xkey,
     model: process.env.XAI_MODEL || process.env.GROK_MODEL || 'grok-3-mini'
   }));
-  const kkey = process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY;
+  const kkey = V.kimi;
   if (kkey) list.push(openaiCompat({
     url: (process.env.KIMI_BASE_URL || 'https://api.moonshot.ai/v1') + '/chat/completions',
     key: kkey,
@@ -281,13 +285,18 @@ export async function ektaTurn(sql, circle, me, history) {
   const actions = [];
   const failures = [];
   let last = null;
+  // Keys come from the server env first, then from the in-app vault.
+  let vault = {};
+  try { vault = (await providerKeys(sql)).keys; } catch (e) { /* vault optional */ }
 
-  if (process.env.ANTHROPIC_API_KEY) {
+  if (vault.anthropic) {
     // Identity-linked API keys may name a workspace; the default workspace
     // needs no header at all.
-    const client = new Anthropic(process.env.ANTHROPIC_WORKSPACE_ID
-      ? { defaultHeaders: { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID } }
-      : {});
+    const client = new Anthropic(Object.assign(
+      { apiKey: vault.anthropic },
+      process.env.ANTHROPIC_WORKSPACE_ID
+        ? { defaultHeaders: { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID } }
+        : {}));
     const tiers = [MODEL_PRIMARY, MODEL_DEEP, MODEL_FALLBACK];
     for (let i = 0; i < tiers.length; i++) {
       try {
@@ -305,7 +314,7 @@ export async function ektaTurn(sql, circle, me, history) {
     if (last) return last;
   }
 
-  const backups = textBackups();
+  const backups = textBackups(vault);
   for (let i = 0; i < backups.length; i++) {
     try {
       const reply = await backups[i].run(systemPrompt(me, circle) + BACKUP_NOTE, history);
@@ -322,12 +331,15 @@ export default async function handler(req, res) {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, error: 'POST only' });
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(503).json({ ok: false, error: ASSISTANT_NAME + ' is not configured yet — ANTHROPIC_API_KEY is missing on the server.' });
-  }
   let sql;
   try { sql = db(); await ensureSchema(sql); }
   catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  try {
+    const { keys } = await providerKeys(sql);
+    if (!Object.keys(keys).some(k => keys[k])) {
+      return res.status(503).json({ ok: false, error: ASSISTANT_NAME + " has no brain yet — add an AI key in Profile → Ekta's brain, or set one on the server." });
+    }
+  } catch (e) { /* fall through: the cascade reports the real failure */ }
 
   const { code, memberId, messages } = req.body || {};
   const circle = await circleByCode(sql, code);

@@ -64,7 +64,7 @@ async function listChats(sql, circle, me) {
 // She answers when a chat message speaks to her by name.
 async function maybeEktaReply(sql, circle, me, chat, text) {
   if (!/\bekta\b|एकता/i.test(text)) return null;
-  if (!process.env.ANTHROPIC_API_KEY) return null;
+  // any configured provider (env or vault) is enough for her to reply
   try {
     const recent = await sql`
       select coalesce(mem.name, 'Ekta') as name, m.text

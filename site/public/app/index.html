@@ -979,6 +979,24 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     </div>
 
     <div class="card">
+      <h3>Ekta's brain 🔑</h3>
+      <p class="hint" style="margin:2px 0 10px">Ekta answers using whichever AI key is set. Add one and she wakes up; add several and she falls back automatically if one fails. Keys are stored server-side and never shown again.</p>
+      <div id="klist"></div>
+      <label for="k-prov">Provider</label>
+      <select id="k-prov">
+        <option value="anthropic">Anthropic (Claude) — full tools</option>
+        <option value="openai">OpenAI</option>
+        <option value="gemini">Google Gemini</option>
+        <option value="grok">Grok (xAI)</option>
+        <option value="kimi">Kimi (Moonshot)</option>
+      </select>
+      <label for="k-key">API key</label>
+      <input type="password" id="k-key" maxlength="300" placeholder="paste the key" autocomplete="off">
+      <button class="go" id="k-save">Save key</button>
+      <p class="hint" style="margin-top:8px">Anthropic: console.anthropic.com → API keys · Gemini: aistudio.google.com/apikey · OpenAI: platform.openai.com/api-keys</p>
+    </div>
+
+    <div class="card">
       <h3>Settings</h3>
       <div class="kv"><b>Language</b><span>English · Hindi toggle coming soon</span></div>
       <div class="kv"><b>Senior mode</b><span id="p-senior"></span></div>
@@ -1108,7 +1126,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', push: '../api/push' };
+  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', push: '../api/push', keys: '../api/keys' };
   var TABS = ['home','people','memory','care','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
@@ -1690,6 +1708,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('bell').hidden = false;
     renderGroups();
     pushBoot();
+    refreshKeys();
     if (authUser && authUser.phone) {
       post(API.auth, { action: 'enter', phone: authUser.phone })
         .then(function(j){ if (j.ok && j.exists) { authUser = j.user; saveAuth(authUser); saveGroups(j.circles || []); } })
@@ -2117,6 +2136,47 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         if (!j.ok) { toast(j.error || 'Could not remove'); return; }
         toast('Removed'); $('bd-back').click(); refreshBook();
       })
+      .catch(function(){ toast('No connection — try again'); });
+  });
+
+  // ---------- Ekta's brain: provider keys ----------
+  var K_LABEL = { anthropic: 'Anthropic (Claude)', openai: 'OpenAI', gemini: 'Google Gemini', grok: 'Grok (xAI)', kimi: 'Kimi (Moonshot)' };
+  function refreshKeys(){
+    if (!state) return;
+    fetch(API.keys + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if (!j.ok) return;
+        var h = '', any = false;
+        Object.keys(K_LABEL).forEach(function(p){
+          var st = (j.providers && j.providers[p]) || { set: false };
+          if (st.set) any = true;
+          h += '<div class="kv"><b>' + K_LABEL[p] + '</b><span>' +
+               (st.set ? '✅ set' + (st.src === 'env' ? ' (on the server)' : '') +
+                 (st.src === 'vault' ? ' <button class="linkbtn" data-kclear="' + p + '">remove</button>' : '')
+                : '—') + '</span></div>';
+        });
+        $('klist').innerHTML = h + (any ? '' : '<p class="hint" style="margin:6px 0 10px">No key yet — Ekta cannot answer until one is added.</p>');
+      })
+      .catch(function(){});
+  }
+  $('k-save').addEventListener('click', function(){
+    var key = $('k-key').value.trim();
+    if (!key) { toast('Paste the API key first'); return; }
+    post(API.keys, { code: state.code, memberId: state.memberId, action: 'set', provider: $('k-prov').value, key: key })
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not save the key'); return; }
+        $('k-key').value = '';
+        toast('Saved — Ekta is awake 🧡');
+        refreshKeys();
+      })
+      .catch(function(){ toast('No connection — try again'); });
+  });
+  $('klist').addEventListener('click', function(e){
+    var b = e.target.closest('[data-kclear]'); if (!b) return;
+    if (!confirm('Remove this key? Ekta will fall back to any other key that is set.')) return;
+    post(API.keys, { code: state.code, memberId: state.memberId, action: 'clear', provider: b.getAttribute('data-kclear') })
+      .then(function(j){ if (j.ok) { toast('Removed'); refreshKeys(); } else toast(j.error || 'Could not remove'); })
       .catch(function(){ toast('No connection — try again'); });
   });
 
