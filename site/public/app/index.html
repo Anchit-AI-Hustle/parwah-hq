@@ -2667,6 +2667,16 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     }).join('');
   }
   function renderGame(g){
+    try { renderGameInner(g); }
+    catch (err) {
+      // A malformed or legacy game state must never blank the page —
+      // fall back to the games menu so the family can start fresh.
+      curGame = null;
+      $('game-none').hidden = false;
+      $('game-on').hidden = true;
+    }
+  }
+  function renderGameInner(g){
     curGame = g;
     $('game-none').hidden = !!g;
     $('game-on').hidden = !g;

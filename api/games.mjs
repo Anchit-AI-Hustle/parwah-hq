@@ -296,7 +296,14 @@ export default async function handler(req, res) {
     const me = meRow[0];
 
     if (req.method === 'GET') {
-      const g = await activeGame(sql, circle.id);
+      let g = await activeGame(sql, circle.id);
+      // A party game saved before the lobby/teams engine existed has an old
+      // state shape the app can no longer play — retire it so the family
+      // starts a fresh lobby instead of hitting a broken game.
+      if (g && (g.state.kind === 'antakshari' || g.state.kind === 'charades') && !Array.isArray(g.state.admins)) {
+        await sql`update games set status = 'done' where id = ${g.id}`;
+        g = null;
+      }
       return res.status(200).json({ ok: true, game: publicState(g ? { ...g, kind: g.state.kind || g.kind } : null, me.id) });
     }
     if (req.method !== 'POST') {
