@@ -3,6 +3,7 @@
 // POST /api/care {code, memberId, action, ...} — see ACTIONS below
 import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
+import { award, today } from './_coins.mjs';
 
 async function feed(sql, circleId, memberId, text) {
   await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'care', ${text})`;
@@ -124,6 +125,9 @@ export default async function handler(req, res) {
       if (row[0].for_member !== me.id) return res.status(403).json({ ok: false, error: 'Only the person it is for can mark it done' });
       if (row[0].recurrence !== 'daily') await sql`update reminders set status = 'done' where id = ${reminderId}`;
       await feed(sql, circle.id, me.id, `${me.name} completed: ${row[0].title} ✔`);
+      // A daily reminder earns once a day; a one-off earns once, ever.
+      await award(sql, circle.id, me.id, 'reminder',
+        row[0].recurrence === 'daily' ? reminderId + ':' + today() : reminderId);
       if (row[0].by_member && row[0].by_member !== me.id) {
         await pushCircle(sql, circle.id, { title: '✔ ' + me.name + ' did it', body: row[0].title }, { only: row[0].by_member });
       }
@@ -150,6 +154,7 @@ export default async function handler(req, res) {
       } else {
         await sql`update requests set status = 'done' where id = ${requestId}`;
         await feed(sql, circle.id, me.id, `${me.name} finished: ${row[0].title} ✔`);
+        await award(sql, circle.id, me.id, 'reminder', requestId);
         if (row[0].by_member && row[0].by_member !== me.id) {
           await pushCircle(sql, circle.id, { title: '✔ ' + me.name + ' finished it', body: row[0].title }, { only: row[0].by_member });
         }

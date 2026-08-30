@@ -3,6 +3,7 @@
 // reads, then deletes the circle (cascades to members and events).
 import { db, ensureSchema, makeCode, ensureCircleChat, rateLimit } from './_db.mjs';
 import { ensureVaultSchema, ensurePaySchema, checkNumber } from './_vaultapi.mjs';
+import { ensureCoinSchema, award, balance, spend, EARN, SPEND } from './_coins.mjs';
 
 export default async function handler(req, res) {
   const steps = {};
@@ -158,6 +159,26 @@ export default async function handler(req, res) {
     await sql`delete from rate_limit where bucket = 'selftest' and k = ${rlKey}`;
     steps.rate_limit = first === true && second === true && third === false && rolled === true;
 
+    // COINS — one pot for the family, earned by caring, spent on the AI.
+    await ensureCoinSchema(sql);
+    const start = await balance(sql, circleId);
+    const paid1 = await award(sql, circleId, papa[0].id, 'checkin', '2026-01-01');
+    const paid2 = await award(sql, circleId, papa[0].id, 'checkin', '2026-01-01');  // same day again
+    const paid3 = await award(sql, circleId, beta[0].id, 'checkin', '2026-01-01');  // different person
+    const afterEarn = await balance(sql, circleId);
+    steps.coins_earn_once = paid1 === EARN.checkin.n && paid2 === 0 && paid3 === EARN.checkin.n
+      && afterEarn === start + EARN.checkin.n * 2;
+
+    const sp = await spend(sql, circleId, beta[0].id, 'ekta');
+    const afterSpend = await balance(sql, circleId);
+    steps.coins_spend = sp.ok === true && sp.cost === SPEND.ekta && afterSpend === afterEarn - SPEND.ekta;
+
+    // An empty pot refuses the AI rather than going negative.
+    await sql`insert into coins (circle_id, member_id, delta, reason) values (${circleId}, ${papa[0].id}, ${-afterSpend}, 'selftest_drain')`;
+    const broke = await spend(sql, circleId, beta[0].id, 'ekta');
+    const atZero = await balance(sql, circleId);
+    steps.coins_never_negative = broke.ok === false && atZero === 0;
+
     await sql`delete from circles where id = ${c2[0].id}`;
     await sql`delete from users where id = ${u[0].id}`;
     await sql`delete from circles where id = ${circleId}`;
@@ -168,8 +189,9 @@ export default async function handler(req, res) {
     const leftFiles = await sql`select doc_id from vault_files where doc_id = ${doc[0].id}`;
     const leftPay = await sql`select id from pay_methods where circle_id = ${circleId}`;
     const leftJoin = await sql`select id from join_requests where circle_id = ${circleId}`;
+    const leftCoins = await sql`select id from coins where circle_id = ${circleId}`;
     steps.cleanup_cascade = leftover.length === 0 && leftChats.length === 0 && leftReads.length === 0
-      && leftDocs.length === 0 && leftFiles.length === 0 && leftPay.length === 0 && leftJoin.length === 0;
+      && leftDocs.length === 0 && leftFiles.length === 0 && leftPay.length === 0 && leftJoin.length === 0 && leftCoins.length === 0;
     circleId = null;
 
     const ok = Object.values(steps).every(Boolean);

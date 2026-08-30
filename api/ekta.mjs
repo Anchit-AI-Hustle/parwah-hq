@@ -15,6 +15,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
 import { careState, createReminder, createRequest } from './care.mjs';
 import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
+import { spend, EARN } from './_coins.mjs';
 
 const ASSISTANT_NAME = 'Ekta'; // one-line swap if the persona name changes
 const MODEL_PRIMARY  = 'claude-sonnet-5';
@@ -367,10 +368,23 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: 'Say something to ' + ASSISTANT_NAME });
   }
 
+  // Ekta runs on the family's coins. They are earned by looking after each
+  // other — checking in, keeping the memory current, filling the vault — so
+  // the assistant is paid for by the very habits it exists to support.
+  const paid = await spend(sql, circle.id, me.id, 'ekta');
+  if (!paid.ok) {
+    return res.status(402).json({ ok: false, needCoins: true, balance: paid.balance, cost: paid.cost,
+      error: ASSISTANT_NAME + ' is out of coins. The family earns more by checking in (+' + EARN.checkin.n +
+             '), keeping the family memory current (+' + EARN.memory_ok.n + ') or adding a document to the vault (+' +
+             EARN.vault_add.n + ').' });
+  }
+
   try {
     const out = await ektaTurn(sql, circle, me, history);
-    return res.status(200).json({ ok: true, reply: out.reply, actions: out.actions, model: out.model });
+    return res.status(200).json({ ok: true, reply: out.reply, actions: out.actions, model: out.model, coins: paid.balance });
   } catch (e) {
+    // A turn that never reached a brain is never charged for.
+    try { await sql`insert into coins (circle_id, member_id, delta, reason) values (${circle.id}, ${me.id}, ${paid.cost}, 'refund')`; } catch (_) {}
     return res.status(502).json({ ok: false, error: 'Ekta could not reach her brain right now — try again in a moment.', detail: String(e && e.message || e).slice(0, 200) });
   }
 }

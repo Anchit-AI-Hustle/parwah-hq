@@ -528,6 +528,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     </div>
     <button class="big ecard-big" id="btn-ecard">🚨 Emergency card<span class="sub">Everything a doctor needs — works without internet</span></button>
 
+    <button class="card coincard" id="coincard" hidden style="margin-bottom:14px;width:100%;text-align:left">
+      <h3>🪙 <span id="coin-bal">—</span> family coins</h3>
+      <p class="hint" id="coin-sub" style="margin:2px 0 0">Earned by looking after each other — spent on Ekta</p>
+    </button>
     <div class="widgets">
       <button class="widget" data-goto="people"><span class="wic" aria-hidden="true">👨‍👩‍👧</span><b>People</b><small id="w-fam">Loading…</small></button>
       <button class="widget" data-goto="care" data-sec="rem"><span class="wic" aria-hidden="true">🔔</span><b>Reminders</b><small id="w-rem">Loading…</small></button>
@@ -1049,6 +1053,17 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   <section id="pane-profile" hidden>
     <div class="subsec" data-sec="me">
     <div class="card">
+      <h3>🪙 Family coins</h3>
+      <p style="margin:2px 0 4px"><b id="coin-bal2" style="font-size:1.6rem">—</b> <span class="hint">in the family pot</span></p>
+      <p class="hint" id="coin-mine" style="margin:0 0 10px"></p>
+      <p class="hint">One pot for the whole family. Everything you do to look after each other earns coins, and Ekta — and any other AI help — spends them. Nothing is for sale.</p>
+      <div id="coin-top" style="margin-top:10px"></div>
+      <p class="eyebrow" style="margin-top:14px">How coins are earned</p>
+      <div class="feed" id="coin-earn"></div>
+      <p class="eyebrow" style="margin-top:14px">Recent</p>
+      <div class="feed" id="coin-log"><div class="ev">Nothing yet.</div></div>
+    </div>
+    <div class="card">
       <h3>You</h3>
       <div class="kv"><b>Name</b><span id="p-name"></span></div>
       <div class="kv"><b>Mobile</b><span id="p-phone">—</span></div>
@@ -1308,7 +1323,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', vault: '../api/book?area=vault', pay: '../api/book?area=pay', push: '../api/settings?area=push', keys: '../api/settings?area=keys' };
+  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', vault: '../api/book?area=vault', pay: '../api/book?area=pay', push: '../api/settings?area=push', keys: '../api/settings?area=keys', coins: '../api/settings?area=coins' };
   var TABS = ['home','people','memory','vault','care','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
@@ -1653,6 +1668,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       .then(function(j){ if (j.ok) renderCare(j); })
       .catch(function(){});
     refreshBook();
+    refreshCoins();
     refreshChats();
     if (curChat) loadMsgs();
   }
@@ -2123,6 +2139,40 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     if (next === 'open' && !confirm('Anyone who has the code — or guesses it — will join with no questions asked. The family vault stays permissioned, but they will be inside the circle. Are you sure?')) return;
     joinAct({ action:'set_join_policy', policy: next }, next === 'open' ? 'The code is now enough' : 'Joining needs a yes from the family');
   });
+
+  // ---------- family coins: earned by caring, spent on Ekta ----------
+  var coinBal = null;
+  function refreshCoins(){
+    if (!state) return;
+    fetch(API.coins + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
+      .then(function(r){ return r.json(); })
+      .then(function(j){ if (j.ok) renderCoins(j); })
+      .catch(function(){});
+  }
+  function renderCoins(j){
+    coinBal = j.balance;
+    $('coincard').hidden = false;
+    $('coin-bal').textContent = j.balance;
+    $('coin-bal2').textContent = j.balance;
+    $('coin-sub').textContent = j.balance < 10
+      ? 'Running low — check in or keep the family memory current to earn more'
+      : 'Earned by looking after each other — spent on Ekta';
+    $('coin-mine').textContent = j.mine ? 'You have earned ' + j.mine + ' of them.' : 'You have not earned any yet.';
+    $('coin-top').innerHTML = (j.top || []).length
+      ? '<p class="eyebrow">Who is keeping things going</p>' + j.top.map(function(t){
+          return '<div class="kv"><b>' + esc(t.name) + '</b><span>' + t.n + ' 🪙</span></div>'; }).join('')
+      : '';
+    var earn = j.earn || {};
+    $('coin-earn').innerHTML = Object.keys(earn).filter(function(k){ return k !== 'welcome'; }).map(function(k){
+      return '<div class="ev">' + esc(earn[k].label) + '<small>+' + earn[k].n + ' 🪙</small></div>';
+    }).join('');
+    $('coin-log').innerHTML = (j.ledger || []).length ? j.ledger.map(function(l){
+      var lbl = (earn[l.reason] && earn[l.reason].label) || (l.reason === 'ekta' ? 'Asked Ekta' : l.reason === 'refund' ? 'Refunded — Ekta could not answer' : l.reason);
+      return '<div class="ev">' + (l.delta > 0 ? '＋' : '−') + Math.abs(l.delta) + ' 🪙 · ' + esc(lbl) +
+             '<small>' + esc(l.name || 'The family') + ' · ' + fmtTime(l.created_at) + '</small></div>';
+    }).join('') : '<div class="ev">Nothing yet.</div>';
+  }
+  $('coincard').addEventListener('click', function(){ switchTab('profile'); });
 
   // ---------- invite (native share) ----------
   function inviteText(){
@@ -2730,6 +2780,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
           ektaAppend('assistant', j.reply);
           speak(j.reply);
           if (j.actions && j.actions.length) refresh();
+        } else if (j.needCoins) {
+          ektaAppend('assistant', j.error, 'thinking');
+          refreshCoins();
         } else {
           ektaAppend('assistant', j.error || 'Kuch gadbad ho gayi — try again?', 'thinking');
         }

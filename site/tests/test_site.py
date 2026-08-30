@@ -194,6 +194,21 @@ check("rate limit: counted in the database, not per instance",
 check("rate limit: a broken limiter never locks the family out",
       "catch (e) { return true; }" in dbsrc)
 
+# 10h. COINS — the credit that pays for Ekta.
+coins = (API_DIR / "_coins.mjs").read_text(encoding="utf-8")
+ekta = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
+check("coins: the balance is the ledger, never a stored number",
+      "sum(delta)" in coins and "balance integer" not in coins)
+check("coins: earning pays once, enforced by an index",
+      "coins_once" in coins and "on conflict do nothing" in coins)
+check("coins: awarding can never break the action that earned it",
+      "catch (e) { return 0; }" in coins)
+check("coins: Ekta is paid for out of the family pot",
+      "spend(sql, circle.id, me.id, 'ekta')" in ekta and "needCoins" in ekta)
+check("coins: an unanswered turn is refunded", "'refund'" in ekta)
+check("coins: an empty pot refuses rather than going negative",
+      "if (have < cost) return { ok: false" in coins)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

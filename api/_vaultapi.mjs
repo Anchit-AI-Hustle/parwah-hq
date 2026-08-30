@@ -21,6 +21,7 @@
 //     digits are the most we will hold.
 import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
+import { award } from './_coins.mjs';
 
 const DOC_KINDS = {
   aadhaar:  { label: 'Aadhaar',            icon: '🆔' },
@@ -304,6 +305,7 @@ async function docsApi(req, res, sql, circle, me) {
           body: DOC_KINDS[kind].icon + ' ' + label + ' — only you and ' + me.name + ' can open it until you share it'
         }, { only: aRow[0].id });
       }
+      await award(sql, circle.id, me.id, 'vault_add', id);
       return res.status(201).json({ ok: true, id });
     }
 

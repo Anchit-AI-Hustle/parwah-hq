@@ -18,6 +18,7 @@ import { db, ensureSchema, circleByCode, isUuid, normPhone, phoneError } from '.
 import { pushCircle } from './_push.mjs';
 import boardApi from './_boardapi.mjs';
 import vaultApi from './_vaultapi.mjs';
+import { award } from './_coins.mjs';
 
 const KINDS = ['contact', 'address', 'med', 'fact', 'insurance'];
 const CATS = ['housework', 'doctor', 'vet', 'driver', 'shops', 'repairs', 'emergency', 'other'];
@@ -115,6 +116,8 @@ export default async function handler(req, res) {
       const ex = await sql`select id, name from family_book where id = ${body.id} and circle_id = ${circle.id}`;
       if (!ex[0]) return res.status(404).json({ ok: false, error: 'Entry not found' });
       await sql`update family_book set last_verified_at = now(), updated_by = ${me.id} where id = ${ex[0].id}`;
+      // Freshness is the whole point of the memory — pay for it, once a month per entry.
+      await award(sql, circle.id, me.id, 'memory_ok', ex[0].id + ':' + new Date().toISOString().slice(0, 7));
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${me.id}, 'care', ${me.name + ' checked that "' + ex[0].name + '" is still current ✅'})`;
       return res.status(200).json({ ok: true });
@@ -156,6 +159,7 @@ export default async function handler(req, res) {
         if (about && about !== me.id) {
           await pushCircle(sql, circle.id, { title: '📒 ' + me.name + ' noted something about you', body: label + ' ' + name + ' — open Family memory to check it is right' }, { only: about });
         }
+        await award(sql, circle.id, me.id, 'memory_add', r[0].id);
         return res.status(201).json({ ok: true, id: r[0].id });
       }
       if (!isUuid(body.id)) return res.status(400).json({ ok: false, error: 'Bad entry id' });

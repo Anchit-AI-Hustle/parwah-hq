@@ -1,6 +1,7 @@
 // POST /api/circle — create a care circle or join one with its code.
 import { db, ensureSchema, makeCode, circleByCode, isUuid, normPhone, phoneError, rateLimit, clientIp } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
+import { award } from './_coins.mjs';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -72,6 +73,9 @@ export default async function handler(req, res) {
       const m = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation) values (${circle.id}, ${name}, ${r}, ${memberPhone}, ${memberCc}, ${memberLocal}, ${user ? user.id : null}, ${relation}) returning id`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${m[0].id}, 'join', ${name + ' created the circle'})`;
+      // Ekta works from the first minute — a new family is not asked to earn
+      // its way to a working assistant.
+      await award(sql, circle.id, m[0].id, 'welcome', 'circle');
       return res.status(201).json({ ok: true, code: circle.code, circleName: circle.name, memberId: m[0].id, role: r });
     }
 
@@ -161,6 +165,7 @@ export default async function handler(req, res) {
       await sql`update join_requests set status = 'approved', decided_by = ${mRow[0].id}, decided_at = now() where id = ${q.id}`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${nm[0].id}, 'join', ${q.name + ' joined the circle — ' + mRow[0].name + ' let them in'})`;
+      await award(sql, circle.id, mRow[0].id, 'welcomed', q.id);
       await pushCircle(sql, circle.id, { title: '🧡 ' + q.name + ' joined ' + circle.name, body: 'Say hello in the family chat' }, { except: nm[0].id });
       await pushCircle(sql, circle.id, { title: '🧡 You are in — ' + circle.name, body: mRow[0].name + ' let you in. Open Parwah to say hello.' }, { only: nm[0].id });
       return res.status(200).json({ ok: true, memberId: nm[0].id });
