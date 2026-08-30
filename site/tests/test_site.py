@@ -245,6 +245,14 @@ check("onboarding: the interface is pointed at once, then never again",
 check("onboarding: starting a family or a group is offered everywhere",
       all(k in appsrc for k in ("cs-newfam", "cs-newgrp", "side-newcircle", "d-newcircle", "pickkind")))
 
+# 10l. LAYOUT — sidebar-only controls must never reach the mobile tab bar.
+check("layout: .side-only is specific enough to beat .tabs button",
+      ".tabs .side-only{display:none}" in appsrc and ".tabs .side-only{display:flex}" in appsrc)
+check("layout: the desktop content is not capped at a phone width",
+      "body.inapp .wrap{max-width:1240px" in appsrc)
+check("layout: Today uses two columns on a wide screen",
+      "homerail" in appsrc and "homemain" in appsrc and "@media(min-width:1240px)" in appsrc)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]
