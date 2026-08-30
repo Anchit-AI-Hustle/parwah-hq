@@ -86,6 +86,26 @@ export default async function handler(req, res) {
       out.added.push(m.name);
     }
 
+    // collapse two seats that are really one person: same last-10 phone digits
+    const seats = await sql`select id, name, phone, user_id from members where circle_id = ${cid} order by created_at`;
+    const byDigits = {};
+    for (const m of seats) {
+      const d = String(m.phone || '').replace(/\D/g, '').slice(-10);
+      if (!d) continue;
+      if (!byDigits[d]) { byDigits[d] = m; continue; }
+      let keepS = byDigits[d], dropS = m;
+      if (!keepS.user_id && m.user_id) { keepS = m; dropS = byDigits[d]; byDigits[d] = m; }
+      await sql`update events set member_id = ${keepS.id} where member_id = ${dropS.id}`;
+      await sql`update messages set member_id = ${keepS.id} where member_id = ${dropS.id}`;
+      await sql`update reminders set for_member = ${keepS.id} where for_member = ${dropS.id}`;
+      await sql`update reminders set by_member = ${keepS.id} where by_member = ${dropS.id}`;
+      await sql`update requests set by_member = ${keepS.id} where by_member = ${dropS.id}`;
+      await sql`update requests set claimed_by = ${keepS.id} where claimed_by = ${dropS.id}`;
+      await sql`update plans set by_member = ${keepS.id} where by_member = ${dropS.id}`;
+      await sql`delete from members where id = ${dropS.id}`;
+      out.merged++;
+    }
+
     // test circles out; orphan users out
     const gone = await sql`delete from circles where id <> ${cid} returning id`;
     out.circlesDeleted = gone.length;
