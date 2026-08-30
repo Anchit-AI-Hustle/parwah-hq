@@ -177,6 +177,23 @@ app_src = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
 check("vault: the app never renders more than a masked number",
       "'•••• •••• '" in app_src and "'••••' + esc(d.last4)" in app_src)
 
+# 10g. WAY IN — a short invite code must not be the whole security model.
+dbsrc = (API_DIR / "_db.mjs").read_text(encoding="utf-8")
+circ = (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+auth = (API_DIR / "auth.mjs").read_text(encoding="utf-8")
+check("join: approval is the default for every circle",
+      "join_policy text not null default 'approve'" in dbsrc)
+check("join: a code alone creates a request, not a membership",
+      "insert into join_requests" in circ and "pending: true" in circ)
+check("join: any member can decide, there is no owner",
+      "approve_join" in circ and "decline_join" in circ and "Not a member of this circle" in circ)
+check("rate limit: join attempts are capped", "rateLimit(sql, 'join'" in circ)
+check("rate limit: sign-in attempts are capped", "rateLimit(sql, 'auth'" in auth)
+check("rate limit: counted in the database, not per instance",
+      "create table if not exists rate_limit" in dbsrc and "make_interval" in dbsrc)
+check("rate limit: a broken limiter never locks the family out",
+      "catch (e) { return true; }" in dbsrc)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

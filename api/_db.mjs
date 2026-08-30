@@ -127,7 +127,57 @@ export async function ensureSchema(sql) {
     state jsonb not null,
     created_at timestamptz not null default now()
   )`;
+  // Joining is by approval by default: an invite code alone must not be
+  // enough to walk into a family that keeps its Aadhaar and passports here.
+  await sql`alter table circles add column if not exists join_policy text not null default 'approve'`;
+  await sql`create table if not exists join_requests (
+    id uuid primary key default gen_random_uuid(),
+    circle_id uuid not null references circles(id) on delete cascade,
+    user_id uuid references users(id) on delete cascade,
+    name text not null,
+    phone text,
+    phone_cc text,
+    phone_local text,
+    relation text,
+    role text not null default 'family',
+    status text not null default 'pending',
+    decided_by uuid references members(id) on delete set null,
+    decided_at timestamptz,
+    created_at timestamptz not null default now()
+  )`;
+  await sql`create index if not exists join_requests_circle on join_requests (circle_id, status, created_at desc)`;
+  try { await sql`create unique index if not exists join_requests_pending on join_requests (circle_id, user_id) where status = 'pending' and user_id is not null`; } catch (e) {}
+  await sql`create table if not exists rate_limit (
+    bucket text not null,
+    k text not null,
+    window_start timestamptz not null default now(),
+    n integer not null default 0,
+    primary key (bucket, k)
+  )`;
   schemaReady = true;
+}
+
+// The caller's address, as far as the platform will tell us. Used only as a
+// rate-limit key — never stored against a person.
+export function clientIp(req) {
+  const h = (req && req.headers) || {};
+  const fwd = String(h['x-forwarded-for'] || h['x-real-ip'] || '').split(',')[0].trim();
+  return fwd || 'unknown';
+}
+
+// Fixed-window rate limit, counted in the database so it holds across every
+// serverless instance. Returns true when the call is allowed. A limiter that
+// cannot reach the database never blocks a real family.
+export async function rateLimit(sql, bucket, key, limit, windowSec) {
+  try {
+    const rows = await sql`
+      insert into rate_limit (bucket, k, window_start, n) values (${bucket}, ${key}, now(), 1)
+      on conflict (bucket, k) do update set
+        n = case when rate_limit.window_start < now() - make_interval(secs => ${windowSec}) then 1 else rate_limit.n + 1 end,
+        window_start = case when rate_limit.window_start < now() - make_interval(secs => ${windowSec}) then now() else rate_limit.window_start end
+      returning n`;
+    return rows[0].n <= limit;
+  } catch (e) { return true; }
 }
 
 // Every circle has one default chat with everyone in it, created lazily.

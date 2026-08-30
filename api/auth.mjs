@@ -7,7 +7,7 @@
 //                     can ask for it.
 // No OTP yet (SMS provider is a roadmap item) — the shape is ready for an
 // OTP check to slot in here without any client-flow change.
-import { db, ensureSchema, isUuid, normPhone, phoneError } from './_db.mjs';
+import { db, ensureSchema, isUuid, normPhone, phoneError, rateLimit, clientIp } from './_db.mjs';
 
 async function circlesOf(sql, userId) {
   return await sql`
@@ -29,6 +29,12 @@ export default async function handler(req, res) {
 
   try {
     const body = req.body || {};
+    // Until SMS one-time codes are in, a phone number is the whole key — so
+    // the number of tries from one device is capped.
+    if (body.action === 'enter') {
+      const allowed = await rateLimit(sql, 'auth', clientIp(req), 25, 600);
+      if (!allowed) return res.status(429).json({ ok: false, error: 'Too many sign-in attempts from this device — please wait a few minutes' });
+    }
 
     if (body.action === 'update') {
       if (!isUuid(body.userId)) return res.status(403).json({ ok: false, error: 'Sign in first' });

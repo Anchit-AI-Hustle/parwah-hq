@@ -487,6 +487,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <button class="go" id="j-go">Join the circle</button>
   </div>
   </div>
+  <div class="card" id="pending-step" hidden>
+    <h3>🙋 Waiting for the family</h3>
+    <p id="pend-msg" style="margin:6px 0 12px"></p>
+    <p class="hint">Anyone already in the circle can let you in — they have all been told. Nothing of the family's is visible to you until they do.</p>
+    <button class="go" id="pend-check" style="margin-top:12px">Check again</button>
+    <button class="linkbtn" id="pend-back" style="margin-top:10px">← Try a different code</button>
+  </div>
   <p class="err" id="ob-err"></p>
 </div>
 
@@ -585,6 +592,12 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <p class="eyebrow">Preparedness</p>
     <p class="hint" style="margin:2px 0 10px">Not a health score — a simple check that the family has the important information recorded and current for each person.</p>
     <div id="preplist"><div class="ev">Loading…</div></div>
+    <div class="card" id="joinreq-card" hidden>
+      <h3>🙋 Waiting to join</h3>
+      <p class="hint" id="jr-count" style="margin:2px 0 10px"></p>
+      <div class="feed" id="joinreqs"></div>
+      <p class="hint" style="margin-top:10px">Anyone already in the family can decide — let in only people you recognise.</p>
+    </div>
     <div class="card">
       <h3>Your circle</h3>
       <p style="margin-bottom:10px">Code: <span class="codechip" id="p-code"></span>
@@ -596,6 +609,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       </div>
       <div class="members" id="members"></div>
       <button class="go invitebtn" style="margin-top:14px">🧡 Invite family</button>
+      <p class="hint" style="margin:14px 0 6px"><b>How people join:</b> <span id="jp-state"></span></p>
+      <button class="cbtn ghost" id="jp-toggle"></button>
       <p class="hint" style="margin-top:10px">Tap any member to see their profile — call, message privately or set a reminder for them.</p>
     </div>
   </section>
@@ -1618,7 +1633,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     fetch(API.events + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); })
       .then(function(j){
-        if (j.ok) { seenAt = j.seenAt || seenAt; render(j); renderForSelect(j.members); return; }
+        if (j.ok) { seenAt = j.seenAt || seenAt; joinReqs = j.joinRequests || []; joinPolicy = j.joinPolicy || 'approve'; render(j); renderForSelect(j.members); renderJoinReqs(); return; }
         // Circle code changed by another member? Re-map by membership and recover.
         if (authUser && authUser.phone && !window._healing) {
           window._healing = true;
@@ -1922,6 +1937,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('auth-step').hidden = which !== 'auth';
     $('circle-step').hidden = which !== 'circles';
     $('setup-step').hidden = which !== 'setup';
+    $('pending-step').hidden = which !== 'pending';
   }
   function enterCircle(c){
     state = { code: c.code, circleName: c.circleName, memberId: c.memberId, name: c.memberName || (authUser && authUser.name) || '', role: c.role };
@@ -2034,6 +2050,12 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       .then(function(j){
         $('j-go').disabled = false;
         if (!j.ok) { $('ob-err').textContent = j.error || 'Could not join.'; return; }
+        if (j.pending) {
+          // The code opened the door; the family still has to say come in.
+          $('pend-msg').textContent = j.message || ('Your request has gone to ' + j.circleName + '.');
+          showStep('pending');
+          return;
+        }
         state = { code:j.code, circleName:j.circleName, memberId:j.memberId, name:name, role:j.role };
         saveState(state);
         upsertGroup({ code:j.code, circleName:j.circleName, memberId:j.memberId, role:j.role, memberName:name });
@@ -2041,6 +2063,65 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         toast('Welcome to ' + j.circleName);
       })
       .catch(function(){ $('j-go').disabled = false; $('ob-err').textContent = 'No connection — try again.'; });
+  });
+
+  $('pend-back').addEventListener('click', function(){ showStep('setup'); });
+  $('pend-check').addEventListener('click', function(){
+    // Approved? The circle now appears in this number's list of families.
+    if (!authUser || !authUser.phone) { showStep('auth'); return; }
+    this.disabled = true;
+    var btn = this;
+    post(API.auth, { action:'enter', phone: authUser.phone })
+      .then(function(j){
+        btn.disabled = false;
+        if (j.ok && j.exists) {
+          saveGroups(j.circles || []);
+          if ((j.circles || []).length) { pendingJoin = null; routeAfterAuth(j.circles); return; }
+        }
+        toast('Not yet — the family has not answered');
+      })
+      .catch(function(){ btn.disabled = false; toast('No connection — try again'); });
+  });
+
+  // ---------- people waiting to join ----------
+  var joinReqs = [], joinPolicy = 'approve';
+  function renderJoinReqs(){
+    var h = '';
+    joinReqs.forEach(function(q){
+      h += '<div class="ev"><b>🙋 ' + esc(q.name) + '</b>' +
+           '<small>' + (q.relation ? esc(q.relation) + ' · ' : '') + (q.phone ? esc(q.phone) + ' · ' : '') + fmtTime(q.created_at) + '</small>' +
+           '<div class="prow2" style="margin-top:8px">' +
+           '<button class="cbtn" data-jok="' + q.id + '">🧡 Let them in</button>' +
+           '<button class="cbtn no" data-jno="' + q.id + '">Say no</button></div></div>';
+    });
+    $('joinreqs').innerHTML = h;
+    $('joinreq-card').hidden = !joinReqs.length;
+    $('jr-count').textContent = joinReqs.length === 1 ? '1 person is waiting' : joinReqs.length + ' people are waiting';
+    $('jp-state').textContent = joinPolicy === 'open'
+      ? 'Anyone with the code joins straight away.'
+      : 'Someone already in the family has to say yes.';
+    $('jp-toggle').textContent = joinPolicy === 'open' ? '🔒 Require approval' : '🔓 Let the code be enough';
+  }
+  function joinAct(body, okMsg){
+    post(API.circle, Object.assign({ code: state.code, memberId: state.memberId }, body))
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not do that'); return; }
+        toast(okMsg); refresh();
+      }).catch(function(){ toast('No connection — try again'); });
+  }
+  $('joinreqs').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    var id;
+    if ((id = b.getAttribute('data-jok'))) { joinAct({ action:'approve_join', requestId:id }, 'They are in 🧡'); return; }
+    if ((id = b.getAttribute('data-jno'))) {
+      if (!confirm('Say no to this request?')) return;
+      joinAct({ action:'decline_join', requestId:id }, 'Request declined');
+    }
+  });
+  $('jp-toggle').addEventListener('click', function(){
+    var next = joinPolicy === 'open' ? 'approve' : 'open';
+    if (next === 'open' && !confirm('Anyone who has the code — or guesses it — will join with no questions asked. The family vault stays permissioned, but they will be inside the circle. Are you sure?')) return;
+    joinAct({ action:'set_join_policy', policy: next }, next === 'open' ? 'The code is now enough' : 'Joining needs a yes from the family');
   });
 
   // ---------- invite (native share) ----------

@@ -1,5 +1,5 @@
 // POST /api/circle — create a care circle or join one with its code.
-import { db, ensureSchema, makeCode, circleByCode, isUuid, normPhone, phoneError } from './_db.mjs';
+import { db, ensureSchema, makeCode, circleByCode, isUuid, normPhone, phoneError, rateLimit, clientIp } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 
 export default async function handler(req, res) {
@@ -38,7 +38,14 @@ export default async function handler(req, res) {
     if (!pp) return res.status(400).json({ ok: false, error: phoneError(req.body.phoneCc) });
     ph = pp.e164; phCc = pp.cc; phLocal = pp.local;
   }
-  const NAMELESS = ['update_member', 'leave', 'set_code'];
+  // An invite code is short enough to guess if you are allowed to keep
+  // trying. You are not: joining is capped per address, per ten minutes.
+  if (action === 'join') {
+    const allowed = await rateLimit(sql, 'join', clientIp(req), 12, 600);
+    if (!allowed) return res.status(429).json({ ok: false, error: 'Too many join attempts from this device — please wait a few minutes and try again' });
+  }
+
+  const NAMELESS = ['update_member', 'leave', 'set_code', 'approve_join', 'decline_join', 'set_join_policy'];
   if (!name && !NAMELESS.includes(action)) return res.status(400).json({ ok: false, error: 'Please tell us your name' });
 
   try {
@@ -94,11 +101,89 @@ export default async function handler(req, res) {
         const dupPhone = await sql`select id from members where circle_id = ${circle.id} and phone = ${memberPhone}`;
         if (dupPhone[0]) return res.status(409).json({ ok: false, error: 'This mobile number is already in the circle — sign in with it instead' });
       }
+
+      // The code opens the door; the family decides who comes in. Anyone
+      // already inside can say yes — no owner, no hierarchy.
+      const pol = await sql`select join_policy from circles where id = ${circle.id}`;
+      if (pol[0] && pol[0].join_policy === 'approve') {
+        const already = user
+          ? await sql`select id from join_requests where circle_id = ${circle.id} and user_id = ${user.id} and status = 'pending'`
+          : await sql`select id from join_requests where circle_id = ${circle.id} and status = 'pending' and lower(name) = lower(${name})`;
+        if (!already[0]) {
+          await sql`insert into join_requests (circle_id, user_id, name, phone, phone_cc, phone_local, relation, role)
+                    values (${circle.id}, ${user ? user.id : null}, ${name}, ${memberPhone}, ${memberCc}, ${memberLocal}, ${relation}, ${r})`;
+          await sql`insert into events (circle_id, member_id, type, text)
+                    values (${circle.id}, null, 'care', ${name + ' has asked to join — any member can let them in'})`;
+          await pushCircle(sql, circle.id, {
+            title: '🙋 ' + name + ' wants to join ' + circle.name,
+            body: 'Open Parwah to let them in — or say no if you do not know them'
+          }, {});
+        }
+        return res.status(202).json({ ok: true, pending: true, circleName: circle.name, code: circle.code,
+          message: 'Your request has gone to ' + circle.name + '. Anyone in the family can let you in.' });
+      }
+
       const m = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation) values (${circle.id}, ${name}, ${r}, ${memberPhone}, ${memberCc}, ${memberLocal}, ${user ? user.id : null}, ${relation}) returning id`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${m[0].id}, 'join', ${name + ' joined the circle'})`;
       await pushCircle(sql, circle.id, { title: '🧡 ' + name + ' joined ' + circle.name, body: 'Say hello in the family chat' }, { except: m[0].id });
       return res.status(200).json({ ok: true, code: circle.code, circleName: circle.name, memberId: m[0].id, role: r });
+    }
+
+    // Any member can decide on a request; there is no owner in a Parwah circle.
+    if (action === 'approve_join' || action === 'decline_join') {
+      const circle = await circleByCode(sql, code);
+      if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
+      const memberId = req.body.memberId;
+      if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+      const mRow = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
+      if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+      if (!isUuid(req.body.requestId)) return res.status(400).json({ ok: false, error: 'Bad request' });
+      const rq = await sql`select * from join_requests where id = ${req.body.requestId} and circle_id = ${circle.id} and status = 'pending'`;
+      if (!rq[0]) return res.status(404).json({ ok: false, error: 'That request has already been dealt with' });
+      const q = rq[0];
+
+      if (action === 'decline_join') {
+        await sql`update join_requests set status = 'declined', decided_by = ${mRow[0].id}, decided_at = now() where id = ${q.id}`;
+        await sql`insert into events (circle_id, member_id, type, text)
+                  values (${circle.id}, ${mRow[0].id}, 'care', ${mRow[0].name + ' said no to ' + q.name + "'s request to join"})`;
+        return res.status(200).json({ ok: true });
+      }
+
+      const dupName2 = await sql`select id from members where circle_id = ${circle.id} and lower(name) = lower(${q.name})`;
+      if (dupName2[0]) {
+        await sql`update join_requests set status = 'declined', decided_by = ${mRow[0].id}, decided_at = now() where id = ${q.id}`;
+        return res.status(409).json({ ok: false, error: 'Someone in this circle is already called ' + q.name });
+      }
+      const nm = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation)
+                           values (${circle.id}, ${q.name}, ${q.role}, ${q.phone}, ${q.phone_cc}, ${q.phone_local}, ${q.user_id}, ${q.relation})
+                           returning id`;
+      await sql`update join_requests set status = 'approved', decided_by = ${mRow[0].id}, decided_at = now() where id = ${q.id}`;
+      await sql`insert into events (circle_id, member_id, type, text)
+                values (${circle.id}, ${nm[0].id}, 'join', ${q.name + ' joined the circle — ' + mRow[0].name + ' let them in'})`;
+      await pushCircle(sql, circle.id, { title: '🧡 ' + q.name + ' joined ' + circle.name, body: 'Say hello in the family chat' }, { except: nm[0].id });
+      await pushCircle(sql, circle.id, { title: '🧡 You are in — ' + circle.name, body: mRow[0].name + ' let you in. Open Parwah to say hello.' }, { only: nm[0].id });
+      return res.status(200).json({ ok: true, memberId: nm[0].id });
+    }
+
+    if (action === 'set_join_policy') {
+      const circle = await circleByCode(sql, code);
+      if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
+      const memberId = req.body.memberId;
+      if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+      const mRow = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
+      if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+      const policy = req.body.policy === 'open' ? 'open' : 'approve';
+      await sql`update circles set join_policy = ${policy} where id = ${circle.id}`;
+      await sql`insert into events (circle_id, member_id, type, text)
+                values (${circle.id}, ${mRow[0].id}, 'care', ${mRow[0].name + (policy === 'open'
+                  ? ' let anyone with the code join straight away'
+                  : ' made joining need a family member to say yes')})`;
+      await pushCircle(sql, circle.id, {
+        title: policy === 'open' ? '🔓 Anyone with the code can now join' : '🔒 Joining now needs approval',
+        body: mRow[0].name + ' changed how people join ' + circle.name
+      }, { except: mRow[0].id });
+      return res.status(200).json({ ok: true, joinPolicy: policy });
     }
 
     if (action === 'set_code') {

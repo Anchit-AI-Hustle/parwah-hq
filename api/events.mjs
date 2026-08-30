@@ -26,6 +26,12 @@ export default async function handler(req, res) {
         from calls c left join members m on m.id = c.by_member
         where c.circle_id = ${circle.id} and c.started_at > now() - interval '3 hours'
         order by c.started_at desc limit 3`;
+      // Requests waiting on the family — any member can decide.
+      const joinReqs = await sql`
+        select id, name, phone, relation, created_at from join_requests
+        where circle_id = ${circle.id} and status = 'pending'
+        order by created_at limit 20`;
+      const pol = await sql`select join_policy from circles where id = ${circle.id}`;
       let seenAt = null;
       const member = req.query && req.query.member;
       if (isUuid(member)) {
@@ -33,7 +39,8 @@ export default async function handler(req, res) {
                              where ns.member_id = ${member} and m.circle_id = ${circle.id}`;
         seenAt = sr[0] ? sr[0].seen_at : null;
       }
-      return res.status(200).json({ ok: true, circleName: circle.name, code: circle.code, members, events, seenAt, calls });
+      return res.status(200).json({ ok: true, circleName: circle.name, code: circle.code, members, events, seenAt, calls,
+        joinRequests: joinReqs, joinPolicy: (pol[0] && pol[0].join_policy) || 'approve' });
     }
 
     if (req.method === 'POST') {

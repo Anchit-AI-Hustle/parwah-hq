@@ -1,7 +1,7 @@
 // GET /api/selftest — end-to-end test of the app backend against the live
 // database: creates a throwaway circle, exercises every event type, verifies
 // reads, then deletes the circle (cascades to members and events).
-import { db, ensureSchema, makeCode, ensureCircleChat } from './_db.mjs';
+import { db, ensureSchema, makeCode, ensureCircleChat, rateLimit } from './_db.mjs';
 import { ensureVaultSchema, ensurePaySchema, checkNumber } from './_vaultapi.mjs';
 
 export default async function handler(req, res) {
@@ -135,6 +135,29 @@ export default async function handler(req, res) {
     const ownerUse = await canUse(papa[0].id);
     steps.pay_permission = betaUse[0].can_use === true && nosyUse[0].can_use === false && ownerUse[0].can_use === true;
 
+    // Joining is by approval: an invite code alone is not a way in.
+    const polRow = await sql`select join_policy from circles where id = ${circleId}`;
+    const jr = await sql`insert into join_requests (circle_id, name, role) values (${circleId}, 'Test Stranger', 'family') returning id, status`;
+    const pendingSeen = await sql`select id from join_requests where circle_id = ${circleId} and status = 'pending'`;
+    const notYetMember = await sql`select id from members where circle_id = ${circleId} and name = 'Test Stranger'`;
+    steps.join_needs_approval = polRow[0].join_policy === 'approve' && jr[0].status === 'pending'
+      && pendingSeen.length === 1 && notYetMember.length === 0;
+
+    const admitted = await sql`insert into members (circle_id, name, role) values (${circleId}, 'Test Stranger', 'family') returning id`;
+    await sql`update join_requests set status = 'approved', decided_by = ${papa[0].id}, decided_at = now() where id = ${jr[0].id}`;
+    const afterOk = await sql`select status from join_requests where id = ${jr[0].id}`;
+    steps.join_approval = afterOk[0].status === 'approved' && !!admitted[0].id;
+
+    // The limiter counts across instances and lets the window roll over.
+    const rlKey = 'selftest-' + Date.now();
+    const first = await rateLimit(sql, 'selftest', rlKey, 2, 60);
+    const second = await rateLimit(sql, 'selftest', rlKey, 2, 60);
+    const third = await rateLimit(sql, 'selftest', rlKey, 2, 60);
+    await sql`update rate_limit set window_start = now() - interval '2 hours' where bucket = 'selftest' and k = ${rlKey}`;
+    const rolled = await rateLimit(sql, 'selftest', rlKey, 2, 60);
+    await sql`delete from rate_limit where bucket = 'selftest' and k = ${rlKey}`;
+    steps.rate_limit = first === true && second === true && third === false && rolled === true;
+
     await sql`delete from circles where id = ${c2[0].id}`;
     await sql`delete from users where id = ${u[0].id}`;
     await sql`delete from circles where id = ${circleId}`;
@@ -144,8 +167,9 @@ export default async function handler(req, res) {
     const leftDocs = await sql`select id from vault_docs where circle_id = ${circleId}`;
     const leftFiles = await sql`select doc_id from vault_files where doc_id = ${doc[0].id}`;
     const leftPay = await sql`select id from pay_methods where circle_id = ${circleId}`;
+    const leftJoin = await sql`select id from join_requests where circle_id = ${circleId}`;
     steps.cleanup_cascade = leftover.length === 0 && leftChats.length === 0 && leftReads.length === 0
-      && leftDocs.length === 0 && leftFiles.length === 0 && leftPay.length === 0;
+      && leftDocs.length === 0 && leftFiles.length === 0 && leftPay.length === 0 && leftJoin.length === 0;
     circleId = null;
 
     const ok = Object.values(steps).every(Boolean);
