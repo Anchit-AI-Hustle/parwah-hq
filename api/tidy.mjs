@@ -17,7 +17,8 @@ export default async function handler(req, res) {
   catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
 
   try {
-    if (req.method === 'GET') {
+    const applyViaGet = req.method === 'GET' && (req.query || {}).confirm === KEEP_CODE && (req.query || {}).apply === '1';
+    if (req.method === 'GET' && !applyViaGet) {
       const users = await sql`select u.id, u.name, u.phone,
         (select count(*)::int from members m where m.user_id = u.id) as memberships
         from users u order by u.created_at`;
@@ -28,7 +29,7 @@ export default async function handler(req, res) {
         users: users.map(u => ({ name: u.name, phone: mask(u.phone), memberships: u.memberships })),
         circles: circles.map(c => ({ code: c.code, name: c.name, members: c.members })) });
     }
-    if (req.method !== 'POST' || (req.body || {}).confirm !== KEEP_CODE) {
+    if (!applyViaGet && (req.method !== 'POST' || (req.body || {}).confirm !== KEEP_CODE)) {
       return res.status(400).json({ ok: false, error: 'POST {confirm} required' });
     }
 
