@@ -37,8 +37,8 @@ body{font-family:var(--body);color:var(--ink);min-height:100vh;min-height:100dvh
   padding:14px 18px;padding-top:calc(14px + env(safe-area-inset-top));
   padding-left:calc(18px + env(safe-area-inset-left));padding-right:calc(18px + env(safe-area-inset-right))}
 .bar{position:relative}
-.bar .brand{display:inline-flex;align-items:baseline;gap:7px;min-width:0}
-.bar .logo{font-family:var(--dev);color:var(--marigold);font-size:1.15rem;line-height:1;flex:0 0 auto}
+.bar .brand{display:inline-flex;align-items:center;gap:8px;min-width:0}
+.bar .logo{width:22px;height:22px;color:var(--marigold);flex:0 0 auto;display:block}
 .bar .appname{font-family:var(--disp);font-weight:600;white-space:nowrap}
 .bar-actions{margin-left:auto;display:flex;align-items:center;gap:2px;flex:0 0 auto}
 .metile{width:32px;height:32px;border-radius:50%;border:0;margin-left:6px;
@@ -447,7 +447,16 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
        reads as a mark, the name as a name, locked together as one unit so the
        row's gap cannot push them apart into two unrelated words. -->
   <span class="brand">
-    <span class="logo" aria-hidden="true">परवाह</span>
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+      <g fill="currentColor">
+        <ellipse id="pt" cx="32" cy="14" rx="6" ry="9.2"/>
+        <use href="#pt" transform="rotate(45 32 32)"/><use href="#pt" transform="rotate(90 32 32)"/>
+        <use href="#pt" transform="rotate(135 32 32)"/><use href="#pt" transform="rotate(180 32 32)"/>
+        <use href="#pt" transform="rotate(225 32 32)"/><use href="#pt" transform="rotate(270 32 32)"/>
+        <use href="#pt" transform="rotate(315 32 32)"/>
+      </g>
+      <circle cx="32" cy="32" r="8.6" fill="var(--sindoor)"/>
+    </svg>
     <b class="appname">Parwah</b>
   </span>
   <!-- One trailing group with one auto margin. Previously #bell, .who and
