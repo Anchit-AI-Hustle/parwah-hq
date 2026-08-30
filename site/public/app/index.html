@@ -197,6 +197,17 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .tabs button.sel::after{content:"";position:absolute;top:0;left:25%;right:25%;height:3px;border-radius:0 0 3px 3px;background:var(--marigold)}
 .tabs .dot{position:absolute;top:9px;right:calc(50% - 18px);min-width:16px;height:16px;border-radius:99px;background:var(--sindoor);color:#fff;font-size:.62rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;font-style:normal}
 
+/* first run: a short, honest checklist that leaves when it is done */
+.frbar{height:7px;border-radius:99px;background:var(--bone-2);overflow:hidden}
+.frbar i{display:block;height:100%;border-radius:99px;background:var(--marigold);transition:width .35s}
+@media(prefers-reduced-motion:reduce){.frbar i{transition:none}}
+.frstep{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 2px;background:none;border:0;border-bottom:1px solid var(--bone-2);font:inherit;color:inherit;cursor:pointer}
+.frstep:last-child{border-bottom:0}
+.frstep .tick{flex:0 0 22px;height:22px;border-radius:99px;border:2px solid var(--bone-2);display:flex;align-items:center;justify-content:center;font-size:.72rem}
+.frstep.done .tick{border-color:var(--pine);background:var(--pine);color:#fff}
+.frstep.done b{text-decoration:line-through;opacity:.6}
+.frstep small{display:block;color:var(--dim);font-size:.76rem}
+
 /* what is waiting in a circle you are not currently inside */
 .gcount{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;margin-left:6px;border-radius:99px;background:var(--sindoor);color:#fff;font-size:.62rem;font-weight:700;vertical-align:middle}
 .dot.live{display:inline-block;width:9px;height:9px;margin-left:7px;border-radius:99px;background:var(--sindoor);vertical-align:middle;animation:livepulse 1.4s ease-in-out infinite}
@@ -535,6 +546,20 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <button class="big sos" id="btn-sos">🆘 SOS — need help now<span class="sub">Everyone in the circle is told instantly</span></button>
     </div>
     <button class="big ecard-big" id="btn-ecard">🚨 Emergency card<span class="sub">Everything a doctor needs — works without internet</span></button>
+
+    <div class="card" id="firstrun" hidden style="margin-bottom:14px">
+      <h3>🌱 Getting Parwah useful</h3>
+      <p class="hint" id="fr-sub" style="margin:2px 0 10px"></p>
+      <div class="frbar"><i id="fr-fill"></i></div>
+      <div id="fr-steps" style="margin-top:10px"></div>
+      <button class="linkbtn" id="fr-hide" style="margin-top:8px">Hide this</button>
+    </div>
+
+    <div class="card" id="others" hidden style="margin-bottom:14px">
+      <h3>👨‍👩‍👧‍👦 Your other families</h3>
+      <p class="hint" id="ot-sub" style="margin:2px 0 10px"></p>
+      <div class="feed" id="otlist"></div>
+    </div>
 
     <button class="card coincard" id="coincard" hidden style="margin-bottom:14px;width:100%;text-align:left">
       <h3>🪙 <span id="coin-bal">—</span> family coins</h3>
@@ -1679,6 +1704,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     refreshCoins();
     refreshChats();
     refreshGroups();
+    renderFirstRun();
+    renderOthers();
     if (curChat) loadMsgs();
   }
 
@@ -1903,6 +1930,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('d-groups').innerHTML = dh;
     $('side-groups-head').hidden = !cs.length;
     $('d-groups-wrap').hidden = !cs.length;
+    if (state && $('others')) renderOthers();
   }
   // The other families' signals refresh about once a minute — often enough to
   // notice, rarely enough not to cost a request every poll.
@@ -2190,6 +2218,73 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     if (next === 'open' && !confirm('Anyone who has the code — or guesses it — will join with no questions asked. The family vault stays permissioned, but they will be inside the circle. Are you sure?')) return;
     joinAct({ action:'set_join_policy', policy: next }, next === 'open' ? 'The code is now enough' : 'Joining needs a yes from the family');
   });
+
+  // ---------- getting started, and the families you are not looking at ----
+  // The checklist is computed from what the family has actually done, never
+  // from a "seen it" flag — so it is honest, and it leaves when it is done.
+  function frDone(){ try { return localStorage.getItem('parwah-fr-hide') === '1'; } catch (e) { return false; } }
+  function renderFirstRun(){
+    if (!state || frDone()) { $('firstrun').hidden = true; return; }
+    var members = (membersCache || []).length;
+    var steps = [
+      { k:'alerts', done: !pushSupported() || (typeof Notification !== 'undefined' && Notification.permission === 'granted'),
+        b:'Turn on alerts for this phone',
+        s:'SOS, live calls and reminders reach you with Parwah closed', go:function(){ enablePush(); } },
+      { k:'people', done: members > 1, b:'Invite someone to the circle',
+        s:'Parwah does nothing on your own — this is the whole point',
+        go:function(){ var b = document.querySelector('.invitebtn'); if (b) b.click(); } },
+      { k:'memory', done: (bookCache || []).length > 0, b:'Put one thing in the family memory',
+        s:'A doctor\u2019s number, a medicine, a blood group — start anywhere', go:function(){ switchTab('memory'); } },
+      { k:'prep',   done: (prepCache || []).some(function(p){ return p.pct >= 50; }),
+        b:'Get one person half-prepared', s:'Blood group, allergies, doctor, medicines', go:function(){ switchTab('people'); } },
+      { k:'vault',  done: vDocs.length > 0, b:'Put one document in the vault',
+        s:'An Aadhaar or a passport — only you can open it until you share it', go:function(){ switchTab('vault'); setSec('vault','docs'); } }
+    ];
+    var n = steps.filter(function(x){ return x.done; }).length;
+    if (n === steps.length) { $('firstrun').hidden = true; return; }
+    $('firstrun').hidden = false;
+    $('fr-sub').textContent = n + ' of ' + steps.length + ' done — each one makes the next emergency easier';
+    $('fr-fill').style.width = Math.round(n / steps.length * 100) + '%';
+    $('fr-steps').innerHTML = steps.map(function(x, i){
+      return '<button class="frstep' + (x.done ? ' done' : '') + '" data-fr="' + i + '">' +
+             '<span class="tick" aria-hidden="true">' + (x.done ? '✓' : '') + '</span>' +
+             '<span><b>' + esc(x.b) + '</b><small>' + esc(x.s) + '</small></span></button>';
+    }).join('');
+    window._frSteps = steps;
+  }
+  $('fr-steps').addEventListener('click', function(e){
+    var b = e.target.closest('[data-fr]'); if (!b) return;
+    // A ticked step is still a way in to the thing it is about, not dead text.
+    var st = (window._frSteps || [])[+b.getAttribute('data-fr')];
+    if (st && st.go) st.go();
+  });
+  $('fr-hide').addEventListener('click', function(){
+    try { localStorage.setItem('parwah-fr-hide', '1'); } catch (e) {}
+    $('firstrun').hidden = true;
+  });
+
+  // Today reaches across every family this number belongs to, so a quiet
+  // circle never hides a loud one.
+  function renderOthers(){
+    if (!state) return;
+    var cs = loadGroups().filter(function(c){ return c.code !== state.code; });
+    var busy = cs.filter(circleDot);
+    if (!cs.length) { $('others').hidden = true; return; }
+    $('others').hidden = false;
+    $('ot-sub').textContent = busy.length
+      ? (busy.length === 1 ? 'One of them needs you' : busy.length + ' of them need you')
+      : 'Nothing waiting in them right now';
+    $('otlist').innerHTML = cs.map(function(c){
+      var sig = circleSignals(c);
+      var i = loadGroups().findIndex(function(x){ return x.code === c.code; });
+      return '<button class="chatrow' + (sig.length ? ' needsyou' : '') + '" data-gswitch="' + i + '">' +
+             '<span class="cic" aria-hidden="true">' + (c.live ? '📞' : (sig.length ? '🔴' : '🧡')) + '</span>' +
+             '<span class="txt"><b>' + esc(c.circleName) + '</b><small>' +
+             esc(sig.length ? sig.map(function(x){ return x.text; }).join(' · ')
+                            : (c.lastText ? String(c.lastText).slice(0, 60) : 'Nothing new')) +
+             '</small></span></button>';
+    }).join('');
+  }
 
   // ---------- family coins: earned by caring, spent on Ekta ----------
   var coinBal = null;
