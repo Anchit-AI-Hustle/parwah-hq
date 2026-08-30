@@ -60,23 +60,24 @@ export default async function handler(req, res) {
     const mp = memberPhone ? normPhone(memberPhone) : null;
     const memberCc = mp ? mp.cc : null, memberLocal = mp ? mp.local : null;
     if (action === 'create') {
-      const cname = String(circleName || '').trim().slice(0, 60) || (name + "'s family");
+      const kind = req.body.kind === 'group' ? 'group' : 'family';
+      const cname = String(circleName || '').trim().slice(0, 60) || (name + (kind === 'group' ? "'s group" : "'s family"));
       let circle = null;
       for (let i = 0; i < 5 && !circle; i++) {
         const c = makeCode();
         try {
-          const rows = await sql`insert into circles (code, name) values (${c}, ${cname}) returning id, code, name`;
+          const rows = await sql`insert into circles (code, name, kind) values (${c}, ${cname}, ${kind}) returning id, code, name, kind`;
           circle = rows[0];
         } catch (e) { /* code collision — retry with a new code */ }
       }
       if (!circle) return res.status(500).json({ ok: false, error: 'Could not create the circle, please try again' });
       const m = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation) values (${circle.id}, ${name}, ${r}, ${memberPhone}, ${memberCc}, ${memberLocal}, ${user ? user.id : null}, ${relation}) returning id`;
       await sql`insert into events (circle_id, member_id, type, text)
-                values (${circle.id}, ${m[0].id}, 'join', ${name + ' created the circle'})`;
+                values (${circle.id}, ${m[0].id}, 'join', ${name + ' created the ' + kind})`;
       // Ekta works from the first minute — a new family is not asked to earn
       // its way to a working assistant.
       await award(sql, circle.id, m[0].id, 'welcome', 'circle');
-      return res.status(201).json({ ok: true, code: circle.code, circleName: circle.name, memberId: m[0].id, role: r });
+      return res.status(201).json({ ok: true, code: circle.code, circleName: circle.name, kind: circle.kind, memberId: m[0].id, role: r });
     }
 
     if (action === 'join') {

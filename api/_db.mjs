@@ -127,6 +127,12 @@ export async function ensureSchema(sql) {
     state jsonb not null,
     created_at timestamptz not null default now()
   )`;
+  // A circle is a family or a group — the same machinery, named honestly,
+  // because "circle" is our word and nobody else's.
+  await sql`alter table circles add column if not exists kind text not null default 'family'`;
+  // Shown the introduction? Kept on the profile, not the device, so it is
+  // once per person and not once per phone they happen to sign in on.
+  await sql`alter table users add column if not exists toured_at timestamptz`;
   // Joining is by approval by default: an invite code alone must not be
   // enough to walk into a family that keeps its Aadhaar and passports here.
   await sql`alter table circles add column if not exists join_policy text not null default 'approve'`;

@@ -232,6 +232,19 @@ check("memory: every consent change is written to a ledger", "book_consent" in b
 check("memory: preparedness counts private entries without exposing them",
       "const mine = all.filter" in book and "can_see" in book)
 
+# 10k. ONBOARDING — a first-ever sign-in must explain the app, and everyone
+# must be able to start a family or a group.
+check("onboarding: the introduction is recorded per person, not per device",
+      "toured_at" in dbsrc and "action === 'toured'" in auth and "toured: !!user.toured_at" in auth)
+check("onboarding: a circle is a family or a group",
+      "kind text not null default 'family'" in dbsrc and "kind === 'group' ? 'group' : 'family'" in circ)
+check("onboarding: a first-ever sign-in is shown what the app is",
+      "TOUR = [" in appsrc and "if (toured === false) { showTour(); return; }" in appsrc)
+check("onboarding: the interface is pointed at once, then never again",
+      "startCoach" in appsrc and "action:'toured'" in appsrc)
+check("onboarding: starting a family or a group is offered everywhere",
+      all(k in appsrc for k in ("cs-newfam", "cs-newgrp", "side-newcircle", "d-newcircle", "pickkind")))
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

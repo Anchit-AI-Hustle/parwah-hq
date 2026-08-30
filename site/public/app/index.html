@@ -197,6 +197,17 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .tabs button.sel::after{content:"";position:absolute;top:0;left:25%;right:25%;height:3px;border-radius:0 0 3px 3px;background:var(--marigold)}
 .tabs .dot{position:absolute;top:9px;right:calc(50% - 18px);min-width:16px;height:16px;border-radius:99px;background:var(--sindoor);color:#fff;font-size:.62rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;font-style:normal}
 
+/* the introduction, and the coachmarks that follow it */
+.trdots{display:flex;gap:6px;margin-top:12px}
+.trdots i{width:7px;height:7px;border-radius:99px;background:var(--bone-2)}
+.trdots i.on{background:var(--marigold);width:20px}
+.kindpick{margin-bottom:10px}
+.side-new{width:100%;text-align:left;padding:7px 12px 7px 44px;font-size:.82rem;font-weight:600;color:var(--marigold);background:none;border:0;cursor:pointer;font-family:inherit}
+.coach{position:fixed;inset:0;z-index:60}
+.coachhole{position:absolute;border-radius:14px;box-shadow:0 0 0 9999px rgba(20,16,10,.72);transition:.25s;pointer-events:none}
+.coachbox{position:absolute;left:14px;right:14px;background:var(--cream);color:var(--ink);border-radius:16px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.4);max-width:420px;margin:0 auto}
+@media(prefers-reduced-motion:reduce){.coachhole{transition:none}}
+
 /* first run: a short, honest checklist that leaves when it is done */
 .frbar{height:7px;border-radius:99px;background:var(--bone-2);overflow:hidden}
 .frbar i{display:block;height:100%;border-radius:99px;background:var(--marigold);transition:width .35s}
@@ -456,14 +467,38 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <h3 id="cs-hello">Welcome back! 🧡</h3>
       <p class="hint" id="cs-sub" style="margin:0 0 10px">Your families and groups:</p>
       <div class="feed" id="cs-list"></div>
-      <button class="linkbtn" id="cs-new">＋ Create or join another circle</button>
+      <div class="prow2" style="margin-top:12px">
+        <button class="cbtn" id="cs-newfam">＋ New family</button>
+        <button class="cbtn" id="cs-newgrp">＋ New group</button>
+        <button class="cbtn ghost" id="cs-new">Join with a code</button>
+      </div>
       <button class="linkbtn" id="cs-out" style="margin-left:16px;color:var(--alert)">Sign out</button>
     </div>
   </div>
 
+  <div id="tour-step" hidden>
+    <div class="card">
+      <p class="eyebrow" id="tr-count" style="margin-top:0"></p>
+      <h3 id="tr-title" style="font-size:1.35rem"></h3>
+      <p id="tr-body" style="margin:8px 0 14px"></p>
+      <div class="trdots" id="tr-dots" aria-hidden="true"></div>
+      <div class="prow2" style="margin-top:14px">
+        <button class="go" id="tr-next">Next</button>
+        <button class="cbtn ghost" id="tr-skip">Skip</button>
+      </div>
+    </div>
+  </div>
+
   <div id="setup-step" hidden>
-  <div class="card">
-    <h3>Start a new circle</h3>
+  <div class="card" id="pickkind">
+    <h3>What are you starting?</h3>
+    <p class="hint" style="margin:2px 0 12px">You can be in as many of these as you like, and make more later.</p>
+    <button class="big kindpick" data-kind="family">👨‍👩‍👧‍👦 A family<span class="sub">Parents, children, grandparents — the people you look after</span></button>
+    <button class="big kindpick" data-kind="group"> 👥 A group<span class="sub">Cousins, siblings, a friends circle — anyone else</span></button>
+    <button class="linkbtn" id="pk-join" style="margin-top:12px">I have a code to join instead →</button>
+  </div>
+  <div class="card" id="createcard" hidden>
+    <h3 id="c-head">Start a new family</h3>
     <label for="c-name">Your name</label>
     <input type="text" id="c-name" maxlength="60" placeholder="e.g. Rohan">
     <label for="c-circle">Circle name</label>
@@ -484,7 +519,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <button class="go" id="c-go">Create the circle</button>
   </div>
 
-  <div class="card">
+  <div class="card" id="joincard" hidden>
     <h3>Join with a code</h3>
     <label for="j-code">Circle code</label>
     <input type="text" id="j-code" maxlength="12" placeholder="e.g. KJM4PW or SHARMAS" style="text-transform:uppercase;letter-spacing:.2em">
@@ -504,6 +539,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     </div>
     <label class="seniorchk"><input type="checkbox" id="j-senior"> Senior mode — big text &amp; buttons</label>
     <button class="go" id="j-go">Join the circle</button>
+    <button class="linkbtn" id="jc-back" style="margin-top:10px">← Start a new family or group instead</button>
   </div>
   </div>
   <div class="card" id="pending-step" hidden>
@@ -611,7 +647,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     </div>
 
     <div class="subsec" data-sec="req" hidden>
-    <div class="feed" id="qlist"><div class="ev">None open.</div></div>
+    <p class="hint" style="margin:0 0 10px">Small jobs anyone in the family can pick up — book the gas, take Papa to the eye doctor, renew the insurance. Unlike a chat message, it stays until somebody actually does it.</p>
+    <div class="feed" id="qlist"><div class="ev">Nothing open — ask below the next time a job needs doing.</div></div>
     <div class="addrow">
       <input type="text" id="q-title" maxlength="200" placeholder="Ask the circle… e.g. book gas refill" aria-label="Request title">
       <button class="cbtn" id="q-add">Ask</button>
@@ -1269,6 +1306,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <button data-tab="profile" class="deskonly"><span class="ic" aria-hidden="true">👤</span>Profile</button>
     <div class="sidehead side-only" id="side-groups-head" hidden>👨‍👩‍👧‍👦 My Groups</div>
     <div class="subnav side-only" id="side-groups"></div>
+    <button class="side-new side-only" id="side-newcircle">＋ New family or group</button>
     <div class="side-user side-only" id="side-user"></div>
     <button class="side-so side-only" id="side-so">🚪 Sign out</button>
   </div>
@@ -1340,6 +1378,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <div class="dgroup" id="d-groups-wrap" hidden>
       <button class="ditem dparent" data-grp="groups">👨‍👩‍👧‍👦 My Groups <span class="caret">▾</span></button>
       <div class="dsub" id="d-groups"></div>
+      <button class="ditem sub" id="d-newcircle">＋ New family or group</button>
     </div>
     <a class="ditem" href="../get/" target="_blank" rel="noopener">📲 Get the app</a>
     <button class="ditem" id="d-so" style="color:var(--alert)">🚪 Sign out</button>
@@ -1368,6 +1407,18 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   </div>
 </div>
 
+<div class="coach" id="coach" hidden>
+  <div class="coachhole" id="coach-hole"></div>
+  <div class="coachbox" id="coach-box">
+    <p class="eyebrow" id="cm-count" style="margin-top:0"></p>
+    <b id="cm-title"></b>
+    <p id="cm-body" style="margin:6px 0 12px"></p>
+    <div class="prow2">
+      <button class="cbtn" id="cm-next">Next</button>
+      <button class="cbtn ghost" id="cm-skip">Skip</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -1890,7 +1941,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         : '<span class="badge on">' + esc(q.claimed_name || 'Someone') + ' is on it</span><button class="cbtn ghost" data-qdone="' + q.id + '">Done ✔</button>') + talk;
       qh += '<div class="crow"><span class="txt">' + esc(q.title) + '<small>asked by ' + esc(q.by_name || 'someone') + '</small></span>' + right + '</div>';
     });
-    $('qlist').innerHTML = qh || '<div class="ev">None open — ask below when you need a hand.</div>';
+    $('qlist').innerHTML = qh || '<div class="ev">Nothing open — ask below the next time a job needs doing.</div>';
 
     // consent-waiting count on the Care tab + home widgets
     var dot = $('care-dot');
@@ -1922,6 +1973,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 
   // "My Groups" — every circle this signed-in person belongs to, switchable.
   // What is waiting in a circle, in the order a family would care about it.
+  function circleIcon(c){ return c.kind === 'group' ? '👥' : '👨‍👩‍👧‍👦'; }
   function circleSignals(c){
     var out = [];
     if (c.live)         out.push({ cls:'bad',  text:'📞 call on now' });
@@ -1940,8 +1992,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       // A circle you are not currently in still tells you it needs you.
       var n = (c.unread || 0) + (c.waiting || 0) + (c.openRequests || 0);
       var mark = on ? ' ✓' : (c.live ? ' <i class="dot live"></i>' : (circleDot(c) ? ' <b class="gcount">' + (n > 99 ? '99+' : n) + '</b>' : ''));
-      sh += '<button data-gswitch="' + i + '" class="' + (on ? 'sel' : '') + '">' + esc(c.circleName) + mark + '</button>';
-      dh += '<button class="ditem sub' + (on ? ' sel' : '') + '" data-gswitch="' + i + '">' + esc(c.circleName) + mark + '</button>';
+      var ic = circleIcon(c) + ' ';
+      sh += '<button data-gswitch="' + i + '" class="' + (on ? 'sel' : '') + '">' + ic + esc(c.circleName) + mark + '</button>';
+      dh += '<button class="ditem sub' + (on ? ' sel' : '') + '" data-gswitch="' + i + '">' + ic + esc(c.circleName) + mark + '</button>';
     });
     $('side-groups').innerHTML = sh;
     $('d-groups').innerHTML = dh;
@@ -1994,7 +2047,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     refreshKeys();
     if (authUser && authUser.phone) {
       post(API.auth, { action: 'enter', phone: authUser.phone })
-        .then(function(j){ if (j.ok && j.exists) { authUser = j.user; saveAuth(authUser); saveGroups(j.circles || []); } })
+        .then(function(j){
+          if (!j.ok || !j.exists) return;
+          authUser = j.user; saveAuth(authUser); saveGroups(j.circles || []);
+          // First time this person has ever reached a circle: point at the
+          // interface once, then never again on any device.
+          if (j.toured === false) setTimeout(startCoach, 700);
+        })
         .catch(function(){});
     }
     $('p-name').textContent = state.name;
@@ -2038,31 +2097,124 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('circle-step').hidden = which !== 'circles';
     $('setup-step').hidden = which !== 'setup';
     $('pending-step').hidden = which !== 'pending';
+    $('tour-step').hidden = which !== 'tour';
   }
+
+  // ---------- the introduction: what Parwah is, once per person ----------
+  // Signing in and being dropped on "start a circle" tells a person nothing.
+  // These five cards say what the app is FOR before asking for anything.
+  var TOUR = [
+    { t:'Parwah is where your family knows',
+      b:'WhatsApp is where your family talks — and where the doctor\u2019s number, the medicine list and the policy number all scroll away. Parwah keeps them, for everyone, in one place.' },
+    { t:'Ready before the emergency, not during it',
+      b:'Blood group, allergies, medicines, doctor, insurance — recorded per person and checked for freshness, so nothing is trusted blindly. The emergency card puts it all on one screen, and works with no internet.' },
+    { t:'Papers and money, with a permission on each',
+      b:'Aadhaar, PAN, passport, licence, health and birth records live in the vault. Only the person they belong to decides who can open them — and every open is recorded.' },
+    { t:'The everyday, shared out',
+      b:'Check-ins, reminders, plans and calls, a shared drawing board and games. Small things that keep a family in touch without anyone having to nag.' },
+    { t:'Ekta, who actually knows your family',
+      b:'Ask in your own words. Ekta answers only from what the family has recorded, and says when something is missing or out of date rather than guessing.' }
+  ];
+  var tourI = 0;
+  function showTour(){
+    tourI = 0; renderTour(); showStep('tour');
+  }
+  function renderTour(){
+    var c = TOUR[tourI];
+    $('tr-count').textContent = 'Step ' + (tourI + 1) + ' of ' + TOUR.length;
+    $('tr-title').textContent = c.t;
+    $('tr-body').textContent = c.b;
+    $('tr-dots').innerHTML = TOUR.map(function(_, i){ return '<i class="' + (i === tourI ? 'on' : '') + '"></i>'; }).join('');
+    $('tr-next').textContent = tourI === TOUR.length - 1 ? 'Get started' : 'Next';
+  }
+  function afterTour(){
+    // The introduction is over; carry on to whatever this person actually has.
+    var cs = window._authCircles || [];
+    if (cs.length) routeCircles(cs); else showSetup();
+  }
+  $('tr-next').addEventListener('click', function(){
+    if (tourI < TOUR.length - 1) { tourI++; renderTour(); return; }
+    afterTour();
+  });
+  $('tr-skip').addEventListener('click', afterTour);
+
+  // ---------- start a family, or a group ----------
+  var newKind = 'family';
+  function showSetup(){
+    $('pickkind').hidden = false;
+    $('createcard').hidden = true;
+    $('joincard').hidden = true;
+    showStep('setup');
+  }
+  function startCreate(kind){
+    newKind = kind === 'group' ? 'group' : 'family';
+    $('pickkind').hidden = true;
+    $('joincard').hidden = true;
+    $('createcard').hidden = false;
+    $('c-head').textContent = newKind === 'group' ? 'Start a new group' : 'Start a new family';
+    $('c-circle').placeholder = newKind === 'group' ? 'e.g. The Cousins' : 'e.g. Sharma Family';
+    $('c-go').textContent = newKind === 'group' ? 'Create the group' : 'Create the family';
+    if (authUser && !$('c-name').value) $('c-name').value = authUser.name;
+    showStep('setup');
+    try { $('c-circle').focus(); } catch (e) {}
+  }
+  function startJoin(){
+    $('pickkind').hidden = true;
+    $('createcard').hidden = true;
+    $('joincard').hidden = false;
+    if (authUser && !$('j-name').value) $('j-name').value = authUser.name;
+    showStep('setup');
+  }
+  $('pickkind').addEventListener('click', function(e){
+    var b = e.target.closest('[data-kind]'); if (b) startCreate(b.getAttribute('data-kind'));
+  });
+  $('pk-join').addEventListener('click', startJoin);
+  $('jc-back').addEventListener('click', showSetup);
+  $('cs-newfam').addEventListener('click', function(){ startCreate('family'); });
+  $('cs-newgrp').addEventListener('click', function(){ startCreate('group'); });
+  // From inside the app: leave the circle screen and start another one.
+  function newCircleFromApp(){
+    $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
+    drawerOpen(false);
+    showSetup();
+  }
+  $('side-newcircle').addEventListener('click', newCircleFromApp);
+  $('d-newcircle').addEventListener('click', newCircleFromApp);
   function enterCircle(c){
     state = { code: c.code, circleName: c.circleName, memberId: c.memberId, name: c.memberName || (authUser && authUser.name) || '', role: c.role };
     saveState(state);
     enterMain();
     toast('Signed in — welcome back, ' + state.name + ' 🧡');
   }
-  function routeAfterAuth(circles){
+  function routeAfterAuth(circles, toured){
     $('ob-err').textContent = '';
     saveGroups(circles || []);
+    window._authCircles = circles || [];
     if (pendingJoin) {
-      showStep('setup');
+      startJoin();
       $('j-code').value = pendingJoin;
       $('c-name').value = authUser.name; $('j-name').value = authUser.name;
       try { $('j-name').focus(); } catch (e) {}
       return;
     }
+    // The very first time a person signs in, explain what this is before
+    // asking them to build anything. Once per person, ever — the flag lives
+    // on their profile, not on this device.
+    if (toured === false) { showTour(); return; }
+    routeCircles(circles);
+  }
+  function routeCircles(circles){
     // Signing in always lands on the list of families and groups this number
     // belongs to — never straight into one of them, even when there is only
     // one, so the person can always see and choose where they are going.
     if (circles && circles.length) {
       $('cs-hello').textContent = 'Welcome back, ' + authUser.name + '! 🧡';
-      $('cs-sub').textContent = circles.length === 1
-        ? 'You are in 1 circle — tap to open it.'
-        : 'You are in ' + circles.length + ' circles — tap any one to open it.';
+      var nf = circles.filter(function(c){ return c.kind !== 'group'; }).length;
+      var ng = circles.length - nf;
+      var bits = [];
+      if (nf) bits.push(nf + (nf === 1 ? ' family' : ' families'));
+      if (ng) bits.push(ng + (ng === 1 ? ' group' : ' groups'));
+      $('cs-sub').textContent = 'You are in ' + bits.join(' and ') + ' — tap any one to open it.';
       var h = '';
       // Sorted so the circle that needs you most is the one you see first.
       var order = circles.map(function(c, i){ return { c: c, i: i }; });
@@ -2078,7 +2230,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
           ? sig.map(function(x){ return x.text; }).join(' · ')
           : (c.lastText ? String(c.lastText).slice(0, 60) : 'Nothing new');
         h += '<button class="chatrow' + (sig.length ? ' needsyou' : '') + '" data-encircle="' + o.i + '">' +
-             '<span class="cic" aria-hidden="true">' + (c.live ? '📞' : (sig.length ? '🔴' : '🧡')) + '</span>' +
+             '<span class="cic" aria-hidden="true">' + (c.live ? '📞' : (sig.length ? '🔴' : circleIcon(c))) + '</span>' +
              '<span class="txt"><b>' + esc(c.circleName) + '</b>' +
              '<small>' + esc(line2) + '</small>' +
              '<small>' + (n ? n + (n === 1 ? ' member' : ' members') + ' · ' : '') +
@@ -2090,7 +2242,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       return;
     }
     $('c-name').value = authUser.name; $('j-name').value = authUser.name;
-    showStep('setup');
+    showSetup();
   }
   $('au-go').addEventListener('click', function(){
     var phone = $('au-phone').value.trim(), cc = $('au-cc').value;
@@ -2108,7 +2260,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
           return;
         }
         authUser = j.user; saveAuth(authUser);
-        routeAfterAuth(j.circles || []);
+        routeAfterAuth(j.circles || [], j.toured);
       })
       .catch(function(){ btn.disabled = false; $('ob-err').textContent = 'No connection — try again.'; });
   });
@@ -2141,13 +2293,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var name = $('c-name').value.trim();
     if (!name) { $('ob-err').textContent = 'Please enter your name.'; return; }
     this.disabled = true; $('ob-err').textContent = '';
-    post(API.circle, { action:'create', memberName:name, circleName:$('c-circle').value.trim(), userId: authUser && authUser.id, role: $('c-senior').checked ? 'parent' : 'family', relation: cRole() })
+    post(API.circle, { action:'create', kind:newKind, memberName:name, circleName:$('c-circle').value.trim(), userId: authUser && authUser.id, role: $('c-senior').checked ? 'parent' : 'family', relation: cRole() })
       .then(function(j){
         $('c-go').disabled = false;
         if (!j.ok) { $('ob-err').textContent = j.error || 'Could not create the circle.'; return; }
         state = { code:j.code, circleName:j.circleName, memberId:j.memberId, name:name, role:j.role };
         saveState(state);
-        upsertGroup({ code:j.code, circleName:j.circleName, memberId:j.memberId, role:j.role, memberName:name });
+        upsertGroup({ code:j.code, circleName:j.circleName, kind:j.kind || newKind, memberId:j.memberId, role:j.role, memberName:name });
         enterMain();
         toast('Circle created — share code ' + j.code + ' with family');
       })
@@ -2170,7 +2322,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         }
         state = { code:j.code, circleName:j.circleName, memberId:j.memberId, name:name, role:j.role };
         saveState(state);
-        upsertGroup({ code:j.code, circleName:j.circleName, memberId:j.memberId, role:j.role, memberName:name });
+        upsertGroup({ code:j.code, circleName:j.circleName, kind:j.kind || newKind, memberId:j.memberId, role:j.role, memberName:name });
         enterMain();
         toast('Welcome to ' + j.circleName);
       })
@@ -2188,7 +2340,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         btn.disabled = false;
         if (j.ok && j.exists) {
           saveGroups(j.circles || []);
-          if ((j.circles || []).length) { pendingJoin = null; routeAfterAuth(j.circles); return; }
+          if ((j.circles || []).length) { pendingJoin = null; routeAfterAuth(j.circles, j.toured); return; }
         }
         toast('Not yet — the family has not answered');
       })
@@ -2235,6 +2387,67 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     if (next === 'open' && !confirm('Anyone who has the code — or guesses it — will join with no questions asked. The family vault stays permissioned, but they will be inside the circle. Are you sure?')) return;
     joinAct({ action:'set_join_policy', policy: next }, next === 'open' ? 'The code is now enough' : 'Joining needs a yes from the family');
   });
+
+  // ---------- coachmarks: the interface, pointed at once ----------
+  // Runs the first time a person reaches a circle, right after the
+  // introduction, then marks the profile so it never runs again anywhere.
+  var CM = [
+    { sel:'#tabs button[data-tab="home"]', t:'Today',
+      b:'Everything happening right now: who has checked in, what is planned, what needs you — across every family you are in.' },
+    { sel:'#tabs button[data-tab="people"]', t:'People',
+      b:'Everyone you look after, and how prepared the family is for each of them. Not a health score — a check that the important things are written down.' },
+    { sel:'#tabs button[data-tab="memory"]', t:'Family memory',
+      b:'Doctors, medicines, addresses, blood groups, policies. Each entry says when it was last checked, so nothing old is trusted by mistake.' },
+    { sel:'#btn-ecard', t:'The emergency card',
+      b:'One screen with everything a doctor would ask for. It works with no internet — because the moment it matters is the moment the signal is worst.' },
+    { sel:'#tabs button[data-tab="care"]', t:'Care',
+      b:'Reminders and help requests, shared out so no one person carries it all.' }
+  ];
+  var cmI = 0, cmOn = false;
+  function coachDone(){
+    cmOn = false;
+    $('coach').hidden = true;
+    if (authUser && authUser.id) {
+      post(API.auth, { action:'toured', userId: authUser.id }).catch(function(){});
+      authUser.toured = true; saveAuth(authUser);
+    }
+  }
+  function startCoach(){
+    if (cmOn) return;
+    cmI = 0; cmOn = true;
+    $('coach').hidden = false;
+    renderCoach();
+  }
+  function renderCoach(){
+    // Skip anything not on screen at this width rather than pointing at nothing.
+    while (cmI < CM.length) {
+      var el = document.querySelector(CM[cmI].sel);
+      if (el && el.getBoundingClientRect().width > 0) break;
+      cmI++;
+    }
+    if (cmI >= CM.length) { coachDone(); return; }
+    var step = CM[cmI], el = document.querySelector(step.sel);
+    var r = el.getBoundingClientRect(), pad = 6;
+    var hole = $('coach-hole');
+    hole.style.left = (r.left - pad) + 'px';
+    hole.style.top = (r.top - pad) + 'px';
+    hole.style.width = (r.width + pad * 2) + 'px';
+    hole.style.height = (r.height + pad * 2) + 'px';
+    $('cm-count').textContent = 'Step ' + (cmI + 1) + ' of ' + CM.length;
+    $('cm-title').textContent = step.t;
+    $('cm-body').textContent = step.b;
+    $('cm-next').textContent = cmI === CM.length - 1 ? 'Done' : 'Next';
+    // Put the card wherever the highlight is not.
+    var box = $('coach-box'), below = r.bottom + 16;
+    if (below + 190 < window.innerHeight) { box.style.top = below + 'px'; box.style.bottom = 'auto'; }
+    else { box.style.bottom = (window.innerHeight - r.top + 16) + 'px'; box.style.top = 'auto'; }
+  }
+  $('cm-next').addEventListener('click', function(){
+    if (cmI < CM.length - 1) { cmI++; renderCoach(); return; }
+    coachDone();
+  });
+  $('cm-skip').addEventListener('click', coachDone);
+  window.addEventListener('resize', function(){ if (cmOn) renderCoach(); });
 
   // ---------- getting started, and the families you are not looking at ----
   // The checklist is computed from what the family has actually done, never
@@ -2295,7 +2508,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       var sig = circleSignals(c);
       var i = loadGroups().findIndex(function(x){ return x.code === c.code; });
       return '<button class="chatrow' + (sig.length ? ' needsyou' : '') + '" data-gswitch="' + i + '">' +
-             '<span class="cic" aria-hidden="true">' + (c.live ? '📞' : (sig.length ? '🔴' : '🧡')) + '</span>' +
+             '<span class="cic" aria-hidden="true">' + (c.live ? '📞' : (sig.length ? '🔴' : circleIcon(c))) + '</span>' +
              '<span class="txt"><b>' + esc(c.circleName) + '</b><small>' +
              esc(sig.length ? sig.map(function(x){ return x.text; }).join(' · ')
                             : (c.lastText ? String(c.lastText).slice(0, 60) : 'Nothing new')) +
@@ -4301,7 +4514,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     showStep('auth');
     post(API.auth, { action: 'enter', phone: authUser.phone })
       .then(function(j){
-        if (j.ok && j.exists) { authUser = j.user; saveAuth(authUser); routeAfterAuth(j.circles || []); }
+        if (j.ok && j.exists) { authUser = j.user; saveAuth(authUser); routeAfterAuth(j.circles || [], j.toured); }
         else showStep('auth');
       })
       .catch(function(){ showStep('auth'); });

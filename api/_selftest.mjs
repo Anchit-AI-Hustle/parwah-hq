@@ -159,6 +159,24 @@ export default async function handler(req, res) {
     await sql`delete from rate_limit where bucket = 'selftest' and k = ${rlKey}`;
     steps.rate_limit = first === true && second === true && third === false && rolled === true;
 
+    // ONBOARDING — the introduction is once per PERSON, and a circle knows
+    // whether it is a family or a group.
+    const kindRow = await sql`select kind from circles where id = ${circleId}`;
+    const grp = await sql`insert into circles (code, name, kind) values (${'T' + makeCode().slice(1)}, 'Selftest Group', 'group') returning id, kind`;
+    steps.circle_kind = kindRow[0].kind === 'family' && grp[0].kind === 'group';
+    await sql`delete from circles where id = ${grp[0].id}`;
+
+    const tphone2 = '+9197' + String(Date.now()).slice(-8);
+    const tu = await sql`insert into users (phone, name) values (${tphone2}, 'Selftest Tour') returning id, toured_at`;
+    const before = tu[0].toured_at;
+    await sql`update users set toured_at = coalesce(toured_at, now()) where id = ${tu[0].id}`;
+    const once = await sql`select toured_at from users where id = ${tu[0].id}`;
+    await sql`update users set toured_at = coalesce(toured_at, now()) where id = ${tu[0].id}`;
+    const twice = await sql`select toured_at from users where id = ${tu[0].id}`;
+    await sql`delete from users where id = ${tu[0].id}`;
+    steps.tour_once_per_person = before === null && once[0].toured_at !== null
+      && String(once[0].toured_at) === String(twice[0].toured_at);
+
     // MEMORY CONSENT — a private entry is invisible without a grant, but
     // preparedness still knows it is recorded.
     await sql`create table if not exists family_book (

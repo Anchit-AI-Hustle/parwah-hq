@@ -14,7 +14,7 @@ import { db, ensureSchema, isUuid, normPhone, phoneError, rateLimit, clientIp } 
 // them, which one actually needs them — that is the whole point of the list.
 async function circlesOf(sql, userId) {
   return await sql`
-    select c.code, c.name as "circleName", m.id as "memberId", m.role, m.name as "memberName",
+    select c.code, c.name as "circleName", c.kind, m.id as "memberId", m.role, m.name as "memberName",
            (select count(*)::int from members mm where mm.circle_id = c.id) as "memberCount",
            (select count(*)::int from messages ms
               join chats ch on ch.id = ms.chat_id
@@ -82,25 +82,35 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, user: { id: u[0].id, name: newName, phone: newPhone } });
     }
 
+    // The introduction is shown once per PERSON, ever. Recorded here rather
+    // than in the browser so a second phone does not mean a second tour.
+    if (body.action === 'toured') {
+      if (!isUuid(body.userId)) return res.status(403).json({ ok: false, error: 'Sign in first' });
+      await sql`update users set toured_at = coalesce(toured_at, now()) where id = ${body.userId}`;
+      return res.status(200).json({ ok: true });
+    }
+
     if (body.action !== 'enter') return res.status(400).json({ ok: false, error: 'Unknown action' });
     const np = normPhone(body.phone, body.cc);
     if (!np) return res.status(400).json({ ok: false, error: phoneError(body.cc) });
     const phone = np.e164;
 
-    let rows = await sql`select id, name, phone from users where phone = ${phone}`;
+    let rows = await sql`select id, name, phone, toured_at from users where phone = ${phone}`;
     if (!rows[0]) {
       const name = String(body.name || '').trim().slice(0, 60);
       if (!name) return res.status(200).json({ ok: true, exists: false });
       try {
-        rows = await sql`insert into users (phone, phone_cc, phone_local, name) values (${phone}, ${np.cc}, ${np.local}, ${name}) returning id, name, phone`;
+        rows = await sql`insert into users (phone, phone_cc, phone_local, name) values (${phone}, ${np.cc}, ${np.local}, ${name}) returning id, name, phone, toured_at`;
       } catch (e) {
         // raced with another signup for the same phone — fall through to sign-in
-        rows = await sql`select id, name, phone from users where phone = ${phone}`;
+        rows = await sql`select id, name, phone, toured_at from users where phone = ${phone}`;
       }
     }
     const user = rows[0];
     const circles = await circlesOf(sql, user.id);
-    return res.status(200).json({ ok: true, exists: true, user: { id: user.id, name: user.name, phone: user.phone }, circles });
+    return res.status(200).json({ ok: true, exists: true,
+      user: { id: user.id, name: user.name, phone: user.phone },
+      toured: !!user.toured_at, circles });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e && e.message || e) });
   }
