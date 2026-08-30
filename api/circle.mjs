@@ -14,6 +14,17 @@ export default async function handler(req, res) {
   // Family role labels — purely descriptive; every member is an equal admin.
   const RELATIONS = ['father', 'mother', 'grandfather', 'grandmother', 'son', 'daughter', 'brother', 'sister', 'family'];
   const relation = RELATIONS.includes(req.body.relation) ? req.body.relation : null;
+  // Gifting details — sizes and tastes so anyone in the family can gift
+  // confidently. Whitelisted keys, each a short free-text field.
+  const GIFT_KEYS = ['clothes', 'shoe', 'ring', 'color', 'likes', 'wishlist'];
+  let giftInfo;
+  if (req.body.giftInfo && typeof req.body.giftInfo === 'object') {
+    giftInfo = {};
+    GIFT_KEYS.forEach(k => {
+      const v = String(req.body.giftInfo[k] || '').trim().slice(0, 120);
+      if (v) giftInfo[k] = v;
+    });
+  }
   const uid = isUuid(userId) ? userId : null;
   const name = String(memberName || '').trim().slice(0, 60);
   const r = role === 'parent' ? 'parent' : 'family';
@@ -130,12 +141,13 @@ export default async function handler(req, res) {
       const newRole = (role === 'parent' || role === 'family') ? role : cur.role;
       const newPhone = ph !== null ? ph : cur.phone;
       const newRelation = relation || cur.relation;
+      const newGift = giftInfo !== undefined ? (Object.keys(giftInfo).length ? giftInfo : null) : cur.gift_info;
       // Place of stay — free text; country as a 2-letter code drives regional gifting.
       const newPlace = req.body.place !== undefined ? (String(req.body.place || '').trim().slice(0, 80) || null) : cur.place;
       const newCountry = req.body.country !== undefined
         ? (/^[A-Z]{2}$/.test(String(req.body.country || '')) ? req.body.country : null)
         : cur.country;
-      await sql`update members set name = ${newName}, role = ${newRole}, phone = ${newPhone}, place = ${newPlace}, country = ${newCountry}, relation = ${newRelation} where id = ${cur.id}`;
+      await sql`update members set name = ${newName}, role = ${newRole}, phone = ${newPhone}, place = ${newPlace}, country = ${newCountry}, relation = ${newRelation}, gift_info = ${newGift ? JSON.stringify(newGift) : null}::jsonb where id = ${cur.id}`;
       // One person, one home, one number — keep their other family/group
       // memberships consistent. Place/country always follow the person;
       // the phone follows only rows still carrying the old value (a circle
@@ -143,6 +155,10 @@ export default async function handler(req, res) {
       if (cur.user_id) {
         if (req.body.place !== undefined || req.body.country !== undefined) {
           await sql`update members set place = ${newPlace}, country = ${newCountry} where user_id = ${cur.user_id} and id <> ${cur.id}`;
+        }
+        if (giftInfo !== undefined) {
+          // one person, one set of sizes — every membership shows the same
+          await sql`update members set gift_info = ${newGift ? JSON.stringify(newGift) : null}::jsonb where user_id = ${cur.user_id} and id <> ${cur.id}`;
         }
         if (ph !== null && ph !== cur.phone) {
           await sql`update members set phone = ${ph} where user_id = ${cur.user_id} and id <> ${cur.id} and (phone is null or phone = ${cur.phone})`;
@@ -152,7 +168,7 @@ export default async function handler(req, res) {
         await sql`insert into events (circle_id, member_id, type, text)
                   values (${circle.id}, ${cur.id}, 'care', ${cur.name + ' updated their profile' + (newName !== cur.name ? ' — now ' + newName : '')})`;
       }
-      return res.status(200).json({ ok: true, name: newName, role: newRole, relation: newRelation, phone: newPhone, place: newPlace, country: newCountry });
+      return res.status(200).json({ ok: true, name: newName, role: newRole, relation: newRelation, phone: newPhone, place: newPlace, country: newCountry, gift_info: newGift });
     }
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });

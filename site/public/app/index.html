@@ -874,6 +874,20 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
           <option value="SG">🇸🇬 Singapore</option>
           <option value="XX">🌍 Elsewhere</option>
         </select>
+        <p class="eyebrow" style="margin-top:16px">Gifting details 🎁</p>
+        <p class="hint" style="margin:2px 0 8px">So family anywhere can gift you the right things, in the right size.</p>
+        <label for="e-clothes">Clothes size</label>
+        <input type="text" id="e-clothes" maxlength="20" placeholder="e.g. M / 40">
+        <label for="e-shoe">Foot / shoe size</label>
+        <input type="text" id="e-shoe" maxlength="20" placeholder="e.g. UK 7">
+        <label for="e-ring">Ring size</label>
+        <input type="text" id="e-ring" maxlength="20" placeholder="e.g. 16 (optional)">
+        <label for="e-color">Favourite colour</label>
+        <input type="text" id="e-color" maxlength="30" placeholder="e.g. royal blue">
+        <label for="e-likes">Loves</label>
+        <input type="text" id="e-likes" maxlength="120" placeholder="e.g. chai, cricket, gardening, ghazals">
+        <label for="e-wish">Wishlist</label>
+        <input type="text" id="e-wish" maxlength="120" placeholder="e.g. walking shoes, a good shawl">
         <label>Your role in the family</label>
         <div class="rolepick relpick" id="e-role">
       <button type="button" data-role="father">👨 Father</button>
@@ -987,6 +1001,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <span class="rolebadge" id="mp-role"></span>
     <div class="kv"><b>Mobile</b><span id="mp-phone">—</span></div>
     <div class="kv"><b>Lives in</b><span id="mp-place">—</span></div>
+    <div class="kv" id="mp-sizes-row" hidden><b>Sizes</b><span id="mp-sizes"></span></div>
+    <div class="kv" id="mp-likes-row" hidden><b>Loves</b><span id="mp-likes"></span></div>
+    <div class="kv" id="mp-wish-row" hidden><b>Wishlist</b><span id="mp-wish"></span></div>
     <div class="kv"><b>In the circle since</b><span id="mp-since">—</span></div>
     <div class="prow2">
       <a class="cbtn" id="mp-call" hidden>📞 Call</a>
@@ -995,6 +1012,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <button class="cbtn" id="mp-gift">🎁 Send a gift</button>
     </div>
     <div id="giftbox" hidden>
+      <p class="hint" id="gift-sizes" hidden style="margin-top:10px;background:#FDF4E3;border:1px solid var(--bone-2);border-radius:10px;padding:8px 10px"></p>
       <p class="eyebrow" style="margin-top:12px">Send money 💸</p>
       <div class="prow2" id="gift-cash"></div>
       <p class="eyebrow" style="margin-top:12px">Gift from stores near them <span id="gift-region"></span></p>
@@ -1078,6 +1096,17 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
           shop: [['Amazon (global)', 'https://www.amazon.com'], ['Giftcards.com', 'https://www.giftcards.com']] }
   };
   function regionOf(m){ return REGIONS[m && m.country] || REGIONS.IN; }
+  function giftLines(m){
+    var g = (m && m.gift_info) || {};
+    var sizes = [];
+    if (g.clothes) sizes.push('Clothes ' + g.clothes);
+    if (g.shoe) sizes.push('Foot ' + g.shoe);
+    if (g.ring) sizes.push('Ring ' + g.ring);
+    var loves = [];
+    if (g.color) loves.push(g.color + ' (favourite colour)');
+    if (g.likes) loves.push(g.likes);
+    return { sizes: sizes.join(' · '), loves: loves.join(' · '), wish: g.wishlist || '' };
+  }
   function placeLine(m){
     if (!m || !m.place) return null;
     var r = REGIONS[m.country];
@@ -2748,6 +2777,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('mp-phone').textContent = m.phone || 'not shared';
     $('mp-since').textContent = m.created_at ? fmtDue(String(m.created_at).slice(0, 10)) : '—';
     $('mp-place').textContent = placeLine(m) || 'not shared';
+    var gl = giftLines(m);
+    $('mp-sizes-row').hidden = !gl.sizes; if (gl.sizes) $('mp-sizes').textContent = gl.sizes;
+    $('mp-likes-row').hidden = !gl.loves; if (gl.loves) $('mp-likes').textContent = gl.loves;
+    $('mp-wish-row').hidden = !gl.wish; if (gl.wish) $('mp-wish').textContent = gl.wish;
     if (m.phone) { $('mp-call').href = 'tel:' + encodeURIComponent(m.phone); $('mp-call').hidden = false; }
     else $('mp-call').hidden = true;
     var self = m.id === state.memberId;
@@ -2775,6 +2808,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var m = null; membersCache.forEach(function(x){ if (x.id === mid) m = x; });
     if (!m) return;
     var r = regionOf(m);
+    var gl2 = giftLines(m);
+    var bits = [gl2.sizes, gl2.loves, gl2.wish ? 'wishlist: ' + gl2.wish : ''].filter(Boolean);
+    $('gift-sizes').hidden = !bits.length;
+    if (bits.length) $('gift-sizes').textContent = '🎁 Their details — ' + bits.join(' · ');
     var link = function(pair){ return '<a class="cbtn ghost" href="' + pair[1] + '" target="_blank" rel="noopener">' + esc(pair[0]) + '</a>'; };
     $('gift-cash').innerHTML = r.cash.map(link).join('');
     $('gift-shop').innerHTML = r.shop.map(link).join('');
@@ -2835,6 +2872,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       var meM = null; membersCache.forEach(function(x){ if (x.id === state.memberId) meM = x; });
       $('e-place').value = (meM && meM.place) || '';
       $('e-country').value = (meM && meM.country) || '';
+      var gI = (meM && meM.gift_info) || {};
+      $('e-clothes').value = gI.clothes || '';
+      $('e-shoe').value = gI.shoe || '';
+      $('e-ring').value = gI.ring || '';
+      $('e-color').value = gI.color || '';
+      $('e-likes').value = gI.likes || '';
+      $('e-wish').value = gI.wishlist || '';
       var rel = (meM && meM.relation) || 'family';
       $('e-role').querySelectorAll('button').forEach(function(b){
         b.classList.toggle('sel', b.getAttribute('data-role') === rel);
@@ -2849,7 +2893,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var relation = eRole();
     var newPhone = $('e-phone').value.trim();
     // Phone goes to the member row too, so the 📞 buttons the family sees update.
-    post(API.circle, { action: 'update_member', code: state.code, memberId: state.memberId, memberName: nm, role: role, relation: relation, phone: newPhone || undefined, place: $('e-place').value.trim(), country: $('e-country').value || '' })
+    post(API.circle, { action: 'update_member', code: state.code, memberId: state.memberId, memberName: nm, role: role, relation: relation, phone: newPhone || undefined, place: $('e-place').value.trim(), country: $('e-country').value || '',
+      giftInfo: { clothes: $('e-clothes').value.trim(), shoe: $('e-shoe').value.trim(), ring: $('e-ring').value.trim(), color: $('e-color').value.trim(), likes: $('e-likes').value.trim(), wishlist: $('e-wish').value.trim() } })
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not save'); return; }
         state.name = j.name; state.role = j.role; saveState(state);

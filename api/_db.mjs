@@ -85,6 +85,7 @@ export async function ensureSchema(sql) {
   await sql`alter table members add column if not exists place text`;
   await sql`alter table members add column if not exists country text`;
   await sql`alter table members add column if not exists relation text`;
+  await sql`alter table members add column if not exists gift_info jsonb`;
   // Integrity rules: one membership per signed-in user per circle, one name
   // per circle. Non-fatal until legacy duplicates are tidied away.
   try { await sql`create unique index if not exists members_circle_user on members (circle_id, user_id) where user_id is not null`; } catch (e) {}
