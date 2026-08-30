@@ -99,7 +99,7 @@ export default async function handler(req, res) {
       if (!isUuid(body.planId)) return res.status(400).json({ ok: false, error: 'Bad plan id' });
       const rows = await sql`select id, by_member, title from plans where id = ${body.planId} and circle_id = ${circle.id}`;
       if (!rows[0]) return res.status(404).json({ ok: false, error: 'Plan not found' });
-      if (rows[0].by_member !== me.id) return res.status(403).json({ ok: false, error: 'Only the person who made the plan can cancel it' });
+      // Every member is an equal admin of the circle — anyone can cancel.
       await sql`delete from plans where id = ${rows[0].id}`;
       await feed(sql, circle.id, me.id, `${me.name} cancelled: ${rows[0].title}`);
       return res.status(200).json({ ok: true });

@@ -82,6 +82,9 @@ export async function ensureSchema(sql) {
     created_at timestamptz not null default now()
   )`;
   await sql`alter table members add column if not exists user_id uuid references users(id) on delete set null`;
+  await sql`alter table members add column if not exists place text`;
+  await sql`alter table members add column if not exists country text`;
+  await sql`alter table members add column if not exists relation text`;
   await sql`create table if not exists chat_reads (
     chat_id uuid not null references chats(id) on delete cascade,
     member_id uuid not null references members(id) on delete cascade,
@@ -122,7 +125,9 @@ export function makeCode() {
 
 export async function circleByCode(sql, code) {
   const clean = String(code || '').toUpperCase().trim();
-  if (!/^[A-Z2-9]{6}$/.test(clean)) return null;
+  // Generated codes are 6 chars from the look-alike-free alphabet; custom
+  // codes a family sets can be any 4-12 letters/digits.
+  if (!/^[A-Z0-9]{4,12}$/.test(clean)) return null;
   const rows = await sql`select id, code, name from circles where code = ${clean}`;
   return rows[0] || null;
 }

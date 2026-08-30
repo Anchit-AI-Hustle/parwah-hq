@@ -45,6 +45,10 @@ export default async function handler(req, res) {
       } catch (e) {
         return res.status(409).json({ ok: false, error: 'That number is already registered to another profile' });
       }
+      // Keep memberships that carried the old number in step with the profile.
+      if (newPhone !== u[0].phone) {
+        await sql`update members set phone = ${newPhone} where user_id = ${u[0].id} and (phone is null or phone = ${u[0].phone})`;
+      }
       return res.status(200).json({ ok: true, user: { id: u[0].id, name: newName, phone: newPhone } });
     }
 
