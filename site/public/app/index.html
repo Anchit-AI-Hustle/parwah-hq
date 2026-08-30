@@ -1008,6 +1008,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     data.members.forEach(function(m){
       mh += '<span class="member" data-mprof="' + m.id + '" role="button" tabindex="0">' + esc(m.name) + ' <em>· ' + (m.role === 'parent' ? 'parent' : 'family') + '</em>' +
             (m.phone ? ' <a class="callbtn" href="tel:' + encodeURIComponent(m.phone) + '" aria-label="Call ' + esc(m.name) + '">📞</a>' : '') + '</span>';
+      // My own member row is the source of truth for the number shown on my
+      // profile — covers accounts created before phone sign-in existed.
+      if (m.id === state.memberId && m.phone) $('p-phone').textContent = m.phone;
     });
     $('members').innerHTML = mh;
 
@@ -2015,7 +2018,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var nm = $('e-name').value.trim();
     if (!nm) { toast('Name cannot be empty'); return; }
     var role = eRole();
-    post(API.circle, { action: 'update_member', code: state.code, memberId: state.memberId, memberName: nm, role: role })
+    var newPhone = $('e-phone').value.trim();
+    // Phone goes to the member row too, so the 📞 buttons the family sees update.
+    post(API.circle, { action: 'update_member', code: state.code, memberId: state.memberId, memberName: nm, role: role, phone: newPhone || undefined })
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not save'); return; }
         state.name = j.name; state.role = j.role; saveState(state);
@@ -2026,10 +2031,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         $('d-user').textContent = state.name + ' · ' + state.code;
         $('p-name').textContent = state.name;
         $('p-role').textContent = state.role === 'parent' ? 'Parent (senior mode)' : 'Family';
-        var newPhone = $('e-phone').value.trim();
+        if (j.phone) $('p-phone').textContent = j.phone;
         var done = function(){ $('editform').hidden = true; toast('Profile updated 🧡'); refresh(); };
-        if (authUser && newPhone && newPhone !== authUser.phone) {
-          post(API.auth, { action: 'update', userId: authUser.id, name: nm, phone: newPhone })
+        if (authUser && (nm !== authUser.name || (newPhone && newPhone !== authUser.phone))) {
+          post(API.auth, { action: 'update', userId: authUser.id, name: nm, phone: newPhone || undefined })
             .then(function(a){
               if (a.ok) { authUser = a.user; saveAuth(authUser); $('p-phone').textContent = authUser.phone; done(); }
               else toast(a.error || 'Could not update the number');
