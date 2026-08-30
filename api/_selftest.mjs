@@ -159,6 +159,28 @@ export default async function handler(req, res) {
     await sql`delete from rate_limit where bucket = 'selftest' and k = ${rlKey}`;
     steps.rate_limit = first === true && second === true && third === false && rolled === true;
 
+    // MULTI-CIRCLE SIGNALS — what a person sees before opening a family.
+    const unreadFor = (who) => sql`
+      select count(*)::int as n from messages ms
+      join chats ch on ch.id = ms.chat_id
+      left join chat_members cm on cm.chat_id = ch.id and cm.member_id = ${who}
+      left join chat_reads cr on cr.chat_id = ch.id and cr.member_id = ${who}
+      where ch.circle_id = ${circleId}
+        and (ch.kind = 'circle' or cm.member_id is not null)
+        and ms.member_id is distinct from ${who}
+        and (cr.read_at is null or ms.created_at > cr.read_at)`;
+    const papaUnread = await unreadFor(papa[0].id);
+    const betaUnread = await unreadFor(beta[0].id);
+    // Beta wrote 'Hello everyone' and has a read cursor on that chat; Papa
+    // wrote in the group and has no cursor anywhere.
+    steps.circle_unread = papaUnread[0].n >= 1 && betaUnread[0].n < papaUnread[0].n;
+
+    const waiting = await sql`select count(*)::int as n from join_requests
+                              where circle_id = ${circleId} and status = 'pending'`;
+    const openReq = await sql`select count(*)::int as n from requests
+                              where circle_id = ${circleId} and status = 'open'`;
+    steps.circle_signals = typeof waiting[0].n === 'number' && typeof openReq[0].n === 'number';
+
     // COINS — one pot for the family, earned by caring, spent on the AI.
     await ensureCoinSchema(sql);
     const start = await balance(sql, circleId);

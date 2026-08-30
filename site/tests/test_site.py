@@ -209,6 +209,17 @@ check("coins: an unanswered turn is refunded", "'refund'" in ekta)
 check("coins: an empty pot refuses rather than going negative",
       "if (have < cost) return { ok: false" in coins)
 
+# 10i. MULTI-CIRCLE — a person in several families must see which needs them.
+check("circles: each carries what is waiting in it",
+      all(k in auth for k in ('"unread"', '"waiting"', '"openRequests"', '"live"')))
+check("circles: your own messages never count as unread",
+      "ms.member_id is distinct from m.id" in auth)
+check("circles: unread respects private chats you are not in",
+      "ch.kind = 'circle' or cm.member_id is not null" in auth)
+appsrc = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+check("circles: the sign-in list leads with the circle that needs you",
+      "circleSignals" in appsrc and "needsyou" in appsrc)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

@@ -9,10 +9,32 @@
 // OTP check to slot in here without any client-flow change.
 import { db, ensureSchema, isUuid, normPhone, phoneError, rateLimit, clientIp } from './_db.mjs';
 
+// Every circle this number belongs to, each carrying what is waiting in it.
+// A person in three families should be able to see, before opening any of
+// them, which one actually needs them — that is the whole point of the list.
 async function circlesOf(sql, userId) {
   return await sql`
     select c.code, c.name as "circleName", m.id as "memberId", m.role, m.name as "memberName",
-           (select count(*)::int from members mm where mm.circle_id = c.id) as "memberCount"
+           (select count(*)::int from members mm where mm.circle_id = c.id) as "memberCount",
+           (select count(*)::int from messages ms
+              join chats ch on ch.id = ms.chat_id
+              left join chat_members cm on cm.chat_id = ch.id and cm.member_id = m.id
+              left join chat_reads cr on cr.chat_id = ch.id and cr.member_id = m.id
+             where ch.circle_id = c.id
+               and (ch.kind = 'circle' or cm.member_id is not null)
+               and ms.member_id is distinct from m.id
+               and (cr.read_at is null or ms.created_at > cr.read_at)) as "unread",
+           (select count(*)::int from requests rq
+             where rq.circle_id = c.id and rq.status = 'open') as "openRequests",
+           (select count(*)::int from join_requests jq
+             where jq.circle_id = c.id and jq.status = 'pending') as "waiting",
+           (select count(*)::int from calls ca
+             where ca.circle_id = c.id and ca.started_at > now() - interval '3 hours') as "live",
+           (select max(ev.created_at) from events ev where ev.circle_id = c.id) as "lastAt",
+           (select ev.text from events ev where ev.circle_id = c.id
+             order by ev.created_at desc limit 1) as "lastText",
+           (select ev.type from events ev where ev.circle_id = c.id
+             order by ev.created_at desc limit 1) as "lastType"
     from members m join circles c on c.id = m.circle_id
     where m.user_id = ${userId}
     order by m.created_at desc`;

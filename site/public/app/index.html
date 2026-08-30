@@ -197,6 +197,14 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .tabs button.sel::after{content:"";position:absolute;top:0;left:25%;right:25%;height:3px;border-radius:0 0 3px 3px;background:var(--marigold)}
 .tabs .dot{position:absolute;top:9px;right:calc(50% - 18px);min-width:16px;height:16px;border-radius:99px;background:var(--sindoor);color:#fff;font-size:.62rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;font-style:normal}
 
+/* what is waiting in a circle you are not currently inside */
+.gcount{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;margin-left:6px;border-radius:99px;background:var(--sindoor);color:#fff;font-size:.62rem;font-weight:700;vertical-align:middle}
+.dot.live{display:inline-block;width:9px;height:9px;margin-left:7px;border-radius:99px;background:var(--sindoor);vertical-align:middle;animation:livepulse 1.4s ease-in-out infinite}
+@keyframes livepulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
+@media(prefers-reduced-motion:reduce){.dot.live{animation:none}}
+.chatrow.needsyou{border-left:3px solid var(--sindoor)}
+.chatrow.needsyou .txt small:first-of-type{color:var(--sindoor)}
+
 .toast{position:fixed;left:50%;bottom:calc(var(--tabs-h) + 14px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(160px);background:var(--pine);color:var(--cream);padding:11px 18px;border-radius:99px;font-size:.85rem;transition:.25s;box-shadow:0 10px 30px rgba(0,0,0,.35);z-index:9;max-width:92vw;text-align:center}
 .toast.show{transform:translateX(-50%) translateY(0)}
 /* home widgets */
@@ -1670,6 +1678,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     refreshBook();
     refreshCoins();
     refreshChats();
+    refreshGroups();
     if (curChat) loadMsgs();
   }
 
@@ -1868,18 +1877,48 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   });
 
   // "My Groups" — every circle this signed-in person belongs to, switchable.
+  // What is waiting in a circle, in the order a family would care about it.
+  function circleSignals(c){
+    var out = [];
+    if (c.live)         out.push({ cls:'bad',  text:'📞 call on now' });
+    if (c.waiting)      out.push({ cls:'bad',  text:'🙋 ' + c.waiting + (c.waiting === 1 ? ' person waiting to join' : ' people waiting to join') });
+    if (c.unread)       out.push({ cls:'',     text:'💬 ' + c.unread + (c.unread === 1 ? ' new message' : ' new messages') });
+    if (c.openRequests) out.push({ cls:'',     text:'🤝 ' + c.openRequests + (c.openRequests === 1 ? ' open request' : ' open requests') });
+    return out;
+  }
+  function circleDot(c){ return !!(c.live || c.waiting || c.unread || c.openRequests); }
+
   function renderGroups(){
     var cs = loadGroups();
     var sh = '', dh = '';
     cs.forEach(function(c, i){
       var on = state && c.code === state.code;
-      sh += '<button data-gswitch="' + i + '" class="' + (on ? 'sel' : '') + '">' + esc(c.circleName) + (on ? ' ✓' : '') + '</button>';
-      dh += '<button class="ditem sub' + (on ? ' sel' : '') + '" data-gswitch="' + i + '">' + esc(c.circleName) + (on ? ' ✓' : '') + '</button>';
+      // A circle you are not currently in still tells you it needs you.
+      var n = (c.unread || 0) + (c.waiting || 0) + (c.openRequests || 0);
+      var mark = on ? ' ✓' : (c.live ? ' <i class="dot live"></i>' : (circleDot(c) ? ' <b class="gcount">' + (n > 99 ? '99+' : n) + '</b>' : ''));
+      sh += '<button data-gswitch="' + i + '" class="' + (on ? 'sel' : '') + '">' + esc(c.circleName) + mark + '</button>';
+      dh += '<button class="ditem sub' + (on ? ' sel' : '') + '" data-gswitch="' + i + '">' + esc(c.circleName) + mark + '</button>';
     });
     $('side-groups').innerHTML = sh;
     $('d-groups').innerHTML = dh;
     $('side-groups-head').hidden = !cs.length;
     $('d-groups-wrap').hidden = !cs.length;
+  }
+  // The other families' signals refresh about once a minute — often enough to
+  // notice, rarely enough not to cost a request every poll.
+  var groupTick = 0;
+  function refreshGroups(){
+    if (!authUser || !authUser.phone) return;
+    if (groupTick++ % 5 !== 0) return;
+    post(API.auth, { action:'enter', phone: authUser.phone })
+      .then(function(j){
+        if (!j.ok || !j.exists || !Array.isArray(j.circles)) return;
+        // A background refresh must never empty My Groups under someone who
+        // is plainly sitting inside a circle right now — show stale over none.
+        if (state && !j.circles.some(function(c){ return c.code === state.code; })) return;
+        saveGroups(j.circles);
+      })
+      .catch(function(){});
   }
   function upsertGroup(c){
     var cs = loadGroups().filter(function(x){ return x.code !== c.code; });
@@ -1980,13 +2019,25 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         ? 'You are in 1 circle — tap to open it.'
         : 'You are in ' + circles.length + ' circles — tap any one to open it.';
       var h = '';
-      circles.forEach(function(c, i){
-        var n = c.memberCount || 0;
-        h += '<button class="chatrow" data-encircle="' + i + '"><span class="cic" aria-hidden="true">🧡</span>' +
-             '<span class="txt"><b>' + esc(c.circleName) + '</b><small>' +
-             (n ? n + (n === 1 ? ' member' : ' members') + ' · ' : '') +
-             'code ' + esc(c.code) + ' · you are ' + esc(c.memberName || authUser.name) +
-             '</small></span></button>';
+      // Sorted so the circle that needs you most is the one you see first.
+      var order = circles.map(function(c, i){ return { c: c, i: i }; });
+      order.sort(function(a, b){
+        var pa = (a.c.live ? 1000 : 0) + (a.c.waiting || 0) * 100 + (a.c.unread || 0) + (a.c.openRequests || 0);
+        var pb = (b.c.live ? 1000 : 0) + (b.c.waiting || 0) * 100 + (b.c.unread || 0) + (b.c.openRequests || 0);
+        return pb - pa;
+      });
+      order.forEach(function(o){
+        var c = o.c, n = c.memberCount || 0;
+        var sig = circleSignals(c);
+        var line2 = sig.length
+          ? sig.map(function(x){ return x.text; }).join(' · ')
+          : (c.lastText ? String(c.lastText).slice(0, 60) : 'Nothing new');
+        h += '<button class="chatrow' + (sig.length ? ' needsyou' : '') + '" data-encircle="' + o.i + '">' +
+             '<span class="cic" aria-hidden="true">' + (c.live ? '📞' : (sig.length ? '🔴' : '🧡')) + '</span>' +
+             '<span class="txt"><b>' + esc(c.circleName) + '</b>' +
+             '<small>' + esc(line2) + '</small>' +
+             '<small>' + (n ? n + (n === 1 ? ' member' : ' members') + ' · ' : '') +
+             'you are ' + esc(c.memberName || authUser.name) + '</small></span></button>';
       });
       $('cs-list').innerHTML = h;
       window._authCircles = circles;
