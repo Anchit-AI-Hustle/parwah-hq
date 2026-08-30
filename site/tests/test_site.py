@@ -296,6 +296,17 @@ check("deploy: dependencies are installed before the gate runs",
       "npm install" in deploysh and "node_modules" in deploysh)
 check("deploy: a gate failure shows its output instead of hiding it",
       "tail -40" in deploysh and "Full output" in deploysh)
+check("deploy: every vercel step shows its output on failure",
+      "run_vercel()" in deploysh and ">/dev/null 2>&1" not in deploysh.split("run_vercel()")[1])
+# The anti-pattern is `local rc=$?` as a STATEMENT; the comment explaining it
+# mentions the same text, so match code lines only.
+_codelines = [l.strip() for l in deploysh.splitlines() if not l.strip().startswith("#")]
+check("deploy: the exit status captured is the command's, not local's",
+      not any(re.match(r"^local\s+\w+=\$\?", l) for l in _codelines))
+check("deploy: a failure names its own kind instead of blaming the token",
+      "vercel_hint()" in deploysh and "could not reach api.vercel.com" in deploysh)
+check("deploy: a fresh clone gets its project link written",
+      ".vercel/project.json" in deploysh and "mkdir -p .vercel" in deploysh)
 check("deploy: works on a machine without flock (macOS)",
       "command -v flock" in deploysh and 'mkdir "$LOCK.d"' in deploysh)
 

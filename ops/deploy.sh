@@ -106,12 +106,64 @@ log "gate passed"
 
 if [ "$DRY" -eq 1 ]; then log "dry run — stopping before deploy"; exit 0; fi
 
-# 3. production, not preview
-vercel pull --yes --environment=production --token="$VERCEL_TOKEN" >/dev/null 2>&1 \
-  || die "vercel pull failed (token or network)"
-vercel build --prod --token="$VERCEL_TOKEN" >/dev/null 2>&1 \
-  || die "vercel build failed — run 'vercel build --prod' to see the output"
-URL="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" 2>/dev/null | tail -1)"
+# 3. production, not preview.
+# Every step below SHOWS its output on failure. Hiding it once already cost a
+# round trip; a deploy script that says only "it failed" is not a tool.
+run_vercel() {           # run_vercel <description> <args...>
+  local what="$1"; shift
+  local out rc
+  out="$(mktemp "${TMPDIR:-/tmp}/parwah-vc.XXXXXX")"
+  rc=0
+  # `local rc=$?` would capture the exit status of `local` itself, not of the
+  # command — which is how the first version of this reported "exit 0" on a
+  # failure. Assign separately.
+  "$@" > "$out" 2>&1 || rc=$?
+  VC_OUT="$(cat "$out")"
+  if [ "$rc" -ne 0 ]; then
+    log "$what FAILED (exit $rc):"
+    echo "------------------------------------------------------------"
+    tail -30 "$out"
+    echo "------------------------------------------------------------"
+    rm -f "$out"; return 1
+  fi
+  rm -f "$out"; return 0
+}
+
+# Say which kind of failure it was rather than guessing at the token.
+vercel_hint() {
+  case "$VC_OUT" in
+    *"fetch failed"*|*ENOTFOUND*|*ETIMEDOUT*|*ECONNREFUSED*|*"getaddrinfo"*)
+      echo "this machine could not reach api.vercel.com — check the network, a VPN, or a corporate proxy" ;;
+    *401*|*403*|*"not authorized"*|*"Not authorized"*|*"invalid token"*|*"Invalid token"*|*"token was revoked"*)
+      echo "the token in ~/.parwah/vercel-token was rejected — create a fresh one at vercel.com/account/tokens" ;;
+    *"does not exist"*|*"not found"*|*"Project not found"*)
+      echo "the project link looks wrong — delete .vercel/ here and re-run so it is rewritten" ;;
+    *) echo "see the output above" ;;
+  esac
+}
+
+# .vercel/ is gitignored, so a fresh clone has no project link at all. Write
+# it rather than depending on the CLI reading the environment variables.
+if [ ! -f .vercel/project.json ]; then
+  log "linking this clone to the parwah project"
+  mkdir -p .vercel
+  printf '{"projectId":"%s","orgId":"%s"}\n' "$VERCEL_PROJECT_ID" "$VERCEL_ORG_ID" > .vercel/project.json
+fi
+
+# Check the token before anything else, so a bad one is named as a bad one
+# instead of surfacing three steps later as "pull failed".
+if ! run_vercel "vercel whoami" vercel whoami --token="$VERCEL_TOKEN"; then
+  die "$(vercel_hint)"
+fi
+log "signed in to Vercel as ${VC_OUT##*$'\n'}"
+
+run_vercel "vercel pull" vercel pull --yes --environment=production --token="$VERCEL_TOKEN" \
+  || die "could not pull the project settings — $(vercel_hint)"
+run_vercel "vercel build" vercel build --prod --token="$VERCEL_TOKEN" \
+  || die "the production build failed — $(vercel_hint)"
+run_vercel "vercel deploy" vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" \
+  || die "the deploy was rejected — $(vercel_hint)"
+URL="$(printf '%s' "$VC_OUT" | grep -Eo 'https://[a-zA-Z0-9.-]+\.vercel\.app' | tail -1)"
 [ -n "$URL" ] || die "vercel deploy produced no URL"
 log "deployed $URL"
 
