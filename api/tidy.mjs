@@ -71,6 +71,20 @@ export default async function handler(req, res) {
       out.added.push(u.name);
     }
 
+    // real people who only exist in doomed test circles get their seat too
+    const stray = await sql`select distinct on (lower(name)) name, phone, user_id, relation
+                            from members where circle_id <> ${cid} order by lower(name), created_at`;
+    for (const m of stray) {
+      const clash = await sql`select id from members where circle_id = ${cid}
+        and (lower(name) = lower(${m.name})
+             or (phone is not null and phone = ${m.phone})
+             or (user_id is not null and user_id = ${m.user_id}))`;
+      if (clash[0]) continue;
+      await sql`insert into members (circle_id, name, role, phone, user_id, relation)
+                values (${cid}, ${m.name}, 'family', ${m.phone}, ${m.user_id}, ${m.relation})`;
+      out.added.push(m.name);
+    }
+
     // test circles out; orphan users out
     const gone = await sql`delete from circles where id <> ${cid} returning id`;
     out.circlesDeleted = gone.length;
