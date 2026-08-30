@@ -227,6 +227,30 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 /* notifications */
 #bell{margin-left:auto;position:relative;border:0;background:none;color:var(--cream);font-size:1.15rem;cursor:pointer;padding:2px 6px}
 #getapp{font-size:1.15rem;text-decoration:none;padding:2px 6px;line-height:1}
+.ecard-btn{background:var(--alert);color:#fff;border-color:var(--alert)}
+.big.ecard-big{background:var(--dusk);color:var(--cream);font-family:var(--body);font-size:1.1rem;margin-top:10px}
+.ecard-mp{max-width:520px}
+.ec-head{border-bottom:2px solid var(--alert);padding-bottom:10px;margin-bottom:12px}
+.ec-tag{display:inline-block;background:var(--alert);color:#fff;font-size:.66rem;font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;padding:3px 10px;border-radius:99px}
+.ec-head h3{margin:8px 0 2px;font-size:1.5rem}
+.ec-head p{margin:0;color:var(--ink-soft);font-size:.86rem}
+.ec-sec{margin-bottom:12px}
+.ec-sec h4{font-family:var(--disp);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);
+  margin:0 0 5px;font-weight:600}
+.ec-row{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--bone-2);font-size:.9rem;align-items:baseline}
+.ec-row:last-child{border-bottom:0}
+.ec-row b{min-width:104px;color:var(--ink)}
+.ec-row span{flex:1;color:var(--ink-soft)}
+.ec-row .stale{color:var(--sindoor);font-size:.76rem}
+.ec-row.none span{color:var(--dim);font-style:italic}
+.ec-row a{color:var(--marigold-d);font-weight:600;text-decoration:none}
+@media print{
+  body>*{display:none!important}
+  #ecard{display:block!important;position:static}
+  #ecard .mp{box-shadow:none;max-width:100%}
+  #ec-x,.prow2,.hint{display:none!important}
+}
 #bell[hidden]~#getapp{margin-left:auto}
 @media(display-mode:standalone){#getapp{display:none}}
 #livecall{background:var(--pine);color:var(--cream);display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:.86rem}
@@ -495,6 +519,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <button class="big pill" id="btn-pill">Pills taken? Yes ✔</button>
       <button class="big sos" id="btn-sos">🆘 SOS — need help now<span class="sub">Everyone in the circle is told instantly</span></button>
     </div>
+    <button class="big ecard-big" id="btn-ecard">🚨 Emergency card<span class="sub">Everything a doctor needs — works without internet</span></button>
 
     <div class="widgets">
       <button class="widget" data-goto="people"><span class="wic" aria-hidden="true">👨‍👩‍👧</span><b>People</b><small id="w-fam">Loading…</small></button>
@@ -1073,6 +1098,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <button class="cbtn" id="mp-dm">💬 Message privately</button>
       <button class="cbtn ghost" id="mp-remind">🔔 Set a reminder</button>
       <button class="cbtn" id="mp-gift">🎁 Send a gift</button>
+      <button class="cbtn ecard-btn" id="mp-ecard">🚨 Emergency card</button>
     </div>
     <div id="giftbox" hidden>
       <p class="hint" id="gift-sizes" hidden style="margin-top:10px;background:#FDF4E3;border:1px solid var(--bone-2);border-radius:10px;padding:8px 10px"></p>
@@ -1122,6 +1148,25 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 </div>
 
 <button class="fab" id="ekta-fab" hidden aria-label="Ask Ekta">✨ Ekta</button>
+
+<div class="msheet" id="ecard" hidden>
+  <div class="mp ecard-mp">
+    <button class="x" id="ec-x" aria-label="Close">✕</button>
+    <div class="ec-head">
+      <span class="ec-tag">Emergency card</span>
+      <h3 id="ec-name"></h3>
+      <p id="ec-sub"></p>
+    </div>
+    <div id="ec-body"></div>
+    <p class="hint" id="ec-off" hidden style="margin-top:10px">📵 Showing the last saved copy — this card works without internet.</p>
+    <div class="prow2" style="margin-top:14px">
+      <button class="cbtn" id="ec-share">📤 Send to someone</button>
+      <button class="cbtn ghost" id="ec-copy">📋 Copy</button>
+      <button class="cbtn ghost" id="ec-print">🖨 Print</button>
+    </div>
+    <p class="hint" style="margin-top:10px">Everything here comes from your family memory. Blank rows mean nobody has recorded it yet — fill them in before you need them.</p>
+  </div>
+</div>
 
 <div class="toast" id="toast" role="status"></div>
 
@@ -1984,7 +2029,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         '<p class="hint" style="margin:6px 0 8px">' + (pp.attention ? pp.attention + ' thing' + (pp.attention > 1 ? 's' : '') + ' need' + (pp.attention > 1 ? '' : 's') + ' attention' : 'All the important information is recorded 🧡') + '</p>' +
         '<div class="prepitems">' + rows + '</div>' +
         '<div class="prow2" style="margin-top:10px">' +
-        '<button class="cbtn" data-pmem="' + pp.memberId + '">📒 Their memory</button>' +
+        '<button class="cbtn ecard-btn" data-ecard="' + pp.memberId + '">🚨 Emergency card</button>' +
+        '<button class="cbtn ghost" data-pmem="' + pp.memberId + '">📒 Memory</button>' +
         '<button class="cbtn ghost" data-mprof="' + pp.memberId + '">👤 Profile</button>' +
         '</div></div>';
     });
@@ -2003,7 +2049,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     if (!state) return;
     fetch(API.book + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); })
-      .then(function(j){ if (j.ok) { bookCache = j.entries || []; prepCache = j.prep || []; bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); } })
+      .then(function(j){ if (j.ok) { bookCache = j.entries || []; prepCache = j.prep || []; bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); ecSave(); } })
       .catch(function(){});
   }
   function bookEntry(id){ var e = null; bookCache.forEach(function(x){ if (x.id === id) e = x; }); return e; }
@@ -2151,6 +2197,130 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       })
       .catch(function(){ toast('No connection — try again'); });
   });
+
+  // ---------- Emergency card ----------
+  // Everything a doctor, a neighbour or an ambulance needs about one person,
+  // built from the family memory the circle already keeps. Cached locally so
+  // it opens in a hospital corridor with no signal — the moment it matters
+  // most is the moment the network is worst.
+  function ecSave(){
+    try {
+      localStorage.setItem('parwah-ecard', JSON.stringify({
+        at: Date.now(), circle: state.code,
+        members: membersCache, entries: bookCache
+      }));
+    } catch (e) {}
+  }
+  function ecLoad(){
+    try { return JSON.parse(localStorage.getItem('parwah-ecard') || 'null'); } catch (e) { return null; }
+  }
+  function ecData(){
+    // live data when we have it, the saved copy when we do not
+    if (membersCache && membersCache.length) return { members: membersCache, entries: bookCache || [], offline: false };
+    var c = ecLoad();
+    if (c && c.circle === (state && state.code)) return { members: c.members || [], entries: c.entries || [], offline: true };
+    return { members: [], entries: [], offline: false };
+  }
+  function ecRow(label, value, extra, stale){
+    if (!value) return '<div class="ec-row none"><b>' + label + '</b><span>not recorded yet</span></div>';
+    return '<div class="ec-row"><b>' + label + '</b><span>' + value +
+      (extra ? ' ' + extra : '') +
+      (stale ? ' <i class="stale">· last checked ' + stale + '</i>' : '') + '</span></div>';
+  }
+  function openEcard(memberId){
+    var d = ecData();
+    var m = null; d.members.forEach(function(x){ if (x.id === memberId) m = x; });
+    if (!m) { toast('No saved details for that person yet'); return; }
+    var mine = d.entries.filter(function(e){ return e.about_member === m.id; });
+    var famWide = d.entries.filter(function(e){ return !e.about_member; });
+    var pick = function(fn){ return mine.filter(fn); };
+    var staleOf = function(e){ return entryStale(e) ? agoLine(e.last_verified_at) : ''; };
+
+    var blood = pick(function(e){ return e.kind === 'fact' && e.category === 'blood'; })[0];
+    var allergy = pick(function(e){ return e.kind === 'fact' && e.category === 'allergy'; });
+    var meds = pick(function(e){ return e.kind === 'med'; });
+    var docs = pick(function(e){ return e.kind === 'contact' && e.category === 'doctor'; });
+    var ins = pick(function(e){ return e.kind === 'insurance'; });
+    var emg = pick(function(e){ return e.kind === 'contact' && e.category === 'emergency'; })
+                .concat(famWide.filter(function(e){ return e.kind === 'contact' && e.category === 'emergency'; }));
+
+    var h = '';
+    h += '<div class="ec-sec"><h4>Vital</h4>' +
+      ecRow('Blood group', blood ? esc(blood.forwhat || blood.name) : '', '', blood ? staleOf(blood) : '') +
+      ecRow('Allergies', allergy.length ? allergy.map(function(a){ return esc(a.forwhat || a.name); }).join(', ') : '') +
+      ecRow('Lives in', placeLine(m) ? esc(placeLine(m)) : '') +
+      ecRow('Mobile', m.phone ? '<a href="tel:' + encodeURIComponent(m.phone) + '">' + esc(m.phone) + '</a>' : '') +
+      '</div>';
+
+    h += '<div class="ec-sec"><h4>Medicines &amp; what they are for</h4>';
+    h += meds.length ? meds.map(function(e){
+      return '<div class="ec-row"><b>' + esc(e.name) + '</b><span>' + esc(e.forwhat || '—') +
+        (e.notes ? ' · ' + esc(e.notes) : '') +
+        (entryStale(e) ? ' <i class="stale">· last checked ' + agoLine(e.last_verified_at) + '</i>' : '') + '</span></div>';
+    }).join('') : '<div class="ec-row none"><b>Medicines</b><span>none recorded yet</span></div>';
+    h += '</div>';
+
+    h += '<div class="ec-sec"><h4>Who to call</h4>';
+    var calls = docs.concat(emg);
+    h += calls.length ? calls.map(function(e){
+      return '<div class="ec-row"><b>' + esc(e.name) + '</b><span>' +
+        (e.category === 'doctor' ? '🩺 doctor' : '🆘 emergency contact') +
+        (e.phone ? ' · <a href="tel:' + encodeURIComponent(e.phone) + '">' + esc(e.phone) + '</a>' : '') + '</span></div>';
+    }).join('') : '<div class="ec-row none"><b>Doctor</b><span>no doctor or emergency contact recorded</span></div>';
+    h += '</div>';
+
+    h += '<div class="ec-sec"><h4>Insurance</h4>';
+    h += ins.length ? ins.map(function(e){
+      return '<div class="ec-row"><b>' + esc(e.name) + '</b><span>' + esc(e.forwhat || '') +
+        (entryStale(e) ? ' <i class="stale">· last checked ' + agoLine(e.last_verified_at) + '</i>' : '') + '</span></div>';
+    }).join('') : '<div class="ec-row none"><b>Policy</b><span>not recorded yet</span></div>';
+    h += '</div>';
+
+    $('ec-name').textContent = m.name;
+    $('ec-sub').textContent = relLabel(m) + (m.place ? ' · ' + m.place : '') + ' · from ' + (state ? state.circleName : 'your family');
+    $('ec-body').innerHTML = h;
+    $('ec-off').hidden = !d.offline;
+    $('ecard').dataset.mid = m.id;
+    $('ecard').hidden = false;
+  }
+  function ecardText(){
+    var t = $('ec-name').textContent + ' — emergency card (Parwah)\n';
+    $('ec-body').querySelectorAll('.ec-sec').forEach(function(sec){
+      t += '\n' + sec.querySelector('h4').textContent.toUpperCase() + '\n';
+      sec.querySelectorAll('.ec-row').forEach(function(r){
+        t += '· ' + r.querySelector('b').textContent + ': ' + r.querySelector('span').textContent.trim() + '\n';
+      });
+    });
+    return t;
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-ecard]');
+    if (b) { $('msheet').hidden = true; openEcard(b.getAttribute('data-ecard')); }
+  });
+  $('mp-ecard').addEventListener('click', function(){
+    var mid = $('msheet').dataset.mid; $('msheet').hidden = true; openEcard(mid);
+  });
+  $('btn-ecard').addEventListener('click', function(){
+    // the person most likely to need one: a parent, else yourself
+    var d = ecData(), pick = null;
+    d.members.forEach(function(m){ if (!pick && m.role === 'parent') pick = m; });
+    if (!pick) d.members.forEach(function(m){ if (!pick && m.id === state.memberId) pick = m; });
+    if (pick) openEcard(pick.id); else toast('Add a family member first');
+  });
+  $('ec-x').addEventListener('click', function(){ $('ecard').hidden = true; });
+  $('ecard').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });
+  $('ec-copy').addEventListener('click', function(){
+    var t = ecardText();
+    if (navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ toast('Copied — paste it anywhere 📋'); });
+    else toast('Copy is not available on this device');
+  });
+  $('ec-share').addEventListener('click', function(){
+    var t = ecardText();
+    if (navigator.share) navigator.share({ title: $('ec-name').textContent + ' — emergency card', text: t }).catch(function(){});
+    else if (navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ toast('Copied — paste into WhatsApp 📋'); });
+    else toast('Sharing is not available on this device');
+  });
+  $('ec-print').addEventListener('click', function(){ window.print(); });
 
   // ---------- Ekta's brain: provider keys ----------
   var K_LABEL = { anthropic: 'Anthropic (Claude)', anthropic_ws: '↳ Anthropic workspace ID', openai: 'OpenAI', gemini: 'Google Gemini', grok: 'Grok (xAI)', kimi: 'Kimi (Moonshot)' };
