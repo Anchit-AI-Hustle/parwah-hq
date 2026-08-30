@@ -100,6 +100,14 @@ export async function ensureSchema(sql) {
     seen_at timestamptz not null default now()
   )`;
   await sql`alter table messages add column if not exists kind text not null default 'text'`;
+  await sql`create table if not exists calls (
+    id uuid primary key default gen_random_uuid(),
+    circle_id uuid not null references circles(id) on delete cascade,
+    room text not null,
+    label text,
+    by_member uuid references members(id) on delete set null,
+    started_at timestamptz not null default now()
+  )`;
   await sql`create table if not exists games (
     id uuid primary key default gen_random_uuid(),
     circle_id uuid not null references circles(id) on delete cascade,

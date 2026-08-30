@@ -229,6 +229,12 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 #getapp{font-size:1.15rem;text-decoration:none;padding:2px 6px;line-height:1}
 #bell[hidden]~#getapp{margin-left:auto}
 @media(display-mode:standalone){#getapp{display:none}}
+#livecall{background:var(--pine);color:var(--cream);display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:.86rem}
+#livecall .pulse{width:9px;min-width:9px;height:9px;border-radius:99px;background:#7CE0A3;animation:lcpulse 1.4s ease infinite}
+@keyframes lcpulse{0%,100%{box-shadow:0 0 0 0 rgba(124,224,163,.55)}50%{box-shadow:0 0 0 6px rgba(124,224,163,0)}}
+#livecall .lc-join{background:var(--marigold);color:var(--dusk);border-radius:99px;padding:6px 14px;font-weight:700;text-decoration:none;font-size:.84rem}
+#livecall .lc-end{border:1px solid rgba(239,232,216,.4);background:none;color:var(--cream);border-radius:99px;padding:5px 12px;font-family:var(--body);font-size:.8rem;cursor:pointer}
+@media(prefers-reduced-motion:reduce){#livecall .pulse{animation:none}}
 .sidehead{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);padding:16px 14px 2px}
 .side-so{border:0;background:none;color:var(--dim);font-family:var(--body);font-size:.8rem;text-align:left;padding:8px 14px 14px;cursor:pointer}
 .side-so:hover{color:#E8A23D}
@@ -344,6 +350,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   .subnav button.sel{color:var(--marigold);background:none}
   body.inapp{padding-left:var(--side-w)}
   body.inapp .bar{display:none}
+  body.inapp #livecall{margin-left:var(--side-w)}
   body.inapp .wrap{max-width:700px;padding-top:30px;padding-bottom:170px}
   body.inapp .inputbar{left:var(--side-w);bottom:0;border-top:1px solid var(--bone-2)}
   body.inapp .inputbar .inner{max-width:700px}
@@ -362,6 +369,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   <button id="bell" hidden aria-label="Notifications">🔔<i class="dot" id="bell-dot" hidden></i></button>
   <a id="getapp" href="../get/" target="_blank" rel="noopener" aria-label="Install the Parwah app" title="Install the app">📲</a>
   <span class="who" id="who"></span>
+</div>
+
+<div id="livecall" hidden>
+  <span class="pulse" aria-hidden="true"></span>
+  <span id="lc-txt" style="flex:1"></span>
+  <a class="lc-join" id="lc-join" target="_blank" rel="noopener">📞 Join</a>
+  <button class="lc-end" id="lc-end">End</button>
 </div>
 
 <!-- ============ ONBOARDING ============ -->
@@ -443,6 +457,14 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 
   <!-- HOME -->
   <section id="pane-home">
+    <div class="card" id="push-card" hidden style="margin-bottom:14px">
+      <h3>🔔 Get family alerts on this phone</h3>
+      <p class="hint" style="margin:2px 0 10px">SOS, live calls, reminders and mentions reach you even when Parwah is closed.</p>
+      <div class="prow2">
+        <button class="cbtn" id="push-on">Turn on alerts</button>
+        <button class="cbtn ghost" id="push-later">Later</button>
+      </div>
+    </div>
     <div class="homehero">
       <h1 id="m-title"></h1>
       <p class="lede" style="margin-bottom:12px">Circle code: <span class="codechip" id="m-code"></span></p>
@@ -465,6 +487,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <button class="widget" data-goto="care" data-sec="rem"><span class="wic" aria-hidden="true">🔔</span><b>Reminders</b><small id="w-rem">Loading…</small></button>
       <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true">🤝</span><b>Help requests</b><small id="w-req">Loading…</small></button>
       <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b>Chats</b><small id="w-chat">Family + personal</small></button>
+      <button class="widget" data-goto="care" data-sec="book"><span class="wic" aria-hidden="true">📒</span><b>Family book</b><small id="w-book">Contacts, addresses, meds-map</small></button>
       <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check — just ask</small></button>
       <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi — play together</small></button>
       <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
@@ -479,6 +502,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <div class="seg pageseg" id="care-seg" role="tablist" aria-label="Care sections">
       <button data-sec="rem" class="sel">🔔 Reminders</button>
       <button data-sec="req">🤝 Help requests</button>
+      <button data-sec="book">📒 Family book</button>
     </div>
     <div class="subsec" data-sec="rem">
     <div class="feed" id="rlist"><div class="ev">None yet.</div></div>
@@ -509,6 +533,72 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <button class="cbtn" id="q-add">Ask</button>
     </div>
     <p class="hint">Anyone in the circle can tap "I'm on it" — and 💬 discusses it in the family chat.</p>
+    </div>
+
+    <div class="subsec" data-sec="book" hidden>
+    <div id="book-list-view">
+      <div class="addrow" style="margin-top:0">
+        <input type="search" id="b-search" maxlength="60" placeholder="Search the family book…" aria-label="Search family book">
+      </div>
+      <div class="seg" id="bk-filter" role="group" aria-label="Family book sections" style="margin-bottom:10px">
+        <button type="button" data-bk="all" class="sel">All</button>
+        <button type="button" data-bk="contact">☎️ Contacts</button>
+        <button type="button" data-bk="address">📍 Addresses</button>
+        <button type="button" data-bk="med">💊 Meds</button>
+      </div>
+      <div class="feed" id="blist"><div class="ev">Nothing saved yet — add the family's first entry below 📒</div></div>
+      <div class="card" style="margin-top:14px">
+        <h3 id="bf-title">Add to the family book</h3>
+        <div class="seg" id="b-kind"><button type="button" data-k="contact" class="sel">☎️ Contact</button><button type="button" data-k="address">📍 Address</button><button type="button" data-k="med">💊 Meds</button></div>
+        <label for="b-name" id="b-name-l">Who / what</label>
+        <input type="text" id="b-name" maxlength="80" placeholder="e.g. Ramesh — plumber">
+        <div id="bf-contact">
+          <label for="b-cat">Category</label>
+          <select id="b-cat">
+            <option value="housework">🧹 Housework</option>
+            <option value="doctor">🩺 Doctor</option>
+            <option value="vet">🐾 Vet</option>
+            <option value="driver">🚗 Driver</option>
+            <option value="shops">🛒 Shops</option>
+            <option value="repairs">🔧 Repairs</option>
+            <option value="other" selected>📦 Other</option>
+          </select>
+          <label for="b-phone">Phone</label>
+          <input type="tel" id="b-phone" maxlength="20" placeholder="e.g. 98100 12345">
+        </div>
+        <div id="bf-address" hidden>
+          <label for="b-address">Full address</label>
+          <input type="text" id="b-address" maxlength="300" placeholder="House, street, area, city, PIN">
+        </div>
+        <div id="bf-med" hidden>
+          <label for="b-for">For which problem</label>
+          <input type="text" id="b-for" maxlength="160" placeholder="e.g. BP — as the doctor said">
+        </div>
+        <label for="b-notes">Notes</label>
+        <input type="text" id="b-notes" maxlength="300" placeholder="e.g. after breakfast · comes on Tuesdays · gate code 4321">
+        <button class="go" id="b-save">Save to the family book</button>
+        <button class="linkbtn" id="b-cancel" hidden style="margin-top:8px">Cancel editing</button>
+        <p class="hint">Shared with the whole circle — everyone can add, edit and keep it current.</p>
+      </div>
+    </div>
+    <div id="book-detail" hidden>
+      <button class="cbtn ghost" id="bd-back">← Family book</button>
+      <div class="card" style="margin-top:12px">
+        <h3 id="bd-name"></h3>
+        <p class="hint" id="bd-kind" style="margin:2px 0 8px"></p>
+        <div class="kv" id="bd-phone-row" hidden><b>Phone</b><span id="bd-phone"></span></div>
+        <div class="kv" id="bd-address-row" hidden><b>Address</b><span id="bd-address"></span></div>
+        <div class="kv" id="bd-for-row" hidden><b>For</b><span id="bd-for"></span></div>
+        <div class="kv" id="bd-notes-row" hidden><b>Notes</b><span id="bd-notes"></span></div>
+        <div class="kv"><b>Added by</b><span id="bd-by"></span></div>
+        <div class="prow2" style="margin-top:12px">
+          <a class="cbtn" id="bd-call" hidden>📞 Call</a>
+          <a class="cbtn" id="bd-map" hidden target="_blank" rel="noopener">🗺 Open in Maps</a>
+          <button class="cbtn ghost" id="bd-edit">✏️ Edit</button>
+          <button class="cbtn no" id="bd-remove">🗑 Remove</button>
+        </div>
+      </div>
+    </div>
     </div>
   </section>
 
@@ -836,7 +926,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <h3>Settings</h3>
       <div class="kv"><b>Language</b><span>English · Hindi toggle coming soon</span></div>
       <div class="kv"><b>Senior mode</b><span id="p-senior"></span></div>
-      <div class="kv"><b>Alerts</b><span>In-app now · phone push coming soon</span></div>
+      <div class="kv"><b>Device alerts</b><span id="p-push">—</span></div>
+      <button class="linkbtn" id="p-push-on">🔔 Turn on alerts on this device</button>
       <p style="margin-top:10px"><b style="color:var(--ink)">Install as an app:</b> Android — Chrome menu → <i>Install app</i>. iPhone — Share → <i>Add to Home Screen</i>. <a href="../get/" target="_blank" rel="noopener">Full install guide →</a></p>
     </div>
 
@@ -870,6 +961,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <div class="subnav side-only" data-parent="care">
       <button data-tab="care" data-sec="rem">Reminders</button>
       <button data-tab="care" data-sec="req">Help requests</button>
+      <button data-tab="care" data-sec="book">Family book</button>
     </div>
     <button data-tab="chat"><span class="ic" aria-hidden="true">💬</span>Chat</button>
     <button data-tab="ekta" class="deskonly"><span class="ic" aria-hidden="true">✨</span>Ekta</button>
@@ -923,6 +1015,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <div class="dsub">
         <button class="ditem sub" data-tab="care" data-sec="rem">Reminders</button>
         <button class="ditem sub" data-tab="care" data-sec="req">Help requests</button>
+        <button class="ditem sub" data-tab="care" data-sec="book">Family book</button>
       </div>
     </div>
     <button class="ditem" data-tab="chat">💬 Chat</button>
@@ -953,7 +1046,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth' };
+  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', push: '../api/push' };
   var TABS = ['home','care','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
@@ -1143,6 +1236,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('m-code').textContent = data.code;
     $('p-code').textContent = data.code;
     $('p-circle').textContent = data.circleName;
+    var lc = (data.calls || [])[0];
+    $('livecall').hidden = !lc;
+    if (lc) {
+      $('lc-txt').textContent = (lc.label || '📞 Family call') + ' on now — started by ' + (lc.by_name || 'family') + ' at ' + fmtTime(lc.started_at);
+      $('lc-join').href = lc.room;
+      $('livecall').dataset.cid = lc.id;
+    }
     var mh = '';
     data.members.forEach(function(m){
       mh += '<span class="member" data-mprof="' + m.id + '" role="button" tabindex="0">' + esc(m.name) + ' <em>· ' + esc(relLabel(m).toLowerCase()) + '</em>' +
@@ -1278,6 +1378,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       .then(function(r){ return r.json(); })
       .then(function(j){ if (j.ok) renderCare(j); })
       .catch(function(){});
+    refreshBook();
     refreshChats();
     if (curChat) loadMsgs();
   }
@@ -1515,6 +1616,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('hamb').hidden = false;
     $('bell').hidden = false;
     renderGroups();
+    pushBoot();
     if (authUser && authUser.phone) {
       post(API.auth, { action: 'enter', phone: authUser.phone })
         .then(function(j){ if (j.ok && j.exists) { authUser = j.user; saveAuth(authUser); saveGroups(j.circles || []); } })
@@ -1736,6 +1838,175 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     carePost({ action:'request_create', title:t }, function(){ $('q-title').value=''; toast('The circle has been asked 🧡'); });
   });
 
+  // ---------- Family book: contacts, addresses, meds-map ----------
+  var bookCache = [], bkFilter = 'all', bEditId = null, bKind = 'contact';
+  var BK_ICON = { contact: '☎️', address: '📍', med: '💊' };
+  var BK_LABEL = { contact: 'Contact', address: 'Address', med: 'Meds' };
+  var CAT_LABEL = { housework: '🧹 Housework', doctor: '🩺 Doctor', vet: '🐾 Vet', driver: '🚗 Driver', shops: '🛒 Shops', repairs: '🔧 Repairs', other: '📦 Other' };
+  function refreshBook(){
+    if (!state) return;
+    fetch(API.book + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
+      .then(function(r){ return r.json(); })
+      .then(function(j){ if (j.ok) { bookCache = j.entries || []; renderBook(); } })
+      .catch(function(){});
+  }
+  function bookEntry(id){ var e = null; bookCache.forEach(function(x){ if (x.id === id) e = x; }); return e; }
+  function renderBook(){
+    var qy = $('b-search').value.trim().toLowerCase();
+    var list = bookCache.filter(function(e){
+      if (bkFilter !== 'all' && e.kind !== bkFilter) return false;
+      if (!qy) return true;
+      return [e.name, e.category, e.phone, e.address, e.forwhat, e.notes].join(' ').toLowerCase().indexOf(qy) >= 0;
+    });
+    var h = '';
+    list.forEach(function(e){
+      var sub = e.kind === 'contact' ? ((CAT_LABEL[e.category] || '') + (e.phone ? ' · ' + esc(e.phone) : ''))
+              : e.kind === 'address' ? esc(e.address || '')
+              : ('for ' + esc(e.forwhat || '—'));
+      h += '<div class="ev" data-bopen="' + e.id + '" role="button" tabindex="0" style="cursor:pointer">' +
+           BK_ICON[e.kind] + ' <b>' + esc(e.name) + '</b><small>' + sub + '</small></div>';
+    });
+    $('blist').innerHTML = h || '<div class="ev">' + (qy || bkFilter !== 'all' ? 'Nothing matches — try All or clear the search.' : 'Nothing saved yet — add the family\'s first entry below 📒') + '</div>';
+    var nC = bookCache.filter(function(e){ return e.kind === 'contact'; }).length;
+    var nA = bookCache.filter(function(e){ return e.kind === 'address'; }).length;
+    var nM = bookCache.filter(function(e){ return e.kind === 'med'; }).length;
+    $('w-book').textContent = bookCache.length
+      ? nC + ' contacts · ' + nA + ' addresses · ' + nM + ' meds'
+      : 'Contacts, addresses, meds-map';
+  }
+  $('bk-filter').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    bkFilter = b.getAttribute('data-bk');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
+    renderBook();
+  });
+  $('b-search').addEventListener('input', renderBook);
+  function setBKind(k){
+    bKind = k;
+    $('b-kind').querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x.getAttribute('data-k') === k); });
+    $('bf-contact').hidden = k !== 'contact';
+    $('bf-address').hidden = k !== 'address';
+    $('bf-med').hidden = k !== 'med';
+    $('b-name-l').textContent = k === 'med' ? 'Name of the dawai' : k === 'address' ? 'Place name' : 'Who / what';
+    $('b-name').placeholder = k === 'med' ? 'e.g. Amlopres 5' : k === 'address' ? "e.g. Dadi's house" : 'e.g. Ramesh — plumber';
+  }
+  $('b-kind').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (b) setBKind(b.getAttribute('data-k'));
+  });
+  function clearBookForm(){
+    bEditId = null;
+    $('b-name').value = ''; $('b-phone').value = ''; $('b-address').value = ''; $('b-for').value = ''; $('b-notes').value = '';
+    $('b-cat').value = 'other';
+    $('bf-title').textContent = 'Add to the family book';
+    $('b-cancel').hidden = true;
+  }
+  $('b-cancel').addEventListener('click', clearBookForm);
+  $('b-save').addEventListener('click', function(){
+    var nm = $('b-name').value.trim();
+    if (!nm) { toast('Give the entry a name'); return; }
+    var body = { code: state.code, memberId: state.memberId, action: bEditId ? 'update' : 'add', id: bEditId || undefined,
+                 kind: bKind, name: nm, category: $('b-cat').value, phone: $('b-phone').value.trim() || undefined,
+                 address: $('b-address').value.trim() || undefined, forwhat: $('b-for').value.trim() || undefined,
+                 notes: $('b-notes').value.trim() || undefined };
+    post(API.book, body)
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not save'); return; }
+        toast(bEditId ? 'Entry updated 📒' : 'Saved to the family book 📒');
+        clearBookForm(); refreshBook();
+      })
+      .catch(function(){ toast('No connection — try again'); });
+  });
+  function openBookDetail(id){
+    var e = bookEntry(id); if (!e) return;
+    $('book-list-view').hidden = true;
+    $('book-detail').hidden = false;
+    $('book-detail').dataset.bid = e.id;
+    $('bd-name').textContent = BK_ICON[e.kind] + ' ' + e.name;
+    $('bd-kind').textContent = BK_LABEL[e.kind] + (e.kind === 'contact' && e.category ? ' · ' + (CAT_LABEL[e.category] || e.category).replace(/^\S+\s/, '') : '');
+    var rows = [['bd-phone-row', 'bd-phone', e.phone], ['bd-address-row', 'bd-address', e.address], ['bd-for-row', 'bd-for', e.forwhat], ['bd-notes-row', 'bd-notes', e.notes]];
+    rows.forEach(function(r){ $(r[0]).hidden = !r[2]; if (r[2]) $(r[1]).textContent = r[2]; });
+    $('bd-by').textContent = e.by_name || 'family';
+    if (e.phone) { $('bd-call').href = 'tel:' + encodeURIComponent(e.phone); $('bd-call').hidden = false; } else $('bd-call').hidden = true;
+    if (e.address) { $('bd-map').href = 'https://maps.google.com/?q=' + encodeURIComponent(e.address); $('bd-map').hidden = false; } else $('bd-map').hidden = true;
+  }
+  document.addEventListener('click', function(e){
+    var r = e.target.closest('[data-bopen]');
+    if (r) openBookDetail(r.getAttribute('data-bopen'));
+  });
+  $('bd-back').addEventListener('click', function(){ $('book-detail').hidden = true; $('book-list-view').hidden = false; });
+  $('bd-edit').addEventListener('click', function(){
+    var e = bookEntry($('book-detail').dataset.bid); if (!e) return;
+    setBKind(e.kind);
+    bEditId = e.id;
+    $('b-name').value = e.name; $('b-phone').value = e.phone || ''; $('b-address').value = e.address || '';
+    $('b-for').value = e.forwhat || ''; $('b-notes').value = e.notes || '';
+    if (e.category) $('b-cat').value = e.category;
+    $('bf-title').textContent = 'Edit: ' + e.name;
+    $('b-cancel').hidden = false;
+    $('book-detail').hidden = true; $('book-list-view').hidden = false;
+    try { $('b-name').focus(); } catch (err) {}
+  });
+  $('bd-remove').addEventListener('click', function(){
+    var e = bookEntry($('book-detail').dataset.bid); if (!e) return;
+    if (!confirm('Remove "' + e.name + '" from the family book?')) return;
+    post(API.book, { code: state.code, memberId: state.memberId, action: 'remove', id: e.id })
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not remove'); return; }
+        toast('Removed'); $('bd-back').click(); refreshBook();
+      })
+      .catch(function(){ toast('No connection — try again'); });
+  });
+
+  // ---------- device alerts (Web Push) ----------
+  function pushSupported(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+  function urlB64(v){
+    var pad = '='.repeat((4 - v.length % 4) % 4);
+    var raw = atob((v + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    var arr = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+  }
+  function pushStatusLine(){
+    if (!pushSupported()) { $('p-push').textContent = 'Not supported in this browser'; return; }
+    $('p-push').textContent = Notification.permission === 'granted' ? 'On for this device 🧡'
+      : Notification.permission === 'denied' ? 'Blocked — allow notifications in browser settings'
+      : 'Off — turn on below';
+  }
+  function subscribePush(quiet){
+    if (!pushSupported() || !state) return;
+    navigator.serviceWorker.ready.then(function(reg){
+      return fetch(API.push).then(function(r){ return r.json(); }).then(function(j){
+        if (!j.ok || !j.publicKey) throw new Error('no key');
+        return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64(j.publicKey) });
+      }).then(function(sub){
+        return post(API.push, { code: state.code, memberId: state.memberId, action: 'subscribe', sub: sub.toJSON() });
+      }).then(function(r2){
+        if (r2 && r2.ok) { if (!quiet) toast('Device alerts on 🔔'); $('push-card').hidden = true; pushStatusLine(); }
+      });
+    }).catch(function(){ if (!quiet) toast('Could not turn on alerts — try again'); });
+  }
+  function enablePush(){
+    if (!pushSupported()) { toast('This browser cannot show device alerts — install the app from /get'); return; }
+    Notification.requestPermission().then(function(p){
+      if (p !== 'granted') { toast('Allow notifications to get family alerts'); pushStatusLine(); return; }
+      subscribePush(false);
+    }).catch(function(){});
+  }
+  $('push-on').addEventListener('click', enablePush);
+  $('p-push-on').addEventListener('click', enablePush);
+  $('push-later').addEventListener('click', function(){
+    $('push-card').hidden = true;
+    try { localStorage.setItem('parwah-push-later', '1'); } catch (e) {}
+  });
+  function pushBoot(){
+    pushStatusLine();
+    if (!pushSupported()) return;
+    if (Notification.permission === 'granted') { subscribePush(true); return; }
+    var later = false;
+    try { later = localStorage.getItem('parwah-push-later') === '1'; } catch (e) {}
+    $('push-card').hidden = !(Notification.permission === 'default' && !later);
+  }
+
   // ---------- Ekta: voice (JARVIS mode on the web platform) ----------
   var voiceOn = true;
   try { voiceOn = localStorage.getItem('parwah-voice') !== 'off'; } catch (e) {}
@@ -1878,6 +2149,11 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       post(API.chats, { code: state.code, memberId: state.memberId, action: 'send', chatId: fam.id, text: msgTxt })
         .then(function(){ refreshChats(); }).catch(function(){});
     }
+    // the live-call banner lights up for every member of the family
+    var lcLabel = callMode === 'music' ? '🎶 Music party' : callMode === 'watch' ? '🎬 Movie night'
+                : callMode === 'audio' ? '🎙 Voice call' : '📹 Family call';
+    post(API.events, { code: state.code, memberId: state.memberId, type: 'call_start', room: room, label: lcLabel })
+      .then(function(){ refresh(); }).catch(function(){});
     window.open(room, '_blank');
     toast((callMode === 'talk' ? 'Call room' : 'Party room') + ' opened — the invite is in the family chat 🧡');
   }
@@ -2426,6 +2702,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         if (!j.ok) { toast(j.error || 'Could not add'); return; }
         $('addbox').hidden = true; toast('Added to the group 🧡'); loadMsgs(); refreshChats();
       })
+      .catch(function(){ toast('No connection — try again'); });
+  });
+  $('lc-end').addEventListener('click', function(){
+    var cid = $('livecall').dataset.cid; if (!cid) return;
+    if (!confirm('End this call for the whole family?')) return;
+    post(API.events, { code: state.code, memberId: state.memberId, type: 'call_end', callId: cid })
+      .then(function(j){ if (j.ok) { $('livecall').hidden = true; toast('Call ended'); refresh(); } else toast(j.error || 'Could not end'); })
       .catch(function(){ toast('No connection — try again'); });
   });
   $('chatback').addEventListener('click', closeChat);

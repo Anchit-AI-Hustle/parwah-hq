@@ -99,6 +99,58 @@ for p in PAGES:
     check(f"styles.css linked: {p.relative_to(ROOT)}", "styles.css" in html)
     check(f"fonts wired: {p.relative_to(ROOT)}", "fonts.googleapis.com" in html and "Fraunces" in html)
 
+
+# ---------- 10. SECURITY ----------
+import json as _json
+REPO = ROOT.parent.parent if (ROOT.parent.parent / "vercel.json").exists() else ROOT.parent
+API_DIR = REPO / "api"
+
+# 10a. secret scan — no credentials anywhere in tracked source
+SECRET_PATTERNS = [
+    (r"sk-ant-[A-Za-z0-9\-_]{10,}", "anthropic key"),
+    (r"sk-[A-Za-z0-9]{40,}", "api secret key"),
+    (r"vcp_[A-Za-z0-9]{20,}", "vercel token"),
+    (r"napi_[A-Za-z0-9]{20,}", "neon token"),
+    (r"AKIA[0-9A-Z]{16}", "aws key"),
+    (r"-----BEGIN( RSA| EC)? PRIVATE KEY-----", "private key"),
+    (r"postgres(ql)?://[^\s\"']*:[^\s\"']*@", "db url with password"),
+    (r"eyJhbGciOi[A-Za-z0-9_\-]{30,}", "jwt token"),
+]
+scan_files = [f for f in REPO.rglob("*")
+              if f.is_file() and f.suffix in (".mjs", ".js", ".html", ".json", ".md", ".yml", ".sql", ".sh", ".py")
+              and ".git" not in f.parts and "node_modules" not in f.parts]
+for pat, label in SECRET_PATTERNS:
+    hits = [str(f.relative_to(REPO)) for f in scan_files if re.search(pat, f.read_text(encoding="utf-8", errors="ignore"))]
+    check(f"security: no {label} committed", not hits, ", ".join(hits[:3]))
+
+# 10b. security headers enforced platform-wide
+vj = _json.loads((REPO / "vercel.json").read_text(encoding="utf-8"))
+hdrs = {h["key"] for blk in vj.get("headers", []) for h in blk.get("headers", [])}
+for need in ("X-Content-Type-Options", "X-Frame-Options", "Referrer-Policy"):
+    check(f"security header set: {need}", need in hdrs)
+
+# 10c. every data endpoint proves circle membership before touching data
+GUARDED = ["board", "book", "care", "chats", "circle", "events", "games", "plans", "push"]
+for name in GUARDED:
+    f = API_DIR / f"{name}.mjs"
+    if not f.exists():
+        check(f"membership guard present: api/{name}.mjs", False, "file missing"); continue
+    src = f.read_text(encoding="utf-8")
+    check(f"membership guard present: api/{name}.mjs",
+          "Not a member of this circle" in src and "circleByCode" in src)
+
+# 10d. SQL only ever through the tagged-template driver (parameterized)
+for f in sorted(API_DIR.glob("*.mjs")):
+    src = f.read_text(encoding="utf-8")
+    check(f"security: no string-built sql in api/{f.name}",
+          "sql(" not in src.replace("sql('','')", "") and ".query(" not in src)
+
+# 10e. service worker never caches API responses; app JS avoids eval
+sw = (REPO / "site/public/app/sw.js").read_text(encoding="utf-8")
+check("security: service worker bypasses /api/", "/api/" in sw)
+app_html = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+check("security: no eval in app", "eval(" not in app_html and "new Function(" not in app_html)
+
 print()
 if FAILS:
     print(f"{len(FAILS)} CHECK(S) FAILED"); sys.exit(1)

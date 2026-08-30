@@ -10,6 +10,7 @@
 //   create_group {name, memberIds[]}
 //   open_dm      {otherId}   (returns the existing 1:1 chat if there is one)
 import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat } from './_db.mjs';
+import { pushCircle } from './_push.mjs';
 import { ektaTurn } from './ekta.mjs';
 
 async function chatForMember(sql, circle, chatId, memberId) {
@@ -150,6 +151,23 @@ export default async function handler(req, res) {
         if (!text) return res.status(400).json({ ok: false, error: 'Empty message' });
       }
       await sql`insert into messages (chat_id, member_id, text, kind) values (${chat.id}, ${me.id}, ${text}, ${kind})`;
+      // device alerts: personal chats always ping the other person; in any
+      // chat, an @mention pings the person named.
+      try {
+        const label = chat.kind === 'dm' ? me.name : (chat.name || 'family chat');
+        const preview = kind === 'image' ? '📷 Photo' : text.slice(0, 90);
+        if (chat.kind === 'dm') {
+          const others = await sql`select member_id from chat_members where chat_id = ${chat.id} and member_id <> ${me.id}`;
+          if (others[0]) await pushCircle(sql, circle.id, { title: '💬 ' + me.name, body: preview }, { only: others[0].member_id });
+        } else if (kind === 'text' && text.indexOf('@') >= 0) {
+          const everyone = await sql`select id, name from members where circle_id = ${circle.id} and id <> ${me.id}`;
+          for (const p of everyone) {
+            if (new RegExp('@' + p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(text)) {
+              await pushCircle(sql, circle.id, { title: '💬 ' + me.name + ' mentioned you in ' + label, body: preview }, { only: p.id });
+            }
+          }
+        }
+      } catch (e) { /* alerts never block the message */ }
       const ekta = kind === 'text' ? await maybeEktaReply(sql, circle, me, chat, text) : null;
       return res.status(201).json({ ok: true, ekta: ekta ? true : false });
     }

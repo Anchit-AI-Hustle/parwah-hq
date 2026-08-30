@@ -2,6 +2,7 @@
 // GET  /api/care?circle=CODE — reminders + open/claimed requests for the circle
 // POST /api/care {code, memberId, action, ...} — see ACTIONS below
 import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { pushCircle } from './_push.mjs';
 
 async function feed(sql, circleId, memberId, text) {
   await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'care', ${text})`;
@@ -49,6 +50,9 @@ export async function createReminder(sql, circle, me, { forMemberId, title, time
   await feed(sql, circle.id, me.id, self
     ? `${me.name} set a reminder: ${t}${when}`
     : `${me.name} asked ${forRow[0].name} to accept a reminder: ${t}${when}`);
+  if (!self) {
+    await pushCircle(sql, circle.id, { title: '🔔 ' + me.name + ' set a reminder for you', body: t + when + ' — open Parwah to accept or decline' }, { only: target });
+  }
   return { ok: true, id: r[0].id, status };
 }
 
@@ -57,6 +61,7 @@ export async function createRequest(sql, circle, me, { title }) {
   if (!t) return { error: 'The request needs a description' };
   const r = await sql`insert into requests (circle_id, by_member, title) values (${circle.id}, ${me.id}, ${t}) returning id`;
   await feed(sql, circle.id, me.id, `${me.name} asked the circle: ${t}`);
+  await pushCircle(sql, circle.id, { title: '🤝 ' + me.name + ' needs a hand', body: t + ' — first to tap "I\'m on it" takes it' }, { except: me.id });
   return { ok: true, id: r[0].id };
 }
 
