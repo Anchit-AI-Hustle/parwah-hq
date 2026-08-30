@@ -113,6 +113,16 @@ export default async function handler(req, res) {
                             and not exists (select 1 from members m where m.user_id = u.id) returning id`;
     out.usersDeleted = goneU.length;
 
+    // stored phones normalized so future sign-ins claim the right seat
+    const normSeats = await sql`select id, phone from members where circle_id = ${cid} and phone is not null`;
+    for (const m of normSeats) {
+      const digits = String(m.phone).replace(/\D/g, '');
+      let np = null;
+      if (digits.length === 10) np = '+91' + digits;
+      else if (digits.length === 12 && digits.indexOf('91') === 0) np = '+' + digits;
+      if (np && np !== m.phone) await sql`update members set phone = ${np} where id = ${m.id}`;
+    }
+
     // with duplicates gone, the integrity indexes can take hold
     try { await sql`create unique index if not exists members_circle_user on members (circle_id, user_id) where user_id is not null`; } catch (e) {}
     try { await sql`create unique index if not exists members_circle_name on members (circle_id, lower(name))`; } catch (e) {}

@@ -56,11 +56,13 @@ export default async function handler(req, res) {
         const ex = await sql`select id, role from members where circle_id = ${circle.id} and user_id = ${user.id}`;
         if (ex[0]) return res.status(200).json({ ok: true, code: circle.code, circleName: circle.name, memberId: ex[0].id, role: ex[0].role });
         // A membership created before phone sign-in existed carries no user
-        // link — claim it by matching phone instead of inserting a duplicate.
-        const legacy = await sql`select id, role from members where circle_id = ${circle.id} and user_id is null and phone = ${user.phone}`;
-        if (legacy[0]) {
-          await sql`update members set user_id = ${user.id} where id = ${legacy[0].id}`;
-          return res.status(200).json({ ok: true, code: circle.code, circleName: circle.name, memberId: legacy[0].id, role: legacy[0].role });
+        // link — claim it by matching phone digits instead of duplicating.
+        const unlinked = await sql`select id, role, phone from members where circle_id = ${circle.id} and user_id is null and phone is not null`;
+        const myDigits = String(user.phone).replace(/\D/g, '').slice(-10);
+        const legacy = unlinked.find(x => String(x.phone).replace(/\D/g, '').slice(-10) === myDigits);
+        if (legacy) {
+          await sql`update members set user_id = ${user.id}, phone = ${user.phone} where id = ${legacy.id}`;
+          return res.status(200).json({ ok: true, code: circle.code, circleName: circle.name, memberId: legacy.id, role: legacy.role });
         }
       }
       // One person, one seat: a name can appear only once in a circle, and a
