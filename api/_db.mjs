@@ -75,6 +75,13 @@ export async function ensureSchema(sql) {
   await sql`create index if not exists messages_chat_time on messages (chat_id, created_at desc)`;
   await sql`alter table reminders add column if not exists due_date date`;
   await sql`alter table members add column if not exists phone text`;
+  await sql`create table if not exists users (
+    id uuid primary key default gen_random_uuid(),
+    phone text unique not null,
+    name text not null,
+    created_at timestamptz not null default now()
+  )`;
+  await sql`alter table members add column if not exists user_id uuid references users(id) on delete set null`;
   await sql`alter table messages add column if not exists kind text not null default 'text'`;
   await sql`create table if not exists games (
     id uuid primary key default gen_random_uuid(),
@@ -108,6 +115,14 @@ export async function circleByCode(sql, code) {
   if (!/^[A-Z2-9]{6}$/.test(clean)) return null;
   const rows = await sql`select id, code, name from circles where code = ${clean}`;
   return rows[0] || null;
+}
+
+// "+91 98765-43210" → "+919876543210"; returns null if it doesn't look like a phone.
+export function normPhone(v) {
+  let p = String(v || '').replace(/[()\-\s]/g, '');
+  if (!/^\+?[0-9]{7,15}$/.test(p)) return null;
+  if (!p.startsWith('+') && p.length === 10) p = '+91' + p; // bare Indian mobiles
+  return p;
 }
 
 export function isUuid(v) {

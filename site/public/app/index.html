@@ -292,14 +292,34 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   <h1>Your family's circle</h1>
   <p class="lede">One private circle for your family. Check-ins, SOS and messages reach everyone in it — and only them.</p>
 
+  <div class="card" id="auth-step">
+    <h3>Sign in with your mobile number</h3>
+    <label for="au-phone">Mobile number</label>
+    <input type="tel" id="au-phone" maxlength="20" placeholder="+91 98765 43210" autocomplete="tel">
+    <div id="au-namewrap" hidden>
+      <label for="au-name">Your name — new number, we'll create your profile</label>
+      <input type="text" id="au-name" maxlength="60" placeholder="e.g. Rohan" autocomplete="name">
+    </div>
+    <button class="go" id="au-go">Continue</button>
+    <p class="hint">One number, all your circles. Already signed up? You're in with one tap. New? Profile created and signed in, instantly.</p>
+  </div>
+
+  <div id="circle-step" hidden>
+    <div class="card">
+      <h3 id="cs-hello">Welcome back! 🧡</h3>
+      <p class="hint" style="margin:0 0 10px">Your circles:</p>
+      <div class="feed" id="cs-list"></div>
+      <button class="linkbtn" id="cs-new">＋ Create or join another circle</button>
+    </div>
+  </div>
+
+  <div id="setup-step" hidden>
   <div class="card">
     <h3>Start a new circle</h3>
     <label for="c-name">Your name</label>
     <input type="text" id="c-name" maxlength="60" placeholder="e.g. Rohan">
     <label for="c-circle">Circle name</label>
     <input type="text" id="c-circle" maxlength="60" placeholder="e.g. Sharma Family">
-    <label for="c-phone">Phone (optional — so family can call you in one tap)</label>
-    <input type="tel" id="c-phone" maxlength="20" placeholder="+91 98765 43210">
     <label>You are</label>
     <div class="rolepick" id="c-role">
       <button type="button" data-role="family" class="sel">Son / daughter / family</button>
@@ -314,14 +334,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <input type="text" id="j-code" maxlength="6" placeholder="6 letters, e.g. KJM4PW" style="text-transform:uppercase;letter-spacing:.2em">
     <label for="j-name">Your name</label>
     <input type="text" id="j-name" maxlength="60" placeholder="e.g. Papa">
-    <label for="j-phone">Phone (optional — so family can call you in one tap)</label>
-    <input type="tel" id="j-phone" maxlength="20" placeholder="+91 98765 43210">
     <label>You are</label>
     <div class="rolepick" id="j-role">
       <button type="button" data-role="family" class="sel">Son / daughter / family</button>
       <button type="button" data-role="parent">Parent (senior mode)</button>
     </div>
     <button class="go" id="j-go">Join the circle</button>
+  </div>
   </div>
   <p class="err" id="ob-err"></p>
 </div>
@@ -586,9 +605,11 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <div class="card">
       <h3>You</h3>
       <div class="kv"><b>Name</b><span id="p-name"></span></div>
+      <div class="kv"><b>Mobile</b><span id="p-phone">—</span></div>
       <div class="kv"><b>Role</b><span id="p-role"></span></div>
       <div class="kv"><b>Circle</b><span id="p-circle"></span></div>
-      <button class="linkbtn" id="leave">Switch to a different circle</button>
+      <button class="linkbtn" id="leave">Switch circle</button>
+      <button class="linkbtn" id="signout" style="margin-left:16px;color:var(--alert)">Sign out</button>
     </div>
 
     <div class="card">
@@ -693,11 +714,15 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans' };
+  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth' };
   var TABS = ['home','care','chat','ekta','profile','fun'];
   var state = null;
   var pollTimer = null, toastTimer = null;
   var curChat = null, chatsCache = [], membersCache = [];
+  var authUser = null, pendingJoin = null;
+  function loadAuth(){ try { return JSON.parse(localStorage.getItem('parwah-user') || 'null'); } catch (e) { return null; } }
+  function saveAuth(u){ try { localStorage.setItem('parwah-user', JSON.stringify(u)); } catch (e) {} }
+  function clearAuth(){ try { localStorage.removeItem('parwah-user'); } catch (e) {} }
   var curTab = 'home', curGame = null, gameTimer = null, planKind = 'call';
 
   function loadState(){ try { return JSON.parse(localStorage.getItem('parwah') || 'null'); } catch(e){ return null; } }
@@ -1083,6 +1108,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('d-user').textContent = state.name + ' · ' + state.code;
     $('hamb').hidden = false;
     $('p-name').textContent = state.name;
+    $('p-phone').textContent = (authUser && authUser.phone) || '—';
     $('p-role').textContent = state.role === 'parent' ? 'Parent (senior mode)' : 'Family';
     $('p-senior').textContent = state.role === 'parent' ? 'On — big buttons on Home' : 'Off (for members who join as Parent)';
     try {
@@ -1097,7 +1123,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   }
 
   $('leave').addEventListener('click', function(){
-    if (confirm('Leave this device’s circle view? (The circle itself stays.)')) { clearState(); location.hash = ''; location.reload(); }
+    if (confirm('Switch circle? You stay signed in — your circles will be listed.')) { clearState(); location.hash = ''; location.reload(); }
   });
 
   function sendEvent(type, text, after){
@@ -1109,6 +1135,75 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       .catch(function(){ toast('No connection — try again'); });
   }
 
+  // ---------- phone-first sign in / sign up ----------
+  function showStep(which){
+    $('auth-step').hidden = which !== 'auth';
+    $('circle-step').hidden = which !== 'circles';
+    $('setup-step').hidden = which !== 'setup';
+  }
+  function enterCircle(c){
+    state = { code: c.code, circleName: c.circleName, memberId: c.memberId, name: c.memberName || (authUser && authUser.name) || '', role: c.role };
+    saveState(state);
+    enterMain();
+    toast('Signed in — welcome back, ' + state.name + ' 🧡');
+  }
+  function routeAfterAuth(circles){
+    $('ob-err').textContent = '';
+    if (pendingJoin) {
+      showStep('setup');
+      $('j-code').value = pendingJoin;
+      $('c-name').value = authUser.name; $('j-name').value = authUser.name;
+      try { $('j-name').focus(); } catch (e) {}
+      return;
+    }
+    if (circles && circles.length === 1) { enterCircle(circles[0]); return; }
+    if (circles && circles.length > 1) {
+      $('cs-hello').textContent = 'Welcome back, ' + authUser.name + '! 🧡';
+      var h = '';
+      circles.forEach(function(c, i){
+        h += '<button class="chatrow" data-encircle="' + i + '"><span class="cic" aria-hidden="true">🧡</span><span class="txt"><b>' + esc(c.circleName) + '</b><small>code ' + esc(c.code) + ' · as ' + esc(c.memberName || authUser.name) + '</small></span></button>';
+      });
+      $('cs-list').innerHTML = h;
+      window._authCircles = circles;
+      showStep('circles');
+      return;
+    }
+    $('c-name').value = authUser.name; $('j-name').value = authUser.name;
+    showStep('setup');
+  }
+  $('au-go').addEventListener('click', function(){
+    var phone = $('au-phone').value.trim();
+    if (!phone) { $('ob-err').textContent = 'Please enter your mobile number.'; return; }
+    var btn = this; btn.disabled = true; $('ob-err').textContent = '';
+    post(API.auth, { action: 'enter', phone: phone, name: $('au-name').value.trim() })
+      .then(function(j){
+        btn.disabled = false;
+        if (!j.ok) { $('ob-err').textContent = j.error || 'Could not sign you in.'; return; }
+        if (!j.exists) {
+          $('au-namewrap').hidden = false;
+          $('au-go').textContent = 'Create my profile & continue';
+          try { $('au-name').focus(); } catch (e) {}
+          return;
+        }
+        authUser = j.user; saveAuth(authUser);
+        routeAfterAuth(j.circles || []);
+      })
+      .catch(function(){ btn.disabled = false; $('ob-err').textContent = 'No connection — try again.'; });
+  });
+  $('au-phone').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
+  $('au-name').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
+  $('circle-step').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-encircle]');
+    if (b && window._authCircles) enterCircle(window._authCircles[+b.getAttribute('data-encircle')]);
+  });
+  $('cs-new').addEventListener('click', function(){
+    $('c-name').value = authUser ? authUser.name : ''; $('j-name').value = authUser ? authUser.name : '';
+    showStep('setup');
+  });
+  $('signout').addEventListener('click', function(){
+    if (confirm('Sign out of Parwah on this device?')) { clearAuth(); clearState(); location.hash = ''; location.reload(); }
+  });
+
   // ---------- onboarding ----------
   var cRole = rolePicker('c-role'), jRole = rolePicker('j-role');
 
@@ -1116,7 +1211,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var name = $('c-name').value.trim();
     if (!name) { $('ob-err').textContent = 'Please enter your name.'; return; }
     this.disabled = true; $('ob-err').textContent = '';
-    post(API.circle, { action:'create', memberName:name, circleName:$('c-circle').value.trim(), phone:$('c-phone').value.trim(), role:cRole() })
+    post(API.circle, { action:'create', memberName:name, circleName:$('c-circle').value.trim(), userId: authUser && authUser.id, role:cRole() })
       .then(function(j){
         $('c-go').disabled = false;
         if (!j.ok) { $('ob-err').textContent = j.error || 'Could not create the circle.'; return; }
@@ -1131,7 +1226,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var name = $('j-name').value.trim(), code = $('j-code').value.trim().toUpperCase();
     if (!code || !name) { $('ob-err').textContent = 'Please enter the code and your name.'; return; }
     this.disabled = true; $('ob-err').textContent = '';
-    post(API.circle, { action:'join', memberName:name, code:code, phone:$('j-phone').value.trim(), role:jRole() })
+    post(API.circle, { action:'join', memberName:name, code:code, userId: authUser && authUser.id, role:jRole() })
       .then(function(j){
         $('j-go').disabled = false;
         if (!j.ok) { $('ob-err').textContent = j.error || 'Could not join.'; return; }
@@ -1655,13 +1750,23 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     try { navigator.serviceWorker.register('sw.js'); } catch (e) {}
   }
   state = loadState();
+  authUser = loadAuth();
+  try {
+    var jc = new URLSearchParams(location.search).get('join');
+    if (jc) pendingJoin = jc.toUpperCase().slice(0, 6);
+  } catch (e) {}
   if (state && state.code && state.memberId) enterMain();
-  else {
-    // arriving from an invite link — prefill the join code
-    try {
-      var jc = new URLSearchParams(location.search).get('join');
-      if (jc) { $('j-code').value = jc.toUpperCase().slice(0, 6); $('j-name').focus(); }
-    } catch (e) {}
+  else if (authUser && authUser.phone) {
+    // signed in on this device — refresh circles and route straight in
+    showStep('auth');
+    post(API.auth, { action: 'enter', phone: authUser.phone })
+      .then(function(j){
+        if (j.ok && j.exists) { authUser = j.user; saveAuth(authUser); routeAfterAuth(j.circles || []); }
+        else showStep('auth');
+      })
+      .catch(function(){ showStep('auth'); });
+  } else {
+    showStep('auth');
   }
 })();
 </script>
