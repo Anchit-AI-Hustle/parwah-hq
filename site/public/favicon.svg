@@ -1,4 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Parwah">
+  <!-- Marigold. The brand's own colour made into its mark: genda phool, the
+       flower at Indian doorways and family gatherings. The ring of petals also
+       reads as a circle of people, which is this app's word for a family. -->
   <rect width="64" height="64" rx="14" fill="#182622"/>
-  <text x="32" y="45" font-family="Georgia, 'Noto Serif Devanagari', serif" font-size="34" text-anchor="middle" fill="#E8A23D">प</text>
+  <g fill="#E8A23D">
+    <ellipse id="p" cx="32" cy="17" rx="5.4" ry="8.4"/>
+    <use href="#p" transform="rotate(45 32 32)"/>
+    <use href="#p" transform="rotate(90 32 32)"/>
+    <use href="#p" transform="rotate(135 32 32)"/>
+    <use href="#p" transform="rotate(180 32 32)"/>
+    <use href="#p" transform="rotate(225 32 32)"/>
+    <use href="#p" transform="rotate(270 32 32)"/>
+    <use href="#p" transform="rotate(315 32 32)"/>
+  </g>
+  <circle cx="32" cy="32" r="8" fill="#C8452F"/>
 </svg>
