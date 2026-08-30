@@ -36,9 +36,25 @@ body{font-family:var(--body);color:var(--ink);min-height:100vh;min-height:100dvh
   position:sticky;top:0;z-index:5;
   padding:14px 18px;padding-top:calc(14px + env(safe-area-inset-top));
   padding-left:calc(18px + env(safe-area-inset-left));padding-right:calc(18px + env(safe-area-inset-right))}
-.bar .dev{font-family:var(--dev);color:var(--marigold);font-size:1.05rem}
-.bar b{font-family:var(--disp);font-weight:600}
-.bar .who{margin-left:auto;font-size:.78rem;color:var(--dim);text-align:right}
+.bar{position:relative}
+.bar .brand{display:inline-flex;align-items:baseline;gap:7px;min-width:0}
+.bar .logo{font-family:var(--dev);color:var(--marigold);font-size:1.15rem;line-height:1;flex:0 0 auto}
+.bar .appname{font-family:var(--disp);font-weight:600;white-space:nowrap}
+.bar-actions{margin-left:auto;display:flex;align-items:center;gap:2px;flex:0 0 auto}
+.metile{width:32px;height:32px;border-radius:50%;border:0;margin-left:6px;
+  background:linear-gradient(135deg,var(--marigold),var(--sindoor));color:#fff;
+  font-family:var(--disp);font-weight:700;font-size:.78rem;letter-spacing:.02em;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
+.metile:focus-visible{outline:2px solid var(--marigold);outline-offset:2px}
+.memenu{position:absolute;top:100%;right:14px;z-index:20;min-width:210px;
+  background:var(--dusk);border:1px solid rgba(255,255,255,.14);border-radius:12px;
+  box-shadow:0 18px 40px -18px rgba(0,0,0,.7);padding:6px;display:flex;flex-direction:column}
+.memenu[hidden]{display:none}
+.memenu .who{font-size:.8rem;color:var(--dim);padding:8px 10px 10px;
+  border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:4px}
+.meitem{border:0;background:none;color:var(--cream);font-family:var(--body);font-size:.9rem;
+  text-align:left;padding:9px 10px;border-radius:8px;cursor:pointer}
+.meitem:hover{background:rgba(255,255,255,.08)}
 .wrap{max-width:560px;margin:0 auto;padding:20px 16px;padding-bottom:calc(var(--tabs-h) + 96px + env(safe-area-inset-bottom))}
 h1{font-family:var(--disp);font-weight:600;font-size:1.5rem;margin-bottom:6px}
 .lede{color:var(--ink-soft);font-size:.95rem;margin-bottom:20px}
@@ -255,7 +271,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 #evoice{margin-left:auto}
 
 /* notifications */
-#bell{margin-left:auto;position:relative;border:0;background:none;color:var(--cream);font-size:1.15rem;cursor:pointer;padding:2px 6px}
+#bell{position:relative;border:0;background:none;color:var(--cream);font-size:1.15rem;cursor:pointer;padding:2px 6px}
 #getapp{font-size:1.15rem;text-decoration:none;padding:2px 6px;line-height:1}
 .ecard-btn{background:var(--alert);color:#fff;border-color:var(--alert)}
 .big.ecard-big{background:var(--dusk);color:var(--cream);font-family:var(--body);font-size:1.1rem;margin-top:10px}
@@ -281,7 +297,6 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   #ecard .mp{box-shadow:none;max-width:100%}
   #ec-x,.prow2,.hint{display:none!important}
 }
-#bell[hidden]~#getapp{margin-left:auto}
 @media(display-mode:standalone){#getapp{display:none}}
 #livecall{background:var(--pine);color:var(--cream);display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:.86rem}
 #livecall .pulse{width:9px;min-width:9px;height:9px;border-radius:99px;background:#7CE0A3;animation:lcpulse 1.4s ease infinite}
@@ -322,7 +337,6 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .prepitems{display:flex;flex-wrap:wrap;gap:6px}
 .prepitem{font-size:.74rem;background:var(--day);border:1px solid var(--bone-2);border-radius:99px;padding:4px 9px}
 #bell .dot,#side-nb .dot{position:absolute;top:-2px;right:-2px;min-width:15px;height:15px;border-radius:99px;background:var(--sindoor);color:#fff;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px;font-style:normal}
-.bar .who{margin-left:10px}
 .nrow{background:#fff;border:1px solid var(--bone-2);border-left:3px solid var(--bone-2);border-radius:12px;padding:12px 14px;font-size:.92rem;display:flex;gap:10px;align-items:flex-start;cursor:pointer;box-shadow:0 1px 2px rgba(36,31,23,.03)}
 .nrow.unread{border-left-color:var(--sindoor);background:#FFFDF8}
 .nrow .nic{font-size:1.1rem}
@@ -429,10 +443,29 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 
 <div class="bar">
   <button id="hamb" hidden aria-label="Open menu">☰</button>
-  <span class="dev" aria-hidden="true">परवाह</span><b>Parwah</b>
-  <button id="bell" hidden aria-label="Notifications">🔔<i class="dot" id="bell-dot" hidden></i></button>
-  <a id="getapp" href="../get/" target="_blank" rel="noopener" aria-label="Install the Parwah app" title="Install the app">📲</a>
-  <span class="who" id="who"></span>
+  <!-- Logo and app name are two different things and now look like it: the mark
+       reads as a mark, the name as a name, locked together as one unit so the
+       row's gap cannot push them apart into two unrelated words. -->
+  <span class="brand">
+    <span class="logo" aria-hidden="true">परवाह</span>
+    <b class="appname">Parwah</b>
+  </span>
+  <!-- One trailing group with one auto margin. Previously #bell, .who and
+       #getapp each declared margin-left:auto; only the first one in a flex row
+       does anything, so the grouping depended on which of them happened to be
+       hidden. -->
+  <div class="bar-actions">
+    <button id="bell" hidden aria-label="Notifications">🔔<i class="dot" id="bell-dot" hidden></i></button>
+    <a id="getapp" href="../get/" target="_blank" rel="noopener" aria-label="Install the Parwah app" title="Install the app">📲</a>
+    <button id="metile" class="metile" aria-haspopup="menu" aria-expanded="false" aria-label="Your account"><span id="me-init">··</span></button>
+  </div>
+  <!-- The full name lives here rather than in the bar: on a 430px screen it was
+       the widest element in the row, competing with the brand and wrapping.
+       Sign out is deliberately NOT here -- it belongs on the profile. -->
+  <div class="memenu" id="memenu" hidden role="menu">
+    <div class="who" id="who"></div>
+    <button class="meitem" id="me-profile" role="menuitem">👤 Profile</button>
+  </div>
 </div>
 
 <div id="livecall" hidden>
@@ -1308,7 +1341,6 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <div class="subnav side-only" id="side-groups"></div>
     <button class="side-new side-only" id="side-newcircle">＋ New family or group</button>
     <div class="side-user side-only" id="side-user"></div>
-    <button class="side-so side-only" id="side-so">🚪 Sign out</button>
   </div>
 </nav>
 
@@ -1381,7 +1413,6 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <button class="ditem sub" id="d-newcircle">＋ New family or group</button>
     </div>
     <a class="ditem" href="../get/" target="_blank" rel="noopener">📲 Get the app</a>
-    <button class="ditem" id="d-so" style="color:var(--alert)">🚪 Sign out</button>
     <div class="dfoot" id="d-user"></div>
   </div>
 </div>
@@ -2037,7 +2068,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     document.body.classList.toggle('senior', state.role === 'parent');
     $('seniorui').hidden = state.role !== 'parent';
     document.body.classList.add('inapp');
-    $('who').textContent = state.name + ' · ' + state.code;
+    $('who').textContent = state.name + ' · ' + state.code; setInitials(state.name);
     $('side-user').textContent = state.name + ' · ' + state.code;
     $('d-user').textContent = state.name + ' · ' + state.code;
     $('hamb').hidden = false;
@@ -2282,9 +2313,40 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     }
   }
   $('signout').addEventListener('click', doSignOut);
+
+  // ── account tile ──────────────────────────────────────────────────────────
+  // The bar used to carry the whole identity string ("Anchit Tandon · TANDONS").
+  // At 430px that was the widest element in the row: it competed with the brand,
+  // wrapped, and told people something they already knew. It lives behind these
+  // initials now, and the name is one tap away.
+  //
+  // Sign out is deliberately absent from this menu -- it belongs on the profile,
+  // and having it in four places was three too many.
+  function setInitials(name) {
+    var parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    var ini = parts.length
+      ? (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase()
+      : '··';
+    var el = $('me-init');
+    if (el) el.textContent = ini;
+  }
+
+  (function accountTile() {
+    var tile = $('metile'), menu = $('memenu');
+    if (!tile || !menu) return;
+    function close() { menu.hidden = true; tile.setAttribute('aria-expanded', 'false'); }
+    tile.addEventListener('click', function (e) {
+      e.stopPropagation();
+      menu.hidden = !menu.hidden;
+      tile.setAttribute('aria-expanded', menu.hidden ? 'false' : 'true');
+    });
+    menu.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.addEventListener('click', close);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    var pf = $('me-profile');
+    if (pf) pf.addEventListener('click', function () { close(); switchTab('profile'); });
+  }());
   $('cs-out').addEventListener('click', doSignOut);
-  $('side-so').addEventListener('click', doSignOut);
-  $('d-so').addEventListener('click', doSignOut);
 
   // ---------- onboarding ----------
   var cRole = rolePicker('c-role'), jRole = rolePicker('j-role');
@@ -3979,7 +4041,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         state.code = j.code; saveState(state);
         var gs = loadGroups(); gs.forEach(function(c){ if (c.memberId === state.memberId) c.code = j.code; }); saveGroups(gs);
         $('p-code').textContent = j.code; $('m-code').textContent = j.code;
-        $('who').textContent = state.name + ' · ' + state.code;
+        $('who').textContent = state.name + ' · ' + state.code; setInitials(state.name);
         $('side-user').textContent = state.name + ' · ' + state.code;
         $('d-user').textContent = state.name + ' · ' + state.code;
         $('codeform').hidden = true;
@@ -4033,7 +4095,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         state.name = j.name; state.role = j.role; saveState(state);
         document.body.classList.toggle('senior', state.role === 'parent');
         $('seniorui').hidden = state.role !== 'parent';
-        $('who').textContent = state.name + ' · ' + state.code;
+        $('who').textContent = state.name + ' · ' + state.code; setInitials(state.name);
         $('side-user').textContent = state.name + ' · ' + state.code;
         $('d-user').textContent = state.name + ' · ' + state.code;
         $('p-name').textContent = state.name;
