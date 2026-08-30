@@ -4,6 +4,8 @@
 import { db, ensureSchema, makeCode, ensureCircleChat, rateLimit } from './_db.mjs';
 import { ensureVaultSchema, ensurePaySchema, checkNumber } from './_vaultapi.mjs';
 import { ensureCoinSchema, award, balance, spend, EARN, SPEND } from './_coins.mjs';
+import { careSuggestions } from './care.mjs';
+import { priceOf, USD_RATE } from './_planapi.mjs';
 
 export default async function handler(req, res) {
   const steps = {};
@@ -159,6 +161,38 @@ export default async function handler(req, res) {
     await sql`delete from rate_limit where bucket = 'selftest' and k = ${rlKey}`;
     steps.rate_limit = first === true && second === true && third === false && rolled === true;
 
+    // SOS — an open state with escalation, not a line in a feed.
+    await sql`create table if not exists sos (
+      id uuid primary key default gen_random_uuid(),
+      circle_id uuid not null references circles(id) on delete cascade,
+      member_id uuid not null references members(id) on delete cascade,
+      status text not null default 'open', escalated boolean not null default false,
+      acked_by uuid references members(id) on delete set null, acked_at timestamptz,
+      resolved_at timestamptz, created_at timestamptz not null default now())`;
+    const sos1 = await sql`insert into sos (circle_id, member_id, created_at)
+                           values (${circleId}, ${papa[0].id}, now() - interval '30 minutes') returning id, status`;
+    // The escalation claim must fire exactly once however many instances poll.
+    const esc1 = await sql`update sos set escalated = true where id = ${sos1[0].id} and escalated = false returning id`;
+    const esc2 = await sql`update sos set escalated = true where id = ${sos1[0].id} and escalated = false returning id`;
+    steps.sos_escalates_once = sos1[0].status === 'open' && esc1.length === 1 && esc2.length === 0;
+
+    await sql`update sos set status = 'acked', acked_by = ${beta[0].id}, acked_at = now()
+              where id = ${sos1[0].id} and status = 'open'`;
+    const acked = await sql`select status, acked_by from sos where id = ${sos1[0].id}`;
+    const race = await sql`update sos set status = 'acked', acked_by = ${papa[0].id}
+                           where id = ${sos1[0].id} and status = 'open' returning id`;
+    steps.sos_ack = acked[0].status === 'acked' && acked[0].acked_by === beta[0].id && race.length === 0;
+
+    // SUGGESTIONS — proposed from what the circle has already recorded.
+    const sugg = await careSuggestions(sql, circleId);
+    steps.care_suggestions = Array.isArray(sugg) && sugg.some(x => /blood group/i.test(x.title));
+
+    // PRICING — the same plan, converted at a fixed, stated rate.
+    const inr = priceOf('care', 'INR'), usd = priceOf('care', 'USD');
+    steps.pricing_dual = inr.amount === 2499 && inr.currency === 'INR'
+      && usd.currency === 'USD' && Math.abs(usd.amount - (2499 / USD_RATE)) < 1.2
+      && priceOf('free', 'INR').amount === 0;
+
     // ONBOARDING — the introduction is once per PERSON, and a circle knows
     // whether it is a family or a group.
     const kindRow = await sql`select kind from circles where id = ${circleId}`;
@@ -280,8 +314,9 @@ export default async function handler(req, res) {
     const leftJoin = await sql`select id from join_requests where circle_id = ${circleId}`;
     const leftCoins = await sql`select id from coins where circle_id = ${circleId}`;
     const leftBook = await sql`select id from family_book where circle_id = ${circleId}`;
+    const leftSos = await sql`select id from sos where circle_id = ${circleId}`;
     steps.cleanup_cascade = leftover.length === 0 && leftChats.length === 0 && leftReads.length === 0
-      && leftDocs.length === 0 && leftFiles.length === 0 && leftPay.length === 0 && leftJoin.length === 0 && leftCoins.length === 0 && leftBook.length === 0;
+      && leftDocs.length === 0 && leftFiles.length === 0 && leftPay.length === 0 && leftJoin.length === 0 && leftCoins.length === 0 && leftBook.length === 0 && leftSos.length === 0;
     circleId = null;
 
     const ok = Object.values(steps).every(Boolean);

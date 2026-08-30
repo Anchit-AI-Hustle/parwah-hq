@@ -253,6 +253,33 @@ check("layout: the desktop content is not capped at a phone width",
 check("layout: Today uses two columns on a wide screen",
       "homerail" in appsrc and "homemain" in appsrc and "@media(min-width:1240px)" in appsrc)
 
+# 10m. THINGS TO DO, SOS ESCALATION, PRICING.
+care = (API_DIR / "care.mjs").read_text(encoding="utf-8")
+events = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+plan = (API_DIR / "_planapi.mjs").read_text(encoding="utf-8")
+check("todo: reminders and jobs are one list, not two tabs",
+      "Anyone can pick these up" in appsrc and "'#qlist'" not in appsrc.split("id=\"qlist\"")[0])
+check("todo: one form raises either kind, decided by who it is for",
+      "who === 'any'" in appsrc and "request_create" in appsrc and "reminder_create" in appsrc)
+check("todo: suggestions come from what the family already recorded",
+      "careSuggestions" in care and "vault_docs" in care and "family_book" in care)
+check("todo: a suggestion is never created behind the family's back",
+      "data-sadd" in appsrc and "Nothing here is real until you add it" in appsrc)
+check("todo: nothing already being done is suggested again",
+      "busy.has(s.title.toLowerCase())" in care)
+check("sos: an SOS is an open state, not a feed line",
+      "create table if not exists sos" in events and "sos_ack" in events and "sos_resolve" in events)
+check("sos: escalation fires exactly once across instances",
+      "escalated = true" in events and "and escalated = false returning id" in events)
+check("sos: escalation never breaks a read",
+      "escalation must never break a read" in events)
+check("pricing: dual currency at a fixed, stated rate",
+      "USD_RATE = 85" in plan and "priceOf" in plan)
+check("pricing: no payment rails, and the page says so",
+      "charged: false" in plan and "Nothing is charged" in appsrc)
+check("pricing: Indian digit grouping is not hand-rolled",
+      "Intl.NumberFormat('en-IN')" in appsrc)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

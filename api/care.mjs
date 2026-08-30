@@ -19,14 +19,89 @@ export async function careState(sql, circleId) {
     where r.circle_id = ${circleId} and r.status in ('pending','accepted')
     order by r.created_at desc limit 30`;
   const requests = await sql`
-    select q.id, q.title, q.status, q.created_at,
-           b.name as by_name, c.name as claimed_name
+    select q.id, q.title, q.status, q.created_at, q.due_date, q.about_member,
+           b.name as by_name, c.name as claimed_name, a.name as about_name
     from requests q
     left join members b on b.id = q.by_member
     left join members c on c.id = q.claimed_by
+    left join members a on a.id = q.about_member
     where q.circle_id = ${circleId} and q.status in ('open','claimed')
-    order by q.created_at desc limit 30`;
+    order by q.due_date nulls last, q.created_at desc limit 30`;
   return { reminders, requests };
+}
+
+// WHAT PARWAH ALREADY KNOWS NEEDS DOING.
+// The hard part of caring for someone is not claiming a job — it is noticing
+// one exists. These are proposed, never created: the family taps to accept.
+// Everything here comes from what the circle has already recorded.
+export async function careSuggestions(sql, circleId) {
+  const out = [];
+  const seen = new Set();
+  const add = (s) => { if (!seen.has(s.key)) { seen.add(s.key); out.push(s); } };
+  try {
+    // Documents about to run out, or already gone.
+    const docs = await sql`
+      select d.id, d.label, d.expires_on, d.about_member, m.name as about_name
+      from vault_docs d join members m on m.id = d.about_member
+      where d.circle_id = ${circleId} and d.expires_on is not null
+        and d.expires_on < current_date + 90
+      order by d.expires_on limit 8`;
+    docs.forEach(d => {
+      const days = Math.round((new Date(d.expires_on) - Date.now()) / 86400000);
+      add({ key: 'doc:' + d.id, kind: 'request',
+        title: 'Renew ' + d.label,
+        why: days < 0 ? 'Expired ' + Math.abs(days) + ' days ago' : 'Expires in ' + days + ' days',
+        urgent: days < 30, forMemberId: d.about_member, forName: d.about_name });
+    });
+  } catch (e) { /* no vault yet */ }
+  try {
+    // Things nobody has checked in half a year.
+    const stale = await sql`
+      select b.id, b.name, b.kind, b.about_member, b.last_verified_at, m.name as about_name
+      from family_book b left join members m on m.id = b.about_member
+      where b.circle_id = ${circleId}
+        and b.kind in ('med','fact','insurance')
+        and b.last_verified_at < now() - interval '180 days'
+      order by b.last_verified_at limit 6`;
+    stale.forEach(b => {
+      const months = Math.round((Date.now() - new Date(b.last_verified_at)) / 2592000000);
+      add({ key: 'stale:' + b.id, kind: 'request',
+        title: 'Check ' + b.name + ' is still right',
+        why: 'Last checked ' + months + ' months ago',
+        urgent: false, forMemberId: b.about_member, forName: b.about_name });
+    });
+  } catch (e) { /* no memory yet */ }
+  try {
+    // The gaps that matter at a hospital counter.
+    const members = await sql`select id, name from members where circle_id = ${circleId} order by created_at limit 12`;
+    const facts = await sql`select about_member, kind, category from family_book where circle_id = ${circleId}`;
+    const NEED = [
+      { cat: 'blood',     kind: 'fact',    label: 'blood group' },
+      { cat: 'allergy',   kind: 'fact',    label: 'allergies' },
+      { cat: 'doctor',    kind: 'contact', label: "doctor's number" },
+      { cat: 'emergency', kind: 'contact', label: 'emergency contact' }
+    ];
+    members.forEach(m => {
+      NEED.forEach(n => {
+        const has = facts.some(f => f.about_member === m.id && f.kind === n.kind && f.category === n.cat);
+        if (!has) add({ key: 'gap:' + m.id + ':' + n.cat, kind: 'request',
+          title: 'Record ' + m.name + "'s " + n.label,
+          why: 'Not written down anywhere yet',
+          urgent: n.cat === 'blood' || n.cat === 'emergency',
+          forMemberId: m.id, forName: m.name });
+      });
+    });
+  } catch (e) { /* no memory yet */ }
+
+  // Never propose something the family is already doing.
+  try {
+    const open = await sql`select lower(title) as t from requests where circle_id = ${circleId} and status in ('open','claimed')`;
+    const openR = await sql`select lower(title) as t from reminders where circle_id = ${circleId} and status in ('pending','accepted')`;
+    const busy = new Set(open.concat(openR).map(x => x.t));
+    return out.filter(s => !busy.has(s.title.toLowerCase()))
+              .sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0))
+              .slice(0, 8);
+  } catch (e) { return out.slice(0, 8); }
 }
 
 export async function createReminder(sql, circle, me, { forMemberId, title, timeOfDay, dueDate, recurrence }) {
@@ -57,26 +132,38 @@ export async function createReminder(sql, circle, me, { forMemberId, title, time
   return { ok: true, id: r[0].id, status };
 }
 
-export async function createRequest(sql, circle, me, { title }) {
+export async function createRequest(sql, circle, me, { title, dueDate, aboutMemberId }) {
   const t = String(title || '').trim().slice(0, 200);
   if (!t) return { error: 'The request needs a description' };
-  const r = await sql`insert into requests (circle_id, by_member, title) values (${circle.id}, ${me.id}, ${t}) returning id`;
+  let due = String(dueDate || '').trim();
+  due = /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : null;
+  let about = null;
+  if (isUuid(aboutMemberId)) {
+    const a = await sql`select id from members where id = ${aboutMemberId} and circle_id = ${circle.id}`;
+    if (a[0]) about = a[0].id;
+  }
+  const r = await sql`insert into requests (circle_id, by_member, title, due_date, about_member)
+                      values (${circle.id}, ${me.id}, ${t}, ${due}, ${about}) returning id`;
   await feed(sql, circle.id, me.id, `${me.name} asked the circle: ${t}`);
-  await pushCircle(sql, circle.id, { title: '🤝 ' + me.name + ' needs a hand', body: t + ' — first to tap "I\'m on it" takes it' }, { except: me.id });
+  await pushCircle(sql, circle.id, { title: '🤝 ' + me.name + ' needs a hand', body: t + (due ? ' · by ' + due : '') + ' — first to tap "I\'m on it" takes it' }, { except: me.id });
   return { ok: true, id: r[0].id };
 }
 
 export default async function handler(req, res) {
   let sql;
-  try { sql = db(); await ensureSchema(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  try {
+    sql = db(); await ensureSchema(sql);
+    await sql`alter table requests add column if not exists due_date date`;
+    await sql`alter table requests add column if not exists about_member uuid references members(id) on delete set null`;
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
 
   try {
     if (req.method === 'GET') {
       const circle = await circleByCode(sql, req.query && req.query.circle);
       if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
       const state = await careState(sql, circle.id);
-      return res.status(200).json({ ok: true, ...state });
+      const suggestions = await careSuggestions(sql, circle.id);
+      return res.status(200).json({ ok: true, ...state, suggestions });
     }
 
     if (req.method !== 'POST') {

@@ -4,12 +4,54 @@ import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import { award, today } from './_coins.mjs';
 
+const SOS_ESCALATE_MIN = 5;   // nobody answered in this long → shout louder
+
 const TYPES = ['checkin', 'sos', 'pill', 'message'];
 
 export default async function handler(req, res) {
   let sql;
-  try { sql = db(); await ensureSchema(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  try {
+    sql = db(); await ensureSchema(sql);
+    // An SOS is not an event that scrolls away — it is an open state with
+    // someone waiting at the end of it.
+    await sql`create table if not exists sos (
+      id uuid primary key default gen_random_uuid(),
+      circle_id uuid not null references circles(id) on delete cascade,
+      member_id uuid not null references members(id) on delete cascade,
+      status text not null default 'open',
+      escalated boolean not null default false,
+      acked_by uuid references members(id) on delete set null,
+      acked_at timestamptz,
+      resolved_at timestamptz,
+      created_at timestamptz not null default now()
+    )`;
+    await sql`create index if not exists sos_circle_open on sos (circle_id, status, created_at desc)`;
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+
+// There is no scheduler on this platform, so escalation rides on the polling
+// the family is already doing: any read of the circle checks for an SOS that
+// nobody has answered and shouts once, louder. The `escalated` flag makes it
+// exactly once, however many devices are polling.
+async function escalateStaleSos(sql, circleId) {
+  try {
+    const stale = await sql`
+      select s.id, s.member_id, m.name, m.phone
+      from sos s join members m on m.id = s.member_id
+      where s.circle_id = ${circleId} and s.status = 'open' and s.escalated = false
+        and s.created_at < now() - make_interval(mins => ${SOS_ESCALATE_MIN})`;
+    for (const s of stale) {
+      const claimed = await sql`update sos set escalated = true
+                                where id = ${s.id} and escalated = false returning id`;
+      if (!claimed[0]) continue;   // another instance got there first
+      await sql`insert into events (circle_id, member_id, type, text)
+                values (${circleId}, ${s.member_id}, 'care', ${'🆘 Nobody has answered ' + s.name + "'s SOS yet — please call them now"})`;
+      await pushCircle(sql, circleId, {
+        title: '🆘 STILL NOBODY — ' + s.name + ' needs help',
+        body: 'No one has picked this up in ' + SOS_ESCALATE_MIN + ' minutes. Call ' + (s.phone || 'them') + ' now.'
+      }, {});
+    }
+  } catch (e) { /* escalation must never break a read */ }
+}
 
   try {
     if (req.method === 'GET') {
@@ -33,6 +75,14 @@ export default async function handler(req, res) {
         where circle_id = ${circle.id} and status = 'pending'
         order by created_at limit 20`;
       const pol = await sql`select join_policy from circles where id = ${circle.id}`;
+      await escalateStaleSos(sql, circle.id);
+      const sosOpen = await sql`
+        select s.id, s.member_id, s.status, s.escalated, s.created_at, s.acked_at,
+               m.name, m.phone, a.name as acked_name
+        from sos s join members m on m.id = s.member_id
+        left join members a on a.id = s.acked_by
+        where s.circle_id = ${circle.id} and s.status <> 'resolved'
+        order by s.created_at desc limit 3`;
       let seenAt = null;
       const member = req.query && req.query.member;
       if (isUuid(member)) {
@@ -41,7 +91,8 @@ export default async function handler(req, res) {
         seenAt = sr[0] ? sr[0].seen_at : null;
       }
       return res.status(200).json({ ok: true, circleName: circle.name, code: circle.code, members, events, seenAt, calls,
-        joinRequests: joinReqs, joinPolicy: (pol[0] && pol[0].join_policy) || 'approve' });
+        joinRequests: joinReqs, joinPolicy: (pol[0] && pol[0].join_policy) || 'approve',
+        sos: sosOpen, sosEscalateMin: SOS_ESCALATE_MIN });
     }
 
     if (req.method === 'POST') {
@@ -56,6 +107,35 @@ export default async function handler(req, res) {
                   on conflict (member_id) do update set seen_at = now()`;
         return res.status(200).json({ ok: true });
       }
+      // Somebody is on it — everyone else stops worrying, and the person who
+      // pressed the button finds out that help is coming.
+      if (type === 'sos_ack' || type === 'sos_resolve') {
+        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        const am = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
+        if (!am[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        if (!isUuid(req.body.sosId)) return res.status(400).json({ ok: false, error: 'Bad SOS id' });
+        const row = await sql`select s.id, s.member_id, s.status, m.name
+                              from sos s join members m on m.id = s.member_id
+                              where s.id = ${req.body.sosId} and s.circle_id = ${circle.id}`;
+        if (!row[0]) return res.status(404).json({ ok: false, error: 'That SOS is not open' });
+        if (type === 'sos_ack') {
+          if (row[0].status !== 'open') return res.status(200).json({ ok: true, already: true });
+          await sql`update sos set status = 'acked', acked_by = ${memberId}, acked_at = now()
+                    where id = ${row[0].id} and status = 'open'`;
+          await sql`insert into events (circle_id, member_id, type, text)
+                    values (${circle.id}, ${memberId}, 'care', ${am[0].name + ' is on their way to ' + row[0].name + ' 🧡'})`;
+          await pushCircle(sql, circle.id, { title: '🧡 ' + am[0].name + ' is on it',
+            body: 'They are helping ' + row[0].name + ' — you do not need to call as well' }, { except: memberId });
+          return res.status(200).json({ ok: true });
+        }
+        await sql`update sos set status = 'resolved', resolved_at = now() where id = ${row[0].id}`;
+        await sql`insert into events (circle_id, member_id, type, text)
+                  values (${circle.id}, ${memberId}, 'care', ${am[0].name + ' marked ' + row[0].name + "'s SOS as sorted ✅"})`;
+        await pushCircle(sql, circle.id, { title: '✅ ' + row[0].name + ' is alright',
+          body: am[0].name + ' marked the SOS as sorted' }, { except: memberId });
+        return res.status(200).json({ ok: true });
+      }
+
       if (type === 'call_start' || type === 'call_end') {
         if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
         const cm = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
@@ -84,6 +164,7 @@ export default async function handler(req, res) {
       // Looking after each other is what earns the family its AI credit.
       if (type === 'checkin' || type === 'pill') await award(sql, circle.id, memberId, type, today());
       if (type === 'sos') {
+        await sql`insert into sos (circle_id, member_id) values (${circle.id}, ${memberId})`;
         await pushCircle(sql, circle.id, { title: '🆘 SOS from ' + member[0].name, body: 'They pressed the SOS button — call them right now' }, { except: memberId });
       }
       return res.status(201).json({ ok: true });

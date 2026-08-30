@@ -213,6 +213,15 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .tabs button.sel::after{content:"";position:absolute;top:0;left:25%;right:25%;height:3px;border-radius:0 0 3px 3px;background:var(--marigold)}
 .tabs .dot{position:absolute;top:9px;right:calc(50% - 18px);min-width:16px;height:16px;border-radius:99px;background:var(--sindoor);color:#fff;font-size:.62rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;font-style:normal}
 
+.crow.urgent{border-left-color:var(--sindoor)}
+/* An unanswered SOS outranks everything else on the screen. */
+#sosbar{position:fixed;top:0;left:0;right:0;z-index:12;display:flex;align-items:center;gap:10px;
+  padding:11px 14px;background:var(--alert,#B3261E);color:#fff;font-size:.9rem;font-weight:600;
+  box-shadow:0 6px 20px rgba(0,0,0,.3)}
+#sosbar .lc-join,#sosbar .lc-end{white-space:nowrap}
+body.inapp #sosbar{padding-left:14px}
+@media(min-width:900px){body.inapp #sosbar{left:var(--side-w)}}
+
 /* the introduction, and the coachmarks that follow it */
 .trdots{display:flex;gap:6px;margin-top:12px}
 .trdots i{width:7px;height:7px;border-radius:99px;background:var(--bone-2)}
@@ -553,6 +562,14 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   </div>
 </div>
 
+<div id="sosbar" hidden>
+  <span class="pulse" aria-hidden="true"></span>
+  <span id="sos-txt" style="flex:1"></span>
+  <a class="lc-join" id="sos-call">📞 Call</a>
+  <button class="lc-join" id="sos-ack">🧡 I'm on it</button>
+  <button class="lc-end" id="sos-done">Sorted</button>
+</div>
+
 <div id="livecall" hidden>
   <span class="pulse" aria-hidden="true"></span>
   <span id="lc-txt" style="flex:1"></span>
@@ -727,8 +744,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     </button>
     <div class="widgets">
       <button class="widget" data-goto="people"><span class="wic" aria-hidden="true">👨‍👩‍👧</span><b>People</b><small id="w-fam">Loading…</small></button>
-      <button class="widget" data-goto="care" data-sec="rem"><span class="wic" aria-hidden="true">🔔</span><b>Reminders</b><small id="w-rem">Loading…</small></button>
-      <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true">🤝</span><b>Help requests</b><small id="w-req">Loading…</small></button>
+      <button class="widget" data-goto="care" data-sec="rem"><span class="wic" aria-hidden="true">✅</span><b>Things to do</b><small id="w-rem">Loading…</small></button>
+      <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true">💡</span><b>Suggested</b><small id="w-req">Loading…</small></button>
       <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b>Chats</b><small id="w-chat">Family + personal</small></button>
       <button class="widget" data-goto="memory"><span class="wic" aria-hidden="true">📒</span><b>Family memory</b><small id="w-book">Contacts, addresses, meds-map, facts</small></button>
       <button class="widget" data-goto="vault" data-sec="docs"><span class="wic" aria-hidden="true">🔐</span><b>Family vault</b><small id="w-vault">Aadhaar, PAN, passport, health papers</small></button>
@@ -748,19 +765,21 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   <!-- CARE -->
   <section id="pane-care" hidden>
     <div class="seg pageseg" id="care-seg" role="tablist" aria-label="Care sections">
-      <button data-sec="rem" class="sel">🔔 Reminders</button>
-      <button data-sec="req">🤝 Help requests</button>
+      <button data-sec="rem" class="sel">✅ Things to do</button>
+      <button data-sec="req">💡 Suggested<i class="dot" id="sugg-dot" hidden></i></button>
     </div>
     <div class="subsec" data-sec="rem">
-    <div class="feed" id="rlist"><div class="ev">None yet.</div></div>
+    <p class="hint" style="margin:0 0 10px">Everything the family has to do, in one list — jobs anyone can pick up, and reminders for a particular person.</p>
+    <div class="feed" id="rlist"><div class="ev">Nothing to do right now 🧡</div></div>
+    <div class="feed" id="qlist" hidden></div>
 
     <div class="card" style="margin-top:16px">
-      <h3>New reminder</h3>
-      <input type="text" id="r-title" maxlength="140" placeholder="What should we remember? e.g. BP pills" aria-label="Reminder title">
+      <h3>Add something to do</h3>
+      <input type="text" id="r-title" maxlength="140" placeholder="e.g. book the gas refill · BP pills" aria-label="What needs doing">
       <div class="pickrow">
-        <label class="pick" id="r-datewrap"><span>Date</span><input type="date" id="r-date" aria-label="Reminder date"></label>
-        <label class="pick"><span>Time</span><input type="time" id="r-time" aria-label="Reminder time"></label>
-        <label class="pick"><span>For</span><select id="r-for" aria-label="Reminder for"></select></label>
+        <label class="pick" id="r-datewrap"><span>Date</span><input type="date" id="r-date" aria-label="Date"></label>
+        <label class="pick"><span>Time</span><input type="time" id="r-time" aria-label="Time"></label>
+        <label class="pick"><span>For</span><select id="r-for" aria-label="For whom"></select></label>
         <label class="pick"><span>Repeat</span>
           <div class="seg" id="r-seg" role="group" aria-label="Repeat">
             <button type="button" data-rep="once" class="sel">Once</button>
@@ -768,19 +787,14 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
           </div>
         </label>
       </div>
-      <button class="go" id="r-add" style="margin-top:14px">Set reminder</button>
-      <p class="hint">For someone else, it arrives as a request — it only starts once they accept it.</p>
+      <button class="go" id="r-add" style="margin-top:14px">Add it</button>
+      <p class="hint" id="r-hint">Left as "Anyone", it goes to the whole circle and the first person to tap "I'm on it" takes it. Given to a person, it only starts once they accept.</p>
     </div>
     </div>
 
     <div class="subsec" data-sec="req" hidden>
-    <p class="hint" style="margin:0 0 10px">Small jobs anyone in the family can pick up — book the gas, take Papa to the eye doctor, renew the insurance. Unlike a chat message, it stays until somebody actually does it.</p>
-    <div class="feed" id="qlist"><div class="ev">Nothing open — ask below the next time a job needs doing.</div></div>
-    <div class="addrow">
-      <input type="text" id="q-title" maxlength="200" placeholder="Ask the circle… e.g. book gas refill" aria-label="Request title">
-      <button class="cbtn" id="q-add">Ask</button>
-    </div>
-    <p class="hint">Anyone in the circle can tap "I'm on it" — and 💬 discusses it in the family chat.</p>
+    <p class="hint" style="margin:0 0 10px">Parwah noticed these from what the family has already recorded — an expiring document, something nobody has checked in months, a gap that matters at a hospital counter. Nothing here is real until you add it.</p>
+    <div class="feed" id="sugglist"><div class="ev">Nothing to suggest — the family is in good shape 🧡</div></div>
     </div>
 
 
@@ -1266,6 +1280,21 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   <!-- PROFILE -->
   <section id="pane-profile" hidden>
     <div class="subsec" data-sec="me">
+    <div class="card" id="plancard">
+      <h3>💛 Parwah Care</h3>
+      <p class="hint" id="pl-sub" style="margin:2px 0 12px"></p>
+      <div class="seg" id="pl-cur" role="group" aria-label="Currency" style="margin-bottom:12px">
+        <button type="button" data-cur="INR">₹ India</button>
+        <button type="button" data-cur="USD">$ Abroad</button>
+      </div>
+      <div id="pl-plans"></div>
+      <div id="pl-mine" hidden style="margin-top:12px">
+        <p class="hint" id="pl-minetxt" style="margin:0 0 8px"></p>
+        <button class="cbtn ghost" id="pl-cancel">Change my mind</button>
+      </div>
+      <p class="hint" style="margin-top:12px"><b>Nothing is charged.</b> Parwah does not handle money — when Care opens, payment will go through a licensed partner. Reserving only tells us your family wants it.</p>
+      <div id="pl-others" style="margin-top:10px"></div>
+    </div>
     <div class="card">
       <h3>🪙 Family coins</h3>
       <p style="margin:2px 0 4px"><b id="coin-bal2" style="font-size:1.6rem">—</b> <span class="hint">in the family pot</span></p>
@@ -1419,8 +1448,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     </div>
     <button data-tab="care"><span class="ic" aria-hidden="true">🔔</span>Care<i class="dot" id="care-dot" hidden></i></button>
     <div class="subnav side-only" data-parent="care">
-      <button data-tab="care" data-sec="rem">Reminders</button>
-      <button data-tab="care" data-sec="req">Help requests</button>
+      <button data-tab="care" data-sec="rem">Things to do</button>
+      <button data-tab="care" data-sec="req">Suggested</button>
     </div>
     <button data-tab="ekta" class="deskonly"><span class="ic" aria-hidden="true">✨</span>Ask Ekta</button>
     <button data-tab="chat" class="deskonly"><span class="ic" aria-hidden="true">💬</span>Chat</button>
@@ -1486,8 +1515,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <div class="dgroup">
       <button class="ditem dparent" data-grp="care">🔔 Care <span class="caret">▾</span></button>
       <div class="dsub">
-        <button class="ditem sub" data-tab="care" data-sec="rem">Reminders</button>
-        <button class="ditem sub" data-tab="care" data-sec="req">Help requests</button>
+        <button class="ditem sub" data-tab="care" data-sec="rem">Things to do</button>
+        <button class="ditem sub" data-tab="care" data-sec="req">Suggested</button>
       </div>
     </div>
     <button class="ditem" data-tab="ekta">✨ Ask Ekta</button>
@@ -1549,7 +1578,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', vault: '../api/book?area=vault', pay: '../api/book?area=pay', push: '../api/settings?area=push', keys: '../api/settings?area=keys', coins: '../api/settings?area=coins' };
+  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', vault: '../api/book?area=vault', pay: '../api/book?area=pay', push: '../api/settings?area=push', keys: '../api/settings?area=keys', coins: '../api/settings?area=coins', plan: '../api/settings?area=plan' };
   var TABS = ['home','people','memory','vault','care','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
@@ -1758,6 +1787,23 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       $('lc-join').href = lc.room;
       $('livecall').dataset.cid = lc.id;
     }
+    // An SOS nobody has answered sits above everything until someone does.
+    var so = (data.sos || [])[0];
+    $('sosbar').hidden = !so;
+    if (so) {
+      var mineSos = so.member_id === state.memberId;
+      $('sosbar').dataset.sid = so.id;
+      $('sos-txt').textContent = so.status === 'acked'
+        ? '🧡 ' + (so.acked_name || 'Someone') + ' is on their way to ' + so.name
+        : (mineSos ? '🆘 Your SOS is out — the family has been told' + (so.escalated ? ', and told again' : '')
+                   : '🆘 ' + so.name + ' needs help' + (so.escalated ? ' — STILL nobody has answered' : '')
+                     + ' · ' + agoLine(so.created_at));
+      $('sos-call').href = so.phone ? 'tel:' + encodeURIComponent(so.phone) : '#';
+      $('sos-call').hidden = mineSos || !so.phone;
+      $('sos-ack').hidden = mineSos || so.status !== 'open';
+      $('sos-done').hidden = false;
+    }
+
     var mh = '';
     data.members.forEach(function(m){
       mh += '<span class="member" data-mprof="' + m.id + '" role="button" tabindex="0">' + esc(m.name) + ' <em>· ' + esc(relLabel(m).toLowerCase()) + '</em>' +
@@ -1895,6 +1941,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       .catch(function(){});
     refreshBook();
     refreshCoins();
+    refreshPlan();
     refreshChats();
     refreshGroups();
     renderFirstRun();
@@ -1987,12 +2034,12 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 
   function renderForSelect(members){
     membersCache = members;
-    var sel = $('r-for'), cur = sel.value, h = '<option value="">for myself</option>';
+    var sel = $('r-for'), cur = sel.value, h = '<option value="any">anyone in the family</option><option value="">myself</option>';
     var dm = $('dm-pick'), dh = '<option value="">Personal chat with…</option>';
     var gm = '';
     members.forEach(function(m){
       if (m.id !== state.memberId) {
-        h += '<option value="' + m.id + '">for ' + esc(m.name) + '</option>';
+        h += '<option value="' + m.id + '">' + esc(m.name) + '</option>';
         dh += '<option value="' + m.id + '">' + esc(m.name) + '</option>';
         gm += '<label class="gchk"><input type="checkbox" value="' + m.id + '"> ' + esc(m.name) + '</label>';
       }
@@ -2034,6 +2081,25 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
            '<small>' + esc(bits.join(' · ')) + (late ? ' · overdue' : '') + '</small></span>' + right + '</div>';
   }
 
+  var suggCache = [];
+  // A suggestion is a proposal. Accepting it creates the real thing, and the
+  // suggestion stops being offered because the job now exists.
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-sadd]'); if (!b) return;
+    var key = b.getAttribute('data-sadd');
+    var sg = null; suggCache.forEach(function(x){ if (x.key === key) sg = x; });
+    if (!sg || !state) return;
+    b.disabled = true;
+    post(API.care, { code: state.code, memberId: state.memberId, action: 'request_create',
+                     title: sg.title, aboutMemberId: sg.forMemberId || undefined })
+      .then(function(j){
+        b.disabled = false;
+        if (!j.ok) { toast(j.error || 'Could not add it'); return; }
+        toast('Added to things to do ✅');
+        refresh();
+      }).catch(function(){ b.disabled = false; toast('No connection — try again'); });
+  });
+
   function renderCare(data){
     var mine = [], active = [], others = [], waiting = 0;
     data.reminders.forEach(function(r){
@@ -2056,17 +2122,38 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     group('Needs your yes 🧡', mine);
     group('Active', active);
     group('Waiting for others', others);
-    $('rlist').innerHTML = rh || '<div class="ev">None yet — set one below.</div>';
-
     var qh = '';
     data.requests.forEach(function(q){
       var talk = '<button class="cbtn ghost" data-qtalk="' + esc(q.title) + '" aria-label="Discuss in chat">💬</button>';
       var right = (q.status === 'open'
         ? '<button class="cbtn" data-qclaim="' + q.id + '">I’m on it</button>'
         : '<span class="badge on">' + esc(q.claimed_name || 'Someone') + ' is on it</span><button class="cbtn ghost" data-qdone="' + q.id + '">Done ✔</button>') + talk;
-      qh += '<div class="crow"><span class="txt">' + esc(q.title) + '<small>asked by ' + esc(q.by_name || 'someone') + '</small></span>' + right + '</div>';
+      var sub = 'asked by ' + esc(q.by_name || 'someone');
+      if (q.about_name) sub = '👤 ' + esc(q.about_name) + ' · ' + sub;
+      var overdue = q.due_date && String(q.due_date).slice(0,10) < new Date().toISOString().slice(0,10);
+      if (q.due_date) sub += ' · ' + (overdue ? '<em style="color:var(--sindoor);font-style:normal">overdue</em>' : 'by ' + String(q.due_date).slice(0,10));
+      qh += '<div class="crow' + (overdue ? ' urgent' : '') + '"><span class="txt">' + esc(q.title) + '<small>' + sub + '</small></span>' + right + '</div>';
     });
-    $('qlist').innerHTML = qh || '<div class="ev">Nothing open — ask below the next time a job needs doing.</div>';
+    // Jobs nobody owns belong in the SAME list as reminders — a family does
+    // not think in two categories, it thinks about what is left to do.
+    if (qh) rh = (rh || '') + '<div class="gtitle">Anyone can pick these up</div>' + qh;
+    $('rlist').innerHTML = rh || '<div class="ev">Nothing to do right now 🧡</div>';
+    $('qlist').hidden = true;
+
+    // What Parwah noticed, offered rather than imposed.
+    var sg = data.suggestions || [];
+    $('sugglist').innerHTML = sg.length ? sg.map(function(x){
+      return '<div class="crow' + (x.urgent ? ' urgent' : '') + '"><span class="txt">' +
+             (x.urgent ? '⚠️ ' : '💡 ') + esc(x.title) +
+             '<small>' + esc(x.why) + (x.forName ? ' · ' + esc(x.forName) : '') + '</small></span>' +
+             '<button class="cbtn" data-sadd="' + esc(x.key) + '">Add it</button></div>';
+    }).join('') : '<div class="ev">Nothing to suggest — the family is in good shape 🧡</div>';
+    suggCache = sg;
+    var sdot = $('sugg-dot'), urg = sg.filter(function(x){ return x.urgent; }).length;
+    if (urg) { sdot.textContent = urg; sdot.hidden = false; } else sdot.hidden = true;
+    $('w-req').textContent = sg.length
+      ? sg.length + (sg.length === 1 ? ' thing Parwah noticed' : ' things Parwah noticed')
+      : 'Nothing needs your attention';
 
     // consent-waiting count on the Care tab + home widgets
     var dot = $('care-dot');
@@ -2074,10 +2161,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     else dot.hidden = true;
     var act = 0;
     data.reminders.forEach(function(r){ if (r.status === 'accepted') act++; });
-    $('w-rem').textContent = act + ' active' + (waiting ? ' · ' + waiting + ' waiting for you' : '');
-    var openReq = 0;
-    data.requests.forEach(function(q){ if (q.status === 'open') openReq++; });
-    $('w-req').textContent = openReq ? openReq + ' open — can you help?' : 'None open right now';
+    var todoN = act + (data.requests || []).length;
+    $('w-rem').textContent = (todoN ? todoN + (todoN === 1 ? ' thing to do' : ' things to do') : 'Nothing to do')
+      + (waiting ? ' · ' + waiting + ' waiting for you' : '');
   }
 
   document.addEventListener('click', function(e){
@@ -2544,6 +2630,22 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     joinAct({ action:'set_join_policy', policy: next }, next === 'open' ? 'The code is now enough' : 'Joining needs a yes from the family');
   });
 
+  // ---------- SOS: answered, or escalated ----------
+  function sosPost(type){
+    var sid = $('sosbar').dataset.sid;
+    if (!state || !sid) return;
+    post(API.events, { code: state.code, memberId: state.memberId, type: type, sosId: sid })
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not do that'); return; }
+        toast(type === 'sos_ack' ? 'The family knows you are on it 🧡' : 'Marked as sorted ✅');
+        refresh();
+      }).catch(function(){ toast('No connection — try again'); });
+  }
+  $('sos-ack').addEventListener('click', function(){ sosPost('sos_ack'); });
+  $('sos-done').addEventListener('click', function(){
+    if (confirm('Mark this SOS as sorted? Everyone will be told.')) sosPost('sos_resolve');
+  });
+
   // ---------- coachmarks: the interface, pointed at once ----------
   // Runs the first time a person reaches a circle, right after the
   // introduction, then marks the profile so it never runs again anywhere.
@@ -2672,6 +2774,81 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     }).join('');
   }
 
+  // ---------- pricing: the same plan, priced where you actually live ----
+  var planCur = null, planData = null;
+  function refreshPlan(){
+    if (!state) return;
+    fetch(API.plan + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
+      .then(function(r){ return r.json(); })
+      .then(function(j){ if (j.ok) { planData = j; if (!planCur) planCur = j.prefer || 'INR'; renderPlan(); } })
+      .catch(function(){});
+  }
+  function money(p){
+    // Indian grouping is 2,499 and 2,49,900 — not the 3-digit western one,
+    // and not the hand-rolled 2-digit one that turned 2499 into "24,99".
+    if (p.currency === 'USD') return p.symbol + p.amount.toFixed(2);
+    var n;
+    try { n = new Intl.NumberFormat('en-IN').format(p.amount); }
+    catch (e) { n = String(p.amount); }
+    return p.symbol + n;
+  }
+  function renderPlan(){
+    if (!planData) return;
+    var j = planData, cur = planCur;
+    $('pl-sub').textContent = j.anyAbroad
+      ? 'Your family lives in more than one country, so the price is shown both ways — ₹1 = about ' + (1 / j.rate).toFixed(3) + ' USD at a fixed ₹' + j.rate + '.'
+      : 'One price for the whole family, however many of you there are.';
+    $('pl-cur').querySelectorAll('button').forEach(function(b){
+      b.classList.toggle('sel', b.getAttribute('data-cur') === cur);
+    });
+    var h = '';
+    ['free', 'care'].forEach(function(id){
+      var pl = j.plans[id], pr = j.prices[cur][id];
+      var other = j.prices[cur === 'INR' ? 'USD' : 'INR'][id];
+      h += '<div class="card" style="margin:0 0 10px;box-shadow:none">' +
+           '<h3 style="margin:0">' + esc(pl.name) + ' · ' + (pr.amount ? money(pr) + ' a year' : 'Free, always') + '</h3>' +
+           (pr.amount ? '<p class="hint" style="margin:2px 0 0">' + money(other) + ' a year if you pay from ' +
+              (cur === 'INR' ? 'abroad' : 'India') + '</p>' : '') +
+           '<p class="hint" style="margin:6px 0 8px">' + esc(pl.tagline) + '</p>' +
+           '<div class="feed">' + pl.includes.map(function(x){
+             return '<div class="ev" style="box-shadow:none">✓ ' + esc(x) + '</div>'; }).join('') + '</div>' +
+           (id === 'care' ? '<button class="go" data-reserve="care" style="margin-top:10px">Reserve our family\u2019s place — ' + money(pr) + '</button>' : '') +
+           '</div>';
+    });
+    $('pl-plans').innerHTML = h;
+    $('pl-mine').hidden = !j.mine;
+    if (j.mine) {
+      $('pl-minetxt').textContent = 'You reserved ' + j.plans[j.mine.plan].name + ' at ' +
+        (j.mine.currency === 'USD' ? '$' : '₹') + j.mine.amount + ' a year. Nothing has been charged.';
+    }
+    var others = (j.reservations || []).filter(function(r){ return r.member_id !== state.memberId; });
+    $('pl-others').innerHTML = others.length
+      ? '<p class="eyebrow">Also reserved</p>' + others.map(function(r){
+          return '<div class="kv"><b>' + esc(r.name) + '</b><span>' + (r.currency === 'USD' ? '$' : '₹') + r.amount + '</span></div>'; }).join('')
+      : '';
+  }
+  $('pl-cur').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    planCur = b.getAttribute('data-cur'); renderPlan();
+  });
+  $('pl-plans').addEventListener('click', function(e){
+    var b = e.target.closest('[data-reserve]'); if (!b || !state) return;
+    b.disabled = true;
+    post(API.plan, { code: state.code, memberId: state.memberId, action: 'reserve',
+                     plan: b.getAttribute('data-reserve'), currency: planCur })
+      .then(function(j){
+        b.disabled = false;
+        if (!j.ok) { toast(j.error || 'Could not reserve'); return; }
+        toast('Reserved — nothing charged 💛');
+        refreshPlan();
+      }).catch(function(){ b.disabled = false; toast('No connection — try again'); });
+  });
+  $('pl-cancel').addEventListener('click', function(){
+    post(API.plan, { code: state.code, memberId: state.memberId, action: 'cancel' })
+      .then(function(){ toast('Reservation withdrawn'); refreshPlan(); })
+      .catch(function(){ toast('No connection — try again'); });
+  });
+
   // ---------- family coins: earned by caring, spent on Ekta ----------
   var coinBal = null;
   function refreshCoins(){
@@ -2759,19 +2936,33 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   });
   $('r-add').addEventListener('click', function(){
     var t = $('r-title').value.trim();
-    if (!t) { toast('Give the reminder a name'); return; }
+    if (!t) { toast('Say what needs doing'); return; }
+    var who = $('r-for').value;
+    var clear = function(){ $('r-title').value=''; $('r-time').value=''; $('r-date').value=''; };
+    // For a person it is a reminder they accept; for anyone it is a job the
+    // circle can pick up. One list, one form, two honest outcomes.
+    if (who === 'any') {
+      carePost({ action:'request_create', title:t,
+                 dueDate: repeatMode === 'once' ? ($('r-date').value || undefined) : undefined },
+        function(){ clear(); toast('Asked the whole family 🧡'); });
+      return;
+    }
     carePost({ action:'reminder_create', title:t,
                timeOfDay:$('r-time').value || undefined,
                dueDate: repeatMode === 'once' ? ($('r-date').value || undefined) : undefined,
-               forMemberId:$('r-for').value || undefined,
+               forMemberId: who || undefined,
                recurrence: repeatMode },
-      function(j){ $('r-title').value=''; $('r-time').value=''; $('r-date').value='';
-        toast(j.status === 'pending' ? 'Sent — they’ll be asked to accept it' : 'Reminder set 🧡'); });
+      function(j){ clear();
+        toast(j.status === 'pending' ? 'Sent — they’ll be asked to accept it' : 'Added 🧡'); });
   });
-  $('q-add').addEventListener('click', function(){
-    var t = $('q-title').value.trim(); if (!t) return;
-    carePost({ action:'request_create', title:t }, function(){ $('q-title').value=''; toast('The circle has been asked 🧡'); });
-  });
+  // The hint has to say which of the two is about to happen.
+  function todoHint(){
+    var who = $('r-for').value;
+    $('r-hint').textContent = who === 'any'
+      ? 'Nobody is assigned — the first person to tap "I\u2019m on it" takes it.'
+      : (who ? 'It only starts once they accept it.' : 'A reminder for you, starting straight away.');
+  }
+  $('r-for').addEventListener('change', todoHint);
 
   // ---------- Family book: contacts, addresses, meds-map ----------
   var bookCache = [], prepCache = [], bookAccess = [], bookConsent = [], bkFilter = 'all', bkAbout = '', bEditId = null, bKind = 'contact', bookStaleDays = 180;
@@ -3403,7 +3594,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   function onSend(){ if (curTab === 'ekta') ektaSend(); else sendMsg(); }
   $('send').addEventListener('click', onSend);
   $('msg').addEventListener('keydown', function(e){ if (e.key === 'Enter') onSend(); });
-  $('askhelp').addEventListener('click', function(){ switchTab('care'); setTimeout(function(){ try { $('q-title').focus(); } catch (e) {} }, 100); });
+  $('askhelp').addEventListener('click', function(){ switchTab('care'); setSec('care','rem');
+    setTimeout(function(){ try { $('r-for').value = 'any'; todoHint(); $('r-title').focus(); } catch (e) {} }, 100); });
 
   // ---------- camera: share a photo into the open chat ----------
   $('ecam').addEventListener('click', function(){ if (curChat) $('photoin').click(); });
