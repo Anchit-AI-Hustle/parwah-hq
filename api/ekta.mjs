@@ -14,7 +14,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
 import { careState, createReminder, createRequest } from './care.mjs';
-import { providerKeys } from './_keys.mjs';
+import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
 
 const ASSISTANT_NAME = 'Ekta'; // one-line swap if the persona name changes
 const MODEL_PRIMARY  = 'claude-sonnet-5';
@@ -238,23 +238,32 @@ function textBackups(vault) {
   }));
   const gkey = V.gemini;
   if (gkey) {
-    const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
-    list.push({ model: model, run: async function (sys, history) {
-      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(gkey), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: sys }] },
-          contents: history.map(function (m) { return { role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }; }),
-          generationConfig: { maxOutputTokens: 512 }
-        })
-      });
-      const j = await r.json();
-      if (!r.ok) throw new Error(model + ': ' + JSON.stringify(j).slice(0, 160));
-      const c = j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts;
-      const t = c && c.map(function (p) { return p.text || ''; }).join('').trim();
-      if (!t) throw new Error(model + ': empty reply');
-      return t;
+    // Google retires model names on a schedule, so walk a chain rather than
+    // pinning one id: a retired model (404) or an overloaded one (503) simply
+    // moves to the next candidate instead of taking the whole link down.
+    const models = (process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : [])
+      .concat(['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-2.5-flash']);
+    list.push({ model: models[0], run: async function (sys, history) {
+      const errs = [];
+      for (const model of models) {
+        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': gkey },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: sys }] },
+            contents: history.map(function (m) { return { role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }; }),
+            generationConfig: { maxOutputTokens: 800 }
+          })
+        });
+        const j = await r.json().catch(function () { return {}; });
+        if (!r.ok) { errs.push(model + ':' + r.status); continue; }
+        const c = j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts;
+        const t = c && c.map(function (p) { return p.text || ''; }).join('').trim();
+        if (!t) { errs.push(model + ':empty'); continue; }
+        this.model = model; // report the model that actually answered
+        return t;
+      }
+      throw new Error('gemini: ' + errs.join(', '));
     }});
   }
   const xkey = V.grok;
@@ -292,11 +301,12 @@ export async function ektaTurn(sql, circle, me, history) {
   if (vault.anthropic) {
     // Identity-linked API keys may name a workspace; the default workspace
     // needs no header at all.
+    // Identity-linked keys must name the workspace they act in; keys on the
+    // default workspace need no header at all.
+    const ws = vault.anthropic_ws || process.env.ANTHROPIC_WORKSPACE_ID;
     const client = new Anthropic(Object.assign(
       { apiKey: vault.anthropic },
-      process.env.ANTHROPIC_WORKSPACE_ID
-        ? { defaultHeaders: { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID } }
-        : {}));
+      ws ? { defaultHeaders: { 'anthropic-workspace-id': ws } } : {}));
     const tiers = [MODEL_PRIMARY, MODEL_DEEP, MODEL_FALLBACK];
     for (let i = 0; i < tiers.length; i++) {
       try {
@@ -336,7 +346,7 @@ export default async function handler(req, res) {
   catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
   try {
     const { keys } = await providerKeys(sql);
-    if (!Object.keys(keys).some(k => keys[k])) {
+    if (!MODEL_PROVIDERS.some(k => keys[k])) {
       return res.status(503).json({ ok: false, error: ASSISTANT_NAME + " has no brain yet — add an AI key in Profile → Ekta's brain, or set one on the server." });
     }
   } catch (e) { /* fall through: the cascade reports the real failure */ }

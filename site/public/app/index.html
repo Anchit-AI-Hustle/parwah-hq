@@ -989,11 +989,12 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         <option value="gemini">Google Gemini</option>
         <option value="grok">Grok (xAI)</option>
         <option value="kimi">Kimi (Moonshot)</option>
+        <option value="anthropic_ws">↳ Anthropic workspace ID (only if your key asks for one)</option>
       </select>
       <label for="k-key">API key</label>
       <input type="password" id="k-key" maxlength="300" placeholder="paste the key" autocomplete="off">
       <button class="go" id="k-save">Save key</button>
-      <p class="hint" style="margin-top:8px">Anthropic: console.anthropic.com → API keys · Gemini: aistudio.google.com/apikey · OpenAI: platform.openai.com/api-keys</p>
+      <p class="hint" style="margin-top:8px">Anthropic: console.anthropic.com → API keys · Gemini: aistudio.google.com/apikey · OpenAI: platform.openai.com/api-keys. If Anthropic replies "workspace id is required", add the workspace ID here too.</p>
     </div>
 
     <div class="card">
@@ -2140,7 +2141,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   });
 
   // ---------- Ekta's brain: provider keys ----------
-  var K_LABEL = { anthropic: 'Anthropic (Claude)', openai: 'OpenAI', gemini: 'Google Gemini', grok: 'Grok (xAI)', kimi: 'Kimi (Moonshot)' };
+  var K_LABEL = { anthropic: 'Anthropic (Claude)', anthropic_ws: '↳ Anthropic workspace ID', openai: 'OpenAI', gemini: 'Google Gemini', grok: 'Grok (xAI)', kimi: 'Kimi (Moonshot)' };
   function refreshKeys(){
     if (!state) return;
     fetch(API.keys + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))

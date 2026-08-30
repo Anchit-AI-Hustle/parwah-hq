@@ -4,10 +4,13 @@
 // cannot always be edited from every tool. Env always wins over the vault.
 // Values never leave the server: /api/keys reports presence only.
 
-export const PROVIDERS = ['anthropic', 'openai', 'gemini', 'grok', 'kimi'];
+export const PROVIDERS = ['anthropic', 'anthropic_ws', 'openai', 'gemini', 'grok', 'kimi'];
+// Providers that actually answer a turn (anthropic_ws is a setting, not a brain).
+export const MODEL_PROVIDERS = ['anthropic', 'openai', 'gemini', 'grok', 'kimi'];
 
 const ENV_MAP = {
   anthropic: ['ANTHROPIC_API_KEY'],
+  anthropic_ws: ['ANTHROPIC_WORKSPACE_ID'],
   openai: ['OPENAI_API_KEY'],
   gemini: ['GEMINI_API_KEY', 'GOOGLE_API_KEY'],
   grok: ['XAI_API_KEY', 'GROK_API_KEY'],
