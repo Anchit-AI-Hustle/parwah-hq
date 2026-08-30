@@ -130,7 +130,8 @@ for need in ("X-Content-Type-Options", "X-Frame-Options", "Referrer-Policy"):
     check(f"security header set: {need}", need in hdrs)
 
 # 10c. every data endpoint proves circle membership before touching data
-GUARDED = ["board", "book", "care", "chats", "circle", "events", "games", "plans", "push"]
+# every module that touches circle data must prove membership first
+GUARDED = ["_boardapi", "_keysapi", "_pushapi", "book", "care", "chats", "circle", "events", "games", "plans"]
 for name in GUARDED:
     f = API_DIR / f"{name}.mjs"
     if not f.exists():
@@ -150,6 +151,12 @@ sw = (REPO / "site/public/app/sw.js").read_text(encoding="utf-8")
 check("security: service worker bypasses /api/", "/api/" in sw)
 app_html = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
 check("security: no eval in app", "eval(" not in app_html and "new Function(" not in app_html)
+
+# ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
+FN_CAP = 12
+fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]
+check(f"serverless functions within plan cap ({len(fns)}/{FN_CAP})", len(fns) <= FN_CAP,
+      "merge endpoints behind a router (see api/diag.mjs) — deploys are REJECTED above the cap")
 
 print()
 if FAILS:

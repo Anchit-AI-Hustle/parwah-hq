@@ -16,6 +16,7 @@
 // POST /api/book {code, memberId, action:'add'|'update'|'remove'|'verify'}
 import { db, ensureSchema, circleByCode, isUuid, normPhone, phoneError } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
+import boardApi from './_boardapi.mjs';
 
 const KINDS = ['contact', 'address', 'med', 'fact', 'insurance'];
 const CATS = ['housework', 'doctor', 'vet', 'driver', 'shops', 'repairs', 'emergency', 'other'];
@@ -25,6 +26,8 @@ const STALE_DAYS = 180; // meds/insurance/facts older than this ask to be re-che
 function clean(v, max) { const s = String(v || '').trim().slice(0, max); return s || null; }
 
 export default async function handler(req, res) {
+  // the shared drawing board rides along on this function (12-function cap)
+  if (String((req.query && req.query.area) || '') === 'board') return boardApi(req, res);
   let sql;
   try {
     sql = db(); await ensureSchema(sql);
