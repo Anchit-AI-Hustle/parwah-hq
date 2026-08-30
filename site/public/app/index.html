@@ -257,6 +257,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .calgrid .day .pdot{display:block;width:5px;height:5px;border-radius:99px;background:var(--sindoor);margin:2px auto 0}
 .calgrid .day.sel .pdot{background:#fff}
 #giftbox{margin-top:4px;border-top:1px dashed var(--bone-2);padding-top:2px;text-align:left}
+.prepcard{margin-bottom:12px}
+.prephead{display:flex;align-items:baseline;justify-content:space-between}
+.preppct{font-size:.82rem;font-weight:700;color:var(--pine)}
+.pbar{height:8px;background:var(--bone);border-radius:99px;margin-top:8px;overflow:hidden}
+.pbar i{display:block;height:100%;background:linear-gradient(90deg,var(--marigold),var(--pine));border-radius:99px;transition:width .4s}
+.prepitems{display:flex;flex-wrap:wrap;gap:6px}
+.prepitem{font-size:.74rem;background:var(--day);border:1px solid var(--bone-2);border-radius:99px;padding:4px 9px}
 #bell .dot,#side-nb .dot{position:absolute;top:-2px;right:-2px;min-width:15px;height:15px;border-radius:99px;background:var(--sindoor);color:#fff;font-size:.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px;font-style:normal}
 .bar .who{margin-left:10px}
 .nrow{background:#fff;border:1px solid var(--bone-2);border-left:3px solid var(--bone-2);border-radius:12px;padding:12px 14px;font-size:.92rem;display:flex;gap:10px;align-items:flex-start;cursor:pointer;box-shadow:0 1px 2px rgba(36,31,23,.03)}
@@ -483,11 +490,11 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     </div>
 
     <div class="widgets">
-      <button class="widget" data-goto="profile" data-sec="family"><span class="wic" aria-hidden="true">👨‍👩‍👧</span><b>Family</b><small id="w-fam">Loading…</small></button>
+      <button class="widget" data-goto="people"><span class="wic" aria-hidden="true">👨‍👩‍👧</span><b>People</b><small id="w-fam">Loading…</small></button>
       <button class="widget" data-goto="care" data-sec="rem"><span class="wic" aria-hidden="true">🔔</span><b>Reminders</b><small id="w-rem">Loading…</small></button>
       <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true">🤝</span><b>Help requests</b><small id="w-req">Loading…</small></button>
       <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b>Chats</b><small id="w-chat">Family + personal</small></button>
-      <button class="widget" data-goto="care" data-sec="book"><span class="wic" aria-hidden="true">📒</span><b>Family book</b><small id="w-book">Contacts, addresses, meds-map</small></button>
+      <button class="widget" data-goto="memory"><span class="wic" aria-hidden="true">📒</span><b>Family memory</b><small id="w-book">Contacts, addresses, meds-map, facts</small></button>
       <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check — just ask</small></button>
       <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi — play together</small></button>
       <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
@@ -502,7 +509,6 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <div class="seg pageseg" id="care-seg" role="tablist" aria-label="Care sections">
       <button data-sec="rem" class="sel">🔔 Reminders</button>
       <button data-sec="req">🤝 Help requests</button>
-      <button data-sec="book">📒 Family book</button>
     </div>
     <div class="subsec" data-sec="rem">
     <div class="feed" id="rlist"><div class="ev">None yet.</div></div>
@@ -535,21 +541,53 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <p class="hint">Anyone in the circle can tap "I'm on it" — and 💬 discusses it in the family chat.</p>
     </div>
 
-    <div class="subsec" data-sec="book" hidden>
+
+  </section>
+
+
+  <!-- PEOPLE — the product is organised around the people you care about -->
+  <section id="pane-people" hidden>
+    <div class="ektahead"><span style="font-size:1.4rem" aria-hidden="true">👨‍👩‍👧</span><span><b>People</b><small>Everyone you care about — and how prepared the family is for each</small></span></div>
+    <p class="eyebrow">Preparedness</p>
+    <p class="hint" style="margin:2px 0 10px">Not a health score — a simple check that the family has the important information recorded and current for each person.</p>
+    <div id="preplist"><div class="ev">Loading…</div></div>
+    <div class="card">
+      <h3>Your circle</h3>
+      <p style="margin-bottom:10px">Code: <span class="codechip" id="p-code"></span>
+        <button class="linkbtn" id="code-edit" style="margin-left:10px">✏️ Set your own code</button></p>
+      <div id="codeform" hidden style="margin-bottom:12px">
+        <input type="text" id="cc-code" maxlength="12" placeholder="e.g. SHARMAS" style="text-transform:uppercase" aria-label="New invite code">
+        <button class="go" id="cc-save" style="margin-top:8px">Save invite code</button>
+        <p class="hint" style="margin-top:6px">4-12 letters and numbers, unique across Parwah. Your family joins with this code — old invite links stop working.</p>
+      </div>
+      <div class="members" id="members"></div>
+      <button class="go invitebtn" style="margin-top:14px">🧡 Invite family</button>
+      <p class="hint" style="margin-top:10px">Tap any member to see their profile — call, message privately or set a reminder for them.</p>
+    </div>
+  </section>
+
+  <!-- FAMILY MEMORY — where the family knows -->
+  <section id="pane-memory" hidden>
+    <div class="ektahead"><span style="font-size:1.4rem" aria-hidden="true">📒</span><span><b>Family memory</b><small>WhatsApp is where the family talks. This is where the family knows.</small></span></div>
     <div id="book-list-view">
       <div class="addrow" style="margin-top:0">
         <input type="search" id="b-search" maxlength="60" placeholder="Search the family book…" aria-label="Search family book">
       </div>
-      <div class="seg" id="bk-filter" role="group" aria-label="Family book sections" style="margin-bottom:10px">
+      <div class="seg" id="bk-filter" role="group" aria-label="Family memory sections" style="margin-bottom:8px">
         <button type="button" data-bk="all" class="sel">All</button>
-        <button type="button" data-bk="contact">☎️ Contacts</button>
-        <button type="button" data-bk="address">📍 Addresses</button>
-        <button type="button" data-bk="med">💊 Meds</button>
+        <button type="button" data-bk="contact">☎️</button>
+        <button type="button" data-bk="address">📍</button>
+        <button type="button" data-bk="med">💊</button>
+        <button type="button" data-bk="fact">🩸</button>
+        <button type="button" data-bk="insurance">🛡</button>
       </div>
+      <select id="bk-about" aria-label="About whom" style="margin-bottom:10px"><option value="">About anyone</option></select>
       <div class="feed" id="blist"><div class="ev">Nothing saved yet — add the family's first entry below 📒</div></div>
       <div class="card" style="margin-top:14px">
-        <h3 id="bf-title">Add to the family book</h3>
-        <div class="seg" id="b-kind"><button type="button" data-k="contact" class="sel">☎️ Contact</button><button type="button" data-k="address">📍 Address</button><button type="button" data-k="med">💊 Meds</button></div>
+        <h3 id="bf-title">Add to the family memory</h3>
+        <div class="seg" id="b-kind" style="flex-wrap:wrap"><button type="button" data-k="contact" class="sel">☎️ Contact</button><button type="button" data-k="address">📍 Address</button><button type="button" data-k="med">💊 Meds</button><button type="button" data-k="fact">🩸 Health fact</button><button type="button" data-k="insurance">🛡 Insurance</button></div>
+        <label for="b-about">About whom</label>
+        <select id="b-about"><option value="">The whole family</option></select>
         <label for="b-name" id="b-name-l">Who / what</label>
         <input type="text" id="b-name" maxlength="80" placeholder="e.g. Ramesh — plumber">
         <div id="bf-contact">
@@ -571,34 +609,45 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
           <input type="text" id="b-address" maxlength="300" placeholder="House, street, area, city, PIN">
         </div>
         <div id="bf-med" hidden>
-          <label for="b-for">For which problem</label>
+          <label for="b-for" id="b-for-l">For which problem</label>
           <input type="text" id="b-for" maxlength="160" placeholder="e.g. BP — as the doctor said">
+        </div>
+        <div id="bf-fact" hidden>
+          <label for="b-factcat">What kind of fact</label>
+          <select id="b-factcat">
+            <option value="blood">🩸 Blood group</option>
+            <option value="allergy">⚠️ Allergy</option>
+            <option value="preference">🧡 Preference</option>
+            <option value="other" selected>📎 Other</option>
+          </select>
         </div>
         <label for="b-notes">Notes</label>
         <input type="text" id="b-notes" maxlength="300" placeholder="e.g. after breakfast · comes on Tuesdays · gate code 4321">
-        <button class="go" id="b-save">Save to the family book</button>
+        <button class="go" id="b-save">Save to the family memory</button>
         <button class="linkbtn" id="b-cancel" hidden style="margin-top:8px">Cancel editing</button>
         <p class="hint">Shared with the whole circle — everyone can add, edit and keep it current.</p>
       </div>
     </div>
     <div id="book-detail" hidden>
-      <button class="cbtn ghost" id="bd-back">← Family book</button>
+      <button class="cbtn ghost" id="bd-back">← Family memory</button>
       <div class="card" style="margin-top:12px">
         <h3 id="bd-name"></h3>
         <p class="hint" id="bd-kind" style="margin:2px 0 8px"></p>
         <div class="kv" id="bd-phone-row" hidden><b>Phone</b><span id="bd-phone"></span></div>
         <div class="kv" id="bd-address-row" hidden><b>Address</b><span id="bd-address"></span></div>
         <div class="kv" id="bd-for-row" hidden><b>For</b><span id="bd-for"></span></div>
+        <div class="kv" id="bd-about-row" hidden><b>About</b><span id="bd-about"></span></div>
+        <div class="kv"><b>Last checked</b><span id="bd-verified"></span></div>
         <div class="kv" id="bd-notes-row" hidden><b>Notes</b><span id="bd-notes"></span></div>
         <div class="kv"><b>Added by</b><span id="bd-by"></span></div>
         <div class="prow2" style="margin-top:12px">
           <a class="cbtn" id="bd-call" hidden>📞 Call</a>
           <a class="cbtn" id="bd-map" hidden target="_blank" rel="noopener">🗺 Open in Maps</a>
+          <button class="cbtn" id="bd-verify">✅ Still current</button>
           <button class="cbtn ghost" id="bd-edit">✏️ Edit</button>
           <button class="cbtn no" id="bd-remove">🗑 Remove</button>
         </div>
       </div>
-    </div>
     </div>
   </section>
 
@@ -840,10 +889,6 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 
   <!-- PROFILE -->
   <section id="pane-profile" hidden>
-    <div class="seg pageseg" id="profile-seg" role="tablist" aria-label="Profile sections">
-      <button data-sec="me" class="sel">👤 My profile</button>
-      <button data-sec="family">👨‍👩‍👧 Family members</button>
-    </div>
     <div class="subsec" data-sec="me">
     <div class="card">
       <h3>You</h3>
@@ -906,21 +951,6 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     </div>
 
     </div>
-    <div class="subsec" data-sec="family">
-    <div class="card">
-      <h3>Your circle</h3>
-      <p style="margin-bottom:10px">Code: <span class="codechip" id="p-code"></span>
-        <button class="linkbtn" id="code-edit" style="margin-left:10px">✏️ Set your own code</button></p>
-      <div id="codeform" hidden style="margin-bottom:12px">
-        <input type="text" id="cc-code" maxlength="12" placeholder="e.g. SHARMAS" style="text-transform:uppercase" aria-label="New invite code">
-        <button class="go" id="cc-save" style="margin-top:8px">Save invite code</button>
-        <p class="hint" style="margin-top:6px">4-12 letters and numbers, unique across Parwah. Your family joins with this code — old invite links stop working.</p>
-      </div>
-      <div class="members" id="members"></div>
-      <button class="go invitebtn" style="margin-top:14px">🧡 Invite family</button>
-      <p class="hint" style="margin-top:10px">Tap any member to see their profile — call, message privately or set a reminder for them.</p>
-    </div>
-    </div>
         <div class="subsec" data-sec="me">
     <div class="card">
       <h3>Plan</h3>
@@ -969,17 +999,18 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 <nav class="tabs" id="tabs" hidden aria-label="App sections">
   <div class="inner">
     <div class="side-brand side-only"><span class="dev" aria-hidden="true">परवाह</span><span>Parwah</span></div>
-    <button data-tab="home" class="sel"><span class="ic" aria-hidden="true">🏠</span>Home</button>
+    <button data-tab="home" class="sel"><span class="ic" aria-hidden="true">🏠</span>Today</button>
     <button data-tab="notifs" class="deskonly" id="side-nb" style="position:relative"><span class="ic" aria-hidden="true">🔔</span>Notifications<i class="dot" id="nb-dot2" hidden></i></button>
+    <button data-tab="people"><span class="ic" aria-hidden="true">👨‍👩‍👧</span>People</button>
+    <button data-tab="memory"><span class="ic" aria-hidden="true">📒</span>Memory</button>
     <button data-tab="care"><span class="ic" aria-hidden="true">🔔</span>Care<i class="dot" id="care-dot" hidden></i></button>
     <div class="subnav side-only" data-parent="care">
       <button data-tab="care" data-sec="rem">Reminders</button>
       <button data-tab="care" data-sec="req">Help requests</button>
-      <button data-tab="care" data-sec="book">Family book</button>
     </div>
-    <button data-tab="chat"><span class="ic" aria-hidden="true">💬</span>Chat</button>
-    <button data-tab="ekta" class="deskonly"><span class="ic" aria-hidden="true">✨</span>Ekta</button>
-    <button data-tab="fun"><span class="ic" aria-hidden="true">🎉</span>Together</button>
+    <button data-tab="ekta" class="deskonly"><span class="ic" aria-hidden="true">✨</span>Ask Ekta</button>
+    <button data-tab="chat" class="deskonly"><span class="ic" aria-hidden="true">💬</span>Chat</button>
+    <button data-tab="fun" class="deskonly"><span class="ic" aria-hidden="true">🎉</span>Together</button>
     <div class="subnav side-only" data-parent="fun">
       <button data-tab="fun" data-sec="plans">Plans &amp; calls</button>
       <button data-tab="fun" data-sec="games">Games</button>
@@ -1026,18 +1057,19 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 <div class="drawer" id="drawer" hidden>
   <div class="dpanel">
     <div class="dhead"><span class="dev" aria-hidden="true">परवाह</span> Parwah <button class="x" id="drawer-x" aria-label="Close menu">✕</button></div>
-    <button class="ditem" data-tab="home">🏠 Home</button>
+    <button class="ditem" data-tab="home">🏠 Today</button>
     <button class="ditem" data-tab="notifs">🔔 Notifications</button>
+    <button class="ditem" data-tab="people">👨‍👩‍👧 People</button>
+    <button class="ditem" data-tab="memory">📒 Family memory</button>
     <div class="dgroup">
       <button class="ditem dparent" data-grp="care">🔔 Care <span class="caret">▾</span></button>
       <div class="dsub">
         <button class="ditem sub" data-tab="care" data-sec="rem">Reminders</button>
         <button class="ditem sub" data-tab="care" data-sec="req">Help requests</button>
-        <button class="ditem sub" data-tab="care" data-sec="book">Family book</button>
       </div>
     </div>
+    <button class="ditem" data-tab="ekta">✨ Ask Ekta</button>
     <button class="ditem" data-tab="chat">💬 Chat</button>
-    <button class="ditem" data-tab="ekta">✨ Ekta</button>
     <div class="dgroup">
       <button class="ditem dparent" data-grp="fun">🎉 Together <span class="caret">▾</span></button>
       <div class="dsub">
@@ -1065,7 +1097,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 (function(){
   var $ = function(id){ return document.getElementById(id); };
   var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', push: '../api/push' };
-  var TABS = ['home','care','chat','ekta','profile','fun','notifs'];
+  var TABS = ['home','people','memory','care','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
   var curChat = null, chatsCache = [], membersCache = [];
@@ -1149,7 +1181,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     document.querySelectorAll('#drawer .ditem[data-tab]').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-tab') === t && !b.dataset.sec);
     });
-    if (t === 'care' || t === 'fun' || t === 'profile') {
+    if (t === 'care' || t === 'fun') {
       var seg = $(t + '-seg'), cur = seg && seg.querySelector('.sel');
       if (cur) setSec(t, cur.getAttribute('data-sec'));
     }
@@ -1177,7 +1209,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       b.classList.toggle('sel', b.getAttribute('data-sec') === sec);
     });
   }
-  ['care', 'fun', 'profile'].forEach(function(pane){
+  ['care', 'fun'].forEach(function(pane){
     $(pane + '-seg').addEventListener('click', function(e){
       var b = e.target.closest('button'); if (b) setSec(pane, b.getAttribute('data-sec'));
     });
@@ -1868,32 +1900,87 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   });
 
   // ---------- Family book: contacts, addresses, meds-map ----------
-  var bookCache = [], bkFilter = 'all', bEditId = null, bKind = 'contact';
-  var BK_ICON = { contact: '☎️', address: '📍', med: '💊' };
-  var BK_LABEL = { contact: 'Contact', address: 'Address', med: 'Meds' };
+  var bookCache = [], prepCache = [], bkFilter = 'all', bkAbout = '', bEditId = null, bKind = 'contact', bookStaleDays = 180;
+  var BK_ICON = { contact: '☎️', address: '📍', med: '💊', fact: '🩸', insurance: '🛡' };
+  var BK_LABEL = { contact: 'Contact', address: 'Address', med: 'Meds', fact: 'Health fact', insurance: 'Insurance' };
+  var FRESH_KINDS = { med: 1, fact: 1, insurance: 1 };
+  var PREP_LABEL = { doctor: 'Doctor', meds: 'Meds', allergies: 'Allergies', blood: 'Blood group', emergency: 'Emergency contact', insurance: 'Insurance' };
+  function entryStale(e){
+    return FRESH_KINDS[e.kind] && (Date.now() - new Date(e.last_verified_at).getTime()) > bookStaleDays * 86400000;
+  }
+  function agoLine(ts){
+    var d = Math.floor((Date.now() - new Date(ts).getTime()) / 86400000);
+    if (d < 1) return 'today';
+    if (d < 31) return d + ' day' + (d > 1 ? 's' : '') + ' ago';
+    var mo = Math.floor(d / 30);
+    return mo + ' month' + (mo > 1 ? 's' : '') + ' ago';
+  }
+  function rebuildAboutSelects(){
+    var opts = '';
+    membersCache.forEach(function(m){ opts += '<option value="' + m.id + '">' + esc(m.name) + '</option>'; });
+    var f = $('bk-about'), cur = f.value;
+    f.innerHTML = '<option value="">About anyone</option><option value="fam">Whole-family entries</option>' + opts;
+    f.value = cur;
+    var a = $('b-about'), curA = a.value;
+    a.innerHTML = '<option value="">The whole family</option>' + opts;
+    a.value = curA;
+  }
+  function renderPrep(){
+    var h = '';
+    prepCache.forEach(function(pp){
+      var rows = Object.keys(pp.items).map(function(k){
+        var st = pp.items[k];
+        var ic = st === 'ok' ? '✅' : st === 'verify' ? '🟡' : '❌';
+        return '<span class="prepitem">' + ic + ' ' + PREP_LABEL[k] + (st === 'verify' ? ' (check)' : st === 'missing' ? ' (missing)' : '') + '</span>';
+      }).join('');
+      h += '<div class="card prepcard">' +
+        '<div class="prephead"><b>' + esc(pp.name) + '</b><span class="preppct">' + pp.pct + '% prepared</span></div>' +
+        '<div class="pbar"><i style="width:' + pp.pct + '%"></i></div>' +
+        '<p class="hint" style="margin:6px 0 8px">' + (pp.attention ? pp.attention + ' thing' + (pp.attention > 1 ? 's' : '') + ' need' + (pp.attention > 1 ? '' : 's') + ' attention' : 'All the important information is recorded 🧡') + '</p>' +
+        '<div class="prepitems">' + rows + '</div>' +
+        '<div class="prow2" style="margin-top:10px">' +
+        '<button class="cbtn" data-pmem="' + pp.memberId + '">📒 Their memory</button>' +
+        '<button class="cbtn ghost" data-mprof="' + pp.memberId + '">👤 Profile</button>' +
+        '</div></div>';
+    });
+    $('preplist').innerHTML = h || '<div class="ev">Loading…</div>';
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-pmem]');
+    if (!b) return;
+    bkAbout = b.getAttribute('data-pmem');
+    $('bk-about').value = bkAbout;
+    switchTab('memory');
+    renderBook();
+  });
   var CAT_LABEL = { housework: '🧹 Housework', doctor: '🩺 Doctor', vet: '🐾 Vet', driver: '🚗 Driver', shops: '🛒 Shops', repairs: '🔧 Repairs', other: '📦 Other' };
   function refreshBook(){
     if (!state) return;
     fetch(API.book + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); })
-      .then(function(j){ if (j.ok) { bookCache = j.entries || []; renderBook(); } })
+      .then(function(j){ if (j.ok) { bookCache = j.entries || []; prepCache = j.prep || []; bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); } })
       .catch(function(){});
   }
   function bookEntry(id){ var e = null; bookCache.forEach(function(x){ if (x.id === id) e = x; }); return e; }
   function renderBook(){
     var qy = $('b-search').value.trim().toLowerCase();
+    bkAbout = $('bk-about').value;
     var list = bookCache.filter(function(e){
       if (bkFilter !== 'all' && e.kind !== bkFilter) return false;
+      if (bkAbout === 'fam' && e.about_member) return false;
+      if (bkAbout && bkAbout !== 'fam' && e.about_member !== bkAbout) return false;
       if (!qy) return true;
-      return [e.name, e.category, e.phone, e.address, e.forwhat, e.notes].join(' ').toLowerCase().indexOf(qy) >= 0;
+      return [e.name, e.category, e.phone, e.address, e.forwhat, e.notes, e.about_name].join(' ').toLowerCase().indexOf(qy) >= 0;
     });
     var h = '';
     list.forEach(function(e){
       var sub = e.kind === 'contact' ? ((CAT_LABEL[e.category] || '') + (e.phone ? ' · ' + esc(e.phone) : ''))
               : e.kind === 'address' ? esc(e.address || '')
-              : ('for ' + esc(e.forwhat || '—'));
+              : esc(e.forwhat || '—');
+      if (e.about_name) sub = '👤 ' + esc(e.about_name) + ' · ' + sub;
+      var staleTag = entryStale(e) ? ' <em style="color:var(--sindoor);font-style:normal">🟡 check</em>' : '';
       h += '<div class="ev" data-bopen="' + e.id + '" role="button" tabindex="0" style="cursor:pointer">' +
-           BK_ICON[e.kind] + ' <b>' + esc(e.name) + '</b><small>' + sub + '</small></div>';
+           BK_ICON[e.kind] + ' <b>' + esc(e.name) + '</b>' + staleTag + '<small>' + sub + '</small></div>';
     });
     $('blist').innerHTML = h || '<div class="ev">' + (qy || bkFilter !== 'all' ? 'Nothing matches — try All or clear the search.' : 'Nothing saved yet — add the family\'s first entry below 📒') + '</div>';
     var nC = bookCache.filter(function(e){ return e.kind === 'contact'; }).length;
@@ -1910,14 +1997,18 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     renderBook();
   });
   $('b-search').addEventListener('input', renderBook);
+  $('bk-about').addEventListener('change', renderBook);
   function setBKind(k){
     bKind = k;
     $('b-kind').querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x.getAttribute('data-k') === k); });
     $('bf-contact').hidden = k !== 'contact';
     $('bf-address').hidden = k !== 'address';
-    $('bf-med').hidden = k !== 'med';
-    $('b-name-l').textContent = k === 'med' ? 'Name of the dawai' : k === 'address' ? 'Place name' : 'Who / what';
-    $('b-name').placeholder = k === 'med' ? 'e.g. Amlopres 5' : k === 'address' ? "e.g. Dadi's house" : 'e.g. Ramesh — plumber';
+    $('bf-med').hidden = !(k === 'med' || k === 'fact' || k === 'insurance');
+    $('bf-fact').hidden = k !== 'fact';
+    $('b-for-l').textContent = k === 'med' ? 'For which problem' : k === 'fact' ? 'The detail' : 'Policy no / what it covers';
+    $('b-for').placeholder = k === 'med' ? 'e.g. BP — as the doctor said' : k === 'fact' ? 'e.g. B+ · allergic to penicillin' : 'e.g. Star Health 12345 · hospital cover';
+    $('b-name-l').textContent = k === 'med' ? 'Name of the dawai' : k === 'address' ? 'Place name' : k === 'fact' ? 'Fact name' : k === 'insurance' ? 'Policy / insurer' : 'Who / what';
+    $('b-name').placeholder = k === 'med' ? 'e.g. Amlopres 5' : k === 'address' ? "e.g. Dadi's house" : k === 'fact' ? 'e.g. Blood group' : k === 'insurance' ? 'e.g. Star Health family plan' : 'e.g. Ramesh — plumber';
   }
   $('b-kind').addEventListener('click', function(e){
     var b = e.target.closest('button'); if (b) setBKind(b.getAttribute('data-k'));
@@ -1934,13 +2025,16 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var nm = $('b-name').value.trim();
     if (!nm) { toast('Give the entry a name'); return; }
     var body = { code: state.code, memberId: state.memberId, action: bEditId ? 'update' : 'add', id: bEditId || undefined,
-                 kind: bKind, name: nm, category: $('b-cat').value, phone: $('b-phone').value.trim() || undefined,
+                 kind: bKind, name: nm,
+                 category: bKind === 'fact' ? $('b-factcat').value : $('b-cat').value,
+                 aboutId: $('b-about').value || undefined,
+                 phone: $('b-phone').value.trim() || undefined,
                  address: $('b-address').value.trim() || undefined, forwhat: $('b-for').value.trim() || undefined,
                  notes: $('b-notes').value.trim() || undefined };
     post(API.book, body)
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not save'); return; }
-        toast(bEditId ? 'Entry updated 📒' : 'Saved to the family book 📒');
+        toast(bEditId ? 'Entry updated 📒' : 'Saved to the family memory 📒');
         clearBookForm(); refreshBook();
       })
       .catch(function(){ toast('No connection — try again'); });
@@ -1955,6 +2049,11 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var rows = [['bd-phone-row', 'bd-phone', e.phone], ['bd-address-row', 'bd-address', e.address], ['bd-for-row', 'bd-for', e.forwhat], ['bd-notes-row', 'bd-notes', e.notes]];
     rows.forEach(function(r){ $(r[0]).hidden = !r[2]; if (r[2]) $(r[1]).textContent = r[2]; });
     $('bd-by').textContent = e.by_name || 'family';
+    $('bd-about-row').hidden = !e.about_name;
+    if (e.about_name) $('bd-about').textContent = e.about_name;
+    var stale = entryStale(e);
+    $('bd-verified').textContent = agoLine(e.last_verified_at) + (stale ? ' — may be out of date 🟡' : ' ✅');
+    $('bd-verify').hidden = !FRESH_KINDS[e.kind];
     if (e.phone) { $('bd-call').href = 'tel:' + encodeURIComponent(e.phone); $('bd-call').hidden = false; } else $('bd-call').hidden = true;
     if (e.address) { $('bd-map').href = 'https://maps.google.com/?q=' + encodeURIComponent(e.address); $('bd-map').hidden = false; } else $('bd-map').hidden = true;
   }
@@ -1969,11 +2068,25 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     bEditId = e.id;
     $('b-name').value = e.name; $('b-phone').value = e.phone || ''; $('b-address').value = e.address || '';
     $('b-for').value = e.forwhat || ''; $('b-notes').value = e.notes || '';
-    if (e.category) $('b-cat').value = e.category;
+    if (e.kind === 'fact') { if (e.category) $('b-factcat').value = e.category; }
+    else if (e.category) $('b-cat').value = e.category;
+    $('b-about').value = e.about_member || '';
     $('bf-title').textContent = 'Edit: ' + e.name;
     $('b-cancel').hidden = false;
     $('book-detail').hidden = true; $('book-list-view').hidden = false;
     try { $('b-name').focus(); } catch (err) {}
+  });
+  $('bd-verify').addEventListener('click', function(){
+    var e = bookEntry($('book-detail').dataset.bid); if (!e) return;
+    post(API.book, { code: state.code, memberId: state.memberId, action: 'verify', id: e.id })
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not verify'); return; }
+        toast('Marked as checked today ✅');
+        e.last_verified_at = new Date().toISOString();
+        $('bd-verified').textContent = 'today ✅';
+        refreshBook();
+      })
+      .catch(function(){ toast('No connection — try again'); });
   });
   $('bd-remove').addEventListener('click', function(){
     var e = bookEntry($('book-detail').dataset.bid); if (!e) return;
