@@ -113,6 +113,16 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .pageseg button{padding:11px 6px;font-size:.88rem}
 .bigletter{font-family:var(--disp);font-size:2.6rem;font-weight:700;color:var(--sindoor);text-align:center;background:#fff;border:2px dashed var(--marigold);border-radius:16px;padding:12px;margin:10px 0;letter-spacing:.1em}
 .bigletter.small{font-size:1.3rem;letter-spacing:0}
+.teams2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.teamcol{background:var(--day);border:1px solid var(--bone-2);border-radius:14px;padding:10px}
+.teamcol h4{font-family:var(--body);font-size:.78rem;font-weight:700;margin-bottom:8px;display:flex;justify-content:space-between}
+.teamcol h4 .tscore{font-family:var(--disp);font-size:1rem}
+.pchip{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--bone-2);border-radius:99px;padding:5px 10px;font-size:.8rem;font-weight:600;margin-bottom:6px}
+.pchip .sc{color:var(--ink-soft);font-weight:400}
+.pchip .mini{border:0;background:var(--bone);border-radius:99px;width:20px;height:20px;font-size:.62rem;cursor:pointer;line-height:1;margin-left:auto}
+.pchip .mini.kick{color:var(--alert)}
+.pchip .mini + .mini{margin-left:2px}
+.modeline a{font-weight:700}
 #tboard{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:250px;margin:12px 0}
 .tcell{aspect-ratio:1;font-size:1.7rem;font-weight:700;background:#fff;border:1px solid var(--bone-2);border-radius:12px;cursor:pointer;font-family:var(--disp)}
 .tcell.x{color:var(--sindoor)}.tcell.o{color:var(--pine)}
@@ -492,13 +502,15 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       </div>
       <div class="card">
         <h3>Antakshari 🎤</h3>
-        <p>The classic song game, on a family call — the app keeps the letter, the turns and the score. Seniors' home turf!</p>
-        <button class="go" id="ga-start">🎤 Start Antakshari</button>
+        <p>Teams, turns, letters and scores — the app referees while the family sings. Opens a lobby everyone can join.</p>
+        <div class="seg" id="am-seg"><button type="button" data-m="chat" class="sel">💬 In chat / in person</button><button type="button" data-m="call">📹 On a video call</button></div>
+        <button class="go" id="ga-start" style="margin-top:12px">🎤 Open Antakshari lobby</button>
       </div>
       <div class="card">
         <h3>Dumb Charades 🎭</h3>
-        <p>Act it out on the video call — the app secretly deals your Bollywood movie and keeps score. No talking!</p>
-        <button class="go" id="gc-start">🎭 Start Charades</button>
+        <p>Teams act and guess — the app deals the movie secretly to the actor. Video-call mode is full acting mode.</p>
+        <div class="seg" id="cm-seg"><button type="button" data-m="call" class="sel">📹 Acting on video call</button><button type="button" data-m="chat">🏠 Same room / own call</button></div>
+        <button class="go" id="gc-start" style="margin-top:12px">🎭 Open Charades lobby</button>
       </div>
       <p class="eyebrow">Quick duel · 2 players</p>
       <div class="card">
@@ -518,33 +530,35 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       </div>
     </div>
     <div id="game-on" hidden>
-      <div class="card" id="g-ant" hidden>
-        <h3>Antakshari 🎤</h3>
-        <p class="hint" id="a-status" style="margin:4px 0 4px"></p>
-        <div class="bigletter" id="a-letter"></div>
-        <div class="members" id="a-scores"></div>
-        <div id="a-mine" hidden>
-          <div class="addrow">
-            <input type="text" id="a-next" maxlength="1" placeholder="Song ended on… (one letter)" style="text-transform:uppercase" aria-label="Next letter">
-            <button class="cbtn" id="a-sang">🎶 I sang it! +1</button>
-            <button class="cbtn no" id="a-pass">Pass 😅</button>
+      <div class="card" id="g-party" hidden>
+        <h3 id="pt-title"></h3>
+        <p class="hint modeline" id="pt-mode" style="margin:4px 0 4px"></p>
+        <div class="teams2" id="pt-teams"></div>
+        <p class="hint" id="pt-status"></p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px" id="pt-actions">
+          <button class="cbtn" id="pt-join" hidden>🙋 I'm in!</button>
+          <button class="go" id="pt-begin" hidden style="width:auto;margin-top:0;padding:12px 22px">▶️ Start the game</button>
+          <button class="cbtn no" id="pt-leave" hidden>Leave</button>
+        </div>
+        <div id="ant-play" hidden>
+          <div class="bigletter" id="a-letter"></div>
+          <div id="a-mine" hidden>
+            <div class="addrow">
+              <input type="text" id="a-next" maxlength="1" placeholder="Song ended on… (one letter)" style="text-transform:uppercase" aria-label="Next letter">
+              <button class="cbtn" id="a-sang">🎶 I sang it! +1</button>
+              <button class="cbtn no" id="a-pass">Pass 😅</button>
+            </div>
           </div>
         </div>
-        <p class="hint">Sing on the call or in the room — the app referees.</p>
-        <button class="cbtn no" id="a-end" style="margin-top:10px">End game</button>
-      </div>
-      <div class="card" id="g-cha" hidden>
-        <h3>Dumb Charades 🎭</h3>
-        <p class="hint" id="c-status" style="margin:4px 0 4px"></p>
-        <div class="bigletter small" id="c-prompt" hidden></div>
-        <div class="members" id="c-scores"></div>
-        <div id="c-mine" hidden style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-          <button class="cbtn" id="c-draw">🎬 Draw a movie</button>
-          <button class="cbtn" id="c-guessed" hidden>They guessed it! +1</button>
-          <button class="cbtn no" id="c-flop" hidden>Nobody got it 🙈</button>
+        <div id="cha-play" hidden>
+          <div class="bigletter small" id="c-prompt" hidden></div>
+          <div id="c-mine" hidden style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            <button class="cbtn" id="c-draw">🎬 Draw a movie</button>
+            <button class="cbtn" id="c-guessed" hidden>Our team guessed it! +1</button>
+            <button class="cbtn no" id="c-flop" hidden>Nobody got it 🙈</button>
+          </div>
         </div>
-        <p class="hint">Only the actor sees the movie. Act on the call — the app scores.</p>
-        <button class="cbtn no" id="c-end" style="margin-top:10px">End game</button>
+        <button class="cbtn no" id="pt-end" hidden style="margin-top:12px">End game (admin)</button>
       </div>
       <div class="card" id="g-ttt" hidden>
         <h3>Tic-Tac-Toe ⭕✕</h3>
@@ -1418,6 +1432,74 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     }
     $('board').innerHTML = h;
   }
+  var TEAM_NAMES = ['Team Marigold 🧡', 'Team Pine 💚'];
+  function partyCurrent(st){
+    var t = st.teamTurn;
+    var list = st.players.filter(function(p){ return p.team === t; });
+    if (!list.length) { t = 1 - t; list = st.players.filter(function(p){ return p.team === t; }); }
+    if (!list.length) return null;
+    return list[st.ptr[t] % list.length];
+  }
+  function renderParty(g, st, kind){
+    $('g-party').hidden = false;
+    var meP = null; st.players.forEach(function(p){ if (p.id === state.memberId) meP = p; });
+    var meAdmin = (st.admins || []).indexOf(state.memberId) >= 0;
+    var cur = partyCurrent(st);
+    var meTurn = st.status === 'playing' && cur && cur.id === state.memberId;
+
+    $('pt-title').textContent = (kind === 'antakshari' ? 'Antakshari 🎤' : 'Dumb Charades 🎭') + (st.status === 'lobby' ? ' — lobby open' : '');
+    $('pt-mode').innerHTML = (st.mode === 'call'
+      ? '📹 Video-call mode — <a href="' + esc(st.room || '#') + '" target="_blank" rel="noopener">join the room</a>'
+      : '💬 Chat / in-person mode') + ' · admin: ' + esc((st.players.filter(function(p){ return st.admins.indexOf(p.id) >= 0; }).map(function(p){ return p.name; }).join(', ')) || '—');
+
+    var th = '';
+    for (var t = 0; t < 2; t++) {
+      var list = st.players.filter(function(p){ return p.team === t; });
+      th += '<div class="teamcol"><h4>' + TEAM_NAMES[t] + ' <span class="tscore">' + (st.teamScores ? st.teamScores[t] : 0) + '</span></h4>';
+      list.forEach(function(p){
+        var isAdm = st.admins.indexOf(p.id) >= 0;
+        th += '<div class="pchip">' + (isAdm ? '⭐ ' : '') + esc(p.name) +
+              (cur && cur.id === p.id && st.status === 'playing' ? ' 🎯' : '') +
+              ' <span class="sc">· ' + (p.score || 0) + '</span>' +
+              (meAdmin && p.id !== state.memberId
+                ? (isAdm ? '' : '<button class="mini" data-gpromote="' + p.id + '" title="Make co-admin">⭐</button>') +
+                  '<button class="mini kick" data-gkick="' + p.id + '" title="Remove">✕</button>'
+                : '') + '</div>';
+      });
+      if (!list.length) th += '<div class="pchip" style="opacity:.6">waiting…</div>';
+      th += '</div>';
+    }
+    $('pt-teams').innerHTML = th;
+
+    $('pt-status').textContent = st.status === 'lobby'
+      ? 'Lobby open — everyone in the circle was invited in chat. ' + st.players.length + ' in so far.'
+      : (kind === 'antakshari'
+          ? (meTurn ? 'Your stage — sing a song starting with "' + st.letter + '"!' : 'On stage: ' + (cur ? cur.name : '—') + ' · letter "' + st.letter + '"')
+          : (meTurn ? (st.prompt && String(st.prompt).indexOf('hidden') < 0 ? 'Act it out — not a word!' : 'You are the actor — draw a movie')
+                    : (st.prompt ? (cur ? cur.name : 'The actor') + ' is acting… guess out loud!' : 'Waiting for ' + (cur ? cur.name : '—') + ' to draw')));
+
+    $('pt-join').hidden = !!meP;
+    $('pt-leave').hidden = !meP;
+    $('pt-begin').hidden = !(meAdmin && st.status === 'lobby' && st.players.length >= 2);
+    $('pt-end').hidden = !meAdmin;
+
+    $('ant-play').hidden = !(kind === 'antakshari' && st.status === 'playing');
+    $('cha-play').hidden = !(kind === 'charades' && st.status === 'playing');
+    if (kind === 'antakshari') {
+      $('a-letter').textContent = st.letter || '';
+      $('a-mine').hidden = !meTurn;
+    } else {
+      var holding = !!st.prompt && String(st.prompt).indexOf('hidden') < 0;
+      $('c-prompt').hidden = !(meTurn && holding);
+      if (meTurn && holding) $('c-prompt').textContent = '🤫 ' + st.prompt;
+      $('c-mine').hidden = !meTurn;
+      $('c-draw').hidden = holding;
+      $('c-guessed').hidden = !holding;
+      $('c-flop').hidden = !holding;
+    }
+    $('w-game').textContent = (kind === 'antakshari' ? 'Antakshari' : 'Charades') +
+      (st.status === 'lobby' ? ' lobby open — tap to join!' : ': ' + (meTurn ? 'your turn!' : (cur ? cur.name + "'s turn" : '')));
+  }
   function scoreChips(st){
     return st.players.map(function(p, i){
       return '<span class="member" style="border-left:3px solid ' + TOKC[i % TOKC.length] + '">' + esc(p.name) + ' <em>· ' + (p.score || 0) + '</em></span>';
@@ -1427,19 +1509,11 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     curGame = g;
     $('game-none').hidden = !!g;
     $('game-on').hidden = !g;
-    ['g-snakes', 'g-ant', 'g-cha', 'g-ttt'].forEach(function(id){ $(id).hidden = true; });
+    ['g-snakes', 'g-party', 'g-ttt'].forEach(function(id){ $(id).hidden = true; });
     if (!g) { $('w-game').textContent = '3 games live — play together'; return; }
     var st = g.state, kind = st.kind || g.kind;
     var turnP = st.players[st.turn], meTurn = turnP && turnP.id === state.memberId;
-    if (kind === 'antakshari') {
-      $('g-ant').hidden = false;
-      $('a-letter').textContent = st.letter;
-      $('a-scores').innerHTML = scoreChips(st);
-      $('a-status').textContent = meTurn ? 'Your stage — sing a song starting with "' + st.letter + '"!' : 'On stage: ' + turnP.name + ' · letter "' + st.letter + '"';
-      $('a-mine').hidden = !meTurn;
-      $('w-game').textContent = 'Antakshari on! ' + (meTurn ? 'Your turn 🎤' : turnP.name + "'s turn");
-      return;
-    }
+    if (kind === 'antakshari' || kind === 'charades') { renderParty(g, st, kind); return; }
     if (kind === 'ttt') {
       $('g-ttt').hidden = false;
       var iAmIn = st.players.some(function(p){ return p.id === state.memberId; });
@@ -1456,22 +1530,6 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       });
       $('tboard').innerHTML = bh;
       $('w-game').textContent = over ? 'Duel over — start the next game!' : 'Tic-Tac-Toe: ' + st.players[0].name + ' vs ' + st.players[1].name;
-      return;
-    }
-    if (kind === 'charades') {
-      $('g-cha').hidden = false;
-      $('c-scores').innerHTML = scoreChips(st);
-      var holding = !!st.prompt && String(st.prompt).indexOf('hidden') < 0;
-      $('c-prompt').hidden = !(meTurn && holding);
-      if (meTurn && holding) $('c-prompt').textContent = '🤫 ' + st.prompt;
-      $('c-status').textContent = meTurn
-        ? (holding ? 'Act it out — not a word!' : 'You are the actor — draw a movie')
-        : (st.prompt ? turnP.name + ' is acting… guess on the call!' : 'Waiting for ' + turnP.name + ' to draw');
-      $('c-mine').hidden = !meTurn;
-      $('c-draw').hidden = holding;
-      $('c-guessed').hidden = !holding;
-      $('c-flop').hidden = !holding;
-      $('w-game').textContent = 'Charades on! Actor: ' + turnP.name;
       return;
     }
     $('g-snakes').hidden = false;
@@ -1509,8 +1567,28 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       .catch(function(){ toast('No connection — try again'); });
   }
   $('g-start').addEventListener('click', function(){ gamePost({ action: 'start' }); });
-  $('ga-start').addEventListener('click', function(){ gamePost({ action: 'start_antakshari' }); });
-  $('gc-start').addEventListener('click', function(){ gamePost({ action: 'start_charades' }); });
+  var antMode = 'chat', chaMode = 'call';
+  $('am-seg').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    antMode = b.getAttribute('data-m');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
+  });
+  $('cm-seg').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    chaMode = b.getAttribute('data-m');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
+  });
+  $('ga-start').addEventListener('click', function(){ gamePost({ action: 'start_antakshari', mode: antMode }); });
+  $('gc-start').addEventListener('click', function(){ gamePost({ action: 'start_charades', mode: chaMode }); });
+  $('pt-join').addEventListener('click', function(){ gamePost({ action: 'join_game' }); });
+  $('pt-leave').addEventListener('click', function(){ if (confirm('Leave the game?')) gamePost({ action: 'leave_game' }, function(){ refreshFun(); }); });
+  $('pt-begin').addEventListener('click', function(){ gamePost({ action: 'begin' }); });
+  document.addEventListener('click', function(e){
+    var k = e.target.closest('button[data-gkick]');
+    if (k && curGame && confirm('Remove this player from the game?')) { gamePost({ action: 'kick', targetId: k.getAttribute('data-gkick') }); return; }
+    var pr = e.target.closest('button[data-gpromote]');
+    if (pr && curGame) gamePost({ action: 'promote', targetId: pr.getAttribute('data-gpromote') });
+  });
   $('gt-start').addEventListener('click', function(){
     var vs = $('t-vs').value;
     if (!vs) { toast('Pick who to challenge'); return; }
@@ -1532,8 +1610,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     if (!curGame || !confirm('End the game for everyone?')) return;
     gamePost({ action: 'end', gameId: curGame.id }, function(){ curGame = null; refreshFun(); });
   }
-  $('a-end').addEventListener('click', endGame);
-  $('c-end').addEventListener('click', endGame);
+  $('pt-end').addEventListener('click', endGame);
   $('t-end').addEventListener('click', endGame);
   $('g-roll').addEventListener('click', function(){
     if (!curGame) return;

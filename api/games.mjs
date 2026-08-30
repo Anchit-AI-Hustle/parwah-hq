@@ -43,76 +43,148 @@ const REWARDS = [
 ];
 const WIN_REWARD = '🏆 Champion! Every member must post one favourite memory with the winner in the family chat 🧡';
 
-// ---------- Antakshari (call-companion: app is referee + scorekeeper) ----------
+// ---------- Party games (Antakshari + Dumb Charades): lobby, teams, admins ----------
+// Modes: 'chat' (play via family chat / in person) or 'call' (a video room is
+// attached — Dumb Charades acting mode). Creator is admin; admins can begin,
+// kick, promote co-admins and end. Anyone in the circle can opt in any time;
+// joiners auto-balance onto the smaller team. Turns alternate between teams.
+export const TEAM_NAMES = ['Team Marigold 🧡', 'Team Pine 💚'];
 const LETTERS = 'ABCDGHJKMNPRSTV';
-export function antakshariStart(members) {
+const MOVIES = ['Sholay','DDLJ','3 Idiots','Lagaan','Dangal','Mother India','Anand','Golmaal','Chupke Chupke','Hera Pheri','Munna Bhai MBBS','Swades','Taare Zameen Par','Chak De India','Queen','PK','Bajrangi Bhaijaan','Zindagi Na Milegi Dobara','Dil Chahta Hai','Kabhi Khushi Kabhie Gham','Hum Aapke Hain Koun','Andaz Apna Apna','Jab We Met','Barfi','Piku','Drishyam','Gully Boy','Mughal-e-Azam'];
+
+export function partyStart(kind, mode, creator, room, rng) {
+  const R = rng || Math.random;
   return {
-    kind: 'antakshari',
-    players: members.map(m => ({ id: m.id, name: m.name, score: 0 })),
-    turn: 0,
-    letter: LETTERS[Math.floor(Math.random() * LETTERS.length)],
-    last: null, winner: null
+    kind: kind, mode: mode === 'call' ? 'call' : 'chat', room: room || null,
+    status: 'lobby',
+    admins: [creator.id],
+    players: [{ id: creator.id, name: creator.name, team: 0, score: 0 }],
+    teamScores: [0, 0],
+    teamTurn: 0, ptr: [0, 0],
+    letter: kind === 'antakshari' ? LETTERS[Math.floor(R() * LETTERS.length)] : null,
+    prompt: null, last: null, winner: null
   };
 }
+function teamList(st, t) { return st.players.filter(p => p.team === t); }
+export function currentPlayer(st) {
+  let t = st.teamTurn;
+  if (!teamList(st, t).length) t = 1 - t;
+  const list = teamList(st, t);
+  if (!list.length) return null;
+  return list[st.ptr[t] % list.length];
+}
+function advanceTurn(st) {
+  const t = st.teamTurn;
+  if (teamList(st, t).length) st.ptr[t] = (st.ptr[t] + 1) % teamList(st, t).length;
+  if (teamList(st, 1 - t).length) st.teamTurn = 1 - t;
+}
+export function partyJoin(st, m) {
+  if (st.players.some(p => p.id === m.id)) return { error: 'You are already in the game' };
+  const team = teamList(st, 0).length <= teamList(st, 1).length ? 0 : 1;
+  st.players.push({ id: m.id, name: m.name, team, score: 0 });
+  return { announce: '🙋 ' + m.name + ' joined ' + TEAM_NAMES[team] + '!' };
+}
+function fixAdmins(st) {
+  st.admins = st.admins.filter(a => st.players.some(p => p.id === a));
+  if (!st.admins.length && st.players.length) st.admins = [st.players[0].id];
+}
+export function partyLeave(st, memberId) {
+  const p = st.players.find(x => x.id === memberId);
+  if (!p) return { error: 'You are not in the game' };
+  const wasCurrent = currentPlayer(st) && currentPlayer(st).id === memberId;
+  st.players = st.players.filter(x => x.id !== memberId);
+  st.ptr = [st.ptr[0] % Math.max(1, teamList(st, 0).length), st.ptr[1] % Math.max(1, teamList(st, 1).length)];
+  if (wasCurrent) st.prompt = null; // a departing actor takes the secret with them
+  fixAdmins(st);
+  return { announce: '👋 ' + p.name + ' left the game' };
+}
+export function partyKick(st, adminId, targetId) {
+  if (!st.admins.includes(adminId)) return { error: 'Only an admin can remove players' };
+  if (adminId === targetId) return { error: 'Use Leave to remove yourself' };
+  const t = st.players.find(x => x.id === targetId);
+  if (!t) return { error: 'They are not in the game' };
+  const out = partyLeave(st, targetId);
+  return { announce: '🚪 ' + t.name + ' was removed by the admin' + (out.error ? '' : '') };
+}
+export function partyPromote(st, adminId, targetId) {
+  if (!st.admins.includes(adminId)) return { error: 'Only an admin can add co-admins' };
+  const t = st.players.find(x => x.id === targetId);
+  if (!t) return { error: 'They must join the game first' };
+  if (st.admins.includes(targetId)) return { error: t.name + ' is already an admin' };
+  st.admins.push(targetId);
+  return { announce: '⭐ ' + t.name + ' is now a co-admin' };
+}
+export function partyBegin(st, adminId) {
+  if (!st.admins.includes(adminId)) return { error: 'Only an admin can start the game' };
+  if (st.status !== 'lobby') return { error: 'The game is already on' };
+  if (st.players.length < 2) return { error: 'Need at least 2 players — invite the family!' };
+  st.status = 'playing';
+  const a = teamList(st, 0).map(p => p.name).join(', ');
+  const b = teamList(st, 1).map(p => p.name).join(', ');
+  return { announce: '🏁 Game on! ' + TEAM_NAMES[0] + ': ' + (a || '—') + '  vs  ' + TEAM_NAMES[1] + ': ' + (b || '—') + '. ' + (st.kind === 'antakshari' ? 'First letter: "' + st.letter + '"' : 'First actor draws a movie!') };
+}
+function needTurn(st, memberId) {
+  if (st.status !== 'playing') return { error: 'The game has not started yet' };
+  const cur = currentPlayer(st);
+  if (!cur) return { error: 'No players on a team yet' };
+  if (cur.id !== memberId) return { error: 'Not your turn — it is ' + cur.name + "'s" };
+  return { cur };
+}
 export function antakshariTurn(st, memberId, action, nextLetter) {
-  const idx = st.players.findIndex(p => p.id === memberId);
-  if (idx < 0) return { error: 'You are not in this game' };
-  if (idx !== st.turn) return { error: 'Not your turn yet' };
-  const me = st.players[idx];
+  const chk = needTurn(st, memberId);
+  if (chk.error) return chk;
+  const me = chk.cur;
   if (action === 'sang') {
     const L = String(nextLetter || '').trim().toUpperCase();
     if (!/^[A-Z]$/.test(L)) return { error: 'Type the single letter the song ended on' };
-    me.score += 1;
+    me.score += 1; st.teamScores[me.team] += 1;
     st.last = { by: me.name, did: 'sang', letter: st.letter };
     st.letter = L;
-    st.turn = (idx + 1) % st.players.length;
-    return { announce: '🎶 ' + me.name + ' sang on "' + st.last.letter + '"! Score +1. Next up: ' + st.players[st.turn].name + ' — letter "' + L + '"' };
+    advanceTurn(st);
+    const nxt = currentPlayer(st);
+    return { announce: '🎶 ' + me.name + ' sang on "' + st.last.letter + '"! ' + TEAM_NAMES[me.team] + ' +1 (now ' + st.teamScores[0] + '–' + st.teamScores[1] + '). Next: ' + (nxt ? nxt.name : '—') + ' on "' + L + '"' };
   }
   if (action === 'pass') {
     st.last = { by: me.name, did: 'pass', letter: st.letter };
-    st.turn = (idx + 1) % st.players.length;
-    return { announce: '😅 ' + me.name + ' passed on "' + st.last.letter + '". ' + st.players[st.turn].name + ', your stage — same letter!' };
+    advanceTurn(st);
+    const nxt = currentPlayer(st);
+    return { announce: '😅 ' + me.name + ' passed on "' + st.letter + '". ' + (nxt ? nxt.name : '—') + ', your stage — same letter!' };
   }
   return { error: 'Unknown move' };
 }
-
-// ---------- Dumb Charades (app deals a secret movie to the actor) ----------
-const MOVIES = ['Sholay','DDLJ','3 Idiots','Lagaan','Dangal','Mother India','Anand','Golmaal','Chupke Chupke','Hera Pheri','Munna Bhai MBBS','Swades','Taare Zameen Par','Chak De India','Queen','PK','Bajrangi Bhaijaan','Zindagi Na Milegi Dobara','Dil Chahta Hai','Kabhi Khushi Kabhie Gham','Hum Aapke Hain Koun','Andaz Apna Apna','Jab We Met','Barfi','Piku','Drishyam','Gully Boy','Mughal-e-Azam'];
-export function charadesStart(members) {
-  return {
-    kind: 'charades',
-    players: members.map(m => ({ id: m.id, name: m.name, score: 0 })),
-    turn: 0, prompt: null, last: null, winner: null
-  };
-}
 export function charadesTurn(st, memberId, action, rng) {
-  const idx = st.players.findIndex(p => p.id === memberId);
-  if (idx < 0) return { error: 'You are not in this game' };
-  const me = st.players[idx];
+  const chk = needTurn(st, memberId);
+  if (chk.error) return chk;
+  const me = chk.cur;
   const R = rng || Math.random;
   if (action === 'draw') {
-    if (idx !== st.turn) return { error: 'Only the actor can draw' };
     if (st.prompt) return { error: 'You already have a movie — act it out!' };
     st.prompt = MOVIES[Math.floor(R() * MOVIES.length) % MOVIES.length];
-    return { announce: '🎭 ' + me.name + ' has drawn a movie and is about to act. No talking, ' + me.name + '!' };
+    return { announce: '🎭 ' + me.name + ' (' + TEAM_NAMES[me.team] + ') has drawn a movie and is about to act. Team, eyes on ' + me.name + '!' };
   }
   if (action === 'guessed' || action === 'flop') {
-    if (idx !== st.turn) return { error: 'Only the actor can close the round' };
     if (!st.prompt) return { error: 'Draw a movie first' };
     const movie = st.prompt;
     let announce;
     if (action === 'guessed') {
-      me.score += 1;
-      announce = '🎬 Got it! The movie was "' + movie + '" — ' + me.name + ' +1.';
+      me.score += 1; st.teamScores[me.team] += 1;
+      announce = '🎬 ' + TEAM_NAMES[me.team] + ' got it! The movie was "' + movie + '" (' + st.teamScores[0] + '–' + st.teamScores[1] + ').';
     } else {
-      announce = '🙈 Nobody guessed "' + movie + '"! Better luck, ' + me.name + '.';
+      announce = '🙈 Nobody guessed "' + movie + '"! Tough luck, ' + TEAM_NAMES[me.team] + '.';
     }
     st.prompt = null;
-    st.last = { by: me.name, movie: movie, did: action };
-    st.turn = (idx + 1) % st.players.length;
-    return { announce: announce + ' Next actor: ' + st.players[st.turn].name };
+    st.last = { by: me.name, movie, did: action };
+    advanceTurn(st);
+    const nxt = currentPlayer(st);
+    return { announce: announce + ' Next actor: ' + (nxt ? nxt.name : '—') };
   }
   return { error: 'Unknown move' };
+}
+export function partyEndSummary(st) {
+  const a = st.teamScores[0], b = st.teamScores[1];
+  const teamLine = a === b ? 'It is a tie, ' + a + '–' + b + '!' : (a > b ? TEAM_NAMES[0] : TEAM_NAMES[1]) + ' wins ' + Math.max(a, b) + '–' + Math.min(a, b) + '!';
+  const top = st.players.slice().sort((x, y) => y.score - x.score)[0];
+  return '🏆 Game over! ' + teamLine + (top && top.score > 0 ? ' Star of the match: ' + top.name + ' (' + top.score + ').' : '') + ' 🧡';
 }
 
 // ---------- Tic-Tac-Toe (quick 2-player duel) ----------
@@ -145,8 +217,8 @@ export function tttMove(st, memberId, cell) {
 
 // Never leak the secret movie to anyone but the actor.
 export function publicState(game, memberId) {
-  if (!game || game.kind !== 'charades' || !game.state || !game.state.prompt) return game;
-  const actor = game.state.players[game.state.turn];
+  if (!game || !game.state || game.state.kind !== 'charades' || !game.state.prompt) return game;
+  const actor = currentPlayer(game.state);
   if (actor && actor.id === memberId) return game;
   const st = JSON.parse(JSON.stringify(game.state));
   st.prompt = '(hidden — only the actor sees it)';
@@ -191,6 +263,10 @@ export function playTurn(st, memberId, rng) {
   return { roll, to, announce, won: to === 100 };
 }
 
+function gameRoomUrl(code) {
+  return 'https://meet.jit.si/parwah-' + String(code).toLowerCase() + '-' + Math.random().toString(36).slice(2, 8);
+}
+
 async function feed(sql, circleId, memberId, text) {
   await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'care', ${text})`;
 }
@@ -228,11 +304,14 @@ export default async function handler(req, res) {
       return res.status(405).json({ ok: false, error: 'GET or POST only' });
     }
 
-    const STARTS = {
-      start:            { kind: 'snakes',     label: 'Saanp Seedhi 🎲' },
-      start_antakshari: { kind: 'antakshari', label: 'Antakshari 🎤' },
-      start_charades:   { kind: 'charades',   label: 'Dumb Charades 🎭' }
-    };
+    async function announce(text) {
+      if (!text) return;
+      try {
+        const chatId = await ensureCircleChat(sql, circle.id);
+        await sql`insert into messages (chat_id, member_id, text) values (${chatId}, null, ${text})`;
+      } catch (e) { /* the move stands even if the announcement fails */ }
+    }
+
     if (body.action === 'start_ttt') {
       const existing = await activeGame(sql, circle.id);
       if (existing) return res.status(200).json({ ok: true, game: publicState({ ...existing, kind: existing.state.kind || existing.kind }, me.id) });
@@ -264,39 +343,55 @@ export default async function handler(req, res) {
       }
       return res.status(200).json({ ok: true, game: { id: g.id, kind: 'ttt', status: done ? 'done' : 'active', state: st } });
     }
-    if (STARTS[body.action]) {
+    if (body.action === 'start_antakshari' || body.action === 'start_charades') {
       const existing = await activeGame(sql, circle.id);
       if (existing) return res.status(200).json({ ok: true, game: publicState({ ...existing, kind: existing.state.kind || existing.kind }, me.id) });
-      const members = await sql`select id, name from members where circle_id = ${circle.id} order by created_at`;
-      const kind = STARTS[body.action].kind;
-      const state = kind === 'antakshari' ? antakshariStart(members)
-        : kind === 'charades' ? charadesStart(members)
-        : { kind: 'snakes', players: members.map(m => ({ id: m.id, name: m.name, pos: 0 })), turn: 0, last: null, winner: null };
+      const kind = body.action === 'start_antakshari' ? 'antakshari' : 'charades';
+      const mode = body.mode === 'call' ? 'call' : 'chat';
+      const room = mode === 'call' ? gameRoomUrl(circle.code) : null;
+      const state = partyStart(kind, mode, me, room);
       const g = await sql`insert into games (circle_id, kind, status, state)
                           values (${circle.id}, ${kind}, 'active', ${JSON.stringify(state)}::jsonb)
                           returning id, kind, status, state, created_at`;
-      await feed(sql, circle.id, me.id, `${me.name} started ${STARTS[body.action].label} — everyone's in, come play!`);
+      const label = kind === 'antakshari' ? 'Antakshari 🎤' : 'Dumb Charades 🎭';
+      await announce('🎪 ' + me.name + ' opened a game of ' + label + (mode === 'call' ? ' on a video call — join the room: ' + room : ' in chat mode') + '. Everyone can join — open Together → Games and tap "I\'m in!" 🙋');
+      await feed(sql, circle.id, me.id, `${me.name} opened ${label} — lobby is open, come join!`);
       return res.status(201).json({ ok: true, game: publicState(g[0], me.id) });
     }
 
-    if (body.action === 'sang' || body.action === 'pass' || body.action === 'draw' || body.action === 'guessed' || body.action === 'flop') {
+    if (body.action === 'start') {
+      const existing = await activeGame(sql, circle.id);
+      if (existing) return res.status(200).json({ ok: true, game: publicState({ ...existing, kind: existing.state.kind || existing.kind }, me.id) });
+      const members = await sql`select id, name from members where circle_id = ${circle.id} order by created_at`;
+      const state = { kind: 'snakes', players: members.map(m => ({ id: m.id, name: m.name, pos: 0 })), turn: 0, last: null, winner: null };
+      const g = await sql`insert into games (circle_id, kind, status, state)
+                          values (${circle.id}, 'snakes', 'active', ${JSON.stringify(state)}::jsonb)
+                          returning id, kind, status, state, created_at`;
+      await feed(sql, circle.id, me.id, `${me.name} started Saanp Seedhi 🎲 — everyone's in, come play!`);
+      return res.status(201).json({ ok: true, game: g[0] });
+    }
+
+    const PARTY_ACTS = ['join_game', 'leave_game', 'kick', 'promote', 'begin', 'sang', 'pass', 'draw', 'guessed', 'flop'];
+    if (PARTY_ACTS.includes(body.action)) {
       if (!isUuid(body.gameId)) return res.status(400).json({ ok: false, error: 'Bad game id' });
       const rows = await sql`select id, kind, status, state from games where id = ${body.gameId} and circle_id = ${circle.id}`;
       const g = rows[0];
       if (!g || g.status !== 'active') return res.status(404).json({ ok: false, error: 'Game not found or over' });
       const st = g.state;
-      const out = (body.action === 'sang' || body.action === 'pass')
-        ? antakshariTurn(st, me.id, body.action, body.letter)
-        : charadesTurn(st, me.id, body.action);
+      if (st.kind !== 'antakshari' && st.kind !== 'charades') return res.status(400).json({ ok: false, error: 'Not that kind of game' });
+      let out;
+      if (body.action === 'join_game') out = partyJoin(st, me);
+      else if (body.action === 'leave_game') out = partyLeave(st, me.id);
+      else if (body.action === 'kick') out = isUuid(body.targetId) ? partyKick(st, me.id, body.targetId) : { error: 'Pick who to remove' };
+      else if (body.action === 'promote') out = isUuid(body.targetId) ? partyPromote(st, me.id, body.targetId) : { error: 'Pick who to promote' };
+      else if (body.action === 'begin') out = partyBegin(st, me.id);
+      else if (body.action === 'sang' || body.action === 'pass') out = antakshariTurn(st, me.id, body.action, body.letter);
+      else out = charadesTurn(st, me.id, body.action);
       if (out.error) return res.status(409).json({ ok: false, error: out.error });
-      await sql`update games set state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
-      if (out.announce) {
-        try {
-          const chatId = await ensureCircleChat(sql, circle.id);
-          await sql`insert into messages (chat_id, member_id, text) values (${chatId}, null, ${out.announce})`;
-        } catch (e) { /* the move stands even if the announcement fails */ }
-      }
-      return res.status(200).json({ ok: true, game: publicState({ id: g.id, kind: g.kind, status: 'active', state: st }, me.id) });
+      const empty = st.players.length === 0;
+      await sql`update games set status = ${empty ? 'done' : 'active'}, state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
+      await announce(out.announce);
+      return res.status(200).json({ ok: true, game: publicState({ id: g.id, kind: g.kind, status: empty ? 'done' : 'active', state: st }, me.id) });
     }
 
     if (body.action === 'roll' || body.action === 'end') {
@@ -306,15 +401,15 @@ export default async function handler(req, res) {
       if (!g) return res.status(404).json({ ok: false, error: 'Game not found' });
 
       if (body.action === 'end') {
+        const st = g.state || {};
+        if ((st.kind === 'antakshari' || st.kind === 'charades') && !(st.admins || []).includes(me.id)) {
+          return res.status(403).json({ ok: false, error: 'Only an admin can end the game' });
+        }
         await sql`update games set status = 'done' where id = ${g.id}`;
         try {
-          const st = g.state;
-          if (st && st.players && st.players[0] && typeof st.players[0].score === 'number') {
-            const top = st.players.slice().sort((a, b) => b.score - a.score)[0];
-            if (top && top.score > 0) {
-              const chatId = await ensureCircleChat(sql, circle.id);
-              await sql`insert into messages (chat_id, member_id, text) values (${chatId}, null, ${'🏆 Game over! Top scorer: ' + top.name + ' with ' + top.score + ' — treat the family to something sweet 🧡'})`;
-            }
+          if (st.kind === 'antakshari' || st.kind === 'charades') {
+            const chatId = await ensureCircleChat(sql, circle.id);
+            await sql`insert into messages (chat_id, member_id, text) values (${chatId}, null, ${partyEndSummary(st)})`;
           }
         } catch (e) {}
         return res.status(200).json({ ok: true });
