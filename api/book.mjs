@@ -15,6 +15,7 @@
 //   are recorded, missing, or due a re-check.
 // POST /api/book {code, memberId, action:'add'|'update'|'remove'|'verify'}
 import { db, ensureSchema, circleByCode, isUuid, normPhone, phoneError } from './_db.mjs';
+import { pushCircle } from './_push.mjs';
 
 const KINDS = ['contact', 'address', 'med', 'fact', 'insurance'];
 const CATS = ['housework', 'doctor', 'vet', 'driver', 'shops', 'repairs', 'emergency', 'other'];
@@ -144,6 +145,10 @@ export default async function handler(req, res) {
         const label = kind === 'contact' ? '☎️' : kind === 'address' ? '📍' : kind === 'med' ? '💊' : kind === 'fact' ? '🩸' : '🛡';
         await sql`insert into events (circle_id, member_id, type, text)
                   values (${circle.id}, ${me.id}, 'care', ${me.name + ' added ' + name + ' to the family memory ' + label})`;
+        // information recorded ABOUT someone is that person's business first
+        if (about && about !== me.id) {
+          await pushCircle(sql, circle.id, { title: '📒 ' + me.name + ' noted something about you', body: label + ' ' + name + ' — open Family memory to check it is right' }, { only: about });
+        }
         return res.status(201).json({ ok: true, id: r[0].id });
       }
       if (!isUuid(body.id)) return res.status(400).json({ ok: false, error: 'Bad entry id' });

@@ -2,7 +2,13 @@
 // and kept in the database, so no environment configuration is needed.
 // Sending is always fire-and-safe: a push failure never breaks the action
 // that triggered it, and dead subscriptions are pruned as they 404/410.
-import webpush from 'web-push';
+// Loaded on demand: code paths that never send a notification (game
+// engines, tests) must not depend on the push library being installed.
+let webpush = null;
+async function lib() {
+  if (!webpush) webpush = (await import('web-push')).default;
+  return webpush;
+}
 
 let vapidReady = null;
 
@@ -23,12 +29,13 @@ export async function ensurePushSchema(sql) {
 
 export async function vapidPublicKey(sql) {
   if (vapidReady) return vapidReady;
+  const wp = await lib();
   await ensurePushSchema(sql);
   let rows = await sql`select k, v from kv where k in ('vapid_pub', 'vapid_priv')`;
   let pub = null, priv = null;
   rows.forEach(r => { if (r.k === 'vapid_pub') pub = r.v; if (r.k === 'vapid_priv') priv = r.v; });
   if (!pub || !priv) {
-    const keys = webpush.generateVAPIDKeys();
+    const keys = wp.generateVAPIDKeys();
     try {
       await sql`insert into kv (k, v) values ('vapid_pub', ${keys.publicKey}) on conflict (k) do nothing`;
       await sql`insert into kv (k, v) values ('vapid_priv', ${keys.privateKey}) on conflict (k) do nothing`;
@@ -36,7 +43,7 @@ export async function vapidPublicKey(sql) {
     rows = await sql`select k, v from kv where k in ('vapid_pub', 'vapid_priv')`;
     rows.forEach(r => { if (r.k === 'vapid_pub') pub = r.v; if (r.k === 'vapid_priv') priv = r.v; });
   }
-  webpush.setVapidDetails('mailto:anchit.tandon@gmail.com', pub, priv);
+  wp.setVapidDetails('mailto:anchit.tandon@gmail.com', pub, priv);
   vapidReady = pub;
   return pub;
 }
@@ -45,6 +52,7 @@ export async function vapidPublicKey(sql) {
 // (usually the person who did the thing). only = restrict to one member.
 export async function pushCircle(sql, circleId, payload, { except = null, only = null } = {}) {
   try {
+    const wp = await lib();
     await vapidPublicKey(sql);
     const subs = await sql`
       select s.id, s.endpoint, s.p256dh, s.auth
@@ -55,7 +63,7 @@ export async function pushCircle(sql, circleId, payload, { except = null, only =
       limit 60`;
     const body = JSON.stringify({ title: payload.title, body: payload.body || '', url: payload.url || '/app/' });
     await Promise.allSettled(subs.map(s =>
-      webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, { TTL: 3600 })
+      wp.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, { TTL: 3600 })
         .catch(async (e) => {
           const sc = e && e.statusCode;
           if (sc === 404 || sc === 410) { try { await sql`delete from push_subs where id = ${s.id}`; } catch (_) {} }

@@ -1,5 +1,6 @@
 // POST /api/circle — create a care circle or join one with its code.
 import { db, ensureSchema, makeCode, circleByCode, isUuid, normPhone, phoneError } from './_db.mjs';
+import { pushCircle } from './_push.mjs';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -96,6 +97,7 @@ export default async function handler(req, res) {
       const m = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation) values (${circle.id}, ${name}, ${r}, ${memberPhone}, ${memberCc}, ${memberLocal}, ${user ? user.id : null}, ${relation}) returning id`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${m[0].id}, 'join', ${name + ' joined the circle'})`;
+      await pushCircle(sql, circle.id, { title: '🧡 ' + name + ' joined ' + circle.name, body: 'Say hello in the family chat' }, { except: m[0].id });
       return res.status(200).json({ ok: true, code: circle.code, circleName: circle.name, memberId: m[0].id, role: r });
     }
 
@@ -118,6 +120,8 @@ export default async function handler(req, res) {
       }
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${mRow[0].id}, 'care', ${mRow[0].name + ' set the circle invite code to ' + newCode})`;
+      // the code is how people join — everyone needs to know it changed
+      await pushCircle(sql, circle.id, { title: '🔑 Invite code is now ' + newCode, body: mRow[0].name + ' changed it — old invite links no longer work' }, { except: mRow[0].id });
       return res.status(200).json({ ok: true, code: newCode });
     }
 
@@ -128,6 +132,7 @@ export default async function handler(req, res) {
       if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
       const mRow = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
       if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+      await pushCircle(sql, circle.id, { title: '👋 ' + mRow[0].name + ' left ' + circle.name, body: 'They will no longer see this circle' }, { except: mRow[0].id });
       await sql`delete from members where id = ${mRow[0].id}`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, null, 'care', ${mRow[0].name + ' left the circle 👋'})`;

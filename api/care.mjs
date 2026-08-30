@@ -99,25 +99,34 @@ export default async function handler(req, res) {
     if (action === 'reminder_respond') {
       const { reminderId, accept } = req.body;
       if (!isUuid(reminderId)) return res.status(400).json({ ok: false, error: 'Bad reminder id' });
-      const row = await sql`select id, title, for_member from reminders
+      const row = await sql`select id, title, for_member, by_member from reminders
                             where id = ${reminderId} and circle_id = ${circle.id} and status = 'pending'`;
       if (!row[0]) return res.status(404).json({ ok: false, error: 'Reminder not found or already answered' });
       if (row[0].for_member !== me.id) return res.status(403).json({ ok: false, error: 'Only the person it is for can answer' });
       const status = accept === true ? 'accepted' : 'declined';
       await sql`update reminders set status = ${status} where id = ${reminderId}`;
       await feed(sql, circle.id, me.id, `${me.name} ${status === 'accepted' ? 'accepted' : 'declined'} the reminder: ${row[0].title}`);
+      if (row[0].by_member && row[0].by_member !== me.id) {
+        await pushCircle(sql, circle.id, {
+          title: (status === 'accepted' ? '✅ ' : '🙅 ') + me.name + ' ' + status + ' your reminder',
+          body: row[0].title
+        }, { only: row[0].by_member });
+      }
       return res.status(200).json({ ok: true, status });
     }
 
     if (action === 'reminder_done') {
       const { reminderId } = req.body;
       if (!isUuid(reminderId)) return res.status(400).json({ ok: false, error: 'Bad reminder id' });
-      const row = await sql`select id, title, for_member, recurrence from reminders
+      const row = await sql`select id, title, for_member, by_member, recurrence from reminders
                             where id = ${reminderId} and circle_id = ${circle.id} and status = 'accepted'`;
       if (!row[0]) return res.status(404).json({ ok: false, error: 'Reminder not found' });
       if (row[0].for_member !== me.id) return res.status(403).json({ ok: false, error: 'Only the person it is for can mark it done' });
       if (row[0].recurrence !== 'daily') await sql`update reminders set status = 'done' where id = ${reminderId}`;
       await feed(sql, circle.id, me.id, `${me.name} completed: ${row[0].title} ✔`);
+      if (row[0].by_member && row[0].by_member !== me.id) {
+        await pushCircle(sql, circle.id, { title: '✔ ' + me.name + ' did it', body: row[0].title }, { only: row[0].by_member });
+      }
       return res.status(200).json({ ok: true });
     }
 
@@ -129,15 +138,21 @@ export default async function handler(req, res) {
     if (action === 'request_claim' || action === 'request_done') {
       const { requestId } = req.body;
       if (!isUuid(requestId)) return res.status(400).json({ ok: false, error: 'Bad request id' });
-      const row = await sql`select id, title, status from requests where id = ${requestId} and circle_id = ${circle.id}`;
+      const row = await sql`select id, title, status, by_member from requests where id = ${requestId} and circle_id = ${circle.id}`;
       if (!row[0]) return res.status(404).json({ ok: false, error: 'Request not found' });
       if (action === 'request_claim') {
         if (row[0].status !== 'open') return res.status(409).json({ ok: false, error: 'Someone already took this' });
         await sql`update requests set status = 'claimed', claimed_by = ${me.id} where id = ${requestId}`;
         await feed(sql, circle.id, me.id, `${me.name} is on it: ${row[0].title}`);
+        if (row[0].by_member && row[0].by_member !== me.id) {
+          await pushCircle(sql, circle.id, { title: '🙌 ' + me.name + ' is on it', body: row[0].title }, { only: row[0].by_member });
+        }
       } else {
         await sql`update requests set status = 'done' where id = ${requestId}`;
         await feed(sql, circle.id, me.id, `${me.name} finished: ${row[0].title} ✔`);
+        if (row[0].by_member && row[0].by_member !== me.id) {
+          await pushCircle(sql, circle.id, { title: '✔ ' + me.name + ' finished it', body: row[0].title }, { only: row[0].by_member });
+        }
       }
       return res.status(200).json({ ok: true });
     }

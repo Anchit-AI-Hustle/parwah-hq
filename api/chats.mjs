@@ -159,12 +159,25 @@ export default async function handler(req, res) {
         if (chat.kind === 'dm') {
           const others = await sql`select member_id from chat_members where chat_id = ${chat.id} and member_id <> ${me.id}`;
           if (others[0]) await pushCircle(sql, circle.id, { title: '💬 ' + me.name, body: preview }, { only: others[0].member_id });
-        } else if (kind === 'text' && text.indexOf('@') >= 0) {
-          const everyone = await sql`select id, name from members where circle_id = ${circle.id} and id <> ${me.id}`;
-          for (const p of everyone) {
-            if (new RegExp('@' + p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(text)) {
-              await pushCircle(sql, circle.id, { title: '💬 ' + me.name + ' mentioned you in ' + label, body: preview }, { only: p.id });
+        } else {
+          // everyone in this conversation hears about it — the people named
+          // with @ get the louder "mentioned you" version, once each.
+          const audience = chat.kind === 'circle'
+            ? await sql`select id, name from members where circle_id = ${circle.id} and id <> ${me.id}`
+            : await sql`select m.id, m.name from chat_members cm join members m on m.id = cm.member_id
+                        where cm.chat_id = ${chat.id} and m.id <> ${me.id}`;
+          const pinged = {};
+          if (kind === 'text' && text.indexOf('@') >= 0) {
+            for (const p of audience) {
+              if (new RegExp('@' + p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(text)) {
+                pinged[p.id] = true;
+                await pushCircle(sql, circle.id, { title: '💬 ' + me.name + ' mentioned you in ' + label, body: preview }, { only: p.id });
+              }
             }
+          }
+          for (const p of audience) {
+            if (pinged[p.id]) continue;
+            await pushCircle(sql, circle.id, { title: '💬 ' + me.name + ' in ' + label, body: preview }, { only: p.id });
           }
         }
       } catch (e) { /* alerts never block the message */ }
@@ -182,6 +195,9 @@ export default async function handler(req, res) {
       const c = await sql`insert into chats (circle_id, kind, name) values (${circle.id}, 'group', ${name}) returning id`;
       for (const id of ids) {
         await sql`insert into chat_members (chat_id, member_id) values (${c[0].id}, ${id}) on conflict do nothing`;
+        if (id !== me.id) {
+          await pushCircle(sql, circle.id, { title: '👥 ' + me.name + ' started "' + name + '"', body: 'You have been added to the group' }, { only: id });
+        }
       }
       return res.status(201).json({ ok: true, chatId: c[0].id });
     }
@@ -213,6 +229,13 @@ export default async function handler(req, res) {
       if (!aRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
       await sql`insert into chat_members (chat_id, member_id) values (${chat.id}, ${addId}) on conflict do nothing`;
       await sql`insert into messages (chat_id, member_id, text) values (${chat.id}, ${me.id}, ${'➕ Added ' + aRow[0].name + ' to the group'})`;
+      // the person added is told; so is everyone already in the group
+      await pushCircle(sql, circle.id, { title: '➕ ' + me.name + ' added you to ' + (chat.name || 'a group'), body: 'Open Parwah to say hello' }, { only: addId });
+      const inGroup = await sql`select m.id from chat_members cm join members m on m.id = cm.member_id
+                                where cm.chat_id = ${chat.id} and m.id <> ${me.id} and m.id <> ${addId}`;
+      for (const p of inGroup) {
+        await pushCircle(sql, circle.id, { title: '➕ ' + aRow[0].name + ' joined ' + (chat.name || 'the group'), body: 'Added by ' + me.name }, { only: p.id });
+      }
       return res.status(200).json({ ok: true });
     }
 

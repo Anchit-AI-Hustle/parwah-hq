@@ -4,6 +4,7 @@
 // GET  /api/plans?circle=CODE&member=UUID → { ok, plans[] } (upcoming)
 // POST /api/plans {code, memberId, action:'create'|'rsvp'|'cancel', ...}
 import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { pushCircle } from './_push.mjs';
 
 const KINDS = ['call', 'party', 'meet', 'other'];
 
@@ -78,12 +79,14 @@ export default async function handler(req, res) {
                           values (${circle.id}, ${me.id}, ${title}, ${kind}, ${at.toISOString()}, ${place}, ${room}, ${'{' + me.id + '}'}, ${expected})
                           returning id`;
       await feed(sql, circle.id, me.id, `${me.name} planned: ${title} 🗓`);
+      const whenTxt = at.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+      await pushCircle(sql, circle.id, { title: '🗓 ' + me.name + ' planned: ' + title, body: whenTxt + ' — open Parwah to say you are in' }, { except: me.id });
       return res.status(201).json({ ok: true, id: p[0].id });
     }
 
     if (body.action === 'rsvp') {
       if (!isUuid(body.planId)) return res.status(400).json({ ok: false, error: 'Bad plan id' });
-      const rows = await sql`select id, going, title from plans where id = ${body.planId} and circle_id = ${circle.id}`;
+      const rows = await sql`select id, going, title, by_member from plans where id = ${body.planId} and circle_id = ${circle.id}`;
       if (!rows[0]) return res.status(404).json({ ok: false, error: 'Plan not found' });
       const going = rows[0].going || [];
       if (going.indexOf(me.id) >= 0) {
@@ -92,6 +95,9 @@ export default async function handler(req, res) {
       }
       await sql`update plans set going = array_append(going, ${me.id}::uuid) where id = ${rows[0].id}`;
       await feed(sql, circle.id, me.id, `${me.name} is in for: ${rows[0].title} 🙌`);
+      if (rows[0].by_member && rows[0].by_member !== me.id) {
+        await pushCircle(sql, circle.id, { title: '🙌 ' + me.name + ' is coming', body: rows[0].title }, { only: rows[0].by_member });
+      }
       return res.status(200).json({ ok: true, going: true });
     }
 
@@ -102,6 +108,7 @@ export default async function handler(req, res) {
       // Every member is an equal admin of the circle — anyone can cancel.
       await sql`delete from plans where id = ${rows[0].id}`;
       await feed(sql, circle.id, me.id, `${me.name} cancelled: ${rows[0].title}`);
+      await pushCircle(sql, circle.id, { title: '❌ Plan cancelled', body: me.name + ' cancelled: ' + rows[0].title }, { except: me.id });
       return res.status(200).json({ ok: true });
     }
 

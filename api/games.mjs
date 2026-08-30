@@ -3,6 +3,7 @@
 // GET  /api/games?circle=CODE&member=UUID → { ok, game|null }
 // POST /api/games {code, memberId, action:'start'|'roll'|'end', gameId?}
 import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat } from './_db.mjs';
+import { pushCircle } from './_push.mjs';
 
 const SNAKES  = { 99:41, 95:75, 92:88, 89:68, 74:53, 64:60, 62:19, 49:11, 46:25, 16:6 };
 const LADDERS = { 2:38, 7:14, 8:31, 15:26, 21:42, 28:84, 36:44, 51:67, 71:91, 78:98, 87:94 };
@@ -330,6 +331,8 @@ export default async function handler(req, res) {
                           values (${circle.id}, 'ttt', 'active', ${JSON.stringify(state)}::jsonb)
                           returning id, kind, status, state, created_at`;
       await feed(sql, circle.id, me.id, `${me.name} challenged ${vs[0].name} to Tic-Tac-Toe ⭕✕`);
+      // a challenge is aimed at one person — only they get pinged
+      await pushCircle(sql, circle.id, { title: '⭕✕ ' + me.name + ' challenged you', body: 'Tic-Tac-Toe — your move' }, { only: vs[0].id });
       return res.status(201).json({ ok: true, game: g[0] });
     }
     if (body.action === 'move') {
@@ -363,6 +366,8 @@ export default async function handler(req, res) {
       const label = kind === 'antakshari' ? 'Antakshari 🎤' : 'Dumb Charades 🎭';
       await announce('🎪 ' + me.name + ' opened a game of ' + label + (mode === 'call' ? ' on a video call — join the room: ' + room : ' in chat mode') + '. Everyone can join — open Together → Games and tap "I\'m in!" 🙋');
       await feed(sql, circle.id, me.id, `${me.name} opened ${label} — lobby is open, come join!`);
+      // an open lobby is an invitation to the whole circle
+      await pushCircle(sql, circle.id, { title: '🎪 ' + me.name + ' opened ' + label, body: 'Lobby is open — tap to join the game' }, { except: me.id });
       return res.status(201).json({ ok: true, game: publicState(g[0], me.id) });
     }
 
