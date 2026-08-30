@@ -63,6 +63,14 @@ export default async function handler(req, res) {
           return res.status(200).json({ ok: true, code: circle.code, circleName: circle.name, memberId: legacy[0].id, role: legacy[0].role });
         }
       }
+      // One person, one seat: a name can appear only once in a circle, and a
+      // mobile number can hold only one membership in it.
+      const dupName = await sql`select id from members where circle_id = ${circle.id} and lower(name) = lower(${name})`;
+      if (dupName[0]) return res.status(409).json({ ok: false, error: 'Someone in this circle is already called ' + name + ' — add a surname or initial' });
+      if (memberPhone) {
+        const dupPhone = await sql`select id from members where circle_id = ${circle.id} and phone = ${memberPhone}`;
+        if (dupPhone[0]) return res.status(409).json({ ok: false, error: 'This mobile number is already in the circle — sign in with it instead' });
+      }
       const m = await sql`insert into members (circle_id, name, role, phone, user_id, relation) values (${circle.id}, ${name}, ${r}, ${memberPhone}, ${user ? user.id : null}, ${relation}) returning id`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${m[0].id}, 'join', ${name + ' joined the circle'})`;
@@ -113,6 +121,10 @@ export default async function handler(req, res) {
       if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
       const cur = mRow[0];
       const newName = name || cur.name;
+      if (newName.toLowerCase() !== cur.name.toLowerCase()) {
+        const dup = await sql`select id from members where circle_id = ${circle.id} and lower(name) = lower(${newName}) and id <> ${cur.id}`;
+        if (dup[0]) return res.status(409).json({ ok: false, error: 'Someone in this circle is already called ' + newName + ' — add a surname or initial' });
+      }
       const newRole = (role === 'parent' || role === 'family') ? role : cur.role;
       const newPhone = ph !== null ? ph : cur.phone;
       const newRelation = relation || cur.relation;

@@ -128,7 +128,12 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .pchip .mini + .mini{margin-left:2px}
 .modeline a{font-weight:700}
 #tboard{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:250px;margin:12px 0}
-.tcell{aspect-ratio:1;font-size:1.7rem;font-weight:700;background:#fff;border:1px solid var(--bone-2);border-radius:12px;cursor:pointer;font-family:var(--disp)}
+.tcell{aspect-ratio:1;font-size:1.7rem;font-weight:700;background:#fff;border:1px solid var(--bone-2);border-radius:12px;cursor:pointer;font-family:var(--disp);transition:transform .12s,border-color .12s}
+.tcell:not(:disabled):hover{transform:scale(1.07);border-color:var(--marigold)}
+.tcell.x,.tcell.o{animation:markpop .28s ease}
+@keyframes markpop{0%{transform:scale(.2)}65%{transform:scale(1.18)}100%{transform:scale(1)}}
+.tcell.win{background:#FDF4E3;border-color:var(--marigold);box-shadow:inset 0 0 0 2px var(--marigold)}
+@media(prefers-reduced-motion:reduce){.tcell.x,.tcell.o{animation:none}}
 .tcell.x{color:var(--sindoor)}.tcell.o{color:var(--pine)}
 .tcell:disabled{cursor:default;opacity:.9}
 .twist{border-radius:14px;padding:13px 15px;margin-top:10px;font-size:.92rem;border:1.5px solid}
@@ -225,6 +230,15 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 #bell[hidden]~#getapp{margin-left:auto}
 @media(display-mode:standalone){#getapp{display:none}}
 .sidehead{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);padding:16px 14px 2px}
+.side-so{border:0;background:none;color:var(--dim);font-family:var(--body);font-size:.8rem;text-align:left;padding:8px 14px 14px;cursor:pointer}
+.side-so:hover{color:#E8A23D}
+.mentionbox{position:absolute;bottom:100%;left:0;right:0;background:#fff;border:1px solid var(--bone-2);border-radius:14px 14px 0 0;box-shadow:0 -6px 18px rgba(36,31,23,.1);display:flex;flex-wrap:wrap;gap:6px;padding:10px}
+.mentionbox button{border:1px solid var(--bone-2);background:var(--day);border-radius:99px;padding:6px 12px;font-family:var(--body);font-weight:600;font-size:.85rem;cursor:pointer;color:var(--ink)}
+.mentionbox button:hover{border-color:var(--marigold);background:#FDF4E3}
+.mn{color:var(--sindoor);font-weight:700}
+#addbox{display:flex;flex-wrap:wrap;gap:6px;padding:10px 0}
+#addbox button{border:1px solid var(--bone-2);background:#fff;border-radius:99px;padding:6px 12px;font-family:var(--body);font-weight:600;font-size:.85rem;cursor:pointer;color:var(--ink)}
+#addbox button:hover{border-color:var(--marigold)}
 .calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .calhead button{border:0;background:var(--bone);border-radius:8px;font-size:1.05rem;padding:2px 14px;cursor:pointer;color:var(--ink);line-height:1.4}
 .calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
@@ -270,6 +284,16 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .fab{position:fixed;right:16px;bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom));z-index:7;border:0;border-radius:99px;background:var(--dusk);color:var(--marigold);font-family:var(--body);font-weight:700;font-size:1rem;padding:15px 20px;cursor:pointer;box-shadow:0 10px 26px rgba(24,38,34,.4)}
 
 /* game board */
+#board-cv{width:100%;aspect-ratio:1;border-radius:16px;margin-top:6px;display:block;box-shadow:0 2px 12px rgba(36,31,23,.1)}
+.dicerow{display:flex;gap:10px;margin-top:12px;align-items:stretch}
+.die{width:54px;min-width:54px;height:54px;background:#fff;border:2px solid var(--bone-2);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:2.1rem;line-height:1;user-select:none;color:var(--ink)}
+.die.rolling{animation:dieshake .45s ease infinite}
+@keyframes dieshake{0%,100%{transform:rotate(0)}25%{transform:rotate(-16deg) scale(1.08)}75%{transform:rotate(16deg) scale(1.08)}}
+.fx{position:fixed;z-index:99;font-size:2rem;pointer-events:none;animation:fxfloat 1.3s ease-out forwards}
+@keyframes fxfloat{0%{opacity:0;transform:translateY(8px) scale(.5)}18%{opacity:1}100%{opacity:0;transform:translateY(-80px) scale(1.4)}}
+.pchip.cur{border-color:var(--marigold);animation:glowpulse 1.6s ease infinite}
+@keyframes glowpulse{0%,100%{box-shadow:0 0 0 0 rgba(232,162,61,.55)}50%{box-shadow:0 0 0 8px rgba(232,162,61,0)}}
+@media(prefers-reduced-motion:reduce){.die.rolling,.pchip.cur,.fx{animation:none}}
 #board{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;margin-top:6px}
 .cell{aspect-ratio:1;background:#fff;border:1px solid var(--bone-2);border-radius:4px;font-size:.48rem;color:var(--ink-soft);position:relative;display:flex;align-items:flex-start;justify-content:flex-end;padding:1px 3px}
 .cell.sn{background:#FDF1EF}.cell.ld{background:#E7F2EA}
@@ -512,8 +536,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <div class="ektahead">
         <button class="cbtn ghost" id="chatback" aria-label="Back to chats">←</button>
         <span style="flex:1"><b id="cv-name"></b><small id="cv-sub"></small></span>
+        <button class="cbtn ghost" id="cv-add" hidden>➕ Add</button>
         <a class="cbtn ghost" id="cv-call" hidden>📞</a>
       </div>
+      <div id="addbox" hidden></div>
       <div class="emsgs" id="cmsgs"></div>
     </div>
   </section>
@@ -686,9 +712,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <div class="card" id="g-snakes" hidden>
         <h3>Saanp Seedhi 🐍🪜</h3>
         <p class="hint" id="g-status" style="margin:4px 0 8px"></p>
-        <div id="board"></div>
-        <div style="display:flex;gap:8px;margin-top:12px">
-          <button class="go" id="g-roll" style="margin-top:0">🎲 Roll</button>
+        <canvas id="board-cv" aria-label="Saanp Seedhi board"></canvas>
+        <div class="dicerow">
+          <div class="die" id="die" aria-live="polite">🎲</div>
+          <button class="go" id="g-roll" style="margin-top:0;flex:1">🎲 Roll</button>
           <button class="cbtn no" id="g-quit">End game</button>
         </div>
         <p class="hint" id="g-last"></p>
@@ -827,6 +854,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <button id="emic" hidden aria-label="Speak to Ekta">🎤</button>
     <button id="ecam" hidden aria-label="Send a photo">📷</button>
     <input type="file" id="photoin" accept="image/*" capture="environment" hidden>
+    <div id="mentionbox" class="mentionbox" hidden></div>
     <input type="text" id="msg" maxlength="500" placeholder="Message…" aria-label="Message">
     <button id="send">Send</button>
   </div>
@@ -852,13 +880,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <button data-tab="fun" data-sec="board">Drawing board</button>
     </div>
     <button data-tab="profile" class="deskonly"><span class="ic" aria-hidden="true">👤</span>Profile</button>
-    <div class="subnav side-only" data-parent="profile">
-      <button data-tab="profile" data-sec="me">My profile</button>
-      <button data-tab="profile" data-sec="family">Family members</button>
-    </div>
     <div class="sidehead side-only" id="side-groups-head" hidden>👨‍👩‍👧‍👦 My Groups</div>
     <div class="subnav side-only" id="side-groups"></div>
     <div class="side-user side-only" id="side-user"></div>
+    <button class="side-so side-only" id="side-so">🚪 Sign out</button>
   </div>
 </nav>
 
@@ -910,18 +935,13 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
         <button class="ditem sub" data-tab="fun" data-sec="board">Drawing board</button>
       </div>
     </div>
-    <div class="dgroup">
-      <button class="ditem dparent" data-grp="profile">👤 Profile <span class="caret">▾</span></button>
-      <div class="dsub">
-        <button class="ditem sub" data-tab="profile" data-sec="me">My profile</button>
-        <button class="ditem sub" data-tab="profile" data-sec="family">Family members</button>
-      </div>
-    </div>
+    <button class="ditem" data-tab="profile">👤 Profile</button>
     <div class="dgroup" id="d-groups-wrap" hidden>
       <button class="ditem dparent" data-grp="groups">👨‍👩‍👧‍👦 My Groups <span class="caret">▾</span></button>
       <div class="dsub" id="d-groups"></div>
     </div>
     <a class="ditem" href="../get/" target="_blank" rel="noopener">📲 Get the app</a>
+    <button class="ditem" id="d-so" style="color:var(--alert)">🚪 Sign out</button>
     <div class="dfoot" id="d-user"></div>
   </div>
 </div>
@@ -1303,6 +1323,8 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     var call = $('cv-call');
     if (c.kind === 'dm' && c.otherPhone) { call.href = 'tel:' + encodeURIComponent(c.otherPhone); call.hidden = false; }
     else call.hidden = true;
+    $('cv-add').hidden = c.kind !== 'group';
+    $('addbox').hidden = true;
     switchTab('chat');
     loadMsgs();
   }
@@ -1318,6 +1340,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       .then(function(r){ return r.json(); })
       .then(function(j){
         if (!j.ok || !curChat) return;
+        curChatMembers = j.members || [];
         var reads = (j.reads || []).filter(function(r){ return r.member_id !== state.memberId; });
         var h = '', lastDay = '';
         j.messages.forEach(function(m, mi){
@@ -1327,7 +1350,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
           var ekta = !m.member_id;
           var body = (m.kind === 'image' && /^data:image\//.test(m.text))
             ? '<img src="' + m.text + '" alt="Photo" style="max-width:100%;border-radius:10px;display:block">'
-            : esc(m.text);
+            : mentionify(esc(m.text));
           var seenBy = reads.filter(function(r){ return r.member_id !== m.member_id && new Date(r.read_at) >= new Date(m.created_at); });
           var tick = mine ? '<span class="rr">' + (seenBy.length ? '✓✓ seen' : '✓ sent') + '</span>' : '';
           h += '<div class="em ' + (mine ? 'u' : 'a') + (ekta ? ' ekta' : '') + '">' +
@@ -1598,9 +1621,16 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('c-name').value = authUser ? authUser.name : ''; $('j-name').value = authUser ? authUser.name : '';
     showStep('setup');
   });
-  $('signout').addEventListener('click', function(){
-    if (confirm('Sign out of Parwah on this device?')) { clearAuth(); clearState(); location.hash = ''; location.reload(); }
-  });
+  function doSignOut(){
+    if (confirm('Sign out of Parwah on this device?')) {
+      clearAuth(); clearState();
+      try { localStorage.removeItem('parwah-circles'); } catch (e) {}
+      location.hash = ''; location.reload();
+    }
+  }
+  $('signout').addEventListener('click', doSignOut);
+  $('side-so').addEventListener('click', doSignOut);
+  $('d-so').addEventListener('click', doSignOut);
 
   // ---------- onboarding ----------
   var cRole = rolePicker('c-role'), jRole = rolePicker('j-role');
@@ -1952,22 +1982,197 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   var SN = { 99:41, 95:75, 92:88, 89:68, 74:53, 64:60, 62:19, 49:11, 46:25, 16:6 };
   var LD = { 2:38, 7:14, 8:31, 15:26, 21:42, 28:84, 36:44, 51:67, 71:91, 78:98, 87:94 };
   var TOKC = ['#E8A23D', '#24463C', '#A64B2A', '#2F7A4D', '#B3372B', '#4C4437'];
-  function renderBoard(st){
-    var by = {};
-    st.players.forEach(function(pl, i){ (by[pl.pos] = by[pl.pos] || []).push(i); });
-    var h = '';
-    for (var rt = 0; rt < 10; rt++) {
-      var rb = 9 - rt;
-      for (var cIdx = 0; cIdx < 10; cIdx++) {
-        var n = (rb % 2 === 0) ? rb * 10 + 1 + cIdx : (rb + 1) * 10 - cIdx;
-        var cls = SN[n] ? ' sn' : LD[n] ? ' ld' : '';
-        var toks = '';
-        (by[n] || []).forEach(function(i){ toks += '<i style="background:' + TOKC[i % TOKC.length] + '"></i>'; });
-        h += '<div class="cell' + cls + '">' + n + (SN[n] ? '🐍' : '') + (LD[n] ? '🪜' : '') +
-             (toks ? '<span class="tok">' + toks + '</span>' : '') + '</div>';
-      }
+  // ---------- Saanp Seedhi: real board, dice and motion ----------
+  var DIE_FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+  var sbAnim = { running: false, lastKey: null };
+  var reducedMotion = false;
+  try { reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  function cellXY(n, cs){
+    var r = Math.floor((n - 1) / 10), c = (n - 1) % 10;
+    if (r % 2 === 1) c = 9 - c;
+    return { x: c * cs + cs / 2, y: (9 - r) * cs + cs / 2 };
+  }
+  function drawLadder(ctx, foot, top, cs){
+    var a = cellXY(foot, cs), b = cellXY(top, cs);
+    var dx = b.x - a.x, dy = b.y - a.y, len = Math.sqrt(dx * dx + dy * dy);
+    var px = -dy / len * cs * 0.16, py = dx / len * cs * 0.16;
+    ctx.strokeStyle = '#C9861F'; ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(2, cs * 0.07);
+    ctx.beginPath();
+    ctx.moveTo(a.x - px, a.y - py); ctx.lineTo(b.x - px, b.y - py);
+    ctx.moveTo(a.x + px, a.y + py); ctx.lineTo(b.x + px, b.y + py);
+    ctx.stroke();
+    ctx.lineWidth = Math.max(1.5, cs * 0.05);
+    var rungs = Math.max(3, Math.floor(len / (cs * 0.45)));
+    for (var i = 1; i < rungs; i++) {
+      var t = i / rungs, cx = a.x + dx * t, cy = a.y + dy * t;
+      ctx.beginPath(); ctx.moveTo(cx - px, cy - py); ctx.lineTo(cx + px, cy + py); ctx.stroke();
     }
-    $('board').innerHTML = h;
+  }
+  function snakePoint(a, b, c1, c2, t){
+    var mt = 1 - t;
+    return {
+      x: mt*mt*mt*a.x + 3*mt*mt*t*c1.x + 3*mt*t*t*c2.x + t*t*t*b.x,
+      y: mt*mt*mt*a.y + 3*mt*mt*t*c1.y + 3*mt*t*t*c2.y + t*t*t*b.y
+    };
+  }
+  function snakeCtrl(head, tail, cs){
+    var dx = tail.x - head.x, dy = tail.y - head.y, len = Math.sqrt(dx*dx + dy*dy) || 1;
+    var px = -dy / len, py = dx / len, w = Math.min(cs * 1.4, len * 0.35);
+    return [
+      { x: head.x + dx * 0.33 + px * w, y: head.y + dy * 0.33 + py * w },
+      { x: head.x + dx * 0.66 - px * w, y: head.y + dy * 0.66 - py * w }
+    ];
+  }
+  function drawSnake(ctx, head, tail, cs){
+    var a = cellXY(head, cs), b = cellXY(tail, cs);
+    var c = snakeCtrl(a, b, cs);
+    // tapered body: widest at the head, thin at the tail
+    for (var seg = 0; seg < 14; seg++) {
+      var t1 = seg / 14, t2 = (seg + 1) / 14;
+      var p1 = snakePoint(a, b, c[0], c[1], t1), p2 = snakePoint(a, b, c[0], c[1], t2);
+      ctx.strokeStyle = seg % 2 ? '#24463C' : '#2F7A4D';
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(2, cs * (0.24 - 0.15 * t1));
+      ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+    }
+    // head with eyes + tongue
+    ctx.fillStyle = '#24463C';
+    ctx.beginPath(); ctx.arc(a.x, a.y, cs * 0.17, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(a.x - cs*0.06, a.y - cs*0.05, cs*0.045, 0, 7); ctx.arc(a.x + cs*0.06, a.y - cs*0.05, cs*0.045, 0, 7); ctx.fill();
+    ctx.fillStyle = '#241F17';
+    ctx.beginPath(); ctx.arc(a.x - cs*0.06, a.y - cs*0.05, cs*0.02, 0, 7); ctx.arc(a.x + cs*0.06, a.y - cs*0.05, cs*0.02, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#B3372B'; ctx.lineWidth = Math.max(1, cs*0.03);
+    ctx.beginPath(); ctx.moveTo(a.x, a.y + cs*0.15); ctx.lineTo(a.x, a.y + cs*0.26);
+    ctx.moveTo(a.x, a.y + cs*0.26); ctx.lineTo(a.x - cs*0.05, a.y + cs*0.32);
+    ctx.moveTo(a.x, a.y + cs*0.26); ctx.lineTo(a.x + cs*0.05, a.y + cs*0.32); ctx.stroke();
+  }
+  function paintBoard(st, override){
+    var cv = $('board-cv'); if (!cv) return;
+    var w = cv.clientWidth || 320, dpr = window.devicePixelRatio || 1;
+    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(w * dpr); }
+    var ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var cs = w / 10;
+    for (var n = 1; n <= 100; n++) {
+      var pos = cellXY(n, cs);
+      var r = Math.floor((n - 1) / 10), cix = Math.round((pos.x - cs / 2) / cs);
+      ctx.fillStyle = (r + cix) % 2 ? '#F6EEDC' : '#FFFDF6';
+      ctx.fillRect(pos.x - cs / 2, pos.y - cs / 2, cs, cs);
+      ctx.fillStyle = '#B9AE95';
+      ctx.font = (cs * 0.22) + 'px sans-serif';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText(n, pos.x - cs / 2 + 2, pos.y - cs / 2 + 2);
+    }
+    ctx.strokeStyle = '#E3D9C2'; ctx.lineWidth = 1;
+    for (var i = 0; i <= 10; i++) {
+      ctx.beginPath(); ctx.moveTo(i * cs, 0); ctx.lineTo(i * cs, w); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i * cs); ctx.lineTo(w, i * cs); ctx.stroke();
+    }
+    Object.keys(LD).forEach(function(f){ drawLadder(ctx, +f, LD[f], cs); });
+    Object.keys(SN).forEach(function(h){ drawSnake(ctx, +h, SN[h], cs); });
+    // tokens — grouped per cell with tiny offsets so everyone stays visible
+    var by = {};
+    st.players.forEach(function(pl, i){ if (!override || override.idx !== i) (by[pl.pos] = by[pl.pos] || []).push(i); });
+    Object.keys(by).forEach(function(posN){
+      by[posN].forEach(function(pi, k){
+        var c0 = cellXY(+posN, cs);
+        drawToken(ctx, c0.x + (k % 2 ? cs*0.18 : -cs*0.06) , c0.y + (k > 1 ? cs*0.18 : 0), cs, pi, st.players[pi]);
+      });
+    });
+    if (override) drawToken(ctx, override.x, override.y, cs * 1.12, override.idx, st.players[override.idx]);
+  }
+  function drawToken(ctx, x, y, cs, i, pl){
+    ctx.beginPath(); ctx.arc(x, y, cs * 0.21, 0, 7);
+    ctx.fillStyle = TOKC[i % TOKC.length]; ctx.fill();
+    ctx.lineWidth = Math.max(1.5, cs * 0.04); ctx.strokeStyle = '#fff'; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = '700 ' + (cs * 0.2) + 'px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText((pl && pl.name || '?').charAt(0).toUpperCase(), x, y + cs * 0.01);
+  }
+  function boardFx(emoji, count){
+    var cv = $('board-cv'); if (!cv) return;
+    var r = cv.getBoundingClientRect();
+    for (var i = 0; i < (count || 4); i++) {
+      var sp = document.createElement('span');
+      sp.className = 'fx'; sp.textContent = emoji;
+      sp.style.left = (r.left + r.width * (0.25 + Math.random() * 0.5)) + 'px';
+      sp.style.top = (r.top + r.height * (0.35 + Math.random() * 0.3)) + 'px';
+      sp.style.animationDelay = (i * 110) + 'ms';
+      document.body.appendChild(sp);
+      (function(el){ setTimeout(function(){ el.remove(); }, 1700); })(sp);
+    }
+  }
+  var dieTimer = null;
+  function dieSpin(){
+    var die = $('die'); die.classList.add('rolling');
+    clearInterval(dieTimer);
+    dieTimer = setInterval(function(){ die.textContent = DIE_FACES[Math.floor(Math.random() * 6)]; }, 90);
+  }
+  function dieStop(face){
+    var die = $('die'); clearInterval(dieTimer); dieTimer = null;
+    die.classList.remove('rolling');
+    if (face >= 1 && face <= 6) die.textContent = DIE_FACES[face - 1];
+  }
+  function renderBoard(st){
+    var last = st.last;
+    if (!last || typeof last.from !== 'number' || typeof last.to !== 'number') { paintBoard(st); return; }
+    var key = (curGame ? curGame.id : '') + ':' + last.by + ':' + last.from + ':' + last.roll + ':' + last.to;
+    if (key === sbAnim.lastKey || sbAnim.running) { if (!sbAnim.running) { paintBoard(st); dieStop(last.roll); } return; }
+    sbAnim.lastKey = key;
+    if (reducedMotion) { paintBoard(st); dieStop(last.roll); return; }
+    var mi = -1;
+    st.players.forEach(function(p, i){ if (mi < 0 && p.name === last.by && p.pos === last.to) mi = i; });
+    if (mi < 0) { paintBoard(st); dieStop(last.roll); return; }
+    sbAnim.running = true;
+    dieSpin();
+    setTimeout(function(){
+      dieStop(last.roll);
+      var mid = Math.min(last.from + last.roll, 100);
+      if (last.from + last.roll > 100) mid = last.from; // overshoot — stays put
+      var cv = $('board-cv'), cs = (cv.clientWidth || 320) / 10;
+      var steps = [];
+      for (var n = Math.max(1, last.from); n <= mid; n++) steps.push(n);
+      if (!steps.length) steps = [mid];
+      var stepMs = 170, slideMs = 700, t0 = null;
+      var isJump = mid !== last.to;
+      var isSnake = isJump && last.to < mid;
+      function frame(ts){
+        if (!t0) t0 = ts;
+        var el = ts - t0, walkDur = (steps.length - 1) * stepMs;
+        if (el <= walkDur && steps.length > 1) {
+          var idx = Math.min(steps.length - 2, Math.floor(el / stepMs));
+          var t = (el - idx * stepMs) / stepMs;
+          var a = cellXY(steps[idx], cs), b = cellXY(steps[idx + 1], cs);
+          var hop = Math.sin(t * Math.PI) * cs * 0.3;
+          paintBoard(st, { idx: mi, x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t - hop });
+          requestAnimationFrame(frame);
+          return;
+        }
+        if (isJump) {
+          var jt = Math.min(1, (el - walkDur - 250) / slideMs);
+          if (jt < 0) { paintBoard(st, { idx: mi, x: cellXY(mid, cs).x, y: cellXY(mid, cs).y }); requestAnimationFrame(frame); return; }
+          var e2 = jt < 0.5 ? 2 * jt * jt : 1 - Math.pow(-2 * jt + 2, 2) / 2;
+          var pA, hA = cellXY(mid, cs), tA = cellXY(last.to, cs);
+          if (isSnake) { var ctl = snakeCtrl(hA, tA, cs); pA = snakePoint(hA, tA, ctl[0], ctl[1], e2); }
+          else pA = { x: hA.x + (tA.x - hA.x) * e2, y: hA.y + (tA.y - hA.y) * e2 };
+          paintBoard(st, { idx: mi, x: pA.x, y: pA.y });
+          if (jt === 0.02 || (jt > 0 && jt < 0.06)) boardFx(isSnake ? '🐍' : '✨');
+          if (jt >= 1) { finish(); return; }
+          requestAnimationFrame(frame);
+          return;
+        }
+        finish();
+      }
+      function finish(){
+        sbAnim.running = false;
+        paintBoard(st);
+        if (isJump) boardFx(isSnake ? '💥' : '🎉', 3);
+        if (st.winner) boardFx('🏆', 6);
+      }
+      requestAnimationFrame(frame);
+    }, 650);
   }
   var TEAM_NAMES = ['Team Marigold 🧡', 'Team Pine 💚'];
   function partyCurrent(st){
@@ -1995,8 +2200,9 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       th += '<div class="teamcol"><h4>' + TEAM_NAMES[t] + ' <span class="tscore">' + (st.teamScores ? st.teamScores[t] : 0) + '</span></h4>';
       list.forEach(function(p){
         var isAdm = st.admins.indexOf(p.id) >= 0;
-        th += '<div class="pchip">' + (isAdm ? '⭐ ' : '') + esc(p.name) +
-              (cur && cur.id === p.id && st.status === 'playing' ? ' 🎯' : '') +
+        var isCur = cur && cur.id === p.id && st.status === 'playing';
+        th += '<div class="pchip' + (isCur ? ' cur' : '') + '">' + (isAdm ? '⭐ ' : '') + esc(p.name) +
+              (isCur ? ' 🎯' : '') +
               ' <span class="sc">· ' + (p.score || 0) + '</span>' +
               (meAdmin && p.id !== state.memberId
                 ? (isAdm ? '' : '<button class="mini" data-gpromote="' + p.id + '" title="Make co-admin">⭐</button>') +
@@ -2058,10 +2264,17 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       $('t-status').textContent = st.winner ? '🏆 ' + st.winner + ' wins!'
         : st.draw ? '🤝 A draw — rematch?'
         : (meTurn ? 'Your move (' + (st.turn === 0 ? '✕' : '◯') + ')' : (iAmIn ? turnP.name + "'s move…" : st.players[0].name + ' vs ' + st.players[1].name));
+      var LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+      var winSet = {};
+      LINES.forEach(function(L){
+        if (st.board[L[0]] !== null && st.board[L[0]] === st.board[L[1]] && st.board[L[1]] === st.board[L[2]]) {
+          L.forEach(function(i){ winSet[i] = true; });
+        }
+      });
       var bh = '';
       st.board.forEach(function(v, i){
         var sym = v === 0 ? '✕' : v === 1 ? '◯' : '';
-        var cls = v === 0 ? ' x' : v === 1 ? ' o' : '';
+        var cls = (v === 0 ? ' x' : v === 1 ? ' o' : '') + (winSet[i] ? ' win' : '');
         var dis = (v !== null || over || !meTurn || !iAmIn) ? ' disabled' : '';
         bh += '<button class="tcell' + cls + '" data-tcell="' + i + '"' + dis + '>' + sym + '</button>';
       });
@@ -2150,6 +2363,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
   $('pt-end').addEventListener('click', endGame);
   $('t-end').addEventListener('click', endGame);
   $('g-roll').addEventListener('click', function(){
+    dieSpin();
     if (!curGame) return;
     post(API.games, { code: state.code, memberId: state.memberId, action: 'roll', gameId: curGame.id })
       .then(function(j){ if (j.ok) renderGame(j.game); else toast(j.error || 'Could not roll'); })
@@ -2159,6 +2373,60 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     if (!curGame || !confirm('End the game for everyone?')) return;
     post(API.games, { code: state.code, memberId: state.memberId, action: 'end', gameId: curGame.id })
       .then(function(){ curGame = null; refreshFun(); }).catch(function(){});
+  });
+  // ---------- @mentions + add members to a group ----------
+  var curChatMembers = [];
+  function mentionify(escaped){
+    var names = membersCache.map(function(m){ return m.name; }).concat(['Ekta']);
+    names.sort(function(a, b){ return b.length - a.length; });
+    names.forEach(function(n){
+      var e = esc(n).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      escaped = escaped.replace(new RegExp('@(' + e + ')', 'gi'), '<b class="mn">@$1</b>');
+    });
+    return escaped;
+  }
+  $('msg').addEventListener('input', function(){
+    var mb = $('mentionbox');
+    if (curTab !== 'chat' || !curChat) { mb.hidden = true; return; }
+    var upto = this.value.slice(0, this.selectionStart == null ? this.value.length : this.selectionStart);
+    var m = upto.match(/@([A-Za-z\u0900-\u097F]*)$/);
+    if (!m) { mb.hidden = true; return; }
+    var q = m[1].toLowerCase();
+    var pool = (curChatMembers.length ? curChatMembers : membersCache).filter(function(x){ return x.id !== state.memberId; });
+    var opts = pool.filter(function(x){ return x.name.toLowerCase().indexOf(q) === 0; });
+    if ('ekta'.indexOf(q) === 0) opts = [{ id: 'ekta', name: 'Ekta' }].concat(opts);
+    if (!opts.length) { mb.hidden = true; return; }
+    mb.innerHTML = opts.slice(0, 6).map(function(x){ return '<button type="button" data-mention="' + esc(x.name) + '">@' + esc(x.name) + '</button>'; }).join('');
+    mb.hidden = false;
+  });
+  $('mentionbox').addEventListener('click', function(e){
+    var b = e.target.closest('[data-mention]'); if (!b) return;
+    var inp = $('msg');
+    var caret = inp.selectionStart == null ? inp.value.length : inp.selectionStart;
+    var upto = inp.value.slice(0, caret).replace(/@[A-Za-z\u0900-\u097F]*$/, '@' + b.getAttribute('data-mention') + ' ');
+    inp.value = upto + inp.value.slice(caret);
+    this.hidden = true;
+    try { inp.focus(); inp.selectionStart = inp.selectionEnd = upto.length; } catch (err) {}
+  });
+  $('cv-add').addEventListener('click', function(){
+    var box = $('addbox');
+    if (!box.hidden) { box.hidden = true; return; }
+    var inChat = {};
+    curChatMembers.forEach(function(m){ inChat[m.id] = true; });
+    var outside = membersCache.filter(function(m){ return !inChat[m.id]; });
+    box.innerHTML = outside.length
+      ? outside.map(function(m){ return '<button type="button" data-chadd="' + m.id + '">➕ ' + esc(m.name) + '</button>'; }).join('')
+      : '<span class="hint">Everyone in the circle is already here 🧡</span>';
+    box.hidden = false;
+  });
+  $('addbox').addEventListener('click', function(e){
+    var b = e.target.closest('[data-chadd]'); if (!b) return;
+    post(API.chats, { code: state.code, memberId: state.memberId, action: 'add_member', chatId: curChat.id, addId: b.getAttribute('data-chadd') })
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not add'); return; }
+        $('addbox').hidden = true; toast('Added to the group 🧡'); loadMsgs(); refreshChats();
+      })
+      .catch(function(){ toast('No connection — try again'); });
   });
   $('chatback').addEventListener('click', closeChat);
   $('ekta-fab').addEventListener('click', function(){ switchTab('ekta'); });

@@ -119,7 +119,10 @@ export default async function handler(req, res) {
           select r.member_id, r.read_at, m.name
           from chat_reads r join members m on m.id = r.member_id
           where r.chat_id = ${chat.id}`;
-        return res.status(200).json({ ok: true, chat: { id: chat.id, kind: chat.kind, name: chat.name }, messages: msgs.reverse(), reads });
+        const participants = chat.kind === 'circle'
+          ? await sql`select id, name from members where circle_id = ${circle.id} order by created_at`
+          : await sql`select m.id, m.name from chat_members cm join members m on m.id = cm.member_id where cm.chat_id = ${chat.id} order by m.created_at`;
+        return res.status(200).json({ ok: true, chat: { id: chat.id, kind: chat.kind, name: chat.name }, messages: msgs.reverse(), reads, members: participants });
       }
       const chats = await listChats(sql, circle, me);
       return res.status(200).json({ ok: true, chats });
@@ -180,6 +183,19 @@ export default async function handler(req, res) {
       await sql`insert into chat_members (chat_id, member_id) values (${c[0].id}, ${me.id})`;
       await sql`insert into chat_members (chat_id, member_id) values (${c[0].id}, ${other})`;
       return res.status(201).json({ ok: true, chatId: c[0].id });
+    }
+
+    if (action === 'add_member') {
+      const chat = await chatForMember(sql, circle, body.chatId, me.id);
+      if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
+      if (chat.kind !== 'group') return res.status(400).json({ ok: false, error: chat.kind === 'circle' ? 'Everyone is already in the circle chat' : 'Personal chats stay 1:1 — make a group instead' });
+      const addId = body.addId;
+      if (!isUuid(addId)) return res.status(400).json({ ok: false, error: 'Pick a person to add' });
+      const aRow = await sql`select id, name from members where id = ${addId} and circle_id = ${circle.id}`;
+      if (!aRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+      await sql`insert into chat_members (chat_id, member_id) values (${chat.id}, ${addId}) on conflict do nothing`;
+      await sql`insert into messages (chat_id, member_id, text) values (${chat.id}, ${me.id}, ${'➕ Added ' + aRow[0].name + ' to the group'})`;
+      return res.status(200).json({ ok: true });
     }
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });

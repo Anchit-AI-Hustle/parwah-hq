@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Syntax-check every API function
+        run: |
+          for f in api/*.mjs; do node --check "$f"; done
+
+      - name: Site test suite (structure, links, claims, secrets)
+        run: python3 site/tests/test_site.py
+
+      - name: Root build (what Vercel runs)
+        run: |
+          npm install --no-audit --no-fund
+          npm run build --if-present
