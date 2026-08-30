@@ -6,3 +6,7 @@ node_modules/
 # stray headless-test screenshots
 *.png
 !site/public/**/*.png
+
+# local deploy cron state
+.deploy-state
+ops/deploy.log
