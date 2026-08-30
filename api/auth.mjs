@@ -28,6 +28,26 @@ export default async function handler(req, res) {
 
   try {
     const body = req.body || {};
+
+    if (body.action === 'update') {
+      if (!isUuid(body.userId)) return res.status(403).json({ ok: false, error: 'Sign in first' });
+      const u = await sql`select id, name, phone from users where id = ${body.userId}`;
+      if (!u[0]) return res.status(404).json({ ok: false, error: 'Profile not found' });
+      const newName = String(body.name || '').trim().slice(0, 60) || u[0].name;
+      let newPhone = u[0].phone;
+      if (body.phone) {
+        const np = normPhone(body.phone);
+        if (!np) return res.status(400).json({ ok: false, error: 'That does not look like a mobile number' });
+        newPhone = np;
+      }
+      try {
+        await sql`update users set name = ${newName}, phone = ${newPhone} where id = ${u[0].id}`;
+      } catch (e) {
+        return res.status(409).json({ ok: false, error: 'That number is already registered to another profile' });
+      }
+      return res.status(200).json({ ok: true, user: { id: u[0].id, name: newName, phone: newPhone } });
+    }
+
     if (body.action !== 'enter') return res.status(400).json({ ok: false, error: 'Unknown action' });
     const phone = normPhone(body.phone);
     if (!phone) return res.status(400).json({ ok: false, error: 'That does not look like a mobile number' });

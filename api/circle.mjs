@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   // Optional phone number — powers the 📞 call buttons; digits/+/()/-/space only.
   let ph = String(phone || '').trim();
   ph = /^[+()\-\s0-9]{7,20}$/.test(ph) ? ph : null;
-  if (!name) return res.status(400).json({ ok: false, error: 'Please tell us your name' });
+  if (!name && action !== 'update_member') return res.status(400).json({ ok: false, error: 'Please tell us your name' });
 
   try {
     // A signed-in user carries their profile phone into every membership.
@@ -56,6 +56,25 @@ export default async function handler(req, res) {
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${m[0].id}, 'join', ${name + ' joined the circle'})`;
       return res.status(200).json({ ok: true, code: circle.code, circleName: circle.name, memberId: m[0].id, role: r });
+    }
+
+    if (action === 'update_member') {
+      const circle = await circleByCode(sql, code);
+      if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
+      const memberId = req.body.memberId;
+      if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+      const mRow = await sql`select id, name, role, phone from members where id = ${memberId} and circle_id = ${circle.id}`;
+      if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+      const cur = mRow[0];
+      const newName = name || cur.name;
+      const newRole = (role === 'parent' || role === 'family') ? role : cur.role;
+      const newPhone = ph !== null ? ph : cur.phone;
+      await sql`update members set name = ${newName}, role = ${newRole}, phone = ${newPhone} where id = ${cur.id}`;
+      if (newName !== cur.name || newRole !== cur.role) {
+        await sql`insert into events (circle_id, member_id, type, text)
+                  values (${circle.id}, ${cur.id}, 'care', ${cur.name + ' updated their profile' + (newName !== cur.name ? ' — now ' + newName : '')})`;
+      }
+      return res.status(200).json({ ok: true, name: newName, role: newRole, phone: newPhone });
     }
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });

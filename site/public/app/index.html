@@ -215,6 +215,16 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 @media(prefers-reduced-motion:reduce){#emic.rec{animation:none}}
 #evoice{margin-left:auto}
 
+/* member profile sheet */
+.msheet{position:fixed;inset:0;background:rgba(24,38,34,.55);z-index:25;display:flex;align-items:center;justify-content:center;padding:20px}
+.msheet .mp{background:var(--day);border-radius:20px;max-width:380px;width:100%;padding:22px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.mp .x{position:absolute;top:12px;right:12px;border:0;background:var(--bone);border-radius:99px;width:30px;height:30px;cursor:pointer}
+.avatar{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--marigold),var(--sindoor));color:#fff;font-family:var(--disp);font-weight:700;font-size:1.6rem;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.mp h3{font-family:var(--disp);font-size:1.25rem}
+.mp .rolebadge{display:inline-block;background:var(--bone);border-radius:99px;padding:3px 12px;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:6px 0 12px}
+.mp .prow2{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.member{cursor:pointer}
+
 /* Ekta floating icon — on every screen, one tap away */
 .fab{position:fixed;right:16px;bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom));z-index:7;border:0;border-radius:99px;background:var(--dusk);color:var(--marigold);font-family:var(--dev);font-size:1.5rem;width:58px;height:58px;cursor:pointer;box-shadow:0 10px 26px rgba(24,38,34,.4)}
 
@@ -608,8 +618,21 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       <div class="kv"><b>Mobile</b><span id="p-phone">—</span></div>
       <div class="kv"><b>Role</b><span id="p-role"></span></div>
       <div class="kv"><b>Circle</b><span id="p-circle"></span></div>
-      <button class="linkbtn" id="leave">Switch circle</button>
+      <button class="linkbtn" id="pedit">✏️ Edit profile</button>
+      <button class="linkbtn" id="leave" style="margin-left:16px">Switch circle</button>
       <button class="linkbtn" id="signout" style="margin-left:16px;color:var(--alert)">Sign out</button>
+      <div id="editform" hidden style="margin-top:14px;border-top:1px dashed var(--bone-2);padding-top:12px">
+        <label for="e-name">Name in this circle</label>
+        <input type="text" id="e-name" maxlength="60">
+        <label for="e-phone">Mobile number (your sign-in)</label>
+        <input type="tel" id="e-phone" maxlength="20">
+        <label>Mode</label>
+        <div class="rolepick" id="e-role">
+          <button type="button" data-role="family">Family</button>
+          <button type="button" data-role="parent">Parent (senior mode)</button>
+        </div>
+        <button class="go" id="e-save">Save changes</button>
+      </div>
     </div>
 
     <div class="card">
@@ -680,6 +703,22 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     <div class="side-user side-only" id="side-user"></div>
   </div>
 </nav>
+
+<div class="msheet" id="msheet" hidden>
+  <div class="mp">
+    <button class="x" id="mp-x" aria-label="Close">✕</button>
+    <div class="avatar" id="mp-av"></div>
+    <h3 id="mp-name"></h3>
+    <span class="rolebadge" id="mp-role"></span>
+    <div class="kv"><b>Mobile</b><span id="mp-phone">—</span></div>
+    <div class="kv"><b>In the circle since</b><span id="mp-since">—</span></div>
+    <div class="prow2">
+      <a class="cbtn" id="mp-call" hidden>📞 Call</a>
+      <button class="cbtn" id="mp-dm">💬 Message privately</button>
+      <button class="cbtn ghost" id="mp-remind">🔔 Set a reminder</button>
+    </div>
+  </div>
+</div>
 
 <div class="drawer" id="drawer" hidden>
   <div class="dpanel">
@@ -871,7 +910,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
     $('p-circle').textContent = data.circleName;
     var mh = '';
     data.members.forEach(function(m){
-      mh += '<span class="member">' + esc(m.name) + ' <em>· ' + (m.role === 'parent' ? 'parent' : 'family') + '</em>' +
+      mh += '<span class="member" data-mprof="' + m.id + '" role="button" tabindex="0">' + esc(m.name) + ' <em>· ' + (m.role === 'parent' ? 'parent' : 'family') + '</em>' +
             (m.phone ? ' <a class="callbtn" href="tel:' + encodeURIComponent(m.phone) + '" aria-label="Call ' + esc(m.name) + '">📞</a>' : '') + '</span>';
     });
     $('members').innerHTML = mh;
@@ -1741,6 +1780,84 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not open the chat'); return; }
         refreshChats(function(){ openChat(j.chatId); });
+      })
+      .catch(function(){ toast('No connection — try again'); });
+  });
+
+  // ---------- member profiles ----------
+  function openMemberSheet(id){
+    var m = null; membersCache.forEach(function(x){ if (x.id === id) m = x; });
+    if (!m) return;
+    $('mp-av').textContent = (m.name || '?').trim().charAt(0).toUpperCase();
+    $('mp-name').textContent = m.name;
+    $('mp-role').textContent = m.role === 'parent' ? 'Parent · senior mode' : 'Family';
+    $('mp-phone').textContent = m.phone || 'not shared';
+    $('mp-since').textContent = m.created_at ? fmtDue(String(m.created_at).slice(0, 10)) : '—';
+    if (m.phone) { $('mp-call').href = 'tel:' + encodeURIComponent(m.phone); $('mp-call').hidden = false; }
+    else $('mp-call').hidden = true;
+    var self = m.id === state.memberId;
+    $('mp-dm').hidden = self;
+    $('mp-remind').hidden = false;
+    $('msheet').dataset.mid = m.id;
+    $('msheet').hidden = false;
+  }
+  document.addEventListener('click', function(e){
+    var c = e.target.closest('[data-mprof]');
+    if (c && !e.target.closest('a')) openMemberSheet(c.getAttribute('data-mprof'));
+  });
+  $('mp-x').addEventListener('click', function(){ $('msheet').hidden = true; });
+  $('msheet').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });
+  $('mp-dm').addEventListener('click', function(){
+    var mid = $('msheet').dataset.mid; $('msheet').hidden = true;
+    post(API.chats, { code: state.code, memberId: state.memberId, action: 'open_dm', otherId: mid })
+      .then(function(j){ if (j.ok) refreshChats(function(){ openChat(j.chatId); }); else toast(j.error || 'Could not open the chat'); })
+      .catch(function(){ toast('No connection — try again'); });
+  });
+  $('mp-remind').addEventListener('click', function(){
+    var mid = $('msheet').dataset.mid; $('msheet').hidden = true;
+    switchTab('care'); setSec('care', 'rem');
+    if (mid !== state.memberId) $('r-for').value = mid;
+    try { $('r-title').focus(); } catch (e) {}
+  });
+
+  // ---------- edit profile ----------
+  var eRole = rolePicker('e-role');
+  $('pedit').addEventListener('click', function(){
+    var f = $('editform');
+    f.hidden = !f.hidden;
+    if (!f.hidden) {
+      $('e-name').value = state.name;
+      $('e-phone').value = (authUser && authUser.phone) || '';
+      $('e-role').querySelectorAll('button').forEach(function(b){
+        b.classList.toggle('sel', b.getAttribute('data-role') === state.role);
+      });
+    }
+  });
+  $('e-save').addEventListener('click', function(){
+    var nm = $('e-name').value.trim();
+    if (!nm) { toast('Name cannot be empty'); return; }
+    var role = eRole();
+    post(API.circle, { action: 'update_member', code: state.code, memberId: state.memberId, memberName: nm, role: role })
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not save'); return; }
+        state.name = j.name; state.role = j.role; saveState(state);
+        document.body.classList.toggle('senior', state.role === 'parent');
+        $('seniorui').hidden = state.role !== 'parent';
+        $('who').textContent = state.name + ' · ' + state.code;
+        $('side-user').textContent = state.name + ' · ' + state.code;
+        $('d-user').textContent = state.name + ' · ' + state.code;
+        $('p-name').textContent = state.name;
+        $('p-role').textContent = state.role === 'parent' ? 'Parent (senior mode)' : 'Family';
+        var newPhone = $('e-phone').value.trim();
+        var done = function(){ $('editform').hidden = true; toast('Profile updated 🧡'); refresh(); };
+        if (authUser && newPhone && newPhone !== authUser.phone) {
+          post(API.auth, { action: 'update', userId: authUser.id, name: nm, phone: newPhone })
+            .then(function(a){
+              if (a.ok) { authUser = a.user; saveAuth(authUser); $('p-phone').textContent = authUser.phone; done(); }
+              else toast(a.error || 'Could not update the number');
+            })
+            .catch(function(){ toast('No connection — try again'); });
+        } else done();
       })
       .catch(function(){ toast('No connection — try again'); });
   });
