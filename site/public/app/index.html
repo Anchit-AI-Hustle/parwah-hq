@@ -63,7 +63,16 @@ h1{font-family:var(--disp);font-weight:600;font-size:1.5rem;margin-bottom:6px}
 .card p{font-size:.9rem;color:var(--ink-soft)}
 .card ul{margin:8px 0 0 18px;font-size:.9rem;color:var(--ink-soft)}
 label{display:block;font-size:.85rem;font-weight:600;margin:10px 0 4px}
-input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;padding:13px;font-family:var(--body);font-size:1rem;background:var(--day)}
+input[type=text],input[type=search],input[type=tel],input[type=email],input[type=url],
+input[type=number],input[type=password],input[type=date],input[type=time],textarea{
+  width:100%;border:1px solid var(--bone-2);border-radius:12px;padding:13px;
+  font-family:var(--body);font-size:1rem;background:var(--day);color:var(--ink)}
+input[type=search]{-webkit-appearance:none;appearance:none}
+textarea{resize:vertical;min-height:96px}
+/* Selects keep their native arrow — only the box is ours. */
+select{border:1px solid var(--bone-2);border-radius:12px;padding:12px;font-family:var(--body);
+  font-size:1rem;background:var(--day);color:var(--ink);max-width:100%}
+label + select{width:100%}
 .rolepick{display:flex;gap:10px;margin-top:6px}
 .rolepick button{flex:1;border:1.5px solid var(--bone-2);background:#fff;border-radius:12px;padding:12px;font-family:var(--body);font-weight:600;font-size:.9rem;cursor:pointer;color:var(--ink)}
 .rolepick button.sel{border-color:var(--marigold);background:#FDF4E3}
@@ -122,7 +131,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .cbtn.ghost{background:var(--bone);color:var(--ink)}
 .cbtn.no{background:#fff;border:1px solid var(--bone-2);color:var(--ink-soft)}
 .addrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-.addrow input[type=text]{flex:1;min-width:150px}
+.addrow input{flex:1;min-width:150px}
 .addrow select{border:1px solid var(--bone-2);border-radius:12px;padding:12px;font-family:var(--body);font-size:.9rem;background:var(--day)}
 .addrow label.chk{display:flex;align-items:center;gap:6px;font-size:.85rem;margin:0}
 
@@ -131,7 +140,7 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .pick span{display:block;font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px}
 .pick input,.pick select{width:100%;border:1px solid var(--bone-2);border-radius:12px;padding:11px;font-family:var(--body);font-size:.95rem;background:var(--day);color:var(--ink)}
 .seg{display:flex;background:var(--bone);border-radius:12px;padding:3px}
-.seg button{flex:1;border:0;background:none;border-radius:10px;padding:9px;font-family:var(--body);font-weight:700;font-size:.85rem;cursor:pointer;color:var(--ink-soft)}
+.seg button{flex:1 1 auto;min-width:78px;border:0;background:none;border-radius:10px;padding:9px;font-family:var(--body);font-weight:700;font-size:.85rem;cursor:pointer;color:var(--ink-soft)}
 .seg button.sel{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .pageseg{margin:0 0 16px}
 .pageseg button{padding:11px 6px;font-size:.88rem}
@@ -478,12 +487,16 @@ body.inapp #sosbar{padding-left:14px}
   #pane-home .card,#pane-care .card,#pane-memory .card,#pane-vault .card,
   #pane-profile .card,#pane-people .card,#pane-fun .card,#pane-notifs .card{max-width:640px}
   #pane-home .homemain .card{max-width:none}
-  .subsec .feed,#pane-memory .feed,#pane-vault .feed{max-width:760px}
+  .subsec .feed,#pane-vault .feed{max-width:760px}
+  /* Memory reads as one column: the feed lines up with the card and the filters. */
+  #pane-memory .feed{max-width:640px}
   /* Sixteen Choghadiya and twelve rashis are a list to scan, not prose to
      read — on a wide screen they go two abreast rather than a mile down. */
   #pane-day .card{max-width:980px}
   #mu-named,#mu-day,#mu-night,#ho-all,#ho-people{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:980px}
   .addrow{max-width:640px}
+  /* The memory filters share the card's measure instead of racing to the window edge. */
+  #bk-filter,#bk-about{max-width:640px}
   .pageseg{max-width:420px}
 
   /* Hover belongs to a pointer, not a finger. */
@@ -911,13 +924,13 @@ body.inapp #sosbar{padding-left:14px}
       <div class="addrow" style="margin-top:0">
         <input type="search" id="b-search" maxlength="60" placeholder="Search the family book…" aria-label="Search family book">
       </div>
-      <div class="seg" id="bk-filter" role="group" aria-label="Family memory sections" style="margin-bottom:8px">
+      <div class="seg" id="bk-filter" role="group" aria-label="Family memory sections" style="margin-bottom:8px;flex-wrap:wrap">
         <button type="button" data-bk="all" class="sel">All</button>
-        <button type="button" data-bk="contact">☎️</button>
-        <button type="button" data-bk="address">📍</button>
-        <button type="button" data-bk="med">💊</button>
-        <button type="button" data-bk="fact">🩸</button>
-        <button type="button" data-bk="insurance">🛡</button>
+        <button type="button" data-bk="contact">☎️ Contacts</button>
+        <button type="button" data-bk="address">📍 Addresses</button>
+        <button type="button" data-bk="med">💊 Meds</button>
+        <button type="button" data-bk="fact">🩸 Health</button>
+        <button type="button" data-bk="insurance">🛡 Insurance</button>
       </div>
       <select id="bk-about" aria-label="About whom" style="margin-bottom:10px"><option value="">About anyone</option></select>
       <div class="feed" id="blist"><div class="ev">Nothing saved yet — add the family's first entry below 📒</div></div>
