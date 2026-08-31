@@ -14,8 +14,13 @@
 #
 #   ops/deploy.sh [--force] [--dry-run]
 #
-# Token: put it in ~/.parwah/vercel-token (chmod 600) or export VERCEL_TOKEN.
-# It is never read from, or written to, this repository.
+# Signing in, either way round:
+#   by hand — `vercel login` once on this machine and nothing else is needed
+#   from cron — a token in ~/.parwah/vercel-token (chmod 600), or $VERCEL_TOKEN
+# A token is tried first when there is one and the stored login is used when
+# there is not, OR when the token turns out to be stale: an expired token
+# sitting in a shell profile must not stop a signed-in person from deploying.
+# Neither is ever read from, or written to, this repository.
 set -uo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -61,7 +66,6 @@ cd "$REPO" || die "no repo at $REPO"
 if [ -z "${VERCEL_TOKEN:-}" ] && [ -r "$HOME/.parwah/vercel-token" ]; then
   VERCEL_TOKEN="$(tr -d '[:space:]' < "$HOME/.parwah/vercel-token")"
 fi
-[ -n "${VERCEL_TOKEN:-}" ] || die "no VERCEL_TOKEN (put one in ~/.parwah/vercel-token, chmod 600)"
 command -v vercel >/dev/null 2>&1 || die "vercel CLI not installed — npm i -g vercel"
 
 # 1. bring the branch up to date, but never clobber work in progress
@@ -93,8 +97,11 @@ fi
 # problem that does not have that shape, which is exactly the case where you
 # need the output most.
 GATE_LOG="$(mktemp "${TMPDIR:-/tmp}/parwah-gate.XXXXXX")"
-if ! bash scripts/checks.sh > "$GATE_LOG" 2>&1; then
-  RC=$?
+# `if ! cmd; then RC=$?` captures the status of the NEGATION — always 0 — and
+# reported every gate failure as "exit 0". Take the status first, branch after.
+RC=0
+bash scripts/checks.sh > "$GATE_LOG" 2>&1 || RC=$?
+if [ "$RC" -ne 0 ]; then
   log "gate FAILED (exit $RC) — not deploying. Full output:"
   echo "------------------------------------------------------------"
   if grep -qE '^FAIL' "$GATE_LOG"; then grep -E '^FAIL|CHECK\(S\) FAILED' "$GATE_LOG"; echo "---"; fi
@@ -138,8 +145,10 @@ vercel_hint() {
   case "$VC_OUT" in
     *"fetch failed"*|*ENOTFOUND*|*ETIMEDOUT*|*ECONNREFUSED*|*"getaddrinfo"*)
       echo "this machine could not reach api.vercel.com — check the network, a VPN, or a corporate proxy" ;;
-    *401*|*403*|*"not authorized"*|*"Not authorized"*|*"invalid token"*|*"Invalid token"*|*"token was revoked"*)
-      echo "the token in ~/.parwah/vercel-token was rejected — create a fresh one at vercel.com/account/tokens" ;;
+    *"Logged out"*|*"logged out"*)
+      echo "no Vercel credentials on this machine — run 'vercel login' here, or (for cron) put a token from https://vercel.com/account/settings/tokens in ~/.parwah/vercel-token, chmod 600" ;;
+    *401*|*403*|*"not authorized"*|*"Not authorized"*|*"is not valid"*|*"invalid token"*|*"Invalid token"*|*"token was revoked"*)
+      echo "Vercel rejected those credentials — run 'vercel login' again, or replace the token with a fresh one from https://vercel.com/account/settings/tokens" ;;
     *"does not exist"*|*"not found"*|*"Project not found"*)
       echo "the project link looks wrong — delete .vercel/ here and re-run so it is rewritten" ;;
     *) echo "see the output above" ;;
@@ -154,12 +163,30 @@ if [ ! -f .vercel/project.json ]; then
   printf '{"projectId":"%s","orgId":"%s"}\n' "$VERCEL_PROJECT_ID" "$VERCEL_ORG_ID" > .vercel/project.json
 fi
 
-# Check the token before anything else, so a bad one is named as a bad one
-# instead of surfacing three steps later as "pull failed".
-if ! run_vercel "vercel whoami" vercel whoami --token="$VERCEL_TOKEN"; then
-  die "$(vercel_hint)"
+# Every Vercel call goes through this, so the choice of credential is made
+# once. A plain string flag rather than an array: macOS still ships bash 3.2,
+# where an empty array under `set -u` is an unbound variable.
+AUTH_MODE=none                       # none | token | login
+vc() {
+  if [ "$AUTH_MODE" = token ]; then vercel "$@" --token="$VERCEL_TOKEN"
+  else vercel "$@"; fi
+}
+
+# Prove the credentials before anything else, so a bad one is named as a bad
+# one instead of surfacing three steps later as "pull failed".
+if [ -n "${VERCEL_TOKEN:-}" ]; then
+  AUTH_MODE=token
+  if ! run_vercel "vercel whoami (token)" vc whoami; then
+    log "that token was rejected — falling back to the login stored on this machine"
+    AUTH_MODE=none
+  fi
 fi
-log "signed in to Vercel as ${VC_OUT##*$'\n'}"
+if [ "$AUTH_MODE" = none ]; then
+  AUTH_MODE=login
+  run_vercel "vercel whoami" vc whoami \
+    || die "$(vercel_hint)"
+fi
+log "signed in to Vercel as ${VC_OUT##*$'\n'} (via ${AUTH_MODE})"
 
 # ONE command, not three. `vercel pull` and `vercel build` exist only to build
 # LOCALLY and upload the output; deploying the source instead lets Vercel do
@@ -168,7 +195,7 @@ log "signed in to Vercel as ${VC_OUT##*$'\n'}"
 # dependence on pulling project settings down first.
 deploy_once() {          # deploy_once <label> <extra args...>
   local label="$1"; shift
-  run_vercel "$label" vercel deploy --prod --yes --archive=tgz --token="$VERCEL_TOKEN" "$@"
+  run_vercel "$label" vc deploy --prod --yes --archive=tgz "$@"
 }
 if ! deploy_once "vercel deploy (team scope)" --scope="$VERCEL_SCOPE"; then
   # A token already scoped to the team rejects the flag; try it plainly.
@@ -191,6 +218,16 @@ case "$BODY" in
   *'"ok":true'*) log "live self-test green on $PROD_URL" ;;
   "")            die "live self-test unreachable at $PROD_URL" ;;
   *)             log "$BODY"; die "live self-test NOT green — production is serving a broken build" ;;
+esac
+
+# The day's arithmetic, checked on the build that is now live. Only an
+# explicit failure is fatal: this probe also reports whether the horoscope
+# source answered, and someone else's uptime is not our deploy's problem.
+DAY="$(curl -fsS --max-time 25 "$PROD_URL/api/diag?probe=day" 2>/dev/null)" || DAY=""
+case "$DAY" in
+  *'"ok":true'*)  log "muhurat check: $(printf '%s' "$DAY" | sed -n 's/.*"summary":"\([^"]*\)".*/\1/p')" ;;
+  *'"ok":false'*) log "$DAY"; die "the muhurat self-test is RED on production" ;;
+  *)              log "muhurat check: no answer from $PROD_URL/api/diag?probe=day (not fatal)" ;;
 esac
 
 echo "$HEAD_SHA" > "$STATE"

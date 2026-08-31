@@ -316,8 +316,30 @@ check("deploy: local artefacts stay out of the upload",
 # dropped necessarily names them, and tripped the first version of this.
 _dcode = "\n".join(l for l in deploysh.splitlines() if not l.strip().startswith("#"))
 check("deploy: source is deployed and built by Vercel, not pushed prebuilt",
-      "vercel deploy --prod --yes" in _dcode and "--prebuilt" not in _dcode
+      "deploy --prod --yes" in _dcode and "--prebuilt" not in _dcode
       and "vercel pull" not in _dcode and "vercel build" not in _dcode)
+# A token in a shell profile goes stale long before anyone notices. Falling
+# back to the login this machine already has is the difference between a
+# deploy and a support round trip.
+check("deploy: a stale token falls back to the login on this machine",
+      "AUTH_MODE=login" in deploysh and "falling back to the login" in deploysh
+      and 'AUTH_MODE=token' in deploysh)
+check("deploy: no token at all is not a failure when someone is signed in",
+      'if [ -n "${VERCEL_TOKEN:-}" ]; then' in deploysh
+      and "no VERCEL_TOKEN" not in deploysh)
+check("deploy: credentials are chosen once, not repeated at every call",
+      "vc deploy --prod" in _dcode and "vc whoami" in _dcode
+      and _dcode.count("--token=") == 1)
+# macOS still ships bash 3.2, where an empty array under `set -u` is an
+# unbound variable — which is why the credential is a string, not an array.
+check("deploy: the credential switch works on bash 3.2",
+      "AUTH_MODE" in deploysh and "=()" not in _dcode)
+check("deploy: a gate failure reports the gate's exit code, not the if's",
+      "RC=$?" in _dcode and "if ! bash scripts/checks.sh" not in _dcode)
+check("deploy: the day's arithmetic is checked on the build that went live",
+      "probe=day" in deploysh and "muhurat self-test is RED" in deploysh)
+check("deploy: someone else's uptime never fails our deploy",
+      '*\'"ok":false\'*' in deploysh and "not fatal" in deploysh)
 check("deploy: works on a machine without flock (macOS)",
       "command -v flock" in deploysh and 'mkdir "$LOCK.d"' in deploysh)
 
