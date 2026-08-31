@@ -7,6 +7,9 @@ for f in api/*.mjs; do node --check "$f"; done
 # Pure unit test: imports api/_phone.mjs, which has no dependencies on purpose,
 # so a fresh clone can run the gate before npm install.
 node site/tests/phonetest.mjs
+# Muhurat and rashi: _panchang, _places and _horoscope import nothing either,
+# so the day's arithmetic is checked against a published almanac here too.
+node site/tests/daytest.mjs
 test -f site/tests/test_site.py || { echo "site test suite missing from build input"; exit 1; }
 if command -v python3 >/dev/null 2>&1; then
   python3 site/tests/test_site.py

@@ -59,7 +59,7 @@ async function escalateStaleSos(sql, circleId) {
     if (req.method === 'GET') {
       const circle = await circleByCode(sql, req.query && req.query.circle);
       if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
-      const members = await sql`select id, name, role, phone, place, country, relation, gift_info, created_at from members where circle_id = ${circle.id} order by created_at`;
+      const members = await sql`select id, name, role, phone, place, country, relation, dob, gift_info, created_at from members where circle_id = ${circle.id} order by created_at`;
       const events = await sql`
         select e.id, e.type, e.text, e.created_at, m.name as member_name, m.role as member_role
         from events e left join members m on m.id = e.member_id

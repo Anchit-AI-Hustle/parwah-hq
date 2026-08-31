@@ -83,6 +83,7 @@ export async function ensureSchema(sql) {
   )`;
   await sql`alter table members add column if not exists user_id uuid references users(id) on delete set null`;
   await sql`alter table members add column if not exists place text`;
+  await sql`alter table members add column if not exists dob date`;
   await sql`alter table members add column if not exists country text`;
   await sql`alter table members add column if not exists relation text`;
   await sql`alter table members add column if not exists gift_info jsonb`;

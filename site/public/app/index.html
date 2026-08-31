@@ -95,6 +95,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .ev{background:#fff;border:1px solid var(--bone-2);border-left:3px solid var(--marigold);border-radius:12px;padding:12px 14px;font-size:.92rem;box-shadow:0 1px 2px rgba(36,31,23,.03),0 6px 16px rgba(36,31,23,.04)}
 .ev small{display:block;color:var(--ink-soft);font-size:.72rem;margin-top:3px}
 .ev.good{border-left-color:var(--ok)}
+/* A Choghadiya that is not running now still says which kind it is —
+   the whole point of the list is to scan it and pick a time. */
+.ev.aus{border-left-color:#7FA98C}
+.ev.inaus{border-left-color:#C48B7E}
 .ev.bad{border-left-color:var(--alert);background:#FDF1EF;font-weight:600}
 .members{display:flex;flex-wrap:wrap;gap:8px}
 .member{background:#fff;border:1px solid var(--bone-2);border-radius:99px;padding:7px 14px;font-size:.85rem;font-weight:600}
@@ -471,6 +475,10 @@ body.inapp #sosbar{padding-left:14px}
   #pane-profile .card,#pane-people .card,#pane-fun .card,#pane-notifs .card{max-width:640px}
   #pane-home .homemain .card{max-width:none}
   .subsec .feed,#pane-memory .feed,#pane-vault .feed{max-width:760px}
+  /* Sixteen Choghadiya and twelve rashis are a list to scan, not prose to
+     read — on a wide screen they go two abreast rather than a mile down. */
+  #pane-day .card{max-width:980px}
+  #mu-named,#mu-day,#mu-night,#ho-all,#ho-people{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:980px}
   .addrow{max-width:640px}
   .pageseg{max-width:420px}
 
@@ -791,6 +799,7 @@ body.inapp #sosbar{padding-left:14px}
       <button class="widget" data-goto="memory"><span class="wic" aria-hidden="true">📒</span><b>Family memory</b><small id="w-book">Contacts, addresses, meds-map, facts</small></button>
       <button class="widget" data-goto="vault" data-sec="docs"><span class="wic" aria-hidden="true">🔐</span><b>Family vault</b><small id="w-vault">Aadhaar, PAN, passport, health papers</small></button>
       <button class="widget" data-goto="vault" data-sec="pay"><span class="wic" aria-hidden="true">💳</span><b>Payments</b><small id="w-pay">Who may use which way of paying</small></button>
+      <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true">🕉</span><b>Muhurat</b><small id="w-day">Choghadiya for your city</small></button>
       <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check — just ask</small></button>
       <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi — play together</small></button>
       <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
@@ -1103,6 +1112,55 @@ body.inapp #sosbar{padding-left:14px}
     </div>
   </section>
 
+  <!-- THE DAY — muhurat for where you live, and the twelve rashis -->
+  <section id="pane-day" hidden>
+    <div class="seg pageseg" id="day-seg" role="tablist" aria-label="Day sections">
+      <button data-sec="muhurat" class="sel">🕉 Muhurat</button>
+      <button data-sec="rashi">✨ Rashifal</button>
+    </div>
+
+    <div class="subsec" data-sec="muhurat">
+      <div class="card">
+        <h3 id="mu-place">Today</h3>
+        <p class="hint" id="mu-sun" style="margin:2px 0 10px"></p>
+        <div class="ev" id="mu-now" style="border-left-color:var(--marigold)"></div>
+        <p class="hint" id="mu-guess" hidden style="margin-top:8px"></p>
+      </div>
+      <div class="card">
+        <h3>Periods to know</h3>
+        <div class="feed" id="mu-named"></div>
+        <p class="hint" style="margin-top:10px">These are worked out from today's sunrise and sunset where you live — not looked up in a table for the whole country.</p>
+      </div>
+      <div class="card">
+        <h3>Choghadiya — day</h3>
+        <div class="feed" id="mu-day"></div>
+      </div>
+      <div class="card">
+        <h3>Choghadiya — night</h3>
+        <div class="feed" id="mu-night"></div>
+      </div>
+    </div>
+
+    <div class="subsec" data-sec="rashi" hidden>
+      <div class="card" id="ho-mine" hidden>
+        <h3 id="ho-myname"></h3>
+        <p id="ho-mytext" style="margin:6px 0 0"></p>
+      </div>
+      <div class="card" id="ho-nodob" hidden>
+        <h3>Add your date of birth</h3>
+        <p class="hint" style="margin:2px 0 10px">Your rashi comes from your birthday. Add it once and it stays.</p>
+        <button class="cbtn" id="ho-adddob">Add it in your profile</button>
+      </div>
+      <p class="eyebrow">All twelve</p>
+      <div class="feed" id="ho-all"></div>
+      <p class="hint" id="ho-src" style="margin-top:10px"></p>
+      <div class="card" style="margin-top:14px">
+        <h3>Your family's rashis</h3>
+        <div class="feed" id="ho-people"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- CHAT -->
   <section id="pane-chat" hidden>
     <div id="chatlist">
@@ -1393,6 +1451,9 @@ body.inapp #sosbar{padding-left:14px}
         </div>
         <label for="e-place">Where do you stay? (city)</label>
         <input type="text" id="e-place" maxlength="80" placeholder="e.g. Pune">
+        <label for="e-dob">Date of birth</label>
+        <input type="date" id="e-dob">
+        <p class="hint" style="margin-top:4px">Used for your rashi, and so the family never forgets a birthday.</p>
         <label for="e-country">Country</label>
         <select id="e-country">
           <option value="">Choose…</option>
@@ -1514,6 +1575,11 @@ body.inapp #sosbar{padding-left:14px}
       <button data-tab="vault" data-sec="pay">Payments</button>
     </div>
     <button data-tab="care"><span class="ic" aria-hidden="true">🔔</span>Care<i class="dot" id="care-dot" hidden></i></button>
+    <button data-tab="day" class="deskonly"><span class="ic" aria-hidden="true">🕉</span>The day</button>
+    <div class="subnav side-only" data-parent="day">
+      <button data-tab="day" data-sec="muhurat">Muhurat</button>
+      <button data-tab="day" data-sec="rashi">Rashifal</button>
+    </div>
     <div class="subnav side-only" data-parent="care">
       <button data-tab="care" data-sec="rem">Things to do</button>
       <button data-tab="care" data-sec="req">Suggested</button>
@@ -1577,6 +1643,13 @@ body.inapp #sosbar{padding-left:14px}
       <div class="dsub">
         <button class="ditem sub" data-tab="vault" data-sec="docs">Documents</button>
         <button class="ditem sub" data-tab="vault" data-sec="pay">Payments</button>
+      </div>
+    </div>
+    <div class="dgroup">
+      <button class="ditem dparent" data-grp="day">🕉 The day <span class="caret">▾</span></button>
+      <div class="dsub">
+        <button class="ditem sub" data-tab="day" data-sec="muhurat">Muhurat &amp; Choghadiya</button>
+        <button class="ditem sub" data-tab="day" data-sec="rashi">Daily rashifal</button>
       </div>
     </div>
     <div class="dgroup">
@@ -1645,8 +1718,8 @@ body.inapp #sosbar{padding-left:14px}
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', vault: '../api/book?area=vault', pay: '../api/book?area=pay', push: '../api/settings?area=push', keys: '../api/settings?area=keys', coins: '../api/settings?area=coins', plan: '../api/settings?area=plan' };
-  var TABS = ['home','people','person','memory','vault','care','chat','ekta','profile','fun','notifs'];
+  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', vault: '../api/book?area=vault', pay: '../api/book?area=pay', push: '../api/settings?area=push', keys: '../api/settings?area=keys', coins: '../api/settings?area=coins', plan: '../api/settings?area=plan', day: '../api/settings?area=day' };
+  var TABS = ['home','people','person','memory','vault','care','day','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
   var curChat = null, chatsCache = [], membersCache = [];
@@ -1730,7 +1803,7 @@ body.inapp #sosbar{padding-left:14px}
     document.querySelectorAll('#drawer .ditem[data-tab]').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-tab') === t && !b.dataset.sec);
     });
-    if (t === 'care' || t === 'fun' || t === 'vault') {
+    if (t === 'care' || t === 'fun' || t === 'vault' || t === 'day') {
       var seg = $(t + '-seg'), cur = seg && seg.querySelector('.sel');
       if (cur) setSec(t, cur.getAttribute('data-sec'));
     }
@@ -1741,6 +1814,8 @@ body.inapp #sosbar{padding-left:14px}
     if (t === 'fun') { refreshFun(); boardSync(); clearInterval(gameTimer); gameTimer = setInterval(function(){ refreshFun(); boardSync(); }, 3000); }
     else clearInterval(gameTimer);
     if (t === 'vault') refreshVault();
+    if (t === 'day') refreshDay();
+    if (t === 'home' && !dayData) refreshDay();   // the Muhurat widget shows the period running now
     if (t === 'notifs') { $('ndetail').hidden = true; $('nlist-view').hidden = false; renderNotifs(); markSeen(); }
     try { history.replaceState(null, '', '#' + t); } catch(e) {}
     window.scrollTo(0, 0);
@@ -1759,7 +1834,7 @@ body.inapp #sosbar{padding-left:14px}
       b.classList.toggle('sel', b.getAttribute('data-sec') === sec);
     });
   }
-  ['care', 'fun', 'vault'].forEach(function(pane){
+  ['care', 'fun', 'vault', 'day'].forEach(function(pane){
     $(pane + '-seg').addEventListener('click', function(e){
       var b = e.target.closest('button'); if (b) setSec(pane, b.getAttribute('data-sec'));
     });
@@ -4568,6 +4643,7 @@ body.inapp #sosbar{padding-left:14px}
       $('e-phone').value = sp ? sp.local : ((authUser && authUser.phone) || '');
       var meM = null; membersCache.forEach(function(x){ if (x.id === state.memberId) meM = x; });
       $('e-place').value = (meM && meM.place) || '';
+      $('e-dob').value = (meM && meM.dob) ? String(meM.dob).slice(0, 10) : '';
       $('e-country').value = (meM && meM.country) || '';
       var gI = (meM && meM.gift_info) || {};
       $('e-clothes').value = gI.clothes || '';
@@ -4594,7 +4670,7 @@ body.inapp #sosbar{padding-left:14px}
       if (perr) { toast(perr); return; }
     }
     // Phone goes to the member row too, so the 📞 buttons the family sees update.
-    post(API.circle, { action: 'update_member', code: state.code, memberId: state.memberId, memberName: nm, role: role, relation: relation, phone: newPhone || undefined, phoneCc: $('e-cc').value, place: $('e-place').value.trim(), country: $('e-country').value || '',
+    post(API.circle, { action: 'update_member', code: state.code, memberId: state.memberId, memberName: nm, role: role, relation: relation, phone: newPhone || undefined, phoneCc: $('e-cc').value, place: $('e-place').value.trim(), dob: $('e-dob').value || '', country: $('e-country').value || '',
       giftInfo: { clothes: $('e-clothes').value.trim(), shoe: $('e-shoe').value.trim(), ring: $('e-ring').value.trim(), color: $('e-color').value.trim(), likes: $('e-likes').value.trim(), wishlist: $('e-wish').value.trim() } })
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not save'); return; }
@@ -5064,6 +5140,141 @@ body.inapp #sosbar{padding-left:14px}
         note: document.querySelector('[data-vpnote="' + id + '"]').value }, 'Written down 💳');
       return;
     }
+  });
+
+  // ---------- the day: muhurat for where you live, and the twelve rashis ----------
+  // Two different kinds of thing, kept apart on purpose. The muhurat is
+  // arithmetic on today's sunrise where this person actually lives; the
+  // rashifal is written by someone else and is only ever shown if it arrived.
+  var dayData = null, dayAt = 0, dayTick = null;
+
+  function dTime(iso, tz){
+    var d = new Date(iso); if (isNaN(d)) return '';
+    try { return d.toLocaleTimeString('en-IN', { timeZone: tz, hour: 'numeric', minute: '2-digit' }); }
+    catch (e) { return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+  }
+  function dRange(a, b, tz){ return dTime(a, tz) + ' – ' + dTime(b, tz); }
+  function dRunning(p){ var n = Date.now(); return n >= +new Date(p.from) && n < +new Date(p.to); }
+
+  function refreshDay(force){
+    if (!state) return;
+    // The panchang only changes with the day, so a screen re-open re-uses it.
+    if (!force && dayData && Date.now() - dayAt < 10 * 60 * 1000) { renderDay(); return; }
+    var qs = '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId);
+    fetch(API.day + qs).then(function(r){ return r.json(); }).then(function(j){
+      if (!j.ok) { $('mu-sun').textContent = j.error || 'Could not work out today.'; return; }
+      dayData = j; dayAt = Date.now(); renderDay();
+    }).catch(function(){
+      if (!dayData) $('mu-sun').textContent = 'No connection — today’s timings need one, once.';
+    });
+  }
+
+  function renderDay(){
+    if (!dayData) return;
+    renderMuhurat(); renderRashi();
+    // "Now" moves; re-mark it every half minute while the screen is open.
+    clearInterval(dayTick);
+    dayTick = setInterval(function(){
+      if (curTab !== 'day' && curTab !== 'home') { clearInterval(dayTick); return; }
+      renderMuhurat();
+    }, 30000);
+  }
+
+  function periodRow(p, tz, extra){
+    var now = dRunning(p);
+    // Running now gets the loud treatment; the rest still show at a glance
+    // whether they are a good time or one to leave alone.
+    var cls = now ? (p.good === false ? ' bad' : ' good')
+                  : (p.good === false ? ' inaus' : (p.good === true ? ' aus' : ''));
+    return '<div class="ev' + cls + '">' +
+      '<b>' + esc(p.name || extra || '') + '</b>' + (now ? ' <small style="display:inline;color:var(--sindoor)">· now</small>' : '') +
+      '<br>' + esc(dRange(p.from, p.to, tz)) +
+      '<small>' + esc(p.en || '') + '</small></div>';
+  }
+
+  function renderMuhurat(){
+    var j = dayData; if (!j) return;
+    var tz = j.tz, p = j.panchang;
+    var place = (j.place && j.place.name) || 'your city';
+    $('mu-place').textContent = 'Today in ' + place;
+    $('mu-guess').hidden = !(j.place && j.place.guessed);
+    if (j.place && j.place.guessed) {
+      $('mu-guess').textContent = 'We don’t know “' + place + '” yet, so these are Delhi timings. ' +
+        'Put your city in your profile and they’ll be worked out for you.';
+    }
+    if (!p) { $('mu-sun').textContent = 'The sun does not rise or set here today.'; return; }
+    $('mu-sun').textContent = 'Sunrise ' + dTime(p.sunrise, tz) + ' · Sunset ' + dTime(p.sunset, tz) +
+      ' · all timings below are for ' + place + '.';
+
+    var cur = null, all = (p.day || []).concat(p.night || []);
+    all.forEach(function(x){ if (!cur && dRunning(x)) cur = x; });
+    var rahuNow = p.rahuKaal && dRunning(p.rahuKaal);
+    if (cur) {
+      $('mu-now').className = 'ev' + (cur.good === false || rahuNow ? ' bad' : ' good');
+      $('mu-now').innerHTML = '<b>Right now: ' + esc(cur.name) + '</b> <small style="display:inline">' +
+        esc(dRange(cur.from, cur.to, tz)) + '</small><small>' + esc(cur.en) + '</small>' +
+        (rahuNow ? '<small><b>Rahu Kaal is also running.</b> By custom nothing new is begun in it.</small>' : '');
+    } else {
+      $('mu-now').className = 'ev';
+      $('mu-now').innerHTML = '<b>Between the day and night periods.</b>';
+    }
+
+    var named = '';
+    if (p.rahuKaal) named += periodRow({ name: 'Rahu Kaal', good: false, from: p.rahuKaal.from, to: p.rahuKaal.to, en: p.rahuKaal.en }, tz);
+    if (p.gulikaKaal) named += periodRow({ name: 'Gulika Kaal', good: false, from: p.gulikaKaal.from, to: p.gulikaKaal.to, en: p.gulikaKaal.en }, tz);
+    if (p.yamaganda) named += periodRow({ name: 'Yamaganda', good: false, from: p.yamaganda.from, to: p.yamaganda.to, en: p.yamaganda.en }, tz);
+    if (p.abhijit) named += periodRow({ name: 'Abhijit Muhurat', good: true, from: p.abhijit.from, to: p.abhijit.to, en: p.abhijit.en }, tz);
+    else named += '<div class="ev"><b>Abhijit Muhurat</b><br>Not today<small>The midday auspicious window is traditionally skipped on Wednesday.</small></div>';
+    $('mu-named').innerHTML = named;
+
+    $('mu-day').innerHTML = (p.day || []).map(function(x){ return periodRow(x, tz); }).join('') ||
+      '<div class="ev">Nothing to show.</div>';
+    $('mu-night').innerHTML = (p.night || []).map(function(x){ return periodRow(x, tz); }).join('') ||
+      '<div class="ev">Nothing to show.</div>';
+
+    var w = $('w-day');
+    if (w) w.textContent = cur ? (cur.name + ' now · ' + dRange(cur.from, cur.to, tz)) : ('Choghadiya for ' + place);
+  }
+
+  function renderRashi(){
+    var j = dayData; if (!j) return;
+    var h = j.horoscope || { signs: [] }, signs = h.signs || [];
+    var mine = j.mySign ? signs.filter(function(s){ return s.key === j.mySign.key; })[0] : null;
+
+    $('ho-nodob').hidden = !!j.mySign;
+    $('ho-mine').hidden = !j.mySign;
+    if (j.mySign) {
+      $('ho-myname').textContent = 'Your rashi — ' + j.mySign.name + ' (' + j.mySign.hi + ')';
+      $('ho-mytext').textContent = (mine && mine.text) ||
+        'Today’s reading hasn’t come through yet. We’d rather leave it blank than make one up.';
+    }
+
+    $('ho-all').innerHTML = signs.map(function(s){
+      var isMine = j.mySign && s.key === j.mySign.key;
+      return '<div class="ev' + (isMine ? ' good' : '') + '">' +
+        '<b>' + esc(s.name) + ' · ' + esc(s.hi) + '</b>' + (isMine ? ' <small style="display:inline;color:var(--sindoor)">· yours</small>' : '') +
+        '<br>' + esc(s.text || 'Not available today.') +
+        '<small>' + esc(s.dates || '') + '</small></div>';
+    }).join('') || '<div class="ev">Nothing to show.</div>';
+
+    var un = h.unavailable || 0;
+    $('ho-src').textContent = un === 0
+      ? 'Readings for ' + (h.day || j.day) + ', fetched once for the whole family from a free open horoscope API. Choghadiya above is computed, not fetched.'
+      : un + ' of 12 readings could not be fetched today. Parwah leaves those blank rather than inventing one.';
+
+    var people = (j.people || []).filter(function(m){ return m.id !== state.memberId; });
+    $('ho-people').innerHTML = people.length ? people.map(function(m){
+      var s = m.sign ? signs.filter(function(x){ return x.key === m.sign; })[0] : null;
+      return '<div class="ev"><b>' + esc(m.name) + '</b>' +
+        (m.hasDob ? ' — ' + esc(m.signName || '') : ' — birthday not added yet') +
+        (s && s.text ? '<small>' + esc(s.text) + '</small>' : '') + '</div>';
+    }).join('') : '<div class="ev">No one else in this circle yet.</div>';
+  }
+
+  $('ho-adddob').addEventListener('click', function(){
+    switchTab('profile');
+    if ($('editform').hidden) $('pedit').click();
+    var d = $('e-dob'); if (d) { d.scrollIntoView({ block: 'center' }); try { d.focus(); } catch (e) {} }
   });
 
   // ---------- boot ----------

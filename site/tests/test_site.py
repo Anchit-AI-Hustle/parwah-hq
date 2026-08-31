@@ -411,6 +411,57 @@ check("games: a solo game is never announced to the family",
 check("games: the bot flag survives seating, or a solo duel freezes",
       "const seat = (p)" in games)
 
+# ---------- 10b. The day: muhurat and rashi ----------
+# The point of the section is that a family split across cities sees the SAME
+# screen: the parent reads the Choghadiya they have always kept, the grandchild
+# in London reads what it means. So the English gloss is not decoration — it is
+# the feature, and it is checked.
+pan = (API_DIR / "_panchang.mjs").read_text(encoding="utf-8")
+horo = (API_DIR / "_horoscope.mjs").read_text(encoding="utf-8")
+plc = (API_DIR / "_places.mjs").read_text(encoding="utf-8")
+dayapi = (API_DIR / "_dayapi.mjs").read_text(encoding="utf-8")
+appday = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+
+check("day: muhurat is computed from sunrise, never fetched",
+      "fetch(" not in pan and "import" not in pan.split("export")[0],
+      "_panchang.mjs must stay dependency-free and offline")
+check("day: every Choghadiya name carries a plain-English meaning",
+      all(f"{n}:" in pan and "en:" in pan for n in
+          ("Udveg", "Chal", "Labh", "Amrit", "Kaal", "Shubh", "Rog")))
+_named = {"rahuKaal": "Rahu Kaal", "gulikaKaal": "Gulika", "yamaganda": "Yamaganda", "abhijit": "Abhijit"}
+_unexplained = [k for k, word in _named.items()
+                if not re.search(k + r":[^}]*?en:\s*'([^']{40,})'", pan, re.S)
+                or word not in (re.search(k + r":[^}]*?en:\s*'([^']{40,})'", pan, re.S).group(1))]
+check("day: Rahu Kaal, Gulika, Yamaganda and Abhijit each carry a real English explanation",
+      not _unexplained, ", ".join(_unexplained))
+check("day: the timings belong to a city, not to the country",
+      "placeOf" in dayapi and "me.place" in dayapi and "lat" in plc)
+check("day: an unrecognised place is flagged rather than passed off as known",
+      "guessed: true" in plc and "mu-guess" in appday)
+check("day: all twelve rashis, named in English and Hindi",
+      horo.count("hi: '") == 12 and "SIGNS" in horo)
+check("day: a horoscope is never invented when the source is unreachable",
+      "never a fabrication" in horo and "if (!g.text) continue;" in horo
+      and "unavailable" in horo and "rather than inventing one" in appday)
+check("day: readings are fetched once a day for the whole family, not per screen",
+      "on conflict (day, sign) do nothing" in horo and "create table if not exists horoscope" in horo)
+check("day: the screen shows which period is running right now",
+      "currentPeriod" in pan and "Right now:" in appday and "renderMuhurat" in appday)
+check("day: the rashi needs a birthday, and asks for one instead of guessing",
+      "ho-nodob" in appday and "e-dob" in appday and "signOf" in horo)
+check("day: the day section is reachable from the tabs and the drawer",
+      appday.count('data-tab="day"') >= 2 and "'day'" in appday and "refreshDay" in appday)
+check("day: the unit test runs in the deploy gate",
+      "daytest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
+check("day: the source is testable from production with one URL",
+      "probe=day" in (API_DIR / "diag.mjs").read_text(encoding="utf-8")
+      and (API_DIR / "_dayselftest.mjs").exists()
+      and "almanac" in (API_DIR / "_dayselftest.mjs").read_text(encoding="utf-8"))
+check("day: the probe separates our arithmetic from someone else's uptime",
+      "arithmetic: { ok:" in (API_DIR / "_dayselftest.mjs").read_text(encoding="utf-8")
+      and "source" in (API_DIR / "_dayselftest.mjs").read_text(encoding="utf-8")
+      and "never invents one" in (API_DIR / "_dayselftest.mjs").read_text(encoding="utf-8"))
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

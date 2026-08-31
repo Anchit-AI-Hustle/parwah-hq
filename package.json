@@ -2,7 +2,9 @@
   "name": "parwah",
   "private": true,
   "scripts": {
-    "build": "bash scripts/checks.sh && rm -rf public && cp -r site/public public"
+    "build": "bash scripts/checks.sh && rm -rf public && cp -r site/public public",
+    "test": "bash scripts/checks.sh",
+    "test:browser": "node site/tests/browser/day.browser.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",

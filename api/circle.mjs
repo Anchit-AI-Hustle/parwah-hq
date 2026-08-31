@@ -235,7 +235,7 @@ export default async function handler(req, res) {
       if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
       const memberId = req.body.memberId;
       if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-      const mRow = await sql`select id, name, role, phone, place, country, relation, user_id from members where id = ${memberId} and circle_id = ${circle.id}`;
+      const mRow = await sql`select id, name, role, phone, place, country, relation, dob, user_id from members where id = ${memberId} and circle_id = ${circle.id}`;
       if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
       const cur = mRow[0];
       const newName = name || cur.name;
@@ -252,8 +252,15 @@ export default async function handler(req, res) {
       const newCountry = req.body.country !== undefined
         ? (/^[A-Z]{2}$/.test(String(req.body.country || '')) ? req.body.country : null)
         : cur.country;
+      // Date of birth: a real calendar date or nothing. A half-parsed date
+      // would give a confidently wrong rashi.
+      let newDob = cur.dob;
+      if (req.body.dob !== undefined) {
+        const d = String(req.body.dob || '').trim();
+        newDob = /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(new Date(d + 'T00:00:00Z')) ? d : null;
+      }
       const npm = newPhone ? normPhone(newPhone) : null;
-      await sql`update members set name = ${newName}, role = ${newRole}, phone = ${newPhone}, phone_cc = ${npm ? npm.cc : null}, phone_local = ${npm ? npm.local : null}, place = ${newPlace}, country = ${newCountry}, relation = ${newRelation}, gift_info = ${newGift ? JSON.stringify(newGift) : null}::jsonb where id = ${cur.id}`;
+      await sql`update members set name = ${newName}, role = ${newRole}, phone = ${newPhone}, phone_cc = ${npm ? npm.cc : null}, phone_local = ${npm ? npm.local : null}, place = ${newPlace}, country = ${newCountry}, relation = ${newRelation}, dob = ${newDob}, gift_info = ${newGift ? JSON.stringify(newGift) : null}::jsonb where id = ${cur.id}`;
       // One person, one home, one number — keep their other family/group
       // memberships consistent. Place/country always follow the person;
       // the phone follows only rows still carrying the old value (a circle
@@ -261,6 +268,9 @@ export default async function handler(req, res) {
       if (cur.user_id) {
         if (req.body.place !== undefined || req.body.country !== undefined) {
           await sql`update members set place = ${newPlace}, country = ${newCountry} where user_id = ${cur.user_id} and id <> ${cur.id}`;
+        }
+        if (req.body.dob !== undefined) {
+          await sql`update members set dob = ${newDob} where user_id = ${cur.user_id} and id <> ${cur.id}`;
         }
         if (giftInfo !== undefined) {
           // one person, one set of sizes — every membership shows the same
