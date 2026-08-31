@@ -25,6 +25,10 @@ STATE="$REPO/.deploy-state"          # gitignored: last commit we deployed
 LOCK="${TMPDIR:-/tmp}/parwah-deploy.lock"
 export VERCEL_ORG_ID=team_yC0I2xlKsitxFcfizef9EDQl
 export VERCEL_PROJECT_ID=prj_n8jIIXMHjsT9NK4AVr5I0yj6tkj4
+# The project belongs to a TEAM. A token whose default scope is the personal
+# account authenticates fine — `whoami` succeeds — and then cannot see the
+# project, which surfaces as a confusing "pull failed". Name the scope.
+VERCEL_SCOPE=anchit-ai-hustle
 
 FORCE=0; DRY=0
 for a in "$@"; do
@@ -157,11 +161,14 @@ if ! run_vercel "vercel whoami" vercel whoami --token="$VERCEL_TOKEN"; then
 fi
 log "signed in to Vercel as ${VC_OUT##*$'\n'}"
 
-run_vercel "vercel pull" vercel pull --yes --environment=production --token="$VERCEL_TOKEN" \
-  || die "could not pull the project settings — $(vercel_hint)"
+if ! run_vercel "vercel pull (team scope)" vercel pull --yes --environment=production --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN"; then
+  log "retrying without an explicit scope"
+  run_vercel "vercel pull" vercel pull --yes --environment=production --token="$VERCEL_TOKEN" \
+    || die "could not pull the project settings — $(vercel_hint)"
+fi
 run_vercel "vercel build" vercel build --prod --token="$VERCEL_TOKEN" \
   || die "the production build failed — $(vercel_hint)"
-run_vercel "vercel deploy" vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" \
+run_vercel "vercel deploy" vercel deploy --prebuilt --prod --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN" \
   || die "the deploy was rejected — $(vercel_hint)"
 URL="$(printf '%s' "$VC_OUT" | grep -Eo 'https://[a-zA-Z0-9.-]+\.vercel\.app' | tail -1)"
 [ -n "$URL" ] || die "vercel deploy produced no URL"
