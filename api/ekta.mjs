@@ -43,6 +43,17 @@ const TOOLS = [
     strict: true
   },
   {
+    name: 'prepare_summary',
+    description: 'Bring together everything recorded about ONE person for a doctor visit or an emergency: blood group, allergies, current medicines with what each is for, doctors and emergency contacts, insurance, and where they live. Use this whenever someone is taking a family member to a doctor or hospital, or asks what the family has on someone. Always report what is MISSING as well as what is there, and say when each thing was last checked.',
+    input_schema: {
+      type: 'object',
+      properties: { member_name: { type: 'string', description: 'Exact name of the person the summary is for' } },
+      additionalProperties: false,
+      required: ['member_name']
+    },
+    strict: true
+  },
+  {
     name: 'create_reminder',
     description: 'Set a reminder. For the current user it activates immediately. For another member it is sent as a request they must accept — tell the user that the person will be asked first.',
     input_schema: {
@@ -128,6 +139,53 @@ async function runTool(sql, circle, me, name, input) {
       people
     });
   }
+  // "I'm taking Mum to a new doctor tomorrow. What do we have?" — the single
+  // question the validation guide puts first. Gaps are reported as loudly as
+  // facts: an incomplete summary that LOOKS complete is worse than none.
+  if (name === 'prepare_summary') {
+    const who = String(input.member_name || '').trim().toLowerCase();
+    const mrow = await sql`select id, name, relation, phone, place, country from members
+                           where circle_id = ${circle.id} and lower(name) = ${who}`;
+    if (!mrow[0]) return JSON.stringify({ error: `No member named "${input.member_name}" in this circle` });
+    const m = mrow[0];
+    const entries = await sql`
+      select kind, name, category, phone, address, forwhat, notes, last_verified_at
+      from family_book where circle_id = ${circle.id} and about_member = ${m.id}
+      order by kind limit 200`;
+    let docs = [];
+    try {
+      docs = await sql`
+        select d.kind, d.label, d.expires_on, d.status
+        from vault_docs d
+        left join vault_access va on va.doc_id = d.id and va.member_id = ${me.id}
+        where d.circle_id = ${circle.id} and d.about_member = ${m.id}
+          and (d.about_member = ${me.id} or d.by_member = ${me.id} or va.member_id is not null)
+        limit 50`;
+    } catch (e) { docs = []; }
+    const stale = (e) => new Date(e.last_verified_at).getTime() < Date.now() - 180 * 86400000;
+    const pick = (fn) => entries.filter(fn).map(e => ({
+      what: e.name, detail: e.forwhat || e.notes || e.phone || e.address || null,
+      lastChecked: e.last_verified_at, needsRecheck: stale(e)
+    }));
+    const summary = {
+      person: { name: m.name, relation: m.relation, phone: m.phone, livesIn: m.place || null },
+      bloodGroup: pick(e => e.kind === 'fact' && e.category === 'blood'),
+      allergies:  pick(e => e.kind === 'fact' && e.category === 'allergy'),
+      medicines:  pick(e => e.kind === 'med'),
+      doctors:    pick(e => e.kind === 'contact' && e.category === 'doctor'),
+      emergencyContacts: pick(e => e.kind === 'contact' && e.category === 'emergency'),
+      someoneNearThem:   pick(e => e.kind === 'contact' && e.category === 'local'),
+      insurance:  pick(e => e.kind === 'insurance'),
+      documents:  docs.map(d => ({ kind: d.kind, label: d.label, expires: d.expires_on, checked: d.status }))
+    };
+    const missing = Object.keys(summary).filter(k =>
+      Array.isArray(summary[k]) && summary[k].length === 0);
+    return JSON.stringify({
+      note: 'This is what the family has RECORDED — it is not medical advice and must not be presented as any kind of diagnosis or recommendation. Read the missing list out too: what is absent matters as much at a hospital counter as what is present. Quote lastChecked, and flag anything with needsRecheck.',
+      summary, missing
+    });
+  }
+
   if (name === 'create_reminder') {
     let forId = me.id;
     if (input.for_member_name) {

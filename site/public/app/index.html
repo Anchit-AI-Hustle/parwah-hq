@@ -213,6 +213,10 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .tabs button.sel::after{content:"";position:absolute;top:0;left:25%;right:25%;height:3px;border-radius:0 0 3px 3px;background:var(--marigold)}
 .tabs .dot{position:absolute;top:9px;right:calc(50% - 18px);min-width:16px;height:16px;border-radius:99px;background:var(--sindoor);color:#fff;font-size:.62rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;font-style:normal}
 
+.personhero{background:linear-gradient(135deg,var(--dusk) 0%,var(--pine) 78%);color:var(--cream);
+  border-radius:20px;padding:22px 20px 20px;margin-bottom:18px;box-shadow:0 14px 34px rgba(24,38,34,.28)}
+.personhero h1{margin:0;font-size:1.7rem}
+.personhero .lede{margin:2px 0 10px;opacity:.85}
 .crow.urgent{border-left-color:var(--sindoor)}
 /* the family pulse and the one readiness number */
 .purow{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--bone-2);font-size:.92rem}
@@ -732,6 +736,13 @@ body.inapp #sosbar{padding-left:14px}
       <p class="hint">One tap — they join with your circle code.</p>
     </div>
 
+    <div class="card" id="famcard" style="margin-bottom:14px">
+      <h3>Your family</h3>
+      <div class="feed" id="fam-cards"></div>
+      <button class="go" id="fam-view" style="margin-top:12px">View family</button>
+      <p class="hint" style="margin-top:8px">You decide who can see what.</p>
+    </div>
+
     <div class="card" id="pulsecard" style="margin-bottom:14px">
       <h3>How are my people today?</h3>
       <p class="hint" id="pu-ask" style="margin:2px 0 10px"></p>
@@ -1069,6 +1080,26 @@ body.inapp #sosbar{padding-left:14px}
         <h3>Recent activity</h3>
         <div class="feed" id="vplog"></div>
       </div>
+    </div>
+  </section>
+
+  <!-- ONE PERSON — the sections the parent validation guide draws -->
+  <section id="pane-person" hidden>
+    <button class="cbtn ghost" id="pp-back">← People</button>
+    <div class="personhero" style="margin-top:12px">
+      <h1 id="pp-name"></h1>
+      <p class="lede" id="pp-sub" style="margin:2px 0 10px"></p>
+      <p class="herostatus" id="pp-ready"></p>
+    </div>
+    <div class="card"><h3>🩺 Health</h3><div class="feed" id="pp-health"></div></div>
+    <div class="card"><h3>📄 Records</h3><div class="feed" id="pp-records"></div></div>
+    <div class="card"><h3>📞 People to call</h3><div class="feed" id="pp-call"></div></div>
+    <div class="card"><h3>💡 Useful to know</h3><div class="feed" id="pp-useful"></div></div>
+    <div class="card"><h3>🕒 Freshness</h3><div class="feed" id="pp-fresh"></div>
+      <p class="hint" style="margin-top:10px">Nothing here is assumed current. Anything due a re-check says so.</p></div>
+    <div class="prow2" style="margin-bottom:24px">
+      <button class="cbtn" id="pp-ecard">🚨 Emergency card</button>
+      <button class="cbtn ghost" id="pp-add">＋ Add to their memory</button>
     </div>
   </section>
 
@@ -1610,7 +1641,7 @@ body.inapp #sosbar{padding-left:14px}
 (function(){
   var $ = function(id){ return document.getElementById(id); };
   var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', vault: '../api/book?area=vault', pay: '../api/book?area=pay', push: '../api/settings?area=push', keys: '../api/settings?area=keys', coins: '../api/settings?area=coins', plan: '../api/settings?area=plan' };
-  var TABS = ['home','people','memory','vault','care','chat','ekta','profile','fun','notifs'];
+  var TABS = ['home','people','person','memory','vault','care','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
   var curChat = null, chatsCache = [], membersCache = [];
@@ -2700,6 +2731,88 @@ body.inapp #sosbar{padding-left:14px}
       }).catch(function(){ toast('No connection — try again'); });
   });
 
+  // ---------- Screen 1: the family, as people rather than features ----------
+  var recordsCache = [];
+  function renderFamCards(){
+    if (!state || !prepCache.length) { $('famcard').hidden = true; return; }
+    $('famcard').hidden = false;
+    $('fam-cards').innerHTML = prepCache.map(function(pp){
+      var line = pp.attention === 0 ? 'Important information up to date'
+        : pp.attention + ' thing' + (pp.attention > 1 ? 's' : '') + ' to complete';
+      return '<div class="ev" data-person="' + pp.memberId + '" role="button" tabindex="0" style="cursor:pointer">' +
+             '<b>' + esc(pp.name) + '</b>' + (pp.relation ? ' <em style="font-style:normal;color:var(--dim)">· ' + esc(pp.relation) + '</em>' : '') +
+             '<small>' + (pp.attention === 0 ? '✅ ' : '⚠️ ') + line + '</small></div>';
+    }).join('');
+  }
+  $('fam-view').addEventListener('click', function(){ switchTab('people'); });
+
+  // ---------- Screen 2: one person, in the sections the guide names ----------
+  var personId = null;
+  function openPerson(id){
+    var pp = null; prepCache.forEach(function(x){ if (x.memberId === id) pp = x; });
+    var m = null; (membersCache || []).forEach(function(x){ if (x.id === id) m = x; });
+    if (!pp && !m) return;
+    personId = id;
+    var name = (pp && pp.name) || (m && m.name) || 'Family';
+    $('pp-name').textContent = name;
+    $('pp-sub').textContent = [m && m.relation ? relLabel(m) : null, m && m.place ? 'Lives in ' + m.place : null]
+      .filter(Boolean).join(' · ') || 'In your circle';
+    $('pp-ready').textContent = pp
+      ? (pp.attention ? pp.pct + '% ready — ' + pp.attention + ' thing' + (pp.attention > 1 ? 's' : '') + ' to complete'
+                      : 'Everything important is recorded 🧡')
+      : '';
+    var mine = (bookCache || []).filter(function(e){ return e.about_member === id; });
+    var row = function(e, extra){
+      var stale = entryStale(e);
+      return '<div class="ev" data-bopen="' + e.id + '" role="button" tabindex="0" style="cursor:pointer">' +
+             BK_ICON[e.kind] + ' <b>' + esc(e.name) + '</b>' + (stale ? ' 🟡' : '') +
+             '<small>' + esc(extra || e.forwhat || e.notes || e.phone || e.address || '') + '</small></div>';
+    };
+    var fill = function(el, arr, empty){
+      $(el).innerHTML = arr.length ? arr.join('') : '<div class="ev">' + empty + '</div>';
+    };
+    // Health: blood group, allergies, medicines with what each is for.
+    fill('pp-health', mine.filter(function(e){
+      return e.kind === 'med' || (e.kind === 'fact' && (e.category === 'blood' || e.category === 'allergy'));
+    }).map(function(e){ return row(e); }), 'Nothing recorded yet — blood group and allergies matter most.');
+    // Records: what the vault holds about them, never the documents themselves.
+    var recs = recordsCache.filter(function(r){ return r.about_member === id; });
+    fill('pp-records', recs.map(function(r){
+      var exp = r.expires_on ? ' · expires ' + String(r.expires_on).slice(0, 10) : '';
+      return '<div class="ev">📄 <b>' + esc(r.label) + '</b><small>' +
+             (r.status === 'verified' ? '✅ checked' : '🟡 not checked yet') +
+             (r.has_file ? ' · file saved' : ' · no file') + exp + '</small></div>';
+    }), 'No documents in the vault for them yet.');
+    // People to call: doctors, emergency contacts, and someone near them.
+    fill('pp-call', mine.filter(function(e){
+      return e.kind === 'contact' && ['doctor','emergency','local'].indexOf(e.category) >= 0;
+    }).map(function(e){ return row(e, (CAT_LABEL[e.category] || '') + (e.phone ? ' · ' + e.phone : '')); }),
+      'Nobody recorded — a doctor and someone near them are the two that matter.');
+    // Useful to know: everything else the family repeatedly asks for.
+    fill('pp-useful', mine.filter(function(e){
+      return e.kind === 'address' || e.kind === 'insurance' ||
+             (e.kind === 'fact' && e.category !== 'blood' && e.category !== 'allergy') ||
+             (e.kind === 'contact' && ['doctor','emergency','local'].indexOf(e.category) < 0);
+    }).map(function(e){ return row(e); }), 'Nothing yet — the hospital they prefer, their chemist, anything the family keeps asking you.');
+    // Freshness: nothing is assumed current.
+    var fresh = mine.filter(function(e){ return FRESH_KINDS[e.kind]; })
+      .sort(function(a, b){ return new Date(a.last_verified_at) - new Date(b.last_verified_at); });
+    fill('pp-fresh', fresh.map(function(e){
+      return '<div class="ev">' + (entryStale(e) ? '🟡' : '✅') + ' <b>' + esc(e.name) + '</b><small>' +
+             'Last checked ' + agoLine(e.last_verified_at) + (entryStale(e) ? ' — review due' : '') + '</small></div>';
+    }), 'Nothing that needs checking yet.');
+    switchTab('person');
+  }
+  $('pp-back').addEventListener('click', function(){ switchTab('people'); });
+  $('pp-ecard').addEventListener('click', function(){ if (personId) openEcard(personId); });
+  $('pp-add').addEventListener('click', function(){
+    switchTab('memory');
+    setTimeout(function(){ try { $('b-about').value = personId; $('b-name').focus(); } catch (e) {} }, 120);
+  });
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-person]'); if (b) openPerson(b.getAttribute('data-person'));
+  });
+
   // ---------- one readiness number for the whole family ----------
   function renderReady(f){
     if (!f || !f.total) { $('readycard').hidden = true; return; }
@@ -3100,6 +3213,7 @@ body.inapp #sosbar{padding-left:14px}
         '<div class="prepitems">' + rows + '</div>' +
         '<div class="prow2" style="margin-top:10px">' +
         '<button class="cbtn ecard-btn" data-ecard="' + pp.memberId + '">🚨 Emergency card</button>' +
+        '<button class="cbtn ghost" data-person="' + pp.memberId + '">📄 Their page</button>' +
         '<button class="cbtn ghost" data-pmem="' + pp.memberId + '">📒 Memory</button>' +
         '<button class="cbtn ghost" data-mprof="' + pp.memberId + '">👤 Profile</button>' +
         '</div></div>';
@@ -3119,7 +3233,9 @@ body.inapp #sosbar{padding-left:14px}
     if (!state) return;
     fetch(API.book + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); })
-      .then(function(j){ if (j.ok) { bookCache = j.entries || []; prepCache = j.prep || []; bookAccess = j.access || []; bookConsent = j.consent || []; renderReady(j.family); bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); ecSave();
+      .then(function(j){ if (j.ok) { bookCache = j.entries || []; prepCache = j.prep || []; bookAccess = j.access || []; bookConsent = j.consent || [];
+          recordsCache = j.records || []; renderReady(j.family); renderFamCards();
+          if (personId && curTab === 'person') openPerson(personId); bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); ecSave();
           var openId = $('book-detail').hidden ? null : $('book-detail').dataset.bid;
           if (openId && bookEntry(openId)) openBookDetail(openId);
           else if (openId) { $('book-detail').hidden = true; $('book-list-view').hidden = false; }

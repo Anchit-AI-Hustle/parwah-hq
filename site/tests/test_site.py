@@ -338,6 +338,23 @@ check("guide: everyone in a circle sees the same question on the same day",
 check("guide: the plan is named and bundled as the guide names it",
       "Parwah Family Plan" in plan and "'Family Readiness'" in plan and "'Family Pulse'" in plan)
 
+# 10p. THE GUIDE'S REMAINING SCREENS — 1, 2 and 4.
+ekta_src = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
+check("guide screen 1: the home leads with people carrying a short status line",
+      'id="fam-cards"' in appsrc and "Important information up to date" in appsrc
+      and "View family" in appsrc and "You decide who can see what" in appsrc)
+check("guide screen 2: one person, in the five sections the guide names",
+      all(x in appsrc for x in (">🩺 Health<", ">📄 Records<", ">📞 People to call<",
+                                ">💡 Useful to know<", ">🕒 Freshness<")))
+check("guide screen 2: Records shows that a document exists, never the document",
+      "has_file" in book and "d.about_member" in book and "encode(bytes" not in book)
+check("guide screen 4: Ekta can prepare a summary for a doctor visit",
+      "prepare_summary" in ekta_src and "someoneNearThem" in ekta_src)
+check("guide screen 4: the summary reports what is MISSING, not only what is there",
+      "missing" in ekta_src and "what is absent matters as much" in ekta_src)
+check("guide screen 4: Ekta retrieves and organises, and never diagnoses",
+      "not medical advice" in ekta_src and "ZERO medical advice" in ekta_src)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

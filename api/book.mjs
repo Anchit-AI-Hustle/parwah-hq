@@ -154,6 +154,21 @@ export default async function handler(req, res) {
         return { memberId: mm.id, name: mm.name, relation: mm.relation,
                  pct: Math.round(okN / keys.length * 100), attention, items };
       });
+      // Screen 2's "Records" row: what documents exist for each person that
+      // the caller is allowed to know about. Counts and labels only — never
+      // the documents themselves, which stay behind the vault's permissions.
+      let records = [];
+      try {
+        records = await sql`
+          select d.about_member, d.kind, d.label, d.expires_on, d.status,
+                 (d.file_name is not null) as has_file
+          from vault_docs d
+          left join vault_access va on va.doc_id = d.id and va.member_id = ${memberId}
+          where d.circle_id = ${circle.id}
+            and (d.about_member = ${memberId} or d.by_member = ${memberId} or va.member_id is not null)
+          order by d.kind limit 200`;
+      } catch (e) { records = []; }
+
       // A family-level readiness figure, and the specific things behind it.
       // Deliberately one number: "78% ready" is a question a family can act
       // on, where six separate per-person bars are a report nobody reads.
@@ -177,7 +192,7 @@ export default async function handler(req, res) {
       gaps.sort((a, b) => (a.state === 'missing' ? 0 : 1) - (b.state === 'missing' ? 0 : 1));
       const family = { pct: total ? Math.round(ok / total * 100) : 0,
                        ready: ok, total, gaps: gaps.slice(0, 12), gapCount: gaps.length };
-      return res.status(200).json({ ok: true, entries, prep, family, access, consent, staleDays: STALE_DAYS });
+      return res.status(200).json({ ok: true, entries, prep, family, records, access, consent, staleDays: STALE_DAYS });
     }
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'GET, POST');
