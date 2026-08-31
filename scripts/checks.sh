@@ -13,6 +13,8 @@ node site/tests/daytest.mjs
 # Indian PIN codes: _pin.mjs imports nothing either, so its parser and every
 # way the source can fail are checked here without a database or a network.
 node site/tests/pintest.mjs
+# What an Indian ID looks like — the same rules the field applies as you type.
+node site/tests/docidtest.mjs
 test -f site/tests/test_site.py || { echo "site test suite missing from build input"; exit 1; }
 if command -v python3 >/dev/null 2>&1; then
   python3 site/tests/test_site.py

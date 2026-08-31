@@ -158,7 +158,14 @@ vault = (API_DIR / "_vaultapi.mjs").read_text(encoding="utf-8")
 check("vault: a full identity number is never stored",
       "last4" in vault and not re.search(r"(number|aadhaar|pan)\s*(text|=\s*clean\()", vault),
       "only the last four digits may be persisted")
-check("vault: Aadhaar numbers are checksum-verified", "verhoeffOk" in vault and "V_D" in vault)
+# The ID rules moved to _docid.mjs so the FIELD can apply them as the family
+# types, instead of the server refusing at save time. Both still check.
+docid = (API_DIR / "_docid.mjs").read_text(encoding="utf-8")
+check("vault: Aadhaar numbers are checksum-verified",
+      "verhoeffOk" in docid and "V_D" in docid and "checkNumber" in vault)
+check("vault: the server still has the last word on a number",
+      "const chk = checkNumber(kind, body.number);" in vault
+      and "return res.status(400).json({ ok: false, error: chk.why });" in vault)
 check("vault: card credentials are refused outright",
       "credentialRisk" in vault and "cvv" in vault.lower() and "never stores a full card number" in vault)
 check("vault: a document is invisible without a grant",
@@ -581,6 +588,29 @@ check("address: the unit test runs in the deploy gate",
       "pintest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
 check("memory: every filter carries a word, not just an emoji",
       appad.count('class="bkw"') == 5 and '<button type="button" data-bk="contact">☎️</button>' not in appad)
+
+# ---------- 10e. Nothing half-merged ever ships ----------
+# A merge resolved by committing the conflict markers reached origin/main and
+# sailed through 200 checks: the HTML validator only reads tags, and "<<<<<<<
+# HEAD" is just text to it. It would have rendered, literally, on the family
+# memory screen. Cheap to check, so it is checked everywhere.
+_srcs = (list((REPO / "api").glob("*.mjs")) + list((REPO / "scripts").glob("*.sh"))
+         + list((REPO / "ops").glob("*.sh")) + list((REPO / "site" / "tests").glob("*.py"))
+         + list((REPO / "site" / "tests").glob("*.mjs"))
+         + list((REPO / "site" / "tests" / "browser").glob("*.mjs"))
+         + [p for p in (REPO / "site" / "public").rglob("*.html")]
+         + [p for p in (REPO / "site" / "public").rglob("*.js")]
+         + [REPO / "vercel.json", REPO / "package.json"])
+_conflicted = []
+for f in _srcs:
+    if not f.is_file():
+        continue
+    for i, line in enumerate(f.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+        if line.startswith("<<<<<<< ") or line.startswith(">>>>>>> ") or line.rstrip() == "=======":
+            _conflicted.append(f"{f.relative_to(REPO)}:{i}")
+            break
+check(f"merge: no conflict markers anywhere in the source ({len(_srcs)} files)",
+      not _conflicted, "; ".join(_conflicted[:4]))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

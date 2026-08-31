@@ -45,65 +45,30 @@ const PAY_KINDS = {
   cash:       { label: 'Cash at home',   icon: '💵' }
 };
 const MAX_FILE = 2 * 1024 * 1024;               // 2 MB per document
+
+// The field formats and counts as the family types, which means the browser
+// needs the same shapes the server checks against. Regexes do not survive
+// JSON, so `chars` travels as its source text and is rebuilt on the client —
+// one description of an Aadhaar, not two that can drift apart.
+function idShapesForClient() {
+  const out = {};
+  for (const k of Object.keys(DOC_ID)) {
+    const d = DOC_ID[k];
+    out[k] = { label: d.label, chars: d.chars.source, group: d.group, len: d.len,
+               sep: d.sep, example: d.example, inputmode: d.inputmode,
+               upper: !!d.upper, hint: d.hint };
+  }
+  return out;
+}
 const OK_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'];
 
 function clean(v, max) { const s = String(v == null ? '' : v).trim().slice(0, max); return s || null; }
-function digits(v) { return String(v || '').replace(/\D/g, ''); }
 
-// Verhoeff — the checksum every real Aadhaar number satisfies. A typo in any
-// single digit fails it, so the family is told at once instead of discovering
-// a wrong number at a hospital counter.
-const V_D = [
-  [0,1,2,3,4,5,6,7,8,9],[1,2,3,4,0,6,7,8,9,5],[2,3,4,0,1,7,8,9,5,6],
-  [3,4,0,1,2,8,9,5,6,7],[4,0,1,2,3,9,5,6,7,8],[5,9,8,7,6,0,4,3,2,1],
-  [6,5,9,8,7,1,0,4,3,2],[7,6,5,9,8,2,1,0,4,3],[8,7,6,5,9,3,2,1,0,4],
-  [9,8,7,6,5,4,3,2,1,0]
-];
-const V_P = [
-  [0,1,2,3,4,5,6,7,8,9],[1,5,7,6,2,8,3,0,9,4],[5,8,0,3,7,9,6,1,4,2],
-  [8,9,1,6,0,4,3,5,2,7],[9,4,5,3,1,2,6,8,7,0],[4,2,8,6,5,7,3,9,0,1],
-  [2,7,9,3,8,0,6,4,1,5],[7,0,4,6,9,1,3,2,5,8]
-];
-function verhoeffOk(num) {
-  let c = 0;
-  const rev = String(num).split('').reverse();
-  for (let i = 0; i < rev.length; i++) c = V_D[c][V_P[i % 8][Number(rev[i])]];
-  return c === 0;
-}
-
-// Shape check for the number the family typed. Returns
-// { ok, why, last4 } — `why` is written for a person, not a developer.
-export function checkNumber(kind, raw) {
-  const v = String(raw || '').toUpperCase().replace(/[\s-]/g, '');
-  if (!v) return { ok: true, why: null, last4: null };            // number is optional
-  const last4 = v.slice(-4);
-  if (kind === 'aadhaar') {
-    const d = digits(v);
-    if (d.length !== 12) return { ok: false, why: 'An Aadhaar number has 12 digits — please check it' };
-    if (d[0] === '0' || d[0] === '1') return { ok: false, why: 'An Aadhaar number never starts with 0 or 1 — please check it' };
-    if (!verhoeffOk(d)) return { ok: false, why: 'That Aadhaar number does not add up — one digit is likely mistyped' };
-    return { ok: true, why: null, last4: d.slice(-4) };
-  }
-  if (kind === 'pan') {
-    if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(v)) return { ok: false, why: 'A PAN looks like ABCDE1234F — five letters, four digits, one letter' };
-    return { ok: true, why: null, last4 };
-  }
-  if (kind === 'passport') {
-    if (!/^[A-PR-WYZ][0-9]{7}$/.test(v)) return { ok: false, why: 'An Indian passport number is one letter followed by seven digits' };
-    return { ok: true, why: null, last4 };
-  }
-  if (kind === 'dl') {
-    if (!/^[A-Z]{2}[0-9]{2}[0-9]{4}[0-9]{7}$/.test(v) && !/^[A-Z]{2}[0-9]{11,13}$/.test(v))
-      return { ok: false, why: 'A driving licence looks like DL0420110012345 — state code, RTO, year, number' };
-    return { ok: true, why: null, last4 };
-  }
-  if (kind === 'voter') {
-    if (!/^[A-Z]{3}[0-9]{7}$/.test(v)) return { ok: false, why: 'A voter ID (EPIC) is three letters followed by seven digits' };
-    return { ok: true, why: null, last4 };
-  }
-  if (v.length < 3) return { ok: false, why: 'That reference looks too short' };
-  return { ok: true, why: null, last4 };
-}
+// What an Indian ID looks like lives in _docid.mjs, so the field can check
+// it as the family types and the server can check it again before storing.
+// Re-exported here because that is where it has always been imported from.
+import { checkNumber, DOC_ID } from './_docid.mjs';
+export { checkNumber };
 
 // Nothing that could be a live credential is ever accepted into the vault's
 // payment half. This is deliberately blunt.
@@ -251,7 +216,7 @@ async function docsApi(req, res, sql, circle, me) {
                   where l.doc_id = any(${mine}::uuid[]) order by l.at desc limit 60`
       : [];
     const members = await sql`select id, name, relation from members where circle_id = ${circle.id} order by created_at`;
-    return res.status(200).json({ ok: true, docs, grants, log, members, kinds: DOC_KINDS, maxFile: MAX_FILE });
+    return res.status(200).json({ ok: true, docs, grants, log, members, kinds: DOC_KINDS, idShapes: idShapesForClient(), maxFile: MAX_FILE });
   }
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');

@@ -257,8 +257,8 @@ body.inapp #sosbar{padding-left:14px}
 /* the introduction, and the coachmarks that follow it */
 .trdots{display:flex;gap:6px;margin-top:12px}
 .tworow{display:flex;gap:10px}
-/* A locality name is longer than a browser's default select width. */
-#book-list-view .card select{width:100%}
+.hint.good{color:var(--ok)}
+.hint.bad{color:var(--alert)}
 /* A row of bare emoji is a guessing game. Words wherever they fit. */
 .bkw{margin-left:6px}
 @media(max-width:430px){.bkw{display:none}}
@@ -933,19 +933,11 @@ body.inapp #sosbar{padding-left:14px}
       </div>
       <div class="seg" id="bk-filter" role="group" aria-label="Family memory sections" style="margin-bottom:8px;flex-wrap:wrap">
         <button type="button" data-bk="all" class="sel">All</button>
-<<<<<<< HEAD
-        <button type="button" data-bk="contact">☎️ Contacts</button>
-        <button type="button" data-bk="address">📍 Addresses</button>
-        <button type="button" data-bk="med">💊 Meds</button>
-        <button type="button" data-bk="fact">🩸 Health</button>
-        <button type="button" data-bk="insurance">🛡 Insurance</button>
-=======
         <button type="button" data-bk="contact">☎️<span class="bkw">Contacts</span></button>
         <button type="button" data-bk="address">📍<span class="bkw">Addresses</span></button>
         <button type="button" data-bk="med">💊<span class="bkw">Meds</span></button>
         <button type="button" data-bk="fact">🩸<span class="bkw">Health</span></button>
         <button type="button" data-bk="insurance">🛡<span class="bkw">Insurance</span></button>
->>>>>>> b72123b270d77f51bc044eccf96c42c797ddea09
       </div>
       <select id="bk-about" aria-label="About whom" style="margin-bottom:10px"><option value="">About anyone</option></select>
       <div class="feed" id="blist"><div class="ev">Nothing saved yet — add the family's first entry below 📒</div></div>
@@ -1076,7 +1068,9 @@ body.inapp #sosbar{padding-left:14px}
           <label for="vd-label">Call it</label>
           <input type="text" id="vd-label" maxlength="90" placeholder="e.g. Papa's passport">
           <label for="vd-number" id="vd-number-l">Number <span class="hint" style="display:inline">— checked, then only the last 4 are kept</span></label>
-          <input type="text" id="vd-number" maxlength="30" autocomplete="off" placeholder="e.g. ABCDE1234F">
+          <input type="text" id="vd-number" maxlength="30" autocomplete="off" inputmode="text" placeholder="e.g. ABCDE1234F">
+          <p class="hint" id="vd-numstate" style="margin:5px 0 0"></p>
+          <button type="button" class="cbtn ghost" id="vd-swap" hidden style="margin-top:8px"></button>
           <div class="pickrow">
             <label class="pick"><span>Issued</span><input type="date" id="vd-issued" aria-label="Issued on"></label>
             <label class="pick"><span>Expires</span><input type="date" id="vd-expires" aria-label="Expires on"></label>
@@ -2248,6 +2242,11 @@ body.inapp #sosbar{padding-left:14px}
 
   function renderForSelect(members){
     membersCache = members;
+    // Opening the app straight on #vault — a bookmark, or a tap on a push —
+    // used to build the vault's "whose document" list before anyone was known,
+    // leaving it empty and every save refused with "Say whose document this
+    // is". The family list is filled in again the moment it exists.
+    vRefillMembers();
     var sel = $('r-for'), cur = sel.value, h = '<option value="any">anyone in the family</option><option value="">myself</option>';
     var dm = $('dm-pick'), dh = '<option value="">Personal chat with…</option>';
     var gm = '';
@@ -4898,6 +4897,15 @@ body.inapp #sosbar{padding-left:14px}
     sel.innerHTML = h;
     if (cur) sel.value = cur;
   }
+  // Re-fill the vault's member pickers once the family is known, keeping
+  // whatever was already chosen.
+  function vRefillMembers(){
+    if (!document.getElementById('vd-about')) return;
+    vMembersInto($('vd-about'), '');
+    vMembersInto($('vd-who'), "Everyone's documents");
+    vMembersInto($('vdd-share-who'), 'Choose a family member');
+    if (!vEditId && !$('vd-about').value && state) $('vd-about').value = state.memberId;
+  }
   function vMembersInto(sel, firstLabel){
     var h = firstLabel ? '<option value="">' + esc(firstLabel) + '</option>' : '';
     (membersCache || []).forEach(function(m){
@@ -4927,7 +4935,8 @@ body.inapp #sosbar{padding-left:14px}
     fetch(API.vault + qs).then(function(r){ return r.json(); }).then(function(j){
       if (!j.ok) return;
       vDocs = j.docs || []; vGrants = j.grants || []; vLog = j.log || []; vKinds = j.kinds || {};
-      if (!$('vd-kind').options.length) vFillSelect($('vd-kind'), vKinds);
+      vShapes = j.idShapes || vShapes;
+      if (!$('vd-kind').options.length) { vFillSelect($('vd-kind'), vKinds); vApplyShape(); }
       vMembersInto($('vd-about'), '');
       vMembersInto($('vd-who'), "Everyone's documents");
       vMembersInto($('vdd-share-who'), 'Choose a family member');
@@ -5023,6 +5032,7 @@ body.inapp #sosbar{padding-left:14px}
   function vdReset(){
     vEditId = null; vFileData = null;
     ['vd-label','vd-number','vd-issued','vd-expires','vd-notes'].forEach(function(id){ $(id).value = ''; });
+    vApplyShape();
     $('vd-file').value = '';
     $('vd-fname').textContent = 'Up to 2 MB. Kept in the vault itself — never a public link.';
     $('vd-ftitle').textContent = 'Add a document';
@@ -5034,7 +5044,7 @@ body.inapp #sosbar{padding-left:14px}
     var d = vDoc(vOpenId); if (!d) return;
     vEditId = d.id;
     $('vd-kind').value = d.kind; $('vd-about').value = d.about_member;
-    $('vd-label').value = d.label; $('vd-number').value = '';
+    $('vd-label').value = d.label; $('vd-number').value = ''; vApplyShape();
     $('vd-issued').value = d.issued_on ? String(d.issued_on).slice(0, 10) : '';
     $('vd-expires').value = d.expires_on ? String(d.expires_on).slice(0, 10) : '';
     $('vd-notes').value = d.notes || '';
@@ -5565,6 +5575,138 @@ body.inapp #sosbar{padding-left:14px}
     $('b-area').innerHTML = ''; $('b-pinout').hidden = true;
     pinMsg(''); showAddr();
   }
+
+
+  // ---------- the number field knows what it is asking for ----------
+  // Typing a PAN into the Aadhaar box used to be a toast at save time. The
+  // field now says what it wants, groups the characters as they arrive, counts
+  // up to the right length, and — when someone has plainly typed a different
+  // document — offers to switch instead of just refusing.
+  var vShapes = {};                       // from the server: one description per ID
+
+  function vSpec(){ return vShapes[$('vd-kind').value] || null; }
+  function vBare(s){ return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+  function vFormat(kind, raw){
+    var sp = vShapes[kind], v = vBare(raw);
+    if (!sp) return v;
+    var out = [], i = 0;
+    for (var g = 0; g < sp.group.length; g++) {
+      if (i >= v.length) break;
+      out.push(v.slice(i, i + sp.group[g])); i += sp.group[g];
+    }
+    if (i < v.length) out.push(v.slice(i));
+    return out.join(sp.sep);
+  }
+  // Mirrors checkNumber on the server. The server stays the authority — this
+  // exists so nobody is told at save time what could have been said at once.
+  function vCheck(kind, raw){
+    var v = vBare(raw);
+    if (!v) return { ok: true };
+    if (kind === 'aadhaar') {
+      var d = v.replace(/\D/g, '');
+      if (d.length !== 12) return { ok: false, why: 'An Aadhaar number has 12 digits — please check it' };
+      if (d[0] === '0' || d[0] === '1') return { ok: false, why: 'An Aadhaar number never starts with 0 or 1' };
+      if (!vVerhoeff(d)) return { ok: false, why: 'That Aadhaar number does not add up — one digit is likely mistyped' };
+      return { ok: true };
+    }
+    if (kind === 'pan') return /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(v) ? { ok: true }
+      : { ok: false, why: 'A PAN looks like ABCDE1234F — five letters, four digits, one letter' };
+    if (kind === 'passport') return /^[A-PR-WYZ][0-9]{7}$/.test(v) ? { ok: true }
+      : { ok: false, why: 'An Indian passport number is one letter followed by seven digits' };
+    if (kind === 'dl') return (/^[A-Z]{2}[0-9]{2}[0-9]{4}[0-9]{7}$/.test(v) || /^[A-Z]{2}[0-9]{11,13}$/.test(v))
+      ? { ok: true } : { ok: false, why: 'A driving licence looks like DL0420110012345 — state code, RTO, year, number' };
+    if (kind === 'voter') return /^[A-Z]{3}[0-9]{7}$/.test(v) ? { ok: true }
+      : { ok: false, why: 'A voter ID (EPIC) is three letters followed by seven digits' };
+    return v.length < 3 ? { ok: false, why: 'That reference looks too short' } : { ok: true };
+  }
+  var VD = [[0,1,2,3,4,5,6,7,8,9],[1,2,3,4,0,6,7,8,9,5],[2,3,4,0,1,7,8,9,5,6],
+            [3,4,0,1,2,8,9,5,6,7],[4,0,1,2,3,9,5,6,7,8],[5,9,8,7,6,0,4,3,2,1],
+            [6,5,9,8,7,1,0,4,3,2],[7,6,5,9,8,2,1,0,4,3],[8,7,6,5,9,3,2,1,0,4],
+            [9,8,7,6,5,4,3,2,1,0]];
+  var VP = [[0,1,2,3,4,5,6,7,8,9],[1,5,7,6,2,8,3,0,9,4],[5,8,0,3,7,9,6,1,4,2],
+            [8,9,1,6,0,4,3,5,2,7],[9,4,5,3,1,2,6,8,7,0],[4,2,8,6,5,7,3,9,0,1],
+            [2,7,9,3,8,0,6,4,1,5],[7,0,4,6,9,1,3,2,5,8]];
+  function vVerhoeff(num){
+    var c = 0, rev = String(num).split('').reverse();
+    for (var i = 0; i < rev.length; i++) c = VD[c][VP[i % 8][Number(rev[i])]];
+    return c === 0;
+  }
+  // A complete, valid something-else — never a half-typed one.
+  function vLooksLike(raw, except){
+    var v = vBare(raw); if (!v) return null;
+    for (var k in vShapes) {
+      if (k === except) continue;
+      if (v.length === vShapes[k].len && vCheck(k, v).ok) return k;
+    }
+    return null;
+  }
+
+  // The field takes on the shape of whatever was chosen.
+  function vApplyShape(){
+    var sp = vSpec(), inp = $('vd-number');
+    inp.placeholder = sp ? 'e.g. ' + sp.example : 'e.g. reference number';
+    inp.setAttribute('inputmode', sp ? sp.inputmode : 'text');
+    inp.maxLength = 30;      // room to paste the wrong document and be told so
+    inp.value = vFormat($('vd-kind').value, inp.value);
+    vNumberState();
+  }
+  function vNumberState(){
+    var kind = $('vd-kind').value, sp = vShapes[kind];
+    var v = vBare($('vd-number').value);
+    var box = $('vd-numstate'), swap = $('vd-swap');
+    swap.hidden = true;
+    if (!v) { box.textContent = sp ? sp.hint : ''; box.className = 'hint'; return; }
+    var chk = vCheck(kind, v);
+    if (chk.ok) { box.textContent = '✓ ' + (sp ? sp.label : 'Reference') + ' looks right.'; box.className = 'hint good'; return; }
+    // Somebody has typed a different document — say which, and offer the swap.
+    var other = vLooksLike(v, kind);
+    if (other) {
+      box.textContent = 'That looks like a ' + vShapes[other].label + ', not ' + (sp ? 'an ' + sp.label : 'this') + '.';
+      box.className = 'hint bad';
+      swap.textContent = 'Change this to ' + vShapes[other].label;
+      swap.setAttribute('data-swap', other);
+      swap.hidden = false;
+      return;
+    }
+    // A letter is not progress towards twelve digits.
+    var fits = !sp || new RegExp('^' + (sp.chars === '[0-9]' ? '[0-9]' : '[A-Z0-9]') + '*$').test(v);
+    if (sp && !fits) {
+      box.textContent = 'An ' + sp.label + ' does not contain those characters — ' + sp.hint;
+      box.className = 'hint bad';
+      return;
+    }
+    if (sp && v.length < sp.len) {
+      box.textContent = v.length + ' of ' + sp.len + ' — ' + sp.hint;
+      box.className = 'hint';
+      return;
+    }
+    box.textContent = chk.why; box.className = 'hint bad';
+  }
+  $('vd-number').addEventListener('input', function(){
+    var kind = $('vd-kind').value, sp = vShapes[kind], el = this;
+    var before = el.value, caretAtEnd = el.selectionStart === before.length;
+    var v = vBare(before);
+    // Characters this document cannot contain are KEPT, not silently eaten.
+    // Dropping them turns a pasted PAN into "2248" and leaves the person
+    // staring at a field that mangled what they typed; keeping them is what
+    // lets the line underneath say "that looks like a PAN card" and offer the
+    // switch. Only a value made of the right characters gets grouped and
+    // clamped to length.
+    var fits = sp && new RegExp('^' + (sp.chars === '[0-9]' ? '[0-9]' : '[A-Z0-9]') + '*$').test(v);
+    var next = fits ? vFormat(kind, v.slice(0, sp.len)) : v;
+    if (next !== before) {
+      el.value = next;
+      if (caretAtEnd) { try { el.setSelectionRange(next.length, next.length); } catch (e) {} }
+    }
+    vNumberState();
+  });
+  $('vd-swap').addEventListener('click', function(){
+    var k = this.getAttribute('data-swap'); if (!k) return;
+    $('vd-kind').value = k;
+    vApplyShape();
+    toast('Switched to ' + vShapes[k].label + ' 🧾');
+  });
+  $('vd-kind').addEventListener('change', vApplyShape);
 
   // ---------- boot ----------
   if ('serviceWorker' in navigator) {
