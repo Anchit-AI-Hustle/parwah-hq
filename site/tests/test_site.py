@@ -355,6 +355,62 @@ check("guide screen 4: the summary reports what is MISSING, not only what is the
 check("guide screen 4: Ekta retrieves and organises, and never diagnoses",
       "not medical advice" in ekta_src and "ZERO medical advice" in ekta_src)
 
+# 10q. WHO GETS TOLD.
+# A notification about something involving two people must not reach the whole
+# family. Every circle-wide push has to be one of a short, deliberate list.
+CIRCLE_WIDE_OK = {
+    # (file, fragment of the title) -> why the whole circle is right
+    ("circle.mjs", "wants to join"):      "any member can let them in",
+    ("circle.mjs", "joined"):             "a new family member concerns everyone",
+    ("circle.mjs", "Invite code is now"): "old invite links stop working for all",
+    ("circle.mjs", "how people join"):    "changes the door for everyone",
+    ("circle.mjs", "left"):               "everyone should know who is in",
+    ("events.mjs", "SOS"):                "an emergency is everyone's business",
+    ("events.mjs", "STILL NOBODY"):       "nobody answered — shout louder",
+    ("events.mjs", "is on it"):           "so nobody else duplicates the trip",
+    ("events.mjs", "alright"):            "stop the whole family worrying",
+    ("events.mjs", "on now"):             "a live call is open to all",
+    ("events.mjs", "could do with a call"): "the point of the pulse",
+    ("care.mjs",   "needs a hand"):       "a job anyone can pick up",
+    ("plans.mjs",  ""):                   "a plan invites the whole circle",
+    ("games.mjs",  "lobby is open"):      "an open lobby invites everyone",
+}
+def _push_calls(src):
+    out = []
+    for m in re.finditer(r"pushCircle\(", src):
+        i, depth = m.end(), 1
+        while depth and i < len(src):
+            if src[i] == "(": depth += 1
+            elif src[i] == ")": depth -= 1
+            i += 1
+        out.append(src[m.start():i])
+    return out
+broadcasts, targeted = [], 0
+for f in sorted(API_DIR.glob("*.mjs")):
+    if f.name == "_push.mjs": continue
+    for call in _push_calls(f.read_text(encoding="utf-8")):
+        # A targeted push names only: or except: somewhere in its options; a
+        # broadcast passes {} or nothing. Scanning the whole call avoids
+        # depending on the payload being a literal object.
+        if re.search(r"\{\s*(only|except)\s*:", call):
+            targeted += 1; continue
+        # Titles are built by concatenation, so the first string literal is
+        # only a prefix — match the fragment anywhere in the call.
+        if not any(f.name == fn and (frag == "" or frag in call) for (fn, frag) in CIRCLE_WIDE_OK):
+            t = re.search(r"title:\s*'([^']*)", call)
+            broadcasts.append(f"{f.name}: {(t.group(1) if t else call[:40])[:44]}")
+check(f"notifications: every circle-wide push is a deliberate one ({targeted} targeted)",
+      not broadcasts, "; ".join(broadcasts[:4]))
+games = (API_DIR / "games.mjs").read_text(encoding="utf-8")
+check("notifications: game news reaches the players, not the family",
+      "pushPlayers" in games and "!isBot(p)" in games)
+check("games: you can play alone, against a named opponent",
+      "export const BOT" in games and "soloPlayers" in games and "tttBotCell" in games)
+check("games: a solo game is never announced to the family",
+      "if (!solo)" in games and "not announced to the family" in games)
+check("games: the bot flag survives seating, or a solo duel freezes",
+      "const seat = (p)" in games)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

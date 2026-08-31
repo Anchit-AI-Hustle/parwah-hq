@@ -191,7 +191,11 @@ export function partyEndSummary(st) {
 // ---------- Tic-Tac-Toe (quick 2-player duel) ----------
 const TTT_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 export function tttStart(a, b) {
-  return { kind: 'ttt', players: [{ id: a.id, name: a.name }, { id: b.id, name: b.name }],
+  // Carry the bot flag through. Copying only id and name silently dropped it,
+  // which left a solo duel frozen after the first move: the app's turn came
+  // round and nothing knew it was the app's.
+  const seat = (p) => (p && p.bot ? { id: p.id, name: p.name, bot: true } : { id: p.id, name: p.name });
+  return { kind: 'ttt', players: [seat(a), seat(b)],
            turn: 0, board: [null,null,null,null,null,null,null,null,null], winner: null, draw: false, last: null };
 }
 export function tttMove(st, memberId, cell) {
@@ -214,6 +218,55 @@ export function tttMove(st, memberId, cell) {
   }
   st.turn = 1 - idx;
   return {};
+}
+
+// SINGLE PLAYER.
+// Some evenings there is nobody free, and a game you cannot start alone is a
+// game nobody opens twice. The opponent is a player like any other, marked
+// `bot`, so every rule — turns, snakes, winning — stays exactly the same.
+export const BOT = { id: 'bot', name: 'Parwah', bot: true };
+export function isBot(p) { return !!(p && p.bot); }
+export function soloPlayers(me) { return [{ id: me.id, name: me.name }, { ...BOT }]; }
+
+// A competent, beatable opponent: win if it can, block if it must, then take
+// the centre, a corner, a side. Not unbeatable — losing every game is not fun.
+export function tttBotCell(st, botIdx) {
+  const b = st.board, opp = 1 - botIdx;
+  const wins = (who) => {
+    for (const L of TTT_LINES) {
+      const vals = L.map(i => b[i]);
+      if (vals.filter(v => v === who).length === 2 && vals.some(v => v === null)) {
+        return L[vals.indexOf(null)];
+      }
+    }
+    return -1;
+  };
+  const win = wins(botIdx); if (win >= 0) return win;
+  const block = wins(opp);  if (block >= 0) return block;
+  for (const c of [4, 0, 2, 6, 8, 1, 3, 5, 7]) if (b[c] === null) return c;
+  return -1;
+}
+
+// Play out every bot turn until it is a human's turn again, or the game ends.
+// Returns the lines to announce, in order.
+export function runBots(st, rng) {
+  const out = [];
+  for (let guard = 0; guard < 12; guard++) {
+    const p = st.players[st.turn];
+    if (!p || !isBot(p) || st.winner || st.draw) break;
+    if (st.kind === 'ttt') {
+      const cell = tttBotCell(st, st.turn);
+      if (cell < 0) break;
+      const r = tttMove(st, p.id, cell);
+      if (r.error) break;
+      if (r.announce) out.push(r.announce);
+    } else {
+      const r = playTurn(st, p.id, rng);
+      if (r.error) break;
+      if (r.announce) out.push(r.announce);
+    }
+  }
+  return out;
 }
 
 // Never leak the secret movie to anyone but the actor.
@@ -266,6 +319,18 @@ export function playTurn(st, memberId, rng) {
 
 function gameRoomUrl(code) {
   return 'https://meet.jit.si/parwah-' + String(code).toLowerCase() + '-' + Math.random().toString(36).slice(2, 8);
+}
+
+// A game between two people is not the family's business. Notify the players
+// in THIS game and nobody else — and never the bot, or a solo player, who is
+// looking at the screen already.
+async function pushPlayers(sql, circleId, st, payload, exceptId) {
+  const ids = (st.players || [])
+    .filter(p => p && !isBot(p) && p.id !== exceptId && isUuid(p.id))
+    .map(p => p.id);
+  for (const id of ids) {
+    await pushCircle(sql, circleId, payload, { only: id });
+  }
 }
 
 async function feed(sql, circleId, memberId, text) {
@@ -323,16 +388,24 @@ export default async function handler(req, res) {
     if (body.action === 'start_ttt') {
       const existing = await activeGame(sql, circle.id);
       if (existing) return res.status(200).json({ ok: true, game: publicState({ ...existing, kind: existing.state.kind || existing.kind }, me.id) });
-      if (!isUuid(body.vsId) || body.vsId === me.id) return res.status(400).json({ ok: false, error: 'Pick who to challenge' });
-      const vs = await sql`select id, name from members where id = ${body.vsId} and circle_id = ${circle.id}`;
-      if (!vs[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
-      const state = tttStart(me, vs[0]);
+      const solo = body.vsId === 'bot' || body.solo === true;
+      let state, vsName = null;
+      if (solo) {
+        state = tttStart(me, BOT);
+      } else {
+        if (!isUuid(body.vsId) || body.vsId === me.id) return res.status(400).json({ ok: false, error: 'Pick who to challenge' });
+        const vs = await sql`select id, name from members where id = ${body.vsId} and circle_id = ${circle.id}`;
+        if (!vs[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+        state = tttStart(me, vs[0]); vsName = vs[0].name;
+      }
       const g = await sql`insert into games (circle_id, kind, status, state)
                           values (${circle.id}, 'ttt', 'active', ${JSON.stringify(state)}::jsonb)
                           returning id, kind, status, state, created_at`;
-      await feed(sql, circle.id, me.id, `${me.name} challenged ${vs[0].name} to Tic-Tac-Toe ⭕✕`);
-      // a challenge is aimed at one person — only they get pinged
-      await pushCircle(sql, circle.id, { title: '⭕✕ ' + me.name + ' challenged you', body: 'Tic-Tac-Toe — your move' }, { only: vs[0].id });
+      // Playing alone is nobody else's business: no feed line, no notification.
+      if (!solo) {
+        await feed(sql, circle.id, me.id, `${me.name} challenged ${vsName} to Tic-Tac-Toe ⭕✕`);
+        await pushPlayers(sql, circle.id, state, { title: '⭕✕ ' + me.name + ' challenged you', body: 'Tic-Tac-Toe — your move' }, me.id);
+      }
       return res.status(201).json({ ok: true, game: g[0] });
     }
     if (body.action === 'move') {
@@ -343,13 +416,27 @@ export default async function handler(req, res) {
       const st = g.state;
       const out = tttMove(st, me.id, body.cell);
       if (out.error) return res.status(409).json({ ok: false, error: out.error });
+      // The opponent answers in the same request, so a solo game never waits.
+      const botLines = runBots(st);
       const done = !!(st.winner || st.draw);
+      const solo = (st.players || []).some(isBot);
       await sql`update games set status = ${done ? 'done' : 'active'}, state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
-      if (out.announce) {
+      const lines = [out.announce].concat(botLines).filter(Boolean);
+      // A game played alone is not announced to the family.
+      if (lines.length && !solo) {
         try {
           const chatId = await ensureCircleChat(sql, circle.id);
-          await sql`insert into messages (chat_id, member_id, text) values (${chatId}, null, ${out.announce})`;
+          for (const t of lines) {
+            await sql`insert into messages (chat_id, member_id, text) values (${chatId}, null, ${t})`;
+          }
         } catch (e) {}
+      }
+      // Only the person whose turn it now is hears about it.
+      if (!done && !solo) {
+        const nxt = st.players[st.turn];
+        if (nxt && !isBot(nxt)) {
+          await pushCircle(sql, circle.id, { title: '⭕✕ Your turn', body: me.name + ' has moved' }, { only: nxt.id });
+        }
       }
       return res.status(200).json({ ok: true, game: { id: g.id, kind: 'ttt', status: done ? 'done' : 'active', state: st } });
     }
@@ -374,12 +461,20 @@ export default async function handler(req, res) {
     if (body.action === 'start') {
       const existing = await activeGame(sql, circle.id);
       if (existing) return res.status(200).json({ ok: true, game: publicState({ ...existing, kind: existing.state.kind || existing.kind }, me.id) });
-      const members = await sql`select id, name from members where circle_id = ${circle.id} order by created_at`;
-      const state = { kind: 'snakes', players: members.map(m => ({ id: m.id, name: m.name, pos: 0 })), turn: 0, last: null, winner: null };
+      const solo = body.solo === true;
+      let players;
+      if (solo) {
+        players = soloPlayers(me).map(p => ({ ...p, pos: 0 }));
+      } else {
+        const members = await sql`select id, name from members where circle_id = ${circle.id} order by created_at`;
+        players = members.map(m => ({ id: m.id, name: m.name, pos: 0 }));
+      }
+      const state = { kind: 'snakes', players, turn: 0, last: null, winner: null, solo: solo || undefined };
       const g = await sql`insert into games (circle_id, kind, status, state)
                           values (${circle.id}, 'snakes', 'active', ${JSON.stringify(state)}::jsonb)
                           returning id, kind, status, state, created_at`;
-      await feed(sql, circle.id, me.id, `${me.name} started Saanp Seedhi 🎲 — everyone's in, come play!`);
+      // A game you started alone is not announced to the family.
+      if (!solo) await feed(sql, circle.id, me.id, `${me.name} started Saanp Seedhi 🎲 — everyone's in, come play!`);
       return res.status(201).json({ ok: true, game: g[0] });
     }
 
@@ -431,19 +526,32 @@ export default async function handler(req, res) {
       const st = g.state;
       const out = playTurn(st, me.id);
       if (out.error) return res.status(409).json({ ok: false, error: out.error });
-      if (out.won) {
+      const botLines = runBots(st);
+      const solo = (st.players || []).some(isBot);
+      const over = !!st.winner;
+      if (over) {
         await sql`update games set status = 'done', state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
-        await feed(sql, circle.id, me.id, `${me.name} won Saanp Seedhi! 🎉🐍🪜`);
+        if (!solo) await feed(sql, circle.id, me.id, `${st.winner} won Saanp Seedhi! 🎉🐍🪜`);
       } else {
         await sql`update games set state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
       }
-      if (out.announce) {
+      const lines = [out.announce].concat(botLines).filter(Boolean);
+      if (lines.length && !solo) {
         try {
           const chatId = await ensureCircleChat(sql, circle.id);
-          await sql`insert into messages (chat_id, member_id, text) values (${chatId}, null, ${out.announce})`;
+          for (const t of lines) {
+            await sql`insert into messages (chat_id, member_id, text) values (${chatId}, null, ${t})`;
+          }
         } catch (e) { /* the roll stands even if the announcement fails */ }
       }
-      return res.status(200).json({ ok: true, game: { id: g.id, kind: 'snakes', status: out.won ? 'done' : 'active', state: st } });
+      // Whose turn it is now is that person's business, not the family's.
+      if (!over && !solo) {
+        const nxt = st.players[st.turn];
+        if (nxt && !isBot(nxt) && nxt.id !== me.id) {
+          await pushCircle(sql, circle.id, { title: '🎲 Your roll', body: 'Saanp Seedhi — ' + me.name + ' has played' }, { only: nxt.id });
+        }
+      }
+      return res.status(200).json({ ok: true, game: { id: g.id, kind: 'snakes', status: over ? 'done' : 'active', state: st } });
     }
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });

@@ -1232,7 +1232,11 @@ body.inapp #sosbar{padding-left:14px}
       <div class="card">
         <h3>Saanp Seedhi 🐍🪜</h3>
         <p>Snakes & Ladders with a twist — snakes cost you a truth-or-dare, ladders earn rewards. Turns work across any timezone.</p>
-        <button class="go" id="g-start">🎲 Start Saanp Seedhi</button>
+        <div class="prow2">
+          <button class="go" id="g-start">🎲 With the family</button>
+          <button class="cbtn ghost" id="g-solo">🙋 On my own</button>
+        </div>
+        <p class="hint" style="margin-top:8px">Nobody free? Play against Parwah — same board, same snakes.</p>
       </div>
       <div class="card">
         <h3>Antakshari 🎤</h3>
@@ -1253,6 +1257,7 @@ body.inapp #sosbar{padding-left:14px}
         <div class="addrow">
           <select id="t-vs" aria-label="Challenge who"><option value="">Challenge…</option></select>
           <button class="cbtn" id="gt-start">⚔️ Start duel</button>
+          <button class="cbtn ghost" id="gt-solo">🙋 Play alone</button>
         </div>
       </div>
       <p class="eyebrow">More coming</p>
@@ -4308,6 +4313,10 @@ body.inapp #sosbar{padding-left:14px}
       .catch(function(){ toast('No connection — try again'); });
   }
   $('g-start').addEventListener('click', function(){ gamePost({ action: 'start' }); });
+  // Playing alone is a first-class way to play: nothing is announced to the
+  // family, and nobody is notified about a game they are not in.
+  $('g-solo').addEventListener('click', function(){ gamePost({ action: 'start', solo: true }); });
+  $('gt-solo').addEventListener('click', function(){ gamePost({ action: 'start_ttt', vsId: 'bot', solo: true }); });
   var antMode = 'chat', chaMode = 'call';
   $('am-seg').addEventListener('click', function(e){
     var b = e.target.closest('button'); if (!b) return;
