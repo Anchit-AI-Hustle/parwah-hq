@@ -321,6 +321,23 @@ check("deploy: source is deployed and built by Vercel, not pushed prebuilt",
 check("deploy: works on a machine without flock (macOS)",
       "command -v flock" in deploysh and 'mkdir "$LOCK.d"' in deploysh)
 
+# 10o. THE PARENT VALIDATION GUIDE — the five concept screens it specifies.
+pulse = (API_DIR / "_pulse.mjs").read_text(encoding="utf-8")
+check("guide: one readiness number for the FAMILY, not six per-person bars",
+      '"Your family is <span id="rd-pct">' in appsrc.replace("'", '"') or 'id="rd-pct"' in appsrc)
+check("guide: the number is backed by named gaps and a complete-N call to action",
+      "gapCount" in book and "rd-gaps" in appsrc and "Complete " in appsrc)
+check("guide: someone near a person living away is a first-class contact",
+      "'local'" in book and "someone near them to call" in book)
+check("guide: the pulse asks how people are, in a style that rotates daily",
+      "How are my people today" in appsrc and "styleFor" in pulse and len(re.findall(r"^\s{2}\w+: \{ name:", pulse, re.M)) == 5)
+check("guide: an answer can quietly say a call would be nice",
+      "call: true" in pulse and "could do with a call" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
+check("guide: everyone in a circle sees the same question on the same day",
+      "derived from the date" in pulse or "same style for everyone" in pulse)
+check("guide: the plan is named and bundled as the guide names it",
+      "Parwah Family Plan" in plan and "'Family Readiness'" in plan and "'Family Pulse'" in plan)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

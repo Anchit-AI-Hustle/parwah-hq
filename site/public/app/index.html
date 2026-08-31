@@ -214,6 +214,21 @@ input[type=text]{width:100%;border:1px solid var(--bone-2);border-radius:12px;pa
 .tabs .dot{position:absolute;top:9px;right:calc(50% - 18px);min-width:16px;height:16px;border-radius:99px;background:var(--sindoor);color:#fff;font-size:.62rem;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px;font-style:normal}
 
 .crow.urgent{border-left-color:var(--sindoor)}
+/* the family pulse and the one readiness number */
+.purow{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--bone-2);font-size:.92rem}
+.purow:last-child{border-bottom:0}
+.purow .pe{font-size:1.35rem;line-height:1;width:28px;text-align:center}
+.purow b{font-weight:600}
+.purow small{display:block;color:var(--dim);font-size:.78rem}
+.purow.wantcall{background:rgba(179,38,30,.05);border-radius:8px;padding-left:6px}
+.purow.wantcall small{color:var(--sindoor)}
+.puopt{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 10px;margin-bottom:6px;
+  border:1px solid var(--bone-2);border-radius:12px;background:#fff;font:inherit;color:inherit;cursor:pointer}
+.puopt .pe{font-size:1.2rem}
+.puopt.sel{border-color:var(--marigold);background:rgba(232,162,61,.10)}
+.readycard .frbar i{background:var(--pine)}
+.rdgap{display:flex;gap:8px;align-items:baseline;font-size:.88rem;padding:3px 0}
+.rdgap em{font-style:normal;color:var(--dim)}
 /* An unanswered SOS outranks everything else on the screen. */
 #sosbar{position:fixed;top:0;left:0;right:0;z-index:12;display:flex;align-items:center;gap:10px;
   padding:11px 14px;background:var(--alert,#B3261E);color:#fff;font-size:.9rem;font-weight:600;
@@ -717,6 +732,21 @@ body.inapp #sosbar{padding-left:14px}
       <p class="hint">One tap — they join with your circle code.</p>
     </div>
 
+    <div class="card" id="pulsecard" style="margin-bottom:14px">
+      <h3>How are my people today?</h3>
+      <p class="hint" id="pu-ask" style="margin:2px 0 10px"></p>
+      <div class="feed" id="pu-people"></div>
+      <div id="pu-pick" style="margin-top:12px"></div>
+      <p class="hint" id="pu-mine" style="margin-top:8px"></p>
+    </div>
+
+    <button class="card readycard" id="readycard" hidden style="margin-bottom:14px;width:100%;text-align:left">
+      <h3>Your family is <span id="rd-pct">—</span>% ready</h3>
+      <div class="frbar" style="margin:8px 0 10px"><i id="rd-fill"></i></div>
+      <div id="rd-gaps"></div>
+      <p class="hint" id="rd-cta" style="margin-top:8px"></p>
+    </button>
+
     <div id="seniorui" hidden>
       <button class="big ok" id="btn-checkin">All is well ✅<span class="sub">One tap — the whole family relaxes</span></button>
       <button class="big pill" id="btn-pill">Pills taken? Yes ✔</button>
@@ -863,6 +893,7 @@ body.inapp #sosbar{padding-left:14px}
             <option value="driver">🚗 Driver</option>
             <option value="shops">🛒 Shops</option>
             <option value="repairs">🔧 Repairs</option>
+            <option value="local">📍 Someone near them</option>
             <option value="other" selected>📦 Other</option>
           </select>
           <label for="b-phone">Phone</label>
@@ -1920,7 +1951,7 @@ body.inapp #sosbar{padding-left:14px}
     fetch(API.events + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); })
       .then(function(j){
-        if (j.ok) { seenAt = j.seenAt || seenAt; joinReqs = j.joinRequests || []; joinPolicy = j.joinPolicy || 'approve'; render(j); renderForSelect(j.members); renderJoinReqs(); return; }
+        if (j.ok) { seenAt = j.seenAt || seenAt; joinReqs = j.joinRequests || []; joinPolicy = j.joinPolicy || 'approve'; render(j); renderForSelect(j.members); renderJoinReqs(); renderPulse(j.pulse); return; }
         // Circle code changed by another member? Re-map by membership and recover.
         if (authUser && authUser.phone && !window._healing) {
           window._healing = true;
@@ -2630,6 +2661,63 @@ body.inapp #sosbar{padding-left:14px}
     joinAct({ action:'set_join_policy', policy: next }, next === 'open' ? 'The code is now enough' : 'Joining needs a yes from the family');
   });
 
+  // ---------- the family pulse ----------
+  var pulseData = null;
+  function renderPulse(p){
+    if (!p) return;
+    pulseData = p;
+    $('pu-ask').textContent = p.ask;
+    var byId = {};
+    (p.answers || []).forEach(function(a){ byId[a.memberId] = a; });
+    var h = '';
+    (membersCache || []).forEach(function(m){
+      var a = byId[m.id];
+      h += '<div class="purow' + (a && a.call ? ' wantcall' : '') + '">' +
+           '<span class="pe" aria-hidden="true">' + (a ? a.emoji : '·') + '</span>' +
+           '<span><b>' + esc(m.name) + '</b><small>' +
+           (a ? esc(a.text) + (a.note ? ' — ' + esc(a.note) : '')
+              : 'Has not said yet today') + '</small></span>' +
+           (a && a.call && m.id !== state.memberId && m.phone
+              ? '<a class="cbtn" style="margin-left:auto" href="tel:' + encodeURIComponent(m.phone) + '">📞 Call</a>' : '') +
+           '</div>';
+    });
+    $('pu-people').innerHTML = h || '<div class="ev">Nobody in the circle yet.</div>';
+    var mine = byId[state.memberId];
+    $('pu-pick').innerHTML = (p.options || []).map(function(o){
+      return '<button class="puopt' + (mine && mine.value === o.k ? ' sel' : '') + '" data-pulse="' + o.k + '">' +
+             '<span class="pe" aria-hidden="true">' + o.e + '</span><span>' + esc(o.t) + '</span></button>';
+    }).join('');
+    $('pu-mine').textContent = mine
+      ? 'You said ' + mine.text + ' today. Tap another if the day has turned.'
+      : 'Today\u2019s question changes tomorrow — ' + p.styleName.toLowerCase() + ' today.';
+  }
+  $('pu-pick').addEventListener('click', function(e){
+    var b = e.target.closest('[data-pulse]'); if (!b || !state) return;
+    post(API.events, { code: state.code, memberId: state.memberId, type: 'pulse', value: b.getAttribute('data-pulse') })
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not save that'); return; }
+        toast('The family can see how you are 🧡'); refresh();
+      }).catch(function(){ toast('No connection — try again'); });
+  });
+
+  // ---------- one readiness number for the whole family ----------
+  function renderReady(f){
+    if (!f || !f.total) { $('readycard').hidden = true; return; }
+    $('readycard').hidden = false;
+    $('rd-pct').textContent = f.pct;
+    $('rd-fill').style.width = f.pct + '%';
+    $('rd-gaps').innerHTML = (f.gaps || []).slice(0, 4).map(function(g){
+      return '<div class="rdgap">' + (g.state === 'missing' ? '⚠️' : '🟡') +
+             ' <span><b>' + esc(g.name) + '</b> — <em>' + esc(g.label) +
+             (g.state === 'missing' ? ' missing' : ' needs a re-check') + '</em></span></div>';
+    }).join('');
+    $('rd-cta').textContent = f.gapCount
+      ? 'Complete ' + Math.min(3, f.gapCount) + ' important item' + (Math.min(3, f.gapCount) === 1 ? '' : 's')
+        + (f.gapCount > 4 ? ' · ' + f.gapCount + ' in total' : '')
+      : 'Everything important is recorded and current 🧡';
+  }
+  $('readycard').addEventListener('click', function(){ switchTab('people'); });
+
   // ---------- SOS: answered, or escalated ----------
   function sosPost(type){
     var sid = $('sosbar').dataset.sid;
@@ -2685,6 +2773,12 @@ body.inapp #sosbar{padding-left:14px}
     }
     if (cmI >= CM.length) { coachDone(); return; }
     var step = CM[cmI], el = document.querySelector(step.sel);
+    // Bring the target on screen BEFORE measuring it. Without this, a target
+    // below the fold put both the highlight and the card outside the window.
+    var pre = el.getBoundingClientRect();
+    if (pre.top < 80 || pre.bottom > window.innerHeight - 80) {
+      try { el.scrollIntoView({ block: 'center', behavior: 'auto' }); } catch (e) {}
+    }
     var r = el.getBoundingClientRect(), pad = 6;
     var hole = $('coach-hole');
     hole.style.left = (r.left - pad) + 'px';
@@ -2695,10 +2789,11 @@ body.inapp #sosbar{padding-left:14px}
     $('cm-title').textContent = step.t;
     $('cm-body').textContent = step.b;
     $('cm-next').textContent = cmI === CM.length - 1 ? 'Done' : 'Next';
-    // Put the card wherever the highlight is not.
-    var box = $('coach-box'), below = r.bottom + 16;
-    if (below + 190 < window.innerHeight) { box.style.top = below + 'px'; box.style.bottom = 'auto'; }
-    else { box.style.bottom = (window.innerHeight - r.top + 16) + 'px'; box.style.top = 'auto'; }
+    // Put the card wherever the highlight is not, and never off screen.
+    var box = $('coach-box'), below = r.bottom + 16, H = window.innerHeight;
+    if (below + 200 < H) { box.style.top = below + 'px'; box.style.bottom = 'auto'; }
+    else if (r.top > 220) { box.style.bottom = (H - r.top + 16) + 'px'; box.style.top = 'auto'; }
+    else { box.style.top = Math.max(12, Math.min(H - 210, r.bottom + 16)) + 'px'; box.style.bottom = 'auto'; }
   }
   $('cm-next').addEventListener('click', function(){
     if (cmI < CM.length - 1) { cmI++; renderCoach(); return; }
@@ -3019,12 +3114,12 @@ body.inapp #sosbar{padding-left:14px}
     switchTab('memory');
     renderBook();
   });
-  var CAT_LABEL = { housework: '🧹 Housework', doctor: '🩺 Doctor', vet: '🐾 Vet', driver: '🚗 Driver', shops: '🛒 Shops', repairs: '🔧 Repairs', other: '📦 Other' };
+  var CAT_LABEL = { housework: '🧹 Housework', doctor: '🩺 Doctor', vet: '🐾 Vet', driver: '🚗 Driver', shops: '🛒 Shops', repairs: '🔧 Repairs', emergency: '🆘 Emergency', local: '📍 Someone near them', other: '📦 Other' };
   function refreshBook(){
     if (!state) return;
     fetch(API.book + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); })
-      .then(function(j){ if (j.ok) { bookCache = j.entries || []; prepCache = j.prep || []; bookAccess = j.access || []; bookConsent = j.consent || []; bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); ecSave();
+      .then(function(j){ if (j.ok) { bookCache = j.entries || []; prepCache = j.prep || []; bookAccess = j.access || []; bookConsent = j.consent || []; renderReady(j.family); bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); ecSave();
           var openId = $('book-detail').hidden ? null : $('book-detail').dataset.bid;
           if (openId && bookEntry(openId)) openBookDetail(openId);
           else if (openId) { $('book-detail').hidden = true; $('book-list-view').hidden = false; }

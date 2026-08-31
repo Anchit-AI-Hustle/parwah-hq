@@ -6,6 +6,7 @@ import { ensureVaultSchema, ensurePaySchema, checkNumber } from './_vaultapi.mjs
 import { ensureCoinSchema, award, balance, spend, EARN, SPEND } from './_coins.mjs';
 import { careSuggestions } from './care.mjs';
 import { priceOf, USD_RATE } from './_planapi.mjs';
+import { ensurePulseSchema, pulseToday, styleFor, PULSE_STYLES, today as pulseDay } from './_pulse.mjs';
 
 export default async function handler(req, res) {
   const steps = {};
@@ -193,6 +194,22 @@ export default async function handler(req, res) {
       && usd.currency === 'USD' && Math.abs(usd.amount - (2499 / USD_RATE)) < 1.2
       && priceOf('free', 'INR').amount === 0;
 
+    // THE PULSE — one answer per person per day, replaceable, same style for all.
+    await ensurePulseSchema(sql);
+    const pday = pulseDay(), pstyle = styleFor(pday);
+    await sql`insert into pulse (circle_id, member_id, day, style, value)
+              values (${circleId}, ${papa[0].id}, ${pday}, ${pstyle}, ${PULSE_STYLES[pstyle].options[0].k})`;
+    const callOpt = PULSE_STYLES[pstyle].options.filter(o => o.call)[0];
+    await sql`insert into pulse (circle_id, member_id, day, style, value)
+              values (${circleId}, ${papa[0].id}, ${pday}, ${pstyle}, ${callOpt.k})
+              on conflict (circle_id, member_id, day) do update set value = excluded.value`;
+    const pt = await pulseToday(sql, circleId);
+    const papaP = pt.answers.filter(a => a.memberId === papa[0].id);
+    steps.pulse_one_per_day = papaP.length === 1 && papaP[0].value === callOpt.k && papaP[0].call === true;
+    // Everyone sees the same question on the same day, and it rotates.
+    const styles = ['2026-01-01','2026-01-02','2026-01-03','2026-01-04','2026-01-05'].map(styleFor);
+    steps.pulse_rotates = new Set(styles).size === 5 && styleFor(pday) === styleFor(pday);
+
     // ONBOARDING — the introduction is once per PERSON, and a circle knows
     // whether it is a family or a group.
     const kindRow = await sql`select kind from circles where id = ${circleId}`;
@@ -315,8 +332,9 @@ export default async function handler(req, res) {
     const leftCoins = await sql`select id from coins where circle_id = ${circleId}`;
     const leftBook = await sql`select id from family_book where circle_id = ${circleId}`;
     const leftSos = await sql`select id from sos where circle_id = ${circleId}`;
+    const leftPulse = await sql`select member_id from pulse where circle_id = ${circleId}`;
     steps.cleanup_cascade = leftover.length === 0 && leftChats.length === 0 && leftReads.length === 0
-      && leftDocs.length === 0 && leftFiles.length === 0 && leftPay.length === 0 && leftJoin.length === 0 && leftCoins.length === 0 && leftBook.length === 0 && leftSos.length === 0;
+      && leftDocs.length === 0 && leftFiles.length === 0 && leftPay.length === 0 && leftJoin.length === 0 && leftCoins.length === 0 && leftBook.length === 0 && leftSos.length === 0 && leftPulse.length === 0;
     circleId = null;
 
     const ok = Object.values(steps).every(Boolean);

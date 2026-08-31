@@ -21,7 +21,7 @@ import vaultApi from './_vaultapi.mjs';
 import { award } from './_coins.mjs';
 
 const KINDS = ['contact', 'address', 'med', 'fact', 'insurance'];
-const CATS = ['housework', 'doctor', 'vet', 'driver', 'shops', 'repairs', 'emergency', 'other'];
+const CATS = ['housework', 'doctor', 'vet', 'driver', 'shops', 'repairs', 'emergency', 'local', 'other'];
 const FACTCATS = ['blood', 'allergy', 'preference', 'other'];
 const STALE_DAYS = 180; // meds/insurance/facts older than this ask to be re-checked
 
@@ -144,7 +144,9 @@ export default async function handler(req, res) {
           allergies: chk(e => e.kind === 'fact' && e.category === 'allergy'),
           blood: chk(e => e.kind === 'fact' && e.category === 'blood'),
           emergency: chk(e => e.kind === 'contact' && e.category === 'emergency'),
-          insurance: chk(e => e.kind === 'insurance')
+          insurance: chk(e => e.kind === 'insurance'),
+          // Somebody NEAR this person, for the hours you cannot reach them.
+          local: chk(e => e.kind === 'contact' && e.category === 'local')
         };
         const keys = Object.keys(items);
         const okN = keys.filter(k => items[k] === 'ok').length;
@@ -152,7 +154,30 @@ export default async function handler(req, res) {
         return { memberId: mm.id, name: mm.name, relation: mm.relation,
                  pct: Math.round(okN / keys.length * 100), attention, items };
       });
-      return res.status(200).json({ ok: true, entries, prep, access, consent, staleDays: STALE_DAYS });
+      // A family-level readiness figure, and the specific things behind it.
+      // Deliberately one number: "78% ready" is a question a family can act
+      // on, where six separate per-person bars are a report nobody reads.
+      const LABEL = {
+        doctor: 'doctor recorded', meds: 'medicine list', allergies: 'allergies noted',
+        blood: 'blood group', emergency: 'emergency contact', insurance: 'insurance details',
+        local: 'someone near them to call'
+      };
+      let ok = 0, total = 0;
+      const gaps = [];
+      prep.forEach(pp => {
+        Object.keys(pp.items).forEach(k => {
+          total++;
+          if (pp.items[k] === 'ok') { ok++; return; }
+          gaps.push({ memberId: pp.memberId, name: pp.name, key: k,
+                      label: LABEL[k] || k, state: pp.items[k] });
+        });
+      });
+      // Missing beats stale: an absent blood group is worse than one nobody
+      // has re-checked this year.
+      gaps.sort((a, b) => (a.state === 'missing' ? 0 : 1) - (b.state === 'missing' ? 0 : 1));
+      const family = { pct: total ? Math.round(ok / total * 100) : 0,
+                       ready: ok, total, gaps: gaps.slice(0, 12), gapCount: gaps.length };
+      return res.status(200).json({ ok: true, entries, prep, family, access, consent, staleDays: STALE_DAYS });
     }
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'GET, POST');

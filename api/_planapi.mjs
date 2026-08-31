@@ -26,13 +26,10 @@ export const PLANS = {
                'Chat, plans, calls and games', 'Ekta, on the coins the family earns']
   },
   care: {
-    id: 'care', name: 'Parwah Care', inr: 2499,
-    tagline: 'For a family looking after parents from another city — or another country.',
-    includes: ['Everything in Parwah, for the whole family',
-               'Ekta without earning coins first',
-               'A person to call when the app is not enough',
-               'Documents checked and kept current for you',
-               'Priority when something goes wrong at 2am']
+    id: 'care', name: 'Parwah Family Plan', inr: 2499,
+    tagline: 'One plan for the whole family, wherever each of you lives.',
+    includes: ['Family Memory', 'Health & Emergency Information', 'Trusted Contacts',
+               'Family Readiness', 'Ekta', 'Family Pulse']
   }
 };
 

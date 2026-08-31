@@ -4,6 +4,8 @@ import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import { award, today } from './_coins.mjs';
 
+import { pulseToday, ensurePulseSchema, optionOf, styleFor, today as pulseDay } from './_pulse.mjs';
+
 const SOS_ESCALATE_MIN = 5;   // nobody answered in this long → shout louder
 
 const TYPES = ['checkin', 'sos', 'pill', 'message'];
@@ -76,6 +78,7 @@ async function escalateStaleSos(sql, circleId) {
         order by created_at limit 20`;
       const pol = await sql`select join_policy from circles where id = ${circle.id}`;
       await escalateStaleSos(sql, circle.id);
+      const pulse = await pulseToday(sql, circle.id);
       const sosOpen = await sql`
         select s.id, s.member_id, s.status, s.escalated, s.created_at, s.acked_at,
                m.name, m.phone, a.name as acked_name
@@ -92,7 +95,7 @@ async function escalateStaleSos(sql, circleId) {
       }
       return res.status(200).json({ ok: true, circleName: circle.name, code: circle.code, members, events, seenAt, calls,
         joinRequests: joinReqs, joinPolicy: (pol[0] && pol[0].join_policy) || 'approve',
-        sos: sosOpen, sosEscalateMin: SOS_ESCALATE_MIN });
+        sos: sosOpen, sosEscalateMin: SOS_ESCALATE_MIN, pulse });
     }
 
     if (req.method === 'POST') {
@@ -107,6 +110,33 @@ async function escalateStaleSos(sql, circleId) {
                   on conflict (member_id) do update set seen_at = now()`;
         return res.status(200).json({ ok: true });
       }
+      // How you actually are, in today's vocabulary. One answer per person per
+      // day, replaceable — a day can turn.
+      if (type === 'pulse') {
+        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        const pm = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
+        if (!pm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        await ensurePulseSchema(sql);
+        const day = pulseDay(), styleKey = styleFor(day);
+        const opt = optionOf(styleKey, String(req.body.value || ''));
+        if (!opt) return res.status(400).json({ ok: false, error: 'Pick how you are today' });
+        const note = String(req.body.note || '').trim().slice(0, 120) || null;
+        await sql`insert into pulse (circle_id, member_id, day, style, value, note)
+                  values (${circle.id}, ${pm[0].id}, ${day}, ${styleKey}, ${opt.k}, ${note})
+                  on conflict (circle_id, member_id, day)
+                  do update set style = excluded.style, value = excluded.value, note = excluded.note, at = now()`;
+        await sql`insert into events (circle_id, member_id, type, text)
+                  values (${circle.id}, ${pm[0].id}, 'checkin', ${pm[0].name + ' is ' + opt.e + ' ' + opt.t})`;
+        await award(sql, circle.id, pm[0].id, 'checkin', day);
+        // "A call would be nice" is the reason this feature exists — it lets
+        // someone say they are not fine without having to say it.
+        if (opt.call) {
+          await pushCircle(sql, circle.id, { title: '🧡 ' + pm[0].name + ' could do with a call',
+            body: opt.e + ' ' + opt.t + (note ? ' — ' + note : '') }, { except: pm[0].id });
+        }
+        return res.status(201).json({ ok: true });
+      }
+
       // Somebody is on it — everyone else stops worrying, and the person who
       // pressed the button finds out that help is coming.
       if (type === 'sos_ack' || type === 'sos_resolve') {

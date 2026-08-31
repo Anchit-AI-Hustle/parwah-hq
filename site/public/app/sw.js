@@ -1,6 +1,6 @@
 // Parwah app service worker — makes the app installable and keeps the shell
 // available offline. API calls always go to the network.
-var CACHE = 'parwah-app-v36';
+var CACHE = 'parwah-app-v37';
 var SHELL = ['/app/', '/app/manifest.webmanifest', '/app/icon-192.png'];
 
 self.addEventListener('install', function (e) {
