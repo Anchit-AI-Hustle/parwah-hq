@@ -484,6 +484,44 @@ check("day: the probe separates our arithmetic from someone else's uptime",
       and "source" in (API_DIR / "_dayselftest.mjs").read_text(encoding="utf-8")
       and "never invents one" in (API_DIR / "_dayselftest.mjs").read_text(encoding="utf-8"))
 
+# ---------- 10c. Knowing what this is, without an account ----------
+# Feedback from a tester: "I can't know a lot about this without signing in."
+# They were right — on a phone the entry screen was a headline and a phone
+# field. The validation guide asks for the same thing from the other side:
+# show five narrow concept screens, and NOT the full app.
+appob = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+check("entry: a phone sees what Parwah is, not only a sign-in box",
+      '<div class="obpoints">' in appob and 'class="obpoints deskonly"' not in appob)
+check("entry: the explanation is legible on the cream ground, not sidebar grey",
+      ".obpoint{display:flex;gap:11px;align-items:flex-start;font-size:.92rem;line-height:1.45;color:var(--ink-soft)}" in appob)
+check("entry: there is a way to see the product before it asks for anything",
+      'id="au-see"' in appob and 'id="demo-step"' in appob and "showStep('demo')" in appob)
+check("entry: an interview can open straight onto the concept",
+      "demoWanted()" in appob and "get('demo') === '1'" in appob)
+_demo = appob[appob.index("var DEMO = ["):appob.index("var demoAt = 0;")]
+check("guide demo: the five screens the guide specifies, then the price",
+      all(k in _demo for k in ("'promise'", "'memory'", "'ekta'", "'pulse'", "'ready'", "'plan'")))
+check("guide demo: screen 1 is the promise and four people, nothing else",
+      "nobody should have to scramble" in _demo and "You decide who can see what" in _demo)
+check("guide demo: screen 2 carries the guide's own five sections",
+      all(x in _demo for x in ("🩺 Health", "📁 Records", "📞 People to call",
+                               "💡 Useful to know", "🕒 Freshness")))
+check("guide demo: screen 3 is the readiness number with named gaps",
+      "78% ready" in _demo and "insurance card missing" in _demo)
+check("guide demo: Ekta retrieves and never diagnoses",
+      "Prepare summary" in _demo and "does not diagnose" in _demo)
+check("guide demo: the pulse can quietly ask for a call",
+      "a call would be nice" in _demo)
+check("guide demo: the price comes last, per family, in both currencies",
+      "2,499" in _demo and "per family, per year" in _demo and "29.99" in _demo)
+# "Do NOT show chat, games, gifting, calls or a feature menu here."
+_banned = [w for w in ("chat", "game", "gift", "video call", "Snakes", "Antakshari")
+           if w.lower() in _demo.lower()]
+check("guide demo: none of what the guide forbids on these screens",
+      not _banned, ", ".join(_banned))
+check("guide demo: it is plainly an example, not someone's real family",
+      "not real people" in appob and "nothing is sent anywhere" in appob)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

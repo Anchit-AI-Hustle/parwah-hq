@@ -247,6 +247,10 @@ body.inapp #sosbar{padding-left:14px}
 
 /* the introduction, and the coachmarks that follow it */
 .trdots{display:flex;gap:6px;margin-top:12px}
+/* The concept screens, shown before anyone is asked for anything. */
+#demo-step .prow2{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+#demo-step .prow2 .go{flex:1;min-width:150px}
+#demo-step h3{font-family:var(--disp);font-weight:600}
 .trdots i{width:7px;height:7px;border-radius:99px;background:var(--bone-2)}
 .trdots i.on{background:var(--marigold);width:20px}
 .kindpick{margin-bottom:10px}
@@ -504,8 +508,8 @@ body.inapp #sosbar{padding-left:14px}
   }
 }
 
-.obpoints{flex-direction:column;gap:12px;margin:22px 0 0}
-.obpoint{display:flex;gap:11px;align-items:flex-start;font-size:.92rem;color:var(--dim)}
+.obpoints{display:flex;flex-direction:column;gap:13px;margin:22px 0 0}
+.obpoint{display:flex;gap:11px;align-items:flex-start;font-size:.92rem;line-height:1.45;color:var(--ink-soft)}
 .obpoint b{color:var(--ink);font-weight:600}
 .obpoint .oi{font-size:1.15rem;line-height:1}
 
@@ -521,7 +525,7 @@ body.inapp #sosbar{padding-left:14px}
   body:not(.inapp) #onboard > .obpoints{grid-column:1;margin:26px 0 0;display:flex;flex-direction:column;gap:12px}
   body:not(.inapp) #onboard > div:not(.obpoints){grid-column:2;grid-row:1/span 4;align-self:center;width:100%;margin:0}
   body:not(.inapp) #onboard > .err{grid-column:2;margin-top:10px}
-  .obpoint{gap:11px;align-items:flex-start;font-size:.92rem;color:var(--dim)}
+  .obpoint{gap:11px;align-items:flex-start;font-size:.92rem;color:var(--ink-soft)}
   .obpoint b{color:var(--ink);font-weight:600}
   .obpoint .oi{font-size:1.15rem;line-height:1}
 }
@@ -608,7 +612,7 @@ body.inapp #sosbar{padding-left:14px}
 <div class="wrap" id="onboard">
   <h1>Your family's circle</h1>
   <p class="lede">One private circle for your family. Check-ins, SOS and messages reach everyone in it — and only them.</p>
-  <div class="obpoints deskonly">
+  <div class="obpoints">
     <span class="obpoint"><span class="oi" aria-hidden="true">📒</span><span><b>Where the family knows.</b> Doctors, medicines, blood groups and policies — kept current, not lost in a chat.</span></span>
     <span class="obpoint"><span class="oi" aria-hidden="true">🚨</span><span><b>Ready before the emergency.</b> One card with everything a doctor asks for, working with no internet.</span></span>
     <span class="obpoint"><span class="oi" aria-hidden="true">🔐</span><span><b>Papers, permissioned.</b> Aadhaar, PAN and passports — only their owner decides who can open them.</span></span>
@@ -626,6 +630,7 @@ body.inapp #sosbar{padding-left:14px}
       <input type="text" id="au-name" maxlength="60" placeholder="e.g. Rohan" autocomplete="name">
     </div>
     <button class="go" id="au-go">Continue</button>
+    <button class="cbtn ghost" id="au-see" style="width:100%;margin-top:10px">What is Parwah? See it first →</button>
     <p class="hint">One number, all your circles. Already signed up? You're in with one tap. New? Profile created and signed in, instantly.</p>
   </div>
 
@@ -641,6 +646,25 @@ body.inapp #sosbar{padding-left:14px}
       </div>
       <button class="linkbtn" id="cs-out" style="margin-left:16px;color:var(--alert)">Sign out</button>
     </div>
+  </div>
+
+
+  <!-- SEE IT WITHOUT SIGNING IN — the five screens the validation guide
+       specifies, with the guide's own example family. Deliberately narrow:
+       no chat, no games, no gifting, no calls, no feature menu. Reachable at
+       /app/?demo=1 so an interview can open straight into it. -->
+  <div id="demo-step" hidden>
+    <div class="card">
+      <p class="eyebrow" id="dm-count" style="margin-top:0"></p>
+      <div id="dm-body"></div>
+    </div>
+    <div class="trdots" id="dm-dots" aria-hidden="true"></div>
+    <div class="prow2" style="margin-top:14px">
+      <button class="go" id="dm-next">Next</button>
+      <button class="cbtn ghost" id="dm-back">Back</button>
+    </div>
+    <button class="linkbtn" id="dm-out" style="margin-top:12px">← Sign in instead</button>
+    <p class="hint" style="margin-top:14px">This is an example family, not real people. Nothing here is saved, and nothing is sent anywhere.</p>
   </div>
 
   <div id="tour-step" hidden>
@@ -1768,6 +1792,9 @@ body.inapp #sosbar{padding-left:14px}
   }
   var curTab = 'home', curGame = null, gameTimer = null, planKind = 'call';
 
+  function demoWanted(){
+    try { return new URLSearchParams(location.search).get('demo') === '1'; } catch (e) { return false; }
+  }
   function loadState(){ try { return JSON.parse(localStorage.getItem('parwah') || 'null'); } catch(e){ return null; } }
   function saveState(s){ try { localStorage.setItem('parwah', JSON.stringify(s)); } catch(e){} }
   function clearState(){ try { localStorage.removeItem('parwah'); } catch(e){} }
@@ -2451,6 +2478,13 @@ body.inapp #sosbar{padding-left:14px}
     $('setup-step').hidden = which !== 'setup';
     $('pending-step').hidden = which !== 'pending';
     $('tour-step').hidden = which !== 'tour';
+    $('demo-step').hidden = which !== 'demo';
+    // The three points are a summary FOR the sign-in screen. Once the concept
+    // screens are open they are the same thing said twice, and they push the
+    // screen a person came to read below the fold on a phone.
+    document.querySelector('#onboard .obpoints').hidden = which === 'demo';
+    document.querySelector('#onboard > h1').hidden = which === 'demo';
+    document.querySelector('#onboard > .lede').hidden = which === 'demo';
   }
 
   // ---------- the introduction: what Parwah is, once per person ----------
@@ -5277,6 +5311,123 @@ body.inapp #sosbar{padding-left:14px}
     var d = $('e-dob'); if (d) { d.scrollIntoView({ block: 'center' }); try { d.focus(); } catch (e) {} }
   });
 
+
+  // ---------- "What is this?" — the five screens, without an account ----------
+  // A person who lands on Parwah and is shown only a phone field has no way to
+  // find out what it is. These are the concept screens from the validation
+  // guide, with the guide's own example family, so the product can be judged
+  // before anything is asked of anyone. Deliberately narrow: no chat, games,
+  // gifting or calls here — this screen answers one question only.
+  var DEMO = [
+    { k: 'promise', title: 'When your family needs to know,<br>nobody should have to scramble.',
+      body:
+        '<p class="lede" style="margin:10px 0 16px">Parwah keeps the important things your family chooses to share organised in one place — so the right people can find them when they need them.</p>' +
+        '<div class="feed">' +
+        dcard('Mum', 'mother', 0) + dcard('Dad', 'father', 2) +
+        dcard('Anya', 'daughter', 0) + dcard('Rohan', 'son', 1) +
+        '</div>' +
+        '<p class="hint" style="margin-top:12px">🔒 You decide who can see what.</p>' },
+
+    { k: 'memory', title: 'Mum',
+      body:
+        '<p class="hint" style="margin:2px 0 12px">Everything the family has chosen to keep about one person, in one place.</p>' +
+        dsec('🩺 Health', ['Dr Mehra — Cardiologist', 'Dr Kapoor — Physician',
+                           'Current medicines: 4', 'Allergy: Penicillin', 'Blood group: B+']) +
+        dsec('📁 Records', ['Latest reports: 6', 'Insurance card: Saved', 'Medical summary: Available']) +
+        dsec('📞 People to call', ['Dad', 'Mrs Khanna — neighbour', 'Veena — close friend']) +
+        dsec('💡 Useful to know', ['Preferred hospital', 'Regular pharmacy']) +
+        dsec('🕒 Freshness', ['Last checked: 12 August', 'Medicines: Review due']) +
+        '<p class="hint" style="margin-top:12px">Records show that a document <b>exists</b> and whether it has been checked — never the document itself. That stays behind its owner’s permission.</p>' },
+
+    { k: 'ready', title: 'Your family is 78% ready',
+      body:
+        '<div class="feed" style="margin-top:12px">' +
+        dline(true,  'Mum’s current medicines checked this month') +
+        dline(true,  'Dad’s emergency contacts added') +
+        dline(true,  'Anya’s local emergency contact added') +
+        dline(false, 'Dad’s insurance card missing') +
+        dline(false, 'Mum’s medicine list needs review') +
+        dline(false, 'Rohan has not shared a local emergency contact') +
+        '</div>' +
+        '<p class="hint" style="margin-top:12px">Parwah is not a folder you fill once. It tells you what is missing and what has gone stale, and asks you to fix it — three things, right now.</p>' },
+
+    { k: 'ekta', title: 'Ask Ekta about your family',
+      body:
+        '<div class="feed" style="margin-top:12px">' +
+        dqa('What medicines is Mum currently taking?',
+            'Mum has 4 medicines recorded. Last checked 12 August.', 'View list') +
+        dqa('I’m taking Mum to a new doctor tomorrow. What do we have?',
+            'I can bring together her recorded medicines, allergies, recent reports, doctor details and insurance card.', 'Prepare summary') +
+        dqa('Who can I contact if I can’t reach Rohan in Bangalore?',
+            'Rohan has shared two local emergency contacts with you.', 'View contacts') +
+        '</div>' +
+        '<p class="hint" style="margin-top:12px">Ekta retrieves and organises what your family has stored and allowed her to see. She says where an answer came from and when it was last checked. She does not diagnose and does not make medical decisions.</p>' },
+
+    { k: 'pulse', title: 'How are my people today?',
+      body:
+        '<div class="feed" style="margin-top:12px">' +
+        dpulse('Mum', '☀', 'Sunny', false) +
+        dpulse('Dad', '🐢', 'Taking it slow', false) +
+        dpulse('Rohan', '🔋', '75%', false) +
+        dpulse('Anya', '🌧', 'Rainy — a call would be nice', true) +
+        '</div>' +
+        '<p class="hint" style="margin-top:12px">A few seconds to tell your family how you are doing. The style changes each day — weather, battery, animals, roads, food — but the purpose stays the same.</p>' },
+
+    { k: 'plan', title: 'What it costs',
+      body:
+        '<p class="hint" style="margin:2px 0 12px">One plan, for the whole family. Not per person.</p>' +
+        '<div class="ev"><b>Parwah Family Plan</b><small>The family memory · Health &amp; emergency information · Trusted contacts · Family readiness · Ekta · The family pulse</small></div>' +
+        '<p style="margin:12px 0 2px;font-size:1.5rem;font-family:var(--disp);font-weight:600">₹2,499 <span style="font-size:.95rem;font-weight:400;color:var(--ink-soft)">per family, per year</span></p>' +
+        '<p class="hint" style="margin:2px 0 0">About $29.99 at ₹85 to the dollar. Nothing is charged here — Parwah is not taking payments yet.</p>' +
+        '<p class="hint" style="margin-top:14px">Ready to start? Signing in takes a mobile number and nothing else — no password, and nothing is posted anywhere.</p>' }
+  ];
+
+  function dcard(name, rel, todo){
+    return '<div class="ev"><b>' + name + '</b> <em style="font-style:normal;color:var(--dim)">· ' + rel + '</em>' +
+      '<small>' + (todo === 0 ? '✅ Important information up to date'
+                              : '⚠️ ' + todo + ' thing' + (todo > 1 ? 's' : '') + ' to complete') + '</small></div>';
+  }
+  function dsec(head, rows){
+    // Every line in a section is a peer — a second doctor is not a footnote to
+    // the first — so they are all set the same weight.
+    return '<p class="eyebrow" style="margin:14px 0 6px">' + head + '</p><div class="ev">' +
+      rows.map(function(r, i){
+        return '<div' + (i ? ' style="margin-top:3px"' : '') + '>' + r + '</div>';
+      }).join('') + '</div>';
+  }
+  function dline(ok, text){
+    return '<div class="ev ' + (ok ? 'good' : 'inaus') + '">' + (ok ? '✓ ' : '⚠ ') + text + '</div>';
+  }
+  function dqa(q, a, act){
+    return '<div class="ev"><b>You:</b> ' + q + '<small style="margin-top:6px"><b>Ekta:</b> ' + a +
+      ' <span style="color:var(--sindoor);font-weight:600">[' + act + ']</span></small></div>';
+  }
+  function dpulse(name, emoji, text, call){
+    return '<div class="ev' + (call ? ' inaus' : '') + '"><b>' + emoji + '  ' + name + '</b>' +
+      '<small>' + text + '</small></div>';
+  }
+
+  var demoAt = 0;
+  function renderDemo(){
+    var d = DEMO[demoAt];
+    $('dm-count').textContent = (demoAt + 1) + ' of ' + DEMO.length;
+    $('dm-body').innerHTML = '<h3 style="font-size:1.3rem;line-height:1.25">' + d.title + '</h3>' + d.body;
+    $('dm-dots').innerHTML = DEMO.map(function(_, i){
+      return '<i class="' + (i === demoAt ? 'on' : '') + '"></i>';
+    }).join('');
+    $('dm-next').textContent = demoAt === 0 ? 'View family'
+      : (demoAt === DEMO.length - 1 ? 'Sign in and start' : 'Next');
+    $('dm-back').hidden = demoAt === 0;
+    window.scrollTo(0, 0);
+  }
+  $('dm-next').addEventListener('click', function(){
+    if (demoAt === DEMO.length - 1) { showStep('auth'); return; }
+    demoAt++; renderDemo();
+  });
+  $('dm-back').addEventListener('click', function(){ if (demoAt > 0) { demoAt--; renderDemo(); } });
+  $('dm-out').addEventListener('click', function(){ showStep('auth'); });
+  $('au-see').addEventListener('click', function(){ demoAt = 0; renderDemo(); showStep('demo'); });
+
   // ---------- boot ----------
   if ('serviceWorker' in navigator) {
     try { navigator.serviceWorker.register('sw.js'); } catch (e) {}
@@ -5297,6 +5448,10 @@ body.inapp #sosbar{padding-left:14px}
         else showStep('auth');
       })
       .catch(function(){ showStep('auth'); });
+  } else if (demoWanted()) {
+    // ?demo=1 — an interview, or a link someone was sent, opens on the
+    // concept rather than on a request for their phone number.
+    demoAt = 0; renderDemo(); showStep('demo');
   } else {
     showStep('auth');
   }
