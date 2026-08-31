@@ -3,3 +3,12 @@ hq/
 supabase/
 CLAUDE.md
 README.md
+
+# `vercel deploy` uploads the working directory; keep local artefacts out of
+# it so the upload is small and contains nothing it should not.
+node_modules/
+.vercel/
+.git/
+ops/deploy.log
+.deploy-state
+mobile/

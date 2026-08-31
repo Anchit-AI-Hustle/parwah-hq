@@ -161,24 +161,31 @@ if ! run_vercel "vercel whoami" vercel whoami --token="$VERCEL_TOKEN"; then
 fi
 log "signed in to Vercel as ${VC_OUT##*$'\n'}"
 
-if ! run_vercel "vercel pull (team scope)" vercel pull --yes --environment=production --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN"; then
+# ONE command, not three. `vercel pull` and `vercel build` exist only to build
+# LOCALLY and upload the output; deploying the source instead lets Vercel do
+# the build it already knows how to do — the same build, running the same gate
+# through npm run build. Two fewer API calls, two fewer ways to fail, and no
+# dependence on pulling project settings down first.
+deploy_once() {          # deploy_once <label> <extra args...>
+  local label="$1"; shift
+  run_vercel "$label" vercel deploy --prod --yes --archive=tgz --token="$VERCEL_TOKEN" "$@"
+}
+if ! deploy_once "vercel deploy (team scope)" --scope="$VERCEL_SCOPE"; then
+  # A token already scoped to the team rejects the flag; try it plainly.
   log "retrying without an explicit scope"
-  run_vercel "vercel pull" vercel pull --yes --environment=production --token="$VERCEL_TOKEN" \
-    || die "could not pull the project settings — $(vercel_hint)"
+  deploy_once "vercel deploy" || die "the deploy was rejected — $(vercel_hint)"
 fi
-run_vercel "vercel build" vercel build --prod --token="$VERCEL_TOKEN" \
-  || die "the production build failed — $(vercel_hint)"
-run_vercel "vercel deploy" vercel deploy --prebuilt --prod --scope="$VERCEL_SCOPE" --token="$VERCEL_TOKEN" \
-  || die "the deploy was rejected — $(vercel_hint)"
 URL="$(printf '%s' "$VC_OUT" | grep -Eo 'https://[a-zA-Z0-9.-]+\.vercel\.app' | tail -1)"
-[ -n "$URL" ] || die "vercel deploy produced no URL"
-log "deployed $URL"
+[ -n "$URL" ] || die "the deploy produced no URL — see the output above"
+log "deployed $URL — Vercel is building it now"
 
 # 4. prove it against the live database before calling it done
+log "waiting for the build, then checking the live database"
 BODY=""
-for _ in 1 2 3 4 5 6; do
-  BODY="$(curl -fsS --max-time 25 "$PROD_URL/api/diag?probe=db" 2>/dev/null)" && break
-  sleep 5
+for _ in $(seq 1 40); do
+  BODY="$(curl -fsS --max-time 20 "$PROD_URL/api/diag?probe=db" 2>/dev/null)" || BODY=""
+  case "$BODY" in *'"ok":true'*) break ;; esac
+  sleep 10
 done
 case "$BODY" in
   *'"ok":true'*) log "live self-test green on $PROD_URL" ;;

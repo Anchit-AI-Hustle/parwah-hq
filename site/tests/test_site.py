@@ -307,6 +307,17 @@ check("deploy: a failure names its own kind instead of blaming the token",
       "vercel_hint()" in deploysh and "could not reach api.vercel.com" in deploysh)
 check("deploy: a fresh clone gets its project link written",
       ".vercel/project.json" in deploysh and "mkdir -p .vercel" in deploysh)
+vign = (REPO / ".vercelignore").read_text(encoding="utf-8")
+check("deploy: the private hq/ directory can never be uploaded",
+      "hq/" in vign and ".claude/" in vign and "CLAUDE.md" in vign)
+check("deploy: local artefacts stay out of the upload",
+      "node_modules/" in vign and ".git/" in vign)
+# Match CODE lines only — the comment explaining why pull and build were
+# dropped necessarily names them, and tripped the first version of this.
+_dcode = "\n".join(l for l in deploysh.splitlines() if not l.strip().startswith("#"))
+check("deploy: source is deployed and built by Vercel, not pushed prebuilt",
+      "vercel deploy --prod --yes" in _dcode and "--prebuilt" not in _dcode
+      and "vercel pull" not in _dcode and "vercel build" not in _dcode)
 check("deploy: works on a machine without flock (macOS)",
       "command -v flock" in deploysh and 'mkdir "$LOCK.d"' in deploysh)
 
