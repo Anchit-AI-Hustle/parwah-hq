@@ -542,6 +542,46 @@ check("guide demo: none of what the guide forbids on these screens",
 check("guide demo: it is plainly an example, not someone's real family",
       "not real people" in appob and "nothing is sent anywhere" in appob)
 
+# ---------- 10d. Addresses that are real, not just typed ----------
+# A free-text box gives you "S-354, Greater Kailash 2" — no city, no state,
+# and no way to know the PIN even matches the locality. India Post publishes
+# that mapping free, so six digits fill in the rest.
+pin = (API_DIR / "_pin.mjs").read_text(encoding="utf-8")
+pinapi = (API_DIR / "_pinapi.mjs").read_text(encoding="utf-8")
+appad = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+
+check("address: the PIN rules are dependency-free, like the phone rules",
+      "import" not in pin.split("export")[0] and "PIN_SOURCE" in pin)
+check("address: six digits, and never one starting 0",
+      "p[0] === '0'" in pin and "p.length !== 6" in pin)
+check("address: a PIN is fetched once and kept, not on every keystroke",
+      "create table if not exists pincode" in pin and "on conflict (pin) do nothing" in pin
+      and "where pin = ${pin}" in pin)
+check("address: a city is never guessed from a PIN we could not check",
+      "unknown: true" in pin and "type the city and state yourself" in pin
+      and "nothing here fills a gap with a plausible value" in pin)
+check("address: the lookup needs circle membership and is rate limited",
+      "circleByCode" in pinapi and "rateLimit" in pinapi and "Not a member of this circle" in pinapi)
+# A 404 for an unknown PIN also logs a console error in every browser that
+# asks. The circle-not-found 404 above it is a different thing and stays.
+check("address: an unknown PIN is a 200 answer, not a 404 error",
+      "return res.status(200).json(out)" in pinapi
+      and "status(out.ok ? 200 : 404)" not in pinapi)
+check("address: the form asks for a PIN and shows what it will save",
+      'id="b-pin"' in appad and 'id="b-area"' in appad and 'id="b-city"' in appad
+      and 'id="b-state"' in appad and 'id="b-addrfull"' in appad)
+check("address: a PIN that cannot be checked is never a locked door",
+      "function pinManual" in appad and "saved as you write it" in appad)
+check("address: an old free-text address re-saves unchanged",
+      "the whole stored line goes back into the first box" in appad)
+check("address: the source is checkable from production",
+      "probe=pin" in (API_DIR / "diag.mjs").read_text(encoding="utf-8")
+      and (API_DIR / "_pinselftest.mjs").exists())
+check("address: the unit test runs in the deploy gate",
+      "pintest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
+check("memory: every filter carries a word, not just an emoji",
+      appad.count('class="bkw"') == 5 and '<button type="button" data-bk="contact">☎️</button>' not in appad)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]
