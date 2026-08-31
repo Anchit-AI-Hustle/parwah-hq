@@ -256,6 +256,13 @@ body.inapp #sosbar{padding-left:14px}
 
 /* the introduction, and the coachmarks that follow it */
 .trdots{display:flex;gap:6px;margin-top:12px}
+.tworow{display:flex;gap:10px}
+/* A locality name is longer than a browser's default select width. */
+#book-list-view .card select{width:100%}
+/* A row of bare emoji is a guessing game. Words wherever they fit. */
+.bkw{margin-left:6px}
+@media(max-width:430px){.bkw{display:none}}
+.tworow>span{flex:1;min-width:0}
 /* The concept screens, shown before anyone is asked for anything. */
 #demo-step .prow2{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 #demo-step .prow2 .go{flex:1;min-width:150px}
@@ -926,11 +933,19 @@ body.inapp #sosbar{padding-left:14px}
       </div>
       <div class="seg" id="bk-filter" role="group" aria-label="Family memory sections" style="margin-bottom:8px;flex-wrap:wrap">
         <button type="button" data-bk="all" class="sel">All</button>
+<<<<<<< HEAD
         <button type="button" data-bk="contact">☎️ Contacts</button>
         <button type="button" data-bk="address">📍 Addresses</button>
         <button type="button" data-bk="med">💊 Meds</button>
         <button type="button" data-bk="fact">🩸 Health</button>
         <button type="button" data-bk="insurance">🛡 Insurance</button>
+=======
+        <button type="button" data-bk="contact">☎️<span class="bkw">Contacts</span></button>
+        <button type="button" data-bk="address">📍<span class="bkw">Addresses</span></button>
+        <button type="button" data-bk="med">💊<span class="bkw">Meds</span></button>
+        <button type="button" data-bk="fact">🩸<span class="bkw">Health</span></button>
+        <button type="button" data-bk="insurance">🛡<span class="bkw">Insurance</span></button>
+>>>>>>> b72123b270d77f51bc044eccf96c42c797ddea09
       </div>
       <select id="bk-about" aria-label="About whom" style="margin-bottom:10px"><option value="">About anyone</option></select>
       <div class="feed" id="blist"><div class="ev">Nothing saved yet — add the family's first entry below 📒</div></div>
@@ -960,8 +975,25 @@ body.inapp #sosbar{padding-left:14px}
           </div>
         </div>
         <div id="bf-address" hidden>
-          <label for="b-address">Full address</label>
-          <input type="text" id="b-address" maxlength="300" placeholder="House, street, area, city, PIN">
+          <label for="b-address">House / flat and street</label>
+          <input type="text" id="b-address" maxlength="300" placeholder="e.g. S-354, Block S">
+          <label for="b-pin">PIN code</label>
+          <div class="phrow">
+            <input type="text" id="b-pin" inputmode="numeric" maxlength="6" placeholder="110048" autocomplete="postal-code">
+            <button type="button" class="cbtn ghost" id="b-pinlook">Check</button>
+          </div>
+          <p class="hint" id="b-pinmsg" style="margin:5px 0 0"></p>
+          <div id="b-pinout" hidden>
+            <label for="b-area">Locality</label>
+            <select id="b-area"></select>
+            <div class="tworow">
+              <span><label for="b-city">District / city</label>
+                <input type="text" id="b-city" maxlength="80" placeholder="e.g. South Delhi"></span>
+              <span><label for="b-state">State</label>
+                <input type="text" id="b-state" maxlength="80" placeholder="e.g. Delhi"></span>
+            </div>
+          </div>
+          <p class="hint" id="b-addrfull" style="margin-top:10px"></p>
         </div>
         <div id="bf-med" hidden>
           <label for="b-for" id="b-for-l">For which problem</label>
@@ -1755,7 +1787,7 @@ body.inapp #sosbar{padding-left:14px}
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', vault: '../api/book?area=vault', pay: '../api/book?area=pay', push: '../api/settings?area=push', keys: '../api/settings?area=keys', coins: '../api/settings?area=coins', plan: '../api/settings?area=plan', day: '../api/settings?area=day' };
+  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', vault: '../api/book?area=vault', pay: '../api/book?area=pay', push: '../api/settings?area=push', keys: '../api/settings?area=keys', coins: '../api/settings?area=coins', plan: '../api/settings?area=plan', day: '../api/settings?area=day', pin: '../api/settings?area=pin' };
   var TABS = ['home','people','person','memory','vault','care','day','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
@@ -3424,6 +3456,7 @@ body.inapp #sosbar{padding-left:14px}
   function clearBookForm(){
     bEditId = null;
     $('b-name').value = ''; $('b-phone').value = ''; $('b-address').value = ''; $('b-for').value = ''; $('b-notes').value = '';
+    clearAddrForm();
     $('b-cat').value = 'other';
     $('b-private').checked = false;
     $('bf-title').textContent = 'Add to the family book';
@@ -3442,7 +3475,8 @@ body.inapp #sosbar{padding-left:14px}
                  category: bKind === 'fact' ? $('b-factcat').value : $('b-cat').value,
                  aboutId: $('b-about').value || undefined,
                  phone: $('b-phone').value.trim() || undefined, phoneCc: $('b-cc').value,
-                 address: $('b-address').value.trim() || undefined, forwhat: $('b-for').value.trim() || undefined,
+                 address: (bKind === 'address' ? addrLine() : $('b-address').value.trim()) || undefined,
+                 forwhat: $('b-for').value.trim() || undefined,
                  notes: $('b-notes').value.trim() || undefined,
                  visibility: $('b-private').checked ? 'private' : 'circle' };
     post(API.book, body)
@@ -3543,7 +3577,12 @@ body.inapp #sosbar{padding-left:14px}
     var bsp = splitE164(e.phone);
     $('b-cc').value = bsp ? bsp.cc : '+91';
     $('b-phone').value = bsp ? bsp.local : (e.phone || '');
+    clearAddrForm();
+    // Addresses were free text before this. Rather than guess which comma was
+    // the city, the whole stored line goes back into the first box: leaving it
+    // alone re-saves it unchanged, and the PIN box upgrades it when they care.
     $('b-address').value = e.address || '';
+    showAddr();
     $('b-for').value = e.forwhat || ''; $('b-notes').value = e.notes || '';
     if (e.kind === 'fact') { if (e.category) $('b-factcat').value = e.category; }
     else if (e.category) $('b-cat').value = e.category;
@@ -5440,6 +5479,92 @@ body.inapp #sosbar{padding-left:14px}
   $('dm-back').addEventListener('click', function(){ if (demoAt > 0) { demoAt--; renderDemo(); } });
   $('dm-out').addEventListener('click', function(){ showStep('auth'); });
   $('au-see').addEventListener('click', function(){ demoAt = 0; renderDemo(); showStep('demo'); });
+
+
+  // ---------- addresses that are real, not just typed ----------
+  // "S-354, Greater Kailash 2" tells you nothing a stranger could act on in an
+  // emergency: no city, no state, and no way to know the PIN even matches the
+  // locality. India Post publishes that mapping free, so six digits fill in the
+  // rest — and when the check cannot be made, the app says so and the person
+  // writes it themselves. It never guesses a city from a PIN.
+  var pinTimer = null, pinAt = '', pinData = null;
+
+  function addrLine(){
+    var street = $('b-address').value.trim();
+    var area = $('b-area').value === '__other' ? '' : $('b-area').value.trim();
+    var city = $('b-city').value.trim();
+    var st = $('b-state').value.trim();
+    var pin = $('b-pin').value.replace(/\s/g, '');
+    var line = [street, area, city].filter(Boolean).join(', ');
+    var tail = [st, pin].filter(Boolean).join(' ');
+    return [line, tail].filter(Boolean).join(' — ');
+  }
+  function showAddr(){
+    var l = addrLine();
+    $('b-addrfull').textContent = l ? 'Saved as: ' + l : '';
+  }
+  ['b-address','b-city','b-state'].forEach(function(id){
+    $(id).addEventListener('input', showAddr);
+  });
+  $('b-area').addEventListener('change', showAddr);
+
+  function pinMsg(text, kind){
+    $('b-pinmsg').textContent = text || '';
+    $('b-pinmsg').style.color = kind === 'bad' ? 'var(--alert)'
+      : kind === 'good' ? 'var(--ok)' : 'var(--ink-soft)';
+  }
+  // Let people write the city themselves whatever happens — a PIN we cannot
+  // check must never be a locked door.
+  function pinManual(){
+    $('b-pinout').hidden = false;
+    var sel = $('b-area');
+    if (!sel.options.length) sel.innerHTML = '<option value="__other">Type the locality below</option>';
+    showAddr();
+  }
+  function lookupPin(force){
+    var raw = $('b-pin').value.replace(/\s/g, '');
+    if (raw.length !== 6) { if (force) pinMsg('A PIN code is six digits', 'bad'); return; }
+    if (raw === pinAt && !force) return;
+    pinAt = raw;
+    pinMsg('Checking ' + raw + '…');
+    var qs = '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) +
+             '&pin=' + encodeURIComponent(raw);
+    fetch(API.pin + qs).then(function(r){ return r.json(); }).then(function(j){
+      if ($('b-pin').value.replace(/\s/g, '') !== raw) return;   // they kept typing
+      if (!j.ok) { pinData = null; pinMsg(j.error || 'We could not check that PIN code.', 'bad'); pinManual(); return; }
+      pinData = j;
+      var sel = $('b-area');
+      sel.innerHTML = (j.areas || []).map(function(a){
+        return '<option value="' + esc(a.name) + '">' + esc(a.name) + (a.block && a.block !== a.name ? ' · ' + esc(a.block) : '') + '</option>';
+      }).join('') + '<option value="__other">Somewhere else — I will type it</option>';
+      $('b-city').value = j.district || '';
+      $('b-state').value = j.state || '';
+      $('b-pinout').hidden = false;
+      pinMsg('✓ ' + (j.district ? j.district + ', ' : '') + j.state + ' — ' +
+             (j.areas || []).length + ' localit' + ((j.areas || []).length === 1 ? 'y' : 'ies') +
+             ' with this PIN, from India Post.', 'good');
+      showAddr();
+    }).catch(function(){
+      pinData = null;
+      pinMsg('No connection — type the city and state and it will be saved as you write it.', 'bad');
+      pinManual();
+    });
+  }
+  $('b-pin').addEventListener('input', function(){
+    clearTimeout(pinTimer);
+    var v = $('b-pin').value.replace(/[^\d]/g, '').slice(0, 6);
+    if (v !== $('b-pin').value) $('b-pin').value = v;
+    showAddr();
+    if (v.length === 6) pinTimer = setTimeout(function(){ lookupPin(false); }, 350);
+  });
+  $('b-pinlook').addEventListener('click', function(){ lookupPin(true); });
+
+  function clearAddrForm(){
+    clearTimeout(pinTimer); pinAt = ''; pinData = null;
+    $('b-pin').value = ''; $('b-city').value = ''; $('b-state').value = '';
+    $('b-area').innerHTML = ''; $('b-pinout').hidden = true;
+    pinMsg(''); showAddr();
+  }
 
   // ---------- boot ----------
   if ('serviceWorker' in navigator) {
