@@ -340,11 +340,31 @@ check("deploy: the day's arithmetic is checked on the build that went live",
       "probe=day" in deploysh and "muhurat self-test is RED" in deploysh)
 check("deploy: someone else's uptime never fails our deploy",
       '*\'"ok":false\'*' in deploysh and "not fatal" in deploysh)
+# A silent wait looks exactly like a hang. The first real deploy was killed
+# with Ctrl-C during it — and the red self-test underneath went unseen.
+check("deploy: the wait says what it is waiting for",
+      "attempt $i/40" in deploysh and "waiting for the build to go live" in deploysh)
+check("deploy: it says the deploy is already live before it starts verifying",
+      "ALREADY LIVE" in deploysh and "Ctrl-C" in deploysh)
+check("deploy: a red self-test is called in two minutes, not seven",
+      "RED=$((RED + 1))" in deploysh and '[ "$RED" -ge 12 ]' in deploysh)
+check("deploy: a failure names the steps that failed",
+      "failing steps:" in deploysh and "grep -vx ok" in deploysh)
 check("deploy: works on a machine without flock (macOS)",
       "command -v flock" in deploysh and 'mkdir "$LOCK.d"' in deploysh)
 
 # 10o. THE PARENT VALIDATION GUIDE — the five concept screens it specifies.
 pulse = (API_DIR / "_pulse.mjs").read_text(encoding="utf-8")
+# This one passed for weeks against no database and failed the first time it
+# met a real one — because it asserted a comparison instead of the counts, and
+# never exercised the read cursor at all.
+_st = (API_DIR / "_selftest.mjs").read_text(encoding="utf-8")
+check("selftest: unread asserts exact counts, not a vague comparison",
+      "papaUnread === 2 && betaUnread === 2" in _st and "betaUnread[0].n < papaUnread" not in _st)
+check("selftest: reading a chat is what makes its messages stop counting",
+      "papaAfterReading === 1" in _st and "insert into chat_reads" in _st)
+check("selftest: a read cursor belongs to one person",
+      "betaStillUnread === 2" in _st)
 check("guide: one readiness number for the FAMILY, not six per-person bars",
       '"Your family is <span id="rd-pct">' in appsrc.replace("'", '"') or 'id="rd-pct"' in appsrc)
 check("guide: the number is backed by named gaps and a complete-N call to action",

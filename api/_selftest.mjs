@@ -287,11 +287,27 @@ export default async function handler(req, res) {
         and (ch.kind = 'circle' or cm.member_id is not null)
         and ms.member_id is distinct from ${who}
         and (cr.read_at is null or ms.created_at > cr.read_at)`;
-    const papaUnread = await unreadFor(papa[0].id);
-    const betaUnread = await unreadFor(beta[0].id);
-    // Beta wrote 'Hello everyone' and has a read cursor on that chat; Papa
-    // wrote in the group and has no cursor anywhere.
-    steps.circle_unread = papaUnread[0].n >= 1 && betaUnread[0].n < papaUnread[0].n;
+    // The fixture, spelled out, because a vague assertion here passed for weeks
+    // against no database and then failed the first time it met a real one:
+    //   everyone (circle chat, everyone is in it)  message from Beta
+    //   group    (Papa + Beta)                     message from Papa
+    //   dm       (Papa + Beta)                     message from Ekta
+    // Beta holds a read cursor on `everyone` and nowhere else.
+    // Papa: Beta's message counts, his own group message does not, Ekta's does → 2
+    // Beta: her own message never counts, Papa's does, Ekta's does           → 2
+    const papaUnread = (await unreadFor(papa[0].id))[0].n;
+    const betaUnread = (await unreadFor(beta[0].id))[0].n;
+    const ownNeverCounts = papaUnread === 2 && betaUnread === 2;
+
+    // Now make the read cursor do the work it exists for. Papa reads the
+    // circle chat; Beta's message must stop counting for him, and Ekta's
+    // message in the DM — which he has not read — must keep counting.
+    await sql`insert into chat_reads (chat_id, member_id) values (${everyoneId}, ${papa[0].id})
+              on conflict (chat_id, member_id) do update set read_at = now()`;
+    const papaAfterReading = (await unreadFor(papa[0].id))[0].n;
+    // And a cursor belongs to one person: Beta's count must not move.
+    const betaStillUnread = (await unreadFor(beta[0].id))[0].n;
+    steps.circle_unread = ownNeverCounts && papaAfterReading === 1 && betaStillUnread === 2;
 
     const waiting = await sql`select count(*)::int as n from join_requests
                               where circle_id = ${circleId} and status = 'pending'`;

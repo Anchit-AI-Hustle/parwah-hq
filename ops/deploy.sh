@@ -204,20 +204,38 @@ if ! deploy_once "vercel deploy (team scope)" --scope="$VERCEL_SCOPE"; then
 fi
 URL="$(printf '%s' "$VC_OUT" | grep -Eo 'https://[a-zA-Z0-9.-]+\.vercel\.app' | tail -1)"
 [ -n "$URL" ] || die "the deploy produced no URL — see the output above"
-log "deployed $URL — Vercel is building it now"
+log "deployed $URL"
+log "IT IS ALREADY LIVE. What follows is verification, not the deploy —"
+log "stopping here with Ctrl-C leaves production on this build, unchecked."
 
-# 4. prove it against the live database before calling it done
-log "waiting for the build, then checking the live database"
-BODY=""
-for _ in $(seq 1 40); do
+# 4. prove it against the live database before calling it done.
+# A silent wait looks identical to a hang, and a person who cannot tell the
+# difference presses Ctrl-C — which is exactly how a red self-test went unseen.
+# So this says what it is doing, every time round.
+POLL="${PARWAH_POLL_SECONDS:-10}"      # seconds between checks; lowered by the tests
+BODY=""; RED=0
+for i in $(seq 1 40); do
   BODY="$(curl -fsS --max-time 20 "$PROD_URL/api/diag?probe=db" 2>/dev/null)" || BODY=""
   case "$BODY" in *'"ok":true'*) break ;; esac
-  sleep 10
+  if [ -n "$BODY" ]; then
+    # It is answering, so the domain is up and a build is serving. A red answer
+    # that survives two minutes is a real failure, not a build still landing —
+    # waiting the full seven minutes to say so helps nobody.
+    RED=$((RED + 1))
+    log "  self-test is answering but not green (attempt $i, ${RED}/12 red)"
+    [ "$RED" -ge 12 ] && break
+  else
+    log "  waiting for the build to go live (attempt $i/40, ~$((i * POLL))s)"
+  fi
+  sleep "$POLL"
 done
 case "$BODY" in
   *'"ok":true'*) log "live self-test green on $PROD_URL" ;;
   "")            die "live self-test unreachable at $PROD_URL" ;;
-  *)             log "$BODY"; die "live self-test NOT green — production is serving a broken build" ;;
+                 # the top-level "ok":false is the verdict, not a step
+  *)             log "failing steps: $(printf '%s' "$BODY" | grep -o '"[a-z_]*":false' | cut -d'"' -f2 | grep -vx ok | tr '\n' ' ')"
+                 log "$BODY"
+                 die "live self-test NOT green — production is serving a broken build" ;;
 esac
 
 # The day's arithmetic, checked on the build that is now live. Only an
