@@ -308,9 +308,29 @@ body.inapp #sosbar{padding-left:14px}
 details.more{margin-top:14px}
 details.more>summary{cursor:pointer;font-weight:600;font-size:.92rem;padding:12px 14px;
   background:#fff;border:1px solid var(--bone-2);border-radius:12px;list-style:none}
+/* Opened, the summary and its body are ONE card — the body used to spill onto
+   the page ground below a floating header. */
+details.more[open]>summary{border-radius:12px 12px 0 0;border-bottom:0}
+details.more[open]>.explain,details.more[open]>.feed,details.more[open]>.eyebrow{
+  background:#fff;border:1px solid var(--bone-2);border-top:0;margin:0;padding:0 16px}
+details.more[open]>.explain{border-radius:0 0 12px 12px;padding:2px 16px 18px}
+details.more[open]>.feed{gap:10px;padding-top:2px;padding-bottom:14px}
+details.more[open]>.eyebrow{padding-top:14px;margin:0}
+details.more[open]>.feed:last-of-type{border-radius:0 0 12px 12px}
 details.more>summary::-webkit-details-marker{display:none}
 details.more>summary::before{content:"▸ ";color:var(--sindoor)}
 details.more[open]>summary::before{content:"▾ "}
+.explain{padding:4px 2px 2px}
+.explain h4{font-family:var(--disp);font-weight:600;font-size:.98rem;margin:16px 0 5px}
+.explain h4:first-child{margin-top:10px}
+.explain p{font-size:.9rem;color:var(--ink-soft);margin:0;max-width:62ch}
+.explain b{color:var(--ink);font-weight:600}
+.lords{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:6px;margin:10px 0 0}
+.lordrow{display:flex;justify-content:space-between;gap:8px;font-size:.82rem;
+  background:var(--bone);border-radius:8px;padding:7px 10px}
+.lordrow b{font-weight:600}
+.lordrow.no b{color:var(--alert)} .lordrow.yes b{color:var(--ok)}
+.lordrow span{color:var(--ink-soft)}
 .hint.good{color:var(--ok)}
 .hint.bad{color:var(--alert)}
 /* A row of bare emoji is a guessing game. Words wherever they fit. */
@@ -1273,6 +1293,42 @@ details.more[open]>summary::before{content:"▾ "}
           live — not looked up in one table for the whole country.</p>
       </div>
 
+      <details class="more" id="mu-how">
+        <summary>How this is worked out</summary>
+        <div class="explain">
+          <h4>What a Choghadiya is</h4>
+          <p>Sunrise to sunset is divided into <b>eight equal parts</b>, and sunset to the next
+            sunrise into eight more. Each part is one Choghadiya — around an hour and a half, but
+            longer in summer and shorter in winter, because it follows the sun rather than the
+            clock. That is why these timings are different in Delhi and in Dubai on the same day.</p>
+
+          <h4>Why the same hour is Amrit today and Rog tomorrow</h4>
+          <p>Every Choghadiya is ruled by a planet. The <b>first window of the day belongs to the
+            lord of that weekday</b> — Sunday to the Sun, Monday to the Moon — and the rest follow
+            the classical order of the planets. Change the weekday and the whole sequence shifts.
+            Nothing is looked up in a table for the country.</p>
+          <div class="lords" id="mu-lords"></div>
+
+          <h4>Rahu Kaal, Gulika and Yamaganda</h4>
+          <p>Same eight parts of the daylight, and the weekday decides which one. Rahu Kaal is the
+            second part on a Monday, the third on a Saturday, and so on. Gulika and Yamaganda are
+            two more of the eight, each with their own weekday order. By custom nothing new is
+            begun in them; work already under way carries on.</p>
+
+          <h4>Abhijit Muhurat</h4>
+          <p>A different division: the daylight split <b>fifteen</b> ways, of which Abhijit is the
+            eighth — the middle one, which is why it always sits on midday. About 48 minutes. It is
+            traditionally not observed on a Wednesday.</p>
+
+          <h4>Where the numbers come from</h4>
+          <p>Sunrise and sunset are computed from your city's latitude and longitude using the
+            standard NOAA solar-position method, with the usual allowance for refraction and the
+            width of the sun's disc — the same allowance almanacs use. Nothing is fetched from
+            anywhere; it is arithmetic, and it should agree with any printed panchang for your city
+            to within a minute or two.</p>
+        </div>
+      </details>
+
       <details class="more">
         <summary>See every Choghadiya <span class="hint" style="display:inline">— all 16 windows</span></summary>
         <p class="eyebrow" style="margin-top:14px">Daytime</p>
@@ -1286,7 +1342,7 @@ details.more[open]>summary::before{content:"▾ "}
       <!-- Nobody reads twelve horoscopes. Yours, then your family's, then the
            other eleven only if you ask for them. -->
       <div class="card" id="ho-mine" hidden>
-        <p class="eyebrow" style="margin-top:0">Your rashi today</p>
+        <p class="eyebrow" style="margin-top:0">Your sign today</p>
         <h3 id="ho-myname" style="font-size:1.35rem"></h3>
         <p id="ho-mytext" style="margin:8px 0 0;font-size:1.02rem"></p>
       </div>
@@ -1302,6 +1358,30 @@ details.more[open]>summary::before{content:"▾ "}
       <details class="more">
         <summary>See all twelve rashis</summary>
         <div class="feed" id="ho-all" style="margin-top:14px"></div>
+      </details>
+      <details class="more" id="ho-how">
+        <summary>What this is, and what it is not</summary>
+        <div class="explain">
+          <h4>This is your sun sign</h4>
+          <p id="ho-basis">Worked out from your date of birth against fixed calendar dates — the
+            same basis newspapers use, and the basis the reading below is written for.</p>
+
+          <h4>A rashi is not quite the same thing</h4>
+          <p>In Indian astrology your <b>rashi is a moon sign</b>: which of the twelve the Moon
+            stood in at the moment you were born. That needs your birth <b>time and place</b>, not
+            just the date, and for most people it is a different sign from their sun sign. Parwah
+            never asks for a birth time, so <b>Parwah does not know your rashi and does not claim
+            to</b>. The Hindi names are here because they are the ones families know.</p>
+
+          <h4>Where the reading comes from</h4>
+          <p>All twelve are fetched once a day from a free, open horoscope source and kept for the
+            whole family, so nobody's phone asks for them again. If a reading does not arrive, that
+            sign is left blank — we would rather show nothing than write one ourselves.</p>
+
+          <h4>What it is for</h4>
+          <p>A shared thing to read together, the way a family reads the paper. It is not advice,
+            and nothing else in Parwah — medicines, documents, reminders — is decided by it.</p>
+        </div>
       </details>
       <p class="hint" id="ho-src" style="margin-top:12px"></p>
     </div>
@@ -5500,6 +5580,19 @@ details.more[open]>summary::before{content:"▾ "}
     $('mu-day').innerHTML = (p.day || []).map(fullRow).join('');
     $('mu-night').innerHTML = (p.night || []).map(fullRow).join('');
 
+    // The seven names with their planets, built from the same data the screen
+    // above is drawn from — an explanation that cannot drift from the thing it
+    // explains.
+    var seen = {}, lords = '';
+    all.forEach(function(x){
+      if (seen[x.name] || !x.lord) return;
+      seen[x.name] = 1;
+      lords += '<div class="lordrow ' + (x.good === false ? 'no' : 'yes') + '">' +
+        '<b>' + (x.good === false ? '\u2715 ' : '\u2713 ') + esc(x.name) + '</b>' +
+        '<span>' + esc(x.lord) + '</span></div>';
+    });
+    $('mu-lords').innerHTML = lords;
+
     var w = $('w-day');
     if (w) w.textContent = cur
       ? ((cur.good !== false && !rahuNow ? '\u2713 Good time' : '\u2715 Better to wait') + ' \u00b7 until ' + dTime(cur.to, tz))
@@ -5528,6 +5621,11 @@ details.more[open]>summary::before{content:"▾ "}
     var h = j.horoscope || { signs: [] }, signs = h.signs || [];
     var mine = j.mySign ? signs.filter(function(s){ return s.key === j.mySign.key; })[0] : null;
 
+    if (j.signBasis && $('ho-basis')) {
+      $('ho-basis').textContent = 'Worked out from your date of birth against fixed calendar ' +
+        'dates — this is your ' + j.signBasis.is + ', and it is the basis the reading is ' +
+        'written for. It is not ' + j.signBasis.isNot + '.';
+    }
     $('ho-nodob').hidden = !!j.mySign;
     $('ho-mine').hidden = !j.mySign;
     if (j.mySign) {

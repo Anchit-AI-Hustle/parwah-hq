@@ -10,7 +10,7 @@
 //   source     — one live call to the free open horoscope API, reporting the
 //                status and the length of what came back. If this goes red the
 //                app shows "not available today" rather than inventing a reading.
-import { panchang, currentPeriod } from './_panchang.mjs';
+import { panchang, currentPeriod, derivedDaySeq, derivedNightSeq } from './_panchang.mjs';
 import { placeOf } from './_places.mjs';
 import { SIGNS, signOf, fetchSign, ENDPOINT } from './_horoscope.mjs';
 
@@ -32,6 +32,16 @@ export default async function handler(req, res) {
       hhmm(p.rahuKaal.from) === '07:34' && hhmm(p.rahuKaal.to) === '09:10',
       hhmm(p.rahuKaal.from) + '–' + hhmm(p.rahuKaal.to) + ' IST');
     add('eight day parts and eight night parts', p.day.length === 8 && p.night.length === 8);
+    let sq = 0;
+    for (let wd = 0; wd < 7; wd++) {
+      const d = panchang(28.6139, 77.2090, new Date(Date.UTC(2026, 7, 30 + wd)));
+      if (d.day.map(x => x.name).join() !== derivedDaySeq(wd).join()) sq++;
+      if (d.night.map(x => x.name).join() !== derivedNightSeq(wd).join()) sq++;
+    }
+    add('every sequence regenerates from the planetary order', sq === 0, sq + ' of 14 did not');
+    const abMin = (+p.abhijit.to - +p.abhijit.from) / 60000;
+    add('Abhijit is one fifteenth of the day, not one eighth', abMin > 44 && abMin < 54,
+      Math.round(abMin) + ' minutes');
     add('every period is explained in English', p.day.concat(p.night).every(x => x.en && x.en.length > 12));
     add('Wednesday has no Abhijit', panchang(28.6139, 77.2090, new Date('2026-09-02T00:00:00Z')).abhijit === null);
     const mid = new Date((+new Date(p.day[3].from) + +new Date(p.day[3].to)) / 2);

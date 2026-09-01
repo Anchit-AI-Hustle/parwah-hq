@@ -43,6 +43,31 @@ export function sunTimes(lat, lon, date) {
 // --- Choghadiya ----------------------------------------------------------
 // Eight parts of the day and eight of the night. The sequence rotates by
 // weekday, which is why the same clock time is Amrit one day and Rog the next.
+// Each Choghadiya is ruled by a planet, and that is the whole logic of the
+// thing: the first window of a day belongs to the lord of that weekday, and
+// the rest follow the classical (Chaldean) order of the planets. Sunday
+// belongs to the Sun, so Sunday opens with Udveg; Monday to the Moon, so it
+// opens with Amrit. Nothing here is a table someone copied — CHALDEAN and
+// WEEKDAY_LORD below regenerate DAY_SEQ and NIGHT_SEQ exactly, and the test
+// suite checks that they do.
+export const CHALDEAN = ['Saturn', 'Jupiter', 'Mars', 'Sun', 'Venus', 'Mercury', 'Moon'];
+export const WEEKDAY_LORD = ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn'];
+export const LORD_OF = { Kaal:'Saturn', Shubh:'Jupiter', Rog:'Mars', Udveg:'Sun',
+                         Chal:'Venus', Labh:'Mercury', Amrit:'Moon' };
+const NAME_OF_LORD = {};
+for (const k of Object.keys(LORD_OF)) NAME_OF_LORD[LORD_OF[k]] = k;
+// Day: start at the weekday's lord, step one place along the Chaldean order.
+// Night: start five places on, and step five at a time. Both are just walks
+// around the same seven planets.
+export function derivedDaySeq(wd) {
+  const i = CHALDEAN.indexOf(WEEKDAY_LORD[wd]);
+  return Array.from({ length: 8 }, (_, n) => NAME_OF_LORD[CHALDEAN[(i + n) % 7]]);
+}
+export function derivedNightSeq(wd) {
+  const i = (CHALDEAN.indexOf(WEEKDAY_LORD[wd]) + 5) % 7;
+  return Array.from({ length: 8 }, (_, n) => NAME_OF_LORD[CHALDEAN[(i + n * 5) % 7]]);
+}
+
 const NATURE = {
   Udveg:  { good: false, en: 'Restless — routine work only, avoid anything new' },
   Chal:   { good: true,  en: 'Moving — good for travel and errands' },
@@ -75,7 +100,7 @@ const NIGHT_SEQ = [
 function slice(startMs, totalMs, names) {
   const step = totalMs / 8;
   return names.map((n, i) => ({
-    name: n, ...NATURE[n],
+    name: n, lord: LORD_OF[n], ...NATURE[n],
     from: new Date(startMs + i * step),
     to:   new Date(startMs + (i + 1) * step)
   }));
@@ -102,9 +127,11 @@ export function panchang(lat, lon, date) {
   const next = sunTimes(lat, lon, new Date(+date + 86400000));
   const nightMs = next ? (+next.sunrise - setMs) : (86400000 - dayMs);
 
-  // Abhijit: the eighth eighth around solar noon — auspicious on most days,
-  // and traditionally skipped on Wednesday.
-  const noonMs = riseMs + dayMs / 2, half = dayMs / 16;
+  // Abhijit is the EIGHTH MUHURTA OF FIFTEEN — the day split fifteen ways, not
+  // eight — so it is roughly 48 minutes centred on solar noon, not 90. Being
+  // the middle one of fifteen is exactly why it lands on noon. Traditionally
+  // skipped on Wednesday.
+  const noonMs = riseMs + dayMs / 2, half = dayMs / 30;
 
   return {
     sunrise: t.sunrise, sunset: t.sunset,

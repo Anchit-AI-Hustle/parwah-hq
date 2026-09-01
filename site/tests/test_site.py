@@ -514,6 +514,26 @@ check("day: the day band never means anything by colour alone",
       and 'class="sr"' in appday and 'role="img"' in appday)
 check("day: the band is drawn in real time, not equal boxes",
       "/ span * 100" in appday and "flex:0 0 " in appday)
+# The screen explains the arithmetic to the family, so the explanation has to
+# be the truth: the tables are regenerated from the planets, not copied.
+check("day: the Choghadiya sequence is derived from the planets, not a copied table",
+      "derivedDaySeq" in pan and "derivedNightSeq" in pan and "CHALDEAN" in pan
+      and "WEEKDAY_LORD" in pan and "LORD_OF" in pan)
+check("day: every period carries the planet that rules it",
+      "lord: LORD_OF[n]" in pan and 'mu-lords' in appday)
+check("day: Abhijit is the 8th of fifteen muhurtas, not an eighth of the day",
+      "dayMs / 30" in pan and "EIGHTH MUHURTA OF FIFTEEN" in pan)
+check("day: the day is the member's own day, not the server's",
+      "Intl.DateTimeFormat('en-CA', { timeZone: place.tz })" in dayapi)
+check("day: the screen explains how the timings are worked out",
+      'id="mu-how"' in appday and "How this is worked out" in appday
+      and "eight equal parts" in appday and "NOAA" in appday)
+# It computes a tropical sun sign. Calling that a Vedic rashi would be a lie.
+check("day: the app never claims to know a rashi it cannot compute",
+      "SIGN_BASIS" in horo and "MOON sign" in horo and "must not say that it does" in horo
+      and "does not claim" in appday and "moon sign" in appday)
+check("day: and says which zodiac the reading is actually written for",
+      'id="ho-how"' in appday and "signBasis" in appday and "sun sign" in appday)
 check("day: the rashi needs a birthday, and asks for one instead of guessing",
       "ho-nodob" in appday and "e-dob" in appday and "signOf" in horo)
 check("day: the day section is reachable from the tabs and the drawer",

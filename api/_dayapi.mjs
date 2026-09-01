@@ -5,7 +5,7 @@
 import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
 import { panchang, currentPeriod } from './_panchang.mjs';
 import { placeOf } from './_places.mjs';
-import { horoscopeToday, signOf, SIGNS } from './_horoscope.mjs';
+import { horoscopeToday, signOf, SIGNS, SIGN_BASIS } from './_horoscope.mjs';
 
 export default async function handler(req, res) {
   let sql;
@@ -25,8 +25,13 @@ export default async function handler(req, res) {
     const me = meRow[0];
 
     const now = new Date();
-    const day = now.toISOString().slice(0, 10);
     const place = placeOf(me.place);
+    // The day must be THEIR day, not the server's. Slicing an ISO string gives
+    // the UTC date, so between midnight and 05:30 in India — and for most of
+    // the evening in the Americas — that is yesterday: the wrong sunrise and,
+    // worse, the wrong weekday, which is a completely different Choghadiya
+    // sequence. Ask for the date in the member's own timezone.
+    const day = new Intl.DateTimeFormat('en-CA', { timeZone: place.tz }).format(now);
     const p = panchang(place.lat, place.lon, new Date(day + 'T00:00:00Z'));
     const cur = p ? currentPeriod(p, now) : null;
 
@@ -45,7 +50,8 @@ export default async function handler(req, res) {
       ok: true, day, place, tz: place.tz,
       panchang: p, current: cur,
       mySign: mySign ? { key: mySign.k, name: mySign.en, hi: mySign.hi } : null,
-      people, horoscope: horo, signs: SIGNS.map(s => ({ key: s.k, name: s.en, hi: s.hi }))
+      people, horoscope: horo, signBasis: SIGN_BASIS,
+      signs: SIGNS.map(s => ({ key: s.k, name: s.en, hi: s.hi }))
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e && e.message || e) });

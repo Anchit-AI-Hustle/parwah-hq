@@ -67,6 +67,8 @@ function dayJson(){
       { id:'33333333-3333-3333-3333-333333333333', name:'Chachi', sign:null, signName:null, hasDob:false }
     ],
     horoscope: { day:new Date().toISOString().slice(0,10), signs:hsigns, unavailable:2 },
+    signBasis: { is:'sun sign (Western zodiac), from your date of birth',
+                 isNot:'a Vedic rashi, which is a moon sign and needs your birth time and place' },
     signs: SIGNS.map(s => ({ key:s.k, name:s.en, hi:s.hi })) };
 }
 
@@ -182,7 +184,7 @@ ok(await page.locator('#ho-all .ev').first().isHidden(),
    'the other twelve start closed — nobody reads twelve horoscopes');
 const famRows = await page.locator('#ho-people .ev').allTextContents();
 ok(famRows.every(t => t.length < 240), 'the family are one line each, not a second wall of text');
-await page.locator('#pane-day .subsec[data-sec="rashi"] details.more summary').click();
+await page.locator('#pane-day .subsec[data-sec="rashi"] details.more summary').first().click();
 await page.waitForTimeout(200);
 ok(await page.locator('#ho-all .ev').first().isVisible(), 'opened, all twelve are there');
 ok(await page.locator('#ho-all .ev').count() === 12, 'all twelve rashis are shown');
@@ -211,6 +213,32 @@ await page.click('#ho-adddob');
 await page.waitForTimeout(400);
 ok(await page.locator('#pane-profile').isVisible() && await page.locator('#editform').isVisible(), 'the prompt lands on the profile with the form open');
 ok(await page.locator('#e-dob').isVisible() && (await page.locator('#e-dob').getAttribute('type')) === 'date', 'and the date-of-birth field is right there');
+
+// ---- the explainers: the family can find out how any of this works ----
+await page.reload(); await page.waitForTimeout(400);
+await page.evaluate(() => { location.hash = '#day'; }); await page.waitForTimeout(600);
+ok(await page.locator('#mu-how .explain').first().isHidden(), 'the explanation waits until asked for');
+await page.locator('#mu-how summary').click(); await page.waitForTimeout(200);
+const how = await page.locator('#mu-how .explain').textContent();
+ok(/eight equal parts/.test(how), 'it says the day is split into eight');
+ok(/lord of that weekday/.test(how), 'and why the sequence moves with the weekday');
+ok(/fifteen/.test(how) && /48 minutes/.test(how), 'and that Abhijit is a fifteenth, not an eighth');
+ok(/NOAA/.test(how) && /refraction/.test(how), 'and where sunrise itself comes from');
+const lords = await page.locator('#mu-lords .lordrow').allTextContents();
+ok(lords.length === 7, 'all seven Choghadiya are named with their planet');
+ok(lords.some(t => /Amrit/.test(t) && /Moon/.test(t)), 'Amrit belongs to the Moon → ' + (lords.find(t=>/Amrit/.test(t))||''));
+ok(lords.some(t => /Kaal/.test(t) && /Saturn/.test(t)), 'Kaal belongs to Saturn');
+
+await page.click('#day-seg button[data-sec="rashi"]'); await page.waitForTimeout(200);
+await page.locator('#ho-how summary').click(); await page.waitForTimeout(200);
+const what = await page.locator('#ho-how .explain').textContent();
+ok(/sun sign/.test(what), 'the rashi screen says it is showing a sun sign');
+ok(/moon sign/.test(what) && /birth time/.test(what),
+   'and that a real rashi is a moon sign needing a birth time');
+ok(/does not claim/.test(what), 'and refuses to claim what it cannot know');
+ok(/left blank/.test(what), 'and repeats that a missing reading is left blank');
+ok((await page.locator('#ho-basis').textContent()).includes('sun sign'),
+   'the basis line is filled from the server, not hardcoded twice');
 
 // ---- a city we do not know ----
 dayMode = 'guessed';

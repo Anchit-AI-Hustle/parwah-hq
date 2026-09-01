@@ -3,7 +3,8 @@
 // Choghadiya is arithmetic, so it can be checked against a published almanac
 // rather than trusted. These three modules import nothing, so this test runs
 // on a fresh clone before npm install, exactly like phonetest.mjs.
-import { sunTimes, panchang, currentPeriod } from '../../api/_panchang.mjs';
+import { sunTimes, panchang, currentPeriod, CHALDEAN, WEEKDAY_LORD, LORD_OF,
+         derivedDaySeq, derivedNightSeq } from '../../api/_panchang.mjs';
 import { placeOf, CITIES } from '../../api/_places.mjs';
 import { SIGNS, signOf, fetchSign, ENDPOINT } from '../../api/_horoscope.mjs';
 
@@ -50,6 +51,30 @@ ok(panchang(28.6139, 77.2090, new Date('2026-09-05T00:00:00Z')).day[0].name === 
 ok(panchang(28.6139, 77.2090, new Date('2026-09-01T00:00:00Z')).day[0].name !== del.day[0].name,
   'the sequence rotates with the weekday');
 
+// ---- the sequence is DERIVED, not a table someone copied ----------------
+// Every Choghadiya is ruled by a planet; the day's first belongs to the lord of
+// that weekday and the rest walk the classical (Chaldean) order. If the shipped
+// tables ever stop matching that walk, one of them is wrong — and the screen
+// explains the walk to the family, so it had better be the truth.
+ok(CHALDEAN.length === 7 && CHALDEAN[0] === 'Saturn' && CHALDEAN[6] === 'Moon',
+   'the Chaldean order is the classical one');
+ok(WEEKDAY_LORD.join() === 'Sun,Moon,Mars,Mercury,Jupiter,Venus,Saturn',
+   'each weekday has its classical lord, Sunday first');
+ok(Object.keys(LORD_OF).length === 7 && LORD_OF.Amrit === 'Moon' && LORD_OF.Kaal === 'Saturn',
+   'each of the seven Choghadiya has its planet');
+ok(new Set(Object.values(LORD_OF)).size === 7, 'and no two share one');
+let seqBad = 0;
+for (let wd = 0; wd < 7; wd++) {
+  const d = panchang(28.6139, 77.2090, new Date(Date.UTC(2026, 7, 30 + wd)));
+  if (d.day.map(x => x.name).join() !== derivedDaySeq(wd).join()) seqBad++;
+  if (d.night.map(x => x.name).join() !== derivedNightSeq(wd).join()) seqBad++;
+}
+ok(seqBad === 0, 'all fourteen shipped sequences regenerate from the planets (' + seqBad + ' did not)');
+ok(derivedDaySeq(0)[0] === 'Udveg' && derivedDaySeq(1)[0] === 'Amrit',
+   'Sunday opens with the Sun\u2019s window, Monday with the Moon\u2019s');
+ok(panchang(28.6139, 77.2090, new Date('2026-08-31T00:00:00Z')).day[0].lord === 'Moon',
+   'and every period carries its planet, so the screen can show why');
+
 // ---- Rahu Kaal and friends ----------------------------------------------
 // Monday's Rahu Kaal is the second eighth of the day. Delhi almanacs publish
 // roughly 07:30–09:00 for this date; computed from this sunrise it is 07:34.
@@ -63,6 +88,12 @@ ok(+del.rahuKaal.from !== +del.gulikaKaal.from && +del.rahuKaal.from !== +del.ya
 // Abhijit sits around midday and is traditionally skipped on Wednesday.
 ok(del.abhijit && /Abhijit/.test(del.abhijit.en), 'Abhijit is named and explained');
 ok(+del.abhijit.from > +del.sunrise && +del.abhijit.to < +del.sunset, 'Abhijit falls inside the day');
+// It is the 8th muhurta of FIFTEEN, not an eighth of the day: ~48 minutes, not
+// ~96. It was the wider one until this was checked.
+const abMin = (+del.abhijit.to - +del.abhijit.from) / 60000;
+ok(abMin > 44 && abMin < 54, 'Abhijit is one fifteenth of the day, about 48 minutes \u2192 ' + Math.round(abMin));
+const abMid = (+del.abhijit.from + +del.abhijit.to) / 2, solarNoon = (+del.sunrise + +del.sunset) / 2;
+ok(Math.abs(abMid - solarNoon) < 60000, 'and being the middle muhurta, it is centred on solar noon');
 ok(panchang(28.6139, 77.2090, new Date('2026-09-02T00:00:00Z')).abhijit === null, 'Wednesday has no Abhijit');
 
 // ---- which period is running now ----------------------------------------

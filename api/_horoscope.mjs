@@ -10,6 +10,23 @@
 //      reading — a made-up horoscope presented as a real one is a lie, and a
 //      family that spots one stops trusting everything else on the screen.
 
+// WHAT THIS ACTUALLY IS, said once, plainly, because the app shows it to people.
+//
+// signOf() below reads a date of birth against fixed calendar ranges. That is a
+// TROPICAL SUN SIGN — the Western zodiac, the one newspapers print and the one
+// this source writes for.
+//
+// A Vedic *rashi* is not that. It is a MOON sign: which of the twelve the Moon
+// stood in at the moment of birth. Working it out needs the time and the place
+// of birth, not just the date, and for most people it is a different sign from
+// their sun sign. Parwah does not ask for a birth time, so Parwah does not know
+// anyone's rashi and must not say that it does. The Hindi names are kept
+// because they are the familiar ones; the screen says which basis is in use.
+export const SIGN_BASIS = {
+  is: 'sun sign (Western zodiac), from your date of birth',
+  isNot: 'a Vedic rashi, which is a moon sign and needs your birth time and place'
+};
+
 export const SIGNS = [
   { k: 'aries',       en: 'Aries',       hi: 'मेष',    from: [3, 21],  to: [4, 19] },
   { k: 'taurus',      en: 'Taurus',      hi: 'वृषभ',   from: [4, 20],  to: [5, 20] },
