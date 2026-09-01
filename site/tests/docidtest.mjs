@@ -1,7 +1,8 @@
 // What an Indian ID looks like — the rules the field applies as you type and
 // the server applies before it stores anything. No imports, so this runs on a
 // fresh clone before npm install.
-import { DOC_ID, bare, format, progress, looksLike, checkNumber, verhoeffOk, fitsChars } from '../../api/_docid.mjs';
+import { DOC_ID, bare, format, progress, looksLike, checkNumber, verhoeffOk, fitsChars,
+         PAN_HOLDER, panFacts } from '../../api/_docid.mjs';
 
 let pass = 0, fail = 0;
 const ok = (c, n) => { c ? pass++ : (fail++, console.log('FAIL', n)); };
@@ -73,6 +74,35 @@ ok(checkNumber('aadhaar', '2341 2341 2346').last4 === '2346', 'and only its last
 ok(checkNumber('pan', 'alvpt2248r').ok, 'a lower-case PAN is accepted');
 ok(!checkNumber('aadhaar', 'ALVPT2248R').ok, 'a PAN is still refused under Aadhaar');
 ok(checkNumber('other', '').ok && checkNumber('other', '').last4 === null, 'no number at all is fine — it is optional');
+
+
+// ---- what a PAN really encodes -------------------------------------------
+// Free, offline, and published by the Income Tax Department: the 4th character
+// is the holder's type and the 5th is the first letter of their surname. No
+// paid API, no licence. It does NOT prove the card was issued, and nothing
+// here pretends the 10th character can be checked — that algorithm has never
+// been published, so we do not invent one.
+ok(PAN_HOLDER.P === 'an individual' && PAN_HOLDER.C === 'a company' && PAN_HOLDER.H.includes('Hindu'),
+   'the holder codes are the published ones');
+ok(Object.keys(PAN_HOLDER).length === 10, 'all ten holder types are covered');
+const me = panFacts('ALVPT2248R', 'Anchit Tandon');
+ok(me.isIndividual && me.holder === 'an individual', 'a P in the 4th place is a person');
+ok(me.initial === 'T' && me.surname === 'Tandon' && me.initialMatches === true,
+   'and the 5th letter is checked against the surname');
+const co = panFacts('AAACR5055K', 'Reliance Industries Limited');
+ok(!co.isIndividual && co.holder === 'a company', 'a C is a company');
+ok(panFacts('ALVPT2248R', 'Anchit Sharma').initialMatches === false,
+   'a surname that does not start with the 5th letter is reported');
+ok(panFacts('ALVPT2248R', '').initialMatches === null,
+   'with no name to compare, it claims nothing rather than guessing');
+ok(panFacts('ALVPT2248R', 'Anchit').initialMatches === false,
+   'a single-word name is compared as the whole name');
+ok(panFacts('ALVP2248R', 'Anchit Tandon') === null && panFacts('', 'x') === null,
+   'a malformed PAN yields no facts at all');
+ok(panFacts('ALVZT2248R', 'Anchit Tandon').holder === null,
+   'an unknown holder code is left null, never guessed');
+ok(!/checksum|check digit/i.test(JSON.stringify(panFacts('ALVPT2248R', 'Anchit Tandon'))),
+   'nothing here claims to verify the tenth character');
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

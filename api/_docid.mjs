@@ -94,6 +94,45 @@ export function format(kind, raw) {
   return out.join(spec.sep);
 }
 
+// WHAT A PAN ACTUALLY ENCODES — free, offline, and published by the Income Tax
+// Department, unlike the "verification APIs" that all cost money and require a
+// licence. Two of the ten characters carry real meaning:
+//
+//   4th  the holder's TYPE. P is an individual, C a company, H a HUF, and so on.
+//   5th  the first letter of the holder's SURNAME (or of the entity's name).
+//
+// Neither proves the PAN was issued — only the Income Tax Department can say
+// that — but together they catch the mistakes families actually make: filing a
+// company's PAN under a person, or mistyping a letter. The 10th character is a
+// check digit whose algorithm the department has never published, so this file
+// does NOT pretend to verify it.
+export const PAN_HOLDER = {
+  P: 'an individual', C: 'a company', H: 'a Hindu Undivided Family', F: 'a firm',
+  A: 'an association of persons', T: 'a trust', B: 'a body of individuals',
+  L: 'a local authority', J: 'an artificial juridical person', G: 'a government body'
+};
+
+// Indian names are not uniformly "the last word is the surname" — plenty of
+// people carry initials, or a given name last. So a mismatch is reported as
+// something to look at, never as a failure, and never blocks a save.
+export function panFacts(raw, holderName) {
+  const v = bare(raw);
+  if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(v)) return null;
+  const type = v[4 - 1], initial = v[5 - 1];
+  const words = String(holderName || '').trim().split(/\s+/).filter(Boolean);
+  const surname = words.length > 1 ? words[words.length - 1] : (words[0] || '');
+  const known = Object.prototype.hasOwnProperty.call(PAN_HOLDER, type);
+  return {
+    holderCode: type,
+    holder: known ? PAN_HOLDER[type] : null,
+    isIndividual: type === 'P',
+    initial,
+    surname: surname || null,
+    // null when we have no name to compare against
+    initialMatches: surname ? (surname[0].toUpperCase() === initial) : null
+  };
+}
+
 // Does every character belong in this document at all? A letter is not
 // progress towards twelve digits, and saying "11 of 12" about "12345678ABC"
 // is worse than saying nothing.

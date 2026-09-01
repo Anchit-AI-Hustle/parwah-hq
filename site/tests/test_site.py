@@ -166,6 +166,18 @@ check("vault: Aadhaar numbers are checksum-verified",
 check("vault: the server still has the last word on a number",
       "const chk = checkNumber(kind, body.number);" in vault
       and "return res.status(400).json({ ok: false, error: chk.why });" in vault)
+# The only free, legitimate PAN signals: the 4th and 5th characters, both
+# published by the Income Tax Department. The 10th is a check digit whose
+# algorithm has never been published — so we must not pretend to check it.
+check("vault: a PAN is read for what it actually encodes",
+      "PAN_HOLDER" in docid and "panFacts" in docid
+      and "an individual" in docid and "a company" in docid)
+check("vault: and never claims to verify the undisclosed check digit",
+      "has never published" in docid and "does NOT pretend" in docid)
+_appv = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+check("vault: a surname mismatch is a note, never a refusal",
+      "Worth a look" in _appv and "not every name puts the surname last" in _appv
+      and "vPanNote" in _appv)
 check("vault: card credentials are refused outright",
       "credentialRisk" in vault and "cvv" in vault.lower() and "never stores a full card number" in vault)
 check("vault: a document is invisible without a grant",
@@ -256,7 +268,43 @@ check("onboarding: starting a family or a group is offered everywhere",
 check("layout: .side-only is specific enough to beat .tabs button",
       ".tabs .side-only{display:none}" in appsrc and ".tabs .side-only{display:flex}" in appsrc)
 check("layout: the desktop content is not capped at a phone width",
-      "body.inapp .wrap{max-width:1240px" in appsrc)
+      "body.inapp .wrap{max-width:1560px" in appsrc)
+# Memory and the Vault are "a list, and a form to add to it". On a wide window
+# that was one narrow ribbon with the form scrolled off. The grid spans below
+# must match how many children each list view actually puts in column one —
+# add a filter row and forget the span, and the form detaches from the list.
+_lv = {"book-list-view": 4, "vd-list-view": 2}
+_spans = []
+for cid, want in _lv.items():
+    m = re.search(r'<div id="%s">' % cid, appsrc)
+    depth, i, kids = 1, m.end(), 0
+    for t in re.finditer(r'<(/?)(div|select|details)\b[^>]*>', appsrc[i:]):
+        closing, name = t.group(1), t.group(2)
+        if name == "select":
+            if depth == 1 and not closing: kids += 1
+            continue
+        if closing:
+            depth -= 1
+            if depth == 0: break
+        else:
+            if depth == 1: kids += 1
+            depth += 1
+    left = kids - 1                       # the last child is the form itself
+    css = "#%s>.card{grid-row:1/span %d}" % (cid, left)
+    if left != want or css not in appsrc:
+        _spans.append("%s: %d in the left column, css says %s" % (cid, left, want))
+check("layout: the add-form rail spans the whole list beside it",
+      not _spans, "; ".join(_spans))
+check("layout: a list that owns a column is allowed to use it",
+      "#pane-memory .feed,#pane-vault .feed,.subsec .feed{max-width:none}" in appsrc
+      and "@media(min-width:1180px)" in appsrc)
+# The sidebar is taller than many laptop screens. Everything below "Together"
+# used to be clipped with no way to reach it.
+check("layout: the sidebar scrolls instead of clipping what does not fit",
+      ".tabs .inner{flex-direction:column" in appsrc and "overflow-y:auto" in appsrc
+      and "was simply clipped and unreachable" in appsrc)
+check("layout: the brand and the account line stay put while it scrolls",
+      ".side-brand{position:sticky" in appsrc and ".side-user{position:sticky" in appsrc)
 check("layout: Today uses two columns on a wide screen",
       "homerail" in appsrc and "homemain" in appsrc and "@media(min-width:1240px)" in appsrc)
 

@@ -541,7 +541,19 @@ details.more[open]>summary::before{content:"▾ "}
   .side-only{display:flex}
   .tabs .side-only{display:flex}
   .tabs{top:0;bottom:0;right:auto;left:0;width:var(--side-w);border-top:0;border-right:1px solid var(--pine-2);padding-bottom:0;justify-content:flex-start}
-  .tabs .inner{flex-direction:column;max-width:none;align-items:stretch;gap:6px;padding:20px 14px;height:100%}
+  /* The sidebar is taller than plenty of laptop screens: everything below
+     Together — Plans, Games, the drawing board, Profile, "New family or
+     group" and the signed-in line — was simply clipped and unreachable.
+     It scrolls now, and the account line stays pinned to the bottom. */
+  .tabs .inner{flex-direction:column;max-width:none;align-items:stretch;gap:6px;padding:20px 14px;
+    height:100%;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+    scrollbar-color:var(--pine-2) transparent}
+  .tabs .inner::-webkit-scrollbar{width:8px}
+  .tabs .inner::-webkit-scrollbar-thumb{background:var(--pine-2);border-radius:99px}
+  .tabs .inner::-webkit-scrollbar-track{background:transparent}
+  /* The brand and the account line do not scroll away with the nav. */
+  .side-brand{position:sticky;top:-20px;z-index:2;background:var(--dusk)}
+  .side-user{position:sticky;bottom:-20px;z-index:2;background:var(--dusk)}
   .side-brand{align-items:center;gap:9px;color:var(--cream);font-family:var(--disp);font-weight:600;font-size:1.15rem;padding:4px 10px 20px}
   .side-brand .dev{font-family:var(--dev);color:var(--marigold);font-size:1.1rem}
   .tabs button{flex:0 0 auto;height:auto;flex-direction:row;justify-content:flex-start;gap:12px;padding:13px 14px;border-radius:12px;font-size:.94rem}
@@ -557,16 +569,19 @@ details.more[open]>summary::before{content:"▾ "}
   body.inapp{padding-left:var(--side-w)}
   body.inapp .bar{display:none}
   body.inapp #livecall{margin-left:var(--side-w)}
-  body.inapp .wrap{max-width:1240px;padding:30px 34px 170px}
+  body.inapp .wrap{max-width:1560px;padding:30px 38px 170px}
   body.inapp .inputbar{left:var(--side-w);bottom:0;border-top:1px solid var(--bone-2)}
-  body.inapp .inputbar .inner{max-width:1172px}
+  body.inapp .inputbar .inner{max-width:1484px}
   body.inapp .toast{left:calc(50% + var(--side-w)/2);bottom:26px}
   body.inapp .fab{right:28px;bottom:28px}
 
   /* Reading and typing want a comfortable measure even when the window is
      wide — only the grids below are allowed to use the full width. */
-  #pane-home .card,#pane-care .card,#pane-memory .card,#pane-vault .card,
-  #pane-profile .card,#pane-people .card,#pane-fun .card,#pane-notifs .card{max-width:640px}
+  #pane-home .card,#pane-care .card,#pane-profile .card,
+  #pane-people .card,#pane-fun .card,#pane-notifs .card{max-width:640px}
+  /* Memory and Vault lay themselves out in two columns below, so their cards
+     take the width of their own column rather than a fixed measure. */
+  #pane-memory .card,#pane-vault .card{max-width:720px}
   #pane-home .homemain .card{max-width:none}
   .subsec .feed,#pane-vault .feed{max-width:760px}
   /* Memory reads as one column: the feed lines up with the card and the filters. */
@@ -622,6 +637,26 @@ details.more[open]>summary::before{content:"▾ "}
   .obpoint{gap:11px;align-items:flex-start;font-size:.92rem;color:var(--ink-soft)}
   .obpoint b{color:var(--ink);font-weight:600}
   .obpoint .oi{font-size:1.15rem;line-height:1}
+}
+
+/* Wide screens: browse on the left, add on the right.
+   Memory and the Vault are both "a list, and a form to add to it", and on a
+   wide window that was a narrow ribbon down the middle with the form a scroll
+   away. Side by side, the screen is used and the form stays in view while you
+   read the list. The span counts below match the number of children each list
+   view puts in the left column — a test asserts they still do. */
+@media(min-width:1180px){
+  #book-list-view,#vd-list-view{display:grid;grid-template-columns:minmax(0,1fr) 430px;
+    gap:0 30px;align-items:start}
+  #book-list-view>*,#vd-list-view>*{grid-column:1;min-width:0}
+  #book-list-view>.card,#vd-list-view>.card{grid-column:2;margin-top:0!important;
+    position:sticky;top:30px;max-height:calc(100vh - 60px);overflow:auto;
+    scrollbar-width:thin;max-width:none}
+  #book-list-view>.card{grid-row:1/span 4}
+  #vd-list-view>.card{grid-row:1/span 2}
+  /* The filters and the feed now own a whole column — let them use it. */
+  #pane-memory .feed,#pane-vault .feed,.subsec .feed{max-width:none}
+  #bk-filter,#bk-about,#pane-memory .addrow{max-width:none}
 }
 
 /* Wide screens: Today becomes two columns — what you do on the left, what
@@ -5098,7 +5133,7 @@ details.more[open]>summary::before{content:"▾ "}
     fetch(API.vault + qs).then(function(r){ return r.json(); }).then(function(j){
       if (!j.ok) return;
       vDocs = j.docs || []; vGrants = j.grants || []; vLog = j.log || []; vKinds = j.kinds || {};
-      vShapes = j.idShapes || vShapes;
+      vShapes = j.idShapes || vShapes; vPanHolders = j.panHolders || vPanHolders;
       if (!$('vd-kind').options.length) { vFillSelect($('vd-kind'), vKinds); vApplyShape(); }
       vMembersInto($('vd-about'), '');
       vMembersInto($('vd-who'), "Everyone's documents");
@@ -5874,6 +5909,7 @@ details.more[open]>summary::before{content:"▾ "}
   // up to the right length, and — when someone has plainly typed a different
   // document — offers to switch instead of just refusing.
   var vShapes = {};                       // from the server: one description per ID
+  var vPanHolders = {};                   // 4th letter of a PAN → what kind of holder
 
   function vSpec(){ return vShapes[$('vd-kind').value] || null; }
   function vBare(s){ return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
@@ -5932,6 +5968,36 @@ details.more[open]>summary::before{content:"▾ "}
     return null;
   }
 
+  // What a PAN actually tells you, free and offline. The Income Tax Department
+  // publishes the meaning of two of the ten characters: the 4th is the kind of
+  // holder, and the 5th is the first letter of the surname. Neither proves the
+  // card was issued — only the department can — but together they catch a
+  // company's PAN filed under a person, and a mistyped letter.
+  //
+  // Indian names do not all put the surname last, so a mismatch is worth a
+  // look, never a refusal, and it never blocks saving.
+  function vPanNote(kind, v){
+    if (kind !== 'pan' || !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(v)) return '';
+    var type = v[3], initial = v[4];
+    var holder = vPanHolders[type] || null;
+    var who = null, sel = $('vd-about');
+    (membersCache || []).forEach(function(m){ if (m.id === sel.value) who = m.name; });
+    var out = holder ? '<br>This PAN belongs to <b>' + esc(holder) + '</b>.' : '';
+    if (!who) return out;
+    var words = String(who).trim().split(/\s+/).filter(Boolean);
+    var surname = words.length > 1 ? words[words.length - 1] : words[0];
+    if (!surname) return out;
+    if (surname[0].toUpperCase() === initial) {
+      out += ' The 5th letter (<b>' + esc(initial) + '</b>) matches ' + esc(surname) + '.';
+    } else {
+      out += ' <span style="color:var(--alert)">The 5th letter of a PAN is the first letter of the ' +
+        'holder\u2019s surname. This one is <b>' + esc(initial) + '</b>, but this is filed under ' +
+        esc(who) + '. Worth a look \u2014 though not every name puts the surname last.</span>';
+    }
+    return out;
+  }
+  $('vd-about').addEventListener('change', vNumberState);
+
   // The field takes on the shape of whatever was chosen.
   function vApplyShape(){
     var sp = vSpec(), inp = $('vd-number');
@@ -5948,7 +6014,11 @@ details.more[open]>summary::before{content:"▾ "}
     swap.hidden = true;
     if (!v) { box.textContent = sp ? sp.hint : ''; box.className = 'hint'; return; }
     var chk = vCheck(kind, v);
-    if (chk.ok) { box.textContent = '✓ ' + (sp ? sp.label : 'Reference') + ' looks right.'; box.className = 'hint good'; return; }
+    if (chk.ok) {
+      box.innerHTML = '✓ ' + esc(sp ? sp.label : 'Reference') + ' looks right.' + vPanNote(kind, v);
+      box.className = 'hint good';
+      return;
+    }
     // Somebody has typed a different document — say which, and offer the swap.
     var other = vLooksLike(v, kind);
     if (other) {

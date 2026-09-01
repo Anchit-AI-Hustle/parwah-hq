@@ -67,7 +67,7 @@ function clean(v, max) { const s = String(v == null ? '' : v).trim().slice(0, ma
 // What an Indian ID looks like lives in _docid.mjs, so the field can check
 // it as the family types and the server can check it again before storing.
 // Re-exported here because that is where it has always been imported from.
-import { checkNumber, DOC_ID } from './_docid.mjs';
+import { checkNumber, DOC_ID, PAN_HOLDER } from './_docid.mjs';
 export { checkNumber };
 
 // Nothing that could be a live credential is ever accepted into the vault's
@@ -216,7 +216,8 @@ async function docsApi(req, res, sql, circle, me) {
                   where l.doc_id = any(${mine}::uuid[]) order by l.at desc limit 60`
       : [];
     const members = await sql`select id, name, relation from members where circle_id = ${circle.id} order by created_at`;
-    return res.status(200).json({ ok: true, docs, grants, log, members, kinds: DOC_KINDS, idShapes: idShapesForClient(), maxFile: MAX_FILE });
+    return res.status(200).json({ ok: true, docs, grants, log, members, kinds: DOC_KINDS, idShapes: idShapesForClient(), panHolders: PAN_HOLDER,
+      maxFile: MAX_FILE });
   }
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');
