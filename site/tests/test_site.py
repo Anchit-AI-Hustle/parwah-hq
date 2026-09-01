@@ -698,6 +698,31 @@ for f in _srcs:
 check(f"merge: no conflict markers anywhere in the source ({len(_srcs)} files)",
       not _conflicted, "; ".join(_conflicted[:4]))
 
+# ---------- 10f. The brand name lives in 350 places ----------
+# It appears as Parwah, parwah, PARWAH and परवाह across markup, code, tests,
+# the manifest, the service worker, the SVG marks and four filenames. Renaming
+# that by hand is how a rename ends up half done, so it is one command.
+_ren = (REPO / "ops/rename-brand.sh")
+check("brand: renaming is one reviewed command, not a find-and-replace",
+      _ren.exists() and _ren.stat().st_mode & 0o111)
+if _ren.exists():
+    _r = _ren.read_text(encoding="utf-8")
+    check("brand: it shows what it would do before it does anything",
+          'APPLY=0' in _r and 'Re-run with --apply' in _r)
+    check("brand: it handles every form the name takes",
+          all(x in _r for x in ("s/Parwah/", "s/parwah/", "s/PARWAH/", "OLD_DEV=")))
+    # Renaming these signs every existing user out of their circle.
+    check("brand: browser storage keys are left alone unless asked for",
+          "STORAGE=0" in _r and "signs every existing user out" in _r
+          and "is_browser" in _r)
+    check("brand: the sentinel cannot be eaten by the rename it protects",
+          "STORAGEKEY" in _r and "PARWAHKEY" not in _r)
+    check("brand: the new name is written as bytes, not double-encoded",
+          "NO -C layers" in _r and "-CSD" not in _r)
+    check("brand: it names what only a human can rename",
+          "Vercel project name" in _r and "GitHub repository name" in _r
+          and "domain" in _r)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]
