@@ -494,8 +494,26 @@ check("day: a horoscope is never invented when the source is unreachable",
       and "unavailable" in horo and "rather than inventing one" in appday)
 check("day: readings are fetched once a day for the whole family, not per screen",
       "on conflict (day, sign) do nothing" in horo and "create table if not exists horoscope" in horo)
-check("day: the screen shows which period is running right now",
-      "currentPeriod" in pan and "Right now:" in appday and "renderMuhurat" in appday)
+# The screen answers one question — "is now a good time?" — before it shows
+# anything else. Sixteen equal cards was the answer to a different question.
+check("day: the screen leads with a verdict, not a table",
+      "currentPeriod" in pan and "renderMuhurat" in appday
+      and "A good time right now" in appday and "Better to wait" in appday)
+check("day: and says what to do next, so the verdict is actionable",
+      "Next good window:" in appday and "This window ends at" in appday)
+# Abhijit is auspicious and used to sit under a heading that said "avoid".
+check("day: the fixed-times card does not call an auspicious window a bad one",
+      "Times to avoid today" not in appday and "Times worth knowing" in appday)
+check("day: the sixteen windows are a reference, behind a disclosure",
+      "See every Choghadiya" in appday and "details class=\"more\"" in appday)
+check("day: all twelve rashis are behind a disclosure too, yours is not",
+      "See all twelve rashis" in appday and 'id="ho-mine"' in appday)
+# Good/avoid is a STATUS, and status must never be carried by colour alone.
+check("day: the day band never means anything by colour alone",
+      "tlkey" in appday and "Better to wait</span>" in appday
+      and 'class="sr"' in appday and 'role="img"' in appday)
+check("day: the band is drawn in real time, not equal boxes",
+      "/ span * 100" in appday and "flex:0 0 " in appday)
 check("day: the rashi needs a birthday, and asks for one instead of guessing",
       "ho-nodob" in appday and "e-dob" in appday and "signOf" in horo)
 check("day: the day section is reachable from the tabs and the drawer",

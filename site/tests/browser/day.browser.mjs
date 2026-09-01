@@ -105,8 +105,11 @@ await page.goto('http://localhost:8791/app/');
 await page.waitForTimeout(600);
 
 // ---- the Today widget knows what is running now ----
+// The home widget answers the question, not the vocabulary: a parent does not
+// need the word "Shubh" on their front page.
 const w = (await page.locator('#w-day').textContent()).trim();
-ok(w.includes(RUNNING.name), 'the Today widget names the Choghadiya running now → ' + w);
+ok(/^(✓ Good time|✕ Better to wait) · until \d/.test(w),
+   'the Today widget says whether now is a good time, and until when → ' + w);
 
 // ---- the day tab ----
 await page.evaluate(() => location.hash = '#day');
@@ -118,19 +121,54 @@ const sun = await page.locator('#mu-sun').textContent();
 ok(/Sunrise \d/.test(sun) && /Sunset \d/.test(sun) && sun.includes('Delhi'), 'sunrise and sunset are shown for that city → ' + sun);
 ok(await page.locator('#mu-guess').isHidden(), 'a known city carries no fallback warning');
 
-const nowTxt = await page.locator('#mu-now').textContent();
-ok(nowTxt.includes('Right now: ' + RUNNING.name), 'the screen leads with the period running now');
-ok(nowTxt.length > 60 && /—/.test(nowTxt), 'and explains in English what that period means → ' + nowTxt.slice(0, 90));
+// ---- the verdict, which is the whole point of the screen ----
+const state = (await page.locator('#mu-state').textContent()).trim();
+ok(/^(✓ A good time right now|✕ Better to wait|Between)/.test(state),
+   'the screen opens with a verdict, in words → ' + state);
+const good = state.startsWith('✓');
+ok(await page.locator('#mu-verdict').getAttribute('class') === 'card verdict ' + (good ? 'ok' : 'no'),
+   'and the card carries the matching status, not colour alone');
+const vname = await page.locator('#mu-name').textContent();
+ok(vname.includes(RUNNING.name) && /until \d/.test(vname),
+   'the period is named, with when it ends → ' + vname);
+const vmean = await page.locator('#mu-mean').textContent();
+ok(vmean.length > 15 && !/—/.test(vmean.slice(0, 8)),
+   'and what it is for, in a plain sentence → ' + vmean);
+const vnext = await page.locator('#mu-next').textContent();
+ok(/(Next good window|This window ends at|Good the rest)/.test(vnext),
+   'followed by what happens next → ' + vnext);
 
-ok(await page.locator('#mu-day .ev').count() === 8, 'eight day Choghadiya are listed');
-ok(await page.locator('#mu-night .ev').count() === 8, 'eight night Choghadiya are listed');
+// ---- the day as one band, in real time ----
+const segs = page.locator('#mu-tl button');
+ok(await segs.count() === 16, 'the whole day is one band of sixteen windows');
+const widths = await page.locator('#mu-tl').evaluate(el =>
+  [...el.querySelectorAll('button')].map(b => b.getBoundingClientRect().width));
+ok(new Set(widths.map(w => Math.round(w))).size > 1,
+   'the segments are real durations, not equal boxes');
+ok(await page.locator('#mu-tl button.now').count() === 1, 'exactly one segment is marked as now');
+const key = await page.locator('.tlkey').textContent();
+ok(/Good time/.test(key) && /Better to wait/.test(key) && /Now/.test(key),
+   'a key names every state the band uses');
+ok((await page.locator('#mu-tl button .sr').first().textContent()).length > 20,
+   'and every segment carries its own words for a screen reader');
+await segs.nth(5).click(); await page.waitForTimeout(150);
+const picked = await page.locator('#mu-tlpick').textContent();
+ok(/^[✓✕] /.test(picked) && picked.length > 25, 'tapping a part of the day says what it is → ' + picked);
+ok(await segs.nth(5).getAttribute('aria-pressed') === 'true', 'and the tapped segment says it is selected');
+
+// ---- the sixteen are a reference, not the reading ----
+ok(await page.locator('#mu-day .ev').first().isHidden(),
+   'the full list starts closed — it is a reference, not the answer');
+await page.locator('details.more summary').first().click(); await page.waitForTimeout(200);
+ok(await page.locator('#mu-day .ev').count() === 8, 'opened, the eight day windows are there');
+ok(await page.locator('#mu-night .ev').count() === 8, 'and the eight night ones');
 const dayRows = await page.locator('#mu-day .ev').allTextContents();
-ok(dayRows.every(t => /\d:\d\d\s?(am|pm).+–/i.test(t.replace(/\u2009/g,' ')) || /–/.test(t)), 'every row carries its from–to time');
-ok(dayRows.filter(t => t.includes('· now')).length === 1, 'exactly one row is marked as running now');
-ok(dayRows[2].includes('· now'), 'and it is the right row');
+ok(dayRows.every(t => /^[✓✕]/.test(t.trim())), 'each carries a tick or a cross, not just a colour');
+ok(dayRows.filter(t => t.includes('· now')).length === 1, 'exactly one is marked as running now');
 
-const named = await page.locator('#mu-named .ev').allTextContents();
+const named = await page.locator('#mu-named .avoidrow').allTextContents();
 ok(named.some(t => t.includes('Rahu Kaal') && /nothing new/i.test(t)), 'Rahu Kaal is explained, not just named');
+ok(named.length === 4, 'the three to avoid and the one to use sit in one card, not four');
 ok(named.some(t => t.includes('Gulika Kaal')), 'Gulika Kaal is listed');
 ok(named.some(t => t.includes('Yamaganda')), 'Yamaganda is listed');
 ok(named.some(t => t.includes('Abhijit')), 'Abhijit is listed');
@@ -138,6 +176,15 @@ ok(named.some(t => t.includes('Abhijit')), 'Abhijit is listed');
 // ---- rashifal ----
 await page.click('#day-seg button[data-sec="rashi"]');
 await page.waitForTimeout(200);
+// Yours first and open; the other eleven only if asked for.
+ok(await page.locator('#ho-mine').isVisible(), 'your own rashi is the first thing on the screen');
+ok(await page.locator('#ho-all .ev').first().isHidden(),
+   'the other twelve start closed — nobody reads twelve horoscopes');
+const famRows = await page.locator('#ho-people .ev').allTextContents();
+ok(famRows.every(t => t.length < 240), 'the family are one line each, not a second wall of text');
+await page.locator('#pane-day .subsec[data-sec="rashi"] details.more summary').click();
+await page.waitForTimeout(200);
+ok(await page.locator('#ho-all .ev').first().isVisible(), 'opened, all twelve are there');
 ok(await page.locator('#ho-all .ev').count() === 12, 'all twelve rashis are shown');
 const all = await page.locator('#ho-all .ev').allTextContents();
 ok(all.filter(t => t.includes('· yours')).length === 1, 'your own rashi is marked, once');
