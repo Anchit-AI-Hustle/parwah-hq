@@ -73,6 +73,11 @@ check("conversion: home hero leads directly to the WhatsApp launch list",
       f'id="hero-join" href="https://wa.me/{WA_NUMBER}' in home)
 check("conversion: home hero keeps the product demo as a secondary action",
       'id="hero-demo" href="#demo"' in home)
+launch = (ROOT / "public" / "launch" / "index.html").read_text(encoding="utf-8")
+scope = "Launch starts with daily check-ins, SOS and shared care. Bookings, money and gifting follow phase by phase"
+check("marketing: home distinguishes launch features from later phases", scope in home)
+check("marketing: launch page distinguishes launch features from later phases",
+      'id="launch-scope"' in launch and "Bookings, money and gifts follow phase by phase" in launch)
 
 # ---------- 6. A11y basics ----------
 for p in PAGES:
