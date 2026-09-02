@@ -137,8 +137,64 @@ for name in GUARDED:
     if not f.exists():
         check(f"membership guard present: api/{name}.mjs", False, "file missing"); continue
     src = f.read_text(encoding="utf-8")
+    # Either the guard is written out in the module, or it uses the one shared
+    # implementation in _db.mjs. What is not allowed is neither.
     check(f"membership guard present: api/{name}.mjs",
-          "Not a member of this circle" in src and "circleByCode" in src)
+          ("Not a member of this circle" in src and "circleByCode" in src)
+          or "requireMember" in src)
+
+# The shared guard has to actually check the member belongs to the circle,
+# because eleven endpoints now depend on this one function.
+dbsrc = (API_DIR / "_db.mjs").read_text(encoding="utf-8")
+check("the shared membership guard checks the member against the circle",
+      "export async function requireMember" in dbsrc
+      and "where id = ${memberId} and circle_id = ${circle.id}" in dbsrc
+      and "Not a member of this circle" in dbsrc)
+
+# 10c-ii. A circle code is read out over the phone and pasted into WhatsApp.
+# On its own it must never open a family's phone numbers, dates of birth or
+# feed: these two reads returned all of it for a code alone.
+for name, what in (("events", "members, phones, dates of birth and the feed"),
+                   ("care", "who is doing what for whom")):
+    src = (API_DIR / f"{name}.mjs").read_text(encoding="utf-8")
+    getblock = src.split("req.method === 'GET'")[1][:900] if "req.method === 'GET'" in src else ""
+    check(f"reading {name} needs a member, not just the invite code ({what})",
+          "requireMember" in getblock and ".member" in getblock)
+
+# 10c-iii. Writes have a ceiling. Not to police a family — the limits are far
+# above anything done by hand — but a stuck retry loop or a stolen memberId
+# must not be able to fill the database or spend the AI budget unopposed.
+check("the write limiter is keyed on the member and fails open",
+      "export async function writeGate" in dbsrc and "'w:' + bucket" in dbsrc)
+for name in ("events", "care", "book", "ekta"):
+    src = (API_DIR / f"{name}.mjs").read_text(encoding="utf-8")
+    check(f"writes to api/{name}.mjs have a rate ceiling", "writeGate" in src)
+# An SOS is the one thing that must always get through.
+evsrc = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+check("an SOS is never rate limited",
+      "type !== 'sos'" in evsrc and "type !== 'sos_ack'" in evsrc)
+
+# 10c-iv. What went wrong on the server is for our log, not for the family:
+# a constraint name or a fragment of SQL in an error bubble tells an attacker
+# about the schema and tells a family nothing.
+check("there is one place that answers a server error",
+      "export function serverError" in dbsrc and "Something went wrong on our side" in dbsrc)
+LEAKY = re.compile(r"res\.status\(500\)\.json\(\{ ok: false, error: String\(e")
+for f in sorted(API_DIR.glob("*.mjs")):
+    if "selftest" in f.name:   # diagnostics are meant to report the real error
+        continue
+    src = f.read_text(encoding="utf-8")
+    check(f"api/{f.name} does not hand the raw error to the client",
+          not LEAKY.search(src))
+
+# 10c-v. Ekta is a convenience, never a way around consent. An entry someone
+# marked private must not become readable because it was asked for in words
+# instead of tapped in a list.
+ekta = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
+for tool in ("get_family_memory", "prepare_summary"):
+    block = ekta.split(f"name === '{tool}'")[1][:1600]
+    check(f"Ekta's {tool} applies the same privacy rule as the app",
+          "book_access" in block and "visibility = 'circle'" in block)
 
 # 10d. SQL only ever through the tagged-template driver (parameterized)
 for f in sorted(API_DIR.glob("*.mjs")):
@@ -455,8 +511,13 @@ check("selftest: a read cursor belongs to one person",
       "betaStillUnread === 2" in _st)
 check("guide: one readiness number for the FAMILY, not six per-person bars",
       '"Your family is <span id="rd-pct">' in appsrc.replace("'", '"') or 'id="rd-pct"' in appsrc)
-check("guide: the number is backed by named gaps and a complete-N call to action",
-      "gapCount" in book and "rd-gaps" in appsrc and "Complete " in appsrc)
+check("guide: the number is backed by named gaps and a call to action",
+      "gapCount" in book and "rd-gaps" in appsrc and "Fix these " in appsrc)
+# The count in the sentence must be the count of rows above it. Listing four
+# gaps and then saying "Complete 3" makes a family distrust the whole figure.
+check("guide: the readiness call to action counts what it actually shows",
+      "shown.length === 1" in appsrc and "'Fix these ' + shown.length" in appsrc
+      and "f.gapCount - shown.length" in appsrc)
 check("guide: someone near a person living away is a first-class contact",
       "'local'" in book and "someone near them to call" in book)
 check("guide: the pulse asks how people are, in a style that rotates daily",

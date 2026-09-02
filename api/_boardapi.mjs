@@ -3,7 +3,7 @@
 // can share the masterpiece into the family chat.
 // GET  /api/board?circle=CODE&member=UUID&after=ISO → {ok, strokes[], clearedAt}
 // POST /api/board {code, memberId, action:'stroke'|'clear', ...}
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, serverError } from './_db.mjs';
 
 export default async function handler(req, res) {
   let sql;
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       circle_id uuid primary key references circles(id) on delete cascade,
       cleared_at timestamptz not null default now()
     )`;
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  } catch (e) { return serverError(res, e, 'boardapi'); }
 
   try {
     const q = req.query || {};
@@ -76,6 +76,6 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return serverError(res, e, 'boardapi');
   }
 }

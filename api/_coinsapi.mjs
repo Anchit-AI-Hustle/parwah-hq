@@ -3,13 +3,13 @@
 // The ledger is the family's shared record: what was earned, by whom, and
 // what the AI has cost. There is nothing to buy — coins are earned by
 // looking after each other, and spent on Ekta.
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, serverError } from './_db.mjs';
 import { ensureCoinSchema, balance, EARN, SPEND } from './_coins.mjs';
 
 export default async function handler(req, res) {
   let sql;
   try { sql = db(); await ensureSchema(sql); await ensureCoinSchema(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  catch (e) { return serverError(res, e, 'coinsapi'); }
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ ok: false, error: 'GET only' });
@@ -37,6 +37,6 @@ export default async function handler(req, res) {
       group by m.name order by n desc limit 5`;
     return res.status(200).json({ ok: true, balance: bal, mine: mine[0].n, ledger, top, earn: EARN, spend: SPEND });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return serverError(res, e, 'coinsapi');
   }
 }

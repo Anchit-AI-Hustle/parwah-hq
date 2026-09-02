@@ -19,7 +19,7 @@
 //  4. Card numbers, CVVs, PINs and passwords are refused outright. Parwah
 //     stores a LABEL and a permission — never a credential. The last four
 //     digits are the most we will hold.
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, serverError } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import { award } from './_coins.mjs';
 
@@ -514,7 +514,7 @@ async function payApi(req, res, sql, circle, me) {
 export default async function handler(req, res) {
   let sql;
   try { sql = db(); await ensureSchema(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  catch (e) { return serverError(res, e, 'vaultapi'); }
   try {
     const q = req.query || {}, body = req.body || {};
     const area = String(q.area || body.area || 'vault');
@@ -529,6 +529,6 @@ export default async function handler(req, res) {
       ? payApi(req, res, sql, circle, meRow[0])
       : docsApi(req, res, sql, circle, meRow[0]);
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return serverError(res, e, 'vaultapi');
   }
 }

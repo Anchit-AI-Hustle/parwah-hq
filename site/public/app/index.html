@@ -406,8 +406,16 @@ details.more[open]>summary::before{content:"▾ "}
 .hint.good{color:var(--ok)}
 .hint.bad{color:var(--alert)}
 /* A row of bare emoji is a guessing game. Words wherever they fit. */
+/* A row of bare emoji is a guessing game — including on a 390px phone, which
+   is the device this app is designed for first. The words stay; they get a
+   smaller type size and the row wraps, rather than the label being hidden and
+   the filter becoming a rebus. */
 .bkw{margin-left:6px}
-@media(max-width:430px){.bkw{display:none}}
+@media(max-width:430px){
+  #bk-filter{gap:4px}
+  #bk-filter button{min-width:0;flex:1 1 30%;padding:8px 4px;font-size:.72rem;line-height:1.25}
+  .bkw{display:block;margin-left:0}
+}
 .tworow>span{flex:1;min-width:0}
 /* The concept screens, shown before anyone is asked for anything. */
 #demo-step .prow2{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
@@ -2440,7 +2448,7 @@ details.more[open]>summary::before{content:"▾ "}
         }
       })
       .catch(function(){ /* offline — keep last render */ });
-    fetch(API.care + '?circle=' + encodeURIComponent(state.code))
+    fetch(API.care + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); })
       .then(function(j){ if (j.ok) renderCare(j); })
       .catch(function(){});
@@ -3274,14 +3282,19 @@ details.more[open]>summary::before{content:"▾ "}
     $('readycard').hidden = false;
     $('rd-pct').textContent = f.pct;
     $('rd-fill').style.width = f.pct + '%';
-    $('rd-gaps').innerHTML = (f.gaps || []).slice(0, 4).map(function(g){
+    var SHOWN = 4;
+    var shown = (f.gaps || []).slice(0, SHOWN);
+    $('rd-gaps').innerHTML = shown.map(function(g){
       return '<div class="rdgap">' + (g.state === 'missing' ? '⚠️' : '🟡') +
              ' <span><b>' + esc(g.name) + '</b> — <em>' + esc(g.label) +
              (g.state === 'missing' ? ' missing' : ' needs a re-check') + '</em></span></div>';
     }).join('');
+    // The number in the sentence is the number of rows above it. Listing four
+    // things and then saying "complete 3" makes a family distrust the figure.
+    var rest = Math.max(0, f.gapCount - shown.length);
     $('rd-cta').textContent = f.gapCount
-      ? 'Complete ' + Math.min(3, f.gapCount) + ' important item' + (Math.min(3, f.gapCount) === 1 ? '' : 's')
-        + (f.gapCount > 4 ? ' · ' + f.gapCount + ' in total' : '')
+      ? (shown.length === 1 ? 'Fix this one thing' : 'Fix these ' + shown.length + ' things')
+        + (rest ? ' — and ' + rest + ' more after that' : '')
       : 'Everything important is recorded and current 🧡';
   }
   $('readycard').addEventListener('click', function(){ switchTab('people'); });
@@ -3632,7 +3645,14 @@ details.more[open]>summary::before{content:"▾ "}
   var BK_ICON = { contact: '☎️', address: '📍', med: '💊', fact: '🩸', insurance: '🛡' };
   var BK_LABEL = { contact: 'Contact', address: 'Address', med: 'Meds', fact: 'Health fact', insurance: 'Insurance' };
   var FRESH_KINDS = { med: 1, fact: 1, insurance: 1 };
-  var PREP_LABEL = { doctor: 'Doctor', meds: 'Meds', allergies: 'Allergies', blood: 'Blood group', emergency: 'Emergency contact', insurance: 'Insurance' };
+  // One label per readiness item the server computes. A key missing from here
+  // is not a blank — it renders as the word "undefined" next to a red cross on
+  // the People screen, which is how "Someone near them" shipped.
+  var PREP_LABEL = { doctor: 'Doctor', meds: 'Meds', allergies: 'Allergies', blood: 'Blood group',
+                     emergency: 'Emergency contact', insurance: 'Insurance', local: 'Someone near them' };
+  function prepLabel(k){
+    return PREP_LABEL[k] || String(k).replace(/_/g, ' ').replace(/^./, function(c){ return c.toUpperCase(); });
+  }
   function entryStale(e){
     return FRESH_KINDS[e.kind] && (Date.now() - new Date(e.last_verified_at).getTime()) > bookStaleDays * 86400000;
   }
@@ -3659,7 +3679,7 @@ details.more[open]>summary::before{content:"▾ "}
       var rows = Object.keys(pp.items).map(function(k){
         var st = pp.items[k];
         var ic = st === 'ok' ? '✅' : st === 'verify' ? '🟡' : '❌';
-        return '<span class="prepitem">' + ic + ' ' + PREP_LABEL[k] + (st === 'verify' ? ' (check)' : st === 'missing' ? ' (missing)' : '') + '</span>';
+        return '<span class="prepitem">' + ic + ' ' + esc(prepLabel(k)) + (st === 'verify' ? ' (check)' : st === 'missing' ? ' (missing)' : '') + '</span>';
       }).join('');
       h += '<div class="card prepcard">' +
         '<div class="prephead"><b>' + esc(pp.name) + '</b><span class="preppct">' + pp.pct + '% prepared</span></div>' +
@@ -5672,11 +5692,18 @@ details.more[open]>summary::before{content:"▾ "}
     var j = dayData; if (!j) return;
     var tz = j.tz, p = j.panchang;
     var place = (j.place && j.place.name) || 'your city';
-    $('mu-place').textContent = 'Today in ' + place;
-    $('mu-guess').hidden = !(j.place && j.place.guessed);
-    if (j.place && j.place.guessed) {
-      $('mu-guess').textContent = 'We don\u2019t know \u201c' + place + '\u201d yet, so these are Delhi timings. ' +
-        'Put your city in your profile and they\u2019ll be worked out for you.';
+    var guessed = !!(j.place && j.place.guessed);
+    // Two different situations, two different sentences. "We don't know New
+    // Delhi" — said because no city was ever entered — made the whole screen
+    // look wrong.
+    $('mu-place').textContent = guessed ? 'Today in ' + place + ' (a guess)' : 'Today in ' + place;
+    $('mu-guess').hidden = !guessed;
+    if (guessed) {
+      $('mu-guess').textContent = (j.place.why === 'unknown')
+        ? 'We don\u2019t know \u201c' + place + '\u201d yet, so these are Delhi timings. ' +
+          'Try the nearest big city in your profile and they\u2019ll be exact.'
+        : 'Nobody has told us where you live, so these are Delhi timings. ' +
+          'Add your city in your profile and they\u2019ll be worked out for you.';
     }
     var card = $('mu-verdict');
     if (!p) {

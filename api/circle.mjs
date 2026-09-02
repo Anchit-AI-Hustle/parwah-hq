@@ -1,5 +1,5 @@
 // POST /api/circle — create a care circle or join one with its code.
-import { db, ensureSchema, makeCode, circleByCode, isUuid, normPhone, phoneError, rateLimit, clientIp } from './_db.mjs';
+import { db, ensureSchema, makeCode, circleByCode, isUuid, normPhone, phoneError, rateLimit, clientIp, serverError } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import { award } from './_coins.mjs';
 
@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   }
   let sql;
   try { sql = db(); await ensureSchema(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  catch (e) { return serverError(res, e, 'circle'); }
 
   const { action, circleName, code, memberName, role, phone, userId } = req.body || {};
   // Family role labels — purely descriptive; every member is an equal admin.
@@ -289,6 +289,6 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return serverError(res, e, 'circle');
   }
 }

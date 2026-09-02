@@ -12,7 +12,8 @@
 //      overloaded (429/5xx), rather than going silent on the family.
 // Beneath all three, the API's server-side fallback adds an infra layer.
 import Anthropic from '@anthropic-ai/sdk';
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, requireMember, serverError, writeGate, TOO_FAST } from './_db.mjs';
+import { ensureBookSchema } from './book.mjs';
 import { careState, createReminder, createRequest } from './care.mjs';
 import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
 import { spend, EARN } from './_coins.mjs';
@@ -122,12 +123,20 @@ async function runTool(sql, circle, me, name, input) {
       if (!rows[0]) return JSON.stringify({ error: `No member named "${input.about_name}" in this circle` });
       aboutId = rows[0].id;
     }
+    // Ekta reads the memory with exactly the caller's own eyes. She is a
+    // convenience, never a way around consent: an entry someone marked
+    // private must not become readable just because it was asked for in
+    // words instead of tapped in a list. Same rule as GET /api/book.
     const entries = await sql`
       select b.kind, b.name, b.category, b.phone, b.address, b.forwhat, b.notes,
              b.last_verified_at, am.name as about
-      from family_book b left join members am on am.id = b.about_member
+      from family_book b
+      left join members am on am.id = b.about_member
+      left join book_access ba on ba.entry_id = b.id and ba.member_id = ${me.id}
       where b.circle_id = ${circle.id}
         and (${aboutId}::uuid is null or b.about_member = ${aboutId})
+        and (b.visibility = 'circle' or b.about_member = ${me.id}
+             or b.by_member = ${me.id} or ba.member_id is not null)
       order by b.kind, lower(b.name) limit 200`;
     const people = await sql`select name, relation, phone, place, country, gift_info from members
                              where circle_id = ${circle.id}
@@ -148,10 +157,16 @@ async function runTool(sql, circle, me, name, input) {
                            where circle_id = ${circle.id} and lower(name) = ${who}`;
     if (!mrow[0]) return JSON.stringify({ error: `No member named "${input.member_name}" in this circle` });
     const m = mrow[0];
+    // Private entries are left out here too — a summary the caller could not
+    // have opened themselves is not a summary they may have read aloud.
     const entries = await sql`
-      select kind, name, category, phone, address, forwhat, notes, last_verified_at
-      from family_book where circle_id = ${circle.id} and about_member = ${m.id}
-      order by kind limit 200`;
+      select b.kind, b.name, b.category, b.phone, b.address, b.forwhat, b.notes, b.last_verified_at
+      from family_book b
+      left join book_access ba on ba.entry_id = b.id and ba.member_id = ${me.id}
+      where b.circle_id = ${circle.id} and b.about_member = ${m.id}
+        and (b.visibility = 'circle' or b.about_member = ${me.id}
+             or b.by_member = ${me.id} or ba.member_id is not null)
+      order by b.kind limit 200`;
     let docs = [];
     try {
       docs = await sql`
@@ -401,8 +416,8 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, error: 'POST only' });
   }
   let sql;
-  try { sql = db(); await ensureSchema(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  try { sql = db(); await ensureSchema(sql); await ensureBookSchema(sql); }
+  catch (e) { return serverError(res, e, 'ekta/schema'); }
   try {
     const { keys } = await providerKeys(sql);
     if (!MODEL_PROVIDERS.some(k => keys[k])) {
@@ -411,12 +426,14 @@ export default async function handler(req, res) {
   } catch (e) { /* fall through: the cascade reports the real failure */ }
 
   const { code, memberId, messages } = req.body || {};
-  const circle = await circleByCode(sql, code);
-  if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
-  if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-  const meRow = await sql`select id, name, role from members where id = ${memberId} and circle_id = ${circle.id}`;
-  if (!meRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-  const me = meRow[0];
+  const g = await requireMember(sql, code, memberId);
+  if (g.error) return res.status(g.status).json({ ok: false, error: g.error });
+  const circle = g.circle, me = g.me;
+  // Coins price a turn, but a loop in a client can burn a family's whole
+  // balance — and real money on the provider — in seconds. This is the
+  // ceiling on how fast that can happen.
+  const allowed = await writeGate(sql, 'ekta', memberId, 20, 60);
+  if (!allowed) return res.status(429).json({ ok: false, error: TOO_FAST });
 
   const history = Array.isArray(messages) ? messages
     .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
@@ -443,6 +460,9 @@ export default async function handler(req, res) {
   } catch (e) {
     // A turn that never reached a brain is never charged for.
     try { await sql`insert into coins (circle_id, member_id, delta, reason) values (${circle.id}, ${me.id}, ${paid.cost}, 'refund')`; } catch (_) {}
-    return res.status(502).json({ ok: false, error: 'Ekta could not reach her brain right now — try again in a moment.', detail: String(e && e.message || e).slice(0, 200) });
+    // Which provider said what, and why, belongs in our log — not in a
+    // family's chat window.
+    try { console.error('[ekta]', e && e.stack || e); } catch (_) {}
+    return res.status(502).json({ ok: false, error: 'Ekta could not reach her brain right now — your coin has been returned. Try again in a moment.' });
   }
 }

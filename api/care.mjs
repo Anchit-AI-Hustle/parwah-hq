@@ -1,9 +1,10 @@
 // The care protocol: reminders and requests, consent-first.
 // GET  /api/care?circle=CODE — reminders + open/claimed requests for the circle
 // POST /api/care {code, memberId, action, ...} — see ACTIONS below
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, requireMember, serverError, writeGate, TOO_FAST } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import { award, today } from './_coins.mjs';
+import { ensureBookSchema } from './book.mjs';
 
 async function feed(sql, circleId, memberId, text) {
   await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'care', ${text})`;
@@ -38,6 +39,11 @@ export async function careSuggestions(sql, circleId) {
   const out = [];
   const seen = new Set();
   const add = (s) => { if (!seen.has(s.key)) { seen.add(s.key); out.push(s); } };
+  // On a database where nobody has opened Memory yet, family_book does not
+  // exist — and the queries below would each fail into their own catch,
+  // leaving the family with no suggestions at all on the one screen whose
+  // whole job is noticing what needs doing. Make the tables exist first.
+  try { await ensureBookSchema(sql); } catch (e) { /* read-only replica, etc. */ }
   try {
     // Documents about to run out, or already gone.
     const docs = await sql`
@@ -155,14 +161,16 @@ export default async function handler(req, res) {
     sql = db(); await ensureSchema(sql);
     await sql`alter table requests add column if not exists due_date date`;
     await sql`alter table requests add column if not exists about_member uuid references members(id) on delete set null`;
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  } catch (e) { return serverError(res, e, 'care/schema'); }
 
   try {
     if (req.method === 'GET') {
-      const circle = await circleByCode(sql, req.query && req.query.circle);
-      if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
-      const state = await careState(sql, circle.id);
-      const suggestions = await careSuggestions(sql, circle.id);
+      // This read names every person in the circle and what is being done for
+      // them, so the invite code on its own is not enough.
+      const g = await requireMember(sql, req.query && req.query.circle, req.query && req.query.member);
+      if (g.error) return res.status(g.status).json({ ok: false, error: g.error });
+      const state = await careState(sql, g.circle.id);
+      const suggestions = await careSuggestions(sql, g.circle.id);
       return res.status(200).json({ ok: true, ...state, suggestions });
     }
 
@@ -172,12 +180,11 @@ export default async function handler(req, res) {
     }
 
     const { code, memberId, action } = req.body || {};
-    const circle = await circleByCode(sql, code);
-    if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
-    if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-    const meRow = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
-    if (!meRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-    const me = meRow[0];
+    const g = await requireMember(sql, code, memberId);
+    if (g.error) return res.status(g.status).json({ ok: false, error: g.error });
+    const circle = g.circle, me = g.me;
+    const allowed = await writeGate(sql, 'care', memberId, 60, 60);
+    if (!allowed) return res.status(429).json({ ok: false, error: TOO_FAST });
 
     if (action === 'reminder_create') {
       const out = await createReminder(sql, circle, me, req.body);
@@ -233,7 +240,12 @@ export default async function handler(req, res) {
       if (!row[0]) return res.status(404).json({ ok: false, error: 'Request not found' });
       if (action === 'request_claim') {
         if (row[0].status !== 'open') return res.status(409).json({ ok: false, error: 'Someone already took this' });
-        await sql`update requests set status = 'claimed', claimed_by = ${me.id} where id = ${requestId}`;
+        // Two people tapping "I'm on it" in the same second must not both be
+        // told they have it: the status is part of the update's condition, so
+        // exactly one row comes back.
+        const took = await sql`update requests set status = 'claimed', claimed_by = ${me.id}
+                               where id = ${requestId} and status = 'open' returning id`;
+        if (!took[0]) return res.status(409).json({ ok: false, error: 'Someone already took this' });
         await feed(sql, circle.id, me.id, `${me.name} is on it: ${row[0].title}`);
         if (row[0].by_member && row[0].by_member !== me.id) {
           await pushCircle(sql, circle.id, { title: '🙌 ' + me.name + ' is on it', body: row[0].title }, { only: row[0].by_member });
@@ -251,6 +263,6 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return serverError(res, e, 'care');
   }
 }

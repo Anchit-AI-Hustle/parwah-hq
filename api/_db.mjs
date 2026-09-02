@@ -187,6 +187,18 @@ export async function rateLimit(sql, bucket, key, limit, windowSec) {
   } catch (e) { return true; }
 }
 
+// A ceiling on how fast one member can write. Not there to police a family —
+// the limits are far above anything a person does by hand — but a runaway
+// client, a stuck retry loop or a stolen memberId must not be able to fill the
+// database or spend the AI budget unopposed. Keyed on the member, because that
+// is who is acting; a shared household IP is not a useful key.
+// Returns true when the write may proceed.
+export async function writeGate(sql, bucket, memberId, limit, windowSec) {
+  return rateLimit(sql, 'w:' + bucket, String(memberId || 'anon'), limit, windowSec || 60);
+}
+
+export const TOO_FAST = 'That is a lot of activity very quickly — give it a moment and try again.';
+
 // Every circle has one default chat with everyone in it, created lazily.
 export async function ensureCircleChat(sql, circleId) {
   const rows = await sql`select id from chats where circle_id = ${circleId} and kind = 'circle'`;
@@ -216,4 +228,26 @@ export { PHONE_CC, normPhone, phoneError } from './_phone.mjs';
 
 export function isUuid(v) {
   return typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
+
+// The one membership check, so no endpoint can be written without it and no
+// two endpoints can disagree about what "a member" means. A circle code is
+// read out on phone calls and pasted into WhatsApp; on its own it must never
+// open a family's phone numbers, dates of birth or feed. Returns
+// { circle, me } on success, or { status, error } to hand straight back.
+export async function requireMember(sql, code, memberId) {
+  const circle = await circleByCode(sql, code);
+  if (!circle) return { status: 404, error: 'No circle found with that code' };
+  if (!isUuid(memberId)) return { status: 403, error: 'Not a member of this circle' };
+  const rows = await sql`select id, name, role from members where id = ${memberId} and circle_id = ${circle.id}`;
+  if (!rows[0]) return { status: 403, error: 'Not a member of this circle' };
+  return { circle, me: rows[0] };
+}
+
+// What a caller is told when something we did not predict went wrong. The
+// message from the database — a constraint name, a column, a fragment of SQL —
+// is for our log, never for the client.
+export function serverError(res, e, where) {
+  try { console.error('[' + (where || 'api') + ']', e && e.stack || e); } catch (_) {}
+  return res.status(500).json({ ok: false, error: 'Something went wrong on our side. Please try again.' });
 }

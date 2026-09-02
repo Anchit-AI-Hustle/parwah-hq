@@ -4,13 +4,13 @@
 // overwritten from here.
 // GET  /api/keys?circle=CODE&member=UUID → { ok, providers: {p: {set, src}} }
 // POST /api/keys {code, memberId, action:'set'|'clear', provider, key?}
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, serverError } from './_db.mjs';
 import { PROVIDERS, providerKeys, ensureKv } from './_keys.mjs';
 
 export default async function handler(req, res) {
   let sql;
   try { sql = db(); await ensureSchema(sql); await ensureKv(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  catch (e) { return serverError(res, e, 'keysapi'); }
 
   try {
     const q = req.query || {};
@@ -62,6 +62,6 @@ export default async function handler(req, res) {
     }
     return res.status(400).json({ ok: false, error: 'Unknown action' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return serverError(res, e, 'keysapi');
   }
 }

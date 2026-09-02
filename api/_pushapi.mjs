@@ -1,13 +1,13 @@
 // Device notifications — Web Push registration.
 // GET  /api/push                     → { ok, publicKey }  (VAPID, for subscribe)
 // POST /api/push {code, memberId, action:'subscribe'|'unsubscribe', sub}
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, serverError } from './_db.mjs';
 import { ensurePushSchema, vapidPublicKey } from './_push.mjs';
 
 export default async function handler(req, res) {
   let sql;
   try { sql = db(); await ensureSchema(sql); await ensurePushSchema(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  catch (e) { return serverError(res, e, 'pushapi'); }
 
   try {
     if (req.method === 'GET') {
@@ -48,6 +48,6 @@ export default async function handler(req, res) {
     }
     return res.status(400).json({ ok: false, error: 'Unknown action' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return serverError(res, e, 'pushapi');
   }
 }

@@ -7,7 +7,7 @@
 //                     can ask for it.
 // No OTP yet (SMS provider is a roadmap item) — the shape is ready for an
 // OTP check to slot in here without any client-flow change.
-import { db, ensureSchema, isUuid, normPhone, phoneError, rateLimit, clientIp } from './_db.mjs';
+import { db, ensureSchema, isUuid, normPhone, phoneError, rateLimit, clientIp, serverError } from './_db.mjs';
 
 // Every circle this number belongs to, each carrying what is waiting in it.
 // A person in three families should be able to see, before opening any of
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
   }
   let sql;
   try { sql = db(); await ensureSchema(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  catch (e) { return serverError(res, e, 'auth'); }
 
   try {
     const body = req.body || {};
@@ -112,6 +112,6 @@ export default async function handler(req, res) {
       user: { id: user.id, name: user.name, phone: user.phone },
       toured: !!user.toured_at, circles });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return serverError(res, e, 'auth');
   }
 }

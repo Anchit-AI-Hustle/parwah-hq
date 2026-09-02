@@ -1,6 +1,6 @@
 // GET  /api/events?circle=CODE          — circle state: members + last 50 events
 // POST /api/events {code, memberId, type, text} — record a check-in, SOS, pill or message
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, isUuid, requireMember, serverError, writeGate, TOO_FAST } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import { award, today } from './_coins.mjs';
 
@@ -28,7 +28,7 @@ export default async function handler(req, res) {
       created_at timestamptz not null default now()
     )`;
     await sql`create index if not exists sos_circle_open on sos (circle_id, status, created_at desc)`;
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  } catch (e) { return serverError(res, e, 'events/schema'); }
 
 // There is no scheduler on this platform, so escalation rides on the polling
 // the family is already doing: any read of the circle checks for an SOS that
@@ -57,8 +57,11 @@ async function escalateStaleSos(sql, circleId) {
 
   try {
     if (req.method === 'GET') {
-      const circle = await circleByCode(sql, req.query && req.query.circle);
-      if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
+      // The invite code alone is not a way in. This read returns every
+      // member's phone number and date of birth, so it asks who is calling.
+      const gate = await requireMember(sql, req.query && req.query.circle, req.query && req.query.member);
+      if (gate.error) return res.status(gate.status).json({ ok: false, error: gate.error });
+      const circle = gate.circle;
       const members = await sql`select id, name, role, phone, place, country, relation, dob, gift_info, created_at from members where circle_id = ${circle.id} order by created_at`;
       const events = await sql`
         select e.id, e.type, e.text, e.created_at, m.name as member_name, m.role as member_role
@@ -100,12 +103,16 @@ async function escalateStaleSos(sql, circleId) {
 
     if (req.method === 'POST') {
       const { code, memberId, type, text } = req.body || {};
-      const circle = await circleByCode(sql, code);
-      if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
+      const gate = await requireMember(sql, code, memberId);
+      if (gate.error) return res.status(gate.status).json({ ok: false, error: gate.error });
+      const circle = gate.circle, me = gate.me;
+      // Everything here has a ceiling except the SOS — pressing the button
+      // twice in a panic must always be recorded.
+      if (type !== 'sos' && type !== 'sos_ack' && type !== 'sos_resolve') {
+        const allowed = await writeGate(sql, 'events', memberId, 90, 60);
+        if (!allowed) return res.status(429).json({ ok: false, error: TOO_FAST });
+      }
       if (type === 'seen') {
-        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-        const mm = await sql`select id from members where id = ${memberId} and circle_id = ${circle.id}`;
-        if (!mm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
         await sql`insert into notif_seen (member_id, seen_at) values (${memberId}, now())
                   on conflict (member_id) do update set seen_at = now()`;
         return res.status(200).json({ ok: true });
@@ -113,9 +120,7 @@ async function escalateStaleSos(sql, circleId) {
       // How you actually are, in today's vocabulary. One answer per person per
       // day, replaceable — a day can turn.
       if (type === 'pulse') {
-        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-        const pm = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
-        if (!pm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        const pm = [me];
         await ensurePulseSchema(sql);
         const day = pulseDay(), styleKey = styleFor(day);
         const opt = optionOf(styleKey, String(req.body.value || ''));
@@ -140,9 +145,7 @@ async function escalateStaleSos(sql, circleId) {
       // Somebody is on it — everyone else stops worrying, and the person who
       // pressed the button finds out that help is coming.
       if (type === 'sos_ack' || type === 'sos_resolve') {
-        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-        const am = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
-        if (!am[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        const am = [me];
         if (!isUuid(req.body.sosId)) return res.status(400).json({ ok: false, error: 'Bad SOS id' });
         const row = await sql`select s.id, s.member_id, s.status, m.name
                               from sos s join members m on m.id = s.member_id
@@ -167,9 +170,7 @@ async function escalateStaleSos(sql, circleId) {
       }
 
       if (type === 'call_start' || type === 'call_end') {
-        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-        const cm = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
-        if (!cm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        const cm = [me];
         if (type === 'call_start') {
           const room = String(req.body.room || '');
           if (room.indexOf('https://meet.jit.si/') !== 0 || room.length > 300) return res.status(400).json({ ok: false, error: 'Bad room' });
@@ -184,9 +185,7 @@ async function escalateStaleSos(sql, circleId) {
         return res.status(200).json({ ok: true });
       }
       if (!TYPES.includes(type)) return res.status(400).json({ ok: false, error: 'Unknown event type' });
-      if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-      const member = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
-      if (!member[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+      const member = [me];
       const t = String(text || '').trim().slice(0, type === 'message' ? 300 : 120);
       if (type === 'message' && !t) return res.status(400).json({ ok: false, error: 'Empty message' });
       await sql`insert into events (circle_id, member_id, type, text)
@@ -203,6 +202,6 @@ async function escalateStaleSos(sql, circleId) {
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ ok: false, error: 'GET or POST only' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return serverError(res, e, 'events');
   }
 }

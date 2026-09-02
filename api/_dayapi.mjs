@@ -2,7 +2,7 @@
 // The day: muhurat computed for where this person actually lives, and the
 // twelve horoscopes. Two very different kinds of thing, kept honestly apart —
 // one is arithmetic, the other is written by someone else.
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, serverError } from './_db.mjs';
 import { panchang, currentPeriod } from './_panchang.mjs';
 import { placeOf } from './_places.mjs';
 import { horoscopeToday, signOf, SIGNS, SIGN_BASIS } from './_horoscope.mjs';
@@ -10,7 +10,7 @@ import { horoscopeToday, signOf, SIGNS, SIGN_BASIS } from './_horoscope.mjs';
 export default async function handler(req, res) {
   let sql;
   try { sql = db(); await ensureSchema(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  catch (e) { return serverError(res, e, 'dayapi'); }
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ ok: false, error: 'GET only' });
@@ -54,6 +54,6 @@ export default async function handler(req, res) {
       signs: SIGNS.map(s => ({ key: s.k, name: s.en, hi: s.hi }))
     });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return serverError(res, e, 'dayapi');
   }
 }

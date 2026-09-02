@@ -3,7 +3,7 @@
 // room; every plan renders in each member's local timezone client-side.
 // GET  /api/plans?circle=CODE&member=UUID → { ok, plans[] } (upcoming)
 // POST /api/plans {code, memberId, action:'create'|'rsvp'|'cancel', ...}
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, serverError } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 
 const KINDS = ['call', 'party', 'meet', 'other'];
@@ -34,7 +34,7 @@ export default async function handler(req, res) {
       created_at timestamptz not null default now()
     )`;
     await sql`alter table plans add column if not exists expected int`;
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  } catch (e) { return serverError(res, e, 'plans'); }
 
   try {
     const q = req.query || {};
@@ -114,6 +114,6 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return serverError(res, e, 'plans');
   }
 }

@@ -14,7 +14,7 @@
 //   doctor / meds / allergies / blood group / emergency contact / insurance
 //   are recorded, missing, or due a re-check.
 // POST /api/book {code, memberId, action:'add'|'update'|'remove'|'verify'}
-import { db, ensureSchema, circleByCode, isUuid, normPhone, phoneError } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, normPhone, phoneError, requireMember, serverError, writeGate, TOO_FAST } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import boardApi from './_boardapi.mjs';
 import vaultApi from './_vaultapi.mjs';
@@ -36,7 +36,16 @@ export default async function handler(req, res) {
   let sql;
   try {
     sql = db(); await ensureSchema(sql);
-    await sql`create table if not exists family_book (
+    await ensureBookSchema(sql);
+  } catch (e) { return serverError(res, e, 'book/schema'); }
+  return bookHandler(req, res, sql);
+}
+
+// The memory tables, in one exported place: Care reads the same rows to work
+// out what the family has not recorded yet, and a table that only exists once
+// somebody has opened Memory is a table that silently breaks that screen.
+export async function ensureBookSchema(sql) {
+  await sql`create table if not exists family_book (
       id uuid primary key default gen_random_uuid(),
       circle_id uuid not null references circles(id) on delete cascade,
       kind text not null,
@@ -76,19 +85,21 @@ export default async function handler(req, res) {
       at timestamptz not null default now()
     )`;
     await sql`create index if not exists book_consent_entry on book_consent (entry_id, at desc)`;
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+}
 
+async function bookHandler(req, res, sql) {
   try {
     const q = req.query || {};
     const body = req.body || {};
     const code = req.method === 'GET' ? q.circle : body.code;
     const memberId = req.method === 'GET' ? q.member : body.memberId;
-    const circle = await circleByCode(sql, code);
-    if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
-    if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-    const meRow = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
-    if (!meRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-    const me = meRow[0];
+    const g = await requireMember(sql, code, memberId);
+    if (g.error) return res.status(g.status).json({ ok: false, error: g.error });
+    const circle = g.circle, me = g.me;
+    if (req.method === 'POST') {
+      const allowed = await writeGate(sql, 'book', memberId, 60, 60);
+      if (!allowed) return res.status(429).json({ ok: false, error: TOO_FAST });
+    }
 
     if (req.method === 'GET') {
       // Everything in this circle, each row marked with whether the caller
@@ -342,6 +353,6 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return serverError(res, e, 'book');
   }
 }
