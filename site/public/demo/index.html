@@ -86,16 +86,43 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
 .eyebrow{font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--sindoor);font-weight:700}
 .back{display:block;text-align:center;margin-top:26px;color:var(--dim);font-size:.85rem}
 .back a{color:var(--marigold)}
-@media(prefers-reduced-motion:reduce){.ev{animation:none}}
+.toplinks{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:14px 0 6px;font-size:.85rem}
+.toplinks a{color:var(--marigold);text-decoration:none;border-bottom:1px solid transparent}
+.toplinks a:hover{border-color:var(--marigold)}
+.guide{max-width:640px;margin:16px auto 0;background:rgba(232,162,61,.12);border:1px dashed var(--marigold-d);border-radius:12px;padding:12px 16px;font-size:.9rem;color:var(--cream)}
+.guide b{color:var(--marigold)}
+.democta{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+.democta button,.democta a{border:0;background:var(--marigold);color:var(--dusk);font-weight:700;font-family:var(--body);font-size:.88rem;border-radius:999px;padding:10px 18px;cursor:pointer;text-decoration:none}
+.democta a.ghost,.democta button.ghost{background:transparent;color:var(--cream);border:1.5px solid var(--pine)}
+.hintpulse{outline:2px solid var(--marigold);outline-offset:2px;animation:pulse 1.4s ease infinite}
+@keyframes pulse{50%{outline-color:transparent}}
+@media(max-width:760px){
+  .stage{flex-direction:column;align-items:center}
+  .phone{width:min(340px,94vw)}
+  body{padding-top:18px}
+}
+@media(prefers-reduced-motion:reduce){.ev{animation:none}.hintpulse{animation:none}}
 </style>
 </head>
 <body>
 
 <div class="top">
   <div class="dev" aria-hidden="true">परवाह</div>
+  <nav class="toplinks" aria-label="Main">
+    <a href="../">Home</a>
+    <a href="../story/">Our story</a>
+    <a href="../launch/">Launch list</a>
+    <a href="../get/">Get app</a>
+    <a href="../app/">Open real app</a>
+  </nav>
   <h1>The Parwah app, working</h1>
   <p>Two phones, one family. Tap on Papa's phone and watch Rohan's phone react — the daily check-in, SOS, one-tap calls, and the consent switch that controls exactly what the family sees. Everything runs right here in your browser; nothing is stored or sent anywhere.</p>
-  <span class="tag">Interactive demo · not the real app yet</span>
+  <span class="tag">Interactive demo · sample family · not signed in</span>
+  <div class="guide" id="guide"><b>Start here:</b> tap <b>All is well ✅</b> on Papa's phone — Rohan's phone updates instantly.</div>
+  <div class="democta">
+    <button type="button" id="reset">Reset demo</button>
+    <a class="ghost" href="../app/">Open the real app</a>
+  </div>
 </div>
 
 <div class="stage">
@@ -108,7 +135,7 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
       <div class="scroll">
         <p class="p-greet">Good morning, Papa 🙏<br>How is everything today?</p>
 
-        <button class="bigbtn btn-ok" id="checkin">All is well ✅<span class="sub">One tap — the whole family relaxes</span></button>
+        <button class="bigbtn btn-ok hintpulse" id="checkin">All is well ✅<span class="sub">One tap — the whole family relaxes</span></button>
 
         <div class="pmsg" id="pmsg"></div>
 
@@ -174,7 +201,7 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
 
 </div>
 
-<p class="back">This is the P1 heart of the app. Money, bookings and Parwah AI join in later phases. <a href="../">Back to the Parwah home page</a></p>
+<p class="back">This is the P1 heart of the app. Money, bookings and Parwah AI join in later phases. <a href="../">Back to the Parwah home page</a> · <a href="../launch/">Join the launch list</a></p>
 
 <div class="toast" id="toast" role="status"></div>
 
@@ -185,24 +212,31 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
   function toast(t){ var el=$('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(function(){el.classList.remove('show')},2600); }
   function now(){ var d=new Date(); var h=d.getHours(), m=('0'+d.getMinutes()).slice(-2), ap=h>=12?'pm':'am'; h=h%12||12; return 'Today, '+h+':'+m+' '+ap; }
   function feedAdd(html, cls){ var e=document.createElement('div'); e.className='ev'+(cls?' '+cls:''); e.innerHTML=html+'<small>'+now()+'</small>'; $('feed').prepend(e); }
+  function setGuide(html){ var g=$('guide'); if(g) g.innerHTML=html; }
+  function clearHint(el){ if(el) el.classList.remove('hintpulse'); }
 
   // daily check-in
   $('checkin').addEventListener('click', function(){
     if(this.classList.contains('done')) return;
     this.classList.add('done');
+    clearHint(this);
     this.innerHTML='Thank you ✅<span class="sub">Your check-in reached the whole family</span>';
     var s=$('pstatus'); s.classList.add('ok'); s.classList.remove('sos');
     $('ptext').textContent='Checked in — all is well ✅ · just now';
     feedAdd('Papa checked in — all is well ✅','good');
     toast('Rohan’s phone: "Papa checked in ✅"');
+    setGuide('<b>Next:</b> tap <b>Morning pills taken?</b> — or flip a consent switch to see Rohan’s feed change.');
+    $('meds').classList.add('hintpulse');
   });
 
   // pills
   $('meds').addEventListener('click', function(){
+    clearHint(this);
     this.innerHTML='Taken ✔ Well done!';
     this.style.background='#E7F2EA';
     if($('shareMeds').checked){ feedAdd('Papa took his morning pills 💊','good'); toast('Circle updated: pills taken 💊'); }
     else{ toast('Noted on Papa’s phone only — sharing is off'); }
+    setGuide('<b>Try:</b> turn off <b>Location moments</b> on Papa’s phone — the temple update disappears from Rohan’s feed.');
   });
 
   // one-tap calls
@@ -216,6 +250,7 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
     $('ptext').textContent='SOS! Calling the circle — location shared';
     feedAdd('🆘 SOS from Papa — call now. Location shared with the circle.','bad');
     toast('Every phone in the circle is ringing now');
+    setGuide('<b>SOS fired.</b> In the real app the whole circle gets a live alert with location. Tap Reset to try again.');
   });
 
   // the consent switch controls the child's view — the whole point
@@ -225,9 +260,12 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
     toast(this.checked?'Location moments visible to the circle again':'Papa paused location moments — Rohan’s feed updated');
   });
 
-  // do-it-for-them placeholders
+  // do-it-for-them placeholders — make interactivity obvious
   var acts=document.querySelectorAll('.act');
-  for(var i=0;i<acts.length;i++){ acts[i].addEventListener('click', function(){ toast(this.getAttribute('data-soon')); }); }
+  for(var i=0;i<acts.length;i++){
+    acts[i].title = 'Coming in a later phase — tap to see when';
+    acts[i].addEventListener('click', function(){ toast(this.getAttribute('data-soon')); });
+  }
 
   // message: child -> parent
   function sendMsg(){
@@ -239,6 +277,8 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
   }
   $('send').addEventListener('click', sendMsg);
   $('msg').addEventListener('keydown', function(e){ if(e.key==='Enter') sendMsg(); });
+
+  $('reset').addEventListener('click', function(){ location.reload(); });
 })();
 </script>
 </body>

@@ -12,17 +12,23 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
 <!-- ============ HERO (dusk) ============ -->
 <header class="dusk">
   <div class="wrap">
     <nav class="nav" aria-label="Main">
-      <a class="mark" href="./" aria-label="Parwah home">
+      <a class="mark" href="./" aria-label="Parwah home" aria-current="page">
         <span class="dev" aria-hidden="true">परवाह</span>
         <span class="latin">Parwah</span>
       </a>
-      <a class="link" href="app/">Sign in</a>
-      <a class="link" href="launch/">Launching soon — join the list</a>
+      <div class="nav-links">
+        <a class="link" href="story/">Our story</a>
+        <a class="link" href="#demo">Try demo</a>
+        <a class="link" href="get/">Get app</a>
+        <a class="link" href="launch/">Launch list</a>
+        <a class="link nav-cta" href="app/">Sign in</a>
+      </div>
     </nav>
   </div>
   <section class="hero">
@@ -31,14 +37,15 @@
       <h1 class="rv">Apni family ki <em>parwah</em> karein.</h1>
       <p class="sub rv">One app for the whole family — with your parents at the centre. Know they're okay, reach them in a tap, book anything they need, send money safely, gift with dignity. From any city in the world, with their consent at the core.</p>
       <div class="ctas rv">
-        <a class="btn btn-wa" href="#demo">See the app working</a>
-        <a class="btn btn-ghost" href="launch/">Join the launch list</a>
+        <a class="btn btn-wa" href="#launch">Join the launch list</a>
+        <a class="btn btn-ghost" href="#demo">Try the interactive demo</a>
       </div>
       <p class="quiet rv"><b>Reassurance, never surveillance.</b> Everything shared is chosen by them, visible to them, paused in one tap.</p>
     </div>
   </section>
 </header>
 
+<main id="main">
 <!-- ============ LIVE DEMO (dusk continues) ============ -->
 <section class="sec dusk demo-sec" id="demo">
   <div class="wrap">
@@ -153,8 +160,10 @@
       <a class="btn btn-ghost" href="launch/">More about the launch</a>
     </div>
     <span class="founder rv">First 500 families get founding-member pricing</span>
+    <p class="proof rv"><strong>What happens next:</strong> you message us → we confirm → you hear first when the app and collection open.</p>
   </div>
 </section>
+</main>
 
 <!-- ============ FOOTER (dusk) ============ -->
 <footer class="dusk">
@@ -166,7 +175,7 @@
       </a>
       <nav class="f-links" aria-label="Footer">
         <a href="app/">Parwah app (beta)</a>
-        <a href="get/">Get the app — Android &amp; iPhone</a>
+        <a href="get/">Get the app</a>
         <a href="demo/">App demo</a>
         <a href="story/">Our story</a>
         <a href="launch/">Launching soon</a>

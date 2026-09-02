@@ -152,6 +152,11 @@ label + select{width:100%}
 .relpick button{flex:0 0 calc(33.33% - 6px);padding:10px 4px;font-size:.78rem}
 .seniorchk{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.9rem;color:var(--ink-soft);cursor:pointer}
 .seniorchk input{width:18px;height:18px;accent-color:var(--marigold)}
+.langseg{display:inline-flex;gap:6px;margin-left:8px;vertical-align:middle}
+.langseg button{border:1.5px solid var(--bone-2);background:var(--surface);border-radius:999px;padding:6px 12px;font:inherit;font-size:.82rem;font-weight:600;cursor:pointer;color:var(--ink)}
+.langseg button.sel{border-color:var(--marigold);background:var(--tint-warm)}
+body[data-lang="hi"] .tabs button{letter-spacing:0}
+
 .go{border:0;width:100%;margin-top:16px;background:var(--marigold);color:var(--dusk);font-weight:700;font-size:1rem;border-radius:999px;padding:15px;cursor:pointer}
 .go:disabled{opacity:.6}
 .err{color:var(--alert);font-size:.85rem;margin-top:10px;min-height:1.2em}
@@ -316,8 +321,18 @@ label + select{width:100%}
 .puopt .pe{font-size:1.2rem}
 .puopt.sel{border-color:var(--marigold);background:rgba(232,162,61,.10)}
 .readycard .frbar i{background:var(--pine)}
+.readycard.rdy-hi .frbar i{background:var(--ok)}
+.readycard.rdy-mid .frbar i{background:var(--marigold)}
+.readycard.rdy-lo .frbar i{background:var(--alert)}
 .rdgap{display:flex;gap:8px;align-items:baseline;font-size:.88rem;padding:3px 0}
 .rdgap em{font-style:normal;color:var(--dim)}
+.rdgap.miss{color:var(--alert)}
+.rdgap.stale{color:var(--marigold-d)}
+.preppct.hi{color:var(--ok)}.preppct.mid{color:var(--marigold-d)}.preppct.lo{color:var(--alert)}
+.pbar i.hi{background:linear-gradient(90deg,var(--ok),var(--pine))}
+.pbar i.mid{background:linear-gradient(90deg,var(--marigold),var(--pine))}
+.pbar i.lo{background:linear-gradient(90deg,var(--alert),var(--marigold))}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
 /* An unanswered SOS outranks everything else on the screen. */
 #sosbar{position:fixed;top:0;left:0;right:0;z-index:12;display:flex;align-items:center;gap:10px;
   padding:11px 14px;background:var(--alert);color:var(--on-accent);font-size:.9rem;font-weight:600;
@@ -827,7 +842,7 @@ details.more[open]>summary::before{content:"▾ "}
   </div>
 
   <div class="card" id="auth-step">
-    <h3>Sign in with your mobile number</h3>
+    <h3 data-i18n="auth.title">Sign in with your mobile number</h3>
     <label for="au-phone">Mobile number</label>
     <div class="phrow">
       <select id="au-cc" class="ccsel" aria-label="Country code"></select>
@@ -837,9 +852,10 @@ details.more[open]>summary::before{content:"▾ "}
       <label for="au-name">Your name — new number, we'll create your profile</label>
       <input type="text" id="au-name" maxlength="60" placeholder="e.g. Rohan" autocomplete="name">
     </div>
-    <button class="go" id="au-go">Continue</button>
-    <button class="cbtn ghost" id="au-see" style="width:100%;margin-top:10px">What is Parwah? See it first →</button>
-    <p class="hint">One number, all your circles. Already signed up? You're in with one tap. New? Profile created and signed in, instantly.</p>
+    <button class="go" id="au-go" data-i18n="auth.go">Continue</button>
+    <button class="cbtn" id="au-see" data-i18n="auth.see" style="width:100%;margin-top:10px;background:var(--surface);border:1.5px solid var(--marigold)">What is Parwah? See it first →</button>
+    <p class="hint" data-i18n="auth.hint">One number, all your circles. Already signed up? You're in with one tap. New? Profile created and signed in, instantly.</p>
+    <p class="hint" data-i18n="auth.privacy" style="margin-top:6px">Your number stays in the family — no ads, no data selling, ever.</p>
   </div>
 
   <div id="circle-step" hidden>
@@ -993,17 +1009,18 @@ details.more[open]>summary::before{content:"▾ "}
 
     <button class="card readycard" id="readycard" hidden style="margin-bottom:14px;width:100%;text-align:left">
       <h3>Your family is <span id="rd-pct">—</span>% ready</h3>
+      <p class="hint" style="margin:-2px 0 8px">Ready for the moments that matter — contacts, health facts and papers recorded and current.</p>
       <div class="frbar" style="margin:8px 0 10px"><i id="rd-fill"></i></div>
       <div id="rd-gaps"></div>
       <p class="hint" id="rd-cta" style="margin-top:8px"></p>
     </button>
 
     <div id="seniorui" hidden>
-      <button class="big ok" id="btn-checkin">All is well ✅<span class="sub">One tap — the whole family relaxes</span></button>
-      <button class="big pill" id="btn-pill">Pills taken? Yes ✔</button>
-      <button class="big sos" id="btn-sos">🆘 SOS — need help now<span class="sub">Everyone in the circle is told instantly</span></button>
+      <button class="big ok" id="btn-checkin" data-i18n="checkin">All is well ✅<span class="sub">One tap — the whole family relaxes</span></button>
+      <button class="big pill" id="btn-pill" data-i18n="pill">Pills taken? Yes ✔</button>
+      <button class="big sos" id="btn-sos" data-i18n="sos">🆘 SOS — need help now<span class="sub">Everyone in the circle is told instantly</span></button>
     </div>
-    <button class="big ecard-big" id="btn-ecard">🚨 Emergency card<span class="sub">Everything a doctor needs — works without internet</span></button>
+    <button class="big ecard-big" id="btn-ecard" data-i18n="ecard">🚨 Emergency card<span class="sub">Everything a doctor needs — works without internet</span></button>
 
     <div class="card" id="firstrun" hidden style="margin-bottom:14px">
       <h3>🌱 Getting Parwah useful</h3>
@@ -1355,8 +1372,10 @@ details.more[open]>summary::before{content:"▾ "}
     <div class="card"><h3>📄 Records</h3><div class="feed" id="pp-records"></div></div>
     <div class="card"><h3>📞 People to call</h3><div class="feed" id="pp-call"></div></div>
     <div class="card"><h3>💡 Useful to know</h3><div class="feed" id="pp-useful"></div></div>
-    <div class="card"><h3>🕒 Freshness</h3><div class="feed" id="pp-fresh"></div>
-      <p class="hint" style="margin-top:10px">Nothing here is assumed current. Anything due a re-check says so.</p></div>
+    <div class="card"><h3>🕒 Freshness</h3>
+      <p class="hint" style="margin:-4px 0 10px">When each important fact was last confirmed — nothing is assumed current.</p>
+      <div class="feed" id="pp-fresh"></div>
+      <p class="hint" style="margin-top:10px">Anything due a re-check says so in yellow.</p></div>
     <div class="prow2" style="margin-bottom:24px">
       <button class="cbtn" id="pp-ecard">🚨 Emergency card</button>
       <button class="cbtn ghost" id="pp-add">＋ Add to their memory</button>
@@ -1894,7 +1913,12 @@ details.more[open]>summary::before{content:"▾ "}
 
     <div class="card">
       <h3>Settings</h3>
-      <div class="kv"><b>Language</b><span>English · Hindi toggle coming soon</span></div>
+      <div class="kv"><b>Language</b>
+        <span class="langseg" id="lang-seg" role="group" aria-label="App language">
+          <button type="button" data-lang="en" class="sel">English</button>
+          <button type="button" data-lang="hi">हिंदी</button>
+        </span>
+      </div>
       <div class="kv"><b>Senior mode</b><span id="p-senior"></span></div>
       <div class="kv"><b>Device alerts</b><span id="p-push">—</span></div>
       <button class="linkbtn" id="p-push-on">🔔 Turn on alerts on this device</button>
@@ -1934,7 +1958,7 @@ details.more[open]>summary::before{content:"▾ "}
       <button data-tab="vault" data-sec="docs">Documents</button>
       <button data-tab="vault" data-sec="pay">Payments</button>
     </div>
-    <button data-tab="care"><span class="ic" aria-hidden="true">🔔</span>Care<i class="dot" id="care-dot" hidden></i></button>
+    <button data-tab="care"><span class="ic" aria-hidden="true">✅</span>Care<i class="dot" id="care-dot" hidden></i></button>
     <button data-tab="day" class="deskonly"><span class="ic" aria-hidden="true">🕉</span>The day</button>
     <div class="subnav side-only" data-parent="day">
       <button data-tab="day" data-sec="muhurat">Muhurat</button>
@@ -2013,7 +2037,7 @@ details.more[open]>summary::before{content:"▾ "}
       </div>
     </div>
     <div class="dgroup">
-      <button class="ditem dparent" data-grp="care">🔔 Care <span class="caret">▾</span></button>
+      <button class="ditem dparent" data-grp="care">✅ Care <span class="caret">▾</span></button>
       <div class="dsub">
         <button class="ditem sub" data-tab="care" data-sec="rem">Things to do</button>
         <button class="ditem sub" data-tab="care" data-sec="req">Suggested</button>
@@ -2757,6 +2781,7 @@ details.more[open]>summary::before{content:"▾ "}
     $('tabs').hidden = false;
     document.body.classList.toggle('senior', state.role === 'parent');
     $('seniorui').hidden = state.role !== 'parent';
+    try { if (state.role === 'parent' && !localStorage.getItem('parwah-lang')) applyLang('hi'); else applyLang(currentLang()); } catch (e) { applyLang(currentLang()); }
     document.body.classList.add('inapp');
     $('who').textContent = state.name + ' · ' + state.code; setInitials(state.name);
     $('side-user').textContent = state.name + ' · ' + state.code;
@@ -3274,10 +3299,16 @@ details.more[open]>summary::before{content:"▾ "}
     $('readycard').hidden = false;
     $('rd-pct').textContent = f.pct;
     $('rd-fill').style.width = f.pct + '%';
+    var band = f.pct >= 80 ? 'rdy-hi' : f.pct >= 50 ? 'rdy-mid' : 'rdy-lo';
+    $('readycard').classList.remove('rdy-hi','rdy-mid','rdy-lo');
+    $('readycard').classList.add(band);
     $('rd-gaps').innerHTML = (f.gaps || []).slice(0, 4).map(function(g){
-      return '<div class="rdgap">' + (g.state === 'missing' ? '⚠️' : '🟡') +
+      var miss = g.state === 'missing';
+      return '<div class="rdgap ' + (miss ? 'miss' : 'stale') + '" role="listitem">' +
+             (miss ? '<span aria-hidden="true">⚠️</span><span class="sr-only">Missing: </span>'
+                   : '<span aria-hidden="true">🟡</span><span class="sr-only">Needs a re-check: </span>') +
              ' <span><b>' + esc(g.name) + '</b> — <em>' + esc(g.label) +
-             (g.state === 'missing' ? ' missing' : ' needs a re-check') + '</em></span></div>';
+             (miss ? ' missing' : ' needs a re-check') + '</em></span></div>';
     }).join('');
     $('rd-cta').textContent = f.gapCount
       ? 'Complete ' + Math.min(3, f.gapCount) + ' important item' + (Math.min(3, f.gapCount) === 1 ? '' : 's')
@@ -3571,6 +3602,78 @@ details.more[open]>summary::before{content:"▾ "}
     });
   });
 
+
+  // ---------- language: English / Hindi ----------
+  // A small, deliberate dictionary for the screens seniors and first-time
+  // families actually touch. Full-app translation is not pretended here.
+  var I18N = {
+    en: {
+      'tab.home':'Today','tab.people':'People','tab.memory':'Memory','tab.care':'Care',
+      'checkin':'All is well ✅','checkin.sub':'One tap — the whole family relaxes',
+      'pill':'Pills taken? Yes ✔','sos':'🆘 SOS — need help now','sos.sub':'Everyone in the circle is told instantly',
+      'ecard':'🚨 Emergency card','ecard.sub':'Everything a doctor needs — works without internet',
+      'auth.title':'Sign in with your mobile number','auth.go':'Continue',
+      'auth.see':'What is Parwah? See it first →',
+      'auth.hint':'One number, all your circles. Already signed up? You\'re in with one tap. New? Profile created and signed in, instantly.',
+      'auth.privacy':'Your number stays in the family — no ads, no data selling, ever.'
+    },
+    hi: {
+      'tab.home':'आज','tab.people':'परिवार','tab.memory':'याद','tab.care':'देखभाल',
+      'checkin':'सब ठीक है ✅','checkin.sub':'एक टैप — पूरा परिवार निश्चिंत',
+      'pill':'दवा ले ली? हाँ ✔','sos':'🆘 SOS — अभी मदद चाहिए','sos.sub':'सर्कल के सबको तुरंत पता चलता है',
+      'ecard':'🚨 इमरजेंसी कार्ड','ecard.sub':'डॉक्टर को जो चाहिए — बिना इंटरनेट भी',
+      'auth.title':'मोबाइल नंबर से साइन इन करें','auth.go':'आगे बढ़ें',
+      'auth.see':'परवाह क्या है? पहले देखें →',
+      'auth.hint':'एक नंबर, आपके सारे सर्कल। पहले से हैं? एक टैप में अंदर। नए हैं? प्रोफ़ाइल बनकर साइन इन।',
+      'auth.privacy':'आपका नंबर परिवार में रहता है — कोई विज्ञापन नहीं, डेटा बेचना नहीं।'
+    }
+  };
+  function currentLang(){
+    try { return localStorage.getItem('parwah-lang') || 'en'; } catch (e) { return 'en'; }
+  }
+  function applyLang(lang){
+    if (lang !== 'hi') lang = 'en';
+    try { localStorage.setItem('parwah-lang', lang); } catch (e) {}
+    document.documentElement.lang = lang === 'hi' ? 'hi' : 'en';
+    document.body.setAttribute('data-lang', lang);
+    var dict = I18N[lang] || I18N.en;
+    document.querySelectorAll('[data-i18n]').forEach(function(el){
+      var k = el.getAttribute('data-i18n'); if (!k || !dict[k]) return;
+      var sub = el.querySelector('.sub');
+      if (sub && dict[k + '.sub']) {
+        // rebuild text node before .sub
+        while (el.firstChild && el.firstChild !== sub) el.removeChild(el.firstChild);
+        el.insertBefore(document.createTextNode(dict[k]), sub);
+        sub.textContent = dict[k + '.sub'];
+      } else {
+        el.textContent = dict[k];
+      }
+    });
+
+    var tabMap = { home:'tab.home', people:'tab.people', memory:'tab.memory', care:'tab.care' };
+    Object.keys(tabMap).forEach(function(tab){
+      document.querySelectorAll('#tabs button[data-tab="'+tab+'"]:not(.side-only)').forEach(function(btn){
+        var ic = btn.querySelector('.ic');
+        var label = dict[tabMap[tab]]; if (!label) return;
+        // keep icon, replace text
+        var html = (ic ? ic.outerHTML : '');
+        var dot = btn.querySelector('.dot');
+        html += label;
+        if (dot) html += dot.outerHTML;
+        btn.innerHTML = html;
+      });
+    });
+    document.querySelectorAll('#lang-seg button').forEach(function(b){
+      b.classList.toggle('sel', b.getAttribute('data-lang') === lang);
+    });
+  }
+  var langSeg = $('lang-seg');
+  if (langSeg) langSeg.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-lang]'); if (!b) return;
+    applyLang(b.getAttribute('data-lang'));
+    toast(b.getAttribute('data-lang') === 'hi' ? 'भाषा: हिंदी' : 'Language: English');
+  });
+
   // ---------- senior actions ----------
   $('btn-checkin').addEventListener('click', function(){
     var b = this;
@@ -3659,11 +3762,15 @@ details.more[open]>summary::before{content:"▾ "}
       var rows = Object.keys(pp.items).map(function(k){
         var st = pp.items[k];
         var ic = st === 'ok' ? '✅' : st === 'verify' ? '🟡' : '❌';
-        return '<span class="prepitem">' + ic + ' ' + PREP_LABEL[k] + (st === 'verify' ? ' (check)' : st === 'missing' ? ' (missing)' : '') + '</span>';
+        var lab = st === 'ok' ? 'Recorded' : st === 'verify' ? 'Needs a re-check' : 'Missing';
+        return '<span class="prepitem"><span aria-hidden="true">' + ic + '</span> ' + PREP_LABEL[k] +
+               ' <span class="sr-only">(' + lab + ')</span>' +
+               (st === 'verify' ? ' (check)' : st === 'missing' ? ' (missing)' : '') + '</span>';
       }).join('');
+      var band = pp.pct >= 80 ? 'hi' : pp.pct >= 50 ? 'mid' : 'lo';
       h += '<div class="card prepcard">' +
-        '<div class="prephead"><b>' + esc(pp.name) + '</b><span class="preppct">' + pp.pct + '% prepared</span></div>' +
-        '<div class="pbar"><i style="width:' + pp.pct + '%"></i></div>' +
+        '<div class="prephead"><b>' + esc(pp.name) + '</b><span class="preppct ' + band + '">' + pp.pct + '% prepared</span></div>' +
+        '<div class="pbar"><i class="' + band + '" style="width:' + pp.pct + '%"></i></div>' +
         '<p class="hint" style="margin:6px 0 8px">' + (pp.attention ? pp.attention + ' thing' + (pp.attention > 1 ? 's' : '') + ' need' + (pp.attention > 1 ? '' : 's') + ' attention' : 'All the important information is recorded 🧡') + '</p>' +
         '<div class="prepitems">' + rows + '</div>' +
         '<div class="prow2" style="margin-top:10px">' +
@@ -3673,7 +3780,7 @@ details.more[open]>summary::before{content:"▾ "}
         '<button class="cbtn ghost" data-mprof="' + pp.memberId + '">👤 Profile</button>' +
         '</div></div>';
     });
-    $('preplist').innerHTML = h || '<div class="ev">Loading…</div>';
+    $('preplist').innerHTML = h || '<div class="ev">Nobody in this circle yet — invite family to see preparedness here.</div>';
   }
   document.addEventListener('click', function(e){
     var b = e.target.closest('[data-pmem]');
@@ -4101,6 +4208,7 @@ details.more[open]>summary::before{content:"▾ "}
     el.value = def || '+91';
   }
   ['au-cc', 'e-cc', 'b-cc'].forEach(function(id){ fillCc(id, '+91'); });
+  applyLang(currentLang());
   function splitE164(v){
     var raw = String(v || '');
     if (raw.charAt(0) !== '+') return null;

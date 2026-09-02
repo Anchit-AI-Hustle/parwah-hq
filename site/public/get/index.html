@@ -16,13 +16,15 @@
 .platform h2{font-family:"Fraunces",Georgia,serif;font-size:1.2rem;margin-bottom:8px}
 .platform ol{margin:10px 0 0 20px}
 .platform li{margin-bottom:8px;color:#4C4437}
-.getbtn{display:inline-block;background:#E8A23D;color:#182622;font-weight:700;border-radius:999px;padding:14px 26px;text-decoration:none;margin-top:12px}
+.getbtn{display:inline-block;background:#E8A23D;color:#182622;font-weight:700;border-radius:999px;padding:14px 26px;text-decoration:none;margin-top:12px;margin-right:8px}
 .getbtn.dark{background:#182622;color:#E8A23D}
 .badge-soon{display:inline-block;background:#EFE8D8;color:#4C4437;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:4px 12px;margin-left:8px}
 #direct-android{display:none}
+.req{font-size:.85rem;color:#4C4437;margin-top:10px}
 </style>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <header class="dusk">
   <div class="wrap">
     <nav class="nav" aria-label="Main">
@@ -30,18 +32,24 @@
         <span class="dev" aria-hidden="true">परवाह</span>
         <span class="latin">Parwah</span>
       </a>
-      <a class="link" href="../app/">Open the app</a>
+      <div class="nav-links">
+        <a class="link" href="../story/">Our story</a>
+        <a class="link" href="../demo/">Try demo</a>
+        <a class="link" href="./" aria-current="page">Get app</a>
+        <a class="link" href="../launch/">Launch list</a>
+        <a class="link nav-cta" href="../app/">Open app</a>
+      </div>
     </nav>
   </div>
   <section class="hero" style="padding-bottom:30px">
     <div class="wrap">
       <h1 class="rv in">Put Parwah on your phone.</h1>
-      <p class="sub rv in">Installs in under a minute — its own icon, full screen, works on Android and iPhone today. Store versions are on the way.</p>
+      <p class="sub rv in">Installs in under a minute — its own icon, full screen, works on Android and iPhone today. Store versions are on the way; the web app is the same product, always current.</p>
     </div>
   </section>
 </header>
 
-<div class="getwrap">
+<main class="getwrap" id="main">
   <div class="platform" id="p-android">
     <h2>🤖 Android</h2>
     <p>Installs straight from the browser — no store needed:</p>
@@ -52,45 +60,86 @@
     </ol>
     <a class="getbtn" href="../app/">Open the app to install</a>
     <a class="getbtn dark" id="direct-android" href="#">⬇ Direct APK download</a>
-    <p style="margin-top:10px;color:#4C4437;font-size:.85rem">Google Play version<span class="badge-soon">Coming soon</span></p>
+    <p class="req">Needs Chrome on Android 8 or newer. Google Play version<span class="badge-soon">Coming soon</span></p>
   </div>
 
   <div class="platform" id="p-ios">
     <h2>🍎 iPhone &amp; iPad</h2>
     <p>Installs from Safari in three taps:</p>
     <ol>
-      <li>Open <a href="../app/">the Parwah app</a> in <b>Safari</b></li>
+      <li>Open <a href="../app/">the Parwah app</a> in <b>Safari</b> (not Chrome)</li>
       <li>Tap the <b>Share</b> button (square with ↑)</li>
       <li>Tap <b>“Add to Home Screen”</b></li>
     </ol>
     <a class="getbtn" href="../app/">Open the app to install</a>
-    <p style="margin-top:10px;color:#4C4437;font-size:.85rem">App Store version<span class="badge-soon">Coming soon</span></p>
+    <p class="req">Needs iOS 16.4 or newer for the best install experience. App Store version<span class="badge-soon">Coming soon</span></p>
   </div>
 
   <div class="platform">
-    <h2>💻 Desktop</h2>
-    <p>Just open <a href="../app/">parwah-hq.anchit-tandon.com/app</a> — the full experience with a sidebar, or install it from Chrome's address-bar install icon.</p>
+    <h2>💻 On a computer right now?</h2>
+    <p>Open the app in this browser, or send the install link to your phone.</p>
+    <a class="getbtn" href="../app/">Open the full desktop app</a>
+    <button class="getbtn dark" type="button" id="copy-link">Copy phone install link</button>
+    <div class="deskqr">
+      <p>Scan with your phone camera to open the install page:</p>
+      <img width="160" height="160" alt="QR code that opens the Parwah app install page"
+           src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&amp;data=https%3A%2F%2Fparwah-hq.anchit-tandon.com%2Fapp%2F">
+      <code>parwah-hq.anchit-tandon.com/app/</code>
+    </div>
   </div>
-</div>
+
+  <div class="troubles">
+    <h2 style="font-family:var(--disp);font-size:1.2rem;margin:28px 0 12px">If something gets stuck</h2>
+    <details>
+      <summary>I don't see “Install app”</summary>
+      <p>On Android, use Chrome (not in-app browsers like WhatsApp or Instagram). On iPhone, use Safari. Visit the app once, wait a few seconds, then check the browser menu again.</p>
+    </details>
+    <details>
+      <summary>It installed but looks like a website</summary>
+      <p>Open the Parwah icon from your home screen — that is the installed app. Inside the browser tab it will still look like a site; that is normal.</p>
+    </details>
+    <details>
+      <summary>I want to send this to Mummy-Papa</summary>
+      <p>Copy the install link above, or open WhatsApp and paste <code>https://parwah-hq.anchit-tandon.com/get/</code> with a short note. Their phone does the install — you do not need to be nearby.</p>
+    </details>
+  </div>
+</main>
 
 <footer class="dusk">
   <div class="wrap">
+    <div class="f-grid">
+      <a class="mark" href="../" aria-label="Parwah home">
+        <span class="dev" aria-hidden="true">परवाह</span>
+        <span class="latin">Parwah</span>
+      </a>
+      <nav class="f-links" aria-label="Footer">
+        <a href="../">Home</a>
+        <a href="../demo/">App demo</a>
+        <a href="../launch/">Launch list</a>
+        <a href="mailto:care@parwah.in">Contact</a>
+      </nav>
+    </div>
     <p class="legal">One version everywhere: the phone apps and the website are always the same, always current — updates reach every device the moment they ship. © 2026 Parwah. Made with parwah, in India.</p>
   </div>
 </footer>
 
 <script>
 (function(){
-  // Surface the matching platform first
   var ua = navigator.userAgent || '';
   if (/iPhone|iPad|iPod/i.test(ua)) {
     var ios = document.getElementById('p-ios');
     ios.parentNode.insertBefore(ios, document.getElementById('p-android'));
   }
-  // If a signed APK is ever hosted at /downloads/parwah.apk, the direct button appears automatically.
   fetch('../downloads/parwah.apk', { method: 'HEAD' }).then(function(r){
     if (r.ok) { var a = document.getElementById('direct-android'); a.href = '../downloads/parwah.apk'; a.style.display = 'inline-block'; }
   }).catch(function(){});
+  var btn = document.getElementById('copy-link');
+  if (btn) btn.addEventListener('click', function(){
+    var url = location.origin + '/app/';
+    function done(){ btn.textContent = 'Copied ✓'; setTimeout(function(){ btn.textContent = 'Copy phone install link'; }, 1800); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done).catch(function(){ prompt('Copy this link', url); });
+    else prompt('Copy this link', url);
+  });
 })();
 </script>
 </body>

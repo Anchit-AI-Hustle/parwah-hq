@@ -12,6 +12,8 @@
 <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="progress-read" id="readbar" aria-hidden="true"></div>
 
 <header class="dusk">
   <div class="wrap">
@@ -20,18 +22,24 @@
         <span class="dev" aria-hidden="true">परवाह</span>
         <span class="latin">Parwah</span>
       </a>
-      <a class="link" href="../#launch">Join the launch list</a>
+      <div class="nav-links">
+        <a class="link" href="./" aria-current="page">Our story</a>
+        <a class="link" href="../demo/">Try demo</a>
+        <a class="link" href="../get/">Get app</a>
+        <a class="link" href="../launch/">Launch list</a>
+        <a class="link nav-cta" href="../app/">Sign in</a>
+      </div>
     </nav>
   </div>
   <section class="story-hero">
     <div class="wrap">
       <h1 class="rv">The 11pm phone call every one of us knows.</h1>
-      <p class="byline rv">Why we're building Parwah · 4 min read</p>
+      <p class="byline rv">Why we're building Parwah · 4 min read · Team Parwah</p>
     </div>
   </section>
 </header>
 
-<main class="article">
+<main class="article" id="main">
   <p class="lead rv">"Sab theek hai." Everything is fine. That's how the call always ends — and you hang up in your flat in Gurgaon, or Bengaluru, or Toronto, not quite believing it. Because last month "everything is fine" turned out to include a slip near the bathroom door that nobody mentioned until the bruise had already faded.</p>
 
   <p class="rv">We are a generation that moved for work and stayed for life. Our parents stayed where our childhoods are. And between those two facts sits a quiet, daily worry that nobody has built for: the ordinary physics of an ageing home. A wet bathroom floor. A staircase with no railing on one side. A jar of achaar that won't open, so it simply gets put back.</p>
@@ -39,6 +47,11 @@
   <p class="rv">Here's what we noticed: Indian homes already retrofit love. A folded towel becomes a bathmat. A plastic stool travels into the shower. A walking stick is bought from the chemist in a hurry, chosen in thirty seconds, wrong height, never adjusted. The care is enormous. The tools are jugaad.</p>
 
   <blockquote class="pull rv">The care is enormous. The tools are jugaad.</blockquote>
+
+  <div class="midcta rv">
+    <p>This feels familiar? Put your parents first in line.</p>
+    <a class="btn btn-wa" href="../launch/">Join the launch list</a>
+  </div>
 
   <h2 class="rv">Elsewhere, this problem has an aisle</h2>
   <p class="rv">In the US and Japan, "ageing at home" is a whole category — grab bars designed like bathroom fittings rather than hospital hardware, kitchen tools built for stiffer hands, clothing with magnetic buttons that still looks like clothing. Not medical equipment. Daily-living equipment. Products that assume growing older is normal, because it is.</p>
@@ -62,6 +75,7 @@
     <p class="lede rv">One WhatsApp message from us when we open, early access before anyone else — and founding-member pricing for the first 500 families.</p>
     <div class="ctas rv">
       <a class="btn btn-wa" href="https://wa.me/919873945238?text=Hi%20Parwah%20%E2%80%94%20add%20me%20to%20the%20launch%20list.%20My%20city%3A%20" rel="noopener">Join the launch list on WhatsApp</a>
+      <a class="btn btn-ghost" href="../demo/">See the app working</a>
       <a class="btn btn-ghost" href="../">Back to home</a>
     </div>
     <p class="alt rv">Prefer email? Write to <a href="mailto:care@parwah.in?subject=Add%20me%20to%20the%20Parwah%20launch%20list">care@parwah.in</a></p>
@@ -77,6 +91,9 @@
       </a>
       <nav class="f-links" aria-label="Footer">
         <a href="../">Home</a>
+        <a href="../demo/">App demo</a>
+        <a href="../get/">Get the app</a>
+        <a href="../launch/">Launch list</a>
         <a href="mailto:care@parwah.in">Contact</a>
       </nav>
     </div>
@@ -92,6 +109,15 @@
     entries.forEach(function(en){if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}});
   },{threshold:0.15});
   els.forEach(function(e){io.observe(e)});
+  var bar=document.getElementById('readbar');
+  if(bar){
+    function tick(){
+      var h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      bar.style.width=(max>0?Math.min(100,(h.scrollTop/max)*100):0)+'%';
+    }
+    window.addEventListener('scroll',tick,{passive:true}); tick();
+  }
 })();
 </script>
 </body>
