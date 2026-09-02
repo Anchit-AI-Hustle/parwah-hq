@@ -774,6 +774,9 @@ launch = (REPO / "site/public/launch/index.html").read_text(encoding="utf-8")
 check("i18n: Hindi is a working toggle, not a coming-soon line",
       'data-lang-set="hi"' in appux and "Hindi toggle coming soon" not in appux
       and "function setLang(" in appux and "I18N" in appux)
+check("i18n: the sign-in points and the form switch language too",
+      'data-i18n="ob.p1"' in appux and 'data-i18n="auth.title"' in appux
+      and "ht:" in appux and "hb:" in appux)
 check("i18n: the choice is applied before the first paint",
       appux.index("localStorage.getItem('parwah-lang')") < appux.index("</head>"))
 check("i18n: senior mode defaults to Hindi when the person has not chosen",

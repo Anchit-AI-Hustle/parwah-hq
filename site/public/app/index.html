@@ -853,25 +853,25 @@ details.more[open]>summary::before{content:"▾ "}
   <h1 data-i18n="ob.title">Your family's circle</h1>
   <p class="lede" data-i18n="ob.lede">One private circle for your family. Check-ins, SOS and messages reach everyone in it — and only them.</p>
   <div class="obpoints">
-    <span class="obpoint"><span class="oi" aria-hidden="true">📒</span><span><b>Where the family knows.</b> Doctors, medicines, blood groups and policies — kept current, not lost in a chat.</span></span>
-    <span class="obpoint"><span class="oi" aria-hidden="true">🚨</span><span><b>Ready before the emergency.</b> One card with everything a doctor asks for, working with no internet.</span></span>
-    <span class="obpoint"><span class="oi" aria-hidden="true">🔐</span><span><b>Papers, permissioned.</b> Aadhaar, PAN and passports — only their owner decides who can open them.</span></span>
+    <span class="obpoint"><span class="oi" aria-hidden="true">📒</span><span data-i18n="ob.p1" data-i18n-html><b>Where the family knows.</b> Doctors, medicines, blood groups and policies — kept current, not lost in a chat.</span></span>
+    <span class="obpoint"><span class="oi" aria-hidden="true">🚨</span><span data-i18n="ob.p2" data-i18n-html><b>Ready before the emergency.</b> One card with everything a doctor asks for, working with no internet.</span></span>
+    <span class="obpoint"><span class="oi" aria-hidden="true">🔐</span><span data-i18n="ob.p3" data-i18n-html><b>Papers, permissioned.</b> Aadhaar, PAN and passports — only their owner decides who can open them.</span></span>
   </div>
 
   <div class="card" id="auth-step">
-    <h3>Sign in with your mobile number</h3>
-    <label for="au-phone">Mobile number</label>
+    <h3 data-i18n="auth.title">Sign in with your mobile number</h3>
+    <label for="au-phone" data-i18n="auth.phone">Mobile number</label>
     <div class="phrow">
       <select id="au-cc" class="ccsel" aria-label="Country code"></select>
       <input type="tel" id="au-phone" maxlength="14" placeholder="98765 43210" autocomplete="tel">
     </div>
     <div id="au-namewrap" hidden>
-      <label for="au-name">Your name — new number, we'll create your profile</label>
+      <label for="au-name" data-i18n="auth.name">Your name — new number, we'll create your profile</label>
       <input type="text" id="au-name" maxlength="60" placeholder="e.g. Rohan" autocomplete="name">
     </div>
-    <button class="go" id="au-go">Continue</button>
-    <button class="cbtn ghost" id="au-see" style="width:100%;margin-top:10px">What is Parwah? See it first →</button>
-    <p class="hint">One number, all your circles. Already signed up? You're in with one tap. New? Profile created and signed in, instantly.</p>
+    <button class="go" id="au-go" data-i18n="auth.go">Continue</button>
+    <button class="cbtn ghost" id="au-see" style="width:100%;margin-top:10px" data-i18n="auth.see">What is Parwah? See it first →</button>
+    <p class="hint" data-i18n="auth.hint">One number, all your circles. Already signed up? You're in with one tap. New? Profile created and signed in, instantly.</p>
   </div>
 
   <div id="circle-step" hidden>
@@ -2120,8 +2120,17 @@ details.more[open]>summary::before{content:"▾ "}
     en: {
       'tab.today':'Today','tab.people':'People','tab.memory':'Memory','tab.memoryfull':'Family memory',
       'tab.care':'Care','tab.vault':'Vault','tab.vaultfull':'Family vault','tab.docs':'Documents','tab.pay':'Payments',
-      'tab.notifs':'Notifications','ob.title':"Your family's circle",
+      'tab.notifs':'Notifications',      'ob.title':"Your family's circle",
       'ob.lede':'One private circle for your family. Check-ins, SOS and messages reach everyone in it — and only them.',
+      'ob.p1':'<b>Where the family knows.</b> Doctors, medicines, blood groups and policies — kept current, not lost in a chat.',
+      'ob.p2':'<b>Ready before the emergency.</b> One card with everything a doctor asks for, working with no internet.',
+      'ob.p3':'<b>Papers, permissioned.</b> Aadhaar, PAN and passports — only their owner decides who can open them.',
+      'auth.title':'Sign in with your mobile number','auth.phone':'Mobile number',
+      'auth.name':"Your name — new number, we'll create your profile",
+      'auth.go':'Continue','auth.create':'Create my profile & continue',
+      'auth.see':'What is Parwah? See it first →',
+      'auth.hint':"One number, all your circles. Already signed up? You're in with one tap. New? Profile created and signed in, instantly.",
+      'tour.next':'Next','tour.start':'Get started','tour.skip':'Skip','tour.step':'Step ',
       'home.code':'Circle code:','home.invite':'Invite family','home.call':'Family call',
       'home.invitehint':'One tap — they join with your circle code.','pulse.title':'How are my people today?',
       'miss.title':'Someone has not checked in','home.family':'Your family','home.viewfamily':'View family',
@@ -2141,8 +2150,17 @@ details.more[open]>summary::before{content:"▾ "}
     hi: {
       'tab.today':'आज','tab.people':'परिवार','tab.memory':'याद','tab.memoryfull':'परिवार की याद',
       'tab.care':'देखभाल','tab.vault':'तिजोरी','tab.vaultfull':'परिवार की तिजोरी','tab.docs':'कागज़','tab.pay':'पैसे',
-      'tab.notifs':'सूचनाएँ','ob.title':'आपके परिवार का घेरा',
+      'tab.notifs':'सूचनाएँ',      'ob.title':'आपके परिवार का घेरा',
       'ob.lede':'एक निजी घेरा। चेक-इन, SOS और संदेश यहीं के लोगों तक पहुँचते हैं — और केवल उन्हीं तक।',
+      'ob.p1':'<b>परिवार यहाँ जानता है।</b> डॉक्टर, दवाइयाँ, ब्लड ग्रुप और पॉलिसी — चैट में खोएँ नहीं, यहीं रखें।',
+      'ob.p2':'<b>आपात से पहले तैयार।</b> डॉक्टर जो पूछे, एक कार्ड पर — बिना नेट के भी चलता है।',
+      'ob.p3':'<b>कागज़, इजाज़त के साथ।</b> आधार, PAN, पासपोर्ट — मालिक ही तय करता है कौन खोले।',
+      'auth.title':'अपना मोबाइल नंबर डालें','auth.phone':'मोबाइल नंबर',
+      'auth.name':'आपका नाम — नया नंबर है तो प्रोफ़ाइल बन जाएगी',
+      'auth.go':'आगे बढ़ें','auth.create':'प्रोफ़ाइल बनाकर आगे बढ़ें',
+      'auth.see':'परवाह क्या है? पहले देखें →',
+      'auth.hint':'एक नंबर, आपके सारे घेरे। पहले से हैं? एक टैप। नए हैं? प्रोफ़ाइल बनती है, अंदर आ जाते हैं।',
+      'tour.next':'आगे','tour.start':'शुरू करें','tour.skip':'छोड़ें','tour.step':'कदम ',
       'home.code':'घेरे का कोड:','home.invite':'परिवार को बुलाएँ','home.call':'परिवार से बात',
       'home.invitehint':'एक टैप — वे आपके कोड से जुड़ जाते हैं।','pulse.title':'आज मेरे लोग कैसे हैं?',
       'miss.title':'किसी ने अभी चेक-इन नहीं किया','home.family':'आपका परिवार','home.viewfamily':'परिवार देखें',
@@ -2174,6 +2192,8 @@ details.more[open]>summary::before{content:"▾ "}
     document.querySelectorAll('[data-lang-set]').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-lang-set') === (hi ? 'hi' : 'en'));
     });
+    if ($('au-go') && $('au-namewrap') && !$('au-namewrap').hidden) $('au-go').textContent = t('auth.create');
+    if (typeof renderTour === 'function' && $('tour-step') && !$('tour-step').hidden) renderTour();
   }
   function setLang(l, persist){
     var lang = l === 'hi' ? 'hi' : 'en';
@@ -2942,15 +2962,25 @@ details.more[open]>summary::before{content:"▾ "}
   // These five cards say what the app is FOR before asking for anything.
   var TOUR = [
     { t:'Parwah is where your family knows',
-      b:'WhatsApp is where your family talks — and where the doctor\u2019s number, the medicine list and the policy number all scroll away. Parwah keeps them, for everyone, in one place.' },
+      b:'WhatsApp is where your family talks — and where the doctor\u2019s number, the medicine list and the policy number all scroll away. Parwah keeps them, for everyone, in one place.',
+      ht:'परवाह वहाँ है जहाँ परिवार जानता है',
+      hb:'WhatsApp पर परिवार बात करता है — और डॉक्टर का नंबर, दवा की लिस्ट और पॉलिसी नंबर सब स्क्रॉल होकर खो जाते हैं। परवाह उन्हें सबके लिए एक जगह रखती है।' },
     { t:'Ready before the emergency, not during it',
-      b:'Blood group, allergies, medicines, doctor, insurance — recorded per person and checked for freshness, so nothing is trusted blindly. The emergency card puts it all on one screen, and works with no internet.' },
+      b:'Blood group, allergies, medicines, doctor, insurance — recorded per person and checked for freshness, so nothing is trusted blindly. The emergency card puts it all on one screen, and works with no internet.',
+      ht:'आपात के दौरान नहीं, उससे पहले तैयार',
+      hb:'ब्लड ग्रुप, एलर्जी, दवाइयाँ, डॉक्टर, बीमा — हर व्यक्ति के लिए लिखे, और ताज़ा जाँचे। इमरजेंसी कार्ड सब एक स्क्रीन पर लाता है, बिना नेट के भी।' },
     { t:'Papers and money, with a permission on each',
-      b:'Aadhaar, PAN, passport, licence, health and birth records live in the vault. Only the person they belong to decides who can open them — and every open is recorded.' },
+      b:'Aadhaar, PAN, passport, licence, health and birth records live in the vault. Only the person they belong to decides who can open them — and every open is recorded.',
+      ht:'कागज़ और पैसे, हर एक पर इजाज़त',
+      hb:'आधार, PAN, पासपोर्ट, लाइसेंस, स्वास्थ्य और जन्म कागज़ तिजोरी में रहते हैं। मालिक ही तय करता है कौन खोले — और हर खोलना लिखा जाता है।' },
     { t:'The everyday, shared out',
-      b:'Check-ins, reminders, plans and calls, a shared drawing board and games. Small things that keep a family in touch without anyone having to nag.' },
+      b:'Check-ins, reminders, plans and calls, a shared drawing board and games. Small things that keep a family in touch without anyone having to nag.',
+      ht:'रोज़मर्रा, बाँटकर',
+      hb:'चेक-इन, याद दिलाना, योजनाएँ और कॉल, साझा ड्राइंग बोर्ड और खेल। छोटी बातें जिनसे परिवार जुड़ा रहता है, बिना ताने के।' },
     { t:'Ekta, who actually knows your family',
-      b:'Ask in your own words. Ekta answers only from what the family has recorded, and says when something is missing or out of date rather than guessing.' }
+      b:'Ask in your own words. Ekta answers only from what the family has recorded, and says when something is missing or out of date rather than guessing.',
+      ht:'एकता, जो आपका परिवार सच में जानती है',
+      hb:'अपनी भाषा में पूछें। एकता उसी से जवाब देती है जो परिवार ने लिखा है, और जब कुछ गायब या पुराना है तो अनुमान नहीं लगाती।' }
   ];
   var tourI = 0;
   function showTour(){
@@ -2958,11 +2988,13 @@ details.more[open]>summary::before{content:"▾ "}
   }
   function renderTour(){
     var c = TOUR[tourI];
-    $('tr-count').textContent = 'Step ' + (tourI + 1) + ' of ' + TOUR.length;
-    $('tr-title').textContent = c.t;
-    $('tr-body').textContent = c.b;
+    var hi = document.documentElement.lang === 'hi';
+    $('tr-count').textContent = t('tour.step') + (tourI + 1) + (hi ? ' / ' : ' of ') + TOUR.length;
+    $('tr-title').textContent = hi && c.ht ? c.ht : c.t;
+    $('tr-body').textContent = hi && c.hb ? c.hb : c.b;
     $('tr-dots').innerHTML = TOUR.map(function(_, i){ return '<i class="' + (i === tourI ? 'on' : '') + '"></i>'; }).join('');
-    $('tr-next').textContent = tourI === TOUR.length - 1 ? 'Get started' : 'Next';
+    $('tr-next').textContent = tourI === TOUR.length - 1 ? t('tour.start') : t('tour.next');
+    $('tr-skip').textContent = t('tour.skip');
   }
   function afterTour(){
     // The introduction is over; carry on to whatever this person actually has.
@@ -3092,7 +3124,7 @@ details.more[open]>summary::before{content:"▾ "}
         if (!j.ok) { $('ob-err').textContent = j.error || 'Could not sign you in.'; return; }
         if (!j.exists) {
           $('au-namewrap').hidden = false;
-          $('au-go').textContent = 'Create my profile & continue';
+          $('au-go').textContent = t('auth.create');
           try { $('au-name').focus(); } catch (e) {}
           return;
         }
