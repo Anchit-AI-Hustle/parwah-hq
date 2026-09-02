@@ -60,7 +60,7 @@ for (const mode of ['light','dark']) {
 
   // contrast on real rendered text across panes
   for (const [hash,sel,label] of [['#home','.homehero h1','home heading'],
-                                  ['#home','.hint','home hint text'],
+                                  ['#home','.homehero .hint','home hint text'],
                                   ['#memory','#blist .ev b','memory entry title'],
                                   ['#memory','#blist .ev small','memory entry detail'],
                                   ['#profile','#themeseg button','the appearance buttons'],
