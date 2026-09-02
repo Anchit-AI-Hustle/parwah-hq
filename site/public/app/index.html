@@ -2440,7 +2440,7 @@ details.more[open]>summary::before{content:"▾ "}
         }
       })
       .catch(function(){ /* offline — keep last render */ });
-    fetch(API.care + '?circle=' + encodeURIComponent(state.code))
+    fetch(API.care + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); })
       .then(function(j){ if (j.ok) renderCare(j); })
       .catch(function(){});

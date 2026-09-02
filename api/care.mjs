@@ -159,8 +159,12 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const circle = await circleByCode(sql, req.query && req.query.circle);
+      const q = req.query || {};
+      const circle = await circleByCode(sql, q.circle);
       if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
+      if (!isUuid(q.member)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+      const reader = await sql`select id from members where id = ${q.member} and circle_id = ${circle.id}`;
+      if (!reader[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
       const state = await careState(sql, circle.id);
       const suggestions = await careSuggestions(sql, circle.id);
       return res.status(200).json({ ok: true, ...state, suggestions });

@@ -59,6 +59,10 @@ async function escalateStaleSos(sql, circleId) {
     if (req.method === 'GET') {
       const circle = await circleByCode(sql, req.query && req.query.circle);
       if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
+      const memberId = req.query && req.query.member;
+      if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+      const reader = await sql`select id from members where id = ${memberId} and circle_id = ${circle.id}`;
+      if (!reader[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
       const members = await sql`select id, name, role, phone, place, country, relation, dob, gift_info, created_at from members where circle_id = ${circle.id} order by created_at`;
       const events = await sql`
         select e.id, e.type, e.text, e.created_at, m.name as member_name, m.role as member_role
@@ -87,12 +91,9 @@ async function escalateStaleSos(sql, circleId) {
         where s.circle_id = ${circle.id} and s.status <> 'resolved'
         order by s.created_at desc limit 3`;
       let seenAt = null;
-      const member = req.query && req.query.member;
-      if (isUuid(member)) {
-        const sr = await sql`select ns.seen_at from notif_seen ns join members m on m.id = ns.member_id
-                             where ns.member_id = ${member} and m.circle_id = ${circle.id}`;
-        seenAt = sr[0] ? sr[0].seen_at : null;
-      }
+      const sr = await sql`select ns.seen_at from notif_seen ns join members m on m.id = ns.member_id
+                           where ns.member_id = ${memberId} and m.circle_id = ${circle.id}`;
+      seenAt = sr[0] ? sr[0].seen_at : null;
       return res.status(200).json({ ok: true, circleName: circle.name, code: circle.code, members, events, seenAt, calls,
         joinRequests: joinReqs, joinPolicy: (pol[0] && pol[0].join_policy) || 'approve',
         sos: sosOpen, sosEscalateMin: SOS_ESCALATE_MIN, pulse });

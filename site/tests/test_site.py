@@ -140,6 +140,21 @@ for name in GUARDED:
     check(f"membership guard present: api/{name}.mjs",
           "Not a member of this circle" in src and "circleByCode" in src)
 
+# Circle codes help families join; they are never a credential for reading
+# private family details. These two endpoints used to check membership only
+# for writes, leaving their GET paths exposed to anyone with a circle code.
+events_src = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+care_src = (API_DIR / "care.mjs").read_text(encoding="utf-8")
+check("security: events GET verifies its reader before returning family data",
+      "const reader = await sql`select id from members where id = ${memberId} and circle_id = ${circle.id}`"
+      in events_src)
+check("security: care GET verifies its reader before returning tasks",
+      "const reader = await sql`select id from members where id = ${q.member} and circle_id = ${circle.id}`"
+      in care_src)
+check("security: app supplies its membership when reading care",
+      "API.care + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId)"
+      in (ROOT / "public" / "app" / "index.html").read_text(encoding="utf-8"))
+
 # 10d. SQL only ever through the tagged-template driver (parameterized)
 for f in sorted(API_DIR.glob("*.mjs")):
     src = f.read_text(encoding="utf-8")
