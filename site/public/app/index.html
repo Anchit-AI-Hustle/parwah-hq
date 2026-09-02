@@ -3221,7 +3221,7 @@ details.more[open]>summary::before{content:"▾ "}
     $('jp-toggle').textContent = joinPolicy === 'open' ? '🔒 Require approval' : '🔓 Let the code be enough';
   }
   function joinAct(body, okMsg){
-    post(API.circle, Object.assign({ code: state.code, memberId: state.memberId }, body))
+    post(API.circle, Object.assign({}, body, { code: state.code, memberId: state.memberId }))
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
         toast(okMsg); refresh();
@@ -3944,7 +3944,9 @@ details.more[open]>summary::before{content:"▾ "}
     }).join('');
   }
   function bookConsentAct(body, okMsg){
-    post(API.book, Object.assign({ code: state.code, memberId: state.memberId }, body))
+    // Identity last: a call site that happens to use one of these names must
+    // not be able to change who the server thinks is calling.
+    post(API.book, Object.assign({}, body, { code: state.code, memberId: state.memberId }))
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
         toast(okMsg);
@@ -3961,12 +3963,12 @@ details.more[open]>summary::before{content:"▾ "}
     var e = bookEntry($('book-detail').dataset.bid); if (!e) return;
     var who = $('bd-share-who').value;
     if (!who) { toast('Choose a family member'); return; }
-    bookConsentAct({ action:'share', id: e.id, memberId: who }, 'Shared 📒');
+    bookConsentAct({ action:'share', id: e.id, who: who }, 'Shared 📒');
   });
   $('bd-shares').addEventListener('click', function(ev){
     var b = ev.target.closest('[data-bunshare]'); if (!b) return;
     var e = bookEntry($('book-detail').dataset.bid); if (!e) return;
-    bookConsentAct({ action:'unshare', id: e.id, memberId: b.getAttribute('data-bunshare') }, 'Access taken back');
+    bookConsentAct({ action:'unshare', id: e.id, who: b.getAttribute('data-bunshare') }, 'Access taken back');
   });
   document.addEventListener('click', function(e){
     var r = e.target.closest('[data-bopen]');
@@ -5551,7 +5553,7 @@ details.more[open]>summary::before{content:"▾ "}
     }).catch(function(){ $('vd-save').disabled = false; toast('No connection — try again'); });
   });
   function vAct(body, okMsg, then){
-    post(API.vault, Object.assign({ code: state.code, memberId: state.memberId, area: 'vault' }, body))
+    post(API.vault, Object.assign({}, body, { code: state.code, memberId: state.memberId, area: 'vault' }))
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
         if (okMsg) toast(okMsg);
@@ -5587,11 +5589,11 @@ details.more[open]>summary::before{content:"▾ "}
   $('vdd-share').addEventListener('click', function(){
     var who = $('vdd-share-who').value;
     if (!who) { toast('Choose a family member'); return; }
-    vAct({ action:'grant', id: vOpenId, memberId: who, level: vLevel }, 'Shared 🔐');
+    vAct({ action:'grant', id: vOpenId, who: who, level: vLevel }, 'Shared 🔐');
   });
   $('vdd-shares').addEventListener('click', function(e){
     var b = e.target.closest('[data-vrevoke]'); if (!b) return;
-    vAct({ action:'revoke', id: vOpenId, memberId: b.getAttribute('data-vrevoke') }, 'Access taken back');
+    vAct({ action:'revoke', id: vOpenId, who: b.getAttribute('data-vrevoke') }, 'Access taken back');
   });
 
   // ----- payments: who may use which way of paying -----
@@ -5645,7 +5647,7 @@ details.more[open]>summary::before{content:"▾ "}
     }).join('');
   }
   function vPayAct(body, okMsg){
-    post(API.pay, Object.assign({ code: state.code, memberId: state.memberId, area: 'pay' }, body))
+    post(API.pay, Object.assign({}, body, { code: state.code, memberId: state.memberId, area: 'pay' }))
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
         if (okMsg) toast(okMsg);
@@ -5695,14 +5697,14 @@ details.more[open]>summary::before{content:"▾ "}
     if ((id = b.getAttribute('data-vpallow'))) {
       var who = document.querySelector('[data-vpwho="' + id + '"]').value;
       if (!who) { toast('Choose a family member'); return; }
-      vPayAct({ action:'allow', id: id, memberId: who,
+      vPayAct({ action:'allow', id: id, who: who,
         perTxnCap: document.querySelector('[data-vpcap="' + id + '"]').value,
         needsOk: document.querySelector('[data-vpask="' + id + '"]').checked }, 'They can use it now 💳');
       return;
     }
     if ((id = b.getAttribute('data-vpstop'))) {
       var parts = id.split('|');
-      vPayAct({ action:'disallow', id: parts[0], memberId: parts[1] }, 'Taken back'); return;
+      vPayAct({ action:'disallow', id: parts[0], who: parts[1] }, 'Taken back'); return;
     }
     if ((id = b.getAttribute('data-vpuse'))) {
       var amt = document.querySelector('[data-vpamt="' + id + '"]').value;

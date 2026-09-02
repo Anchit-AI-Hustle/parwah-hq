@@ -240,8 +240,13 @@ async function bookHandler(req, res, sql) {
     if (body.action === 'share' || body.action === 'unshare') {
       const found = await subjectOf(body.id);
       if (found.err) return res.status(403).json({ ok: false, error: found.err });
-      if (!isUuid(body.memberId)) return res.status(400).json({ ok: false, error: 'Pick a family member' });
-      const t = await sql`select id, name from members where id = ${body.memberId} and circle_id = ${circle.id}`;
+      // The person being shared WITH is `who`. It must not be called memberId:
+      // that name means the caller on every endpoint here, and when the client
+      // put the target in it the server authenticated as the target, compared
+      // them with themselves, and answered "It is already yours" to every
+      // single attempt to share anything.
+      if (!isUuid(body.who)) return res.status(400).json({ ok: false, error: 'Pick a family member' });
+      const t = await sql`select id, name from members where id = ${body.who} and circle_id = ${circle.id}`;
       if (!t[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
       if (t[0].id === me.id) return res.status(400).json({ ok: false, error: 'It is already yours' });
       if (body.action === 'unshare') {

@@ -524,6 +524,27 @@ check("guide: the number is backed by named gaps and a call to action",
 check("guide: the readiness call to action counts what it actually shows",
       "shown.length === 1" in appsrc and "'Fix these ' + shown.length" in appsrc
       and "f.gapCount - shown.length" in appsrc)
+# 10c-vi. Sharing one thing with one named person — the whole point of the
+# consent model — was impossible in all six places it is offered, because the
+# person being shared WITH was sent in `memberId`, the field that says who is
+# CALLING. The server authenticated as the target, compared them with
+# themselves, and answered "It is already yours" every time.
+vaultsrc = (API_DIR / "_vaultapi.mjs").read_text(encoding="utf-8")
+for src, name, actions in ((book, "book.mjs", ("share", "unshare")),
+                           (vaultsrc, "_vaultapi.mjs", ("grant", "revoke")),
+                           (vaultsrc, "_vaultapi.mjs (pay)", ("allow", "disallow"))):
+    block = src.split(f"body.action === '{actions[0]}'")[1][:1200]
+    check(f"{name}: the person being shared with is `who`, never `memberId` ({'/'.join(actions)})",
+          "body.who" in block and "id = ${body.memberId}" not in block)
+# And structurally: a call site must not be able to change who is calling,
+# whatever it happens to name its own fields.
+IDENT_FIRST = re.compile(r"Object\.assign\(\{\s*code: state\.code,\s*memberId: state\.memberId")
+check("the app puts the caller's identity on last, so no call site can overwrite it",
+      not IDENT_FIRST.search(appsrc),
+      "Object.assign({code, memberId}, body) lets body replace both")
+check("the app never sends the share target as memberId",
+      not re.search(r"action\s*:\s*'(share|unshare|grant|revoke|allow|disallow)'[^}]*memberId\s*:", appsrc))
+
 check("guide: someone near a person living away is a first-class contact",
       "'local'" in book and "someone near them to call" in book)
 check("guide: the pulse asks how people are, in a style that rotates daily",
