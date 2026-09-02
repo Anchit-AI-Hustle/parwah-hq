@@ -211,42 +211,9 @@ log "stopping here with Ctrl-C leaves production on this build, unchecked."
 # 4. prove it against the live database before calling it done.
 # A silent wait looks identical to a hang, and a person who cannot tell the
 # difference presses Ctrl-C — which is exactly how a red self-test went unseen.
-# So this says what it is doing, every time round.
-POLL="${PARWAH_POLL_SECONDS:-10}"      # seconds between checks; lowered by the tests
-BODY=""; RED=0
-for i in $(seq 1 40); do
-  BODY="$(curl -fsS --max-time 20 "$PROD_URL/api/diag?probe=db" 2>/dev/null)" || BODY=""
-  case "$BODY" in *'"ok":true'*) break ;; esac
-  if [ -n "$BODY" ]; then
-    # It is answering, so the domain is up and a build is serving. A red answer
-    # that survives two minutes is a real failure, not a build still landing —
-    # waiting the full seven minutes to say so helps nobody.
-    RED=$((RED + 1))
-    log "  self-test is answering but not green (attempt $i, ${RED}/12 red)"
-    [ "$RED" -ge 12 ] && break
-  else
-    log "  waiting for the build to go live (attempt $i/40, ~$((i * POLL))s)"
-  fi
-  sleep "$POLL"
-done
-case "$BODY" in
-  *'"ok":true'*) log "live self-test green on $PROD_URL" ;;
-  "")            die "live self-test unreachable at $PROD_URL" ;;
-                 # the top-level "ok":false is the verdict, not a step
-  *)             log "failing steps: $(printf '%s' "$BODY" | grep -o '"[a-z_]*":false' | cut -d'"' -f2 | grep -vx ok | tr '\n' ' ')"
-                 log "$BODY"
-                 die "live self-test NOT green — production is serving a broken build" ;;
-esac
-
-# The day's arithmetic, checked on the build that is now live. Only an
-# explicit failure is fatal: this probe also reports whether the horoscope
-# source answered, and someone else's uptime is not our deploy's problem.
-DAY="$(curl -fsS --max-time 25 "$PROD_URL/api/diag?probe=day" 2>/dev/null)" || DAY=""
-case "$DAY" in
-  *'"ok":true'*)  log "muhurat check: $(printf '%s' "$DAY" | sed -n 's/.*"summary":"\([^"]*\)".*/\1/p')" ;;
-  *'"ok":false'*) log "$DAY"; die "the muhurat self-test is RED on production" ;;
-  *)              log "muhurat check: no answer from $PROD_URL/api/diag?probe=day (not fatal)" ;;
-esac
+# The verification lives in its own script so it can be tested against a fake
+# server that answers red, which is the only way to know the red path works.
+bash "$REPO/ops/verify-live.sh" "$PROD_URL" || die "live verification failed — see above"
 
 echo "$HEAD_SHA" > "$STATE"
 log "done — $PROD_URL is on $(git rev-parse --short HEAD)"

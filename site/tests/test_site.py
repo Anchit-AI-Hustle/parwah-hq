@@ -391,20 +391,53 @@ check("deploy: the credential switch works on bash 3.2",
       "AUTH_MODE" in deploysh and "=()" not in _dcode)
 check("deploy: a gate failure reports the gate's exit code, not the if's",
       "RC=$?" in _dcode and "if ! bash scripts/checks.sh" not in _dcode)
-check("deploy: the day's arithmetic is checked on the build that went live",
-      "probe=day" in deploysh and "muhurat self-test is RED" in deploysh)
-check("deploy: someone else's uptime never fails our deploy",
-      '*\'"ok":false\'*' in deploysh and "not fatal" in deploysh)
-# A silent wait looks exactly like a hang. The first real deploy was killed
-# with Ctrl-C during it — and the red self-test underneath went unseen.
-check("deploy: the wait says what it is waiting for",
-      "attempt $i/40" in deploysh and "waiting for the build to go live" in deploysh)
 check("deploy: it says the deploy is already live before it starts verifying",
       "ALREADY LIVE" in deploysh and "Ctrl-C" in deploysh)
-check("deploy: a red self-test is called in two minutes, not seven",
-      "RED=$((RED + 1))" in deploysh and '[ "$RED" -ge 12 ]' in deploysh)
-check("deploy: a failure names the steps that failed",
-      "failing steps:" in deploysh and "grep -vx ok" in deploysh)
+check("deploy: verification is a script of its own, so the red path is testable",
+      "ops/verify-live.sh" in deploysh)
+
+# THE VERIFICATION, AND THE BUG IT WAS BUILT AROUND.
+# A red self-test answers with HTTP 500 and puts the failing step in the body.
+# The old poll fetched it with `curl -f`, which discards the body of any 4xx
+# or 5xx - so a genuine failure arrived as an empty string, was read as "not
+# serving yet", and after forty attempts died as "unreachable". The one thing
+# a person needs, the name of the step, could not reach the log by construction.
+verify = (REPO / "ops/verify-live.sh").read_text(encoding="utf-8")
+_vcode = "\n".join(l for l in verify.splitlines() if not l.strip().startswith("#"))
+check("verify: the verdict body is read, not thrown away with curl -f",
+      "curl -sS -L" in _vcode and "curl -f" not in _vcode)
+check("verify: a redirect is followed, so trailingSlash cannot look like a failure",
+      " -L " in _vcode)
+check("verify: the status code is captured alongside the body",
+      "%{http_code}" in _vcode)
+check("verify: a failure names the steps that failed",
+      "failing_steps()" in _vcode and "grep -vx ok" in _vcode)
+check("verify: an error carried in the body is printed too",
+      '"error":"' in _vcode and "ERR=" in _vcode)
+# These three used to be one message. "Answering but not green" is a database
+# diagnosis, and it was being printed for an answer that never reached the
+# database - which is how a morning went into the wrong file.
+check("verify: no answer, a red self-test and some other reply are three cases",
+      "VERDICT=silent" in _vcode and "VERDICT=red" in _vcode and "VERDICT=other" in _vcode)
+check("verify: something that is not the self-test is named as that",
+      "not the self-test" in verify)
+check("verify: what actually came back is shown, not just its shape",
+      "snippet()" in _vcode)
+# A silent wait looks exactly like a hang. The first real deploy was killed
+# with Ctrl-C during it - and the red self-test underneath went unseen.
+check("verify: the wait says what it is waiting for",
+      "attempt $i/$TRIES" in verify and "no answer yet" in verify)
+check("verify: a red self-test is called in two minutes, not seven",
+      "RED=$((RED + 1))" in _vcode and 'RED" -ge "$MAX_RED"' in _vcode)
+check("verify: the day's arithmetic is checked on the build that went live",
+      "probe=day" in verify and "muhurat self-test is RED" in verify)
+check("verify: someone else's uptime never fails our deploy",
+      "not fatal" in verify)
+check("verify: it refuses to run against no url rather than passing quietly",
+      "usage: ops/verify-live.sh" in verify and "exit 2" in verify)
+check("verify: the red path is exercised by a test, not just described",
+      (REPO / "site/tests/verifytest.mjs").exists()
+      and "verifytest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
 check("deploy: works on a machine without flock (macOS)",
       "command -v flock" in deploysh and 'mkdir "$LOCK.d"' in deploysh)
 

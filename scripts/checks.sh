@@ -15,6 +15,11 @@ node site/tests/daytest.mjs
 node site/tests/pintest.mjs
 # What an Indian ID looks like — the same rules the field applies as you type.
 node site/tests/docidtest.mjs
+# The deploy's own verification, against a server that answers red. A check
+# that cannot report a failure is not a check, and this one could not: the
+# poll used `curl -f`, which throws away the HTTP 500 body a red self-test
+# replies with, so the failing step never reached anybody's log.
+node site/tests/verifytest.mjs
 test -f site/tests/test_site.py || { echo "site test suite missing from build input"; exit 1; }
 if command -v python3 >/dev/null 2>&1; then
   python3 site/tests/test_site.py
