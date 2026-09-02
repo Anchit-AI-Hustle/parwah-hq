@@ -5,7 +5,8 @@
     "dev": "node --watch scripts/dev.mjs",
     "build": "bash scripts/checks.sh && rm -rf public && cp -r site/public public",
     "test": "bash scripts/checks.sh",
-    "test:browser": "node site/tests/browser/day.browser.mjs && node site/tests/browser/demo.browser.mjs && node site/tests/browser/address.browser.mjs && node site/tests/browser/vaultid.browser.mjs && node site/tests/browser/theme.browser.mjs && node site/tests/browser/games.browser.mjs"
+    "test:browser": "node site/tests/browser/day.browser.mjs && node site/tests/browser/demo.browser.mjs && node site/tests/browser/address.browser.mjs && node site/tests/browser/vaultid.browser.mjs && node site/tests/browser/theme.browser.mjs && node site/tests/browser/games.browser.mjs && node site/tests/browser/join.browser.mjs && node site/tests/browser/a11y.browser.mjs",
+    "test:api": "node site/tests/api/journey.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",

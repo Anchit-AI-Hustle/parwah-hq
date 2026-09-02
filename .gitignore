@@ -10,3 +10,7 @@ node_modules/
 # local deploy cron state
 .deploy-state
 ops/deploy.log
+# local API secrets for scripts/dev.mjs (DATABASE_URL, provider keys)
+.env.local
+.env
+.neon

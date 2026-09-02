@@ -5,6 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Parwah — Apni family ki parwah karein</title>
 <meta name="description" content="Parwah is one app for family care in India — know your parents are okay, reach them in a tap, book anything for them, send money safely and gift with dignity.">
+<link rel="canonical" href="https://parwah-hq.anchit-tandon.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Parwah">
+<meta property="og:locale" content="en_IN">
+<meta property="og:url" content="https://parwah-hq.anchit-tandon.com/">
+<meta property="og:title" content="Parwah — Apni family ki parwah karein">
+<meta property="og:description" content="One private circle for your family — daily check-ins, the emergency card, and everything a doctor asks for, kept current in one place.">
+<meta property="og:image" content="https://parwah-hq.anchit-tandon.com/og/home.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Parwah — Apni family ki parwah karein">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Parwah — Apni family ki parwah karein">
+<meta name="twitter:description" content="One private circle for your family — daily check-ins, the emergency card, and everything a doctor asks for, kept current in one place.">
+<meta name="twitter:image" content="https://parwah-hq.anchit-tandon.com/og/home.png">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,7 +36,7 @@
         <span class="dev" aria-hidden="true">परवाह</span>
         <span class="latin">Parwah</span>
       </a>
-      <a class="link" href="app/">Sign in</a>
+      <a class="link" href="app/" data-track="open_app" data-track-label="home-nav">Sign in</a>
       <a class="link" href="launch/">Launching soon — join the list</a>
     </nav>
   </div>
@@ -50,9 +65,9 @@
     <iframe src="demo/" title="Interactive Parwah app demo — parent and child phones side by side" loading="lazy"></iframe>
   </div>
   <div class="wrap" style="text-align:center">
-    <a class="btn btn-wa rv" href="app/">Open the real app (beta)</a>
-    <a class="btn btn-ghost rv" href="get/">📲 Install on your phone</a>
-    <a class="btn btn-ghost rv" href="demo/">Open the demo full screen</a>
+    <a class="btn btn-wa rv" href="app/" data-track="open_app" data-track-label="home-demo-section">Open the real app (beta)</a>
+    <a class="btn btn-ghost rv" href="get/" data-track="install_intent" data-track-label="home-demo-section">📲 Install on your phone</a>
+    <a class="btn btn-ghost rv" href="demo/" data-track="view_demo" data-track-label="home-fullscreen">Open the demo full screen</a>
   </div>
 </section>
 
@@ -147,9 +162,24 @@
   <div class="wrap">
     <p class="eyebrow rv">Launching soon · India</p>
     <h2 class="rv">Put your family first in line.</h2>
-    <p class="lede rv">One WhatsApp message from us when we open, early access to the app, and first pick of the launch collection. No spam, no daily forwards.</p>
+    <p class="lede rv">One message from us when we open, early access to the app, and first pick of the launch collection. No spam, no daily forwards.</p>
+
+    <form class="joinform rv" id="joinform" data-source="home" novalidate>
+      <label for="jf-name">Your name</label>
+      <input type="text" id="jf-name" name="name" maxlength="80" autocomplete="name" placeholder="e.g. Rohan Sharma" required>
+      <label for="jf-email">Email</label>
+      <input type="email" id="jf-email" name="email" maxlength="200" autocomplete="email" placeholder="rohan@example.com" required>
+      <label class="consent" for="jf-consent">
+        <input type="checkbox" id="jf-consent" name="consent">
+        <span>Yes, write to me once when Parwah opens. Nothing else, and nobody else gets this address.</span>
+      </label>
+      <button type="submit" id="jf-go">Put my family first in line</button>
+      <p class="say" id="jf-say" role="status" aria-live="polite"></p>
+    </form>
+
+    <p class="or rv">or, if you'd rather</p>
     <div class="ctas rv">
-      <a class="btn btn-wa" href="https://wa.me/919873945238?text=Hi%20Parwah%20%E2%80%94%20add%20me%20to%20the%20launch%20list.%20My%20city%3A%20" rel="noopener">Join the launch list on WhatsApp</a>
+      <a class="btn btn-wa" href="https://wa.me/919873945238?text=Hi%20Parwah%20%E2%80%94%20add%20me%20to%20the%20launch%20list.%20My%20city%3A%20" rel="noopener" data-track="join_waitlist" data-track-label="home-whatsapp">Join the list on WhatsApp</a>
       <a class="btn btn-ghost" href="launch/">More about the launch</a>
     </div>
     <span class="founder rv">First 500 families get founding-member pricing</span>
@@ -177,6 +207,9 @@
   </div>
 </footer>
 
+<script src="config.js"></script>
+<script src="analytics.js"></script>
+<script src="join.js"></script>
 <script>
 (function(){
   var els=document.querySelectorAll('.rv');

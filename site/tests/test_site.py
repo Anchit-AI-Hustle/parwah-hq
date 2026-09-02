@@ -67,7 +67,13 @@ WA_NUMBER = "919873945238"
 ph = sum(p.read_text(encoding="utf-8").count("91XXXXXXXXXX") for p in PAGES)
 wa = sum(p.read_text(encoding="utf-8").count(f"wa.me/{WA_NUMBER}") for p in PAGES)
 check("wa.me placeholder fully replaced", ph == 0, f"found {ph} leftover placeholder link(s)")
-check("wa.me links present and consistent", wa == 3, f"expected 3 links to wa.me/{WA_NUMBER}, found {wa}")
+# Every page that asks people to join must offer WhatsApp, and every wa.me
+# link anywhere must be the real number. Counted per page rather than pinned
+# to a total, so adding a call to action is not a test failure.
+check("wa.me links present on every page that asks", wa >= 3, f"only {wa} link(s) to wa.me/{WA_NUMBER}")
+WA_ANY = re.compile(r"wa\.me/(\d+)")
+wrong = sorted({n for p in PAGES for n in WA_ANY.findall(p.read_text(encoding="utf-8")) if n != WA_NUMBER})
+check("every wa.me link is the real number", not wrong, ", ".join(wrong))
 
 # ---------- 6. A11y basics ----------
 for p in PAGES:

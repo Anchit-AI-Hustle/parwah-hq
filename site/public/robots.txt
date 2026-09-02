@@ -1,2 +1,8 @@
 User-agent: *
 Allow: /
+
+# The product itself is private and carries noindex on the page as well —
+# this is the belt to that pair of braces.
+Disallow: /app/
+
+Sitemap: https://parwah-hq.anchit-tandon.com/sitemap.xml

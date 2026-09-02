@@ -5,6 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Parwah — Launching soon across India</title>
 <meta name="description" content="Parwah is launching soon — join the list on WhatsApp for early access to the family-care app and first pick of the launch collection.">
+<link rel="canonical" href="https://parwah-hq.anchit-tandon.com/launch/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Parwah">
+<meta property="og:locale" content="en_IN">
+<meta property="og:url" content="https://parwah-hq.anchit-tandon.com/launch/">
+<meta property="og:title" content="Parwah — Launching soon across India">
+<meta property="og:description" content="Join the launch list: early access to the family-care app, and founding-member pricing for the first 500 families.">
+<meta property="og:image" content="https://parwah-hq.anchit-tandon.com/og/launch.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Parwah — Launching soon across India">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Parwah — Launching soon across India">
+<meta name="twitter:description" content="Join the launch list: early access to the family-care app, and founding-member pricing for the first 500 families.">
+<meta name="twitter:image" content="https://parwah-hq.anchit-tandon.com/og/launch.png">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,8 +59,23 @@
     <p class="eyebrow rv">Founding families</p>
     <h2 class="rv">The first 500 families get founding-member pricing.</h2>
     <p class="lede rv">Early access to the app, launch-collection pricing that never comes back, and a direct line to the team building this — your feedback shapes what ships next.</p>
-    <p class="alt rv">Prefer email? Write to <a href="mailto:care@parwah.in?subject=Add%20me%20to%20the%20Parwah%20launch%20list">care@parwah.in</a></p>
+
+    <form class="joinform rv" id="joinform" novalidate>
+      <label for="jf-name">Your name</label>
+      <input type="text" id="jf-name" name="name" maxlength="80" autocomplete="name" placeholder="e.g. Rohan Sharma" required>
+      <label for="jf-email">Email</label>
+      <input type="email" id="jf-email" name="email" maxlength="200" autocomplete="email" placeholder="rohan@example.com" required>
+      <label class="consent" for="jf-consent">
+        <input type="checkbox" id="jf-consent" name="consent">
+        <span>Yes, write to me once when Parwah opens. Nothing else, and nobody else gets this address.</span>
+      </label>
+      <button type="submit" id="jf-go">Put my family first in line</button>
+      <p class="say" id="jf-say" role="status" aria-live="polite"></p>
+    </form>
+
+    <p class="or rv">or, if you'd rather</p>
     <div class="ctas rv">
+      <a class="btn btn-wa" href="https://wa.me/919873945238?text=Hi%20Parwah%20%E2%80%94%20add%20me%20to%20the%20launch%20list.%20My%20city%3A%20" rel="noopener" data-track="join_waitlist" data-track-label="launch-whatsapp">Message us on WhatsApp</a>
       <a class="btn btn-ghost" href="../">Back to the home page</a>
     </div>
   </div>
@@ -69,6 +99,9 @@
   </div>
 </footer>
 
+<script src="../config.js"></script>
+<script src="../analytics.js"></script>
+<script src="../join.js"></script>
 <script>
 (function(){
   var els=document.querySelectorAll('.rv');

@@ -1,6 +1,12 @@
-// GET /api/health — proves the database wiring end to end:
+// GET /api/diag — proves the database wiring end to end:
 // inserts a marker row, reads it back, deletes it, reports counts.
+//
+// The table it writes to was created only in a Supabase migration belonging to
+// a retired repo, so on the Neon database this product actually runs on it did
+// not exist and this probe — the one whose entire job is saying whether the
+// database is reachable — answered 500 forever.
 import { neon } from '@neondatabase/serverless';
+import { ensureWaitlistSchema } from './_waitlist.mjs';
 
 export default async function handler(req, res) {
   const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
@@ -10,6 +16,7 @@ export default async function handler(req, res) {
   const sql = neon(url);
   const email = `healthcheck+${Date.now()}@parwah.internal`;
   try {
+    await ensureWaitlistSchema(sql);
     await sql`insert into waitlist (name, email, consent, source)
               values ('Health Check', ${email}, true, 'healthcheck')`;
     const found = await sql`select id from waitlist where email = ${email}`;

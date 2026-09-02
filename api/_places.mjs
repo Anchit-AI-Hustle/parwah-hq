@@ -51,18 +51,24 @@ export const CITIES = {
 
 // Delhi is the default only when nothing at all is known, and the caller is
 // told so — a silently wrong city gives silently wrong timings.
-export const DEFAULT_PLACE = { name: 'New Delhi', lat: 28.6139, lon: 77.2090, tz: 'Asia/Kolkata', guessed: true };
+//
+// `why` separates the two ways a guess happens, because they need different
+// things said to the person: 'none' means nobody has told us where they live,
+// 'unknown' means they did and we do not have it. Collapsing them produced
+// the screen that said "Today in New Delhi" and then "we don't know New
+// Delhi", which reads like a broken app rather than an honest one.
+export const DEFAULT_PLACE = { name: 'New Delhi', lat: 28.6139, lon: 77.2090, tz: 'Asia/Kolkata', guessed: true, why: 'none' };
 
 export function placeOf(text) {
   const t = String(text || '').trim().toLowerCase();
   if (!t) return DEFAULT_PLACE;
-  if (CITIES[t]) { const c = CITIES[t]; return { name: text.trim(), lat: c[0], lon: c[1], tz: c[2], guessed: false }; }
+  if (CITIES[t]) { const c = CITIES[t]; return { name: text.trim(), lat: c[0], lon: c[1], tz: c[2], guessed: false, why: null }; }
   // "Pune, Maharashtra" / "Greater Noida" — try each comma part, then any
   // known city named inside the string.
   for (const part of t.split(',').map(s => s.trim())) {
-    if (CITIES[part]) { const c = CITIES[part]; return { name: text.trim(), lat: c[0], lon: c[1], tz: c[2], guessed: false }; }
+    if (CITIES[part]) { const c = CITIES[part]; return { name: text.trim(), lat: c[0], lon: c[1], tz: c[2], guessed: false, why: null }; }
   }
   const hit = Object.keys(CITIES).find(k => t.includes(k));
-  if (hit) { const c = CITIES[hit]; return { name: text.trim(), lat: c[0], lon: c[1], tz: c[2], guessed: false }; }
-  return { ...DEFAULT_PLACE, name: text.trim(), guessed: true };
+  if (hit) { const c = CITIES[hit]; return { name: text.trim(), lat: c[0], lon: c[1], tz: c[2], guessed: false, why: null }; }
+  return { ...DEFAULT_PLACE, name: text.trim(), guessed: true, why: 'unknown' };
 }
