@@ -319,10 +319,11 @@ label + select{width:100%}
 .rdgap{display:flex;gap:8px;align-items:baseline;font-size:.88rem;padding:3px 0}
 .rdgap em{font-style:normal;color:var(--dim)}
 /* An unanswered SOS outranks everything else on the screen. */
-#sosbar{position:fixed;top:0;left:0;right:0;z-index:12;display:flex;align-items:center;gap:10px;
+#sosbar{position:fixed;top:0;left:0;right:0;z-index:12;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   padding:11px 14px;background:var(--alert);color:var(--on-accent);font-size:.9rem;font-weight:600;
   box-shadow:0 6px 20px rgba(0,0,0,.3)}
 #sosbar .lc-join,#sosbar .lc-end{white-space:nowrap}
+#sosbar .ecard-btn{background:var(--dusk);color:var(--on-dark);border-color:rgba(255,255,255,.3)}
 body.inapp #sosbar{padding-left:14px}
 @media(min-width:900px){body.inapp #sosbar{left:var(--side-w)}}
 
@@ -805,6 +806,7 @@ details.more[open]>summary::before{content:"▾ "}
   <span class="pulse" aria-hidden="true"></span>
   <span id="sos-txt" style="flex:1"></span>
   <a class="lc-join" id="sos-call">📞 Call</a>
+  <button class="lc-join ecard-btn" id="sos-ecard">🚨 Card</button>
   <button class="lc-join" id="sos-ack">🧡 I'm on it</button>
   <button class="lc-end" id="sos-done">Sorted</button>
 </div>
@@ -2085,6 +2087,7 @@ details.more[open]>summary::before{content:"▾ "}
   var curChat = null, chatsCache = [], membersCache = [];
   var authUser = null, pendingJoin = null;
   var seenAt = null, notifsCache = [], curNotif = null;
+  var sosCardShown = null;
   function loadAuth(){ try { return JSON.parse(localStorage.getItem('parwah-user') || 'null'); } catch (e) { return null; } }
   function saveAuth(u){ try { localStorage.setItem('parwah-user', JSON.stringify(u)); } catch (e) {} }
   function clearAuth(){ try { localStorage.removeItem('parwah-user'); } catch (e) {} }
@@ -2296,8 +2299,10 @@ details.more[open]>summary::before{content:"▾ "}
     var so = (data.sos || [])[0];
     $('sosbar').hidden = !so;
     if (so) {
+      if (sosCardShown !== so.id) sosCardShown = null;
       var mineSos = so.member_id === state.memberId;
       $('sosbar').dataset.sid = so.id;
+      $('sosbar').dataset.mid = so.member_id;
       $('sos-txt').textContent = so.status === 'acked'
         ? '🧡 ' + (so.acked_name || 'Someone') + ' is on their way to ' + so.name
         : (mineSos ? '🆘 Your SOS is out — the family has been told' + (so.escalated ? ', and told again' : '')
@@ -2307,7 +2312,7 @@ details.more[open]>summary::before{content:"▾ "}
       $('sos-call').hidden = mineSos || !so.phone;
       $('sos-ack').hidden = mineSos || so.status !== 'open';
       $('sos-done').hidden = false;
-    }
+    } else { sosCardShown = null; }
 
     var mh = '';
     data.members.forEach(function(m){
@@ -2558,6 +2563,7 @@ details.more[open]>summary::before{content:"▾ "}
     dm.innerHTML = dh;
     $('t-vs').innerHTML = '<option value="">Challenge…</option>' + dh.split('</option>').slice(1).join('</option>');
     $('g-mem').innerHTML = gm || '<span class="hint">Invite more family first — a group needs people.</span>';
+    showSosEmergencyCard();
   }
 
   function carePost(body, after){
@@ -3628,7 +3634,7 @@ details.more[open]>summary::before{content:"▾ "}
   $('r-for').addEventListener('change', todoHint);
 
   // ---------- Family book: contacts, addresses, meds-map ----------
-  var bookCache = [], prepCache = [], bookAccess = [], bookConsent = [], bkFilter = 'all', bkAbout = '', bEditId = null, bKind = 'contact', bookStaleDays = 180;
+  var bookCache = [], prepCache = [], bookAccess = [], bookConsent = [], bookLoaded = false, bkFilter = 'all', bkAbout = '', bEditId = null, bKind = 'contact', bookStaleDays = 180;
   var BK_ICON = { contact: '☎️', address: '📍', med: '💊', fact: '🩸', insurance: '🛡' };
   var BK_LABEL = { contact: 'Contact', address: 'Address', med: 'Meds', fact: 'Health fact', insurance: 'Insurance' };
   var FRESH_KINDS = { med: 1, fact: 1, insurance: 1 };
@@ -3688,9 +3694,9 @@ details.more[open]>summary::before{content:"▾ "}
     if (!state) return;
     fetch(API.book + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); })
-      .then(function(j){ if (j.ok) { bookCache = j.entries || []; prepCache = j.prep || []; bookAccess = j.access || []; bookConsent = j.consent || [];
+      .then(function(j){ if (j.ok) { bookCache = j.entries || []; bookLoaded = true; prepCache = j.prep || []; bookAccess = j.access || []; bookConsent = j.consent || [];
           recordsCache = j.records || []; renderReady(j.family); renderFamCards();
-          if (personId && curTab === 'person') openPerson(personId); bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); ecSave();
+          if (personId && curTab === 'person') openPerson(personId); bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); ecSave(); showSosEmergencyCard();
           var openId = $('book-detail').hidden ? null : $('book-detail').dataset.bid;
           if (openId && bookEntry(openId)) openBookDetail(openId);
           else if (openId) { $('book-detail').hidden = true; $('book-list-view').hidden = false; }
@@ -3997,6 +4003,13 @@ details.more[open]>summary::before{content:"▾ "}
     $('ecard').dataset.mid = m.id;
     $('ecard').hidden = false;
   }
+  function showSosEmergencyCard(){
+    var bar = $('sosbar'), sid = bar.dataset.sid, mid = bar.dataset.mid;
+    if (bar.hidden || !sid || !mid || sosCardShown === sid || !bookLoaded || !membersCache.length) return;
+    if (!membersCache.some(function(m){ return m.id === mid; })) return;
+    sosCardShown = sid;
+    openEcard(mid);
+  }
   function ecardText(){
     var t = $('ec-name').textContent + ' — emergency card (Parwah)\n';
     $('ec-body').querySelectorAll('.ec-sec').forEach(function(sec){
@@ -4020,6 +4033,10 @@ details.more[open]>summary::before{content:"▾ "}
     d.members.forEach(function(m){ if (!pick && m.role === 'parent') pick = m; });
     if (!pick) d.members.forEach(function(m){ if (!pick && m.id === state.memberId) pick = m; });
     if (pick) openEcard(pick.id); else toast('Add a family member first');
+  });
+  $('sos-ecard').addEventListener('click', function(){
+    var mid = $('sosbar').dataset.mid;
+    if (mid) openEcard(mid);
   });
   $('ec-x').addEventListener('click', function(){ $('ecard').hidden = true; });
   $('ecard').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });

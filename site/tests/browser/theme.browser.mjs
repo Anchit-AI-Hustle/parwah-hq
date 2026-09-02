@@ -28,7 +28,8 @@ let pass=0,fail=0; const errors=[];
 const ok=(c,n)=>{c?pass++:(fail++,console.log('FAIL  '+n)); if(c) console.log('PASS  '+n);};
 
 const ME='11111111-1111-1111-1111-111111111111', now=new Date().toISOString();
-const events={ok:true,circleName:'T',code:'ABCDEF',seenAt:now,joinRequests:[],joinPolicy:'approve',sos:[],
+const events={ok:true,circleName:'T',code:'ABCDEF',seenAt:now,joinRequests:[],joinPolicy:'approve',
+  sos:[{id:'s1',member_id:ME,status:'open',escalated:false,created_at:now,name:'Anchit Tandon',phone:'+919810033333'}],
   pulse:{day:'2026-09-01',style:'weather',styleName:'Weather',ask:'How are you today?',
     options:[{k:'sunny',e:'☀️',t:'Sunny'},{k:'rainy',e:'🌧',t:'Rainy',call:true}],answers:[]},calls:[],
   members:[{id:ME,name:'Anchit Tandon',role:'family',relation:'son',place:'Delhi',country:'IN',dob:'1990-08-05',gift_info:{},created_at:now}],
@@ -52,6 +53,7 @@ for (const mode of ['light','dark']) {
   await pg.route('**/api/book*',r=>r.fulfill({json:book}));
   await pg.addInitScript(()=>{localStorage.setItem('parwah',JSON.stringify({code:'ABCDEF',memberId:'11111111-1111-1111-1111-111111111111',name:'Anchit Tandon',role:'family',circleName:'T'}));localStorage.setItem('parwah-fr-hide','1');});
   await pg.goto(BASE + '/app/'); await pg.waitForTimeout(700);
+  ok(await pg.locator('#ecard').isVisible(), `${mode}: an SOS opens the family emergency card`);
 
   const bg=await pg.evaluate(()=>getComputedStyle(document.body).backgroundColor);
   const dark = mode==='dark';

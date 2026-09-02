@@ -353,6 +353,11 @@ check("sos: escalation fires exactly once across instances",
       "escalated = true" in events and "and escalated = false returning id" in events)
 check("sos: escalation never breaks a read",
       "escalation must never break a read" in events)
+check("sos: a consented emergency card opens once when an SOS arrives",
+      "function showSosEmergencyCard()" in appsrc
+      and "sosCardShown === sid" in appsrc
+      and "openEcard(mid);" in appsrc
+      and 'id="sos-ecard"' in appsrc)
 check("pricing: dual currency at a fixed, stated rate",
       "USD_RATE = 85" in plan and "priceOf" in plan)
 check("pricing: no payment rails, and the page says so",
