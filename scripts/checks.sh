@@ -18,6 +18,9 @@ node site/tests/docidtest.mjs
 # The games list: several games at once, including two of the same kind.
 # _gamelist.mjs imports nothing either, so this runs before npm install.
 node site/tests/gametest.mjs
+# Ekta with no credit: she retrieves from the family's own records rather
+# than dying. _ektalocal.mjs imports nothing, so this runs before npm install.
+node site/tests/ektatest.mjs
 # The deploy's own verification, against a server that answers red. A check
 # that cannot report a failure is not a check, and this one could not: the
 # poll used `curl -f`, which throws away the HTTP 500 body a red self-test

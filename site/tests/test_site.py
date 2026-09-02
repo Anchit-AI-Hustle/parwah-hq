@@ -598,6 +598,49 @@ check("browser suites: each takes the port it was actually given",
 check("browser suites: every one degrades gracefully without playwright",
       all("playwright-core is not installed" in b.read_text(encoding="utf-8") for b in _bsuites))
 
+# EKTA WITH NO CREDIT. The Anthropic key ran out, every tier of the cascade
+# returned the same account-level refusal, the driver threw, and the whole
+# assistant screen died. A family must never be shown a crash where an
+# answer was possible.
+ekta = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
+elocal = (API_DIR / "_ektalocal.mjs").read_text(encoding="utf-8")
+eself = (API_DIR / "_ektaselftest.mjs").read_text(encoding="utf-8")
+check("ekta: no credit is recognised as an account fact, not a model fact",
+      "isBillingFailure" in elocal and "credit balance is too low" in elocal)
+check("ekta: a dead key stops the cascade instead of failing three times",
+      "if (isDeadKey(e)) break;" in ekta)
+check("ekta: an overload still cascades, because a retry can help there",
+      "isDeadKey" in elocal and "isAuthFailure" in elocal)
+check("ekta: every provider failing ends in an answer, never a throw",
+      "throw new Error('All providers failed" not in ekta and "localTurn(sql, circle, me, history, reason)" in ekta)
+check("ekta: with no key at all she still answers from the records",
+      "noBrain" in ekta and "localTurn(sql, circle, me, history, 'none')" in ekta)
+check("ekta: the offline answer is retrieval, through the same tools",
+      "prepare_summary" in ekta and "get_family_memory" in ekta and "get_circle" in ekta)
+check("ekta: a degraded turn is refunded, not charged for",
+      "if (out.offline) { await refund(); " in ekta)
+check("ekta: the reason is named, not hidden behind 'something went wrong'",
+      "failureReason" in ekta and "offlineNote" in elocal)
+check("ekta: the offline answer still refuses to diagnose",
+      "not medical advice" in elocal and "No diagnosis, no advice" in elocal
+      and "must not be presented as any kind of diagnosis" in ekta)
+check("ekta: what is NOT recorded is read out too",
+      "Not recorded, so please carry or ask for it" in elocal)
+check("ekta: the probe says whether a model answered or the records did",
+      "model_live" in eself and "brain" in eself and "offline_answers_from_records" in eself)
+check("ekta: the probe tests the degraded path rather than assuming it",
+      "offline_never_diagnoses" in eself and "offline_says_why" in eself)
+check("ekta: the retrieval logic imports nothing, so the gate tests it early",
+      not re.search(r"^\s*import\s", elocal, re.M))
+check("ekta: the retrieval logic is unit-tested by the gate",
+      (REPO / "site/tests/ektatest.mjs").exists()
+      and "ektatest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
+_appe = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+check("ekta: the app says plainly when she is reading from records",
+      'id="ekta-offline"' in _appe and "Answering from your family records" in _appe)
+check("ekta: and says the degraded answer cost no coins",
+      "This answer is free." in _appe)
+
 # ---------- 10b. The day: muhurat and rashi ----------
 # The point of the section is that a family split across cities sees the SAME
 # screen: the parent reads the Choghadiya they have always kept, the grandchild

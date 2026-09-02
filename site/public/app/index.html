@@ -1540,6 +1540,9 @@ details.more[open]>summary::before{content:"▾ "}
       <span><b>Ekta</b><small>Your circle's helper — type or talk, Hindi ya English</small></span>
       <button class="cbtn ghost" id="evoice" aria-label="Toggle spoken replies">🔊 Voice on</button>
     </div>
+    <div class="crow" id="ekta-offline" hidden style="margin-bottom:10px;border-left:3px solid var(--marigold)">
+      <span class="txt"><b>Answering from your family records</b><small id="ekta-offline-why"></small></span>
+    </div>
     <div class="emsgs" id="emsgs">
       <div class="em a">Namaste! 🙏 Main Ekta hoon. I can answer about your circle, set reminders (for others they'll be asked first), or raise a help request. What can I do for you?</div>
     </div>
@@ -4220,6 +4223,20 @@ details.more[open]>summary::before{content:"▾ "}
 
   // ---------- Ekta ----------
   var ektaMsgs = [];
+  // Why Ekta is answering from records rather than talking. Named plainly,
+  // because "something went wrong" teaches a family to stop trying.
+  var EKTA_WHY = {
+    billing: 'Her AI has no credit right now, so she is reading back exactly what is saved. This answer is free.',
+    auth: 'Her AI key is not working right now, so she is reading back exactly what is saved. This answer is free.',
+    none: 'No AI key is set up yet, so she is reading back exactly what is saved. This answer is free.',
+    unreachable: 'Her AI could not be reached, so she is reading back exactly what is saved. This answer is free.'
+  };
+  function ektaOffline(reason){
+    var el = $('ekta-offline');
+    if (!el) return;
+    el.hidden = !reason;
+    if (reason) $('ekta-offline-why').textContent = EKTA_WHY[reason] || EKTA_WHY.unreachable;
+  }
   function ektaAppend(role, text, cls){
     var d = document.createElement('div');
     d.className = 'em ' + (role === 'user' ? 'u' : 'a') + (cls ? ' ' + cls : '');
@@ -4241,7 +4258,12 @@ details.more[open]>summary::before{content:"▾ "}
           ektaMsgs.push({ role:'assistant', content:j.reply });
           ektaAppend('assistant', j.reply);
           speak(j.reply);
+          // An answer read out of the family's own records is a real answer,
+          // not a failure - but the family is told exactly what they are
+          // getting, and that it cost them no coins.
+          ektaOffline(j.offline ? (j.reason || 'unreachable') : null);
           if (j.actions && j.actions.length) refresh();
+          if (typeof j.coins === 'number') refreshCoins();
         } else if (j.needCoins) {
           ektaAppend('assistant', j.error, 'thinking');
           refreshCoins();

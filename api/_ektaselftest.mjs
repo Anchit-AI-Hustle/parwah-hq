@@ -7,6 +7,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { db, ensureSchema, makeCode } from './_db.mjs';
 import { ektaTurn } from './ekta.mjs';
+import { LOCAL_MODEL } from './_ektalocal.mjs';
 
 // One-token probe: does this key work with a given anthropic-workspace-id
 // header value? Returns 'ok' or the API's error message.
@@ -37,9 +38,9 @@ export default async function handler(req, res) {
     KIMI_API_KEY: !!(process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY),
     OLLAMA_URL: !!process.env.OLLAMA_URL
   };
-  if (!env.ANTHROPIC_API_KEY && !env.OPENAI_API_KEY && !env.GEMINI_API_KEY && !env.XAI_API_KEY && !env.KIMI_API_KEY && !env.OLLAMA_URL) {
-    return res.status(503).json({ ok: false, error: 'No model API key is configured on the server', env });
-  }
+  // No key in the ENV is not a failure any more: the keys may be in the
+  // in-app vault, and with no key at all Ekta still answers from the
+  // family's own records. The run below reports which of those happened.
   // ?probe=1 → only test which workspace-header values this key accepts.
   if ((req.query || {}).probe) {
     const probes = {};
@@ -68,23 +69,55 @@ export default async function handler(req, res) {
     steps.model_1 = t1.model;
     steps.reply_1 = String(t1.reply).slice(0, 220);
 
-    // Turn 2: an action — a self reminder via the create_reminder tool.
-    const t2 = await ektaTurn(sql, circle, me, [
-      { role: 'user', content: 'Please set a daily reminder for me to take my BP pills at 9 am.' }
-    ]);
-    steps.reminder_action = t2.actions.indexOf('create_reminder') >= 0;
-    steps.model_2 = t2.model;
-    steps.reply_2 = String(t2.reply).slice(0, 220);
-    const rows = await sql`select status, recurrence from reminders where circle_id = ${circleId}`;
-    steps.reminder_in_db = rows.length > 0;
-    steps.reminder_status = rows[0] ? rows[0].status : null;
+    // Whether a real model answered, or Ekta fell back to the family's own
+    // records. Both are working states; only one of them can set a reminder,
+    // and the log must say which so nobody debugs the wrong thing.
+    const offline = t1.model === LOCAL_MODEL;
+    steps.model_live = !offline;
+    steps.brain = offline ? (t1.reason || 'unreachable') : 'live';
+
+    if (offline) {
+      // The degraded path is a promise too, so it is tested, not assumed:
+      // the guide's fourth screen must still answer with no credit at all.
+      const t2 = await ektaTurn(sql, circle, me, [
+        { role: 'user', content: 'Taking Papa to a new doctor tomorrow. What do we have?' }
+      ]);
+      steps.model_2 = t2.model;
+      steps.reply_2 = String(t2.reply).slice(0, 220);
+      steps.offline_answers_from_records = /recorded|Nothing has been recorded/i.test(String(t2.reply));
+      steps.offline_says_why = /no credit|not working|no AI key|could not reach/i.test(String(t2.reply));
+      steps.offline_never_diagnoses = !/(you should take|diagnos|prescrib|dosage)/i.test(String(t2.reply));
+      steps.reminder_action = null;   // no model, so no action: not a failure
+      steps.reminder_in_db = null;
+    } else {
+      // Turn 2: an action — a self reminder via the create_reminder tool.
+      const t2 = await ektaTurn(sql, circle, me, [
+        { role: 'user', content: 'Please set a daily reminder for me to take my BP pills at 9 am.' }
+      ]);
+      steps.reminder_action = t2.actions.indexOf('create_reminder') >= 0;
+      steps.model_2 = t2.model;
+      steps.reply_2 = String(t2.reply).slice(0, 220);
+      const rows = await sql`select status, recurrence from reminders where circle_id = ${circleId}`;
+      steps.reminder_in_db = rows.length > 0;
+      steps.reminder_status = rows[0] ? rows[0].status : null;
+    }
 
     await sql`delete from circles where id = ${circleId}`;
     const left = await sql`select id from members where circle_id = ${circleId}`;
     steps.cleanup_cascade = left.length === 0;
 
-    const ok = !!(steps.setup && steps.replied && steps.reminder_action && steps.reminder_in_db && steps.cleanup_cascade);
-    return res.status(ok ? 200 : 500).json({ ok, steps, env });
+    // Green means the FAMILY IS SERVED. A dead key is reported loudly in
+    // `brain` and `note`, but it does not fail a deploy: a red gate that
+    // nobody can clear without a credit card is a gate people learn to skip.
+    const ok = offline
+      ? !!(steps.setup && steps.replied && steps.cleanup_cascade
+           && steps.offline_answers_from_records && steps.offline_says_why && steps.offline_never_diagnoses)
+      : !!(steps.setup && steps.replied && steps.reminder_action && steps.reminder_in_db && steps.cleanup_cascade);
+    const note = offline
+      ? 'Ekta is answering from family records only. Reason: ' + steps.brain
+        + '. Add credit or another provider key to restore full conversation and actions.'
+      : 'Ekta is live on ' + steps.model_1 + '.';
+    return res.status(ok ? 200 : 500).json({ ok, brain: steps.brain, note, steps, env });
   } catch (e) {
     try { if (sql && circleId) await sql`delete from circles where id = ${circleId}`; } catch (e2) {}
     return res.status(500).json({ ok: false, error: String(e && e.message || e).slice(0, 300), steps, env });

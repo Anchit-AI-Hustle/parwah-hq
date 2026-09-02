@@ -15,6 +15,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
 import { careState, createReminder, createRequest } from './care.mjs';
 import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
+// Ekta without a model: retrieval from the family's own records. Its own
+// dependency-free module so the gate can unit-test it before npm install.
+import { LOCAL_MODEL, isDeadKey, isBillingFailure, isAuthFailure, classify, whoIsAsked,
+         renderSummary, renderMemory, renderCircle, offlineNote, cannotAnswer } from './_ektalocal.mjs';
 import { spend, EARN } from './_coins.mjs';
 
 const ASSISTANT_NAME = 'Ekta'; // one-line swap if the persona name changes
@@ -345,6 +349,56 @@ function textBackups(vault) {
   return list;
 }
 
+// EKTA WITHOUT A MODEL. When no provider will answer, she stops apologising
+// and starts retrieving: the same tools the model would have called, run
+// directly against the family's own records. Screen 4 of the validation
+// guide is a retrieval question, so it stays demonstrable with no credit at
+// all - and a blood group read straight from the row cannot be paraphrased.
+export async function localTurn(sql, circle, me, history, reason) {
+  const lastUser = (history || []).filter(m => m && m.role === 'user').slice(-1)[0];
+  const text = lastUser ? String(lastUser.content || '') : '';
+  const intent = classify(text);
+  let names = [];
+  try {
+    const rows = await sql`select name from members where circle_id = ${circle.id}`;
+    names = rows.map(r => r.name);
+  } catch (e) { /* the answer degrades, it does not fail */ }
+  const who = whoIsAsked(text, names);
+  const say = (body) => ({ reply: body + '\n\n' + offlineNote(reason), actions: [], model: LOCAL_MODEL, escalate: false, offline: true });
+
+  try {
+    if (intent === 'summary') {
+      const target = who || (names.find(n => n !== me.name) || me.name);
+      const raw = await runTool(sql, circle, me, 'prepare_summary', { member_name: target });
+      const payload = JSON.parse(raw);
+      if (!payload.error) {
+        const body = renderSummary(payload);
+        if (body) return say(body);
+      }
+    }
+    if (intent === 'memory' || (intent === 'summary' && who)) {
+      const raw = await runTool(sql, circle, me, 'get_family_memory', who ? { about_name: who } : {});
+      const payload = JSON.parse(raw);
+      if (!payload.error) return say(renderMemory(payload, who));
+    }
+    if (intent === 'circle' || intent === 'greet') {
+      const payload = JSON.parse(await runTool(sql, circle, me, 'get_circle', {}));
+      return say(renderCircle(payload));
+    }
+  } catch (e) { /* fall through to the honest refusal below */ }
+  return { reply: cannotAnswer(reason), actions: [], model: LOCAL_MODEL, escalate: false, offline: true };
+}
+
+// Why every provider refused, in one word, so the family is told the truth
+// and the deploy log names the real cause instead of "all providers failed".
+export function failureReason(failures, hadAnyKey) {
+  if (!hadAnyKey) return 'none';
+  const all = (failures || []).join(' | ');
+  if (isBillingFailure(all)) return 'billing';
+  if (/invalid x-api-key|authentication_error|\b401\b|\b403\b/i.test(all)) return 'auth';
+  return 'unreachable';
+}
+
 // The cascade driver, shared by the API handler and /api/ekta-selftest.
 // Order: Anthropic Sonnet → Opus → Haiku (full tools), then every other
 // configured provider key (text-only) until one answers. The final model
@@ -377,7 +431,11 @@ export async function ektaTurn(sql, circle, me, history) {
         // Once a side-effecting action has run, never retry anywhere —
         // surfacing the error beats double-creating a reminder.
         if (actions.length) throw e;
-        continue; // any failure with nothing done → try the next tier/provider
+        // No credit, or a rejected key, is an ACCOUNT fact, not a model
+        // fact. Trying Opus and then Haiku on the same key buys three
+        // identical refusals and three round trips of a family waiting.
+        if (isDeadKey(e)) break;
+        continue; // any other failure with nothing done → next tier
       }
     }
     if (last) return last;
@@ -392,7 +450,13 @@ export async function ektaTurn(sql, circle, me, history) {
       failures.push(String(e && e.message || e).slice(0, 140));
     }
   }
-  throw new Error('All providers failed -> ' + (failures.join(' | ') || 'no API keys configured'));
+  // Nothing would answer. That is a reason to retrieve, not to go dark.
+  const hadKey = MODEL_PROVIDERS.some(k => vault[k]);
+  const reason = failureReason(failures, hadKey);
+  const out = await localTurn(sql, circle, me, history, reason);
+  out.failures = failures;
+  out.reason = reason;
+  return out;
 }
 
 export default async function handler(req, res) {
@@ -403,11 +467,12 @@ export default async function handler(req, res) {
   let sql;
   try { sql = db(); await ensureSchema(sql); }
   catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  let noBrain = false;
   try {
     const { keys } = await providerKeys(sql);
-    if (!MODEL_PROVIDERS.some(k => keys[k])) {
-      return res.status(503).json({ ok: false, error: ASSISTANT_NAME + " has no brain yet — add an AI key in Profile → Ekta's brain, or set one on the server." });
-    }
+    // No key at all is still not a dead screen: Ekta answers from the
+    // family's own records and says plainly why the rest is missing.
+    noBrain = !MODEL_PROVIDERS.some(k => keys[k]);
   } catch (e) { /* fall through: the cascade reports the real failure */ }
 
   const { code, memberId, messages } = req.body || {};
@@ -437,12 +502,25 @@ export default async function handler(req, res) {
              EARN.vault_add.n + ').' });
   }
 
+  const refund = async () => {
+    try { await sql`insert into coins (circle_id, member_id, delta, reason) values (${circle.id}, ${me.id}, ${paid.cost}, 'refund')`; } catch (_) {}
+  };
   try {
-    const out = await ektaTurn(sql, circle, me, history);
-    return res.status(200).json({ ok: true, reply: out.reply, actions: out.actions, model: out.model, coins: paid.balance });
+    // With no key at all there is nothing to cascade through, so go
+    // straight to the records rather than spending a round trip failing.
+    const out = noBrain
+      ? await localTurn(sql, circle, me, history, 'none')
+      : await ektaTurn(sql, circle, me, history);
+    // An answer read out of the family's own rows is not the assistant they
+    // are paying for, so it is free. Charging for a degraded turn is how a
+    // family learns to distrust the coin.
+    let coins = paid.balance;
+    if (out.offline) { await refund(); coins = paid.balance + paid.cost; }
+    return res.status(200).json({ ok: true, reply: out.reply, actions: out.actions,
+      model: out.model, offline: out.offline || undefined, reason: out.reason || undefined, coins });
   } catch (e) {
     // A turn that never reached a brain is never charged for.
-    try { await sql`insert into coins (circle_id, member_id, delta, reason) values (${circle.id}, ${me.id}, ${paid.cost}, 'refund')`; } catch (_) {}
+    await refund();
     return res.status(502).json({ ok: false, error: 'Ekta could not reach her brain right now — try again in a moment.', detail: String(e && e.message || e).slice(0, 200) });
   }
 }
