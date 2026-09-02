@@ -2165,11 +2165,14 @@ details.more[open]>summary::before{content:"▾ "}
 
   // ---------- tabs ----------
   function switchTab(t){
-    if (TABS.indexOf(t) < 0) t = 'home';
     if (TABS.indexOf(t) < 0) t = 'home'; // bad/old hash → land safely on Home
     TABS.forEach(function(n){ $('pane-' + n).hidden = n !== t; });
     document.querySelectorAll('#tabs .inner > button').forEach(function(b){
-      b.classList.toggle('sel', b.getAttribute('data-tab') === t);
+      var on = b.getAttribute('data-tab') === t;
+      b.classList.toggle('sel', on);
+      // Marigold and a bar above the icon say "you are here" to everyone who
+      // can see them. This says it to everyone who cannot.
+      if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
     document.querySelectorAll('#drawer .ditem[data-tab]').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-tab') === t && !b.dataset.sec);
@@ -2199,7 +2202,21 @@ details.more[open]>summary::before{content:"▾ "}
   }
   function setSec(pane, sec){
     var seg = $(pane + '-seg'); if (!seg) return;
-    seg.querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-sec') === sec); });
+    seg.querySelectorAll('button').forEach(function(b){
+      var on = b.getAttribute('data-sec') === sec;
+      b.classList.toggle('sel', on);
+      // The container says tablist, so the buttons have to say tab — and say
+      // which one is chosen. Without this a screen reader announces five
+      // identical buttons and no current position.
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      var panel = document.querySelector('#pane-' + pane + ' .subsec[data-sec="' + b.getAttribute('data-sec') + '"]');
+      if (panel) {
+        if (!panel.id) panel.id = 'sec-' + pane + '-' + b.getAttribute('data-sec');
+        b.setAttribute('aria-controls', panel.id);
+        panel.setAttribute('role', 'tabpanel');
+      }
+    });
     document.querySelectorAll('#pane-' + pane + ' .subsec').forEach(function(d){ d.hidden = d.getAttribute('data-sec') !== sec; });
     document.querySelectorAll('#tabs .subnav[data-parent="' + pane + '"] button').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-sec') === sec);
@@ -2208,6 +2225,15 @@ details.more[open]>summary::before{content:"▾ "}
   ['care', 'fun', 'vault', 'day'].forEach(function(pane){
     $(pane + '-seg').addEventListener('click', function(e){
       var b = e.target.closest('button'); if (b) setSec(pane, b.getAttribute('data-sec'));
+    });
+    // Left and right move between sections, which is what a tablist promises.
+    $(pane + '-seg').addEventListener('keydown', function(e){
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      var bs = [].slice.call(this.querySelectorAll('button'));
+      var i = bs.indexOf(document.activeElement); if (i < 0) return;
+      e.preventDefault();
+      var nx = bs[(i + (e.key === 'ArrowRight' ? 1 : bs.length - 1)) % bs.length];
+      nx.focus(); setSec(pane, nx.getAttribute('data-sec'));
     });
   });
   function setInputMode(){
@@ -2224,8 +2250,69 @@ details.more[open]>summary::before{content:"▾ "}
     if (b.dataset.sec) setSec(b.getAttribute('data-tab'), b.dataset.sec);
   });
 
+  /* ---------- keyboard and overlays, in one place ----------
+     Two things were true of every overlay in this app and every row that
+     behaved like a button: you could reach them with the keyboard and then
+     not use them.
+
+     A row marked role="button" with tabindex="0" took focus and did nothing
+     on Enter or Space — the whole memory list, the feed, the readiness rows.
+     One listener fixes all of them, now and whenever another row is added.
+
+     And an open sheet did not hold focus: Tab walked straight out into the
+     page behind it, which for a screen-reader or keyboard user means the
+     dialog is simply gone while still covering everything. openOverlay marks
+     it as a dialog, moves focus in, keeps Tab inside it, closes on Escape and
+     puts focus back where it came from. */
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+    var el = e.target;
+    if (!el || el.getAttribute('role') !== 'button') return;
+    if (el.tagName === 'BUTTON' || el.tagName === 'A' || el.tagName === 'INPUT') return;
+    e.preventDefault();
+    el.click();
+  });
+
+  var overlays = [];
+  var FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  function openOverlay(el, opts){
+    if (!el || overlays.some(function(o){ return o.el === el; })) return;
+    var o = { el: el, was: document.activeElement, dismiss: (opts && opts.dismiss) || null };
+    el.hidden = false;
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-modal', 'true');
+    overlays.push(o);
+    var first = (opts && opts.focus && el.querySelector(opts.focus)) || el.querySelector(FOCUSABLE);
+    if (first) { try { first.focus(); } catch (err) {} }
+  }
+  function closeOverlay(el){
+    var i = overlays.map(function(o){ return o.el; }).lastIndexOf(el || (overlays.length ? overlays[overlays.length - 1].el : null));
+    if (i < 0) return;
+    var o = overlays.splice(i, 1)[0];
+    o.el.hidden = true;
+    o.el.removeAttribute('aria-modal');
+    if (o.was && o.was.focus) { try { o.was.focus(); } catch (err) {} }
+  }
+  document.addEventListener('keydown', function (e) {
+    if (!overlays.length) return;
+    var top = overlays[overlays.length - 1];
+    if (top.el.hidden) { overlays.pop(); return; }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (top.dismiss) top.dismiss(); else closeOverlay(top.el);
+      return;
+    }
+    if (e.key !== 'Tab') return;
+    var items = [].slice.call(top.el.querySelectorAll(FOCUSABLE)).filter(function(n){ return n.offsetParent !== null || n === document.activeElement; });
+    if (!items.length) return;
+    var first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    else if (items.indexOf(document.activeElement) < 0) { e.preventDefault(); first.focus(); }
+  });
+
   // ---------- hamburger drawer (mobile) ----------
-  function drawerOpen(o){ $('drawer').hidden = !o; }
+  function drawerOpen(o){ if (o) openOverlay($('drawer'), { focus: '#drawer-x' }); else closeOverlay($('drawer')); }
   $('hamb').addEventListener('click', function(){ drawerOpen(true); });
   $('drawer-x').addEventListener('click', function(){ drawerOpen(false); });
   $('drawer').addEventListener('click', function(e){
@@ -3333,7 +3420,7 @@ details.more[open]>summary::before{content:"▾ "}
   var cmI = 0, cmOn = false;
   function coachDone(){
     cmOn = false;
-    $('coach').hidden = true;
+    closeOverlay($('coach'));
     if (authUser && authUser.id) {
       post(API.auth, { action:'toured', userId: authUser.id }).catch(function(){});
       authUser.toured = true; saveAuth(authUser);
@@ -3342,7 +3429,8 @@ details.more[open]>summary::before{content:"▾ "}
   function startCoach(){
     if (cmOn) return;
     cmI = 0; cmOn = true;
-    $('coach').hidden = false;
+    // Escape ends the tour rather than leaving it half-shown.
+    openOverlay($('coach'), { focus: '#cm-next', dismiss: coachDone });
     renderCoach();
   }
   function renderCoach(){
@@ -4015,7 +4103,7 @@ details.more[open]>summary::before{content:"▾ "}
     $('ec-body').innerHTML = h;
     $('ec-off').hidden = !d.offline;
     $('ecard').dataset.mid = m.id;
-    $('ecard').hidden = false;
+    openOverlay($('ecard'), { focus: '#ec-x' });
   }
   function ecardText(){
     var t = $('ec-name').textContent + ' — emergency card (Parwah)\n';
@@ -4029,10 +4117,10 @@ details.more[open]>summary::before{content:"▾ "}
   }
   document.addEventListener('click', function(e){
     var b = e.target.closest('[data-ecard]');
-    if (b) { $('msheet').hidden = true; openEcard(b.getAttribute('data-ecard')); }
+    if (b) { closeOverlay($('msheet')); openEcard(b.getAttribute('data-ecard')); }
   });
   $('mp-ecard').addEventListener('click', function(){
-    var mid = $('msheet').dataset.mid; $('msheet').hidden = true; openEcard(mid);
+    var mid = $('msheet').dataset.mid; closeOverlay($('msheet')); openEcard(mid);
   });
   $('btn-ecard').addEventListener('click', function(){
     // the person most likely to need one: a parent, else yourself
@@ -4041,8 +4129,8 @@ details.more[open]>summary::before{content:"▾ "}
     if (!pick) d.members.forEach(function(m){ if (!pick && m.id === state.memberId) pick = m; });
     if (pick) openEcard(pick.id); else toast('Add a family member first');
   });
-  $('ec-x').addEventListener('click', function(){ $('ecard').hidden = true; });
-  $('ecard').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });
+  $('ec-x').addEventListener('click', function(){ closeOverlay($('ecard')); });
+  $('ecard').addEventListener('click', function(e){ if (e.target === this) closeOverlay(this); });
   $('ec-copy').addEventListener('click', function(){
     var t = ecardText();
     if (navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ toast('Copied — paste it anywhere 📋'); });
@@ -5031,16 +5119,16 @@ details.more[open]>summary::before{content:"▾ "}
     $('mp-gift').hidden = self;
     $('giftbox').hidden = true;
     $('msheet').dataset.mid = m.id;
-    $('msheet').hidden = false;
+    openOverlay($('msheet'), { focus: '#mp-x' });
   }
   document.addEventListener('click', function(e){
     var c = e.target.closest('[data-mprof]');
     if (c && !e.target.closest('a')) openMemberSheet(c.getAttribute('data-mprof'));
   });
-  $('mp-x').addEventListener('click', function(){ $('msheet').hidden = true; });
-  $('msheet').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });
+  $('mp-x').addEventListener('click', function(){ closeOverlay($('msheet')); });
+  $('msheet').addEventListener('click', function(e){ if (e.target === this) closeOverlay(this); });
   $('mp-dm').addEventListener('click', function(){
-    var mid = $('msheet').dataset.mid; $('msheet').hidden = true;
+    var mid = $('msheet').dataset.mid; closeOverlay($('msheet'));
     post(API.chats, { code: state.code, memberId: state.memberId, action: 'open_dm', otherId: mid })
       .then(function(j){ if (j.ok) refreshChats(function(){ openChat(j.chatId); }); else toast(j.error || 'Could not open the chat'); })
       .catch(function(){ toast('No connection — try again'); });
@@ -5061,7 +5149,7 @@ details.more[open]>summary::before{content:"▾ "}
     $('giftbox').hidden = !$('giftbox').hidden;
   });
   $('gift-tell').addEventListener('click', function(){
-    var mid = $('msheet').dataset.mid; $('msheet').hidden = true;
+    var mid = $('msheet').dataset.mid; closeOverlay($('msheet'));
     post(API.chats, { code: state.code, memberId: state.memberId, action: 'open_dm', otherId: mid })
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not open the chat'); return; }
@@ -5073,7 +5161,7 @@ details.more[open]>summary::before{content:"▾ "}
       .catch(function(){ toast('No connection — try again'); });
   });
   $('mp-remind').addEventListener('click', function(){
-    var mid = $('msheet').dataset.mid; $('msheet').hidden = true;
+    var mid = $('msheet').dataset.mid; closeOverlay($('msheet'));
     switchTab('care'); setSec('care', 'rem');
     if (mid !== state.memberId) $('r-for').value = mid;
     try { $('r-title').focus(); } catch (e) {}
