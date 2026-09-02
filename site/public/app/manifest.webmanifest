@@ -1,7 +1,7 @@
 {
   "name": "Parwah — Apni family ki parwah karein",
   "short_name": "Parwah",
-  "description": "One private circle for your family — daily check-ins, SOS and messages.",
+  "description": "One private circle for your family — daily check-ins, the emergency card, and everything a doctor asks for, kept current in one place.",
   "id": "/app/",
   "start_url": "/app/",
   "scope": "/app/",
@@ -9,9 +9,28 @@
   "orientation": "portrait",
   "background_color": "#FAF7EF",
   "theme_color": "#182622",
+  "lang": "en-IN",
+  "dir": "ltr",
+  "categories": ["health", "lifestyle", "social"],
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
     { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "shot-today.png", "sizes": "390x844", "type": "image/png", "form_factor": "narrow",
+      "label": "Today — how everyone is, and the one thing worth doing next" },
+    { "src": "shot-people.png", "sizes": "390x844", "type": "image/png", "form_factor": "narrow",
+      "label": "People — how prepared the family is for each person" },
+    { "src": "shot-memory.png", "sizes": "390x844", "type": "image/png", "form_factor": "narrow",
+      "label": "Family memory — doctors, medicines and papers, kept current" }
+  ],
+  "shortcuts": [
+    { "name": "Today", "short_name": "Today", "url": "/app/#home",
+      "description": "Check in, and see how everyone is" },
+    { "name": "Emergency card", "short_name": "Emergency", "url": "/app/#people",
+      "description": "Everything a doctor asks for, on one screen" },
+    { "name": "Family memory", "short_name": "Memory", "url": "/app/#memory",
+      "description": "Doctors, medicines, policies and papers" }
   ]
 }

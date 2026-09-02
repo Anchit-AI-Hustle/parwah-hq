@@ -545,6 +545,24 @@ check("the app puts the caller's identity on last, so no call site can overwrite
 check("the app never sends the share target as memberId",
       not re.search(r"action\s*:\s*'(share|unshare|grant|revoke|allow|disallow)'[^}]*memberId\s*:", appsrc))
 
+# 10c-vii. The install prompt. Android shows the screenshots and the shortcuts
+# a manifest names; a manifest that names a file which is not there shows
+# nothing at all, and quietly.
+mani = _json.loads((REPO / "site/public/app/manifest.webmanifest").read_text(encoding="utf-8"))
+for f in ("name", "short_name", "description", "start_url", "scope", "display",
+          "theme_color", "background_color", "lang", "categories", "icons",
+          "screenshots", "shortcuts"):
+    check(f"pwa manifest declares {f}", f in mani)
+for s in mani.get("screenshots", []):
+    check(f"pwa: the screenshot it names is actually there ({s['src']})",
+          (REPO / "site/public/app" / s["src"]).exists())
+    check(f"pwa: and is labelled for the install prompt ({s['src']})", bool(s.get("label")))
+for s in mani.get("shortcuts", []):
+    check(f"pwa: shortcut \"{s['name']}\" points inside the app",
+          str(s.get("url", "")).startswith("/app/"))
+check("pwa: a maskable icon, or Android crops the logo into a circle",
+      any(i.get("purpose") == "maskable" for i in mani.get("icons", [])))
+
 check("guide: someone near a person living away is a first-class contact",
       "'local'" in book and "someone near them to call" in book)
 check("guide: the pulse asks how people are, in a style that rotates daily",

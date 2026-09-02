@@ -57,11 +57,16 @@ const hsigns = SIGNS.map((s, i) => ({ key:s.k, name:s.en, hi:s.hi,
   text: (i === 4 || i === 9) ? null : 'A steady day for ' + s.en + '. Say the thing you have been putting off.',
   source: (i === 4 || i === 9) ? null : 'horoscope-app-api' }));
 
-let dayMode = 'normal';   // 'normal' | 'nodob' | 'guessed'
+let dayMode = 'normal';   // 'normal' | 'nodob' | 'guessed' | 'noplace'
+// A guess has two causes and they need different sentences said about them:
+// nobody has entered a city, or one was entered and we do not have it.
+const PLACES = {
+  guessed: { name:'Chhotapur', lat:28.6139, lon:77.2090, tz:'Asia/Kolkata', guessed:true, why:'unknown' },
+  noplace: { name:'New Delhi', lat:28.6139, lon:77.2090, tz:'Asia/Kolkata', guessed:true, why:'none' },
+};
 function dayJson(){
   return { ok:true, day: new Date().toISOString().slice(0,10),
-    place: dayMode === 'guessed' ? { name:'Chhotapur', lat:28.6139, lon:77.2090, tz:'Asia/Kolkata', guessed:true }
-                                 : { name:'Delhi', lat:28.6139, lon:77.2090, tz:'Asia/Kolkata', guessed:false },
+    place: PLACES[dayMode] || { name:'Delhi', lat:28.6139, lon:77.2090, tz:'Asia/Kolkata', guessed:false, why:null },
     tz:'Asia/Kolkata', panchang: LIVE,
     current: RUNNING,
     mySign: dayMode === 'nodob' ? null : { key:'leo', name:'Leo', hi:'सिंह' },
@@ -253,6 +258,20 @@ await page.waitForTimeout(600);
 ok(await page.locator('#mu-guess').isVisible(), 'an unknown city warns that these are fallback timings');
 const g = await page.locator('#mu-guess').textContent();
 ok(g.includes('Chhotapur') && g.includes('Delhi') && /profile/i.test(g), 'and says exactly what to do about it → ' + g.slice(0, 90));
+ok(/\(a guess\)/.test(await page.locator('#mu-place').textContent()),
+   'and the heading does not present a guess as a fact');
+
+// ---- no city entered at all: the same fallback, a different sentence ----
+// It used to share one flag with the unknown-city case, so the screen read
+// "Today in New Delhi" and then "we don't know New Delhi".
+dayMode = 'noplace';
+await page.reload();
+await page.waitForTimeout(400);
+await page.evaluate(() => { location.hash = '#day'; });
+await page.waitForTimeout(600);
+const g2 = await page.locator('#mu-guess').textContent();
+ok(!/don’t know|don't know/.test(g2), 'a city nobody entered is not described as one we have never heard of → ' + g2.slice(0, 80));
+ok(/nobody has told us|add your city/i.test(g2), 'it asks for the city instead');
 
 ok(errors.length === 0, 'no page errors' + (errors.length ? ' — ' + errors.slice(0,3).join(' | ') : ''));
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
