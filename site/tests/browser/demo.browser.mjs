@@ -42,6 +42,11 @@ await pg.goto(BASE + '/app/'); await pg.waitForTimeout(500);
 ok(await pg.locator('.obpoints').isVisible(), 'a phone sees what Parwah is, not only a sign-in box');
 ok((await pg.locator('.obpoint').count())===3, 'all three points are on the phone screen');
 ok(await pg.locator('#au-see').isVisible(), 'and a way to see it properly without signing in');
+ok((await pg.locator('main').count())===1, 'the app has one main landmark');
+ok(await pg.locator('#metile').isHidden(), 'an empty account control is not shown before sign-in');
+await pg.click('#au-go'); await pg.waitForTimeout(100);
+ok(await pg.locator('#ob-err').getAttribute('role')==='alert', 'sign-in errors are announced');
+ok(await pg.locator('#au-phone').getAttribute('aria-invalid')==='true', 'the invalid phone field identifies itself');
 
 // ---- the five screens ----
 await pg.click('#au-see'); await pg.waitForTimeout(300);
@@ -49,6 +54,7 @@ ok(await pg.locator('#demo-step').isVisible() && await pg.locator('#auth-step').
    'the concept opens without asking for anything');
 ok(await pg.locator('.obpoints').isHidden() && await pg.locator('#onboard > h1').isHidden(),
    'and replaces the summary rather than stacking on top of it');
+ok((await pg.locator('#dm-out').boundingBox()).height>=44, 'the skip-to-sign-in action is easy to tap');
 ok((await pg.locator('#dm-body h3').boundingBox()).y < 400,
    'so the first screen is above the fold on a phone');
 const seen=[];
@@ -80,6 +86,7 @@ ok(/Ask Ekta/i.test(seen[3]) && /Prepare summary/.test(seen[3]), 'screen 4 is Ek
 ok(/does not diagnose/i.test(seen[3]), 'and states that Ekta does not diagnose');
 // guide screen 5
 ok(/Sunny/.test(seen[4]) && /a call would be nice/.test(seen[4]), 'screen 5 is the pulse, including the quiet ask for a call');
+ok((seen[4].match(/Updated today/g)||[]).length===4, 'every pulse says when it was updated');
 // the price, last
 ok(/2,499/.test(seen[5]) && /per family/.test(seen[5]), 'the price comes last, per family');
 ok(/29\.99/.test(seen[5]), 'and in dollars too');

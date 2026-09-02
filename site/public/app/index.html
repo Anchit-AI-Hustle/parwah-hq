@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Parwah App</title>
+<meta name="description" content="One private place for family memory, readiness, check-ins and care.">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#182622">
 <script>
@@ -24,7 +25,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Parwah">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Albert+Sans:wght@400;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Albert+Sans:wght@400;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Albert+Sans:wght@400;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet"></noscript>
 <style>
 /* ---------- COLOUR ----------
    Every colour in this file is a token. Nothing is a bare hex outside this
@@ -42,7 +46,7 @@
   --day:#FAF7EF; --bone:#EFE8D8; --bone-2:#E3D9C2;
   --surface:#FFFFFF; --surface-2:#FFFDF8;
   --marigold:#E8A23D; --marigold-d:#C9861F; --sindoor:#A64B2A;
-  --ink:#241F17; --ink-soft:#4C4437; --cream:#EFE8D8; --dim:#A8B3A6;
+  --ink:#241F17; --ink-soft:#4C4437; --cream:#EFE8D8; --dim:#687168;
   --ok:#2F7A4D; --alert:#B3372B;
   --tint-warm:#FDF4E3; --tint-warm-2:#FDF7EA; --tint-ok:#E7F2EA; --tint-bad:#FDF1EF;
   --ok-line:#7FA98C; --alert-line:#C48B7E; --live:#7CE0A3;
@@ -270,7 +274,7 @@ label + select{width:100%}
 .kv b{font-weight:600}
 .kv span{color:var(--ink-soft);text-align:right}
 .plantag{display:inline-block;background:var(--tint-ok);color:var(--ok);font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;border-radius:99px;padding:4px 12px;margin-bottom:8px}
-.linkbtn{border:0;background:none;color:var(--sindoor);font-family:var(--body);font-weight:700;font-size:.88rem;cursor:pointer;padding:0;margin-top:10px;text-decoration:underline}
+.linkbtn{border:0;background:none;color:var(--sindoor);font-family:var(--body);font-weight:700;font-size:.88rem;cursor:pointer;padding:10px 6px;min-height:44px;display:inline-flex;align-items:center;margin-top:4px;text-decoration:underline}
 
 /* hamburger + drawer (mobile) */
 #hamb{border:0;background:none;color:var(--marigold);font-size:1.35rem;cursor:pointer;padding:2px 4px;line-height:1}
@@ -760,6 +764,7 @@ details.more[open]>summary::before{content:"▾ "}
   body.inapp #btn-ecard{max-width:none}
 }
 [hidden]{display:none!important}
+body:not(.inapp) #metile{display:none}
 @media(prefers-reduced-motion:reduce){.big:active{transform:none}.toast{transition:none}}
 </style>
 </head>
@@ -790,7 +795,7 @@ details.more[open]>summary::before{content:"▾ "}
   <div class="bar-actions">
     <button id="bell" hidden aria-label="Notifications">🔔<i class="dot" id="bell-dot" hidden></i></button>
     <a id="getapp" href="../get/" target="_blank" rel="noopener" aria-label="Install the Parwah app" title="Install the app">📲</a>
-    <button id="metile" class="metile" aria-haspopup="menu" aria-expanded="false" aria-label="Your account"><span id="me-init">··</span></button>
+    <button id="metile" class="metile" aria-haspopup="menu" aria-expanded="false"><span class="sr">Your account</span><span id="me-init" aria-hidden="true">··</span></button>
   </div>
   <!-- The full name lives here rather than in the bar: on a 430px screen it was
        the widest element in the row, competing with the brand and wrapping.
@@ -817,6 +822,7 @@ details.more[open]>summary::before{content:"▾ "}
 </div>
 
 <!-- ============ ONBOARDING ============ -->
+<main id="app-content">
 <div class="wrap" id="onboard">
   <h1>Your family's circle</h1>
   <p class="lede">One private circle for your family. Check-ins, SOS and messages reach everyone in it — and only them.</p>
@@ -840,6 +846,7 @@ details.more[open]>summary::before{content:"▾ "}
     <button class="go" id="au-go">Continue</button>
     <button class="cbtn ghost" id="au-see" style="width:100%;margin-top:10px">What is Parwah? See it first →</button>
     <p class="hint">One number, all your circles. Already signed up? You're in with one tap. New? Profile created and signed in, instantly.</p>
+    <p class="hint"><b>Private preview:</b> mobile numbers are not checked by SMS yet. Use test information only until secure sign-in codes are switched on.</p>
   </div>
 
   <div id="circle-step" hidden>
@@ -871,7 +878,7 @@ details.more[open]>summary::before{content:"▾ "}
       <button class="go" id="dm-next">Next</button>
       <button class="cbtn ghost" id="dm-back">Back</button>
     </div>
-    <button class="linkbtn" id="dm-out" style="margin-top:12px">← Sign in instead</button>
+    <button class="linkbtn" id="dm-out" style="margin-top:8px">Skip preview — sign in →</button>
     <p class="hint" style="margin-top:14px">This is an example family, not real people. Nothing here is saved, and nothing is sent anywhere.</p>
   </div>
 
@@ -948,7 +955,7 @@ details.more[open]>summary::before{content:"▾ "}
     <button class="go" id="pend-check" style="margin-top:12px">Check again</button>
     <button class="linkbtn" id="pend-back" style="margin-top:10px">← Try a different code</button>
   </div>
-  <p class="err" id="ob-err"></p>
+  <p class="err" id="ob-err" role="alert" aria-live="assertive"></p>
 </div>
 
 <!-- ============ MAIN (tabbed) ============ -->
@@ -1908,6 +1915,7 @@ details.more[open]>summary::before{content:"▾ "}
     </div>
   </section>
 </div>
+</main>
 
 <!-- the one input bar — contextual: the open chat, or Ekta -->
 <div class="inputbar" id="composer" hidden>
@@ -2975,11 +2983,25 @@ details.more[open]>summary::before{content:"▾ "}
   $('au-go').addEventListener('click', function(){
     var phone = $('au-phone').value.trim(), cc = $('au-cc').value;
     var perr = phoneCheck(cc, phone);
-    if (perr) { $('ob-err').textContent = perr; return; }
-    var btn = this; btn.disabled = true; $('ob-err').textContent = '';
+    if (perr) {
+      $('au-phone').setAttribute('aria-invalid', 'true');
+      $('ob-err').textContent = perr;
+      return;
+    }
+    $('au-phone').removeAttribute('aria-invalid');
+    var btn = this, oldLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Checking…';
+    btn.setAttribute('aria-busy', 'true');
+    $('ob-err').textContent = '';
+    function resetAuthButton(){
+      btn.disabled = false;
+      btn.textContent = oldLabel;
+      btn.removeAttribute('aria-busy');
+    }
     post(API.auth, { action: 'enter', phone: phone, cc: cc, name: $('au-name').value.trim() })
       .then(function(j){
-        btn.disabled = false;
+        resetAuthButton();
         if (!j.ok) { $('ob-err').textContent = j.error || 'Could not sign you in.'; return; }
         if (!j.exists) {
           $('au-namewrap').hidden = false;
@@ -2990,7 +3012,11 @@ details.more[open]>summary::before{content:"▾ "}
         authUser = j.user; saveAuth(authUser);
         routeAfterAuth(j.circles || [], j.toured);
       })
-      .catch(function(){ btn.disabled = false; $('ob-err').textContent = 'No connection — try again.'; });
+      .catch(function(){ resetAuthButton(); $('ob-err').textContent = 'No connection — try again.'; });
+  });
+  $('au-phone').addEventListener('input', function(){
+    this.removeAttribute('aria-invalid');
+    $('ob-err').textContent = '';
   });
   $('au-phone').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
   $('au-name').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
@@ -5936,7 +5962,7 @@ details.more[open]>summary::before{content:"▾ "}
         '<div class="ev"><b>Parwah Family Plan</b><small>The family memory · Health &amp; emergency information · Trusted contacts · Family readiness · Ekta · The family pulse</small></div>' +
         '<p style="margin:12px 0 2px;font-size:1.5rem;font-family:var(--disp);font-weight:600">₹2,499 <span style="font-size:.95rem;font-weight:400;color:var(--ink-soft)">per family, per year</span></p>' +
         '<p class="hint" style="margin:2px 0 0">About $29.99 at ₹85 to the dollar. Nothing is charged here — Parwah is not taking payments yet.</p>' +
-        '<p class="hint" style="margin-top:14px">Ready to start? Signing in takes a mobile number and nothing else — no password, and nothing is posted anywhere.</p>' }
+        '<p class="hint" style="margin-top:14px">Ready to start? Signing in takes a mobile number. During this private preview, use test information only until secure SMS codes are switched on.</p>' }
   ];
 
   function dcard(name, rel, todo){
@@ -5961,7 +5987,7 @@ details.more[open]>summary::before{content:"▾ "}
   }
   function dpulse(name, emoji, text, call){
     return '<div class="ev' + (call ? ' inaus' : '') + '"><b>' + emoji + '  ' + name + '</b>' +
-      '<small>' + text + '</small></div>';
+      '<small>' + text + ' · Updated today</small></div>';
   }
 
   var demoAt = 0;
