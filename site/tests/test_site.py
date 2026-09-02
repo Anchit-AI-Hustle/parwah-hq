@@ -99,8 +99,31 @@ for p in PAGES:
     check(f"styles.css linked: {p.relative_to(ROOT)}", "styles.css" in html)
     check(f"fonts wired: {p.relative_to(ROOT)}", "fonts.googleapis.com" in html and "Fraunces" in html)
 
+# ---------- 9b. Conversion + discovery polish ----------
+home = (ROOT / "public" / "index.html").read_text(encoding="utf-8")
+launch = (ROOT / "public" / "launch" / "index.html").read_text(encoding="utf-8")
+demo = (ROOT / "public" / "demo" / "index.html").read_text(encoding="utf-8")
+getpg = (ROOT / "public" / "get" / "index.html").read_text(encoding="utf-8")
+check("nav: homepage links to demo, get, story and launch",
+      'href="demo/"' in home and 'href="get/"' in home and 'href="story/"' in home and 'href="launch/"' in home)
+check("nav: launch page links back to the product surfaces",
+      'href="../demo/"' in launch and 'href="../get/"' in launch)
+check("a11y: skip-to-content on key pages",
+      'class="skip" href="#main"' in home and 'class="skip" href="#main"' in launch
+      and 'class="skip" href="#main"' in getpg)
+check("faq: homepage answers pricing and consent plainly",
+      'id="faq"' in home and "₹2,499" in home and "consent-first" in home.lower())
+check("og: homepage has share metadata",
+      'property="og:title"' in home and 'property="og:description"' in home)
+check("og: launch page has share metadata",
+      'property="og:title"' in launch and 'property="og:url"' in launch)
+check("demo: can reset without reloading the whole site by hand",
+      'id="reset"' in demo and "location.reload()" in demo)
+check("get: qr and share install link are present",
+      'id="qr-img"' in getpg and 'id="share-link"' in getpg and "create-qr-code" in getpg)
+check("pricing: launch page states the founding family price",
+      "₹2,499" in launch and "$29" in launch)
 
-# ---------- 10. SECURITY ----------
 import json as _json
 REPO = ROOT.parent.parent if (ROOT.parent.parent / "vercel.json").exists() else ROOT.parent
 API_DIR = REPO / "api"

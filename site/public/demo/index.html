@@ -84,8 +84,10 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(80px);background:var(--pine);color:var(--cream);padding:12px 20px;border-radius:99px;font-size:.85rem;transition:.25s;box-shadow:0 10px 30px rgba(0,0,0,.4);z-index:9}
 .toast.show{transform:translateX(-50%) translateY(0)}
 .eyebrow{font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--sindoor);font-weight:700}
-.back{display:block;text-align:center;margin-top:26px;color:var(--dim);font-size:.85rem}
+.back{display:flex;gap:16px;justify-content:center;align-items:center;flex-wrap:wrap}
 .back a{color:var(--marigold)}
+.resetbtn{border:1.5px solid var(--marigold);background:transparent;color:var(--marigold);font-family:var(--body);font-weight:600;font-size:.85rem;border-radius:99px;padding:10px 18px;cursor:pointer}
+.resetbtn:hover{background:rgba(232,162,61,.12)}
 @media(prefers-reduced-motion:reduce){.ev{animation:none}}
 </style>
 </head>
@@ -174,7 +176,10 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
 
 </div>
 
-<p class="back">This is the P1 heart of the app. Money, bookings and Parwah AI join in later phases. <a href="../">Back to the Parwah home page</a></p>
+<p class="back">
+  <button class="resetbtn" id="reset" type="button">↺ Reset demo</button>
+  <span>This is the P1 heart of the app. Money, bookings and Parwah AI join in later phases. <a href="../">Back to the Parwah home page</a></span>
+</p>
 
 <div class="toast" id="toast" role="status"></div>
 
@@ -239,6 +244,8 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
   }
   $('send').addEventListener('click', sendMsg);
   $('msg').addEventListener('keydown', function(e){ if(e.key==='Enter') sendMsg(); });
+
+  $('reset').addEventListener('click', function(){ location.reload(); });
 })();
 </script>
 </body>

@@ -16,6 +16,8 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{font-family:var(--body);color:var(--ink);background:var(--day);line-height:1.6;font-size:16px;-webkit-font-smoothing:antialiased}
+.skip{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+.skip:focus{left:16px;top:16px;width:auto;height:auto;z-index:99;background:var(--marigold);color:var(--dusk);padding:10px 16px;border-radius:8px;font-weight:700;text-decoration:none}
 img,svg{display:block;max-width:100%}
 a{color:inherit}
 :focus-visible{outline:3px solid var(--marigold);outline-offset:3px;border-radius:4px}
@@ -37,8 +39,10 @@ section{position:relative}
 .mark{display:flex;flex-direction:column;line-height:1;text-decoration:none}
 .mark .dev{font-family:var(--dev);font-size:.8rem;color:var(--marigold);letter-spacing:.35em;margin-bottom:3px}
 .mark .latin{font-family:var(--disp);font-weight:600;font-size:1.45rem;letter-spacing:.01em}
-.nav a.link{font-size:.86rem;text-decoration:none;color:var(--dim-on-dusk);border-bottom:1px solid transparent;padding-bottom:2px}
-.nav a.link:hover{color:var(--cream-on-dusk);border-color:var(--marigold)}
+.nav-links{display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:flex-end}
+.nav a.link{font-size:.86rem;text-decoration:none;color:var(--cream-on-dusk);border-bottom:1px solid transparent;padding-bottom:2px;min-height:44px;display:inline-flex;align-items:center}
+.nav a.link:hover{color:#fff;border-color:var(--marigold)}
+.nav a.link.primary{color:var(--marigold);font-weight:600}
 
 /* ---------- hero ---------- */
 .hero{padding:72px 0 96px;overflow:hidden;position:relative}
@@ -124,8 +128,17 @@ footer{padding:56px 0 40px}
 .f-grid{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;align-items:flex-start}
 .f-grid .mark .latin{font-size:1.2rem}
 .f-links{display:flex;gap:22px;font-size:.86rem}
-.f-links a{color:var(--dim-on-dusk);text-decoration:none}
+.f-links a{color:var(--cream-on-dusk);text-decoration:none}
 .f-links a:hover{color:var(--marigold)}
+/* ---------- FAQ ---------- */
+.faq{max-width:720px;margin:44px auto 0;text-align:left}
+.faq details{background:#fff;border:1px solid var(--bone-2);border-radius:14px;padding:0 20px;margin-bottom:10px}
+.faq summary{font-family:var(--disp);font-weight:600;font-size:1.02rem;padding:18px 0;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";color:var(--marigold-d);font-size:1.3rem;font-weight:700;flex:none}
+.faq details[open] summary::after{content:"−"}
+.faq p{padding:0 0 18px;font-size:.92rem;color:var(--ink-soft)}
+.faq .price-note{display:inline-block;margin-top:8px;background:var(--bone);border-radius:8px;padding:8px 12px;font-size:.85rem;color:var(--ink)}
 .legal{margin-top:34px;padding-top:22px;border-top:1px solid var(--pine-2);font-size:.74rem;color:var(--dim-on-dusk);max-width:72ch;line-height:1.7}
 
 /* ---------- reveal motion ---------- */

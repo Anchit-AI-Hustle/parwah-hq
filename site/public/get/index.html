@@ -19,11 +19,14 @@
 .getbtn{display:inline-block;background:#E8A23D;color:#182622;font-weight:700;border-radius:999px;padding:14px 26px;text-decoration:none;margin-top:12px}
 .getbtn.dark{background:#182622;color:#E8A23D}
 .badge-soon{display:inline-block;background:#EFE8D8;color:#4C4437;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:4px 12px;margin-left:8px}
-#direct-android{display:none}
+.getqr{display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px dashed var(--bone-2,#E3D9C2)}
+.getqr img{border-radius:12px;border:1px solid var(--bone-2,#E3D9C2);background:#fff}
+.getshare{margin-top:12px}
 </style>
 </head>
 <body>
-<header class="dusk">
+<a class="skip" href="#main">Skip to content</a>
+<header class="dusk" id="main">
   <div class="wrap">
     <nav class="nav" aria-label="Main">
       <a class="mark" href="../" aria-label="Parwah home">
@@ -42,6 +45,19 @@
 </header>
 
 <div class="getwrap">
+  <div class="platform" style="text-align:center">
+    <h2>📲 Scan to open on your phone</h2>
+    <p>Point your camera at this code — it opens the Parwah app in your browser, ready to install.</p>
+    <div class="getqr" style="justify-content:center">
+      <img id="qr-img" width="180" height="180" alt="QR code to open the Parwah app" src="">
+      <div style="text-align:left">
+        <p style="font-size:.9rem;color:#4C4437;margin-bottom:8px"><b>Or share this link:</b></p>
+        <p style="font-size:.85rem;word-break:break-all;color:#4C4437" id="app-url">…</p>
+        <button class="getbtn getshare" id="share-link" type="button">Share install link</button>
+      </div>
+    </div>
+  </div>
+
   <div class="platform" id="p-android">
     <h2>🤖 Android</h2>
     <p>Installs straight from the browser — no store needed:</p>
@@ -81,6 +97,19 @@
 
 <script>
 (function(){
+  var appUrl = (location.origin || 'https://parwah-hq.anchit-tandon.com') + '/app/';
+  var urlEl = document.getElementById('app-url');
+  var qrEl = document.getElementById('qr-img');
+  if (urlEl) urlEl.textContent = appUrl;
+  if (qrEl) qrEl.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(appUrl);
+  var shareBtn = document.getElementById('share-link');
+  if (shareBtn) shareBtn.addEventListener('click', function(){
+    if (navigator.share) {
+      navigator.share({title:'Parwah app',text:'Install Parwah — family care in one app',url:appUrl}).catch(function(){});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(appUrl).then(function(){ shareBtn.textContent = 'Link copied!'; });
+    }
+  });
   // Surface the matching platform first
   var ua = navigator.userAgent || '';
   if (/iPhone|iPad|iPod/i.test(ua)) {
