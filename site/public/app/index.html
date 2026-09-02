@@ -14,6 +14,8 @@
   try {
     var t = localStorage.getItem('parwah-theme') || 'auto';
     if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+    var l = localStorage.getItem('parwah-lang');
+    if (l === 'hi') document.documentElement.setAttribute('lang', 'hi');
   } catch (e) {}
 })();
 </script>
@@ -24,7 +26,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Parwah">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Albert+Sans:wght@400;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Albert+Sans:wght@400;600;700&family=Tiro+Devanagari+Hindi&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 /* ---------- COLOUR ----------
    Every colour in this file is a token. Nothing is a bare hex outside this
@@ -159,16 +161,42 @@ label + select{width:100%}
 .hint{font-size:.8rem;color:var(--ink-soft);margin-top:8px}
 
 /* senior mode */
-.big{border:0;width:100%;border-radius:20px;padding:26px 16px;font-family:var(--disp);font-weight:700;font-size:1.5rem;cursor:pointer;margin-bottom:14px}
+.big{border:0;width:100%;border-radius:20px;padding:26px 16px;font-family:var(--disp);font-weight:700;font-size:1.5rem;cursor:pointer;margin-bottom:14px;position:relative}
 .big:active{transform:scale(.98)}
 .big .sub{display:block;font-family:var(--body);font-size:.82rem;font-weight:600;margin-top:6px}
 .big.ok{background:var(--marigold);color:var(--dusk);box-shadow:0 8px 24px rgba(232,162,61,.35)}
 .big.ok.done{background:var(--ok);color:var(--on-accent)}
 .big.pill{background:var(--surface);color:var(--ink);border:1.5px solid var(--bone-2);font-size:1.2rem}
 .big.pill.done{background:var(--tint-ok);border-color:var(--ok)}
-.big.sos{background:var(--alert);color:var(--on-accent);font-family:var(--body);font-size:1.25rem;letter-spacing:.05em}
-.senior .feed .ev{font-size:1.02rem}
+.big.sos{background:var(--alert);color:var(--on-accent);font-family:var(--body);font-size:1.25rem;letter-spacing:.05em;overflow:hidden;touch-action:none;user-select:none}
+.big.sos .sosfill{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(0,0,0,.22);pointer-events:none}
+.big.sos.holding .sosfill{width:100%;transition:width 1.5s linear}
+@media(prefers-reduced-motion:reduce){.big.sos.holding .sosfill{transition:none;width:100%}}
+.senior .feed .ev{font-size:1.08rem}
 .senior .tabs button{font-size:.8rem}
+.senior .wrap{font-size:1.06rem}
+.senior #pane-home .widgets,
+.senior #pane-home #coincard,
+.senior #pane-home #firstrun,
+.senior #pane-home #famcard,
+.senior #pane-home .homehero .hero2,
+.senior #pane-home .homehero .hint,
+.senior .fab{display:none!important}
+.senior #pane-home .homehero{margin-bottom:12px;padding:18px 18px 14px}
+.senior #pane-home .homehero h1{font-size:1.65rem}
+.senior .big{font-size:1.6rem;padding:28px 16px;margin-bottom:16px}
+html[lang="hi"]{--body:"Noto Sans Devanagari","Albert Sans",system-ui,sans-serif}
+.langbar{display:flex;gap:8px;margin:0 0 16px}
+.langbar button{flex:1;border:1.5px solid var(--bone-2);background:var(--surface);border-radius:12px;padding:10px;font-family:var(--body);font-weight:700;font-size:.9rem;cursor:pointer;color:var(--ink)}
+.langbar button.sel{border-color:var(--marigold);background:var(--tint-warm)}
+.missbar{border-left:4px solid var(--sindoor)}
+.missbar h3{color:var(--sindoor)}
+.dangerzone{border-color:var(--alert-line)}
+.dangerzone h3{color:var(--alert)}
+.empty{text-align:center;padding:22px 12px}
+.empty .eic{font-size:1.8rem;display:block;margin-bottom:6px}
+.gift-parwah{width:100%;margin-top:8px}
+.purow.quiet small{color:var(--sindoor);font-weight:600}
 
 /* feed */
 .eyebrow{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--sindoor);font-weight:700;margin:18px 0 10px}
@@ -818,8 +846,12 @@ details.more[open]>summary::before{content:"▾ "}
 
 <!-- ============ ONBOARDING ============ -->
 <div class="wrap" id="onboard">
-  <h1>Your family's circle</h1>
-  <p class="lede">One private circle for your family. Check-ins, SOS and messages reach everyone in it — and only them.</p>
+  <div class="langbar" id="ob-lang" role="group" aria-label="Language">
+    <button type="button" data-lang-set="en" class="sel">English</button>
+    <button type="button" data-lang-set="hi">हिन्दी</button>
+  </div>
+  <h1 data-i18n="ob.title">Your family's circle</h1>
+  <p class="lede" data-i18n="ob.lede">One private circle for your family. Check-ins, SOS and messages reach everyone in it — and only them.</p>
   <div class="obpoints">
     <span class="obpoint"><span class="oi" aria-hidden="true">📒</span><span><b>Where the family knows.</b> Doctors, medicines, blood groups and policies — kept current, not lost in a chat.</span></span>
     <span class="obpoint"><span class="oi" aria-hidden="true">🚨</span><span><b>Ready before the emergency.</b> One card with everything a doctor asks for, working with no internet.</span></span>
@@ -967,29 +999,35 @@ details.more[open]>summary::before{content:"▾ "}
     </div>
     <div class="homehero">
       <h1 id="m-title"></h1>
-      <p class="lede" style="margin-bottom:12px">Circle code: <span class="codechip" id="m-code"></span></p>
+      <p class="lede" style="margin-bottom:12px"><span data-i18n="home.code">Circle code:</span> <span class="codechip" id="m-code"></span></p>
       <p class="herostatus" id="hero-status">…</p>
       <div class="hero2">
-        <button class="go invitebtn">🧡 Invite family</button>
-        <button class="go callgo" id="callnow">📹 Family call</button>
+        <button class="go invitebtn">🧡 <span data-i18n="home.invite">Invite family</span></button>
+        <button class="go callgo" id="callnow">📹 <span data-i18n="home.call">Family call</span></button>
       </div>
-      <p class="hint">One tap — they join with your circle code.</p>
-    </div>
-
-    <div class="card" id="famcard" style="margin-bottom:14px">
-      <h3>Your family</h3>
-      <div class="feed" id="fam-cards"></div>
-      <button class="go" id="fam-view" style="margin-top:12px">View family</button>
-      <p class="hint" style="margin-top:8px">You decide who can see what.</p>
+      <p class="hint" data-i18n="home.invitehint">One tap — they join with your circle code.</p>
     </div>
 
     <div class="card" id="pulsecard" style="margin-bottom:14px">
-      <h3>How are my people today?</h3>
+      <h3 data-i18n="pulse.title">How are my people today?</h3>
       <p class="hint" id="pu-ask" style="margin:2px 0 10px"></p>
       <div class="feed" id="pu-people"></div>
       <div id="pu-pick" style="margin-top:12px"></div>
       <p class="hint" id="pu-mine" style="margin-top:8px"></p>
     </div>
+
+    <div class="card missbar" id="missbar" hidden style="margin-bottom:14px">
+      <h3 data-i18n="miss.title">Someone has not checked in</h3>
+      <p class="hint" id="miss-txt" style="margin:2px 0 10px"></p>
+      <div class="prow2" id="miss-acts"></div>
+    </div>
+
+    <div id="seniorui" hidden>
+      <button class="big ok" id="btn-checkin">All is well ✅<span class="sub" data-i18n="checkin.sub">One tap — the whole family relaxes</span></button>
+      <button class="big pill" id="btn-pill">Pills taken? Yes ✔</button>
+      <button class="big sos" id="btn-sos">🆘 SOS — need help now<span class="sub" data-i18n="sos.holdhint">Hold for 2 seconds — the whole circle is told</span><i class="sosfill" aria-hidden="true"></i></button>
+    </div>
+    <button class="big ecard-big" id="btn-ecard">🚨 Emergency card<span class="sub" data-i18n="ecard.sub">Everything a doctor needs — works without internet</span></button>
 
     <button class="card readycard" id="readycard" hidden style="margin-bottom:14px;width:100%;text-align:left">
       <h3>Your family is <span id="rd-pct">—</span>% ready</h3>
@@ -998,12 +1036,12 @@ details.more[open]>summary::before{content:"▾ "}
       <p class="hint" id="rd-cta" style="margin-top:8px"></p>
     </button>
 
-    <div id="seniorui" hidden>
-      <button class="big ok" id="btn-checkin">All is well ✅<span class="sub">One tap — the whole family relaxes</span></button>
-      <button class="big pill" id="btn-pill">Pills taken? Yes ✔</button>
-      <button class="big sos" id="btn-sos">🆘 SOS — need help now<span class="sub">Everyone in the circle is told instantly</span></button>
+    <div class="card" id="famcard" style="margin-bottom:14px">
+      <h3 data-i18n="home.family">Your family</h3>
+      <div class="feed" id="fam-cards"></div>
+      <button class="go" id="fam-view" style="margin-top:12px" data-i18n="home.viewfamily">View family</button>
+      <p class="hint" style="margin-top:8px" data-i18n="home.consent">You decide who can see what.</p>
     </div>
-    <button class="big ecard-big" id="btn-ecard">🚨 Emergency card<span class="sub">Everything a doctor needs — works without internet</span></button>
 
     <div class="card" id="firstrun" hidden style="margin-bottom:14px">
       <h3>🌱 Getting Parwah useful</h3>
@@ -1024,18 +1062,18 @@ details.more[open]>summary::before{content:"▾ "}
       <p class="hint" id="coin-sub" style="margin:2px 0 0">Earned by looking after each other — spent on Ekta</p>
     </button>
     <div class="widgets">
-      <button class="widget" data-goto="people"><span class="wic" aria-hidden="true">👨‍👩‍👧</span><b>People</b><small id="w-fam">Loading…</small></button>
-      <button class="widget" data-goto="care" data-sec="rem"><span class="wic" aria-hidden="true">✅</span><b>Things to do</b><small id="w-rem">Loading…</small></button>
-      <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true">💡</span><b>Suggested</b><small id="w-req">Loading…</small></button>
-      <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b>Chats</b><small id="w-chat">Family + personal</small></button>
-      <button class="widget" data-goto="memory"><span class="wic" aria-hidden="true">📒</span><b>Family memory</b><small id="w-book">Contacts, addresses, meds-map, facts</small></button>
-      <button class="widget" data-goto="vault" data-sec="docs"><span class="wic" aria-hidden="true">🔐</span><b>Family vault</b><small id="w-vault">Aadhaar, PAN, passport, health papers</small></button>
-      <button class="widget" data-goto="vault" data-sec="pay"><span class="wic" aria-hidden="true">💳</span><b>Payments</b><small id="w-pay">Who may use which way of paying</small></button>
-      <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true">🕉</span><b>Muhurat</b><small id="w-day">Choghadiya for your city</small></button>
-      <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check — just ask</small></button>
-      <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi — play together</small></button>
-      <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
+      <button class="widget" data-goto="care" data-sec="rem"><span class="wic" aria-hidden="true">✅</span><b data-i18n="w.todo">Things to do</b><small id="w-rem">Loading…</small></button>
+      <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b data-i18n="w.chats">Chats</b><small id="w-chat">Family + personal</small></button>
+      <button class="widget" data-goto="memory"><span class="wic" aria-hidden="true">📒</span><b data-i18n="w.memory">Family memory</b><small id="w-book">Contacts, addresses, meds-map, facts</small></button>
+      <button class="widget" data-goto="vault" data-sec="docs"><span class="wic" aria-hidden="true">🔐</span><b data-i18n="w.vault">Family vault</b><small id="w-vault">Aadhaar, PAN, passport, health papers</small></button>
+      <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small data-i18n="w.ekta">Reminders, help, scam check — just ask</small></button>
+      <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b data-i18n="w.plans">Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
     </div>
+    <p class="hint" id="w-req" hidden></p>
+    <p class="hint" id="w-fam" hidden></p>
+    <p class="hint" id="w-pay" hidden></p>
+    <p class="hint" id="w-day" hidden></p>
+    <p class="hint" id="w-game" hidden></p>
 
     </div>
     <div class="homerail">
@@ -1052,7 +1090,7 @@ details.more[open]>summary::before{content:"▾ "}
     </div>
     <div class="subsec" data-sec="rem">
     <p class="hint" style="margin:0 0 10px">Everything the family has to do, in one list — jobs anyone can pick up, and reminders for a particular person.</p>
-    <div class="feed" id="rlist"><div class="ev">Nothing to do right now 🧡</div></div>
+      <div class="feed" id="rlist"><div class="ev empty"><span class="eic" aria-hidden="true">✅</span>Nothing to do right now 🧡</div></div>
     <div class="feed" id="qlist" hidden></div>
 
     <div class="card" style="margin-top:16px">
@@ -1315,6 +1353,7 @@ details.more[open]>summary::before{content:"▾ "}
 
     <div class="subsec" data-sec="pay" hidden>
       <div class="ektahead"><span style="font-size:1.4rem" aria-hidden="true">💳</span><span><b>Payments</b><small>Your ways of paying, and exactly who in the family may use each one</small></span></div>
+      <p class="hint" style="margin:0 0 10px">This is a family permission book — who may pay how, and up to how much. Rupees still move in GPay, PhonePe or Wise. Licensed in-app payments come next, never built by us.</p>
       <div class="feed" id="vplist"><div class="ev">No payment methods saved yet.</div></div>
       <div class="card" style="margin-top:14px">
         <h3 id="vp-ftitle">Add a way of paying</h3>
@@ -1669,7 +1708,6 @@ details.more[open]>summary::before{content:"▾ "}
         <div class="widget"><span class="wic" aria-hidden="true">🎯</span><b>Ludo</b><small>Coming soon</small></div>
         <div class="widget"><span class="wic" aria-hidden="true">🃏</span><b>Card party</b><small>Coming soon</small></div>
         <div class="widget"><span class="wic" aria-hidden="true">🏠</span><b>Property game</b><small>Coming soon</small></div>
-        <div class="widget"><span class="wic" aria-hidden="true">⭕</span><b>Tic-tac-toe</b><small>Coming soon</small></div>
       </div>
     </div>
     <div id="game-on" hidden>
@@ -1789,18 +1827,6 @@ details.more[open]>summary::before{content:"▾ "}
       <div class="kv"><b>Role</b><span id="p-role"></span></div>
       <div class="kv"><b>Circle</b><span id="p-circle"></span></div>
       <button class="linkbtn" id="pedit">✏️ Edit profile</button>
-    </div>
-    <div class="card">
-      <h3>Appearance</h3>
-      <p class="hint" style="margin:2px 0 10px">Dark is easier on the eyes at night. Automatic
-        follows your phone or computer, so it changes when everything else does.</p>
-      <div class="seg" id="themeseg" role="group" aria-label="Appearance">
-        <button type="button" data-theme-set="auto">Automatic</button>
-        <button type="button" data-theme-set="light">☀️ Light</button>
-        <button type="button" data-theme-set="dark">🌙 Dark</button>
-      </div>
-      <button class="linkbtn" id="leave" style="margin-left:16px;color:var(--alert)">Leave this circle</button>
-      <button class="linkbtn" id="signout" style="margin-left:16px;color:var(--alert)">Sign out</button>
       <div id="editform" hidden style="margin-top:14px;border-top:1px dashed var(--bone-2);padding-top:12px">
         <label for="e-name">Name in this circle</label>
         <input type="text" id="e-name" maxlength="60">
@@ -1856,54 +1882,64 @@ details.more[open]>summary::before{content:"▾ "}
         <button class="go" id="e-save">Save changes</button>
       </div>
     </div>
+    <div class="card">
+      <h3 data-i18n="prof.look">Language &amp; look</h3>
+      <p class="hint" style="margin:2px 0 10px" data-i18n="prof.langhint">Hindi is larger type and the words families actually say. English stays for everyone else.</p>
+      <div class="langbar" id="pr-lang" role="group" aria-label="Language" style="margin-bottom:12px">
+        <button type="button" data-lang-set="en">English</button>
+        <button type="button" data-lang-set="hi">हिन्दी</button>
+      </div>
+      <p class="hint" style="margin:2px 0 10px">Dark is easier on the eyes at night. Automatic
+        follows your phone or computer, so it changes when everything else does.</p>
+      <div class="seg" id="themeseg" role="group" aria-label="Appearance">
+        <button type="button" data-theme-set="auto">Automatic</button>
+        <button type="button" data-theme-set="light">☀️ Light</button>
+        <button type="button" data-theme-set="dark">🌙 Dark</button>
+      </div>
+    </div>
 
     </div>
         <div class="subsec" data-sec="me">
     <div class="card">
-      <h3>Plan</h3>
-      <span class="plantag">Free · Beta</span>
-      <p>Everything in Parwah is free while we're in beta — for every member of your circle.</p>
-      <p style="margin-top:8px"><b style="color:var(--ink)">Parwah Plus (coming soon):</b></p>
-      <ul>
-        <li>Reminder and SOS push alerts on your phone</li>
-        <li>Emergency card for each parent</li>
-        <li>More than one circle per account</li>
-        <li>Priority Ekta</li>
-      </ul>
-      <p style="margin-top:8px">There are no payments inside the app today, and nothing will ever start costing money without asking you first.</p>
-    </div>
-
-    <div class="card">
-      <h3>Ekta's brain 🔑</h3>
-      <p class="hint" style="margin:2px 0 10px">Ekta answers using whichever AI key is set. Add one and she wakes up; add several and she falls back automatically if one fails. Keys are stored server-side and never shown again.</p>
-      <div id="klist"></div>
-      <label for="k-prov">Provider</label>
-      <select id="k-prov">
-        <option value="anthropic">Anthropic (Claude) — full tools</option>
-        <option value="openai">OpenAI</option>
-        <option value="gemini">Google Gemini</option>
-        <option value="grok">Grok (xAI)</option>
-        <option value="kimi">Kimi (Moonshot)</option>
-        <option value="anthropic_ws">↳ Anthropic workspace ID (only if your key asks for one)</option>
-      </select>
-      <label for="k-key">API key</label>
-      <input type="password" id="k-key" maxlength="300" placeholder="paste the key" autocomplete="off">
-      <button class="go" id="k-save">Save key</button>
-      <p class="hint" style="margin-top:8px">Anthropic: console.anthropic.com → API keys · Gemini: aistudio.google.com/apikey · OpenAI: platform.openai.com/api-keys. If Anthropic replies "workspace id is required", add the workspace ID here too.</p>
-    </div>
-
-    <div class="card">
-      <h3>Settings</h3>
-      <div class="kv"><b>Language</b><span>English · Hindi toggle coming soon</span></div>
-      <div class="kv"><b>Senior mode</b><span id="p-senior"></span></div>
-      <div class="kv"><b>Device alerts</b><span id="p-push">—</span></div>
+      <h3 data-i18n="prof.settings">Settings</h3>
+      <div class="kv"><b data-i18n="prof.senior">Senior mode</b><span id="p-senior"></span></div>
+      <div class="kv"><b data-i18n="prof.alerts">Device alerts</b><span id="p-push">—</span></div>
       <button class="linkbtn" id="p-push-on">🔔 Turn on alerts on this device</button>
       <p style="margin-top:10px"><b style="color:var(--ink)">Install as an app:</b> Android — Chrome menu → <i>Install app</i>. iPhone — Share → <i>Add to Home Screen</i>. <a href="../get/" target="_blank" rel="noopener">Full install guide →</a></p>
+      <p class="hint" style="margin-top:10px">Everything in Parwah is free while we are in beta. Parwah Care (₹2,499 / $29.99 a year) is a reservation — nothing is charged until a licensed partner takes payment, and never without asking you first.</p>
     </div>
 
     <div class="card">
-      <h3>Privacy promise</h3>
+      <h3 data-i18n="prof.privacy">Privacy promise</h3>
       <p>Your circle is private. No ads, no data selling, no public feed. Everything shared here is visible only to the people in your circle — and anything set <i>for</i> someone starts only when they accept it.</p>
+    </div>
+
+    <details class="more" id="keys-wrap">
+      <summary>Advanced — Ekta's AI keys 🔑</summary>
+      <div class="explain">
+        <p class="hint" style="margin:2px 0 10px">Most families never need this. Ekta already uses Parwah's key. Add your own only if you want her to use your provider; keys are stored server-side and never shown again.</p>
+        <div id="klist"></div>
+        <label for="k-prov">Provider</label>
+        <select id="k-prov">
+          <option value="anthropic">Anthropic (Claude) — full tools</option>
+          <option value="openai">OpenAI</option>
+          <option value="gemini">Google Gemini</option>
+          <option value="grok">Grok (xAI)</option>
+          <option value="kimi">Kimi (Moonshot)</option>
+          <option value="anthropic_ws">↳ Anthropic workspace ID (only if your key asks for one)</option>
+        </select>
+        <label for="k-key">API key</label>
+        <input type="password" id="k-key" maxlength="300" placeholder="paste the key" autocomplete="off">
+        <button class="go" id="k-save">Save key</button>
+        <p class="hint" style="margin-top:8px">Anthropic: console.anthropic.com → API keys · Gemini: aistudio.google.com/apikey · OpenAI: platform.openai.com/api-keys. If Anthropic replies "workspace id is required", add the workspace ID here too.</p>
+      </div>
+    </details>
+
+    <div class="card dangerzone" style="margin-top:14px">
+      <h3 data-i18n="prof.danger">Leave or sign out</h3>
+      <p class="hint" style="margin:2px 0 10px">Leaving a circle does not delete the family's memory. Signing out only forgets this phone.</p>
+      <button class="linkbtn" id="leave" style="color:var(--alert)">Leave this circle</button>
+      <button class="linkbtn" id="signout" style="margin-left:16px;color:var(--alert)">Sign out</button>
     </div>
     </div>
   </section>
@@ -1925,16 +1961,16 @@ details.more[open]>summary::before{content:"▾ "}
 <nav class="tabs" id="tabs" hidden aria-label="App sections">
   <div class="inner">
     <div class="side-brand side-only"><span class="dev" aria-hidden="true">परवाह</span><span>Parwah</span></div>
-    <button data-tab="home" class="sel"><span class="ic" aria-hidden="true">🏠</span>Today</button>
-    <button data-tab="notifs" class="deskonly" id="side-nb" style="position:relative"><span class="ic" aria-hidden="true">🔔</span>Notifications<i class="dot" id="nb-dot2" hidden></i></button>
-    <button data-tab="people"><span class="ic" aria-hidden="true">👨‍👩‍👧</span>People</button>
-    <button data-tab="memory"><span class="ic" aria-hidden="true">📒</span>Memory</button>
-    <button data-tab="vault" class="deskonly"><span class="ic" aria-hidden="true">🔐</span>Vault</button>
+    <button data-tab="home" class="sel"><span class="ic" aria-hidden="true">🏠</span><span data-i18n="tab.today">Today</span></button>
+    <button data-tab="notifs" class="deskonly" id="side-nb" style="position:relative"><span class="ic" aria-hidden="true">🔔</span><span data-i18n="tab.notifs">Notifications</span><i class="dot" id="nb-dot2" hidden></i></button>
+    <button data-tab="people"><span class="ic" aria-hidden="true">👨‍👩‍👧</span><span data-i18n="tab.people">People</span></button>
+    <button data-tab="memory"><span class="ic" aria-hidden="true">📒</span><span data-i18n="tab.memory">Memory</span></button>
+    <button data-tab="vault" class="deskonly"><span class="ic" aria-hidden="true">🔐</span><span data-i18n="tab.vault">Vault</span></button>
     <div class="subnav side-only" data-parent="vault">
-      <button data-tab="vault" data-sec="docs">Documents</button>
-      <button data-tab="vault" data-sec="pay">Payments</button>
+      <button data-tab="vault" data-sec="docs" data-i18n="tab.docs">Documents</button>
+      <button data-tab="vault" data-sec="pay" data-i18n="tab.pay">Payments</button>
     </div>
-    <button data-tab="care"><span class="ic" aria-hidden="true">🔔</span>Care<i class="dot" id="care-dot" hidden></i></button>
+    <button data-tab="care"><span class="ic" aria-hidden="true">🫶</span><span data-i18n="tab.care">Care</span><i class="dot" id="care-dot" hidden></i></button>
     <button data-tab="day" class="deskonly"><span class="ic" aria-hidden="true">🕉</span>The day</button>
     <div class="subnav side-only" data-parent="day">
       <button data-tab="day" data-sec="muhurat">Muhurat</button>
@@ -1980,13 +2016,15 @@ details.more[open]>summary::before{content:"▾ "}
       <button class="cbtn ecard-btn" id="mp-ecard">🚨 Emergency card</button>
     </div>
     <div id="giftbox" hidden>
-      <p class="hint" id="gift-sizes" hidden style="margin-top:10px;background:#FDF4E3;border:1px solid var(--bone-2);border-radius:10px;padding:8px 10px"></p>
+      <p class="hint" id="gift-sizes" hidden style="margin-top:10px;background:var(--tint-warm);border:1px solid var(--bone-2);border-radius:10px;padding:8px 10px"></p>
+      <a class="go gift-parwah" id="gift-parwah" href="https://wa.me/919873945238?text=Hi%20Parwah%20%E2%80%94%20I%20want%20to%20gift%20something%20from%20the%20launch%20collection." rel="noopener">🎁 Gift from the Parwah collection</a>
+      <p class="hint" style="margin:6px 0 8px">Daily-living gifts chosen for dignity — bathroom safety, comfort, clever tools. A human on WhatsApp helps you pick, and we send it with a card in your words.</p>
       <p class="eyebrow" style="margin-top:12px">Send money 💸</p>
       <div class="prow2" id="gift-cash"></div>
       <p class="eyebrow" style="margin-top:12px">Gift from stores near them <span id="gift-region"></span></p>
       <div class="prow2" id="gift-shop"></div>
       <button class="cbtn ghost" id="gift-tell" style="margin-top:10px">💌 Tell them something's coming</button>
-      <p class="hint" style="margin-top:8px">Opens the store or app — order to their address, send an e-gift card, or pay to their mobile number.</p>
+      <p class="hint" style="margin-top:8px">Parwah collection is the gift we pack for you. The other buttons open a store or cash app — order to their address, or pay their mobile number.</p>
     </div>
   </div>
 </div>
@@ -1994,12 +2032,12 @@ details.more[open]>summary::before{content:"▾ "}
 <div class="drawer" id="drawer" hidden>
   <div class="dpanel">
     <div class="dhead"><span class="dev" aria-hidden="true">परवाह</span> Parwah <button class="x" id="drawer-x" aria-label="Close menu">✕</button></div>
-    <button class="ditem" data-tab="home">🏠 Today</button>
-    <button class="ditem" data-tab="notifs">🔔 Notifications</button>
-    <button class="ditem" data-tab="people">👨‍👩‍👧 People</button>
-    <button class="ditem" data-tab="memory">📒 Family memory</button>
+    <button class="ditem" data-tab="home">🏠 <span data-i18n="tab.today">Today</span></button>
+    <button class="ditem" data-tab="notifs">🔔 <span data-i18n="tab.notifs">Notifications</span></button>
+    <button class="ditem" data-tab="people">👨‍👩‍👧 <span data-i18n="tab.people">People</span></button>
+    <button class="ditem" data-tab="memory">📒 <span data-i18n="tab.memoryfull">Family memory</span></button>
     <div class="dgroup">
-      <button class="ditem dparent" data-grp="vault">🔐 Family vault <span class="caret">▾</span></button>
+      <button class="ditem dparent" data-grp="vault">🔐 <span data-i18n="tab.vaultfull">Family vault</span> <span class="caret">▾</span></button>
       <div class="dsub">
         <button class="ditem sub" data-tab="vault" data-sec="docs">Documents</button>
         <button class="ditem sub" data-tab="vault" data-sec="pay">Payments</button>
@@ -2013,7 +2051,7 @@ details.more[open]>summary::before{content:"▾ "}
       </div>
     </div>
     <div class="dgroup">
-      <button class="ditem dparent" data-grp="care">🔔 Care <span class="caret">▾</span></button>
+      <button class="ditem dparent" data-grp="care">🫶 <span data-i18n="tab.care">Care</span> <span class="caret">▾</span></button>
       <div class="dsub">
         <button class="ditem sub" data-tab="care" data-sec="rem">Things to do</button>
         <button class="ditem sub" data-tab="care" data-sec="req">Suggested</button>
@@ -2078,6 +2116,75 @@ details.more[open]>summary::before{content:"▾ "}
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
+  var I18N = {
+    en: {
+      'tab.today':'Today','tab.people':'People','tab.memory':'Memory','tab.memoryfull':'Family memory',
+      'tab.care':'Care','tab.vault':'Vault','tab.vaultfull':'Family vault','tab.docs':'Documents','tab.pay':'Payments',
+      'tab.notifs':'Notifications','ob.title':"Your family's circle",
+      'ob.lede':'One private circle for your family. Check-ins, SOS and messages reach everyone in it — and only them.',
+      'home.code':'Circle code:','home.invite':'Invite family','home.call':'Family call',
+      'home.invitehint':'One tap — they join with your circle code.','pulse.title':'How are my people today?',
+      'miss.title':'Someone has not checked in','home.family':'Your family','home.viewfamily':'View family',
+      'home.consent':'You decide who can see what.','checkin.sub':'One tap — the whole family relaxes',
+      'sos.holdhint':'Hold for 2 seconds — the whole circle is told',
+      'ecard.sub':'Everything a doctor needs — works without internet',
+      'w.todo':'Things to do','w.chats':'Chats','w.memory':'Family memory','w.vault':'Family vault',
+      'w.ekta':'Reminders, help, scam check — just ask','w.plans':'Plans',
+      'prof.look':'Language & look','prof.langhint':'Hindi is larger type and the words families actually say. English stays for everyone else.',
+      'prof.settings':'Settings','prof.senior':'Senior mode','prof.alerts':'Device alerts',
+      'prof.privacy':'Privacy promise','prof.danger':'Leave or sign out',
+      'sos.sent':'SOS sent — the circle has been told','sos.hold':'Hold the button for 2 seconds to send SOS',
+      'checkin.done':'Thank you ✅','checkin.donesub':'Your check-in reached the whole family',
+      'checkin.toast':'The whole circle knows you are okay','pill.done':'Taken ✔ Well done!',
+      'miss.none':'Everyone has said how they are today.','miss.call':'Call '
+    },
+    hi: {
+      'tab.today':'आज','tab.people':'परिवार','tab.memory':'याद','tab.memoryfull':'परिवार की याद',
+      'tab.care':'देखभाल','tab.vault':'तिजोरी','tab.vaultfull':'परिवार की तिजोरी','tab.docs':'कागज़','tab.pay':'पैसे',
+      'tab.notifs':'सूचनाएँ','ob.title':'आपके परिवार का घेरा',
+      'ob.lede':'एक निजी घेरा। चेक-इन, SOS और संदेश यहीं के लोगों तक पहुँचते हैं — और केवल उन्हीं तक।',
+      'home.code':'घेरे का कोड:','home.invite':'परिवार को बुलाएँ','home.call':'परिवार से बात',
+      'home.invitehint':'एक टैप — वे आपके कोड से जुड़ जाते हैं।','pulse.title':'आज मेरे लोग कैसे हैं?',
+      'miss.title':'किसी ने अभी चेक-इन नहीं किया','home.family':'आपका परिवार','home.viewfamily':'परिवार देखें',
+      'home.consent':'कौन क्या देखे, यह आप तय करते हैं।','checkin.sub':'एक टैप — पूरा परिवार सुकून से',
+      'sos.holdhint':'दो सेकंड दबाकर रखें — पूरा घेरा जान जाएगा',
+      'ecard.sub':'डॉक्टर को जो चाहिए — बिना नेट के भी',
+      'w.todo':'करने के काम','w.chats':'बातचीत','w.memory':'परिवार की याद','w.vault':'तिजोरी',
+      'w.ekta':'याद दिलाना, मदद, ठगी जाँच — बस पूछें','w.plans':'योजनाएँ',
+      'prof.look':'भाषा और रूप','prof.langhint':'हिन्दी बड़े अक्षरों में, परिवार जैसी बात। अंग्रेज़ी भी यहीं है।',
+      'prof.settings':'सेटिंग','prof.senior':'सीनियर मोड','prof.alerts':'फ़ोन पर सूचना',
+      'prof.privacy':'गोपनीयता का वादा','prof.danger':'घेरा छोड़ें या साइन आउट',
+      'sos.sent':'SOS भेज दिया — घेरे को बता दिया गया है','sos.hold':'SOS भेजने के लिए बटन दो सेकंड दबाए रखें',
+      'checkin.done':'धन्यवाद ✅','checkin.donesub':'आपका चेक-इन पूरे परिवार तक पहुँच गया',
+      'checkin.toast':'पूरा घेरा जानता है कि आप ठीक हैं','pill.done':'ले ली ✔ शाबाश!',
+      'miss.none':'आज सबने बता दिया है कि वे कैसे हैं।','miss.call':'कॉल करें '
+    }
+  };
+  function langPref(){ try { return localStorage.getItem('parwah-lang') || ''; } catch (e) { return ''; } }
+  function t(k){
+    var pack = (document.documentElement.lang === 'hi') ? I18N.hi : I18N.en;
+    return (pack && pack[k] != null) ? pack[k] : (I18N.en[k] || k);
+  }
+  function applyI18n(){
+    var hi = document.documentElement.lang === 'hi';
+    document.querySelectorAll('[data-i18n]').forEach(function(el){
+      var v = t(el.getAttribute('data-i18n'));
+      if (el.hasAttribute('data-i18n-html')) el.innerHTML = v; else el.textContent = v;
+    });
+    document.querySelectorAll('[data-lang-set]').forEach(function(b){
+      b.classList.toggle('sel', b.getAttribute('data-lang-set') === (hi ? 'hi' : 'en'));
+    });
+  }
+  function setLang(l, persist){
+    var lang = l === 'hi' ? 'hi' : 'en';
+    if (persist !== false) { try { localStorage.setItem('parwah-lang', lang); } catch (e) {} }
+    document.documentElement.lang = lang;
+    applyI18n();
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-lang-set]'); if (!b) return;
+    setLang(b.getAttribute('data-lang-set'), true);
+  });
   var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', vault: '../api/book?area=vault', pay: '../api/book?area=pay', push: '../api/settings?area=push', keys: '../api/settings?area=keys', coins: '../api/settings?area=coins', plan: '../api/settings?area=plan', day: '../api/settings?area=day', pin: '../api/settings?area=pin' };
   var TABS = ['home','people','person','memory','vault','care','day','chat','ekta','profile','fun','notifs'];
   var state = null;
@@ -2757,6 +2864,8 @@ details.more[open]>summary::before{content:"▾ "}
     $('tabs').hidden = false;
     document.body.classList.toggle('senior', state.role === 'parent');
     $('seniorui').hidden = state.role !== 'parent';
+    if (!langPref() && state.role === 'parent') setLang('hi', true);
+    else applyI18n();
     document.body.classList.add('inapp');
     $('who').textContent = state.name + ' · ' + state.code; setInitials(state.name);
     $('side-user').textContent = state.name + ' · ' + state.code;
@@ -3156,9 +3265,11 @@ details.more[open]>summary::before{content:"▾ "}
     var byId = {};
     (p.answers || []).forEach(function(a){ byId[a.memberId] = a; });
     var h = '';
+    var missing = [];
     (membersCache || []).forEach(function(m){
       var a = byId[m.id];
-      h += '<div class="purow' + (a && a.call ? ' wantcall' : '') + '">' +
+      if (!a && m.id !== state.memberId) missing.push(m);
+      h += '<div class="purow' + (a && a.call ? ' wantcall' : '') + (!a ? ' quiet' : '') + '">' +
            '<span class="pe" aria-hidden="true">' + (a ? a.emoji : '·') + '</span>' +
            '<span><b>' + esc(m.name) + '</b><small>' +
            (a ? esc(a.text) + (a.note ? ' — ' + esc(a.note) : '')
@@ -3168,6 +3279,19 @@ details.more[open]>summary::before{content:"▾ "}
            '</div>';
     });
     $('pu-people').innerHTML = h || '<div class="ev">Nobody in the circle yet.</div>';
+    var miss = $('missbar');
+    if (miss) {
+      var quietParents = missing.filter(function(m){ return m.role === 'parent'; });
+      var show = quietParents.length ? quietParents : missing;
+      miss.hidden = !show.length;
+      if (show.length) {
+        $('miss-txt').textContent = show.map(function(m){ return m.name; }).join(', ') +
+          (show.length === 1 ? ' has not said how they are today.' : ' have not said how they are today.');
+        $('miss-acts').innerHTML = show.filter(function(m){ return m.phone; }).slice(0, 3).map(function(m){
+          return '<a class="cbtn" href="tel:' + encodeURIComponent(m.phone) + '">📞 ' + t('miss.call') + esc(m.name) + '</a>';
+        }).join('') || '';
+      }
+    }
     var mine = byId[state.memberId];
     $('pu-pick').innerHTML = (p.options || []).map(function(o){
       return '<button class="puopt' + (mine && mine.value === o.k ? ' sel' : '') + '" data-pulse="' + o.k + '">' +
@@ -3576,18 +3700,54 @@ details.more[open]>summary::before{content:"▾ "}
     var b = this;
     sendEvent('checkin', '', function(){
       b.classList.add('done');
-      b.innerHTML = 'Thank you ✅<span class="sub">Your check-in reached the whole family</span>';
-      toast('The whole circle knows you are okay');
+      b.innerHTML = t('checkin.done') + '<span class="sub">' + t('checkin.donesub') + '</span>';
+      toast(t('checkin.toast'));
     });
   });
   $('btn-pill').addEventListener('click', function(){
     var b = this;
-    sendEvent('pill', '', function(){ b.classList.add('done'); b.textContent = 'Taken ✔ Well done!'; });
+    sendEvent('pill', '', function(){ b.classList.add('done'); b.textContent = t('pill.done'); });
   });
-  $('btn-sos').addEventListener('click', function(){
-    if (!confirm('Send SOS to the whole circle?')) return;
-    sendEvent('sos', '', function(){ toast('SOS sent — the circle has been told'); });
-  });
+  (function sosHold(){
+    var b = $('btn-sos'); if (!b) return;
+    var timer = null, sent = false, started = 0;
+    var reduce = false;
+    try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    function fire(){
+      sent = true;
+      b.classList.remove('holding');
+      sendEvent('sos', '', function(){ toast(t('sos.sent')); });
+    }
+    if (reduce) {
+      b.addEventListener('click', function(e){
+        e.preventDefault();
+        if (confirm(t('sos.holdhint'))) fire();
+      });
+      return;
+    }
+    function arm(e){
+      if (e.type === 'keydown' && e.key !== ' ' && e.key !== 'Enter') return;
+      e.preventDefault();
+      sent = false;
+      started = Date.now();
+      clearTimeout(timer);
+      b.classList.add('holding');
+      timer = setTimeout(fire, 1500);
+    }
+    function disarm(){
+      var held = Date.now() - started;
+      clearTimeout(timer);
+      b.classList.remove('holding');
+      if (!sent && held > 450) toast(t('sos.hold'));
+    }
+    b.addEventListener('pointerdown', arm);
+    b.addEventListener('pointerup', disarm);
+    b.addEventListener('pointercancel', disarm);
+    b.addEventListener('pointerleave', function(){ if (!sent) disarm(); });
+    b.addEventListener('keydown', arm);
+    b.addEventListener('keyup', disarm);
+    b.addEventListener('click', function(e){ e.preventDefault(); });
+  })();
 
   // ---------- add reminder / request ----------
   var repeatMode = 'once';
@@ -5038,6 +5198,12 @@ details.more[open]>summary::before{content:"▾ "}
     $('gift-cash').innerHTML = r.cash.map(link).join('');
     $('gift-shop').innerHTML = r.shop.map(link).join('');
     $('gift-region').textContent = r.flag + (m.country ? '' : ' (India by default — ask them to set their country in their profile)');
+    var gp = $('gift-parwah');
+    if (gp) {
+      var msg = 'Hi Parwah — I want to gift something from the launch collection to ' + (m.name || 'my family') +
+        (gl2.sizes ? '. Sizes: ' + gl2.sizes : '') + (gl2.wish ? '. Wishlist: ' + gl2.wish : '') + '.';
+      gp.href = 'https://wa.me/919873945238?text=' + encodeURIComponent(msg);
+    }
     $('giftbox').hidden = !$('giftbox').hidden;
   });
   $('gift-tell').addEventListener('click', function(){
@@ -6280,6 +6446,7 @@ details.more[open]>summary::before{content:"▾ "}
     });
   } catch (e) {}
   applyTheme(themePref());
+  applyI18n();
 
   // ---------- boot ----------
   if ('serviceWorker' in navigator) {

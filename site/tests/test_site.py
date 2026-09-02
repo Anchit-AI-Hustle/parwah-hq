@@ -765,7 +765,49 @@ check("address: the unit test runs in the deploy gate",
 check("memory: every filter carries a word, not just an emoji",
       appad.count('class="bkw"') == 5 and '<button type="button" data-bk="contact">☎️</button>' not in appad)
 
-# ---------- 10e. Nothing half-merged ever ships ----------
+# ---------- 10e. Feature review: UI, UX, honesty, conversion ----------
+# A family product is judged against WhatsApp, Life360 and PhonePe — not against
+# a pitch deck. These checks lock the round of fixes that closed the worst gaps.
+appux = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+home = (REPO / "site/public/index.html").read_text(encoding="utf-8")
+launch = (REPO / "site/public/launch/index.html").read_text(encoding="utf-8")
+check("i18n: Hindi is a working toggle, not a coming-soon line",
+      'data-lang-set="hi"' in appux and "Hindi toggle coming soon" not in appux
+      and "function setLang(" in appux and "I18N" in appux)
+check("i18n: the choice is applied before the first paint",
+      appux.index("localStorage.getItem('parwah-lang')") < appux.index("</head>"))
+check("i18n: senior mode defaults to Hindi when the person has not chosen",
+      "if (!langPref() && state.role === 'parent') setLang('hi', true)" in appux)
+check("senior: Today hides the widget grid, coins and first-run checklist",
+      ".senior #pane-home .widgets" in appux and ".senior #pane-home #coincard" in appux
+      and ".senior #pane-home #firstrun" in appux)
+check("sos: a hold, not a confirm, sends the alert (confirm is the reduced-motion path)",
+      "Hold for 2 seconds" in appux and "setTimeout(fire, 1500)" in appux
+      and "prefers-reduced-motion: reduce" in appux)
+check("nav: Care is not the same bell as Notifications",
+      'data-tab="care"' in appux and "🫶" in appux
+      and '<button data-tab="care"><span class="ic" aria-hidden="true">🔔</span>' not in appux)
+check("games: a live game is never listed as coming soon",
+      not re.search(r"Tic-tac-toe</b><small>Coming soon", appux))
+check("profile: API keys sit behind Advanced, not in a family's face",
+      'id="keys-wrap"' in appux and "Advanced — Ekta" in appux)
+check("profile: leave and sign out are a danger zone, not inside Appearance",
+      'class="card dangerzone"' in appux)
+check("gifting: the Parwah collection is the first gift path",
+      'id="gift-parwah"' in appux and "wa.me/919873945238" in appux)
+check("home: the daily pulse sits above family cards and widgets",
+      appux.index('id="pulsecard"') < appux.index('id="famcard"'))
+check("home: a missed check-in is a banner, not a quiet grey row",
+      'id="missbar"' in appux)
+check("site: live features are labelled live, not 'at launch'",
+      "Live in the beta" in home and "In the app at launch" not in home)
+check("site: founding price is on the conversion screen",
+      "2,499" in home and "2,499" in launch)
+check("payments: the permission book does not pretend to move rupees",
+      "licensed in-app payments come next" in appux.lower() or
+      "Licensed in-app payments come next" in appux)
+
+# ---------- 10f. Nothing half-merged ever ships ----------
 # A merge resolved by committing the conflict markers reached origin/main and
 # sailed through 200 checks: the HTML validator only reads tags, and "<<<<<<<
 # HEAD" is just text to it. It would have rendered, literally, on the family

@@ -75,6 +75,7 @@ section{position:relative}
 .worry h3{font-family:var(--disp);font-weight:600;font-size:1.25rem;line-height:1.25}
 .worry p{font-size:.92rem;color:var(--ink-soft)}
 .worry .coming{margin-top:auto;padding-top:14px;border-top:1px dashed var(--bone-2);font-size:.8rem;color:var(--sindoor);font-weight:600;letter-spacing:.03em}
+.worry .coming.live{color:var(--pine)}
 
 /* ---------- gifting steps ---------- */
 .gift{background:var(--bone)}
