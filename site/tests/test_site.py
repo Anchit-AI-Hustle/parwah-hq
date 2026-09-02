@@ -67,7 +67,12 @@ WA_NUMBER = "919873945238"
 ph = sum(p.read_text(encoding="utf-8").count("91XXXXXXXXXX") for p in PAGES)
 wa = sum(p.read_text(encoding="utf-8").count(f"wa.me/{WA_NUMBER}") for p in PAGES)
 check("wa.me placeholder fully replaced", ph == 0, f"found {ph} leftover placeholder link(s)")
-check("wa.me links present and consistent", wa == 3, f"expected 3 links to wa.me/{WA_NUMBER}, found {wa}")
+check("wa.me links present and consistent", wa == 4, f"expected 4 links to wa.me/{WA_NUMBER}, found {wa}")
+home = (ROOT / "public" / "index.html").read_text(encoding="utf-8")
+check("conversion: home hero leads directly to the WhatsApp launch list",
+      f'id="hero-join" href="https://wa.me/{WA_NUMBER}' in home)
+check("conversion: home hero keeps the product demo as a secondary action",
+      'id="hero-demo" href="#demo"' in home)
 
 # ---------- 6. A11y basics ----------
 for p in PAGES:
