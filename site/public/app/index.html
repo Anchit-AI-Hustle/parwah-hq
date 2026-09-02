@@ -220,7 +220,9 @@ body[data-lang="hi"] .tabs button{letter-spacing:0}
 .seg button{flex:1 1 auto;min-width:78px;border:0;background:none;border-radius:10px;padding:9px;font-family:var(--body);font-weight:700;font-size:.85rem;cursor:pointer;color:var(--ink-soft)}
 .seg button.sel{background:var(--surface);color:var(--ink);box-shadow:var(--sh-sm)}
 .pageseg{margin:0 0 16px}
-.pageseg button{padding:11px 6px;font-size:.88rem}
+.pageseg button{padding:11px 6px;font-size:.88rem;position:relative}
+.pageseg .dot{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;margin-left:6px;border-radius:99px;background:var(--sindoor);color:var(--on-accent);font-size:.65rem;font-weight:700;font-style:normal;padding:0 5px;vertical-align:middle}
+.pageseg .dot[hidden]{display:none!important}
 .bigletter{font-family:var(--disp);font-size:2.6rem;font-weight:700;color:var(--sindoor);text-align:center;background:var(--surface);border:2px dashed var(--marigold);border-radius:16px;padding:12px;margin:10px 0;letter-spacing:.1em}
 .bigletter.small{font-size:1.3rem;letter-spacing:0}
 .teams2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
@@ -843,6 +845,11 @@ details.more[open]>summary::before{content:"▾ "}
 
   <div class="card" id="auth-step">
     <h3 data-i18n="auth.title">Sign in with your mobile number</h3>
+    <div class="langseg" id="lang-seg-auth" role="group" aria-label="App language" style="margin:8px 0 4px">
+      <button type="button" data-lang="en" class="sel">English</button>
+      <button type="button" data-lang="hi">हिंदी</button>
+    </div>
+
     <label for="au-phone">Mobile number</label>
     <div class="phrow">
       <select id="au-cc" class="ccsel" aria-label="Country code"></select>
@@ -886,6 +893,7 @@ details.more[open]>summary::before{content:"▾ "}
     <div class="prow2" style="margin-top:14px">
       <button class="go" id="dm-next">Next</button>
       <button class="cbtn ghost" id="dm-back">Back</button>
+      <button class="cbtn ghost" id="dm-skip">Skip intro</button>
     </div>
     <button class="linkbtn" id="dm-out" style="margin-top:12px">← Sign in instead</button>
     <p class="hint" style="margin-top:14px">This is an example family, not real people. Nothing here is saved, and nothing is sent anywhere.</p>
@@ -1046,18 +1054,22 @@ details.more[open]>summary::before{content:"▾ "}
       <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true">💡</span><b>Suggested</b><small id="w-req">Loading…</small></button>
       <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b>Chats</b><small id="w-chat">Family + personal</small></button>
       <button class="widget" data-goto="memory"><span class="wic" aria-hidden="true">📒</span><b>Family memory</b><small id="w-book">Contacts, addresses, meds-map, facts</small></button>
-      <button class="widget" data-goto="vault" data-sec="docs"><span class="wic" aria-hidden="true">🔐</span><b>Family vault</b><small id="w-vault">Aadhaar, PAN, passport, health papers</small></button>
-      <button class="widget" data-goto="vault" data-sec="pay"><span class="wic" aria-hidden="true">💳</span><b>Payments</b><small id="w-pay">Who may use which way of paying</small></button>
-      <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true">🕉</span><b>Muhurat</b><small id="w-day">Choghadiya for your city</small></button>
-      <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check — just ask</small></button>
-      <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi — play together</small></button>
-      <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
     </div>
-
+    <details class="more" id="more-widgets" style="margin-bottom:14px">
+      <summary>More shortcuts</summary>
+      <div class="widgets" style="margin-top:10px">
+        <button class="widget" data-goto="vault" data-sec="docs"><span class="wic" aria-hidden="true">🔐</span><b>Family vault</b><small id="w-vault">Aadhaar, PAN, passport, health papers</small></button>
+        <button class="widget" data-goto="vault" data-sec="pay"><span class="wic" aria-hidden="true">💳</span><b>Payments</b><small id="w-pay">Who may use which way of paying</small></button>
+        <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true">🕉</span><b>Muhurat</b><small id="w-day">Choghadiya for your city</small></button>
+        <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check — just ask</small></button>
+        <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi — play together</small></button>
+        <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
+      </div>
+    </details>
     </div>
     <div class="homerail">
       <p class="eyebrow">Family activity</p>
-      <div class="feed" id="feed"><div class="ev">Loading…</div></div>
+      <div class="feed" id="feed" aria-live="polite"><div class="ev">Loading…</div></div>
     </div>
   </section>
 
@@ -1065,7 +1077,7 @@ details.more[open]>summary::before{content:"▾ "}
   <section id="pane-care" hidden>
     <div class="seg pageseg" id="care-seg" role="tablist" aria-label="Care sections">
       <button data-sec="rem" class="sel">✅ Things to do</button>
-      <button data-sec="req">💡 Suggested<i class="dot" id="sugg-dot" hidden></i></button>
+      <button data-sec="req">💡 Suggested <i class="dot" id="sugg-dot" hidden></i></button>
     </div>
     <div class="subsec" data-sec="rem">
     <p class="hint" style="margin:0 0 10px">Everything the family has to do, in one list — jobs anyone can pick up, and reminders for a particular person.</p>
@@ -1959,14 +1971,14 @@ details.more[open]>summary::before{content:"▾ "}
       <button data-tab="vault" data-sec="pay">Payments</button>
     </div>
     <button data-tab="care"><span class="ic" aria-hidden="true">✅</span>Care<i class="dot" id="care-dot" hidden></i></button>
+    <div class="subnav side-only" data-parent="care">
+      <button data-tab="care" data-sec="rem">Things to do</button>
+      <button data-tab="care" data-sec="req">Suggested</button>
+    </div>
     <button data-tab="day" class="deskonly"><span class="ic" aria-hidden="true">🕉</span>The day</button>
     <div class="subnav side-only" data-parent="day">
       <button data-tab="day" data-sec="muhurat">Muhurat</button>
       <button data-tab="day" data-sec="rashi">Rashifal</button>
-    </div>
-    <div class="subnav side-only" data-parent="care">
-      <button data-tab="care" data-sec="rem">Things to do</button>
-      <button data-tab="care" data-sec="req">Suggested</button>
     </div>
     <button data-tab="ekta" class="deskonly"><span class="ic" aria-hidden="true">✨</span>Ask Ekta</button>
     <button data-tab="chat" class="deskonly"><span class="ic" aria-hidden="true">💬</span>Chat</button>
@@ -2102,7 +2114,7 @@ details.more[open]>summary::before{content:"▾ "}
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var API = { circle: '../api/circle', events: '../api/events', care: '../api/care', ekta: '../api/ekta', chats: '../api/chats', games: '../api/games', plans: '../api/plans', auth: '../api/auth', book: '../api/book', vault: '../api/book?area=vault', pay: '../api/book?area=pay', push: '../api/settings?area=push', keys: '../api/settings?area=keys', coins: '../api/settings?area=coins', plan: '../api/settings?area=plan', day: '../api/settings?area=day', pin: '../api/settings?area=pin' };
+  var API = { circle: '../api/circle/', events: '../api/events/', care: '../api/care/', ekta: '../api/ekta/', chats: '../api/chats/', games: '../api/games/', plans: '../api/plans/', auth: '../api/auth/', book: '../api/book/', vault: '../api/book/?area=vault', pay: '../api/book/?area=pay', push: '../api/settings/?area=push', keys: '../api/settings/?area=keys', coins: '../api/settings/?area=coins', plan: '../api/settings/?area=plan', day: '../api/settings/?area=day', pin: '../api/settings/?area=pin' };
   var TABS = ['home','people','person','memory','vault','care','day','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
@@ -2204,6 +2216,14 @@ details.more[open]>summary::before{content:"▾ "}
     if (t === 'day') refreshDay();
     if (t === 'home' && !dayData) refreshDay();   // the Muhurat widget shows the period running now
     if (t === 'notifs') { $('ndetail').hidden = true; $('nlist-view').hidden = false; renderNotifs(); markSeen(); }
+    if (t === 'chat' && !curChat) {
+      var fam0 = null; chatsCache.forEach(function(x){ if (x.kind === 'circle') fam0 = x; });
+      if (fam0) openChat(fam0.id);
+      else refreshChats(function(){
+        var f = null; chatsCache.forEach(function(x){ if (x.kind === 'circle') f = x; });
+        if (f) openChat(f.id);
+      });
+    }
     try { history.replaceState(null, '', '#' + t); } catch(e) {}
     window.scrollTo(0, 0);
   }
@@ -3002,12 +3022,13 @@ details.more[open]>summary::before{content:"▾ "}
     var perr = phoneCheck(cc, phone);
     if (perr) { $('ob-err').textContent = perr; return; }
     var btn = this; btn.disabled = true; $('ob-err').textContent = '';
+    var btn=$('au-go'); btn.disabled=true; var oldLabel=btn.textContent; btn.textContent='Signing in…';
     post(API.auth, { action: 'enter', phone: phone, cc: cc, name: $('au-name').value.trim() })
       .then(function(j){
         btn.disabled = false;
         if (!j.ok) { $('ob-err').textContent = j.error || 'Could not sign you in.'; return; }
         if (!j.exists) {
-          $('au-namewrap').hidden = false;
+          btn.disabled=false; btn.textContent=oldLabel; $('au-namewrap').hidden = false;
           $('au-go').textContent = 'Create my profile & continue';
           try { $('au-name').focus(); } catch (e) {}
           return;
@@ -3652,7 +3673,7 @@ details.more[open]>summary::before{content:"▾ "}
 
     var tabMap = { home:'tab.home', people:'tab.people', memory:'tab.memory', care:'tab.care' };
     Object.keys(tabMap).forEach(function(tab){
-      document.querySelectorAll('#tabs button[data-tab="'+tab+'"]:not(.side-only)').forEach(function(btn){
+      document.querySelectorAll('#tabs .inner > button[data-tab="'+tab+'"]').forEach(function(btn){
         var ic = btn.querySelector('.ic');
         var label = dict[tabMap[tab]]; if (!label) return;
         // keep icon, replace text
@@ -3663,12 +3684,18 @@ details.more[open]>summary::before{content:"▾ "}
         btn.innerHTML = html;
       });
     });
-    document.querySelectorAll('#lang-seg button').forEach(function(b){
+    document.querySelectorAll('#lang-seg button, #lang-seg-auth button').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-lang') === lang);
     });
   }
   var langSeg = $('lang-seg');
   if (langSeg) langSeg.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-lang]'); if (!b) return;
+    applyLang(b.getAttribute('data-lang'));
+    toast(b.getAttribute('data-lang') === 'hi' ? 'भाषा: हिंदी' : 'Language: English');
+  });
+  var langSegAuth = $('lang-seg-auth');
+  if (langSegAuth) langSegAuth.addEventListener('click', function(e){
     var b = e.target.closest('button[data-lang]'); if (!b) return;
     applyLang(b.getAttribute('data-lang'));
     toast(b.getAttribute('data-lang') === 'hi' ? 'भाषा: हिंदी' : 'Language: English');
@@ -3735,7 +3762,7 @@ details.more[open]>summary::before{content:"▾ "}
   var BK_ICON = { contact: '☎️', address: '📍', med: '💊', fact: '🩸', insurance: '🛡' };
   var BK_LABEL = { contact: 'Contact', address: 'Address', med: 'Meds', fact: 'Health fact', insurance: 'Insurance' };
   var FRESH_KINDS = { med: 1, fact: 1, insurance: 1 };
-  var PREP_LABEL = { doctor: 'Doctor', meds: 'Meds', allergies: 'Allergies', blood: 'Blood group', emergency: 'Emergency contact', insurance: 'Insurance' };
+  var PREP_LABEL = { doctor: 'Doctor', meds: 'Meds', allergies: 'Allergies', blood: 'Blood group', emergency: 'Emergency contact', insurance: 'Insurance', local: 'Someone near them' };
   function entryStale(e){
     return FRESH_KINDS[e.kind] && (Date.now() - new Date(e.last_verified_at).getTime()) > bookStaleDays * 86400000;
   }
@@ -3763,7 +3790,8 @@ details.more[open]>summary::before{content:"▾ "}
         var st = pp.items[k];
         var ic = st === 'ok' ? '✅' : st === 'verify' ? '🟡' : '❌';
         var lab = st === 'ok' ? 'Recorded' : st === 'verify' ? 'Needs a re-check' : 'Missing';
-        return '<span class="prepitem"><span aria-hidden="true">' + ic + '</span> ' + PREP_LABEL[k] +
+        return '<span class="prepitem"><span aria-hidden="true">' + ic + '</span> ' +
+               esc(PREP_LABEL[k] || k) +
                ' <span class="sr-only">(' + lab + ')</span>' +
                (st === 'verify' ? ' (check)' : st === 'missing' ? ' (missing)' : '') + '</span>';
       }).join('');
@@ -5258,7 +5286,7 @@ details.more[open]>summary::before{content:"▾ "}
   });
 
   // ---------- drawing board ----------
-  var API_BOARD = '../api/book?area=board';
+  var API_BOARD = '../api/book/?area=board';
   var dColor = '#241F17', dSize = 4, dLastTs = null, dStrokeIds = {}, drawing = null, dReady = false;
   function boardCanvas(){ return $('dboard'); }
   function boardCtx(){ return boardCanvas().getContext('2d'); }
@@ -6090,6 +6118,7 @@ details.more[open]>summary::before{content:"▾ "}
     demoAt++; renderDemo();
   });
   $('dm-back').addEventListener('click', function(){ if (demoAt > 0) { demoAt--; renderDemo(); } });
+  $('dm-skip').addEventListener('click', function(){ demoAt = DEMO.length - 1; renderDemo(); });
   $('dm-out').addEventListener('click', function(){ showStep('auth'); });
   $('au-see').addEventListener('click', function(){ demoAt = 0; renderDemo(); showStep('demo'); });
 
