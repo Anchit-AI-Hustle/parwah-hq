@@ -1,5 +1,6 @@
 hq/
 .claude/
+.cursor/
 supabase/
 CLAUDE.md
 README.md

@@ -1,0 +1,14 @@
+{
+  "name": "Parwah monorepo",
+  "install": "npm ci && npm i --no-save playwright-core && npx playwright install --with-deps chromium",
+  "terminals": [
+    {
+      "name": "site",
+      "command": "cd site/public && python3 -m http.server 3000",
+      "description": "Static preview of the public pre-launch site (site/public) at http://localhost:3000 — home, /story/, /demo/, /launch/, /get/, /app/."
+    }
+  ],
+  "ports": [
+    { "name": "site", "port": 3000 }
+  ]
+}
