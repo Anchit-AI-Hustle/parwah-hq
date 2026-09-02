@@ -370,7 +370,7 @@ export async function ektaTurn(sql, circle, me, history) {
   let last = null;
   // Keys come from the server env first, then from the in-app vault.
   let vault = {};
-  try { vault = (await providerKeys(sql)).keys; } catch (e) { /* vault optional */ }
+  try { vault = (await providerKeys(sql, circle && circle.id)).keys; } catch (e) { /* vault optional */ }
 
   if (vault.anthropic) {
     // Identity-linked API keys may name a workspace; the default workspace
@@ -418,17 +418,21 @@ export default async function handler(req, res) {
   let sql;
   try { sql = db(); await ensureSchema(sql); await ensureBookSchema(sql); }
   catch (e) { return serverError(res, e, 'ekta/schema'); }
+  const { code, memberId, messages } = req.body || {};
+  const g = await requireMember(sql, code, memberId);
+  if (g.error) return res.status(g.status).json({ ok: false, error: g.error });
+  const circle = g.circle, me = g.me;
+
+  // Asked after the circle is known, because a key can belong to this family
+  // alone: checking before would tell a family with its own key that Ekta has
+  // no brain.
   try {
-    const { keys } = await providerKeys(sql);
+    const { keys } = await providerKeys(sql, circle.id);
     if (!MODEL_PROVIDERS.some(k => keys[k])) {
       return res.status(503).json({ ok: false, error: ASSISTANT_NAME + " has no brain yet — add an AI key in Profile → Ekta's brain, or set one on the server." });
     }
   } catch (e) { /* fall through: the cascade reports the real failure */ }
 
-  const { code, memberId, messages } = req.body || {};
-  const g = await requireMember(sql, code, memberId);
-  if (g.error) return res.status(g.status).json({ ok: false, error: g.error });
-  const circle = g.circle, me = g.me;
   // Coins price a turn, but a loop in a client can burn a family's whole
   // balance — and real money on the provider — in seconds. This is the
   // ceiling on how fast that can happen.

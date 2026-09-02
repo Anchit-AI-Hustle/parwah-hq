@@ -56,9 +56,6 @@ export default async function handler(req, res) {
     }
 
     const b = req.body || {};
-    const allowed = await rateLimit(sql, 'waitlist', clientIp(req), 10, 3600);
-    if (!allowed) return res.status(429).json({ ok: false, error: 'That is a lot of sign-ups from one place — try again a little later.' });
-
     const name = String(b.name || '').trim().slice(0, 80);
     const email = String(b.email || '').trim().slice(0, 200) || null;
     const wa = String(b.whatsapp || '').replace(/[^\d+]/g, '').slice(0, 20) || null;
@@ -70,6 +67,13 @@ export default async function handler(req, res) {
     if (bad) return res.status(400).json({ ok: false, error: bad });
     // Consent is a real yes, not a default. Nothing is stored without it.
     if (b.consent !== true) return res.status(400).json({ ok: false, error: 'Please tick the box so we know it is alright to write to you' });
+
+    // Counted after the input is known to be good, so a typo does not use up
+    // a real person's attempt — a family behind one connection may well have
+    // several people joining, and being told "too many" for a mistyped
+    // address is how a form loses somebody.
+    const allowed = await rateLimit(sql, 'waitlist', clientIp(req), 20, 3600);
+    if (!allowed) return res.status(429).json({ ok: false, error: 'That is a lot of sign-ups from one place — try again a little later, or message us on WhatsApp.' });
 
     try {
       await sql`insert into waitlist (name, email, whatsapp, consent, source)

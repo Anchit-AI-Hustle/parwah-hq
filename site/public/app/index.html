@@ -669,6 +669,14 @@ details.more[open]>summary::before{content:"▾ "}
   /* Memory and Vault lay themselves out in two columns below, so their cards
      take the width of their own column rather than a fixed measure. */
   #pane-memory .card,#pane-vault .card{max-width:720px}
+  /* Today's cards fill their column rather than the 640px measure the other
+     panes use — but the column itself needs a width and a centre. Left
+     unbounded, a card ran the whole 1560px wrap; bounded and left-aligned in
+     the two-column grid above 1240px, it left a 390px hole between the cards
+     and the activity rail, which reads as a broken layout rather than a
+     chosen one. Centred between the sidebar and the rail, the measure is
+     comfortable and the space becomes margin. */
+  #pane-home .homemain{max-width:700px;margin-left:auto;margin-right:auto;width:100%}
   #pane-home .homemain .card{max-width:none}
   .subsec .feed,#pane-vault .feed{max-width:760px}
   /* Memory reads as one column: the feed lines up with the card and the filters. */
@@ -2556,7 +2564,7 @@ details.more[open]>summary::before{content:"▾ "}
     fetch(API.chats + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); })
       .then(function(j){
-        if (!j.ok) return;
+        if (!j.ok) { chatsFailed(j.error); return; }
         chatsCache = j.chats;
         renderChatList();
         var fam = null;
@@ -2565,7 +2573,20 @@ details.more[open]>summary::before{content:"▾ "}
           ? (fam.last.name + ': ' + fam.last.text).slice(0, 60)
           : 'Say hello to everyone';
         if (cb) cb();
-      }).catch(function(){});
+      }).catch(function(){ chatsFailed(null); });
+  }
+  // "Loading…" that never becomes anything is the worst state a screen can be
+  // left in: it looks like the app is working and it will say that forever.
+  // If the first fetch fails there is nothing cached to fall back on, so say
+  // so, and offer the retry.
+  function chatsFailed(err){
+    if (chatsCache.length) return;   // a later poll failed — keep what we have
+    $('clist').innerHTML = '<div class="ev bad">' + esc(err || 'Could not load your chats — you may be offline.') +
+      '<small>Tap to try again</small></div>';
+    $('clist').firstChild.setAttribute('role', 'button');
+    $('clist').firstChild.setAttribute('tabindex', '0');
+    $('clist').firstChild.style.cursor = 'pointer';
+    $('clist').firstChild.onclick = function(){ $('clist').innerHTML = '<div class="ev">Loading…</div>'; refreshChats(); };
   }
   function renderChatList(){
     var h = '';
@@ -2861,6 +2882,7 @@ details.more[open]>summary::before{content:"▾ "}
     renderGroups();
     pushBoot();
     refreshKeys();
+    ektaLoad();
     if (authUser && authUser.phone) {
       post(API.auth, { action: 'enter', phone: authUser.phone })
         .then(function(j){
@@ -4329,7 +4351,26 @@ details.more[open]>summary::before{content:"▾ "}
   });
 
   // ---------- Ekta ----------
+  // The conversation lived in a variable, so switching to Care and back — or
+  // any reload, and this is a phone — threw away what had just been said and
+  // left Ekta answering the next question with no idea what it followed.
+  // Kept per circle on the device: it is the family's conversation, and it
+  // never belonged in a table on our side.
+  var EKTA_KEY = 'parwah-ekta-' + (state ? state.code : '');
   var ektaMsgs = [];
+  function ektaLoad(){
+    EKTA_KEY = 'parwah-ekta-' + (state ? state.code : '');
+    try {
+      var saved = JSON.parse(localStorage.getItem(EKTA_KEY) || '[]');
+      ektaMsgs = Array.isArray(saved) ? saved.slice(-40) : [];
+    } catch (e) { ektaMsgs = []; }
+    if (!ektaMsgs.length) return;
+    ektaMsgs.forEach(function(m){ ektaAppend(m.role, m.content); });
+    ektaAppend('assistant', 'Earlier today \u2191', 'thinking');
+  }
+  function ektaSave(){
+    try { localStorage.setItem(EKTA_KEY, JSON.stringify(ektaMsgs.slice(-40))); } catch (e) {}
+  }
   function ektaAppend(role, text, cls){
     var d = document.createElement('div');
     d.className = 'em ' + (role === 'user' ? 'u' : 'a') + (cls ? ' ' + cls : '');
@@ -4342,6 +4383,7 @@ details.more[open]>summary::before{content:"▾ "}
     var v = $('msg').value.trim(); if (!v) return;
     $('msg').value = '';
     ektaMsgs.push({ role:'user', content:v });
+    ektaSave();
     ektaAppend('user', v);
     var wait = ektaAppend('assistant', 'Ekta soch rahi hai…', 'thinking');
     post(API.ekta, { code: state.code, memberId: state.memberId, messages: ektaMsgs })
@@ -4349,6 +4391,7 @@ details.more[open]>summary::before{content:"▾ "}
         wait.remove();
         if (j.ok) {
           ektaMsgs.push({ role:'assistant', content:j.reply });
+          ektaSave();
           ektaAppend('assistant', j.reply);
           speak(j.reply);
           if (j.actions && j.actions.length) refresh();

@@ -1,7 +1,7 @@
 // Device notifications — Web Push registration.
 // GET  /api/push                     → { ok, publicKey }  (VAPID, for subscribe)
 // POST /api/push {code, memberId, action:'subscribe'|'unsubscribe', sub}
-import { db, ensureSchema, circleByCode, isUuid, serverError } from './_db.mjs';
+import { db, ensureSchema, requireMember, serverError } from './_db.mjs';
 import { ensurePushSchema, vapidPublicKey } from './_push.mjs';
 
 export default async function handler(req, res) {
@@ -19,11 +19,9 @@ export default async function handler(req, res) {
       return res.status(405).json({ ok: false, error: 'GET or POST only' });
     }
     const body = req.body || {};
-    const circle = await circleByCode(sql, body.code);
-    if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
-    if (!isUuid(body.memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-    const me = await sql`select id from members where id = ${body.memberId} and circle_id = ${circle.id}`;
-    if (!me[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+    const g = await requireMember(sql, body.code, body.memberId);
+    if (g.error) return res.status(g.status).json({ ok: false, error: g.error });
+    const me = [g.me];
 
     const sub = body.sub || {};
     const endpoint = String(sub.endpoint || '');
@@ -43,7 +41,10 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
     if (body.action === 'unsubscribe') {
-      await sql`delete from push_subs where endpoint = ${endpoint}`;
+      // Only this member's own registration. Deleting by endpoint alone let
+      // anyone who had seen an endpoint silence somebody else's phone — and
+      // an SOS is the thing that arrives on it.
+      await sql`delete from push_subs where endpoint = ${endpoint} and member_id = ${me[0].id}`;
       return res.status(200).json({ ok: true });
     }
     return res.status(400).json({ ok: false, error: 'Unknown action' });

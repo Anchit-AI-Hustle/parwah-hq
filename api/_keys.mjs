@@ -24,8 +24,16 @@ export async function ensureKv(sql) {
   )`;
 }
 
-// → { keys: {provider: string|null}, src: {provider: 'env'|'vault'|null} }
-export async function providerKeys(sql) {
+// A key a family saved belongs to that family. It used to be stored under one
+// row per provider for the whole deployment, so any member of any circle could
+// replace — or delete — the key every other family's Ekta was running on,
+// while the screen offering it sits in their own profile and says "Ekta's
+// brain". Circle-scoped now, with the deployment's own key as the fallback.
+const rowKey = (provider, circleId) => circleId ? 'pkey_' + circleId + '_' + provider : 'pkey_' + provider;
+export { rowKey as providerRowKey };
+
+// → { keys: {provider: string|null}, src: {provider: 'env'|'circle'|'shared'|null} }
+export async function providerKeys(sql, circleId) {
   await ensureKv(sql);
   const rows = await sql`select k, v from kv where k like ${'pkey_%'}`;
   const keys = {}, src = {};
@@ -34,9 +42,15 @@ export async function providerKeys(sql) {
     for (const e of ENV_MAP[p]) {
       if (process.env[e]) { keys[p] = process.env[e]; src[p] = 'env'; break; }
     }
+    if (!keys[p] && circleId) {
+      const own = rows.find(x => x.k === rowKey(p, circleId));
+      if (own) { keys[p] = own.v; src[p] = 'circle'; }
+    }
     if (!keys[p]) {
-      const r = rows.find(x => x.k === 'pkey_' + p);
-      if (r) { keys[p] = r.v; src[p] = 'vault'; }
+      // Left over from when this was one row for everybody, or set by hand on
+      // the deployment: usable, but no longer writable from the app.
+      const shared = rows.find(x => x.k === rowKey(p, null));
+      if (shared) { keys[p] = shared.v; src[p] = 'shared'; }
     }
   }
   return { keys, src };

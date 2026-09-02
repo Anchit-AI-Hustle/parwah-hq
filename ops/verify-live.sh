@@ -17,7 +17,11 @@
 #                      still flipping, a redirect, an error page) - print it
 #
 # Env: PARWAH_POLL_SECONDS (default 10), PARWAH_POLL_TRIES (default 40),
-#      PARWAH_MAX_RED (default 12).
+#      PARWAH_MAX_RED (default 12), DIAG_TOKEN (if the deployment sets one).
+#
+# The probes write to the production database and report the real error text.
+# When DIAG_TOKEN is set on the Vercel project, set it here too, or every
+# probe answers 404 and this script reports the deployment as unreachable.
 set -uo pipefail
 
 BASE="${1:-}"
@@ -36,7 +40,9 @@ die() { log "FAILED: $*"; exit 1; }
 # off as a broken self-test.
 fetch() {                                  # fetch URL timeout -> sets CODE, BODY
   local out
-  out="$(curl -sS -L --max-time "$2" -w '\n%{http_code}' "$1" 2>/dev/null)"
+  local -a hdr=()
+  [ -n "${DIAG_TOKEN:-}" ] && hdr=(-H "X-Diag-Token: ${DIAG_TOKEN}")
+  out="$(curl -sS -L --max-time "$2" "${hdr[@]}" -w '\n%{http_code}' "$1" 2>/dev/null)"
   CODE="${out##*$'\n'}"
   BODY="${out%$'\n'*}"
   case "$CODE" in ''|*[!0-9]*) CODE=000; BODY='' ;; esac
