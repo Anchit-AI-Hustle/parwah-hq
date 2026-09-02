@@ -641,6 +641,42 @@ check("ekta: the app says plainly when she is reading from records",
 check("ekta: and says the degraded answer cost no coins",
       "This answer is free." in _appe)
 
+# SIGNING UP, SIGNING IN, AND MOVING BETWEEN FEATURES.
+_appf = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+# --cream is the token for text ON a dark ground, so in dark it equals --ink.
+# A card that used it as a BACKGROUND painted white on white, and a new
+# family's whole five-card introduction was invisible in dark mode.
+check("flow: no card paints --cream under --ink, which is the same colour in dark",
+      not re.search(r"background:var\(--cream\)[^}]*color:var\(--ink\)", _appf))
+check("flow: the introduction card sits on a real surface token",
+      ".coachbox{position:absolute;left:14px;right:14px;background:var(--surface)" in _appf)
+# padding:0 put nineteen controls, Sign out and Edit profile among them, at
+# sixteen pixels tall.
+check("flow: text controls are a thumb tall, not a hairline",
+      ".linkbtn{" in _appf and "min-height:44px" in _appf.split(".linkbtn{")[1].split("}")[0])
+check("flow: the senior's own switch is tappable",
+      "min-height:44px" in _appf.split(".seniorchk{")[1].split("}")[0]
+      and "width:24px;height:24px" in _appf)
+check("flow: the menu button, a phone's only route to seven features, is 44px",
+      "min-width:44px;min-height:44px" in _appf.split("#hamb{")[1].split("}")[0])
+# Every tab switch REPLACED the history entry, so Back left the app.
+check("flow: switching a tab pushes history, so Back steps back",
+      "history.pushState({ tab: t }" in _appf)
+check("flow: and the app listens for Back and Forward",
+      "addEventListener('popstate'" in _appf and "navPop" in _appf)
+check("flow: Back inside a chat or a game steps out before changing tab",
+      "if (curChat && t === 'chat') { closeChat(); }" in _appf)
+# Submitting the name step empty repainted a byte-identical screen.
+check("flow: an empty name is refused out loud",
+      "Please type your name so your family knows who joined." in _appf)
+check("flow: and a sign-in error is scrolled to, on a screen taller than a phone",
+      "function authErr(" in _appf and "scrollIntoView({ block: 'center'" in _appf)
+check("flow: a number nobody has seen before is told it is new",
+      'id="au-newnote"' in _appf and "This number is new to Parwah" in _appf)
+check("flow: signing up, signing in and navigating are walked in a browser",
+      (REPO / "site/tests/browser/flow.browser.mjs").exists()
+      and "flow.browser.mjs" in (REPO / "package.json").read_text(encoding="utf-8"))
+
 # ---------- 10b. The day: muhurat and rashi ----------
 # The point of the section is that a family split across cities sees the SAME
 # screen: the parent reads the Choghadiya they have always kept, the grandchild
