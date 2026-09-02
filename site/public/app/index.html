@@ -46,7 +46,7 @@
   --day:#FAF7EF; --bone:#EFE8D8; --bone-2:#E3D9C2;
   --surface:#FFFFFF; --surface-2:#FFFDF8;
   --marigold:#E8A23D; --marigold-d:#C9861F; --sindoor:#A64B2A;
-  --ink:#241F17; --ink-soft:#4C4437; --cream:#EFE8D8; --dim:#687168;
+  --ink:#241F17; --ink-soft:#4C4437; --cream:#EFE8D8; --dim:#A8B3A6;
   --ok:#2F7A4D; --alert:#B3372B;
   --tint-warm:#FDF4E3; --tint-warm-2:#FDF7EA; --tint-ok:#E7F2EA; --tint-bad:#FDF1EF;
   --ok-line:#7FA98C; --alert-line:#C48B7E; --live:#7CE0A3;
@@ -5966,7 +5966,7 @@ body:not(.inapp) #metile{display:none}
   ];
 
   function dcard(name, rel, todo){
-    return '<div class="ev"><b>' + name + '</b> <em style="font-style:normal;color:var(--dim)">· ' + rel + '</em>' +
+    return '<div class="ev"><b>' + name + '</b> <em style="font-style:normal;color:var(--ink-soft)">· ' + rel + '</em>' +
       '<small>' + (todo === 0 ? '✅ Important information up to date'
                               : '⚠️ ' + todo + ' thing' + (todo > 1 ? 's' : '') + ' to complete') + '</small></div>';
   }

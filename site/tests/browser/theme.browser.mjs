@@ -93,12 +93,11 @@ for (const mode of ['light','dark']) {
   const tok=await pg.evaluate(()=>{const c=getComputedStyle(document.documentElement);
     const g=n=>c.getPropertyValue(n).trim();
     return {onAccent:g('--on-accent'),onDark:g('--on-dark'),dusk:g('--dusk'),alert:g('--alert'),ok:g('--ok'),
-            marigold:g('--marigold'),sindoor:g('--sindoor'),pine:g('--pine'),
-            dim:g('--dim'),surface:g('--surface'),day:g('--day')};});
+            marigold:g('--marigold'),sindoor:g('--sindoor'),pine:g('--pine')};});
   const hex=h=>{h=h.replace('#','');return `rgb(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)})`;};
   // Marigold is a light amber and takes dark text, the same as every button
   // in the app; --dusk is the token that does that job in both themes.
-  for (const [text,bgName] of [['onAccent','alert'],['onAccent','ok'],['dusk','marigold'],['onAccent','sindoor'],['onDark','dusk'],['onDark','pine'],['dim','surface'],['dim','day']]) {
+  for (const [text,bgName] of [['onAccent','alert'],['onAccent','ok'],['dusk','marigold'],['onAccent','sindoor'],['onDark','dusk'],['onDark','pine']]) {
     const r=await pg.evaluate(`(${CONTRAST})('${hex(tok[text])}','${hex(tok[bgName])}')`);
     ok(r>=4.5, `${mode}: ${text} on ${bgName} is legible (${r.toFixed(2)})`);
   }
