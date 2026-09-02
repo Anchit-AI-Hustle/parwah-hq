@@ -25,7 +25,11 @@ const server = http.createServer(async (req, res) => {
     res.end(data);
   } catch { res.writeHead(404); res.end('nf'); }
 });
-await new Promise(r => server.listen(8791, r));
+// Port 0, not a fixed one: these suites are run side by side and next to
+// other tools, and a suite that dies on EADDRINUSE teaches people to
+// ignore a red test run.
+await new Promise(r => server.listen(0, r));
+const BASE = 'http://127.0.0.1:' + server.address().port;
 
 const ME = '11111111-1111-1111-1111-111111111111';
 const PAPA = '22222222-2222-2222-2222-222222222222';
@@ -103,7 +107,7 @@ await page.addInitScript(() => {
   localStorage.setItem('parwah-user', JSON.stringify({ id:'77777777-7777-4777-8777-777777777777', name:'Rohan', phone:'+919873945238' }));
   localStorage.setItem('parwah-fr-hide', '1');
 });
-await page.goto('http://localhost:8791/app/');
+await page.goto(BASE + '/app/');
 await page.waitForTimeout(600);
 
 // ---- the Today widget knows what is running now ----

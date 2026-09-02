@@ -11,7 +11,11 @@ const ROOT=new URL('../../public', import.meta.url).pathname;
 const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml','.webmanifest':'application/manifest+json'};
 const srv=http.createServer(async(rq,rs)=>{let p=rq.url.split('?')[0];if(p.endsWith('/'))p+='index.html';
  try{const d=await readFile(path.join(ROOT,p));rs.writeHead(200,{'Content-Type':MIME[path.extname(p)]||'application/octet-stream'});rs.end(d);}catch{rs.writeHead(404);rs.end('nf');}});
-await new Promise(r=>srv.listen(8798,r));
+// Port 0, not a fixed one: these suites are run side by side and next to
+// other tools, and a suite that dies on EADDRINUSE teaches people to
+// ignore a red test run.
+await new Promise(r => srv.listen(0, r));
+const BASE = 'http://127.0.0.1:' + srv.address().port;
 let chromium;
 try { ({ chromium } = await import('playwright-core')); }
 catch {
@@ -48,7 +52,7 @@ await pg.route('**/api/settings*area=pin*',r=>{
     areas:[{name:'Greater Kailash',block:'New Delhi',kind:'Sub Post Office'},
            {name:'Kailash Colony',block:'New Delhi',kind:'Branch Post Office'}]}});});
 await pg.addInitScript(()=>{localStorage.setItem('parwah',JSON.stringify({code:'ABCDEF',memberId:'11111111-1111-1111-1111-111111111111',name:'Rohan',role:'family',circleName:'T'}));localStorage.setItem('parwah-fr-hide','1');});
-await pg.goto('http://localhost:8798/app/#memory'); await pg.waitForTimeout(700);
+await pg.goto(BASE + '/app/#memory'); await pg.waitForTimeout(700);
 
 // the filter row is readable, not a row of bare emoji
 const chips=await pg.locator('#bk-filter button').allTextContents();

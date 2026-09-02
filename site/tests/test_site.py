@@ -541,6 +541,63 @@ check("games: a solo game is never announced to the family",
 check("games: the bot flag survives seating, or a solo duel freezes",
       "const seat = (p)" in games)
 
+# SEVERAL GAMES AT ONCE. A circle used to be allowed exactly one game: every
+# start handed back the game already running, so a second family could not
+# play while the first was mid-board, and two Saanp Seedhis were impossible.
+glist = (API_DIR / "_gamelist.mjs").read_text(encoding="utf-8")
+check("games: starting never hands back the game already running",
+      "const existing = await activeGame" not in games and "activeGames(sql" in games)
+check("games: the list is what a GET returns, not one game",
+      "games," in games and "gameSummary(g, me.id)" in games)
+check("games: one game can still be fetched on its own",
+      "isUuid(q.game)" in games and "That game is over or was ended" in games)
+check("games: the list leads with what is waiting on you",
+      "s.myTurn ? 0 : s.mine ? 1 : 2" in games)
+check("games: two of the same kind are told apart by number",
+      "gameName" in glist and "' ' + Number(n)" in glist)
+check("games: numbering counts from the highest still running, not the count",
+      "numberAfter" in glist and "if (n > max) max = n" in glist)
+check("games: a new game records who started it",
+      "state.by = me.name" in games and "state.byId = me.id" in games)
+check("games: an open lobby is named, so 'join the game' is followable",
+      "pick ' + label + ' and tap" in games)
+check("games: the number of games at once is capped, and says so",
+      "MAX_ACTIVE" in glist and "atCap(sql" in games and "CAP_MSG" in games)
+check("games: only someone playing a game can end it",
+      "Only someone playing this game can end it" in games)
+check("games: the list logic imports nothing, so the gate can test it early",
+      not re.search(r"^\s*import\s", glist, re.M))
+check("games: the list logic is unit-tested by the gate",
+      (REPO / "site/tests/gametest.mjs").exists()
+      and "gametest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
+app_games = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+check("games: the app opens on the list of games, not inside one",
+      'id="game-list"' in app_games and 'id="glist"' in app_games)
+check("games: every row says whose turn it is, not by colour alone",
+      "Your turn ·" in app_games and "gturn" in app_games and "needsyou" in app_games)
+check("games: there is a way back out of an open game",
+      'id="g-back"' in app_games and "showGameList()" in app_games)
+check("games: an open game says which game it is",
+      'id="gm-name"' in app_games)
+check("games: the app says you may run more than one at a time",
+      "more than one at a time" in app_games)
+check("games: a poll refreshes the open game by its own id",
+      "'&game=' + encodeURIComponent(curGame.id)" in app_games)
+check("games: the list is exercised in a real browser",
+      (REPO / "site/tests/browser/games.browser.mjs").exists()
+      and "games.browser.mjs" in (REPO / "package.json").read_text(encoding="utf-8"))
+
+# A browser suite that dies on EADDRINUSE teaches people to ignore red runs.
+_bsuites = sorted((REPO / "site/tests/browser").glob("*.browser.mjs"))
+check("browser suites: every one exists and is wired into npm run test:browser",
+      len(_bsuites) >= 6 and all(b.name in (REPO / "package.json").read_text(encoding="utf-8") for b in _bsuites))
+check("browser suites: none binds a fixed port",
+      all(not re.search(r"listen\(\s*8\d{3}", b.read_text(encoding="utf-8")) for b in _bsuites))
+check("browser suites: each takes the port it was actually given",
+      all("listen(0," in b.read_text(encoding="utf-8") and "address().port" in b.read_text(encoding="utf-8") for b in _bsuites))
+check("browser suites: every one degrades gracefully without playwright",
+      all("playwright-core is not installed" in b.read_text(encoding="utf-8") for b in _bsuites))
+
 # ---------- 10b. The day: muhurat and rashi ----------
 # The point of the section is that a family split across cities sees the SAME
 # screen: the parent reads the Choghadiya they have always kept, the grandchild

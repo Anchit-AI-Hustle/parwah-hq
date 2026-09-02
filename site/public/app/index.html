@@ -450,6 +450,13 @@ details.more[open]>summary::before{content:"▾ "}
 .widget b{font-size:.92rem;color:var(--ink)}
 .widget small{color:var(--ink-soft);font-size:.75rem;line-height:1.35}
 
+/* the games list: several games at once, so each row must say what it wants */
+.gturn{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:4px 10px;background:var(--tint-warm);color:var(--marigold-d);white-space:nowrap}
+.gturn.wait{background:var(--bone);color:var(--ink-soft)}
+.gturn.over{background:var(--tint-ok);color:var(--ok)}
+.gbar{display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.gbar b{font-family:var(--disp);font-size:1.02rem}
+
 /* chat list + bubbles */
 .chatrow{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:var(--surface);border:1px solid var(--bone-2);border-radius:14px;padding:13px 14px;cursor:pointer;font-family:var(--body);box-shadow:var(--sh-1)}
 .chatrow .cic{font-size:1.2rem}
@@ -1618,8 +1625,14 @@ details.more[open]>summary::before{content:"▾ "}
     </div>
 
     <div class="subsec" data-sec="games" hidden>
+    <div id="game-list">
+      <p class="eyebrow" style="margin-top:0">Games on the go</p>
+      <div class="feed" id="glist"></div>
+    </div>
     <div id="game-none">
-      <p class="eyebrow" style="margin-top:0">Whole family · 2–12 players</p>
+      <p class="eyebrow">Start a new game</p>
+      <p class="hint" style="margin:-6px 0 10px">You can have more than one going at once, even two of the same game.</p>
+      <p class="eyebrow">Whole family · 2–12 players</p>
       <div class="card">
         <h3>Saanp Seedhi 🐍🪜</h3>
         <p>Snakes & Ladders with a twist — snakes cost you a truth-or-dare, ladders earn rewards. Turns work across any timezone.</p>
@@ -1660,6 +1673,10 @@ details.more[open]>summary::before{content:"▾ "}
       </div>
     </div>
     <div id="game-on" hidden>
+      <div class="gbar">
+        <button class="cbtn ghost" id="g-back">← All games</button>
+        <b id="gm-name"></b>
+      </div>
       <div class="card" id="g-party" hidden>
         <h3 id="pt-title"></h3>
         <p class="hint modeline" id="pt-mode" style="margin:4px 0 4px"></p>
@@ -2109,7 +2126,7 @@ details.more[open]>summary::before{content:"▾ "}
     var r = REGIONS[m.country];
     return m.place + (r && m.country !== 'XX' ? ' ' + r.flag : (m.country === 'XX' ? ' 🌍' : ''));
   }
-  var curTab = 'home', curGame = null, gameTimer = null, planKind = 'call';
+  var curTab = 'home', curGame = null, gameTimer = null, planKind = 'call', gamesList = [];
 
   function demoWanted(){
     try { return new URLSearchParams(location.search).get('demo') === '1'; } catch (e) { return false; }
@@ -4405,6 +4422,8 @@ details.more[open]>summary::before{content:"▾ "}
   });
 
   // ---------- games: Saanp Seedhi ----------
+  var GICON = { snakes: '🐍', ttt: '⭕', antakshari: '🎤', charades: '🎭' };
+  var GNAME = { snakes: 'Saanp Seedhi 🐍🪜', ttt: 'Tic-Tac-Toe ⭕✕', antakshari: 'Antakshari 🎤', charades: 'Dumb Charades 🎭' };
   var SN = { 99:41, 95:75, 92:88, 89:68, 74:53, 64:60, 62:19, 49:11, 46:25, 16:6 };
   var LD = { 2:38, 7:14, 8:31, 15:26, 21:42, 28:84, 36:44, 51:67, 71:91, 78:98, 87:94 };
   var TOKC = ['#E8A23D', '#24463C', '#A64B2A', '#2F7A4D', '#B3372B', '#4C4437'];
@@ -4615,7 +4634,7 @@ details.more[open]>summary::before{content:"▾ "}
     var cur = partyCurrent(st);
     var meTurn = st.status === 'playing' && cur && cur.id === state.memberId;
 
-    $('pt-title').textContent = (kind === 'antakshari' ? 'Antakshari 🎤' : 'Dumb Charades 🎭') + (st.status === 'lobby' ? ' — lobby open' : '');
+    $('pt-title').textContent = (GNAME[kind] || 'Game') + (Number(st.n) > 1 ? ' ' + Number(st.n) : '') + (st.status === 'lobby' ? ' - lobby open' : '');
     $('pt-mode').innerHTML = (st.mode === 'call'
       ? '📹 Video-call mode — <a href="' + esc(st.room || '#') + '" target="_blank" rel="noopener">join the room</a>'
       : '💬 Chat / in-person mode') + ' · admin: ' + esc((st.players.filter(function(p){ return st.admins.indexOf(p.id) >= 0; }).map(function(p){ return p.name; }).join(', ')) || '—');
@@ -4666,31 +4685,80 @@ details.more[open]>summary::before{content:"▾ "}
       $('c-guessed').hidden = !holding;
       $('c-flop').hidden = !holding;
     }
-    $('w-game').textContent = (kind === 'antakshari' ? 'Antakshari' : 'Charades') +
-      (st.status === 'lobby' ? ' lobby open — tap to join!' : ': ' + (meTurn ? 'your turn!' : (cur ? cur.name + "'s turn" : '')));
   }
   function scoreChips(st){
     return st.players.map(function(p, i){
       return '<span class="member" style="border-left:3px solid ' + TOKC[i % TOKC.length] + '">' + esc(p.name) + ' <em>· ' + (p.score || 0) + '</em></span>';
     }).join('');
   }
+  // A family can have several games on at once, including two of the same
+  // one, so the tab opens on the LIST and a game is something you pick.
+  function renderGamesList(list){
+    gamesList = list || [];
+    var mine = gamesList.filter(function(x){ return x.myTurn; }).length;
+    $('w-game').textContent = !gamesList.length ? 'Start a game - play together'
+      : mine ? mine + (mine === 1 ? ' game is' : ' games are') + ' waiting on you'
+      : gamesList.length + (gamesList.length === 1 ? ' game on' : ' games on') + ' - join in';
+    if (!gamesList.length) {
+      $('glist').innerHTML = '<div class="ev">No game on right now. Start one below. You can run more than one at a time.</div>';
+      return;
+    }
+    var h = '';
+    gamesList.forEach(function(g){
+      // What the row must answer without being opened: which game, who is in
+      // it, and whether it is waiting on me.
+      var who = g.solo ? 'On your own' : (g.players.length ? g.players.slice(0, 4).join(', ') + (g.players.length > 4 ? ' +' + (g.players.length - 4) : '') : 'Nobody has joined yet');
+      var sub = g.over ? (g.winner ? g.winner + ' won' : 'Finished')
+        : g.lobby ? 'Lobby open · ' + who
+        : g.myTurn ? 'Your turn · ' + who
+        : g.turnName ? 'Waiting for ' + g.turnName + ' · ' + who
+        : who;
+      var pill = g.over ? '<span class="gturn over">Done</span>'
+        : g.myTurn ? '<span class="gturn">Your turn</span>'
+        : g.lobby ? '<span class="gturn wait">Join</span>'
+        : g.mine ? '<span class="gturn wait">Waiting</span>' : '';
+      h += '<button class="chatrow' + (g.myTurn ? ' needsyou' : '') + '" data-gopen="' + esc(g.id) + '">'
+        + '<span class="cic" aria-hidden="true">' + (GICON[g.kind] || '🎲') + '</span>'
+        + '<span class="txt"><b>' + esc(g.name) + '</b><small>' + esc(sub) + '</small></span>'
+        + pill + '</button>';
+    });
+    $('glist').innerHTML = h;
+  }
+  function showGameList(){
+    curGame = null;
+    $('game-on').hidden = true;
+    $('game-list').hidden = false;
+    $('game-none').hidden = false;
+  }
+  function openGame(id){
+    if (!state) return;
+    fetch(API.games + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + '&game=' + encodeURIComponent(id))
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if (j.ok && j.game) { renderGame(j.game); if (j.games) renderGamesList(j.games); }
+        else { toast(j.error || 'That game is over'); showGameList(); refreshFun(); }
+      })
+      .catch(function(){ toast('No connection — try again'); });
+  }
   function renderGame(g){
     try { renderGameInner(g); }
     catch (err) {
       // A malformed or legacy game state must never blank the page —
-      // fall back to the games menu so the family can start fresh.
-      curGame = null;
-      $('game-none').hidden = false;
-      $('game-on').hidden = true;
+      // fall back to the games list so the family can start fresh.
+      showGameList();
     }
   }
   function renderGameInner(g){
     curGame = g;
+    $('game-list').hidden = !!g;
     $('game-none').hidden = !!g;
     $('game-on').hidden = !g;
     ['g-snakes', 'g-party', 'g-ttt'].forEach(function(id){ $(id).hidden = true; });
-    if (!g) { $('w-game').textContent = '3 games live — play together'; return; }
+    if (!g) { showGameList(); return; }
     var st = g.state, kind = st.kind || g.kind;
+    // The open game says which one it is: with two Saanp Seedhis on the go,
+    // the board alone does not tell you which board you are looking at.
+    $('gm-name').textContent = GNAME[kind] ? (Number(st.n) > 1 ? GNAME[kind] + ' ' + Number(st.n) : GNAME[kind]) : 'Game';
     var turnP = st.players[st.turn], meTurn = turnP && turnP.id === state.memberId;
     if (kind === 'antakshari' || kind === 'charades') { renderParty(g, st, kind); return; }
     if (kind === 'ttt') {
@@ -4715,11 +4783,9 @@ details.more[open]>summary::before{content:"▾ "}
         bh += '<button class="tcell' + cls + '" data-tcell="' + i + '"' + dis + '>' + sym + '</button>';
       });
       $('tboard').innerHTML = bh;
-      $('w-game').textContent = over ? 'Duel over — start the next game!' : 'Tic-Tac-Toe: ' + st.players[0].name + ' vs ' + st.players[1].name;
       return;
     }
     $('g-snakes').hidden = false;
-    $('w-game').textContent = st.winner ? st.winner + ' won 🎉' : 'Saanp Seedhi: ' + turnP.name + "'s turn";
     renderBoard(st);
     var myTurn = !st.winner && st.players[st.turn] && st.players[st.turn].id === state.memberId;
     $('g-status').textContent = st.winner ? '🎉 ' + st.winner + ' won! Well played, everyone.'
@@ -4740,18 +4806,39 @@ details.more[open]>summary::before{content:"▾ "}
   }
   function refreshFun(){
     if (!state) return;
-    fetch(API.games + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
-      .then(function(r){ return r.json(); }).then(function(j){ if (j.ok) renderGame(j.game); }).catch(function(){});
+    // The list always; the open game by its own id, so a poll can never
+    // swap the board under someone mid-move for a different game.
+    var u = API.games + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId);
+    fetch(u + (curGame ? '&game=' + encodeURIComponent(curGame.id) : ''))
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if (!j.ok) { if (curGame) { showGameList(); refreshFun(); } return; }
+        if (j.games) renderGamesList(j.games);
+        if (curGame && j.game) renderGame(j.game);
+      }).catch(function(){});
     fetch(API.plans + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); }).then(function(j){ if (j.ok) renderPlans(j.plans); }).catch(function(){});
   }
   function gamePost(body, after){
     body.code = state.code; body.memberId = state.memberId;
-    if (curGame && !body.gameId && body.action !== 'start' && body.action.indexOf('start_') !== 0) body.gameId = curGame.id;
+    var starting = body.action === 'start' || body.action.indexOf('start_') === 0;
+    if (curGame && !body.gameId && !starting) body.gameId = curGame.id;
     post(API.games, body)
-      .then(function(j){ if (j.ok) { if (j.game) renderGame(j.game); if (after) after(j); } else toast(j.error || 'Could not do that'); })
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not do that'); return; }
+        // A game you just started is the one you want to be looking at.
+        if (j.game) renderGame(j.game);
+        if (starting) refreshFun();
+        if (after) after(j);
+      })
       .catch(function(){ toast('No connection — try again'); });
   }
+  // Pick a game out of the list, and get back out of one.
+  $('glist').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-gopen]');
+    if (b) openGame(b.getAttribute('data-gopen'));
+  });
+  $('g-back').addEventListener('click', function(){ showGameList(); refreshFun(); });
   $('g-start').addEventListener('click', function(){ gamePost({ action: 'start' }); });
   // Playing alone is a first-class way to play: nothing is announced to the
   // family, and nobody is notified about a game they are not in.
@@ -4798,7 +4885,7 @@ details.more[open]>summary::before{content:"▾ "}
   $('c-flop').addEventListener('click', function(){ gamePost({ action: 'flop' }); });
   function endGame(){
     if (!curGame || !confirm('End the game for everyone?')) return;
-    gamePost({ action: 'end', gameId: curGame.id }, function(){ curGame = null; refreshFun(); });
+    gamePost({ action: 'end', gameId: curGame.id }, function(){ showGameList(); refreshFun(); });
   }
   $('pt-end').addEventListener('click', endGame);
   $('t-end').addEventListener('click', endGame);
@@ -4812,7 +4899,7 @@ details.more[open]>summary::before{content:"▾ "}
   $('g-quit').addEventListener('click', function(){
     if (!curGame || !confirm('End the game for everyone?')) return;
     post(API.games, { code: state.code, memberId: state.memberId, action: 'end', gameId: curGame.id })
-      .then(function(){ curGame = null; refreshFun(); }).catch(function(){});
+      .then(function(){ showGameList(); refreshFun(); }).catch(function(){});
   });
   // ---------- @mentions + add members to a group ----------
   var curChatMembers = [];

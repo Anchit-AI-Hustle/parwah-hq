@@ -11,7 +11,11 @@ const ROOT=new URL('../../public', import.meta.url).pathname;
 const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml','.webmanifest':'application/manifest+json'};
 const srv=http.createServer(async(rq,rs)=>{let p=rq.url.split('?')[0];if(p.endsWith('/'))p+='index.html';
  try{const d=await readFile(path.join(ROOT,p));rs.writeHead(200,{'Content-Type':MIME[path.extname(p)]||'application/octet-stream'});rs.end(d);}catch{rs.writeHead(404);rs.end('nf');}});
-await new Promise(r=>srv.listen(8801,r));
+// Port 0, not a fixed one: these suites are run side by side and next to
+// other tools, and a suite that dies on EADDRINUSE teaches people to
+// ignore a red test run.
+await new Promise(r => srv.listen(0, r));
+const BASE = 'http://127.0.0.1:' + srv.address().port;
 let chromium;
 try { ({ chromium } = await import('playwright-core')); }
 catch {
@@ -45,7 +49,7 @@ await pg.route('**/api/book*area=vault*',r=>{
     members:[{id:ME,name:'Anchit Tandon',relation:'son'}]}});});
 await pg.route('**/api/book*area=pay*',r=>r.fulfill({json:{ok:true,kinds:{},methods:[],perms:[],log:[],members:[]}}));
 await pg.addInitScript(()=>{localStorage.setItem('parwah',JSON.stringify({code:'ABCDEF',memberId:'11111111-1111-1111-1111-111111111111',name:'Anchit Tandon',role:'family',circleName:'T'}));localStorage.setItem('parwah-fr-hide','1');});
-await pg.goto('http://localhost:8801/app/#vault'); await pg.waitForTimeout(800);
+await pg.goto(BASE + '/app/#vault'); await pg.waitForTimeout(800);
 
 const num=pg.locator('#vd-number'), st=pg.locator('#vd-numstate'), sw=pg.locator('#vd-swap');
 await pg.selectOption('#vd-kind','aadhaar'); await pg.waitForTimeout(150);
