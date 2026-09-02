@@ -723,6 +723,57 @@ if _ren.exists():
           "Vercel project name" in _r and "GitHub repository name" in _r
           and "domain" in _r)
 
+# ---------- 10g. Light and dark ----------
+# A second theme is only possible if NOTHING is a bare colour outside the token
+# block. These checks are what stop the next feature quietly hardcoding #fff
+# into a card and being invisible at night.
+_appt = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+_css = _appt[_appt.index("<style>"):_appt.index("</style>")]
+_dark_end = _css.index("}", _css.index(':root[data-theme="dark"]{'))
+_after = _css[_dark_end:]
+_loose = re.findall(r"#[0-9A-Fa-f]{3,8}\b", _after)
+check(f"theme: every colour is a token, none loose in the components ({len(_loose)} loose)",
+      not _loose, ", ".join(sorted(set(_loose))[:6]))
+
+_light = dict(re.findall(r"(--[a-z0-9-]+):\s*([^;]+);",
+                         _css[_css.index(":root{"):_css.index("}", _css.index(":root{"))]))
+_dark = dict(re.findall(r"(--[a-z0-9-]+):\s*([^;]+);", _css[_css.index(':root[data-theme="dark"]{'):_dark_end]))
+_notype = {"--tabs-h", "--side-w", "--disp", "--body", "--dev", "color-scheme"}
+_missing = sorted(t for t in _light if t not in _notype and t not in _dark)
+check(f"theme: every colour token has a dark value ({len(_dark)} of {len(_light) - len(_notype)})",
+      not _missing, ", ".join(_missing[:6]))
+
+# The automatic case and the chosen-by-hand case must not drift apart.
+_auto = _css[_css.index('@media(prefers-color-scheme:dark)'):]
+_auto = dict(re.findall(r"(--[a-z0-9-]+):\s*([^;]+);", _auto[:_auto.index("}\n}")]))
+# Same VALUES and the same SET: a token dropped from one block is exactly the
+# drift this is here to catch, and comparing only the overlap misses it.
+_drift = sorted(t for t in _dark if t in _auto and _auto[t].strip() != _dark[t].strip())
+_drift += sorted("missing from automatic: " + t for t in _dark if t not in _auto)
+_drift += sorted("missing from chosen: " + t for t in _auto if t not in _dark)
+check("theme: automatic dark and chosen dark are the same palette",
+      not _drift, "; ".join(_drift[:6]))
+
+check("theme: three states, not two, and the device is one of them",
+      'data-theme-set="auto"' in _appt and 'data-theme-set="light"' in _appt
+      and 'data-theme-set="dark"' in _appt and "prefers-color-scheme: dark" in _appt)
+# A script at the end of body draws the app light and repaints it dark.
+check("theme: the choice is applied before the first paint",
+      _appt.index("localStorage.getItem('parwah-theme')") < _appt.index("</head>")
+      and "before the first paint" in _appt)
+check("theme: the browser's own chrome is told too, since CSS cannot reach it",
+      'meta[name="theme-color"]' in _appt and "#0C100D" in _appt)
+check("theme: on Automatic it follows the device as it changes, not at next reload",
+      "addEventListener('change'" in _appt and "themePref() === 'auto'" in _appt)
+# Marigold is a light amber; white on it measures 2.17, which is why every
+# button in this app puts --dusk on it instead.
+_amber = [l for l in _css.splitlines()
+          if "var(--marigold)" in l and "color:var(--on-accent)" in l]
+check("theme: nothing puts white text on the amber", not _amber, "; ".join(_amber)[:110])
+check("theme: text on a coloured chip and on a dark panel are separate tokens",
+      "--on-accent:" in _css and "--on-dark:" in _css
+      and "is how a themed app ends up with invisible buttons" in _css)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]
