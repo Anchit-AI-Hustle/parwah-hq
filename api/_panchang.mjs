@@ -13,9 +13,20 @@
 // --- sunrise and sunset (NOAA solar position algorithm) ------------------
 const RAD = Math.PI / 180;
 function julian(d) { return d.getTime() / 86400000 + 2440587.5; }
+// The Julian day number at MIDNIGHT UTC of whatever date was handed in, so
+// the arithmetic below does not quietly depend on the time of day in the
+// caller's Date. Always ends in .5, which is what the day count assumes.
+function julianMidnightUTC(d) {
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 86400000 + 2440587.5;
+}
 function solarNoonAndHourAngle(lat, lon, date) {
-  const jd = julian(date);
-  const n = Math.floor(jd - 2451545.0 + 0.0008);
+  const jd = julianMidnightUTC(date);
+  // CEIL, not floor. A Julian day at midnight UTC ends in .5, so flooring it
+  // picked the day number whose solar noon had already PASSED - every
+  // sunrise, sunset, Choghadiya, Rahu Kaal and Abhijit came out for
+  // YESTERDAY. Successive days differ by about a minute, so the times still
+  // looked right and no almanac check caught it; only the date was wrong.
+  const n = Math.ceil(jd - 2451545.0 + 0.0008);
   const Jstar = n - lon / 360;
   const M = (357.5291 + 0.98560028 * Jstar) % 360;
   const C = 1.9148 * Math.sin(M * RAD) + 0.02 * Math.sin(2 * M * RAD) + 0.0003 * Math.sin(3 * M * RAD);

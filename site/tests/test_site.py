@@ -677,6 +677,19 @@ check("flow: signing up, signing in and navigating are walked in a browser",
       (REPO / "site/tests/browser/flow.browser.mjs").exists()
       and "flow.browser.mjs" in (REPO / "package.json").read_text(encoding="utf-8"))
 
+# THE WHOLE DAY WAS YESTERDAY'S. A Julian day at midnight UTC ends in .5, so
+# flooring it picked the day number whose solar noon had already passed, and
+# every sunrise, sunset, Choghadiya, Rahu Kaal and Abhijit came out for the
+# day before the one asked for. Consecutive days differ by about a minute, so
+# the times still looked almanac-shaped and nothing caught it.
+_pan = (API_DIR / "_panchang.mjs").read_text(encoding="utf-8")
+check("day: the day number is ceiled, not floored, off a midnight Julian day",
+      "Math.ceil(jd - 2451545.0 + 0.0008)" in _pan and "Math.floor(jd - 2451545.0" not in _pan)
+check("day: the arithmetic reads the date, not the time of day handed in",
+      "julianMidnightUTC" in _pan and "getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()" in _pan)
+check("day: the test asserts the day asked for is the day answered",
+      "the day asked for is the day answered" in (REPO / "site/tests/daytest.mjs").read_text(encoding="utf-8"))
+
 # ---------- 10b. The day: muhurat and rashi ----------
 # The point of the section is that a family split across cities sees the SAME
 # screen: the parent reads the Choghadiya they have always kept, the grandchild

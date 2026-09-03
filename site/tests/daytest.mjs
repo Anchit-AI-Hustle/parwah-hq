@@ -14,10 +14,35 @@ const hhmm = (d, tz) => new Date(d).toLocaleTimeString('en-IN', { timeZone: tz, 
 const IST = 'Asia/Kolkata';
 
 // ---- sunrise and sunset against published almanac times -----------------
-// Delhi, 31 Aug 2026: almanacs give 05:58 / 18:46 IST.
+// Delhi, 31 Aug 2026: 05:58 / 18:45 IST.
+//
+// This block used to expect 18:46, which is 30 August's sunset, because the
+// day number was floored from a Julian day ending in .5 and every answer
+// came out for the day BEFORE the one asked for. Successive days differ by
+// about a minute, so the times still looked almanac-shaped and only the
+// DATE was wrong - which is why the first assertion below now exists.
+const ymd = (d, tz) => new Date(d).toLocaleDateString('en-CA', { timeZone: tz });
 const del = panchang(28.6139, 77.2090, new Date('2026-08-31T00:00:00Z'));
+ok(ymd(del.sunrise, IST) === '2026-08-31' && ymd(del.sunset, IST) === '2026-08-31',
+   'the day asked for is the day answered → ' + ymd(del.sunrise, IST));
 ok(hhmm(del.sunrise, IST) === '05:58', 'Delhi sunrise matches the almanac → ' + hhmm(del.sunrise, IST));
-ok(hhmm(del.sunset, IST) === '18:46', 'Delhi sunset matches the almanac → ' + hhmm(del.sunset, IST));
+ok(hhmm(del.sunset, IST) === '18:45', 'Delhi sunset matches the almanac → ' + hhmm(del.sunset, IST));
+// Sunset moves about a minute a day here, so three consecutive days must
+// step, not repeat: the off-by-one made day N return day N-1 exactly.
+const d30 = panchang(28.6139, 77.2090, new Date('2026-08-30T00:00:00Z'));
+const d01 = panchang(28.6139, 77.2090, new Date('2026-09-01T00:00:00Z'));
+ok(ymd(d30.sunrise, IST) === '2026-08-30' && ymd(d01.sunrise, IST) === '2026-09-01',
+   'consecutive days answer for themselves, not for the day before');
+// Compare the CLOCK time, not the timestamp: 31 Aug 18:45 is of course a
+// later moment than 30 Aug 18:46, and that is not what is being checked.
+ok(hhmm(d30.sunset, IST) > hhmm(del.sunset, IST) && hhmm(del.sunset, IST) > hhmm(d01.sunset, IST),
+   'and sunset walks earlier day by day, as it does in late August ('
+   + hhmm(d30.sunset, IST) + ' → ' + hhmm(del.sunset, IST) + ' → ' + hhmm(d01.sunset, IST) + ')');
+// A Date carrying a time of day must not shift the answer to another date.
+const noonUTC = panchang(28.6139, 77.2090, new Date('2026-08-31T12:00:00Z'));
+const lateUTC = panchang(28.6139, 77.2090, new Date('2026-08-31T23:30:00Z'));
+ok(+noonUTC.sunrise === +del.sunrise && +lateUTC.sunrise === +del.sunrise,
+   'the time of day in the Date handed in changes nothing');
 // Mumbai the same day: 06:23 / 18:55 IST. Same clock, different sky — which is
 // the whole reason muhurat is computed per city and not per country.
 const mum = panchang(19.0760, 72.8777, new Date('2026-08-31T00:00:00Z'));
