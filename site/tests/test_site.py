@@ -690,6 +690,97 @@ check("day: the arithmetic reads the date, not the time of day handed in",
 check("day: the test asserts the day asked for is the day answered",
       "the day asked for is the day answered" in (REPO / "site/tests/daytest.mjs").read_text(encoding="utf-8"))
 
+# ONE FAMILY'S DATA MUST NOT REACH ANOTHER'S SCREEN.
+_sec = (API_DIR / "_sec.mjs").read_text(encoding="utf-8")
+_appx = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+_events = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_care = (API_DIR / "care.mjs").read_text(encoding="utf-8")
+_book = (API_DIR / "book.mjs").read_text(encoding="utf-8")
+_ekta = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
+_keys = (API_DIR / "_keys.mjs").read_text(encoding="utf-8")
+_vault = (API_DIR / "_vaultapi.mjs").read_text(encoding="utf-8")
+_circle = (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+_auth = (API_DIR / "auth.mjs").read_text(encoding="utf-8")
+_eself = (API_DIR / "_ektaselftest.mjs").read_text(encoding="utf-8")
+_db2 = (API_DIR / "_db.mjs").read_text(encoding="utf-8")
+
+# Stored XSS: esc() escaped &, < and > but not quotes, and its output sits
+# inside double-quoted attributes in ten places.
+check("xss: the escaper handles quotes, not just angle brackets",
+      "'\"': '&quot;'" in _sec and "&#39;" in _sec)
+check("xss: the app's own escaper matches the module the gate tests",
+      "'\"':'&quot;'" in _appx and "&#39;" in _appx
+      and "d.textContent = s; return d.innerHTML" not in _appx)
+check("xss: an image data uri is validated whole, not by its prefix",
+      "safeImageUri" in _sec and "={0,2}$/" in _sec
+      and "safeImageUri" in (API_DIR / "chats.mjs").read_text(encoding="utf-8")
+      and "safeImageUri" in _appx)
+check("xss: svg is not an accepted image type, because it carries script",
+      "svg" not in _sec.split("IMG_URI")[1].split("\n")[0])
+
+# An invite code is a doorbell, not a key.
+check("access: there is one guard that says the caller must be in the circle",
+      "export async function requireMember" in _db2)
+check("access: the home feed no longer opens to a bare invite code",
+      "requireMember(sql, q.circle, q.member)" in _events)
+check("access: nor do reminders, requests and suggestions",
+      "requireMember(sql, q.circle, q.member)" in _care)
+check("access: the feed returns member_id, so your own events are not unread to you",
+      "e.member_id, m.name as member_name" in _events)
+
+# Private Family Memory leaked four ways.
+check("privacy: a private entry is not named in the circle feed",
+      "feedName" in _book and "from './_sec.mjs'" in _book)
+check("privacy: care suggestions are scoped to who is asking",
+      "careSuggestions(sql, circleId, memberId)" in _care and "ba.member_id is not null" in _care)
+check("privacy: Ekta cannot read entries the asker may not open",
+      _ekta.count("ba.member_id is not null") >= 2)
+check("privacy: only the subject can move an entry to a new subject",
+      "can change who it is about" in _book)
+
+# Two features could never succeed: the target overwrote the caller.
+check("vault: the person shared with has their own field",
+      "body.targetId || body.memberId" in _vault and _vault.count("targetId") >= 4)
+check("vault: family memory sharing has the same fix",
+      "body.targetId || body.memberId" in _book)
+check("vault: the client writes the caller last, so no body can overwrite it",
+      "}, body, { code: state.code, memberId: state.memberId })" in _appx)
+check("vault: and sends the target under its own name",
+      "targetId: who" in _appx and "memberId: who" not in _appx)
+
+# Leaving destroyed records the confirm box never mentioned.
+check("leave: what would be destroyed is counted and shown first",
+      "needsConfirm" in _circle and "confirmDelete" in _circle)
+check("leave: and the app asks again with the real number",
+      "doLeave(true)" in _appx)
+
+# One AI key served the whole deployment.
+check("keys: a key belongs to the circle that set it",
+      "circleKeyName" in _keys and "'pkey_c_' + circleId" in _keys)
+check("keys: and one family cannot clear another's",
+      "cannot be removed from here" in (API_DIR / "_keysapi.mjs").read_text(encoding="utf-8"))
+check("keys: the probe that spends credits needs a key and a rate limit",
+      "PARWAH_DIAG_SECRET" in _eself and "rateLimit(sql, 'ektaprobe'" in _eself)
+
+# The app's own polling spent the sign-in budget.
+check("auth: a background refresh is not counted as a sign-in attempt",
+      "authrefresh" in _auth and "body.refresh === true" in _auth)
+check("auth: and the app marks its background reads as refreshes",
+      _appx.count("refresh: true }") >= 5)
+check("auth: editing a profile carries the country code with the number",
+      "numberChanged" in _appx and "cc: numberChanged ?" in _appx)
+
+# Silence is not a state.
+check("states: a failed load says so instead of holding the last screen",
+      "function loadFail(" in _appx and "function homeOffline(" in _appx)
+check("states: and offers a way to try again",
+      "data-retryload" in _appx)
+check("states: the two Home widgets do not sit on Loading for ever",
+      "'Could not load'" in _appx and "'Offline'" in _appx)
+check("states: the security rules are unit-tested by the gate",
+      (REPO / "site/tests/sectest.mjs").exists()
+      and "sectest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
+
 # ---------- 10b. The day: muhurat and rashi ----------
 # The point of the section is that a family split across cities sees the SAME
 # screen: the parent reads the Choghadiya they have always kept, the grandchild

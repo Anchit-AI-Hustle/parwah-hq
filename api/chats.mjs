@@ -10,6 +10,7 @@
 //   create_group {name, memberIds[]}
 //   open_dm      {otherId}   (returns the existing 1:1 chat if there is one)
 import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat } from './_db.mjs';
+import { safeImageUri } from './_sec.mjs';
 import { pushCircle } from './_push.mjs';
 import { ektaTurn } from './ekta.mjs';
 
@@ -143,7 +144,10 @@ export default async function handler(req, res) {
       let text;
       if (kind === 'image') {
         text = String(body.text || '');
-        if (!/^data:image\/(jpeg|png|webp);base64,/.test(text) || text.length > 800000) {
+        // The whole string must be base64, not merely start like it: a
+        // correct prefix followed by `x" onerror=...` used to be stored and
+        // then written into an src attribute in every member's browser.
+        if (!safeImageUri(text) || text.length > 800000) {
           return res.status(400).json({ ok: false, error: 'Bad image' });
         }
       } else {

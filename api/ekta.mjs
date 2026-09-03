@@ -129,9 +129,13 @@ async function runTool(sql, circle, me, name, input) {
     const entries = await sql`
       select b.kind, b.name, b.category, b.phone, b.address, b.forwhat, b.notes,
              b.last_verified_at, am.name as about
-      from family_book b left join members am on am.id = b.about_member
+      from family_book b
+      left join members am on am.id = b.about_member
+      left join book_access ba on ba.entry_id = b.id and ba.member_id = ${me.id}
       where b.circle_id = ${circle.id}
         and (${aboutId}::uuid is null or b.about_member = ${aboutId})
+        and (b.visibility = 'circle' or b.about_member = ${me.id}
+             or b.by_member = ${me.id} or ba.member_id is not null)
       order by b.kind, lower(b.name) limit 200`;
     const people = await sql`select name, relation, phone, place, country, gift_info from members
                              where circle_id = ${circle.id}
@@ -152,10 +156,16 @@ async function runTool(sql, circle, me, name, input) {
                            where circle_id = ${circle.id} and lower(name) = ${who}`;
     if (!mrow[0]) return JSON.stringify({ error: `No member named "${input.member_name}" in this circle` });
     const m = mrow[0];
+    // Same rule as every other read path: a summary must not become a way
+    // to have the assistant read out what the asker cannot open themselves.
     const entries = await sql`
-      select kind, name, category, phone, address, forwhat, notes, last_verified_at
-      from family_book where circle_id = ${circle.id} and about_member = ${m.id}
-      order by kind limit 200`;
+      select b.kind, b.name, b.category, b.phone, b.address, b.forwhat, b.notes, b.last_verified_at
+      from family_book b
+      left join book_access ba on ba.entry_id = b.id and ba.member_id = ${me.id}
+      where b.circle_id = ${circle.id} and b.about_member = ${m.id}
+        and (b.visibility = 'circle' or b.about_member = ${me.id}
+             or b.by_member = ${me.id} or ba.member_id is not null)
+      order by b.kind limit 200`;
     let docs = [];
     try {
       docs = await sql`
@@ -409,7 +419,7 @@ export async function ektaTurn(sql, circle, me, history) {
   let last = null;
   // Keys come from the server env first, then from the in-app vault.
   let vault = {};
-  try { vault = (await providerKeys(sql)).keys; } catch (e) { /* vault optional */ }
+  try { vault = (await providerKeys(sql, circle.id)).keys; } catch (e) { /* vault optional */ }
 
   if (vault.anthropic) {
     // Identity-linked API keys may name a workspace; the default workspace
@@ -467,14 +477,6 @@ export default async function handler(req, res) {
   let sql;
   try { sql = db(); await ensureSchema(sql); }
   catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
-  let noBrain = false;
-  try {
-    const { keys } = await providerKeys(sql);
-    // No key at all is still not a dead screen: Ekta answers from the
-    // family's own records and says plainly why the rest is missing.
-    noBrain = !MODEL_PROVIDERS.some(k => keys[k]);
-  } catch (e) { /* fall through: the cascade reports the real failure */ }
-
   const { code, memberId, messages } = req.body || {};
   const circle = await circleByCode(sql, code);
   if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
@@ -482,6 +484,16 @@ export default async function handler(req, res) {
   const meRow = await sql`select id, name, role from members where id = ${memberId} and circle_id = ${circle.id}`;
   if (!meRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
   const me = meRow[0];
+
+  // Which keys THIS family has. Asked after the circle is known, because a
+  // key now belongs to a circle rather than to the whole deployment.
+  let noBrain = false;
+  try {
+    const { keys } = await providerKeys(sql, circle.id);
+    // No key at all is still not a dead screen: Ekta answers from the
+    // family's own records and says plainly why the rest is missing.
+    noBrain = !MODEL_PROVIDERS.some(k => keys[k]);
+  } catch (e) { /* fall through: the cascade reports the real failure */ }
 
   const history = Array.isArray(messages) ? messages
     .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')

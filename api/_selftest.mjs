@@ -185,7 +185,7 @@ export default async function handler(req, res) {
     steps.sos_ack = acked[0].status === 'acked' && acked[0].acked_by === beta[0].id && race.length === 0;
 
     // SUGGESTIONS — proposed from what the circle has already recorded.
-    const sugg = await careSuggestions(sql, circleId);
+    const sugg = await careSuggestions(sql, circleId, papa[0].id);
     steps.care_suggestions = Array.isArray(sugg) && sugg.some(x => /blood group/i.test(x.title));
 
     // PRICING — the same plan, converted at a fixed, stated rate.

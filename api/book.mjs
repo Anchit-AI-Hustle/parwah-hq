@@ -15,6 +15,9 @@
 //   are recorded, missing, or due a re-check.
 // POST /api/book {code, memberId, action:'add'|'update'|'remove'|'verify'}
 import { db, ensureSchema, circleByCode, isUuid, normPhone, phoneError } from './_db.mjs';
+// A private entry's NAME is as private as the entry: adding, verifying or
+// removing a private medicine used to put its name in every member's feed.
+import { feedName } from './_sec.mjs';
 import { pushCircle } from './_push.mjs';
 import boardApi from './_boardapi.mjs';
 import vaultApi from './_vaultapi.mjs';
@@ -229,8 +232,12 @@ export default async function handler(req, res) {
     if (body.action === 'share' || body.action === 'unshare') {
       const found = await subjectOf(body.id);
       if (found.err) return res.status(403).json({ ok: false, error: found.err });
-      if (!isUuid(body.memberId)) return res.status(400).json({ ok: false, error: 'Pick a family member' });
-      const t = await sql`select id, name from members where id = ${body.memberId} and circle_id = ${circle.id}`;
+      // The person being shared with is not the person sharing. Reading both
+      // from body.memberId meant the client's merge put the target over the
+      // caller, so sharing checked the target's own permission and failed.
+      const targetId = body.targetId || body.memberId;
+      if (!isUuid(targetId)) return res.status(400).json({ ok: false, error: 'Pick a family member' });
+      const t = await sql`select id, name from members where id = ${targetId} and circle_id = ${circle.id}`;
       if (!t[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
       if (t[0].id === me.id) return res.status(400).json({ ok: false, error: 'It is already yours' });
       if (body.action === 'unshare') {
@@ -275,7 +282,7 @@ export default async function handler(req, res) {
       // Freshness is the whole point of the memory — pay for it, once a month per entry.
       await award(sql, circle.id, me.id, 'memory_ok', ex[0].id + ':' + new Date().toISOString().slice(0, 7));
       await sql`insert into events (circle_id, member_id, type, text)
-                values (${circle.id}, ${me.id}, 'care', ${me.name + ' checked that "' + ex[0].name + '" is still current ✅'})`;
+                values (${circle.id}, ${me.id}, 'care', ${me.name + ' checked that "' + feedName(ex[0].visibility, ex[0].name) + '" is still current ✅'})`;
       return res.status(200).json({ ok: true });
     }
 
@@ -311,7 +318,7 @@ export default async function handler(req, res) {
                             returning id`;
         const label = kind === 'contact' ? '☎️' : kind === 'address' ? '📍' : kind === 'med' ? '💊' : kind === 'fact' ? '🩸' : '🛡';
         await sql`insert into events (circle_id, member_id, type, text)
-                  values (${circle.id}, ${me.id}, 'care', ${me.name + ' added ' + name + ' to the family memory ' + label})`;
+                  values (${circle.id}, ${me.id}, 'care', ${me.name + ' added ' + feedName(vis, name) + ' to the family memory ' + label})`;
         // information recorded ABOUT someone is that person's business first
         if (about && about !== me.id) {
           await pushCircle(sql, circle.id, { title: '📒 ' + me.name + ' noted something about you', body: label + ' ' + name + ' — open Family memory to check it is right' }, { only: about });
@@ -322,9 +329,21 @@ export default async function handler(req, res) {
       const rdU = await readable(body.id);
       if (rdU.err) return res.status(rdU.err === 'Entry not found' ? 404 : 403).json({ ok: false, error: rdU.err });
       const ex = [rdU.e];
+      // Who an entry is ABOUT decides who may share it, so moving it to a new
+      // subject is a consent decision, not an edit. Only the current subject,
+      // or whoever wrote it when it is about nobody, may do that.
+      let subject = ex[0].about_member;
+      if (String(about || '') !== String(ex[0].about_member || '')) {
+        const owns = ex[0].about_member ? ex[0].about_member === me.id : ex[0].by_member === me.id;
+        if (!owns) {
+          return res.status(403).json({ ok: false,
+            error: 'Only ' + (ex[0].about_member ? 'the person this is about' : 'whoever recorded this') + ' can change who it is about.' });
+        }
+        subject = about;
+      }
       // editing an entry re-verifies it: someone just looked and confirmed
       await sql`update family_book set kind = ${kind}, name = ${name}, category = ${category}, phone = ${phone},
-                address = ${address}, forwhat = ${forwhat}, notes = ${notes}, about_member = ${about},
+                address = ${address}, forwhat = ${forwhat}, notes = ${notes}, about_member = ${subject},
                 updated_at = now(), last_verified_at = now(), updated_by = ${me.id}
                 where id = ${ex[0].id}`;
       return res.status(200).json({ ok: true });
@@ -336,7 +355,7 @@ export default async function handler(req, res) {
       const ex = [rdR.e];
       await sql`delete from family_book where id = ${ex[0].id}`;
       await sql`insert into events (circle_id, member_id, type, text)
-                values (${circle.id}, ${me.id}, 'care', ${me.name + ' removed ' + ex[0].name + ' from the family memory'})`;
+                values (${circle.id}, ${me.id}, 'care', ${me.name + ' removed ' + feedName(ex[0].visibility, ex[0].name) + ' from the family memory'})`;
       return res.status(200).json({ ok: true });
     }
 

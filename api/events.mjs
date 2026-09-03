@@ -1,6 +1,6 @@
 // GET  /api/events?circle=CODE          — circle state: members + last 50 events
 // POST /api/events {code, memberId, type, text} — record a check-in, SOS, pill or message
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, requireMember, isUuid } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import { award, today } from './_coins.mjs';
 
@@ -57,11 +57,19 @@ async function escalateStaleSos(sql, circleId) {
 
   try {
     if (req.method === 'GET') {
-      const circle = await circleByCode(sql, req.query && req.query.circle);
-      if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
+      // An invite code alone used to read this: every member's phone, date of
+      // birth, the feed, live call rooms, and every member UUID - which is
+      // exactly what the write routes below accept as proof of who you are.
+      const q = req.query || {};
+      const g = await requireMember(sql, q.circle, q.member);
+      if (g.err) return res.status(g.status).json({ ok: false, error: g.err });
+      const circle = g.circle;
       const members = await sql`select id, name, role, phone, place, country, relation, dob, gift_info, created_at from members where circle_id = ${circle.id} order by created_at`;
+      // member_id is returned so the client can tell YOUR events from
+      // everyone else's; without it your own check-in came back to you as an
+      // unread notification and bumped your own badge.
       const events = await sql`
-        select e.id, e.type, e.text, e.created_at, m.name as member_name, m.role as member_role
+        select e.id, e.type, e.text, e.created_at, e.member_id, m.name as member_name, m.role as member_role
         from events e left join members m on m.id = e.member_id
         where e.circle_id = ${circle.id}
         order by e.created_at desc limit 50`;

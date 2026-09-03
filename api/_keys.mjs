@@ -24,19 +24,35 @@ export async function ensureKv(sql) {
   )`;
 }
 
-// → { keys: {provider: string|null}, src: {provider: 'env'|'vault'|null} }
-export async function providerKeys(sql) {
+// A FAMILY'S KEY IS THEIRS. The vault used to store one row per provider for
+// the whole deployment, so any member of any circle could read past, set over,
+// or clear another family's key - and spend their credit. Keys written from
+// inside the app are scoped to the circle that wrote them.
+//
+// The old unscoped rows are still READ, and never written, so a key an
+// operator put there keeps working as a deployment-wide default alongside the
+// environment. Nothing a family sets can reach another family.
+export function circleKeyName(circleId, provider) { return 'pkey_c_' + circleId + '_' + provider; }
+const LEGACY_KEY = (provider) => 'pkey_' + provider;
+
+// → { keys: {provider: string|null}, src: {provider: 'env'|'circle'|'shared'|null} }
+export async function providerKeys(sql, circleId) {
   await ensureKv(sql);
   const rows = await sql`select k, v from kv where k like ${'pkey_%'}`;
+  const at = (name) => { const r = rows.find(x => x.k === name); return r ? r.v : null; };
   const keys = {}, src = {};
   for (const p of PROVIDERS) {
     keys[p] = null; src[p] = null;
     for (const e of ENV_MAP[p]) {
       if (process.env[e]) { keys[p] = process.env[e]; src[p] = 'env'; break; }
     }
+    if (!keys[p] && circleId) {
+      const own = at(circleKeyName(circleId, p));
+      if (own) { keys[p] = own; src[p] = 'circle'; }
+    }
     if (!keys[p]) {
-      const r = rows.find(x => x.k === 'pkey_' + p);
-      if (r) { keys[p] = r.v; src[p] = 'vault'; }
+      const shared = at(LEGACY_KEY(p));
+      if (shared) { keys[p] = shared; src[p] = 'shared'; }
     }
   }
   return { keys, src };

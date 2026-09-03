@@ -53,9 +53,23 @@ export default async function handler(req, res) {
     const body = req.body || {};
     // Until SMS one-time codes are in, a phone number is the whole key — so
     // the number of tries from one device is capped.
+    // A SIGN-IN ATTEMPT AND A BACKGROUND REFRESH ARE NOT THE SAME EVENT. The
+    // app re-reads the circle list for a number it already holds every 60
+    // seconds, and that spent the sign-in budget: three phones in one house,
+    // on one connection, locked the household out of signing in at all.
+    //
+    // Typing a number is still capped per device. A refresh for a number the
+    // caller already has is capped per NUMBER, generously, which no attacker
+    // can use to work through other people's numbers.
     if (body.action === 'enter') {
-      const allowed = await rateLimit(sql, 'auth', clientIp(req), 25, 600);
-      if (!allowed) return res.status(429).json({ ok: false, error: 'Too many sign-in attempts from this device — please wait a few minutes' });
+      if (body.refresh === true) {
+        const key = String(body.phone || '').replace(/\D/g, '').slice(-12) || clientIp(req);
+        const allowed = await rateLimit(sql, 'authrefresh', key, 60, 600);
+        if (!allowed) return res.status(429).json({ ok: false, error: 'Refreshing too often — please wait a moment' });
+      } else {
+        const allowed = await rateLimit(sql, 'auth', clientIp(req), 25, 600);
+        if (!allowed) return res.status(429).json({ ok: false, error: 'Too many sign-in attempts from this device — please wait a few minutes' });
+      }
     }
 
     if (body.action === 'update') {

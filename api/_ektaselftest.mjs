@@ -5,7 +5,7 @@
 // (cascade removes everything). Self-cleaning; safe to run any time.
 // The ?run=ekta gate keeps crawlers from burning model tokens.
 import Anthropic from '@anthropic-ai/sdk';
-import { db, ensureSchema, makeCode } from './_db.mjs';
+import { db, ensureSchema, makeCode, rateLimit } from './_db.mjs';
 import { ektaTurn } from './ekta.mjs';
 import { LOCAL_MODEL } from './_ektalocal.mjs';
 
@@ -27,6 +27,20 @@ async function probeWorkspace(headerValue) {
 export default async function handler(req, res) {
   if (((req.query || {}).run) !== 'ekta') {
     return res.status(400).json({ ok: false, error: 'Add ?run=ekta to run this test' });
+  }
+  // A LITERAL QUERY STRING IS NOT A GATE. Every hit ran two full model
+  // cascades and wrote to the database, so anyone who found the URL could
+  // spend the family's credit and fill the table, unauthenticated and
+  // unlimited. It needs the deploy secret now, and it runs at most once a
+  // minute however many people ask.
+  const secret = process.env.PARWAH_DIAG_SECRET || process.env.CRON_SECRET;
+  const given = String((req.query || {}).key || (req.headers && req.headers['x-diag-key']) || '');
+  if (!secret) {
+    return res.status(503).json({ ok: false,
+      error: 'This probe spends model credits, so it stays off until PARWAH_DIAG_SECRET is set on the server.' });
+  }
+  if (given !== secret) {
+    return res.status(403).json({ ok: false, error: 'This probe spends model credits and needs its key.' });
   }
   // Presence booleans only — never values. Helps diagnose env-var setup.
   const env = {
@@ -53,6 +67,10 @@ export default async function handler(req, res) {
   let sql, circleId;
   try {
     sql = db(); await ensureSchema(sql);
+    // One run a minute, counted in the database so it holds across instances.
+    if (!(await rateLimit(sql, 'ektaprobe', 'global', 1, 60))) {
+      return res.status(429).json({ ok: false, error: 'This probe runs at most once a minute.' });
+    }
     const code = makeCode();
     const c = await sql`insert into circles (code, name) values (${code}, 'Ekta Selftest') returning id`;
     circleId = c[0].id;

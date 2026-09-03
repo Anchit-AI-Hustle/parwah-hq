@@ -330,12 +330,18 @@ async function docsApi(req, res, sql, circle, me) {
 
   // Sharing is the owner's call alone — not the uploader's, not an admin's.
   if (body.action === 'grant' || body.action === 'revoke') {
-    if (!isUuid(body.id) || !isUuid(body.memberId)) return res.status(400).json({ ok: false, error: 'Bad request' });
+    // THE TARGET IS NOT THE CALLER. Both used to be read from body.memberId,
+    // and the client merged the person being shared with OVER the signed-in
+    // member, so the owner check compared the target against itself and
+    // sharing could never succeed. `targetId` names who is being shared with;
+    // `memberId` stays the caller and nothing else.
+    const targetId = body.targetId || body.memberId;
+    if (!isUuid(body.id) || !isUuid(targetId)) return res.status(400).json({ ok: false, error: 'Bad request' });
     const r = await sql`select id, label, about_member, kind from vault_docs where id = ${body.id} and circle_id = ${circle.id}`;
     if (!r[0]) return res.status(404).json({ ok: false, error: 'Document not found' });
     if (r[0].about_member !== me.id)
       return res.status(403).json({ ok: false, error: 'Only the person this document belongs to can decide who sees it' });
-    const tRow = await sql`select id, name from members where id = ${body.memberId} and circle_id = ${circle.id}`;
+    const tRow = await sql`select id, name from members where id = ${targetId} and circle_id = ${circle.id}`;
     if (!tRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
     if (tRow[0].id === me.id) return res.status(400).json({ ok: false, error: 'It is already yours' });
     if (body.action === 'revoke') {
@@ -449,8 +455,11 @@ async function payApi(req, res, sql, circle, me) {
   if (body.action === 'allow' || body.action === 'disallow') {
     const own = await ownedMethod(body.id);
     if (own.err) return res.status(403).json({ ok: false, error: own.err });
-    if (!isUuid(body.memberId)) return res.status(400).json({ ok: false, error: 'Pick a family member' });
-    const tRow = await sql`select id, name from members where id = ${body.memberId} and circle_id = ${circle.id}`;
+    // Same collision as grant/revoke: the person being permitted is not the
+    // person doing the permitting.
+    const targetId = body.targetId || body.memberId;
+    if (!isUuid(targetId)) return res.status(400).json({ ok: false, error: 'Pick a family member' });
+    const tRow = await sql`select id, name from members where id = ${targetId} and circle_id = ${circle.id}`;
     if (!tRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
     if (tRow[0].id === me.id) return res.status(400).json({ ok: false, error: 'It is already yours to use' });
     if (body.action === 'disallow') {

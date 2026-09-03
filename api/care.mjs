@@ -1,7 +1,7 @@
 // The care protocol: reminders and requests, consent-first.
 // GET  /api/care?circle=CODE — reminders + open/claimed requests for the circle
 // POST /api/care {code, memberId, action, ...} — see ACTIONS below
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, requireMember, isUuid } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import { award, today } from './_coins.mjs';
 
@@ -34,7 +34,7 @@ export async function careState(sql, circleId) {
 // The hard part of caring for someone is not claiming a job — it is noticing
 // one exists. These are proposed, never created: the family taps to accept.
 // Everything here comes from what the circle has already recorded.
-export async function careSuggestions(sql, circleId) {
+export async function careSuggestions(sql, circleId, memberId) {
   const out = [];
   const seen = new Set();
   const add = (s) => { if (!seen.has(s.key)) { seen.add(s.key); out.push(s); } };
@@ -58,10 +58,14 @@ export async function careSuggestions(sql, circleId) {
     // Things nobody has checked in half a year.
     const stale = await sql`
       select b.id, b.name, b.kind, b.about_member, b.last_verified_at, m.name as about_name
-      from family_book b left join members m on m.id = b.about_member
+      from family_book b
+      left join members m on m.id = b.about_member
+      left join book_access ba on ba.entry_id = b.id and ba.member_id = ${memberId || null}
       where b.circle_id = ${circleId}
         and b.kind in ('med','fact','insurance')
         and b.last_verified_at < now() - interval '180 days'
+        and (b.visibility = 'circle' or b.about_member = ${memberId || null}
+             or b.by_member = ${memberId || null} or ba.member_id is not null)
       order by b.last_verified_at limit 6`;
     stale.forEach(b => {
       const months = Math.round((Date.now() - new Date(b.last_verified_at)) / 2592000000);
@@ -159,10 +163,12 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const circle = await circleByCode(sql, req.query && req.query.circle);
-      if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
-      const state = await careState(sql, circle.id);
-      const suggestions = await careSuggestions(sql, circle.id);
+      const q = req.query || {};
+      const g = await requireMember(sql, q.circle, q.member);
+      if (g.err) return res.status(g.status).json({ ok: false, error: g.err });
+      const state = await careState(sql, g.circle.id);
+      // Scoped to the caller: the suggestions used to name private entries.
+      const suggestions = await careSuggestions(sql, g.circle.id, g.me.id);
       return res.status(200).json({ ok: true, ...state, suggestions });
     }
 

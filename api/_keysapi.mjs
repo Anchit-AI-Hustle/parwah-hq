@@ -5,7 +5,7 @@
 // GET  /api/keys?circle=CODE&member=UUID → { ok, providers: {p: {set, src}} }
 // POST /api/keys {code, memberId, action:'set'|'clear', provider, key?}
 import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
-import { PROVIDERS, providerKeys, ensureKv } from './_keys.mjs';
+import { PROVIDERS, providerKeys, ensureKv, circleKeyName } from './_keys.mjs';
 
 export default async function handler(req, res) {
   let sql;
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     const me = meRow[0];
 
     if (req.method === 'GET') {
-      const { keys, src } = await providerKeys(sql);
+      const { keys, src } = await providerKeys(sql, circle.id);
       const providers = {};
       // presence only — the key value never leaves the server
       PROVIDERS.forEach(p => { providers[p] = { set: !!keys[p], src: src[p] }; });
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
 
     const provider = String(body.provider || '');
     if (!PROVIDERS.includes(provider)) return res.status(400).json({ ok: false, error: 'Unknown provider' });
-    const { src } = await providerKeys(sql);
+    const { src } = await providerKeys(sql, circle.id);
     if (src[provider] === 'env') {
       return res.status(400).json({ ok: false, error: 'This provider is configured on the server itself and cannot be changed from the app' });
     }
@@ -48,14 +48,22 @@ export default async function handler(req, res) {
       if (!/^[A-Za-z0-9_\-.:]{12,300}$/.test(key)) {
         return res.status(400).json({ ok: false, error: 'That does not look like an API key — paste it exactly as the provider shows it' });
       }
-      await sql`insert into kv (k, v) values (${'pkey_' + provider}, ${key})
+      // Written under THIS circle's name, so one family can never set over
+      // another's key or spend its credit.
+      const slot = circleKeyName(circle.id, provider);
+      await sql`insert into kv (k, v) values (${slot}, ${key})
                 on conflict (k) do update set v = ${key}`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${me.id}, 'care', ${me.name + " updated Ekta's " + provider + ' key 🔑'})`;
       return res.status(200).json({ ok: true });
     }
     if (body.action === 'clear') {
-      await sql`delete from kv where k = ${'pkey_' + provider}`;
+      // Only this circle's own key can be cleared. A deployment-wide key an
+      // operator set is not one family's to remove.
+      if (src[provider] === 'shared') {
+        return res.status(403).json({ ok: false, error: 'That key was set up for the whole deployment, so it cannot be removed from here' });
+      }
+      await sql`delete from kv where k = ${circleKeyName(circle.id, provider)}`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${me.id}, 'care', ${me.name + " removed Ekta's " + provider + ' key'})`;
       return res.status(200).json({ ok: true });

@@ -223,11 +223,30 @@ export default async function handler(req, res) {
       if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
       const mRow = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
       if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+      // LEAVING USED TO DESTROY RECORDS SILENTLY. vault_docs.about_member,
+      // pay_methods.owner_member and family_book.about_member all cascade on
+      // the member row, so one tap took the leaver's documents, files,
+      // payment methods and memory entries with it - while the confirm box
+      // said only that they would stop seeing chats, plans and reminders.
+      //
+      // Nothing is deleted until the person has been told exactly what goes.
+      const counts = {};
+      const countOf = async (label, run) => { try { const r = await run(); counts[label] = r[0] ? r[0].n : 0; } catch (e) { counts[label] = 0; } };
+      await countOf('documents', () => sql`select count(*)::int as n from vault_docs where circle_id = ${circle.id} and about_member = ${mRow[0].id}`);
+      await countOf('payment methods', () => sql`select count(*)::int as n from pay_methods where circle_id = ${circle.id} and owner_member = ${mRow[0].id}`);
+      await countOf('family memory entries', () => sql`select count(*)::int as n from family_book where circle_id = ${circle.id} and about_member = ${mRow[0].id}`);
+      const willGo = Object.keys(counts).filter(k => counts[k] > 0).map(k => counts[k] + ' ' + k);
+      if (willGo.length && req.body.confirmDelete !== true) {
+        return res.status(409).json({ ok: false, needsConfirm: true, counts,
+          error: 'Leaving will also delete ' + willGo.join(', ') + ' recorded about you in this circle. That cannot be undone.' });
+      }
       await pushCircle(sql, circle.id, { title: '👋 ' + mRow[0].name + ' left ' + circle.name, body: 'They will no longer see this circle' }, { except: mRow[0].id });
+      // What the leaver merely WROTE about other people belongs to the
+      // family and stays; only what is about the leaver goes with them.
       await sql`delete from members where id = ${mRow[0].id}`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, null, 'care', ${mRow[0].name + ' left the circle 👋'})`;
-      return res.status(200).json({ ok: true });
+      return res.status(200).json({ ok: true, deleted: counts });
     }
 
     if (action === 'update_member') {

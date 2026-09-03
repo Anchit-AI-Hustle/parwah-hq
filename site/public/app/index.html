@@ -968,6 +968,10 @@ details.more[open]>summary::before{content:"▾ "}
         <button class="cbtn ghost" id="push-later">Later</button>
       </div>
     </div>
+    <div class="crow" id="home-offline" hidden style="margin-bottom:12px;border-left:3px solid var(--sindoor)">
+      <span class="txt"><b>Could not reach Parwah</b><small>This is the last thing we saw, not what is happening now. It will retry on its own.</small></span>
+      <button class="cbtn" data-retryload="1">Try now</button>
+    </div>
     <div class="homehero">
       <h1 id="m-title"></h1>
       <p class="lede" style="margin-bottom:12px">Circle code: <span class="codechip" id="m-code"></span></p>
@@ -2278,7 +2282,17 @@ details.more[open]>summary::before{content:"▾ "}
     return { cls:'', text: e.text || '' };
   }
 
-  function esc(s){ var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  // Kept identical to api/_sec.mjs escHtml(), which the gate unit-tests: the
+  // app is one file with no build step, so the rule is written twice and a
+  // structural check in the suite holds the two together.
+  var ESC_MAP = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' };
+  function esc(s){ return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function(c){ return ESC_MAP[c]; }); }
+  // A data: URI that is merely PREFIXED correctly is not safe: everything
+  // after the prefix went into an src attribute unescaped, so
+  // `data:image/png;base64,x" onerror=...` ran in every member's browser.
+  // The whole string has to be base64 and nothing else.
+  var IMG_URI = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+  function safeImageUri(t){ return IMG_URI.test(String(t || '')) ? String(t) : null; }
 
   // "14:30" → "2:30 pm"; anything non-standard passes through untouched.
   function fmtClock(t){
@@ -2447,16 +2461,36 @@ details.more[open]>summary::before{content:"▾ "}
   }
   $('bell').addEventListener('click', function(){ switchTab('notifs'); });
 
+  // One place to say a screen could not load, and one place to take it back.
+  function loadFail(id, what){
+    var el = $(id); if (!el) return;
+    el.innerHTML = '<div class="ev">Could not load ' + esc(what) + '. Check your connection - this will retry on its own.'
+      + ' <button class="linkbtn" data-retryload="1">Try now</button></div>';
+  }
+  document.addEventListener('click', function(e){
+    if (e.target.closest('[data-retryload]')) { refresh(); refreshChats(); refreshFun(); }
+  });
+  // A blank Home must never read as a quiet family: an empty circle name and
+  // an empty status line looked exactly like "nothing is happening".
+  function homeOffline(on){
+    var el = $('home-offline'); if (el) el.hidden = !on;
+    if (on && $('hero-status') && $('hero-status').textContent === '…') {
+      $('hero-status').textContent = 'We could not load your circle just now.';
+    }
+  }
   function refresh(){
     if (!state) return;
+    homeOffline(false);
     fetch(API.events + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); })
       .then(function(j){
-        if (j.ok) { seenAt = j.seenAt || seenAt; joinReqs = j.joinRequests || []; joinPolicy = j.joinPolicy || 'approve'; render(j); renderForSelect(j.members); renderJoinReqs(); renderPulse(j.pulse); return; }
+        if (j.ok) { homeOffline(false); seenAt = j.seenAt || seenAt; joinReqs = j.joinRequests || []; joinPolicy = j.joinPolicy || 'approve'; render(j); renderForSelect(j.members); renderJoinReqs(); renderPulse(j.pulse); return; }
+        // Not ok, and not a code change we can heal from below: say so.
+        homeOffline(true);
         // Circle code changed by another member? Re-map by membership and recover.
         if (authUser && authUser.phone && !window._healing) {
           window._healing = true;
-          post(API.auth, { action: 'enter', phone: authUser.phone }).then(function(a){
+          post(API.auth, { action: 'enter', phone: authUser.phone, refresh: true }).then(function(a){
             if (a.ok && a.exists) {
               saveGroups(a.circles || []);
               var mine = (a.circles || []).filter(function(c){ return c.memberId === state.memberId; })[0];
@@ -2466,11 +2500,19 @@ details.more[open]>summary::before{content:"▾ "}
           }).catch(function(){ window._healing = false; });
         }
       })
-      .catch(function(){ /* offline — keep last render */ });
-    fetch(API.care + '?circle=' + encodeURIComponent(state.code))
+      .catch(function(){ homeOffline(true); });
+    fetch(API.care + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); })
-      .then(function(j){ if (j.ok) renderCare(j); })
-      .catch(function(){});
+      .then(function(j){
+        if (j.ok) { renderCare(j); return; }
+        // Two Home widgets sat on "Loading..." for ever when this failed.
+        if ($('w-rem').textContent === 'Loading…') $('w-rem').textContent = 'Could not load';
+        if ($('w-req').textContent === 'Loading…') $('w-req').textContent = 'Could not load';
+      })
+      .catch(function(){
+        if ($('w-rem').textContent === 'Loading…') $('w-rem').textContent = 'Offline';
+        if ($('w-req').textContent === 'Loading…') $('w-req').textContent = 'Offline';
+      });
     refreshBook();
     refreshCoins();
     refreshPlan();
@@ -2488,7 +2530,7 @@ details.more[open]>summary::before{content:"▾ "}
     fetch(API.chats + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(r){ return r.json(); })
       .then(function(j){
-        if (!j.ok) return;
+        if (!j.ok) { if (!chatsCache || !chatsCache.length) loadFail('clist', 'your chats'); return; }
         chatsCache = j.chats;
         renderChatList();
         var fam = null;
@@ -2547,9 +2589,12 @@ details.more[open]>summary::before{content:"▾ "}
           if (day && day !== lastDay) { h += '<div class="dsep">' + esc(day) + '</div>'; lastDay = day; }
           var mine = m.member_id === state.memberId;
           var ekta = !m.member_id;
-          var body = (m.kind === 'image' && /^data:image\//.test(m.text))
-            ? '<img src="' + m.text + '" alt="Photo" style="max-width:100%;border-radius:10px;display:block">'
-            : mentionify(esc(m.text));
+          var img = m.kind === 'image' ? safeImageUri(m.text) : null;
+          var body = img
+            ? '<img src="' + esc(img) + '" alt="Photo" style="max-width:100%;border-radius:10px;display:block">'
+            : m.kind === 'image'
+              ? '<span class="hint">A photo that could not be shown safely.</span>'
+              : mentionify(esc(m.text));
           var seenBy = reads.filter(function(r){ return r.member_id !== m.member_id && new Date(r.read_at) >= new Date(m.created_at); });
           var tick = mine ? '<span class="rr">' + (seenBy.length ? '✓✓ seen' : '✓ sent') + '</span>' : '';
           h += '<div class="em ' + (mine ? 'u' : 'a') + (ekta ? ' ekta' : '') + '">' +
@@ -2756,7 +2801,7 @@ details.more[open]>summary::before{content:"▾ "}
   function refreshGroups(){
     if (!authUser || !authUser.phone) return;
     if (groupTick++ % 5 !== 0) return;
-    post(API.auth, { action:'enter', phone: authUser.phone })
+    post(API.auth, { action:'enter', phone: authUser.phone, refresh: true })
       .then(function(j){
         if (!j.ok || !j.exists || !Array.isArray(j.circles)) return;
         // A background refresh must never empty My Groups under someone who
@@ -2794,7 +2839,7 @@ details.more[open]>summary::before{content:"▾ "}
     pushBoot();
     refreshKeys();
     if (authUser && authUser.phone) {
-      post(API.auth, { action: 'enter', phone: authUser.phone })
+      post(API.auth, { action: 'enter', phone: authUser.phone, refresh: true })
         .then(function(j){
           if (!j.ok || !j.exists) return;
           authUser = j.user; saveAuth(authUser); saveGroups(j.circles || []);
@@ -2819,15 +2864,25 @@ details.more[open]>summary::before{content:"▾ "}
     pollTimer = setInterval(refresh, 12000);
   }
 
-  $('leave').addEventListener('click', function(){
-    if (!confirm('Leave "' + state.circleName + '"? You will stop seeing its chats, plans and reminders. Your other families and groups are untouched.')) return;
-    post(API.circle, { action: 'leave', code: state.code, memberId: state.memberId })
+  function doLeave(confirmDelete){
+    post(API.circle, { action: 'leave', code: state.code, memberId: state.memberId, confirmDelete: confirmDelete === true })
       .then(function(j){
+        // The server counts what leaving would destroy and refuses until the
+        // person has seen the number. Saying "you will stop seeing chats"
+        // while deleting their documents is not a warning, it is a surprise.
+        if (!j.ok && j.needsConfirm) {
+          if (confirm(j.error + '\n\nLeave anyway?')) doLeave(true);
+          return;
+        }
         if (!j.ok) { toast(j.error || 'Could not leave'); return; }
         saveGroups(loadGroups().filter(function(c){ return c.code !== state.code; }));
         clearState(); location.hash = ''; location.reload();
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
+  }
+  $('leave').addEventListener('click', function(){
+    if (!confirm('Leave "' + state.circleName + '"? You will stop seeing its chats, plans and reminders. Your other families and groups are untouched.')) return;
+    doLeave(false);
   });
 
   function sendEvent(type, text, after){
@@ -3140,7 +3195,7 @@ details.more[open]>summary::before{content:"▾ "}
     if (!authUser || !authUser.phone) { showStep('auth'); return; }
     this.disabled = true;
     var btn = this;
-    post(API.auth, { action:'enter', phone: authUser.phone })
+    post(API.auth, { action:'enter', phone: authUser.phone, refresh: true })
       .then(function(j){
         btn.disabled = false;
         if (j.ok && j.exists) {
@@ -3882,7 +3937,8 @@ details.more[open]>summary::before{content:"▾ "}
     }).join('');
   }
   function bookConsentAct(body, okMsg){
-    post(API.book, Object.assign({ code: state.code, memberId: state.memberId }, body))
+    // The caller is written LAST so no action body can ever overwrite it.
+    post(API.book, Object.assign({}, body, { code: state.code, memberId: state.memberId }))
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
         toast(okMsg);
@@ -3899,12 +3955,12 @@ details.more[open]>summary::before{content:"▾ "}
     var e = bookEntry($('book-detail').dataset.bid); if (!e) return;
     var who = $('bd-share-who').value;
     if (!who) { toast('Choose a family member'); return; }
-    bookConsentAct({ action:'share', id: e.id, memberId: who }, 'Shared 📒');
+    bookConsentAct({ action:'share', id: e.id, targetId: who }, 'Shared 📒');
   });
   $('bd-shares').addEventListener('click', function(ev){
     var b = ev.target.closest('[data-bunshare]'); if (!b) return;
     var e = bookEntry($('book-detail').dataset.bid); if (!e) return;
-    bookConsentAct({ action:'unshare', id: e.id, memberId: b.getAttribute('data-bunshare') }, 'Access taken back');
+    bookConsentAct({ action:'unshare', id: e.id, targetId: b.getAttribute('data-bunshare') }, 'Access taken back');
   });
   document.addEventListener('click', function(e){
     var r = e.target.closest('[data-bopen]');
@@ -5202,8 +5258,19 @@ details.more[open]>summary::before{content:"▾ "}
         if (j.phone) $('p-phone').textContent = j.phone;
         $('p-city').textContent = placeLine({ place: j.place, country: j.country }) || '—';
         var done = function(){ $('editform').hidden = true; toast('Profile updated 🧡'); refresh(); };
-        if (authUser && (nm !== authUser.name || (newPhone && newPhone !== authUser.phone))) {
-          post(API.auth, { action: 'update', userId: authUser.id, name: nm, phone: newPhone || undefined })
+        // THE COUNTRY CODE HAD TO GO WITH THE NUMBER. This posted the bare
+        // local digits, and the server defaults a bare number to +91, so a
+        // person signed in on a French or Emirati number had their sign-in
+        // number rewritten to an Indian one and was locked out of every
+        // circle. Worse, the guard compared local digits against a stored
+        // E.164 number, so they never matched and the rewrite fired even on
+        // a name-only edit.
+        var e164 = newPhone ? ($('e-cc').value + String(newPhone).replace(/\D/g, '')) : '';
+        var numberChanged = !!(e164 && authUser && e164 !== authUser.phone);
+        if (authUser && (nm !== authUser.name || numberChanged)) {
+          post(API.auth, { action: 'update', userId: authUser.id, name: nm,
+                           phone: numberChanged ? newPhone : undefined,
+                           cc: numberChanged ? $('e-cc').value : undefined })
             .then(function(a){
               if (a.ok) { authUser = a.user; saveAuth(authUser); $('p-phone').textContent = authUser.phone; done(); }
               else toast(a.error || 'Could not update the number');
@@ -5508,7 +5575,8 @@ details.more[open]>summary::before{content:"▾ "}
     }).catch(function(){ $('vd-save').disabled = false; toast('No connection — try again'); });
   });
   function vAct(body, okMsg, then){
-    post(API.vault, Object.assign({ code: state.code, memberId: state.memberId, area: 'vault' }, body))
+    // The caller is written LAST so no action body can ever overwrite it.
+    post(API.vault, Object.assign({ area: 'vault' }, body, { code: state.code, memberId: state.memberId }))
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
         if (okMsg) toast(okMsg);
@@ -5544,11 +5612,11 @@ details.more[open]>summary::before{content:"▾ "}
   $('vdd-share').addEventListener('click', function(){
     var who = $('vdd-share-who').value;
     if (!who) { toast('Choose a family member'); return; }
-    vAct({ action:'grant', id: vOpenId, memberId: who, level: vLevel }, 'Shared 🔐');
+    vAct({ action:'grant', id: vOpenId, targetId: who, level: vLevel }, 'Shared 🔐');
   });
   $('vdd-shares').addEventListener('click', function(e){
     var b = e.target.closest('[data-vrevoke]'); if (!b) return;
-    vAct({ action:'revoke', id: vOpenId, memberId: b.getAttribute('data-vrevoke') }, 'Access taken back');
+    vAct({ action:'revoke', id: vOpenId, targetId: b.getAttribute('data-vrevoke') }, 'Access taken back');
   });
 
   // ----- payments: who may use which way of paying -----
@@ -5602,7 +5670,8 @@ details.more[open]>summary::before{content:"▾ "}
     }).join('');
   }
   function vPayAct(body, okMsg){
-    post(API.pay, Object.assign({ code: state.code, memberId: state.memberId, area: 'pay' }, body))
+    // The caller is written LAST so no action body can ever overwrite it.
+    post(API.pay, Object.assign({ area: 'pay' }, body, { code: state.code, memberId: state.memberId }))
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
         if (okMsg) toast(okMsg);
@@ -5652,14 +5721,14 @@ details.more[open]>summary::before{content:"▾ "}
     if ((id = b.getAttribute('data-vpallow'))) {
       var who = document.querySelector('[data-vpwho="' + id + '"]').value;
       if (!who) { toast('Choose a family member'); return; }
-      vPayAct({ action:'allow', id: id, memberId: who,
+      vPayAct({ action:'allow', id: id, targetId: who,
         perTxnCap: document.querySelector('[data-vpcap="' + id + '"]').value,
         needsOk: document.querySelector('[data-vpask="' + id + '"]').checked }, 'They can use it now 💳');
       return;
     }
     if ((id = b.getAttribute('data-vpstop'))) {
       var parts = id.split('|');
-      vPayAct({ action:'disallow', id: parts[0], memberId: parts[1] }, 'Taken back'); return;
+      vPayAct({ action:'disallow', id: parts[0], targetId: parts[1] }, 'Taken back'); return;
     }
     if ((id = b.getAttribute('data-vpuse'))) {
       var amt = document.querySelector('[data-vpamt="' + id + '"]').value;
@@ -6360,7 +6429,7 @@ details.more[open]>summary::before{content:"▾ "}
   else if (authUser && authUser.phone) {
     // signed in on this device — refresh circles and route straight in
     showStep('auth');
-    post(API.auth, { action: 'enter', phone: authUser.phone })
+    post(API.auth, { action: 'enter', phone: authUser.phone, refresh: true })
       .then(function(j){
         if (j.ok && j.exists) { authUser = j.user; saveAuth(authUser); routeAfterAuth(j.circles || [], j.toured); }
         else showStep('auth');

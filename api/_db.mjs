@@ -203,6 +203,24 @@ export function makeCode() {
   return c;
 }
 
+// THE CALLER MUST BE IN THE CIRCLE. An invite code is a doorbell, not a key:
+// families paste them into WhatsApp groups, and join_policy 'approve' exists
+// precisely because holding the code is not the same as being let in. Two GET
+// routes used to resolve the circle from the code alone and hand back every
+// member's phone, date of birth, feed and - worst - every member UUID, which
+// is what the write routes accept as proof of who you are.
+//
+// → { circle, me } on success, or { err, status } to return verbatim.
+export async function requireMember(sql, code, memberId) {
+  const circle = await circleByCode(sql, code);
+  if (!circle) return { err: 'No circle found with that code', status: 404 };
+  if (!isUuid(memberId)) return { err: 'Not a member of this circle', status: 403 };
+  const rows = await sql`select id, name, role from members
+                         where id = ${memberId} and circle_id = ${circle.id}`;
+  if (!rows[0]) return { err: 'Not a member of this circle', status: 403 };
+  return { circle, me: rows[0] };
+}
+
 export async function circleByCode(sql, code) {
   const clean = String(code || '').toUpperCase().trim();
   // Generated codes are 6 chars from the look-alike-free alphabet; custom
