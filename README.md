@@ -10,3 +10,13 @@ Single private repository for Parwah (परवाह).
 
 Rules, design system, and the ordered backlog: see `CLAUDE.md`.
 Run tests after any site change: `python site/tests/test_site.py`
+
+## Building this with Claude
+
+Every screen, route and fix here was produced by prompting Claude Code.
+The prompts are in [docs/PROMPTS.md](docs/PROMPTS.md), written so someone
+starting from an empty directory can reach the same place: the standing
+rules to put in `CLAUDE.md`, one prompt per feature, the audit and refute
+passes that found the defects, the user-experience walk, and the deploy
+verification. The test suite holds the book to the app, so it cannot drift
+into describing something this repository does not do.

@@ -781,6 +781,50 @@ check("states: the security rules are unit-tested by the gate",
       (REPO / "site/tests/sectest.mjs").exists()
       and "sectest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
 
+# THE PROMPT BOOK. Everything here was built by prompting Claude Code, so
+# the prompts are part of the source. A book that drifts from the app is
+# worse than none: someone follows it and gets a different thing.
+_pb_path = REPO / "docs/PROMPTS.md"
+check("prompts: the build book exists", _pb_path.exists())
+_pb = _pb_path.read_text(encoding="utf-8") if _pb_path.exists() else ""
+# One section per feature the app actually has.
+for _area in ["Sign-in and profile", "Circles", "Home", "Chat", "Ekta",
+              "Care", "Family Memory", "The Vault", "The Day", "Fun",
+              "Plans", "Emergency card", "Together", "people screens",
+              "voice", "app shell", "public pages", "platform"]:
+    check(f"prompts: the book covers {_area}", _area.lower() in _pb.lower())
+check("prompts: it carries the standing rules, not just the tasks",
+      "The standing prompt" in _pb and "Zero medical or therapeutic claims" in _pb)
+check("prompts: it says to run the gate after every change",
+      "npm test" in _pb and "EVERY change" in _pb)
+check("prompts: it asks for the test in the same breath as the fix",
+      "FAILS BEFORE AND PASSES AFTER" in _pb)
+check("prompts: it names the traps that actually cost us",
+      "midnight ends in .5" in _pb          # the day was yesterday's
+      and "doorbell, not a key" in _pb      # an invite code is not identity
+      and "prefix check is not a validation" in _pb  # the image data URI
+      and "padding:0" in _pb                # sixteen-pixel controls
+      and "curl -f" in _pb)                 # the discarded verdict body
+check("prompts: it includes the audit and the refute passes, not just the build",
+      "trying to REFUTE" in _pb and "Skipping a finding is not a verdict" in _pb)
+check("prompts: it states the bar for a 5 in plain terms",
+      "68-year-old parent" in _pb)
+# The book is copy, so the copy rules apply to it too.
+check("prompts: no em dash in the book", "\u2014" not in _pb)
+# The banned words appear in the book because it is the book that bans
+# them, and that declaration WRAPS over three lines, so a line filter does
+# not reach it. Cut the whole clause, from "Banned:" to "Allowed:".
+_pb_prose = re.sub(r"Banned:.*?Allowed:", "", _pb, flags=re.S)
+for _banned in ["cure", "clinically proven", "doctor recommended", "pain relief"]:
+    check(f"prompts: the book does not itself make a {_banned} claim",
+          not re.search(r"\b" + re.escape(_banned) + r"s?\b", _pb_prose, re.I))
+check("prompts: and it does state the ban somewhere",
+      "Banned:" in _pb and "cure" in _pb)
+check("prompts: no key, token or connection string is pasted into it",
+      not re.search(r"(sk-ant-|postgres://|AIza[0-9A-Za-z\-_]{20,}|xai-|sk-proj-)", _pb))
+check("prompts: the book is not shipped to the public site",
+      not (REPO / "site/public/docs").exists())
+
 # ---------- 10b. The day: muhurat and rashi ----------
 # The point of the section is that a family split across cities sees the SAME
 # screen: the parent reads the Choghadiya they have always kept, the grandchild
