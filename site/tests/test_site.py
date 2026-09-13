@@ -1001,6 +1001,13 @@ check("deploy: a failure is reported rather than passing quietly",
       "if: failure()" in _wf and "Deploy FAILED" in _wf)
 check("deploy: and the run says what went live",
       "GITHUB_STEP_SUMMARY" in _wf and "Live at" in _wf)
+# CI must prove the gate on the runtime the gate is developed on. Node 20
+# is deprecated on the runners and is silently forced to 24, so a run that
+# pins it is testing a third thing nobody uses.
+_wf_node = re.search(r"node-version:\s*(\d+)", _wf)
+check("deploy: CI runs the gate on a current Node, not a deprecated one",
+      bool(_wf_node) and int(_wf_node.group(1)) >= 22,
+      _wf_node.group(1) if _wf_node else "no node-version pinned")
 
 # ---------- 10b. The day: muhurat and rashi ----------
 # The point of the section is that a family split across cities sees the SAME

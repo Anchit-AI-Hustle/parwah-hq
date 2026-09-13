@@ -51,7 +51,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Match the Node the gate is actually developed and run against.
+          # Pinning 20 here meant CI proved the gate on a runtime nobody
+          # uses, and the runner forced it to 24 anyway with a warning.
+          node-version: 22
           cache: npm
 
       # Say which secret is missing, before doing anything that could half
