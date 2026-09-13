@@ -1451,6 +1451,34 @@ for _p in SITE_PAGES:
     _want = _BASE + "/" + (str(_rel.parent) + "/" if str(_rel.parent) != "." else "")
     check(f"share card: {_rel} points at itself", _url == [_want],
           f"says {_url} wanted {_want}")
+# AN ASSET THE SITE ASKS FOR MUST ACTUALLY SHIP.
+# .gitignore blanket-ignores *.png with a single exception for site/public.
+# That exception is what makes the share cards work - and it means an image
+# put anywhere else is skipped by `git add -A` in silence. It already
+# happened once: the two cards imported into merge/ were never committed,
+# and they survived only because they were later copied under site/public.
+# An image the HTML references but the checkout does not contain is a 404
+# in production and a blank card everywhere the page is shared, and the
+# build would not say a word about it.
+_asset_missing = []
+for _p in PAGES:
+    _h = _p.read_text(encoding="utf-8")
+    _refs = re.findall(r'(?:src|href|content)="([^"]+\.(?:png|jpg|jpeg|webp|svg|ico))"', _h)
+    for _r in _refs:
+        if _r.startswith("data:"):
+            continue
+        if _r.startswith("http"):
+            # Only our own host is ours to guarantee.
+            if "parwah-hq.anchit-tandon.com" not in _r:
+                continue
+            _target = ROOT / "public" / _r.split("parwah-hq.anchit-tandon.com/", 1)[1]
+        else:
+            _target = (_p.parent / _r.split("?")[0]).resolve()
+        if not _target.exists():
+            _asset_missing.append(f"{_p.relative_to(ROOT)} -> {_r}")
+check("assets: every image a page asks for is actually in the build",
+      not _asset_missing, "; ".join(_asset_missing[:4]))
+
 # THE INVITE IS THE GROWTH LOOP, and it goes out through WhatsApp: the app
 # shares /app/?join=CODE with wa.me/?text=. WhatsApp builds its preview from
 # these tags, and the app page had none, so every invite one family member

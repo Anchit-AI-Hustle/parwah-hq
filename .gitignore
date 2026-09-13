@@ -1,9 +1,12 @@
 .DS_Store
 node_modules/
 .vercel
-*.png
 
-# stray headless-test screenshots
+# Stray headless-test screenshots. The negation is what lets the site's own
+# images ship: favicon, app icons, share cards. Anything outside
+# site/public is dropped by `git add -A` in SILENCE, which is how the two
+# share cards imported into merge/ were never committed. A check in
+# test_site.py now fails if a page asks for an image the build lacks.
 *.png
 !site/public/**/*.png
 
