@@ -185,6 +185,67 @@ export async function ensureSchema(sql) {
   )`;
   await sql`create index if not exists join_requests_circle on join_requests (circle_id, status, created_at desc)`;
   try { await sql`create unique index if not exists join_requests_pending on join_requests (circle_id, user_id) where status = 'pending' and user_id is not null`; } catch (e) {}
+  // THE LAUNCH LIST. This table was being written to by the health probe
+  // for weeks and was never in this function, so on any fresh database that
+  // probe failed with "relation waitlist does not exist" - a schema that
+  // existed only because someone had once typed it into the Neon console.
+  await sql`create table if not exists waitlist (
+    id uuid primary key default gen_random_uuid(),
+    name text not null,
+    email text not null,
+    phone text,
+    city text,
+    interest text not null default 'both',
+    consent boolean not null default false,
+    source text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  )`;
+  // Columns added after the table was first created by hand, so they are
+  // added rather than assumed. Written out one per line as tagged templates,
+  // like every other migration here: a loop that concatenates the column
+  // definition into the statement is string-built SQL, and the gate rejects
+  // that on sight - correctly, because the next person to add a column to
+  // that loop will reach for a variable.
+  await sql`alter table waitlist add column if not exists phone text`;
+  await sql`alter table waitlist add column if not exists city text`;
+  await sql`alter table waitlist add column if not exists interest text not null default 'both'`;
+  await sql`alter table waitlist add column if not exists updated_at timestamptz not null default now()`;
+  // ONE PERSON IS ONE ROW, and the join depends on it: the insert uses
+  // `on conflict (lower(email))`, which Postgres refuses outright when no
+  // matching unique index exists - "there is no unique or exclusion
+  // constraint matching the ON CONFLICT specification". So a swallowed
+  // failure here does not degrade the launch list, it breaks every join.
+  //
+  // The table was created by hand before this function knew about it, so it
+  // may hold the same address more than once. If it does, the index cannot
+  // be built until the duplicates are gone.
+  try {
+    await sql`create unique index if not exists waitlist_email on waitlist (lower(email))`;
+  } catch (e) {
+    // Keep the FIRST time each address joined, because that date is the one
+    // that means something. Carry forward what the later copies knew: a
+    // consent given later must never be lost by a de-duplication, and a
+    // phone number is how we would reach them.
+    // Aggregated over ALL the copies, not joined to them. `update ... from`
+    // with three duplicates picks ONE arbitrary partner row, so a first pass
+    // written that way carried the phone from one copy and silently dropped
+    // the city from another. Proved against Postgres 16 before and after.
+    await sql`
+      update waitlist k set
+        consent = k.consent or agg.consent,
+        phone   = coalesce(k.phone, agg.phone),
+        city    = coalesce(k.city, agg.city)
+      from (select lower(email) as em, bool_or(consent) as consent,
+                   max(phone) as phone, max(city) as city
+              from waitlist group by lower(email)) agg
+      where lower(k.email) = agg.em`;
+    await sql`
+      delete from waitlist w using waitlist k
+      where lower(w.email) = lower(k.email)
+        and (w.created_at, w.id) > (k.created_at, k.id)`;
+    await sql`create unique index if not exists waitlist_email on waitlist (lower(email))`;
+  }
   await sql`create table if not exists rate_limit (
     bucket text not null,
     k text not null,

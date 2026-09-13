@@ -1426,6 +1426,50 @@ check("theme: text on a coloured chip and on a dark panel are separate tokens",
       "--on-accent:" in _css and "--on-dark:" in _css
       and "is how a themed app ends up with invisible buttons" in _css)
 
+# THE LAUNCH LIST. The rule on this site has always been WhatsApp first and
+# no fake forms: a form ships only when a real backend receives it. This is
+# that backend. Its logic is unit-tested in site/tests/waitlisttest.mjs; what
+# is checked here is the wiring, which that test cannot see.
+_wl = (API_DIR / "_waitlist.mjs").read_text(encoding="utf-8")
+_auth_src = (API_DIR / "auth.mjs").read_text(encoding="utf-8")
+_dbsrc = (API_DIR / "_db.mjs").read_text(encoding="utf-8")
+
+check("waitlist: it costs no serverless slot, it rides the front door",
+      not (API_DIR / "waitlist.mjs").exists() and not (API_DIR / "join.mjs").exists()
+      and "action === 'waitlist'" in _auth_src)
+check("waitlist: the table is created by the schema, not by hand in a console",
+      "create table if not exists waitlist" in _dbsrc)
+# This one broke a probe for weeks: _health.mjs wrote to waitlist and nothing
+# created it, so a fresh database answered "relation waitlist does not exist"
+# and the whole database read as broken.
+check("waitlist: and the probe that writes to it ensures that schema first",
+      "ensureSchema" in (API_DIR / "_health.mjs").read_text(encoding="utf-8"))
+check("waitlist: one person is one row, case-insensitively",
+      "unique index if not exists waitlist_email" in _dbsrc
+      and "lower(email)" in _dbsrc)
+# on conflict against a missing index is not a degraded list, it is a broken
+# one: Postgres refuses the statement outright.
+check("waitlist: a duplicate address cannot leave the site without that index",
+      "delete from waitlist w using waitlist k" in _dbsrc)
+check("waitlist: and de-duplicating never loses a consent that was given",
+      "bool_or(consent)" in _dbsrc)
+check("waitlist: nor a phone number or city one copy held",
+      "max(phone)" in _dbsrc and "max(city)" in _dbsrc)
+# DPDP. The one rule that is not a nicety.
+check("waitlist: consent is explicit, and an untick cannot withdraw it silently",
+      "consentGiven" in _wl and "waitlist.consent or excluded.consent" in _auth_src)
+check("waitlist: the interest field exists, because it is the only question worth asking",
+      "INTERESTS" in _wl and "interest = excluded.interest" in _auth_src)
+check("waitlist: joining is rate limited per device",
+      "rateLimit(sql, 'waitlist'" in _auth_src)
+check("waitlist: the reply never reveals whether the address was already there",
+      "joinedMessage" in _auth_src
+      and "already" not in _wl.split("export function joinedMessage")[1].split("}")[0])
+check("waitlist: the gate runs its unit tests before npm install can have run",
+      "waitlisttest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
+check("waitlist: and that module stays dependency-free so it can",
+      "@neondatabase" not in _wl and "from './_db.mjs'" not in _wl)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

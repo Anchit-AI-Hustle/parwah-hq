@@ -27,6 +27,10 @@ node site/tests/sectest.mjs
 # Sign-in: a PIN, a session token, and a lockout. _auth.mjs imports only
 # node:crypto, which is builtin, so this runs before npm install too.
 node site/tests/authtest.mjs
+# The launch list: consent, one-person-one-row, and the interest field that
+# says which half to build next. _waitlist.mjs imports only _phone.mjs, which
+# imports nothing, so this runs before npm install too.
+node site/tests/waitlisttest.mjs
 # The deploy's own verification, against a server that answers red. A check
 # that cannot report a failure is not a check, and this one could not: the
 # poll used `curl -f`, which throws away the HTTP 500 body a red self-test

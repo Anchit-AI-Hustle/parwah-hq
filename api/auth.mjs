@@ -12,6 +12,7 @@ import { fail, failDb } from './_fail.mjs';
 import { pushCircle } from './_push.mjs';
 import { pinError, hashPin, verifyPin, newToken, tokenHash, looksLikeToken,
          MAX_TRIES, LOCK_MINUTES, lockMessage, SESSION_DAYS } from './_auth.mjs';
+import { joinError, joinRow, joinedMessage } from './_waitlist.mjs';
 
 // Every circle this number belongs to, each carrying what is waiting in it.
 // A person in three families should be able to see, before opening any of
@@ -65,6 +66,38 @@ export default async function handler(req, res) {
     // Typing a number is still capped per device. A refresh for a number the
     // caller already has is capped per NUMBER, generously, which no attacker
     // can use to work through other people's numbers.
+    // THE LAUNCH LIST. It lives here because this is the front door: the
+    // route a person reaches before they have an account. It is not its own
+    // function because the Hobby plan allows twelve and eleven are spent, and
+    // the twelfth is worth more held in reserve than spent on one insert.
+    if (body.action === 'waitlist') {
+      // One device, six joins an hour. Generous for a family filling it in
+      // together on one connection, useless for stuffing the list.
+      const allowed = await rateLimit(sql, 'waitlist', clientIp(req), 6, 3600);
+      if (!allowed) {
+        return res.status(429).json({ ok: false, error: 'That is a lot of sign-ups from one device - please try again in a little while' });
+      }
+      const bad = joinError(body);
+      if (bad) return res.status(400).json({ ok: false, error: bad });
+      const row = joinRow(body);
+      // Joining twice is not an error, it is someone correcting a typo or
+      // changing their mind about which half they want. Last answer wins,
+      // except consent, which can be given but never silently withdrawn by
+      // a later form - withdrawing is a request to a person, not a checkbox.
+      await sql`
+        insert into waitlist (name, email, phone, city, interest, consent, source)
+        values (${row.name}, ${row.email}, ${row.phone}, ${row.city}, ${row.interest}, ${row.consent}, ${row.source})
+        on conflict (lower(email)) do update set
+          name = excluded.name,
+          phone = coalesce(excluded.phone, waitlist.phone),
+          city = coalesce(excluded.city, waitlist.city),
+          interest = excluded.interest,
+          consent = waitlist.consent or excluded.consent,
+          updated_at = now()`;
+      // The same answer whether the row was new or not. See joinedMessage.
+      return res.status(200).json({ ok: true, message: joinedMessage(row.interest) });
+    }
+
     if (body.action === 'enter') {
       if (body.refresh === true) {
         const key = String(body.phone || '').replace(/\D/g, '').slice(-12) || clientIp(req);
