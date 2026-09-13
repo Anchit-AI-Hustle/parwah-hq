@@ -81,7 +81,11 @@ re-authored into this design system, never pasted.
 ## Current state
 - hq/index.html - 9-tab console incl. live finance engine (do not edit casually; it has
   its own test suite in the source workspace).
-- site/index.html, site/story/index.html, site/styles.css - pre-launch site.
+- site/public/ - the live site. Two halves, one story:
+  `/` platform pitch · `/story/` the 11pm phone call · `/care/` the range ·
+  `/story/aisle/` the day you notice · `/launch/` · `/get/` · `/demo/` · `/app/`
+  Shared design system in `site/public/styles.css`; pages add only their own
+  page-specific classes in a single `<style>` block, as `/get/` does.
 - site/tests/test_site.py - the site test suite.
 
 ## Backlog (strict order - do not reorder without Anchit)

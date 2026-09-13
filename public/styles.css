@@ -123,7 +123,7 @@ section{position:relative}
 footer{padding:56px 0 40px}
 .f-grid{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;align-items:flex-start}
 .f-grid .mark .latin{font-size:1.2rem}
-.f-links{display:flex;gap:22px;font-size:.86rem}
+.f-links{display:flex;flex-wrap:wrap;gap:14px 22px;font-size:.86rem}
 .f-links a{color:var(--dim-on-dusk);text-decoration:none}
 .f-links a:hover{color:var(--marigold)}
 .legal{margin-top:34px;padding-top:22px;border-top:1px solid var(--pine-2);font-size:.74rem;color:var(--dim-on-dusk);max-width:72ch;line-height:1.7}

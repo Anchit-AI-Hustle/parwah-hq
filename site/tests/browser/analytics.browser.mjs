@@ -35,7 +35,7 @@ const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath
 let pass = 0, fail = 0;
 const ok = (c, n) => { c ? pass++ : (fail++, console.log('FAIL  ' + n)); if (c) console.log('PASS  ' + n); };
 
-const MARKETING = ['/', '/story/', '/get/', '/launch/', '/demo/'];
+const MARKETING = ['/', '/story/', '/story/aisle/', '/care/', '/get/', '/launch/', '/demo/'];
 
 // Serve the file with an ID pasted in, exactly as the operator will do.
 async function open(url, { withId = false, dnt = false, storage = null } = {}) {
