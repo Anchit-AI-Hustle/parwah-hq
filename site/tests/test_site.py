@@ -136,13 +136,28 @@ _dash_files = [f for f in REPO.rglob("*")
                                 ".webmanifest")
                and ".git" not in f.parts and "node_modules" not in f.parts
                and "skills" not in f.parts and f.parts[len(REPO.parts):][:1] != ("public",)]
+# An em dash also travels encoded, and the encoded ones are the dangerous
+# kind because they read as noise in the source and as an em dash to the
+# person. One sat percent-encoded inside the WhatsApp click-to-chat link on
+# three pages, so every visitor who tapped it got an em dash typed into
+# their own message. The patterns are built from pieces so this file does
+# not match itself.
+EM_FORMS = [
+    ("\u2014",            "em dash"),
+    ("%E2%80" + "%94",    "percent-encoded em dash"),
+    ("&md" + "ash;",      "mdash entity"),
+    ("&#82" + "12;",      "decimal entity"),
+    ("&#x20" + "14;",     "hex entity"),
+]
 _dashed = []
 for f in _dash_files:
-    n = f.read_text(encoding="utf-8", errors="ignore").count("\u2014")
-    if n:
-        _dashed.append(f"{f.relative_to(REPO)} ({n})")
-check("copy: no em dashes anywhere, a hyphen is asked for instead",
-      not _dashed, ", ".join(_dashed[:4]))
+    body = f.read_text(encoding="utf-8", errors="ignore")
+    for needle, label in EM_FORMS:
+        n = body.lower().count(needle.lower())
+        if n:
+            _dashed.append(f"{f.relative_to(REPO)}: {n} {label}")
+check("copy: no em dashes anywhere, encoded ones included",
+      not _dashed, "; ".join(_dashed[:4]))
 
 # 10b. security headers enforced platform-wide
 vj = _json.loads((REPO / "vercel.json").read_text(encoding="utf-8"))
