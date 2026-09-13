@@ -1,4 +1,4 @@
-// Family games — Saanp Seedhi (Snakes & Ladders), playable by the whole
+// Family games - Saanp Seedhi (Snakes & Ladders), playable by the whole
 // circle across any distance. Server-side dice; state in Postgres jsonb.
 // A circle can have SEVERAL games running at once, including two of the same
 // kind: "Saanp Seedhi" and "Saanp Seedhi 2" are different games with their own
@@ -27,7 +27,7 @@ const DARES = [
   'Send your next 5 chat messages using only emojis',
   'Call the eldest member of the circle right now and say "I love you"',
   'Share a photo of the last thing you ate, with a chef-style description',
-  'Tell your absolute worst joke in the family chat — no apologies',
+  'Tell your absolute worst joke in the family chat - no apologies',
   'Share one memory from a family trip that still makes you laugh',
   'Write a two-line shayari about this family in the chat',
   'Do 5 jumping jacks and get another member to vouch for you in chat'
@@ -35,7 +35,7 @@ const DARES = [
 const TRUTHS = [
   'What was your childhood nickname, and who gave it to you?',
   'What is the most mischievous thing you did as a kid that elders never found out?',
-  'Who in the family do you call first when you get good news — and why?',
+  'Who in the family do you call first when you get good news - and why?',
   'Which home-cooked dish do you miss the most, and whose hands made it best?',
   'When did you last cry happy tears?',
   'What was your first salary, and what did you do with it?',
@@ -46,7 +46,7 @@ const REWARDS = [
   'Everyone in the circle must send you a 🧡 in the family chat',
   'You may assign one mini-dare to any player of your choice',
   'Each family member must post one word that describes you best',
-  'You earn the title "Sitara of the Day ⭐" — everyone must address you as Sitara till tomorrow',
+  'You earn the title "Sitara of the Day ⭐" - everyone must address you as Sitara till tomorrow',
   'On the next family call, you choose the game',
   'The next player must pay you a genuine compliment before their roll',
   'Everyone must post their favourite photo of you in the chat',
@@ -56,7 +56,7 @@ const WIN_REWARD = '🏆 Champion! Every member must post one favourite memory w
 
 // ---------- Party games (Antakshari + Dumb Charades): lobby, teams, admins ----------
 // Modes: 'chat' (play via family chat / in person) or 'call' (a video room is
-// attached — Dumb Charades acting mode). Creator is admin; admins can begin,
+// attached - Dumb Charades acting mode). Creator is admin; admins can begin,
 // kick, promote co-admins and end. Anyone in the circle can opt in any time;
 // joiners auto-balance onto the smaller team. Turns alternate between teams.
 export const TEAM_NAMES = ['Team Marigold 🧡', 'Team Pine 💚'];
@@ -120,17 +120,17 @@ export function partyPromote(st, adminId, targetId) {
 export function partyBegin(st, adminId) {
   if (!st.admins.includes(adminId)) return { error: 'Only an admin can start the game' };
   if (st.status !== 'lobby') return { error: 'The game is already on' };
-  if (st.players.length < 2) return { error: 'Need at least 2 players — invite the family!' };
+  if (st.players.length < 2) return { error: 'Need at least 2 players - invite the family!' };
   st.status = 'playing';
   const a = teamList(st, 0).map(p => p.name).join(', ');
   const b = teamList(st, 1).map(p => p.name).join(', ');
-  return { announce: '🏁 Game on! ' + TEAM_NAMES[0] + ': ' + (a || '—') + '  vs  ' + TEAM_NAMES[1] + ': ' + (b || '—') + '. ' + (st.kind === 'antakshari' ? 'First letter: "' + st.letter + '"' : 'First actor draws a movie!') };
+  return { announce: '🏁 Game on! ' + TEAM_NAMES[0] + ': ' + (a || '-') + '  vs  ' + TEAM_NAMES[1] + ': ' + (b || '-') + '. ' + (st.kind === 'antakshari' ? 'First letter: "' + st.letter + '"' : 'First actor draws a movie!') };
 }
 function needTurn(st, memberId) {
   if (st.status !== 'playing') return { error: 'The game has not started yet' };
   const cur = currentPlayer(st);
   if (!cur) return { error: 'No players on a team yet' };
-  if (cur.id !== memberId) return { error: 'Not your turn — it is ' + cur.name + "'s" };
+  if (cur.id !== memberId) return { error: 'Not your turn - it is ' + cur.name + "'s" };
   return { cur };
 }
 export function antakshariTurn(st, memberId, action, nextLetter) {
@@ -145,13 +145,13 @@ export function antakshariTurn(st, memberId, action, nextLetter) {
     st.letter = L;
     advanceTurn(st);
     const nxt = currentPlayer(st);
-    return { announce: '🎶 ' + me.name + ' sang on "' + st.last.letter + '"! ' + TEAM_NAMES[me.team] + ' +1 (now ' + st.teamScores[0] + '–' + st.teamScores[1] + '). Next: ' + (nxt ? nxt.name : '—') + ' on "' + L + '"' };
+    return { announce: '🎶 ' + me.name + ' sang on "' + st.last.letter + '"! ' + TEAM_NAMES[me.team] + ' +1 (now ' + st.teamScores[0] + '–' + st.teamScores[1] + '). Next: ' + (nxt ? nxt.name : '-') + ' on "' + L + '"' };
   }
   if (action === 'pass') {
     st.last = { by: me.name, did: 'pass', letter: st.letter };
     advanceTurn(st);
     const nxt = currentPlayer(st);
-    return { announce: '😅 ' + me.name + ' passed on "' + st.letter + '". ' + (nxt ? nxt.name : '—') + ', your stage — same letter!' };
+    return { announce: '😅 ' + me.name + ' passed on "' + st.letter + '". ' + (nxt ? nxt.name : '-') + ', your stage - same letter!' };
   }
   return { error: 'Unknown move' };
 }
@@ -161,7 +161,7 @@ export function charadesTurn(st, memberId, action, rng) {
   const me = chk.cur;
   const R = rng || Math.random;
   if (action === 'draw') {
-    if (st.prompt) return { error: 'You already have a movie — act it out!' };
+    if (st.prompt) return { error: 'You already have a movie - act it out!' };
     st.prompt = MOVIES[Math.floor(R() * MOVIES.length) % MOVIES.length];
     return { announce: '🎭 ' + me.name + ' (' + TEAM_NAMES[me.team] + ') has drawn a movie and is about to act. Team, eyes on ' + me.name + '!' };
   }
@@ -179,7 +179,7 @@ export function charadesTurn(st, memberId, action, rng) {
     st.last = { by: me.name, movie, did: action };
     advanceTurn(st);
     const nxt = currentPlayer(st);
-    return { announce: announce + ' Next actor: ' + (nxt ? nxt.name : '—') };
+    return { announce: announce + ' Next actor: ' + (nxt ? nxt.name : '-') };
   }
   return { error: 'Unknown move' };
 }
@@ -225,12 +225,12 @@ export function tttMove(st, memberId, cell) {
 // SINGLE PLAYER.
 // Some evenings there is nobody free, and a game you cannot start alone is a
 // game nobody opens twice. The opponent is a player like any other, marked
-// `bot`, so every rule — turns, snakes, winning — stays exactly the same.
+// `bot`, so every rule - turns, snakes, winning - stays exactly the same.
 export const BOT = { id: 'bot', name: 'Parwah', bot: true };
 export function soloPlayers(me) { return [{ id: me.id, name: me.name }, { ...BOT }]; }
 
 // A competent, beatable opponent: win if it can, block if it must, then take
-// the centre, a corner, a side. Not unbeatable — losing every game is not fun.
+// the centre, a corner, a side. Not unbeatable - losing every game is not fun.
 export function tttBotCell(st, botIdx) {
   const b = st.board, opp = 1 - botIdx;
   const wins = (who) => {
@@ -276,11 +276,11 @@ export function publicState(game, memberId) {
   const actor = currentPlayer(game.state);
   if (actor && actor.id === memberId) return game;
   const st = JSON.parse(JSON.stringify(game.state));
-  st.prompt = '(hidden — only the actor sees it)';
+  st.prompt = '(hidden - only the actor sees it)';
   return { ...game, state: st };
 }
 
-// Pure turn engine — deterministic under an injected rng, so it is testable.
+// Pure turn engine - deterministic under an injected rng, so it is testable.
 export function playTurn(st, memberId, rng) {
   const idx = st.players.findIndex(p => p.id === memberId);
   if (idx < 0) return { error: 'You are not in this game' };
@@ -323,7 +323,7 @@ function gameRoomUrl(code) {
 }
 
 // A game between two people is not the family's business. Notify the players
-// in THIS game and nobody else — and never the bot, or a solo player, who is
+// in THIS game and nobody else - and never the bot, or a solo player, who is
 // looking at the screen already.
 async function pushPlayers(sql, circleId, st, payload, exceptId) {
   const ids = (st.players || [])
@@ -381,7 +381,7 @@ export default async function handler(req, res) {
       const live = [];
       for (const g of rows) {
         // A party game saved before the lobby/teams engine existed has an old
-        // state shape the app can no longer play — retire it so the family
+        // state shape the app can no longer play - retire it so the family
         // starts a fresh lobby instead of hitting a broken game.
         if ((g.state.kind === 'antakshari' || g.state.kind === 'charades') && !Array.isArray(g.state.admins)) {
           await sql`update games set status = 'done' where id = ${g.id}`;
@@ -487,9 +487,9 @@ export default async function handler(req, res) {
       // an instruction anybody can follow.
       const label = gameName(kind, state.n);
       await announce('🎪 ' + me.name + ' opened a game of ' + label + (mode === 'call' ? ' on a video call, join the room: ' + room : ' in chat mode') + '. Everyone can join: open Together, Games, pick ' + label + ' and tap "I\'m in!" 🙋');
-      await feed(sql, circle.id, me.id, `${me.name} opened ${label} — lobby is open, come join!`);
+      await feed(sql, circle.id, me.id, `${me.name} opened ${label} - lobby is open, come join!`);
       // an open lobby is an invitation to the whole circle
-      await pushCircle(sql, circle.id, { title: '🎪 ' + me.name + ' opened ' + label, body: 'Lobby is open — tap to join the game' }, { except: me.id });
+      await pushCircle(sql, circle.id, { title: '🎪 ' + me.name + ' opened ' + label, body: 'Lobby is open - tap to join the game' }, { except: me.id });
       return res.status(201).json({ ok: true, game: publicState(g[0], me.id) });
     }
 
@@ -589,7 +589,7 @@ export default async function handler(req, res) {
       if (!over && !solo) {
         const nxt = st.players[st.turn];
         if (nxt && !isBot(nxt) && nxt.id !== me.id) {
-          await pushCircle(sql, circle.id, { title: '🎲 Your roll', body: 'Saanp Seedhi — ' + me.name + ' has played' }, { only: nxt.id });
+          await pushCircle(sql, circle.id, { title: '🎲 Your roll', body: 'Saanp Seedhi - ' + me.name + ' has played' }, { only: nxt.id });
         }
       }
       return res.status(200).json({ ok: true, game: { id: g.id, kind: 'snakes', status: over ? 'done' : 'active', state: st } });

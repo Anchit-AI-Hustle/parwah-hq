@@ -4,10 +4,10 @@
 // production with one URL. Two halves, reported separately because they fail
 // for completely different reasons:
 //
-//   arithmetic — Choghadiya, Rahu Kaal and the rest, checked against published
+//   arithmetic - Choghadiya, Rahu Kaal and the rest, checked against published
 //                almanac times for Delhi on a fixed date. Offline, deterministic;
 //                if this ever goes red the code is wrong, not the internet.
-//   source     — one live call to the free open horoscope API, reporting the
+//   source     - one live call to the free open horoscope API, reporting the
 //                status and the length of what came back. If this goes red the
 //                app shows "not available today" rather than inventing a reading.
 import { panchang, currentPeriod, derivedDaySeq, derivedNightSeq } from './_panchang.mjs';
@@ -74,7 +74,7 @@ export default async function handler(req, res) {
     sample: sample ? sample.slice(0, 120) : null,
     error: srcErr || (sample ? '' : 'no usable reading came back'),
     note: sample ? 'The daily readings are live.'
-                 : 'Readings are unavailable right now. The app shows “not available today” for the affected signs — it never invents one, and the muhurat above is unaffected because it is computed, not fetched.'
+                 : 'Readings are unavailable right now. The app shows “not available today” for the affected signs - it never invents one, and the muhurat above is unaffected because it is computed, not fetched.'
   };
 
   const failed = checks.filter(c => !c.ok);

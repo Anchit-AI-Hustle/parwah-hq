@@ -1,4 +1,4 @@
-// THE FAMILY PULSE — "How are my people today?"
+// THE FAMILY PULSE - "How are my people today?"
 //
 // A check-in that answers a question worth asking. "All is well ✅" is a
 // button people press without reading; this asks how you actually are, in a
@@ -14,21 +14,21 @@ export const PULSE_STYLES = {
     { k: 'sunny',  e: '☀️', t: 'Sunny' },
     { k: 'fair',   e: '⛅',  t: 'Fair' },
     { k: 'cloudy', e: '☁️', t: 'A bit cloudy' },
-    { k: 'rainy',  e: '🌧',  t: 'Rainy — a call would be nice', call: true },
+    { k: 'rainy',  e: '🌧',  t: 'Rainy - a call would be nice', call: true },
     { k: 'storm',  e: '⛈',  t: 'Stormy', call: true }
   ]},
   battery: { name: 'Battery', ask: 'How much battery have you got left?', options: [
-    { k: 'full',   e: '🔋', t: '100% — fully charged' },
+    { k: 'full',   e: '🔋', t: '100% - fully charged' },
     { k: 'good',   e: '🔋', t: '75%' },
     { k: 'half',   e: '🔋', t: '50%' },
-    { k: 'low',    e: '🪫', t: '25% — running low', call: true },
+    { k: 'low',    e: '🪫', t: '25% - running low', call: true },
     { k: 'flat',   e: '🪫', t: 'Needs charging', call: true }
   ]},
   animals: { name: 'Animals', ask: 'Which animal are you today?', options: [
-    { k: 'bird',   e: '🐦', t: 'Bird — light and busy' },
-    { k: 'cat',    e: '🐈', t: 'Cat — comfortable' },
+    { k: 'bird',   e: '🐦', t: 'Bird - light and busy' },
+    { k: 'cat',    e: '🐈', t: 'Cat - comfortable' },
     { k: 'turtle', e: '🐢', t: 'Taking it slow' },
-    { k: 'bear',   e: '🐻', t: 'Bear — want to be left alone', call: true },
+    { k: 'bear',   e: '🐻', t: 'Bear - want to be left alone', call: true },
     { k: 'fish',   e: '🐟', t: 'Out of water', call: true }
   ]},
   roads: { name: 'Roads', ask: 'How is the road today?', options: [
@@ -39,9 +39,9 @@ export const PULSE_STYLES = {
     { k: 'flat',   e: '🛞', t: 'Puncture', call: true }
   ]},
   food: { name: 'Food', ask: 'What food is today?', options: [
-    { k: 'mithai', e: '🍬', t: 'Mithai — sweet day' },
-    { k: 'chai',   e: '☕',  t: 'Chai — steady' },
-    { k: 'dal',    e: '🍲', t: 'Dal chawal — ordinary' },
+    { k: 'mithai', e: '🍬', t: 'Mithai - sweet day' },
+    { k: 'chai',   e: '☕',  t: 'Chai - steady' },
+    { k: 'dal',    e: '🍲', t: 'Dal chawal - ordinary' },
     { k: 'mirchi', e: '🌶',  t: 'Too much mirchi', call: true },
     { k: 'empty',  e: '🍽',  t: 'Empty plate', call: true }
   ]}
@@ -78,7 +78,7 @@ export async function ensurePulseSchema(sql) {
   )`;
 }
 
-// Today's answers, with everyone who has not answered included as null — the
+// Today's answers, with everyone who has not answered included as null - the
 // screen is "how are my people", so a person who has not said is part of it.
 export async function pulseToday(sql, circleId) {
   await ensurePulseSchema(sql);

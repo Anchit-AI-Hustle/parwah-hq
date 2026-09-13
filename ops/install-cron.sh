@@ -35,9 +35,9 @@ MINS="${1:-10}"
 [ "$MINS" -ge 1 ] && [ "$MINS" -le 59 ] || { echo "interval must be 1-59 minutes" >&2; exit 2; }
 
 command -v crontab >/dev/null 2>&1 || { echo "no crontab on this machine" >&2; exit 1; }
-command -v vercel  >/dev/null 2>&1 || echo "warning: vercel CLI not found — npm i -g vercel"
+command -v vercel  >/dev/null 2>&1 || echo "warning: vercel CLI not found - npm i -g vercel"
 [ -r "$HOME/.parwah/vercel-token" ] || [ -n "${VERCEL_TOKEN:-}" ] \
-  || echo "warning: no token yet — put one in ~/.parwah/vercel-token (chmod 600)"
+  || echo "warning: no token yet - put one in ~/.parwah/vercel-token (chmod 600)"
 
 # Replace any previous entry of ours, keep everything else untouched.
 { crontab -l 2>/dev/null | grep -vF "$MARK"; echo "*/$MINS * * * * $JOB_CMD"; } | crontab -

@@ -1,5 +1,5 @@
 // GET /api/settings?area=pin&pin=110048&circle=CODE&member=UUID
-// Six digits in, a real locality/district/state out — or an honest "we could
+// Six digits in, a real locality/district/state out - or an honest "we could
 // not check that", never a guess. Behind a circle membership like every other
 // read, so this is not an open proxy to someone else's API.
 import { db, ensureSchema, circleByCode, isUuid, rateLimit, clientIp , requireMember} from './_db.mjs';
@@ -31,10 +31,10 @@ export default async function handler(req, res) {
     // Cached PINs cost nothing; only a first-ever lookup reaches out, and a
     // person cannot hammer someone else's free service through us.
     const gate = await rateLimit(sql, 'pin:' + clientIp(req), 40, 60);
-    if (!gate.ok) return res.status(429).json({ ok: false, error: 'Too many PIN lookups — wait a minute.' });
+    if (!gate.ok) return res.status(429).json({ ok: false, error: 'Too many PIN lookups - wait a minute.' });
 
     // A PIN India Post has never heard of is a successful answer to a fair
-    // question, not a missing endpoint — 200 with unknown:true. A 404 here
+    // question, not a missing endpoint - 200 with unknown:true. A 404 here
     // would also log a browser console error on every such lookup.
     const out = await lookupPin(sql, q.pin);
     return res.status(200).json(out);

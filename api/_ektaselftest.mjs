@@ -1,4 +1,4 @@
-// GET /api/ekta-selftest?run=ekta — full live round-trip test of Ekta.
+// GET /api/ekta-selftest?run=ekta - full live round-trip test of Ekta.
 // Creates a throwaway circle + member, holds a real two-turn conversation
 // through the actual model cascade (a circle question, then a reminder ask),
 // verifies the reminder landed in the database, then deletes the circle
@@ -42,7 +42,7 @@ export default async function handler(req, res) {
   if (given !== secret) {
     return res.status(403).json({ ok: false, error: 'This probe spends model credits and needs its key.' });
   }
-  // Presence booleans only — never values. Helps diagnose env-var setup.
+  // Presence booleans only - never values. Helps diagnose env-var setup.
   const env = {
     ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
     ANTHROPIC_WORKSPACE_ID: !!(process.env.ANTHROPIC_WORKSPACE_ID && String(process.env.ANTHROPIC_WORKSPACE_ID).trim()),
@@ -108,7 +108,7 @@ export default async function handler(req, res) {
       steps.reminder_action = null;   // no model, so no action: not a failure
       steps.reminder_in_db = null;
     } else {
-      // Turn 2: an action — a self reminder via the create_reminder tool.
+      // Turn 2: an action - a self reminder via the create_reminder tool.
       const t2 = await ektaTurn(sql, circle, me, [
         { role: 'user', content: 'Please set a daily reminder for me to take my BP pills at 9 am.' }
       ]);

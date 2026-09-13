@@ -1,4 +1,4 @@
-// Where a family member lives, as coordinates — because Choghadiya is a
+// Where a family member lives, as coordinates - because Choghadiya is a
 // property of a PLACE, not of a country. Free text is matched loosely so
 // "New Delhi", "delhi" and "Delhi, India" all land in the same spot.
 // No dependency, no network, no key: a lookup table is testable and never
@@ -50,14 +50,14 @@ export const CITIES = {
 };
 
 // Delhi is the default only when nothing at all is known, and the caller is
-// told so — a silently wrong city gives silently wrong timings.
+// told so - a silently wrong city gives silently wrong timings.
 export const DEFAULT_PLACE = { name: 'New Delhi', lat: 28.6139, lon: 77.2090, tz: 'Asia/Kolkata', guessed: true };
 
 export function placeOf(text) {
   const t = String(text || '').trim().toLowerCase();
   if (!t) return DEFAULT_PLACE;
   if (CITIES[t]) { const c = CITIES[t]; return { name: text.trim(), lat: c[0], lon: c[1], tz: c[2], guessed: false }; }
-  // "Pune, Maharashtra" / "Greater Noida" — try each comma part, then any
+  // "Pune, Maharashtra" / "Greater Noida" - try each comma part, then any
   // known city named inside the string.
   for (const part of t.split(',').map(s => s.trim())) {
     if (CITIES[part]) { const c = CITIES[part]; return { name: text.trim(), lat: c[0], lon: c[1], tz: c[2], guessed: false }; }

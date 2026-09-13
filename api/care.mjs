@@ -1,6 +1,6 @@
 // The care protocol: reminders and requests, consent-first.
-// GET  /api/care?circle=CODE — reminders + open/claimed requests for the circle
-// POST /api/care {code, memberId, action, ...} — see ACTIONS below
+// GET  /api/care?circle=CODE - reminders + open/claimed requests for the circle
+// POST /api/care {code, memberId, action, ...} - see ACTIONS below
 import { db, ensureSchema, circleByCode, requireMember, isUuid } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
@@ -33,7 +33,7 @@ export async function careState(sql, circleId) {
 }
 
 // WHAT PARWAH ALREADY KNOWS NEEDS DOING.
-// The hard part of caring for someone is not claiming a job — it is noticing
+// The hard part of caring for someone is not claiming a job - it is noticing
 // one exists. These are proposed, never created: the family taps to accept.
 // Everything here comes from what the circle has already recorded.
 export async function careSuggestions(sql, circleId, memberId) {
@@ -133,7 +133,7 @@ export async function createReminder(sql, circle, me, { forMemberId, title, time
     ? `${me.name} set a reminder: ${t}${when}`
     : `${me.name} asked ${forRow[0].name} to accept a reminder: ${t}${when}`);
   if (!self) {
-    await pushCircle(sql, circle.id, { title: '🔔 ' + me.name + ' set a reminder for you', body: t + when + ' — open Parwah to accept or decline' }, { only: target });
+    await pushCircle(sql, circle.id, { title: '🔔 ' + me.name + ' set a reminder for you', body: t + when + ' - open Parwah to accept or decline' }, { only: target });
   }
   return { ok: true, id: r[0].id, status };
 }
@@ -151,7 +151,7 @@ export async function createRequest(sql, circle, me, { title, dueDate, aboutMemb
   const r = await sql`insert into requests (circle_id, by_member, title, due_date, about_member)
                       values (${circle.id}, ${me.id}, ${t}, ${due}, ${about}) returning id`;
   await feed(sql, circle.id, me.id, `${me.name} asked the circle: ${t}`);
-  await pushCircle(sql, circle.id, { title: '🤝 ' + me.name + ' needs a hand', body: t + (due ? ' · by ' + due : '') + ' — first to tap "I\'m on it" takes it' }, { except: me.id });
+  await pushCircle(sql, circle.id, { title: '🤝 ' + me.name + ' needs a hand', body: t + (due ? ' · by ' + due : '') + ' - first to tap "I\'m on it" takes it' }, { except: me.id });
   return { ok: true, id: r[0].id };
 }
 

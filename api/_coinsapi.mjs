@@ -1,7 +1,7 @@
 // GET /api/settings?area=coins&circle=CODE&member=UUID
 //   → { ok, balance, mine, ledger[], earn, spend }
 // The ledger is the family's shared record: what was earned, by whom, and
-// what the AI has cost. There is nothing to buy — coins are earned by
+// what the AI has cost. There is nothing to buy - coins are earned by
 // looking after each other, and spent on Ekta.
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';

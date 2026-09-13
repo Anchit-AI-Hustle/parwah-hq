@@ -1,4 +1,4 @@
-// THE DAY — muhurat and rashi, tested to the minute.
+// THE DAY - muhurat and rashi, tested to the minute.
 //
 // Choghadiya is arithmetic, so it can be checked against a published almanac
 // rather than trusted. These three modules import nothing, so this test runs
@@ -43,7 +43,7 @@ const noonUTC = panchang(28.6139, 77.2090, new Date('2026-08-31T12:00:00Z'));
 const lateUTC = panchang(28.6139, 77.2090, new Date('2026-08-31T23:30:00Z'));
 ok(+noonUTC.sunrise === +del.sunrise && +lateUTC.sunrise === +del.sunrise,
    'the time of day in the Date handed in changes nothing');
-// Mumbai the same day: 06:23 / 18:55 IST. Same clock, different sky — which is
+// Mumbai the same day: 06:23 / 18:55 IST. Same clock, different sky - which is
 // the whole reason muhurat is computed per city and not per country.
 const mum = panchang(19.0760, 72.8777, new Date('2026-08-31T00:00:00Z'));
 ok(hhmm(mum.sunrise, IST) === '06:23', 'Mumbai sunrise differs from Delhi → ' + hhmm(mum.sunrise, IST));
@@ -71,7 +71,7 @@ ok(del.day[0].name === 'Amrit', 'Monday opens with Amrit → ' + del.day[0].name
 // Sunday opens with Udveg; Saturday with Kaal.
 ok(panchang(28.6139, 77.2090, new Date('2026-08-30T00:00:00Z')).day[0].name === 'Udveg', 'Sunday opens with Udveg');
 ok(panchang(28.6139, 77.2090, new Date('2026-09-05T00:00:00Z')).day[0].name === 'Kaal', 'Saturday opens with Kaal');
-// The same clock time is a different Choghadiya on a different day — the
+// The same clock time is a different Choghadiya on a different day - the
 // single fact that makes a lookup table wrong.
 ok(panchang(28.6139, 77.2090, new Date('2026-09-01T00:00:00Z')).day[0].name !== del.day[0].name,
   'the sequence rotates with the weekday');
@@ -79,7 +79,7 @@ ok(panchang(28.6139, 77.2090, new Date('2026-09-01T00:00:00Z')).day[0].name !== 
 // ---- the sequence is DERIVED, not a table someone copied ----------------
 // Every Choghadiya is ruled by a planet; the day's first belongs to the lord of
 // that weekday and the rest walk the classical (Chaldean) order. If the shipped
-// tables ever stop matching that walk, one of them is wrong — and the screen
+// tables ever stop matching that walk, one of them is wrong - and the screen
 // explains the walk to the family, so it had better be the truth.
 ok(CHALDEAN.length === 7 && CHALDEAN[0] === 'Saturn' && CHALDEAN[6] === 'Moon',
    'the Chaldean order is the classical one');
@@ -148,14 +148,14 @@ ok(signOf('1958-04-19').k === 'aries', 'last day of Aries');
 ok(signOf('1958-04-20').k === 'taurus', 'the boundary moves on the right day');
 ok(signOf('1990-12-21').k === 'sagittarius', 'last day of Sagittarius');
 ok(signOf('1990-12-22').k === 'capricorn', 'Capricorn starts in December');
-ok(signOf('1991-01-19').k === 'capricorn', 'Capricorn still runs in January — the year-end wrap');
+ok(signOf('1991-01-19').k === 'capricorn', 'Capricorn still runs in January - the year-end wrap');
 ok(signOf('1991-01-20').k === 'aquarius', 'Aquarius takes over');
 ok(signOf('1962-07-22').k === 'cancer' && signOf('1962-07-23').k === 'leo', 'Cancer into Leo');
 ok(signOf('1962-03-20').k === 'pisces', 'Pisces ends the wheel');
 ok(signOf(null) === null && signOf('') === null && signOf('not a date') === null, 'a missing birthday is null, not a guess');
 ok(signOf('1958-13-01') === null && signOf('1958-02-32') === null, 'an impossible date is null');
 ok(signOf(new Date('1958-03-21T00:00:00Z').toISOString()).k === 'aries', 'a full timestamp works as well as a date');
-// Every day of a leap year lands on exactly one sign — no gaps, no overlaps.
+// Every day of a leap year lands on exactly one sign - no gaps, no overlaps.
 let missing = 0, seen = {};
 for (let d = new Date(Date.UTC(2024, 0, 1)); d.getUTCFullYear() === 2024; d.setUTCDate(d.getUTCDate() + 1)) {
   const s = signOf(d.toISOString().slice(0, 10));
@@ -168,7 +168,7 @@ ok(Object.keys(seen).length === 12, 'all twelve signs are reachable');
 // ---- the one thing that comes from someone else -------------------------
 // The horoscope source is the only part of the day that is fetched. It cannot
 // be reached from a build machine, so what IS tested here is how the app
-// handles every answer it can give — most importantly the ones where it must
+// handles every answer it can give - most importantly the ones where it must
 // say "not available" instead of writing something plausible.
 const realFetch = globalThis.fetch;
 let lastUrl = '';

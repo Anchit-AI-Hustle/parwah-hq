@@ -1,11 +1,11 @@
-// PARWAH COINS — one shared pot per family, and the credit that Ekta and
+// PARWAH COINS - one shared pot per family, and the credit that Ekta and
 // every other AI feature spends.
 //
 // Two decisions shape this:
 //
 //  * The pot is the FAMILY'S, not the individual's. A grandmother who asks
 //    Ekta twenty questions is spending coins her grandson earned by keeping
-//    the memory current, and that is exactly right — it is the same
+//    the memory current, and that is exactly right - it is the same
 //    arrangement as the rest of the product. The ledger still records who
 //    earned what, so the family can see who is doing the keeping.
 //
@@ -52,7 +52,7 @@ export async function balance(sql, circleId) {
   return r[0].n;
 }
 
-// Credit the family for something a member did. `ref` makes it pay once —
+// Credit the family for something a member did. `ref` makes it pay once -
 // pass the thing's id, or a date for once-a-day actions. Awarding must never
 // be able to break the action that earned it.
 export async function award(sql, circleId, memberId, reason, ref = null) {
@@ -71,7 +71,7 @@ export async function award(sql, circleId, memberId, reason, ref = null) {
 
 export function today() { return new Date().toISOString().slice(0, 10); }
 
-// Take coins for an AI turn. Returns { ok, balance, cost } — a family with
+// Take coins for an AI turn. Returns { ok, balance, cost } - a family with
 // an empty pot is told how to fill it, never billed into the negative.
 export async function spend(sql, circleId, memberId, reason) {
   const cost = SPEND[reason] || 1;

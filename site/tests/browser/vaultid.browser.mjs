@@ -1,6 +1,6 @@
 // The vault's number field, as a person actually uses it.
 //
-// NOT part of the deploy gate — Vercel's builders have no browser. Run it
+// NOT part of the deploy gate - Vercel's builders have no browser. Run it
 // locally when the vault form changes:
 //
 //     npm i --no-save playwright-core && npx playwright install chromium
@@ -19,7 +19,7 @@ const BASE = 'http://127.0.0.1:' + srv.address().port;
 let chromium;
 try { ({ chromium } = await import('playwright-core')); }
 catch {
-  console.log('playwright-core is not installed — see the note at the top of this file.');
+  console.log('playwright-core is not installed - see the note at the top of this file.');
   console.log('The deploy gate does not need it: run `npm test` for the checks that do gate a deploy.');
   process.exit(0);
 }
@@ -63,7 +63,7 @@ ok(await num.inputValue()==='1234','four digits so far');
 ok(/^4 of 12/.test(await st.textContent()),'counted, not called wrong → '+(await st.textContent()));
 await num.type('5678'); await pg.waitForTimeout(120);
 ok(await num.inputValue()==='1234 5678','the grouping appears as you type');
-// letters are KEPT, not silently eaten — that is what lets the app explain
+// letters are KEPT, not silently eaten - that is what lets the app explain
 await num.type('ABC'); await pg.waitForTimeout(150);
 ok(await num.inputValue()==='12345678ABC','letters typed into an Aadhaar are kept, not swallowed → '+(await num.inputValue()));
 ok(!/^11 of 12/.test(await st.textContent()),'and are not counted as progress');
@@ -109,6 +109,6 @@ await pg.click('#vd-save'); await pg.waitForTimeout(400);
 ok(lastSave && lastSave.kind==='pan','the document is saved as the kind it really is');
 ok(lastSave && /ALVPT/.test(lastSave.number),'with the number the person typed');
 
-ok(errors.length===0,'no page errors'+(errors.length?' — '+errors.slice(0,3).join(' | '):''));
+ok(errors.length===0,'no page errors'+(errors.length?' - '+errors.slice(0,3).join(' | '):''));
 console.log('\n'+pass+' passed, '+fail+' failed');
 await b.close(); srv.close(); process.exit(fail?1:0);

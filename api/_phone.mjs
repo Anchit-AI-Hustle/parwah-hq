@@ -1,4 +1,4 @@
-// Phone rules — deliberately DEPENDENCY-FREE.
+// Phone rules - deliberately DEPENDENCY-FREE.
 // These are pure functions, and the unit test that covers them must be
 // runnable on a fresh clone with nothing installed. Keeping them out of
 // _db.mjs means the test never drags in the database driver.
@@ -62,5 +62,5 @@ export function phoneError(cc) {
   const r = PHONE_CC[cc && /^\+\d{1,3}$/.test(cc) ? cc : '+91'] || null;
   if (!r) return 'That does not look like a valid number for that country code';
   const len = r.min === r.max ? r.min + ' digits' : r.min + '-' + r.max + ' digits';
-  return 'A ' + r.name + ' number has ' + len + ' after ' + 'the country code — please check it';
+  return 'A ' + r.name + ' number has ' + len + ' after ' + 'the country code - please check it';
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Parwah site test suite — run after ANY change; all checks must pass before commit."""
+"""Parwah site test suite - run after ANY change; all checks must pass before commit."""
 import re, sys, subprocess, tempfile
 from pathlib import Path
 from html.parser import HTMLParser
@@ -9,7 +9,7 @@ PAGES = [ROOT / "public" / "index.html", ROOT / "public" / "story" / "index.html
 FAILS = []
 
 def check(name, ok, detail=""):
-    print(("PASS  " if ok else "FAIL  ") + name + (("  — " + detail) if detail else ""))
+    print(("PASS  " if ok else "FAIL  ") + name + (("  - " + detail) if detail else ""))
     if not ok: FAILS.append(name)
 
 # ---------- 1. HTML well-formedness ----------
@@ -57,7 +57,7 @@ BANNED = ["cure","treats ","treatment","heals","prevent","reverse","remedy",
           "pain relief","arthritis relief","guaranteed result"]
 for p in PAGES:
     text = re.sub(r"<[^>]+>"," ", p.read_text(encoding="utf-8")).lower()
-    # mandatory legal disclaimer uses negative claim language — exempt it, keep marketing copy strict
+    # mandatory legal disclaimer uses negative claim language - exempt it, keep marketing copy strict
     text = text.replace("our products are not medicines and are not intended to diagnose", "")
     hits = sorted({b for b in BANNED if b in text})
     check(f"zero-claims scan: {p.relative_to(ROOT)}", not hits, ", ".join(hits))
@@ -105,7 +105,7 @@ import json as _json
 REPO = ROOT.parent.parent if (ROOT.parent.parent / "vercel.json").exists() else ROOT.parent
 API_DIR = REPO / "api"
 
-# 10a. secret scan — no credentials anywhere in tracked source
+# 10a. secret scan - no credentials anywhere in tracked source
 SECRET_PATTERNS = [
     (r"sk-ant-[A-Za-z0-9\-_]{10,}", "anthropic key"),
     (r"sk-[A-Za-z0-9]{40,}", "api secret key"),
@@ -122,6 +122,27 @@ scan_files = [f for f in REPO.rglob("*")
 for pat, label in SECRET_PATTERNS:
     hits = [str(f.relative_to(REPO)) for f in scan_files if re.search(pat, f.read_text(encoding="utf-8", errors="ignore"))]
     check(f"security: no {label} committed", not hits, ", ".join(hits[:3]))
+
+# NO EM DASHES. A standing instruction on this project, and it was being
+# broken 900 times over, including 22 in the copy on the home page and 319
+# in the app. The scan above missed them because a grep -P lookbehind failed
+# silently, which is the whole reason this is a check and not a habit.
+# .claude/skills/ is vendored third-party documentation, not ours to rewrite;
+# public/ is the build's copy of site/public and is checked at its source.
+_dash_files = [f for f in REPO.rglob("*")
+               if f.is_file()
+               and f.suffix in (".mjs", ".js", ".html", ".json", ".md", ".yml",
+                                ".sql", ".sh", ".py", ".css", ".txt",
+                                ".webmanifest")
+               and ".git" not in f.parts and "node_modules" not in f.parts
+               and "skills" not in f.parts and f.parts[len(REPO.parts):][:1] != ("public",)]
+_dashed = []
+for f in _dash_files:
+    n = f.read_text(encoding="utf-8", errors="ignore").count("\u2014")
+    if n:
+        _dashed.append(f"{f.relative_to(REPO)} ({n})")
+check("copy: no em dashes anywhere, a hyphen is asked for instead",
+      not _dashed, ", ".join(_dashed[:4]))
 
 # 10b. security headers enforced platform-wide
 vj = _json.loads((REPO / "vercel.json").read_text(encoding="utf-8"))
@@ -152,7 +173,7 @@ check("security: service worker bypasses /api/", "/api/" in sw)
 app_html = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
 check("security: no eval in app", "eval(" not in app_html and "new Function(" not in app_html)
 
-# 10f. THE VAULT — the promises made to the family are checked here, not
+# 10f. THE VAULT - the promises made to the family are checked here, not
 # trusted to the interface. A change that breaks one of these cannot deploy.
 vault = (API_DIR / "_vaultapi.mjs").read_text(encoding="utf-8")
 check("vault: a full identity number is never stored",
@@ -168,7 +189,7 @@ check("vault: the server still has the last word on a number",
       and "return res.status(400).json({ ok: false, error: chk.why });" in vault)
 # The only free, legitimate PAN signals: the 4th and 5th characters, both
 # published by the Income Tax Department. The 10th is a check digit whose
-# algorithm has never been published — so we must not pretend to check it.
+# algorithm has never been published - so we must not pretend to check it.
 check("vault: a PAN is read for what it actually encodes",
       "PAN_HOLDER" in docid and "panFacts" in docid
       and "an individual" in docid and "a company" in docid)
@@ -196,7 +217,7 @@ app_src = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
 check("vault: the app never renders more than a masked number",
       "'•••• •••• '" in app_src and "'••••' + esc(d.last4)" in app_src)
 
-# 10g. WAY IN — a short invite code must not be the whole security model.
+# 10g. WAY IN - a short invite code must not be the whole security model.
 dbsrc = (API_DIR / "_db.mjs").read_text(encoding="utf-8")
 circ = (API_DIR / "circle.mjs").read_text(encoding="utf-8")
 auth = (API_DIR / "auth.mjs").read_text(encoding="utf-8")
@@ -213,7 +234,7 @@ check("rate limit: counted in the database, not per instance",
 check("rate limit: a broken limiter never locks the family out",
       "catch (e) { return true; }" in dbsrc)
 
-# 10h. COINS — the credit that pays for Ekta.
+# 10h. COINS - the credit that pays for Ekta.
 coins = (API_DIR / "_coins.mjs").read_text(encoding="utf-8")
 ekta = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
 check("coins: the balance is the ledger, never a stored number",
@@ -228,7 +249,7 @@ check("coins: an unanswered turn is refunded", "'refund'" in ekta)
 check("coins: an empty pot refuses rather than going negative",
       "if (have < cost) return { ok: false" in coins)
 
-# 10i. MULTI-CIRCLE — a person in several families must see which needs them.
+# 10i. MULTI-CIRCLE - a person in several families must see which needs them.
 check("circles: each carries what is waiting in it",
       all(k in auth for k in ('"unread"', '"waiting"', '"openRequests"', '"live"')))
 check("circles: your own messages never count as unread",
@@ -239,7 +260,7 @@ appsrc = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
 check("circles: the sign-in list leads with the circle that needs you",
       "circleSignals" in appsrc and "needsyou" in appsrc)
 
-# 10j. MEMORY CONSENT — a fact about a person is that person's to share.
+# 10j. MEMORY CONSENT - a fact about a person is that person's to share.
 book = (API_DIR / "book.mjs").read_text(encoding="utf-8")
 check("memory: entries can be private to their subject",
       "visibility text not null default 'circle'" in book and "book_access" in book)
@@ -251,7 +272,7 @@ check("memory: every consent change is written to a ledger", "book_consent" in b
 check("memory: preparedness counts private entries without exposing them",
       "const mine = all.filter" in book and "can_see" in book)
 
-# 10k. ONBOARDING — a first-ever sign-in must explain the app, and everyone
+# 10k. ONBOARDING - a first-ever sign-in must explain the app, and everyone
 # must be able to start a family or a group.
 check("onboarding: the introduction is recorded per person, not per device",
       "toured_at" in dbsrc and "action === 'toured'" in auth and "toured: !!user.toured_at" in auth)
@@ -264,14 +285,14 @@ check("onboarding: the interface is pointed at once, then never again",
 check("onboarding: starting a family or a group is offered everywhere",
       all(k in appsrc for k in ("cs-newfam", "cs-newgrp", "side-newcircle", "d-newcircle", "pickkind")))
 
-# 10l. LAYOUT — sidebar-only controls must never reach the mobile tab bar.
+# 10l. LAYOUT - sidebar-only controls must never reach the mobile tab bar.
 check("layout: .side-only is specific enough to beat .tabs button",
       ".tabs .side-only{display:none}" in appsrc and ".tabs .side-only{display:flex}" in appsrc)
 check("layout: the desktop content is not capped at a phone width",
       "body.inapp .wrap{max-width:1560px" in appsrc)
 # Memory and the Vault are "a list, and a form to add to it". On a wide window
 # that was one narrow ribbon with the form scrolled off. The grid spans below
-# must match how many children each list view actually puts in column one —
+# must match how many children each list view actually puts in column one -
 # add a filter row and forget the span, and the form detaches from the list.
 _lv = {"book-list-view": 4, "vd-list-view": 2}
 _spans = []
@@ -337,7 +358,7 @@ check("pricing: Indian digit grouping is not hand-rolled",
 
 # 10n. THE GATE MUST RUN ON A FRESH CLONE.
 # It failed on a real machine because the phone unit test imported _db.mjs,
-# which imports the database driver — absent before npm install.
+# which imports the database driver - absent before npm install.
 phonesrc = (REPO / "site/tests/phonetest.mjs").read_text(encoding="utf-8")
 phonemod = (API_DIR / "_phone.mjs").read_text(encoding="utf-8")
 check("gate: the phone unit test does not need the database driver",
@@ -367,7 +388,7 @@ check("deploy: the private hq/ directory can never be uploaded",
       "hq/" in vign and ".claude/" in vign and "CLAUDE.md" in vign)
 check("deploy: local artefacts stay out of the upload",
       "node_modules/" in vign and ".git/" in vign)
-# Match CODE lines only — the comment explaining why pull and build were
+# Match CODE lines only - the comment explaining why pull and build were
 # dropped necessarily names them, and tripped the first version of this.
 _dcode = "\n".join(l for l in deploysh.splitlines() if not l.strip().startswith("#"))
 check("deploy: source is deployed and built by Vercel, not pushed prebuilt",
@@ -386,7 +407,7 @@ check("deploy: credentials are chosen once, not repeated at every call",
       "vc deploy --prod" in _dcode and "vc whoami" in _dcode
       and _dcode.count("--token=") == 1)
 # macOS still ships bash 3.2, where an empty array under `set -u` is an
-# unbound variable — which is why the credential is a string, not an array.
+# unbound variable - which is why the credential is a string, not an array.
 check("deploy: the credential switch works on bash 3.2",
       "AUTH_MODE" in deploysh and "=()" not in _dcode)
 check("deploy: a gate failure reports the gate's exit code, not the if's",
@@ -441,10 +462,10 @@ check("verify: the red path is exercised by a test, not just described",
 check("deploy: works on a machine without flock (macOS)",
       "command -v flock" in deploysh and 'mkdir "$LOCK.d"' in deploysh)
 
-# 10o. THE PARENT VALIDATION GUIDE — the five concept screens it specifies.
+# 10o. THE PARENT VALIDATION GUIDE - the five concept screens it specifies.
 pulse = (API_DIR / "_pulse.mjs").read_text(encoding="utf-8")
 # This one passed for weeks against no database and failed the first time it
-# met a real one — because it asserted a comparison instead of the counts, and
+# met a real one - because it asserted a comparison instead of the counts, and
 # never exercised the read cursor at all.
 _st = (API_DIR / "_selftest.mjs").read_text(encoding="utf-8")
 check("selftest: unread asserts exact counts, not a vague comparison",
@@ -468,7 +489,7 @@ check("guide: everyone in a circle sees the same question on the same day",
 check("guide: the plan is named and bundled as the guide names it",
       "Parwah Family Plan" in plan and "'Family Readiness'" in plan and "'Family Pulse'" in plan)
 
-# 10p. THE GUIDE'S REMAINING SCREENS — 1, 2 and 4.
+# 10p. THE GUIDE'S REMAINING SCREENS - 1, 2 and 4.
 ekta_src = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
 check("guide screen 1: the home leads with people carrying a short status line",
       'id="fam-cards"' in appsrc and "Important information up to date" in appsrc
@@ -496,7 +517,7 @@ CIRCLE_WIDE_OK = {
     ("circle.mjs", "how people join"):    "changes the door for everyone",
     ("circle.mjs", "left"):               "everyone should know who is in",
     ("events.mjs", "SOS"):                "an emergency is everyone's business",
-    ("events.mjs", "STILL NOBODY"):       "nobody answered — shout louder",
+    ("events.mjs", "STILL NOBODY"):       "nobody answered - shout louder",
     ("events.mjs", "is on it"):           "so nobody else duplicates the trip",
     ("events.mjs", "alright"):            "stop the whole family worrying",
     ("events.mjs", "on now"):             "a live call is open to all",
@@ -525,7 +546,7 @@ for f in sorted(API_DIR.glob("*.mjs")):
         if re.search(r"\{\s*(only|except)\s*:", call):
             targeted += 1; continue
         # Titles are built by concatenation, so the first string literal is
-        # only a prefix — match the fragment anywhere in the call.
+        # only a prefix - match the fragment anywhere in the call.
         if not any(f.name == fn and (frag == "" or frag in call) for (fn, frag) in CIRCLE_WIDE_OK):
             t = re.search(r"title:\s*'([^']*)", call)
             broadcasts.append(f"{f.name}: {(t.group(1) if t else call[:40])[:44]}")
@@ -1012,7 +1033,7 @@ check("deploy: CI runs the gate on a current Node, not a deprecated one",
 # ---------- 10b. The day: muhurat and rashi ----------
 # The point of the section is that a family split across cities sees the SAME
 # screen: the parent reads the Choghadiya they have always kept, the grandchild
-# in London reads what it means. So the English gloss is not decoration — it is
+# in London reads what it means. So the English gloss is not decoration - it is
 # the feature, and it is checked.
 pan = (API_DIR / "_panchang.mjs").read_text(encoding="utf-8")
 horo = (API_DIR / "_horoscope.mjs").read_text(encoding="utf-8")
@@ -1043,7 +1064,7 @@ check("day: a horoscope is never invented when the source is unreachable",
       and "unavailable" in horo and "rather than inventing one" in appday)
 check("day: readings are fetched once a day for the whole family, not per screen",
       "on conflict (day, sign) do nothing" in horo and "create table if not exists horoscope" in horo)
-# The screen answers one question — "is now a good time?" — before it shows
+# The screen answers one question - "is now a good time?" - before it shows
 # anything else. Sixteen equal cards was the answer to a different question.
 check("day: the screen leads with a verdict, not a table",
       "currentPeriod" in pan and "renderMuhurat" in appday
@@ -1100,7 +1121,7 @@ check("day: the probe separates our arithmetic from someone else's uptime",
 
 # ---------- 10c. Knowing what this is, without an account ----------
 # Feedback from a tester: "I can't know a lot about this without signing in."
-# They were right — on a phone the entry screen was a headline and a phone
+# They were right - on a phone the entry screen was a headline and a phone
 # field. The validation guide asks for the same thing from the other side:
 # show five narrow concept screens, and NOT the full app.
 appob = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
@@ -1137,7 +1158,7 @@ check("guide demo: it is plainly an example, not someone's real family",
       "not real people" in appob and "nothing is sent anywhere" in appob)
 
 # ---------- 10d. Addresses that are real, not just typed ----------
-# A free-text box gives you "S-354, Greater Kailash 2" — no city, no state,
+# A free-text box gives you "S-354, Greater Kailash 2" - no city, no state,
 # and no way to know the PIN even matches the locality. India Post publishes
 # that mapping free, so six digits fill in the rest.
 pin = (API_DIR / "_pin.mjs").read_text(encoding="utf-8")
@@ -1279,7 +1300,7 @@ check("theme: text on a coloured chip and on a dark panel are separate tokens",
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]
 check(f"serverless functions within plan cap ({len(fns)}/{FN_CAP})", len(fns) <= FN_CAP,
-      "merge endpoints behind a router (see api/diag.mjs) — deploys are REJECTED above the cap")
+      "merge endpoints behind a router (see api/diag.mjs) - deploys are REJECTED above the cap")
 
 print()
 if FAILS:

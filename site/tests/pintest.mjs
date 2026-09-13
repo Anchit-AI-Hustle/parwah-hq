@@ -54,9 +54,9 @@ ok(parsePin([{ Status:'Success', PostOffice:[null, { Name:'X', State:'Delhi' }, 
 
 // ---- the one line that ends up on the card -------------------------------
 ok(joinAddress({ street:'S-354, Block S', area:'Greater Kailash', city:'South Delhi', state:'Delhi', pin:'110048' })
-   === 'S-354, Block S, Greater Kailash, South Delhi — Delhi 110048', 'the full line reads like an address');
+   === 'S-354, Block S, Greater Kailash, South Delhi - Delhi 110048', 'the full line reads like an address');
 ok(joinAddress({ street:'S-354' }) === 'S-354', 'a lone street stays exactly itself');
-ok(joinAddress({ street:'S-354', city:'', area:null, state:'Delhi', pin:'' }) === 'S-354 — Delhi',
+ok(joinAddress({ street:'S-354', city:'', area:null, state:'Delhi', pin:'' }) === 'S-354 - Delhi',
    'blank parts leave no stray commas');
 ok(joinAddress({}) === '', 'nothing in, nothing out');
 

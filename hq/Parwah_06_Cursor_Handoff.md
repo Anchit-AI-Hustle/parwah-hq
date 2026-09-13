@@ -1,35 +1,35 @@
-# Parwah — Cursor Handoff (context + master prompt)
+# Parwah - Cursor Handoff (context + master prompt)
 
 Paste the **PROMPT FOR CURSOR** section below into Cursor as the project rules /
 first message. Everything above it is reference you can also paste when asked.
 Goal: continue development of (a) the mobile-first website, (b) the Android app,
-(c) the iOS app — all from this one repo.
+(c) the iOS app - all from this one repo.
 
 ---
 
 ## PROMPT FOR CURSOR (copy from here)
 
-You are the lead engineer for **Parwah (परवाह)** — a consent-first family-care
+You are the lead engineer for **Parwah (परवाह)** - a consent-first family-care
 platform for India. Tagline: *"Apni family ki parwah karein."* One private
 "circle" per family: daily "All is well ✅" check-ins, SOS, reminders and help
 requests that always flow as consent (offered → accepted, never imposed),
-circle chat, and Ekta — the in-app AI assistant. Buyer/driver: the 35–50 adult
+circle chat, and Ekta - the in-app AI assistant. Buyer/driver: the 35–50 adult
 child living away; the 60+ parent is a centred user with agency ("senior mode":
 big type, ≤3 actions per screen, Hindi-first), never a tracked subject.
 
-### Repo (github.com/Anchit-AI-Hustle/parwah-hq — private monorepo)
-- `site/public/` — the deployed web app (static, no framework, no build step):
+### Repo (github.com/Anchit-AI-Hustle/parwah-hq - private monorepo)
+- `site/public/` - the deployed web app (static, no framework, no build step):
   `index.html` (marketing home + embedded demo), `launch/`, `story/`, `demo/`,
-  and **`app/index.html` — the actual product app (single file, vanilla JS)**.
-- `api/*.mjs` — Vercel Node serverless functions (ESM, `@neondatabase/serverless`):
+  and **`app/index.html` - the actual product app (single file, vanilla JS)**.
+- `api/*.mjs` - Vercel Node serverless functions (ESM, `@neondatabase/serverless`):
   `circle.mjs` (create/join), `events.mjs` (feed + check-in/sos/pill/message),
   `care.mjs` (reminders + requests, the consent protocol), `ekta.mjs`
   (assistant, Claude API, tool use), `health.mjs`, `waitlist.mjs`,
   `selftest.mjs` (full backend round-trip test), `_db.mjs` (schema + helpers).
 - Root `package.json` build (`cp -r site/public public`) + `vercel.json` +
-  `.vercelignore` (NEVER remove its rules — `hq/` is confidential and once
+  `.vercelignore` (NEVER remove its rules - `hq/` is confidential and once
   leaked publicly through a misconfigured deploy).
-- `hq/` — PRIVATE strategy docs. Never import from or expose anything in `hq/`.
+- `hq/` - PRIVATE strategy docs. Never import from or expose anything in `hq/`.
 - Tests: `python site/tests/test_site.py` must pass before EVERY commit.
 
 ### Live infra
@@ -41,14 +41,14 @@ big type, ≤3 actions per screen, Hindi-first), never a tracked subject.
   and the app flow at `/app/`.
 - Ekta needs `ANTHROPIC_API_KEY` in Vercel project env vars (already set).
 - Cross-provider backup cascade: if every Anthropic tier fails, Ekta walks
-  every other configured provider key in order until one answers — plain
+  every other configured provider key in order until one answers - plain
   REST, text-only (no tools, so no double actions), same persona + rules;
   whichever answers is reported in the response's `model` field:
   1. `OPENAI_API_KEY` (`OPENAI_MODEL`, default gpt-4o-mini)
   2. `GEMINI_API_KEY`/`GOOGLE_API_KEY` (`GEMINI_MODEL`, default gemini-2.0-flash)
   3. `XAI_API_KEY`/`GROK_API_KEY` (`XAI_MODEL`, default grok-3-mini)
   4. `KIMI_API_KEY`/`MOONSHOT_API_KEY` (`KIMI_MODEL`, default moonshot-v1-8k; `KIMI_BASE_URL` overridable)
-  5. `OLLAMA_URL` self-hosted (`OLLAMA_MODEL`, default llama3.1) — must be a
+  5. `OLLAMA_URL` self-hosted (`OLLAMA_MODEL`, default llama3.1) - must be a
      publicly reachable URL for Vercel functions to call it.
 - **Model policy (keep it):** pick the model per task, cascade for resilience.
   Ekta chat runs `claude-sonnet-5` first (fast, warm, reliable tool use),
@@ -63,7 +63,7 @@ big type, ≤3 actions per screen, Hindi-first), never a tracked subject.
 circles(id uuid pk, code text unique 6-char, name, created_at)
 chats(id, circle_id fk cascade, kind 'circle'|'group'|'dm', name, created_at)
 chat_members(chat_id fk, member_id fk, pk both)
-messages(id, chat_id fk, member_id fk nullable — null = Ekta, text, created_at)
+messages(id, chat_id fk, member_id fk nullable - null = Ekta, text, created_at)
 members(id uuid pk, circle_id fk cascade, name, role 'parent'|'family', created_at)
 events(id uuid pk, circle_id fk, member_id fk, type 'checkin'|'sos'|'pill'|'message'|'join'|'care', text, created_at)
 reminders(id, circle_id, for_member fk, by_member fk, title, time_of_day text,
@@ -84,19 +84,19 @@ requests(id, circle_id, by_member, title, status 'open'|'claimed'|'done', claime
 - GET  /api/chats?circle=CODE&member=UUID&chat=UUID → {ok, chat, messages[≤50]}
   (messages with member_id null are Ekta's)
 - POST /api/chats {code, memberId, action:'send'|'create_group'|'open_dm', ...}
-  — mentioning "Ekta" in a sent message makes her reply into the chat itself
+  - mentioning "Ekta" in a sent message makes her reply into the chat itself
 
 ### Design system (do not drift)
 Palette: neem-dusk #182622 · pine #24463C · day #FAF7EF · bone #EFE8D8 ·
 marigold #E8A23D · sindoor #A64B2A · ink #241F17. Type: Fraunces (display),
-Albert Sans (body), Tiro Devanagari Hindi (the परवाह brandmark only — all copy
+Albert Sans (body), Tiro Devanagari Hindi (the परवाह brandmark only - all copy
 is English/Hinglish in Latin script). Signature: the marigold garland motif.
 Mobile-first always; safe-area insets; `prefers-reduced-motion` respected.
 
 ### Non-negotiable product laws
 1. Consent-first & symmetric: anything set FOR a person arrives as a request
    they accept; every shared signal is visible and revocable by them.
-2. Zero medical/therapeutic claims or advice anywhere (Ekta included — she
+2. Zero medical/therapeutic claims or advice anywhere (Ekta included - she
    deflects to doctors). Banned words incl.: cure, treat, heal, prevent,
    remedy, medicine, therapeutic, clinically proven, doctor recommended.
 3. No surveillance, no ads, no data selling, no public social feed.
@@ -105,29 +105,29 @@ Mobile-first always; safe-area insets; `prefers-reduced-motion` respected.
 6. Test before commit; every deploy verified green before "done".
 
 ### YOUR TASKS (in order)
-1. **Mobile apps (iOS + Android) via Capacitor** — wrap the existing web app:
+1. **Mobile apps (iOS + Android) via Capacitor** - wrap the existing web app:
    `npm i @capacitor/core @capacitor/cli && npx cap init Parwah com.parwah.app`,
    webDir pointing at a copy of `site/public`, server.url set to the production
    origin for live content (or bundle + API base override). Add `@capacitor/push-notifications`
    (FCM for Android, APNs for iOS), splash + icons from `site/public/app/icon-512.png`.
    Deliverables: Android AAB/APK (signed, Play-ready) and iOS Xcode project
    (needs the founder's Apple Developer account to sign/TestFlight).
-2. **Push notifications end-to-end** — device token table in Neon
+2. **Push notifications end-to-end** - device token table in Neon
    (tokens(member_id, platform, token)), register on app start, server sends via
    FCM/APNs on: SOS (highest priority), reminder due (cron: Vercel cron job
    hitting a new /api/cron-reminders which finds due accepted reminders),
    missed check-in (no checkin event by circle-set time), new request, and
    reminder-request awaiting acceptance. Web Push for the PWA too.
-3. **Mobile-first website polish** — `/app/` is mobile-first already; add a
+3. **Mobile-first website polish** - `/app/` is mobile-first already; add a
    desktop enhancement (≥900px): two-column layout (actions left, feed right).
    Marketing pages already responsive; keep them.
-4. **OTP phone login** — replace localStorage-only identity: phone + OTP (MSG91
+4. **OTP phone login** - replace localStorage-only identity: phone + OTP (MSG91
    or similar), members linked to verified phone; circle code becomes invite-only.
-5. **Emergency card** — per-parent: blood group, conditions, medicines list
+5. **Emergency card** - per-parent: blood group, conditions, medicines list
    (names only, no advice), doctor contact, address; consent-gated; auto-shown
    on SOS to all members.
 6. **Hindi UI toggle** for the whole app (senior mode defaults to Hindi).
-6b. **Ekta full voice (JARVIS) on native** — web already has tap-to-talk
+6b. **Ekta full voice (JARVIS) on native** - web already has tap-to-talk
    (Web Speech API) + spoken replies (speechSynthesis, en-IN). On Capacitor
    use native STT/TTS plugins for reliability, add wake-word/continuous
    conversation mode there. Keep structured inputs everywhere: times as
@@ -138,7 +138,7 @@ Mobile-first always; safe-area insets; `prefers-reduced-motion` respected.
 Work incrementally: one feature per PR/commit, tests green, deployed, verified
 on production before the next. Ask the founder (Anchit) only for: Apple
 Developer account, FCM/APNs credentials, MSG91 (or SMS provider) keys, and
-ANTHROPIC_API_KEY — everything else, decide and build.
+ANTHROPIC_API_KEY - everything else, decide and build.
 
 (end of Cursor prompt)
 
@@ -148,7 +148,7 @@ ANTHROPIC_API_KEY — everything else, decide and build.
 - The web app is PWA-installable today (Android: Chrome → Install app;
   iOS: Share → Add to Home Screen). Capacitor (task 1) is what produces the
   store-ready binaries; iOS distribution requires your Apple Developer account
-  (₹8k/yr) — no way around Apple signing.
+  (₹8k/yr) - no way around Apple signing.
 - Fast APK without Cursor: pwabuilder.com → paste https://parwah-hq.anchit-tandon.com/app/.
 - Ekta goes live the moment ANTHROPIC_API_KEY is added in Vercel → project
   `parwah` → Settings → Environment Variables (get a key at console.anthropic.com).

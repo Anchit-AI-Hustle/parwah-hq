@@ -1,7 +1,7 @@
 // The day section in a real browser: muhurat rendering, the twelve rashis,
 // the missing-birthday path, and the honest "not available" path.
 //
-// NOT part of the deploy gate — Vercel's builders have no browser. Run it
+// NOT part of the deploy gate - Vercel's builders have no browser. Run it
 // locally when the day screen changes:
 //
 //     npm i --no-save playwright-core && npx playwright install chromium
@@ -36,7 +36,7 @@ const PAPA = '22222222-2222-2222-2222-222222222222';
 const now = new Date().toISOString();
 
 // A real Delhi panchang, shifted so that the third day-period is running right
-// now — the rendering of "now" is what this test is for, not the astronomy.
+// now - the rendering of "now" is what this test is for, not the astronomy.
 function livePanchang(){
   const p = panchang(28.6139, 77.2090, new Date(new Date().toISOString().slice(0,10) + 'T00:00:00Z'));
   const target = p.day[2], mid = (+new Date(target.from) + +new Date(target.to)) / 2;
@@ -85,7 +85,7 @@ const eventsJson = { ok:true, circleName:'Test Family', code:'ABCDEF', seenAt:no
 let chromium;
 try { ({ chromium } = await import('playwright-core')); }
 catch {
-  console.log('playwright-core is not installed — see the note at the top of this file.');
+  console.log('playwright-core is not installed - see the note at the top of this file.');
   console.log('The deploy gate does not need it: run `npm test` for the checks that do gate a deploy.');
   process.exit(0);
 }
@@ -138,7 +138,7 @@ const vname = await page.locator('#mu-name').textContent();
 ok(vname.includes(RUNNING.name) && /until \d/.test(vname),
    'the period is named, with when it ends → ' + vname);
 const vmean = await page.locator('#mu-mean').textContent();
-ok(vmean.length > 15 && !/—/.test(vmean.slice(0, 8)),
+ok(vmean.length > 15 && !/-/.test(vmean.slice(0, 8)),
    'and what it is for, in a plain sentence → ' + vmean);
 const vnext = await page.locator('#mu-next').textContent();
 ok(/(Next good window|This window ends at|Good the rest)/.test(vnext),
@@ -164,7 +164,7 @@ ok(await segs.nth(5).getAttribute('aria-pressed') === 'true', 'and the tapped se
 
 // ---- the sixteen are a reference, not the reading ----
 ok(await page.locator('#mu-day .ev').first().isHidden(),
-   'the full list starts closed — it is a reference, not the answer');
+   'the full list starts closed - it is a reference, not the answer');
 await page.locator('details.more summary').first().click(); await page.waitForTimeout(200);
 ok(await page.locator('#mu-day .ev').count() === 8, 'opened, the eight day windows are there');
 ok(await page.locator('#mu-night .ev').count() === 8, 'and the eight night ones');
@@ -185,7 +185,7 @@ await page.waitForTimeout(200);
 // Yours first and open; the other eleven only if asked for.
 ok(await page.locator('#ho-mine').isVisible(), 'your own rashi is the first thing on the screen');
 ok(await page.locator('#ho-all .ev').first().isHidden(),
-   'the other twelve start closed — nobody reads twelve horoscopes');
+   'the other twelve start closed - nobody reads twelve horoscopes');
 const famRows = await page.locator('#ho-people .ev').allTextContents();
 ok(famRows.every(t => t.length < 240), 'the family are one line each, not a second wall of text');
 await page.locator('#pane-day .subsec[data-sec="rashi"] details.more summary').first().click();
@@ -254,7 +254,7 @@ ok(await page.locator('#mu-guess').isVisible(), 'an unknown city warns that thes
 const g = await page.locator('#mu-guess').textContent();
 ok(g.includes('Chhotapur') && g.includes('Delhi') && /profile/i.test(g), 'and says exactly what to do about it → ' + g.slice(0, 90));
 
-ok(errors.length === 0, 'no page errors' + (errors.length ? ' — ' + errors.slice(0,3).join(' | ') : ''));
+ok(errors.length === 0, 'no page errors' + (errors.length ? ' - ' + errors.slice(0,3).join(' | ') : ''));
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
 await browser.close(); server.close();
 process.exit(fail ? 1 : 0);

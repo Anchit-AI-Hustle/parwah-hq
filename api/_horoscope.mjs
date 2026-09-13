@@ -1,19 +1,19 @@
 // DAILY HOROSCOPE for the twelve signs.
 //
-// Unlike Choghadiya, a horoscope is not computable — it is written. So this
+// Unlike Choghadiya, a horoscope is not computable - it is written. So this
 // is the one part that genuinely needs a source, and the source is the open
 // horoscope API (github.com/tapasweni-pathak/Horoscope-API lineage, hosted
 // free, no key). Two rules:
 //   1. Fetched ONCE per sign per day and kept in the database. Twelve calls a
 //      day for a whole family, not twelve per person per screen.
 //   2. If the source cannot be reached, the app SAYS so. It never invents a
-//      reading — a made-up horoscope presented as a real one is a lie, and a
+//      reading - a made-up horoscope presented as a real one is a lie, and a
 //      family that spots one stops trusting everything else on the screen.
 
 // WHAT THIS ACTUALLY IS, said once, plainly, because the app shows it to people.
 //
 // signOf() below reads a date of birth against fixed calendar ranges. That is a
-// TROPICAL SUN SIGN — the Western zodiac, the one newspapers print and the one
+// TROPICAL SUN SIGN - the Western zodiac, the one newspapers print and the one
 // this source writes for.
 //
 // A Vedic *rashi* is not that. It is a MOON sign: which of the twelve the Moon
@@ -71,7 +71,7 @@ export async function ensureHoroscopeSchema(sql) {
 
 export const ENDPOINT = 'https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily';
 
-// One sign, one day. Returns the text or null — never a fabrication.
+// One sign, one day. Returns the text or null - never a fabrication.
 export async function fetchSign(signKey, day) {
   try {
     const r = await fetch(`${ENDPOINT}?sign=${encodeURIComponent(signKey)}&day=TODAY`,
@@ -101,7 +101,7 @@ export async function horoscopeToday(sql, day) {
                   values (${day}, ${g.s.k}, ${g.text}, ${'horoscope-app-api'})
                   on conflict (day, sign) do nothing`;
         bySign[g.s.k] = { text: g.text, source: 'horoscope-app-api' };
-      } catch (e) { /* another instance won the race — its row is as good */ }
+      } catch (e) { /* another instance won the race - its row is as good */ }
     }
   }
   const signs = SIGNS.map(s => ({

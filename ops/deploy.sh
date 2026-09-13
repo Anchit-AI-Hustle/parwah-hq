@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Parwah — gate, deploy, verify. Run by cron on a machine that can reach
+# Parwah - gate, deploy, verify. Run by cron on a machine that can reach
 # api.vercel.com (the development sandbox cannot, and the Vercel git
 # integration for this project stopped creating deployments).
 #
 # Every run, in order:
-#   1. fetch origin and fast-forward main — never touches a dirty tree
+#   1. fetch origin and fast-forward main - never touches a dirty tree
 #   2. run scripts/checks.sh, the same gate the Vercel build runs
 #   3. deploy STRAIGHT TO PRODUCTION with the Vercel CLI
 #   4. curl the live database self-test and fail loudly if it is not green
@@ -15,8 +15,8 @@
 #   ops/deploy.sh [--force] [--dry-run]
 #
 # Signing in, either way round:
-#   by hand — `vercel login` once on this machine and nothing else is needed
-#   from cron — a token in ~/.parwah/vercel-token (chmod 600), or $VERCEL_TOKEN
+#   by hand - `vercel login` once on this machine and nothing else is needed
+#   from cron - a token in ~/.parwah/vercel-token (chmod 600), or $VERCEL_TOKEN
 # A token is tried first when there is one and the stored login is used when
 # there is not, OR when the token turns out to be stale: an expired token
 # sitting in a shell profile must not stop a signed-in person from deploying.
@@ -31,7 +31,7 @@ LOCK="${TMPDIR:-/tmp}/parwah-deploy.lock"
 export VERCEL_ORG_ID=team_yC0I2xlKsitxFcfizef9EDQl
 export VERCEL_PROJECT_ID=prj_n8jIIXMHjsT9NK4AVr5I0yj6tkj4
 # The project belongs to a TEAM. A token whose default scope is the personal
-# account authenticates fine — `whoami` succeeds — and then cannot see the
+# account authenticates fine - `whoami` succeeds - and then cannot see the
 # project, which surfaces as a confusing "pull failed". Name the scope.
 VERCEL_SCOPE=anchit-ai-hustle
 
@@ -50,13 +50,13 @@ die() { log "FAILED: $*"; exit 1; }
 # One deploy at a time, however often cron fires.
 if command -v flock >/dev/null 2>&1; then
   exec 9>"$LOCK" || die "cannot open lock $LOCK"
-  flock -n 9 || { log "another deploy is running — skipping this tick"; exit 0; }
+  flock -n 9 || { log "another deploy is running - skipping this tick"; exit 0; }
 else
   # macOS ships no flock. A stale-tolerant directory lock does the same job:
   # mkdir is atomic everywhere, and the trap releases it however we exit.
   if ! mkdir "$LOCK.d" 2>/dev/null; then
     if [ -n "$(find "$LOCK.d" -maxdepth 0 -mmin +30 2>/dev/null)" ]; then rmdir "$LOCK.d" 2>/dev/null && mkdir "$LOCK.d" 2>/dev/null
-    else log "another deploy is running — skipping this tick"; exit 0; fi
+    else log "another deploy is running - skipping this tick"; exit 0; fi
   fi
   trap 'rmdir "$LOCK.d" 2>/dev/null' EXIT
 fi
@@ -66,21 +66,21 @@ cd "$REPO" || die "no repo at $REPO"
 if [ -z "${VERCEL_TOKEN:-}" ] && [ -r "$HOME/.parwah/vercel-token" ]; then
   VERCEL_TOKEN="$(tr -d '[:space:]' < "$HOME/.parwah/vercel-token")"
 fi
-command -v vercel >/dev/null 2>&1 || die "vercel CLI not installed — npm i -g vercel"
+command -v vercel >/dev/null 2>&1 || die "vercel CLI not installed - npm i -g vercel"
 
 # 1. bring the branch up to date, but never clobber work in progress
 if [ -n "$(git status --porcelain)" ]; then
-  log "working tree is dirty — refusing to deploy something that is not committed"
+  log "working tree is dirty - refusing to deploy something that is not committed"
   exit 0
 fi
 git fetch --quiet origin "$BRANCH" || die "git fetch failed"
 git checkout --quiet "$BRANCH" || die "cannot check out $BRANCH"
-git merge --quiet --ff-only "origin/$BRANCH" || die "$BRANCH has diverged from origin — resolve by hand"
+git merge --quiet --ff-only "origin/$BRANCH" || die "$BRANCH has diverged from origin - resolve by hand"
 
 HEAD_SHA="$(git rev-parse HEAD)"
 LAST="$( [ -r "$STATE" ] && cat "$STATE" || echo none )"
 if [ "$HEAD_SHA" = "$LAST" ] && [ "$FORCE" -eq 0 ]; then
-  exit 0                                  # nothing new — stay silent for cron
+  exit 0                                  # nothing new - stay silent for cron
 fi
 log "deploying $(git log -1 --format='%h %s' | cut -c1-72)"
 
@@ -89,33 +89,33 @@ log "deploying $(git log -1 --format='%h %s' | cut -c1-72)"
 if [ ! -d node_modules ] || [ package.json -nt node_modules ]; then
   log "installing dependencies"
   npm install --no-audit --no-fund --silent >/dev/null 2>&1 \
-    || die "npm install failed — run 'npm install' here to see why"
+    || die "npm install failed - run 'npm install' here to see why"
 fi
 
-# 2. the gate — a red tree must never reach production.
+# 2. the gate - a red tree must never reach production.
 # On failure SHOW the failure. Grepping for known-shaped lines hides every
 # problem that does not have that shape, which is exactly the case where you
 # need the output most.
 GATE_LOG="$(mktemp "${TMPDIR:-/tmp}/parwah-gate.XXXXXX")"
-# `if ! cmd; then RC=$?` captures the status of the NEGATION — always 0 — and
+# `if ! cmd; then RC=$?` captures the status of the NEGATION - always 0 - and
 # reported every gate failure as "exit 0". Take the status first, branch after.
 RC=0
 bash scripts/checks.sh > "$GATE_LOG" 2>&1 || RC=$?
 if [ "$RC" -ne 0 ]; then
-  log "gate FAILED (exit $RC) — not deploying. Full output:"
+  log "gate FAILED (exit $RC) - not deploying. Full output:"
   echo "------------------------------------------------------------"
   if grep -qE '^FAIL' "$GATE_LOG"; then grep -E '^FAIL|CHECK\(S\) FAILED' "$GATE_LOG"; echo "---"; fi
   tail -40 "$GATE_LOG"
   echo "------------------------------------------------------------"
   echo "Saved in full at: $GATE_LOG"
   command -v node    >/dev/null 2>&1 || echo "note: node is not on PATH for this shell"
-  command -v python3 >/dev/null 2>&1 || echo "note: python3 is not on PATH — the site suite cannot run"
+  command -v python3 >/dev/null 2>&1 || echo "note: python3 is not on PATH - the site suite cannot run"
   exit 1
 fi
 rm -f "$GATE_LOG"
 log "gate passed"
 
-if [ "$DRY" -eq 1 ]; then log "dry run — stopping before deploy"; exit 0; fi
+if [ "$DRY" -eq 1 ]; then log "dry run - stopping before deploy"; exit 0; fi
 
 # 3. production, not preview.
 # Every step below SHOWS its output on failure. Hiding it once already cost a
@@ -126,7 +126,7 @@ run_vercel() {           # run_vercel <description> <args...>
   out="$(mktemp "${TMPDIR:-/tmp}/parwah-vc.XXXXXX")"
   rc=0
   # `local rc=$?` would capture the exit status of `local` itself, not of the
-  # command — which is how the first version of this reported "exit 0" on a
+  # command - which is how the first version of this reported "exit 0" on a
   # failure. Assign separately.
   "$@" > "$out" 2>&1 || rc=$?
   VC_OUT="$(cat "$out")"
@@ -144,13 +144,13 @@ run_vercel() {           # run_vercel <description> <args...>
 vercel_hint() {
   case "$VC_OUT" in
     *"fetch failed"*|*ENOTFOUND*|*ETIMEDOUT*|*ECONNREFUSED*|*"getaddrinfo"*)
-      echo "this machine could not reach api.vercel.com — check the network, a VPN, or a corporate proxy" ;;
+      echo "this machine could not reach api.vercel.com - check the network, a VPN, or a corporate proxy" ;;
     *"Logged out"*|*"logged out"*)
-      echo "no Vercel credentials on this machine — run 'vercel login' here, or (for cron) put a token from https://vercel.com/account/settings/tokens in ~/.parwah/vercel-token, chmod 600" ;;
+      echo "no Vercel credentials on this machine - run 'vercel login' here, or (for cron) put a token from https://vercel.com/account/settings/tokens in ~/.parwah/vercel-token, chmod 600" ;;
     *401*|*403*|*"not authorized"*|*"Not authorized"*|*"is not valid"*|*"invalid token"*|*"Invalid token"*|*"token was revoked"*)
-      echo "Vercel rejected those credentials — run 'vercel login' again, or replace the token with a fresh one from https://vercel.com/account/settings/tokens" ;;
+      echo "Vercel rejected those credentials - run 'vercel login' again, or replace the token with a fresh one from https://vercel.com/account/settings/tokens" ;;
     *"does not exist"*|*"not found"*|*"Project not found"*)
-      echo "the project link looks wrong — delete .vercel/ here and re-run so it is rewritten" ;;
+      echo "the project link looks wrong - delete .vercel/ here and re-run so it is rewritten" ;;
     *) echo "see the output above" ;;
   esac
 }
@@ -177,7 +177,7 @@ vc() {
 if [ -n "${VERCEL_TOKEN:-}" ]; then
   AUTH_MODE=token
   if ! run_vercel "vercel whoami (token)" vc whoami; then
-    log "that token was rejected — falling back to the login stored on this machine"
+    log "that token was rejected - falling back to the login stored on this machine"
     AUTH_MODE=none
   fi
 fi
@@ -190,7 +190,7 @@ log "signed in to Vercel as ${VC_OUT##*$'\n'} (via ${AUTH_MODE})"
 
 # ONE command, not three. `vercel pull` and `vercel build` exist only to build
 # LOCALLY and upload the output; deploying the source instead lets Vercel do
-# the build it already knows how to do — the same build, running the same gate
+# the build it already knows how to do - the same build, running the same gate
 # through npm run build. Two fewer API calls, two fewer ways to fail, and no
 # dependence on pulling project settings down first.
 deploy_once() {          # deploy_once <label> <extra args...>
@@ -200,20 +200,20 @@ deploy_once() {          # deploy_once <label> <extra args...>
 if ! deploy_once "vercel deploy (team scope)" --scope="$VERCEL_SCOPE"; then
   # A token already scoped to the team rejects the flag; try it plainly.
   log "retrying without an explicit scope"
-  deploy_once "vercel deploy" || die "the deploy was rejected — $(vercel_hint)"
+  deploy_once "vercel deploy" || die "the deploy was rejected - $(vercel_hint)"
 fi
 URL="$(printf '%s' "$VC_OUT" | grep -Eo 'https://[a-zA-Z0-9.-]+\.vercel\.app' | tail -1)"
-[ -n "$URL" ] || die "the deploy produced no URL — see the output above"
+[ -n "$URL" ] || die "the deploy produced no URL - see the output above"
 log "deployed $URL"
-log "IT IS ALREADY LIVE. What follows is verification, not the deploy —"
+log "IT IS ALREADY LIVE. What follows is verification, not the deploy -"
 log "stopping here with Ctrl-C leaves production on this build, unchecked."
 
 # 4. prove it against the live database before calling it done.
 # A silent wait looks identical to a hang, and a person who cannot tell the
-# difference presses Ctrl-C — which is exactly how a red self-test went unseen.
+# difference presses Ctrl-C - which is exactly how a red self-test went unseen.
 # The verification lives in its own script so it can be tested against a fake
 # server that answers red, which is the only way to know the red path works.
-bash "$REPO/ops/verify-live.sh" "$PROD_URL" || die "live verification failed — see above"
+bash "$REPO/ops/verify-live.sh" "$PROD_URL" || die "live verification failed - see above"
 
 echo "$HEAD_SHA" > "$STATE"
-log "done — $PROD_URL is on $(git rev-parse --short HEAD)"
+log "done - $PROD_URL is on $(git rev-parse --short HEAD)"

@@ -32,11 +32,11 @@ export default async function handler(req, res) {
       parsePin([{ Status: 'Success', PostOffice: [{ Name: 'Nowhere' }] }], '110048') === null);
     add('the saved line reads like an address',
       joinAddress({ street: 'S-354', area: 'Greater Kailash', city: 'South Delhi', state: 'Delhi', pin: '110048' })
-        === 'S-354, Greater Kailash, South Delhi — Delhi 110048');
+        === 'S-354, Greater Kailash, South Delhi - Delhi 110048');
     add('a lone street survives untouched', joinAddress({ street: 'S-354' }) === 'S-354');
   } catch (e) { add('pin parser', false, String(e && e.message || e)); }
 
-  // The live check — one real PIN, reported apart from our own correctness.
+  // The live check - one real PIN, reported apart from our own correctness.
   const t0 = Date.now();
   let live = null, raw = null;
   try {
@@ -60,7 +60,7 @@ export default async function handler(req, res) {
     localities: live ? live.areas.map(a => a.name).slice(0, 6) : null,
     recordKeys: raw,
     note: live ? 'PIN lookups are live.'
-               : 'India Post is not answering right now. Addresses are still saved exactly as typed — the app asks the person for the city rather than guessing one.'
+               : 'India Post is not answering right now. Addresses are still saved exactly as typed - the app asks the person for the city rather than guessing one.'
   };
   const failed = checks.filter(c => !c.ok);
   return res.status(failed.length ? 500 : 200).json({

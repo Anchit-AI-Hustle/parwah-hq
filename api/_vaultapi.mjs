@@ -1,4 +1,4 @@
-// THE FAMILY VAULT — the family's identity, health and money papers, in one
+// THE FAMILY VAULT - the family's identity, health and money papers, in one
 // place, with a permission on every single one.
 //
 // Two halves, both routed off /api/book (the plan caps functions):
@@ -11,13 +11,13 @@
 //     shape (Aadhaar Verhoeff checksum, PAN/passport/licence formats) at the
 //     moment it is typed, then only the last four digits are kept. The full
 //     number lives in the uploaded document, which is permissioned.
-//  2. A document is invisible — not merely locked — to anyone without a
+//  2. A document is invisible - not merely locked - to anyone without a
 //     grant. The person it is about and the person who uploaded it always
 //     have it; everyone else is added one at a time by the person it is about.
 //  3. Every open of a file is written to an access log and the owner is told.
 //     Nobody reads a family member's passport quietly.
 //  4. Card numbers, CVVs, PINs and passwords are refused outright. Parwah
-//     stores a LABEL and a permission — never a credential. The last four
+//     stores a LABEL and a permission - never a credential. The last four
 //     digits are the most we will hold.
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
@@ -50,7 +50,7 @@ const MAX_FILE = 2 * 1024 * 1024;               // 2 MB per document
 
 // The field formats and counts as the family types, which means the browser
 // needs the same shapes the server checks against. Regexes do not survive
-// JSON, so `chars` travels as its source text and is rebuilt on the client —
+// JSON, so `chars` travels as its source text and is rebuilt on the client -
 // one description of an Aadhaar, not two that can drift apart.
 function idShapesForClient() {
   const out = {};
@@ -76,8 +76,8 @@ export { checkNumber };
 // payment half. This is deliberately blunt.
 function credentialRisk(s) {
   const v = String(s || '');
-  if (/\d[\d\s-]{11,}/.test(v)) return 'Parwah never stores a full card number — please enter only the last four digits';
-  if (/\b(cvv|cvc|pin|otp|password)\b/i.test(v)) return 'Parwah never stores a CVV, PIN or password — leave those out';
+  if (/\d[\d\s-]{11,}/.test(v)) return 'Parwah never stores a full card number - please enter only the last four digits';
+  if (/\b(cvv|cvc|pin|otp|password)\b/i.test(v)) return 'Parwah never stores a CVV, PIN or password - leave those out';
   return null;
 }
 
@@ -210,7 +210,7 @@ async function docsApi(req, res, sql, circle, me) {
                   from vault_access g join members m on m.id = g.member_id
                   where g.doc_id = any(${ids}::uuid[])`
       : [];
-    // The access log is the owner's to read — it is what makes the promise real.
+    // The access log is the owner's to read - it is what makes the promise real.
     const mine = docs.filter(d => d.about_member === me.id).map(d => d.id);
     const log = mine.length
       ? await sql`select l.doc_id, l.action, l.at, m.name
@@ -249,9 +249,9 @@ async function docsApi(req, res, sql, circle, me) {
       fileMime = clean(body.fileMime, 60);
       if (!OK_MIME.includes(fileMime)) return res.status(400).json({ ok: false, error: 'Upload a photo (JPG, PNG, WEBP, HEIC) or a PDF' });
       fileB64 = String(body.file).replace(/^data:[^,]*,/, '');
-      if (!/^[A-Za-z0-9+/=\s]+$/.test(fileB64)) return res.status(400).json({ ok: false, error: 'That file could not be read — please try again' });
+      if (!/^[A-Za-z0-9+/=\s]+$/.test(fileB64)) return res.status(400).json({ ok: false, error: 'That file could not be read - please try again' });
       fileSize = Math.floor(fileB64.replace(/\s/g, '').length * 3 / 4);
-      if (fileSize > MAX_FILE) return res.status(400).json({ ok: false, error: 'That file is larger than 2 MB — please photograph it again at a smaller size' });
+      if (fileSize > MAX_FILE) return res.status(400).json({ ok: false, error: 'That file is larger than 2 MB - please photograph it again at a smaller size' });
       fileName = clean(body.fileName, 120) || (DOC_KINDS[kind].label + (fileMime === 'application/pdf' ? '.pdf' : '.jpg'));
     }
 
@@ -270,7 +270,7 @@ async function docsApi(req, res, sql, circle, me) {
       if (aRow[0].id !== me.id) {
         await pushCircle(sql, circle.id, {
           title: '🔐 ' + me.name + ' added a document of yours',
-          body: DOC_KINDS[kind].icon + ' ' + label + ' — only you and ' + me.name + ' can open it until you share it'
+          body: DOC_KINDS[kind].icon + ' ' + label + ' - only you and ' + me.name + ' can open it until you share it'
         }, { only: aRow[0].id });
       }
       await award(sql, circle.id, me.id, 'vault_add', id);
@@ -304,7 +304,7 @@ async function docsApi(req, res, sql, circle, me) {
     if (found.doc.about_member !== me.id) {
       await pushCircle(sql, circle.id, {
         title: '🔐 ' + me.name + ' opened your ' + (DOC_KINDS[found.doc.kind] || DOC_KINDS.other).label,
-        body: found.doc.label + ' — every open is recorded in your vault'
+        body: found.doc.label + ' - every open is recorded in your vault'
       }, { only: found.doc.about_member });
     }
     return res.status(200).json({ ok: true, file: f[0].b64, mime: found.doc.file_mime, name: found.doc.file_name });
@@ -315,7 +315,7 @@ async function docsApi(req, res, sql, circle, me) {
     if (found.err) return res.status(403).json({ ok: false, error: found.err });
     // Verification means a second pair of eyes. Confirming your own upload is not verification.
     if (found.doc.by_member === me.id && found.doc.about_member !== me.id)
-      return res.status(400).json({ ok: false, error: 'You uploaded this one — someone else in the family needs to check it' });
+      return res.status(400).json({ ok: false, error: 'You uploaded this one - someone else in the family needs to check it' });
     const status = body.action === 'verify' ? 'verified' : 'rejected';
     const note = clean(body.note, 200);
     await sql`update vault_docs set status = ${status}, verified_by = ${me.id}, verified_at = now(),
@@ -324,13 +324,13 @@ async function docsApi(req, res, sql, circle, me) {
     if (found.doc.about_member !== me.id) {
       await pushCircle(sql, circle.id, {
         title: status === 'verified' ? '✅ ' + me.name + ' checked your document' : '⚠️ ' + me.name + ' flagged a document',
-        body: found.doc.label + (note ? ' — ' + note : '')
+        body: found.doc.label + (note ? ' - ' + note : '')
       }, { only: found.doc.about_member });
     }
     return res.status(200).json({ ok: true });
   }
 
-  // Sharing is the owner's call alone — not the uploader's, not an admin's.
+  // Sharing is the owner's call alone - not the uploader's, not an admin's.
   if (body.action === 'grant' || body.action === 'revoke') {
     // THE TARGET IS NOT THE CALLER. Both used to be read from body.memberId,
     // and the client merged the person being shared with OVER the signed-in
@@ -359,7 +359,7 @@ async function docsApi(req, res, sql, circle, me) {
     await sql`insert into vault_log (doc_id, member_id, action) values (${r[0].id}, ${me.id}, ${'shared with ' + tRow[0].name + ' (' + level + ')'})`;
     await pushCircle(sql, circle.id, {
       title: '🔐 ' + me.name + ' shared a document with you',
-      body: (DOC_KINDS[r[0].kind] || DOC_KINDS.other).icon + ' ' + r[0].label + (level === 'full' ? ' — you can open it' : ' — you can see it exists')
+      body: (DOC_KINDS[r[0].kind] || DOC_KINDS.other).icon + ' ' + r[0].label + (level === 'full' ? ' - you can open it' : ' - you can see it exists')
     }, { only: tRow[0].id });
     return res.status(200).json({ ok: true });
   }
@@ -453,7 +453,7 @@ async function payApi(req, res, sql, circle, me) {
     return res.status(200).json({ ok: true });
   }
 
-  // "not everyone may use every mode" — this is that rule, one person at a time.
+  // "not everyone may use every mode" - this is that rule, one person at a time.
   if (body.action === 'allow' || body.action === 'disallow') {
     const own = await ownedMethod(body.id);
     if (own.err) return res.status(403).json({ ok: false, error: own.err });
@@ -506,7 +506,7 @@ async function payApi(req, res, sql, circle, me) {
     if (!isOwner) {
       await pushCircle(sql, circle.id, {
         title: act === 'asked' ? '💳 ' + me.name + ' is asking to use ' + m.label : '💳 ' + me.name + ' used ' + m.label,
-        body: '₹' + amount + (note ? ' — ' + note : '')
+        body: '₹' + amount + (note ? ' - ' + note : '')
       }, { only: m.owner_member });
     }
     return res.status(200).json({ ok: true, status: act });

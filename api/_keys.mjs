@@ -1,6 +1,6 @@
 // Provider-key vault (helper, not an endpoint). Ekta's brain can be armed
 // two ways: environment variables (preferred) or keys the family saved in
-// the database vault via /api/keys — useful because this deployment's env
+// the database vault via /api/keys - useful because this deployment's env
 // cannot always be edited from every tool. Env always wins over the vault.
 // Values never leave the server: /api/keys reports presence only.
 

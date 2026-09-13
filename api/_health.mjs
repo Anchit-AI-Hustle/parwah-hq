@@ -1,4 +1,4 @@
-// GET /api/health — proves the database wiring end to end:
+// GET /api/health - proves the database wiring end to end:
 // inserts a marker row, reads it back, deletes it, reports counts.
 import { neon } from '@neondatabase/serverless';
 

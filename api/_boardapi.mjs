@@ -1,4 +1,4 @@
-// The family drawing board — one shared canvas per circle, strokes synced
+// The family drawing board - one shared canvas per circle, strokes synced
 // by polling. Draw together on a call, grandkids doodle for Dadi, anyone
 // can share the masterpiece into the family chat.
 // GET  /api/board?circle=CODE&member=UUID&after=ISO → {ok, strokes[], clearedAt}

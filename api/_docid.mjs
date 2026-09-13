@@ -1,10 +1,10 @@
-// WHAT AN INDIAN ID LOOKS LIKE — one description of each, used by the form as
+// WHAT AN INDIAN ID LOOKS LIKE - one description of each, used by the form as
 // you type AND by the server before anything is stored.
 //
 // The vault used to accept any characters and complain once, at save time.
 // That is how a PAN gets typed into the Aadhaar box: nothing about the field
 // said it wanted twelve digits until it was too late. DigiLocker and every
-// bank form solve this the same way — the field knows its own shape, groups
+// bank form solve this the same way - the field knows its own shape, groups
 // the characters, counts them out loud, and recognises when you have clearly
 // typed a different document.
 //
@@ -13,7 +13,7 @@
 
 function digits(v) { return String(v || '').replace(/\D/g, ''); }
 
-// Verhoeff — the checksum every real Aadhaar number satisfies. A typo in any
+// Verhoeff - the checksum every real Aadhaar number satisfies. A typo in any
 // single digit fails it, so the family is told at once instead of discovering
 // a wrong number at a hospital counter.
 const V_D = [
@@ -39,7 +39,7 @@ export function verhoeffOk(num) {
 }
 
 // Each document, described once.
-//   chars    what a keystroke may be — everything else is dropped as typed
+//   chars    what a keystroke may be - everything else is dropped as typed
 //   group    where the spaces go, so twelve digits are readable
 //   len      how many characters when it is complete (after separators)
 //   example  shown in the field
@@ -78,7 +78,7 @@ export function bare(raw) {
 }
 
 // Put the separators back, as far as the person has typed. Partial input is
-// grouped too — that is the whole point of doing it while they type.
+// grouped too - that is the whole point of doing it while they type.
 export function format(kind, raw) {
   const spec = DOC_ID[kind];
   const v = bare(raw);
@@ -94,15 +94,15 @@ export function format(kind, raw) {
   return out.join(spec.sep);
 }
 
-// WHAT A PAN ACTUALLY ENCODES — free, offline, and published by the Income Tax
+// WHAT A PAN ACTUALLY ENCODES - free, offline, and published by the Income Tax
 // Department, unlike the "verification APIs" that all cost money and require a
 // licence. Two of the ten characters carry real meaning:
 //
 //   4th  the holder's TYPE. P is an individual, C a company, H a HUF, and so on.
 //   5th  the first letter of the holder's SURNAME (or of the entity's name).
 //
-// Neither proves the PAN was issued — only the Income Tax Department can say
-// that — but together they catch the mistakes families actually make: filing a
+// Neither proves the PAN was issued - only the Income Tax Department can say
+// that - but together they catch the mistakes families actually make: filing a
 // company's PAN under a person, or mistyping a letter. The 10th character is a
 // check digit whose algorithm the department has never published, so this file
 // does NOT pretend to verify it.
@@ -112,7 +112,7 @@ export const PAN_HOLDER = {
   L: 'a local authority', J: 'an artificial juridical person', G: 'a government body'
 };
 
-// Indian names are not uniformly "the last word is the surname" — plenty of
+// Indian names are not uniformly "the last word is the surname" - plenty of
 // people carry initials, or a given name last. So a mismatch is reported as
 // something to look at, never as a failure, and never blocks a save.
 export function panFacts(raw, holderName) {
@@ -145,7 +145,7 @@ export function fitsChars(kind, raw) {
 }
 
 // What to say under the field WHILE they type. Never an error until they have
-// typed enough to be wrong — counting up to twelve is not a mistake.
+// typed enough to be wrong - counting up to twelve is not a mistake.
 export function progress(kind, raw) {
   const spec = DOC_ID[kind];
   const v = bare(raw);
@@ -156,17 +156,17 @@ export function progress(kind, raw) {
   if (chk.ok) return { state: 'ok', text: '✓ ' + spec.label + ' looks right.' };
   if (!fitsChars(kind, v)) {
     return { state: 'bad',
-      text: 'An ' + spec.label + ' does not contain those characters — ' + spec.hint };
+      text: 'An ' + spec.label + ' does not contain those characters - ' + spec.hint };
   }
   if (v.length < spec.len) {
     return { state: 'typing',
-      text: v.length + ' of ' + spec.len + ' — ' + spec.hint };
+      text: v.length + ' of ' + spec.len + ' - ' + spec.hint };
   }
   return { state: 'bad', text: chk.why };
 }
 
 // "You are in the Aadhaar box but that is a PAN." Only ever offered when the
-// value is a complete, valid something-else — never on a half-typed one.
+// value is a complete, valid something-else - never on a half-typed one.
 export function looksLike(raw, exceptKind) {
   const v = bare(raw);
   if (!v) return null;
@@ -177,7 +177,7 @@ export function looksLike(raw, exceptKind) {
   return null;
 }
 
-// Shape check for the number the family typed. Returns { ok, why, last4 } —
+// Shape check for the number the family typed. Returns { ok, why, last4 } -
 // `why` is written for a person, not a developer. This is what the server
 // trusts; the client only mirrors it so nobody is surprised at save time.
 export function checkNumber(kind, raw) {
@@ -186,13 +186,13 @@ export function checkNumber(kind, raw) {
   const last4 = v.slice(-4);
   if (kind === 'aadhaar') {
     const d = digits(v);
-    if (d.length !== 12) return { ok: false, why: 'An Aadhaar number has 12 digits — please check it' };
-    if (d[0] === '0' || d[0] === '1') return { ok: false, why: 'An Aadhaar number never starts with 0 or 1 — please check it' };
-    if (!verhoeffOk(d)) return { ok: false, why: 'That Aadhaar number does not add up — one digit is likely mistyped' };
+    if (d.length !== 12) return { ok: false, why: 'An Aadhaar number has 12 digits - please check it' };
+    if (d[0] === '0' || d[0] === '1') return { ok: false, why: 'An Aadhaar number never starts with 0 or 1 - please check it' };
+    if (!verhoeffOk(d)) return { ok: false, why: 'That Aadhaar number does not add up - one digit is likely mistyped' };
     return { ok: true, why: null, last4: d.slice(-4) };
   }
   if (kind === 'pan') {
-    if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(v)) return { ok: false, why: 'A PAN looks like ABCDE1234F — five letters, four digits, one letter' };
+    if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(v)) return { ok: false, why: 'A PAN looks like ABCDE1234F - five letters, four digits, one letter' };
     return { ok: true, why: null, last4 };
   }
   if (kind === 'passport') {
@@ -201,7 +201,7 @@ export function checkNumber(kind, raw) {
   }
   if (kind === 'dl') {
     if (!/^[A-Z]{2}[0-9]{2}[0-9]{4}[0-9]{7}$/.test(v) && !/^[A-Z]{2}[0-9]{11,13}$/.test(v))
-      return { ok: false, why: 'A driving licence looks like DL0420110012345 — state code, RTO, year, number' };
+      return { ok: false, why: 'A driving licence looks like DL0420110012345 - state code, RTO, year, number' };
     return { ok: true, why: null, last4 };
   }
   if (kind === 'voter') {

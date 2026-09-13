@@ -5,7 +5,7 @@
 //                     (sign-up and sign-in in one seamless step);
 //                     without a name returns exists:false so the client
 //                     can ask for it.
-// No OTP yet (SMS provider is a roadmap item) — the shape is ready for an
+// No OTP yet (SMS provider is a roadmap item) - the shape is ready for an
 // OTP check to slot in here without any client-flow change.
 import { db, ensureSchema, isUuid, normPhone, phoneError, rateLimit, clientIp, sessionUser } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
@@ -15,7 +15,7 @@ import { pinError, hashPin, verifyPin, newToken, tokenHash, looksLikeToken,
 
 // Every circle this number belongs to, each carrying what is waiting in it.
 // A person in three families should be able to see, before opening any of
-// them, which one actually needs them — that is the whole point of the list.
+// them, which one actually needs them - that is the whole point of the list.
 async function circlesOf(sql, userId) {
   return await sql`
     select c.code, c.name as "circleName", c.kind, m.id as "memberId", m.role, m.name as "memberName",
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
 
   try {
     const body = req.body || {};
-    // Until SMS one-time codes are in, a phone number is the whole key — so
+    // Until SMS one-time codes are in, a phone number is the whole key - so
     // the number of tries from one device is capped.
     // A SIGN-IN ATTEMPT AND A BACKGROUND REFRESH ARE NOT THE SAME EVENT. The
     // app re-reads the circle list for a number it already holds every 60
@@ -69,10 +69,10 @@ export default async function handler(req, res) {
       if (body.refresh === true) {
         const key = String(body.phone || '').replace(/\D/g, '').slice(-12) || clientIp(req);
         const allowed = await rateLimit(sql, 'authrefresh', key, 60, 600);
-        if (!allowed) return res.status(429).json({ ok: false, error: 'Refreshing too often — please wait a moment' });
+        if (!allowed) return res.status(429).json({ ok: false, error: 'Refreshing too often - please wait a moment' });
       } else {
         const allowed = await rateLimit(sql, 'auth', clientIp(req), 25, 600);
-        if (!allowed) return res.status(429).json({ ok: false, error: 'Too many sign-in attempts from this device — please wait a few minutes' });
+        if (!allowed) return res.status(429).json({ ok: false, error: 'Too many sign-in attempts from this device - please wait a few minutes' });
       }
     }
 
@@ -184,7 +184,7 @@ export default async function handler(req, res) {
                          values (${phone}, ${np.cc}, ${np.local}, ${name}, ${h.hash}, ${h.salt}, now())
                          returning id, name, phone, toured_at, pin_hash, pin_salt, pin_tries, locked_until`;
       } catch (e) {
-        // raced with another signup for the same phone — fall through to sign-in
+        // raced with another signup for the same phone - fall through to sign-in
         rows = await sql`select id, name, phone, toured_at, pin_hash, pin_salt, pin_tries, locked_until
                          from users where phone = ${phone}`;
       }

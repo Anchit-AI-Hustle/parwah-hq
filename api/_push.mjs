@@ -39,7 +39,7 @@ export async function vapidPublicKey(sql) {
     try {
       await sql`insert into kv (k, v) values ('vapid_pub', ${keys.publicKey}) on conflict (k) do nothing`;
       await sql`insert into kv (k, v) values ('vapid_priv', ${keys.privateKey}) on conflict (k) do nothing`;
-    } catch (e) { /* raced another instance — reread below */ }
+    } catch (e) { /* raced another instance - reread below */ }
     rows = await sql`select k, v from kv where k in ('vapid_pub', 'vapid_priv')`;
     rows.forEach(r => { if (r.k === 'vapid_pub') pub = r.v; if (r.k === 'vapid_priv') priv = r.v; });
   }

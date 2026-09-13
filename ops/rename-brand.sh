@@ -5,7 +5,7 @@
 #   ops/rename-brand.sh "NewName" --apply    # do it
 #   ops/rename-brand.sh "NewName" --apply --devanagari "नयानाम"
 #
-# The name appears in four forms — Parwah, parwah, PARWAH and परवाह — across
+# The name appears in four forms - Parwah, parwah, PARWAH and परवाह - across
 # markup, code, tests, the manifest, the service worker and the SVG marks, plus
 # a few filenames. Doing it by hand is how you end up with half a rename.
 #
@@ -36,7 +36,7 @@ while [ $# -gt 0 ]; do
 done
 
 case "$NEW" in
-  *[!A-Za-z0-9]*) echo "The name must be letters and digits only — no spaces or punctuation." >&2; exit 2 ;;
+  *[!A-Za-z0-9]*) echo "The name must be letters and digits only - no spaces or punctuation." >&2; exit 2 ;;
 esac
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO" || exit 1
@@ -52,7 +52,7 @@ files() {
   git ls-files -z | tr '\0' '\n' | grep -vE '^(node_modules|\.git)/' | grep -vE '\.(png|jpg|jpeg|ico|woff2?|zip|pdf)$'
 }
 
-# Storage keys are quoted string literals the browser persists under — so they
+# Storage keys are quoted string literals the browser persists under - so they
 # only exist in browser code. A quoted 'parwah-site' in a SQL migration is a
 # column default and gets renamed like anything else.
 STORAGE_RE="'(parwah(-[a-z]+)*)'"
@@ -117,7 +117,7 @@ Still to do BY HAND, outside this repository:
   · the Supabase / Neon project, if its name carries the brand
   · anything already published: app-store listings, social handles, the domain itself
   · the logo mark in site/public/app/mark.svg and favicon.svg draw a flower, not
-    letters — check they still suit the new name
+    letters - check they still suit the new name
 
 Then: bash scripts/checks.sh
 NOTE

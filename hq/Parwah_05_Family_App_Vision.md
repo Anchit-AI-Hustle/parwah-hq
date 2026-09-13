@@ -1,10 +1,10 @@
-# Parwah Family Care Platform — Vision & Feature Map v1 (2026-08-29)
+# Parwah Family Care Platform - Vision & Feature Map v1 (2026-08-29)
 
 **Anchit's directive (supersedes narrower framings):** Parwah is about family care.
 Parents are the primary care-receivers; the family is the unit.
 **Tagline: "Apni family ki parwah karein."**
 One app where a family can see, reach, help, pay for, book for, and gift to the
-people they care about — with the parent holding full agency, never being a
+people they care about - with the parent holding full agency, never being a
 tracked object.
 
 The existing senior daily-living D2C catalog does not go away: it becomes the
@@ -24,30 +24,30 @@ while the app is built).
 - **Senior mode:** large type, high contrast, Hindi-first, voice-first, max 3
   actions per screen. The parent's app must feel simpler than a feature phone.
 
-## 2. Presence & Safety — "where are they, are they okay"
+## 2. Presence & Safety - "where are they, are they okay"
 
 - Consented **live location sharing** within the circle; per-person on/off.
 - **Geofence moments**, not surveillance: "Mummy reached the mandir",
   "Papa is home". Framed as reassurance, never monitoring.
 - **SOS button** on the parent's screen → calls + alerts the whole circle with
   location; escalation chain (child 1 → child 2 → neighbour/helper).
-- **Daily check-in:** one tap "sab theek hai ✅" — the 11pm phone call, solved
+- **Daily check-in:** one tap "sab theek hai ✅" - the 11pm phone call, solved
   by 9am. Missed check-in → gentle nudge → circle alert.
 - Reachability signals: phone battery low, phone unreachable, long inactivity
-  (phone sensors; wearables/fall-alert hardware later — ties to the existing
+  (phone sensors; wearables/fall-alert hardware later - ties to the existing
   T3 fall-alert roadmap).
 
 ## 3. Wellbeing rails (strictly non-medical)
 
 - **Medicine reminders** the parent confirms with one tap; the circle sees
-  "taken ✅" — no nagging calls needed.
+  "taken ✅" - no nagging calls needed.
 - Appointment calendar shared with the circle; booking handled by module 6.
-- **Document vault:** prescriptions, reports, insurance, Aadhaar copies —
+- **Document vault:** prescriptions, reports, insurance, Aadhaar copies -
   encrypted, shared selectively ("only Rohan sees medical files").
-- Vitals log if they own devices (BP machine, glucometer) — record + share,
+- Vitals log if they own devices (BP machine, glucometer) - record + share,
   never interpret. Zero medical advice anywhere; brand law applies verbatim.
 
-## 4. Connection — messaging & moments
+## 4. Connection - messaging & moments
 
 - Circle chat with **voice-message-first** UX (seniors speak, don't type);
   optional disappearing messages; share to all or selected members only.
@@ -59,10 +59,10 @@ while the app is built).
   Business API) rather than fighting it; native chat only when the circle
   features demand it.
 
-## 5. Money — wallet, transfers, protection
+## 5. Money - wallet, transfers, protection
 
 - **Send money to the parent** instantly: wallet top-up / UPI transfer
-  (via licensed partner — PPI license or UPI TPAP through a bank/PSP; we do
+  (via licensed partner - PPI license or UPI TPAP through a bank/PSP; we do
   NOT build our own rails in v1).
 - Auto-allowance ("₹10,000 on the 1st"), bill payments from anywhere
   (electricity, mobile recharge, DTH, society dues), and pay-for-their-order
@@ -74,7 +74,7 @@ while the app is built).
 - Spend visibility only if the parent shares it. Dual currency (INR + USD @
   ₹85/USD) wherever money shows, per house rules.
 
-## 6. Do-it-for-them — bookings & tasks
+## 6. Do-it-for-them - bookings & tasks
 
 - **Cab to their door** (Uber/Ola/Rapido APIs) booked by the child from
   another city; parent sees driver name + car in senior mode.
@@ -82,24 +82,24 @@ while the app is built).
   (electrician, AC repair), tickets (train/flight/darshan), verified local
   help. Child (or Parwah AI) books; parent gets one simple confirmation card.
 - Every task can also be requested BY the parent ("beti, gas booking karwa
-  do") — request lands in the circle, anyone picks it up.
+  do") - request lands in the circle, anyone picks it up.
 
-## 7. Shopping & Gifting — the existing wedge, re-homed
+## 7. Shopping & Gifting - the existing wedge, re-homed
 
 - The senior daily-living catalog (ortho comfort, bathroom safety, daily
-  aids; T2 nutrition; T3 adaptive wear) lives here as the commerce module —
+  aids; T2 nutrition; T3 adaptive wear) lives here as the commerce module -
   Shopify remains the commerce layer per the locked stack.
 - Gifting flow as designed: card in your words, COD if they prefer, QR
   how-to videos in Hindi, human on WhatsApp.
 - Festival gifting calendar (Diwali, Raksha Bandhan, Parents' Day) wired to
   module 4 reminders. All zero-claims copy rules stay binding.
 
-## 8. Parwah AI — the concierge (Yaara lineage)
+## 8. Parwah AI - the concierge (Yaara lineage)
 
 - Voice-first, Hindi/English agent for the parent: **does the task when it
   can** (book, order, call, pay within caps), **step-by-step guidance when it
   can't** control the device, human concierge escalation always available.
-- For the child: "Papa ke liye Thursday 10am Dr. Sharma book karo" — done.
+- For the child: "Papa ke liye Thursday 10am Dr. Sharma book karo" - done.
 - Guardrails (binding, from the master prompt): medical-question deflection,
   emergency escalation script, consent via family, zero health advice,
   financial actions capped + approval flows, full action log the family can
@@ -112,7 +112,7 @@ while the app is built).
 - Granular sharing per person per signal; "pause everything" one-tap for any
   member; everything explainable in one Hindi sentence.
 - App-store reality: covert tracking is both against our brand and against
-  Play/App Store policy — symmetric consent is also the only shippable design.
+  Play/App Store policy - symmetric consent is also the only shippable design.
 
 ---
 
@@ -123,7 +123,7 @@ while the app is built).
 | P0 (now) | Reposition pre-launch site to "Apni family ki parwah karein" + launch list | Capture demand for the platform, not just products |
 | P1 | Care Circle + daily check-in + SOS + WhatsApp-linked messaging | The emotional core; buildable without licenses |
 | P2 | Location/geofences + medicine reminders + human concierge (WhatsApp) | Reassurance loop; concierge logs teach the AI |
-| P3 | Money via licensed partner + bookings via partner APIs | Highest value, heaviest compliance — needs P1 trust |
+| P3 | Money via licensed partner + bookings via partner APIs | Highest value, heaviest compliance - needs P1 trust |
 | P4 | Shopping/gifting integration (Shopify) + Parwah AI voice agent | Commerce meets the agent; Yaara tech lands here |
 
 **Build vs partner:** payments → partner (PSP/TPAP); cabs/commerce/delivery →
@@ -137,10 +137,10 @@ sending money home is a real, recurring pain (bank wires are slow/opaque,
 remittance apps are disconnected from the care context). This strengthens the
 P3 thesis: the buyer persona is often abroad, and "I paid for Papa's gas
 refill from Boston, inside the same app that told me he checked in" is the
-killer moment. Path stays partner-led — a licensed cross-border remittance
+killer moment. Path stays partner-led - a licensed cross-border remittance
 partner (e.g. Wise Platform / Remitly-style API) for wallet top-ups, plus the
 simpler near-term wedge: **pay-for-outcomes** (the child abroad funds a
-specific circle request — bill, refill, driver — settled to the vendor or the
+specific circle request - bill, refill, driver - settled to the vendor or the
 claiming family member) which rides on partner rails and needs no wallet
 license of our own. Never build money movement in-house.
 

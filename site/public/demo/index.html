@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Parwah App — Live Demo</title>
+<title>Parwah App - Live Demo</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Albert+Sans:wght@400;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
@@ -94,7 +94,7 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
 <div class="top">
   <div class="dev" aria-hidden="true">परवाह</div>
   <h1>The Parwah app, working</h1>
-  <p>Two phones, one family. Tap on Papa's phone and watch Rohan's phone react — the daily check-in, SOS, one-tap calls, and the consent switch that controls exactly what the family sees. Everything runs right here in your browser; nothing is stored or sent anywhere.</p>
+  <p>Two phones, one family. Tap on Papa's phone and watch Rohan's phone react - the daily check-in, SOS, one-tap calls, and the consent switch that controls exactly what the family sees. Everything runs right here in your browser; nothing is stored or sent anywhere.</p>
   <span class="tag">Interactive demo · not the real app yet</span>
 </div>
 
@@ -108,7 +108,7 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
       <div class="scroll">
         <p class="p-greet">Good morning, Papa 🙏<br>How is everything today?</p>
 
-        <button class="bigbtn btn-ok" id="checkin">All is well ✅<span class="sub">One tap — the whole family relaxes</span></button>
+        <button class="bigbtn btn-ok" id="checkin">All is well ✅<span class="sub">One tap - the whole family relaxes</span></button>
 
         <div class="pmsg" id="pmsg"></div>
 
@@ -151,7 +151,7 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
 
         <p class="eyebrow">Circle feed</p>
         <div class="feed" id="feed">
-          <div class="ev good">Mummy checked in — all is well ✅<small>Today, 8:41 am</small></div>
+          <div class="ev good">Mummy checked in - all is well ✅<small>Today, 8:41 am</small></div>
           <div class="ev" data-loc="1">Papa reached the temple 🛕<small>Yesterday, 7:02 am · shared by Papa's choice</small></div>
         </div>
 
@@ -192,8 +192,8 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
     this.classList.add('done');
     this.innerHTML='Thank you ✅<span class="sub">Your check-in reached the whole family</span>';
     var s=$('pstatus'); s.classList.add('ok'); s.classList.remove('sos');
-    $('ptext').textContent='Checked in — all is well ✅ · just now';
-    feedAdd('Papa checked in — all is well ✅','good');
+    $('ptext').textContent='Checked in - all is well ✅ · just now';
+    feedAdd('Papa checked in - all is well ✅','good');
     toast('Rohan’s phone: "Papa checked in ✅"');
   });
 
@@ -202,7 +202,7 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
     this.innerHTML='Taken ✔ Well done!';
     this.style.background='#E7F2EA';
     if($('shareMeds').checked){ feedAdd('Papa took his morning pills 💊','good'); toast('Circle updated: pills taken 💊'); }
-    else{ toast('Noted on Papa’s phone only — sharing is off'); }
+    else{ toast('Noted on Papa’s phone only - sharing is off'); }
   });
 
   // one-tap calls
@@ -213,16 +213,16 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
   // SOS
   $('sos').addEventListener('click', function(){
     var s=$('pstatus'); s.classList.add('sos'); s.classList.remove('ok');
-    $('ptext').textContent='SOS! Calling the circle — location shared';
-    feedAdd('🆘 SOS from Papa — call now. Location shared with the circle.','bad');
+    $('ptext').textContent='SOS! Calling the circle - location shared';
+    feedAdd('🆘 SOS from Papa - call now. Location shared with the circle.','bad');
     toast('Every phone in the circle is ringing now');
   });
 
-  // the consent switch controls the child's view — the whole point
+  // the consent switch controls the child's view - the whole point
   $('shareLoc').addEventListener('change', function(){
     var evs=document.querySelectorAll('[data-loc]');
     for(var i=0;i<evs.length;i++){ evs[i].style.display=this.checked?'':'none'; }
-    toast(this.checked?'Location moments visible to the circle again':'Papa paused location moments — Rohan’s feed updated');
+    toast(this.checked?'Location moments visible to the circle again':'Papa paused location moments - Rohan’s feed updated');
   });
 
   // do-it-for-them placeholders

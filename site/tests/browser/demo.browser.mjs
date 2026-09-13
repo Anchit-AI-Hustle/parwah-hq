@@ -1,7 +1,7 @@
 // The concept screens, without an account: reachable, complete, and free of
 // everything the validation guide says must not appear on them.
 //
-// NOT part of the deploy gate — Vercel's builders have no browser. Run it
+// NOT part of the deploy gate - Vercel's builders have no browser. Run it
 // locally when the entry screen changes:
 //
 //     npm i --no-save playwright-core && npx playwright install chromium
@@ -20,7 +20,7 @@ const BASE = 'http://127.0.0.1:' + srv.address().port;
 let chromium;
 try { ({ chromium } = await import('playwright-core')); }
 catch {
-  console.log('playwright-core is not installed — see the note at the top of this file.');
+  console.log('playwright-core is not installed - see the note at the top of this file.');
   console.log('The deploy gate does not need it: run `npm test` for the checks that do gate a deploy.');
   process.exit(0);
 }
@@ -115,6 +115,6 @@ await pg.goto(BASE + '/app/?demo=1'); await pg.waitForTimeout(600);
 ok(await pg.locator('#onboard').isHidden(), 'someone already in a circle is not sent to the demo');
 await pg.close();
 
-ok(errors.length===0,'no page errors'+(errors.length?' — '+errors.slice(0,3).join(' | '):''));
+ok(errors.length===0,'no page errors'+(errors.length?' - '+errors.slice(0,3).join(' | '):''));
 console.log('\n'+pass+' passed, '+fail+' failed');
 await b.close(); srv.close(); process.exit(fail?1:0);

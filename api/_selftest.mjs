@@ -1,4 +1,4 @@
-// GET /api/selftest — end-to-end test of the app backend against the live
+// GET /api/selftest - end-to-end test of the app backend against the live
 // database: creates a throwaway circle, exercises every event type, verifies
 // reads, then deletes the circle (cascades to members and events).
 import { db, ensureSchema, makeCode, ensureCircleChat, rateLimit } from './_db.mjs';
@@ -89,7 +89,7 @@ export default async function handler(req, res) {
     try { await sql`update circles set code = ${custom} where id = ${circleId}`; } catch (e) { dupBlocked = true; }
     steps.custom_code = back[0].code === custom && dupBlocked;
 
-    // THE VAULT — the access rules are proved against the real database,
+    // THE VAULT - the access rules are proved against the real database,
     // not just asserted in the interface.
     await ensureVaultSchema(sql); await ensurePaySchema(sql);
     const nosy = await sql`insert into members (circle_id, name, role) values (${circleId}, 'Test Nosy', 'family') returning id`;
@@ -162,7 +162,7 @@ export default async function handler(req, res) {
     await sql`delete from rate_limit where bucket = 'selftest' and k = ${rlKey}`;
     steps.rate_limit = first === true && second === true && third === false && rolled === true;
 
-    // SOS — an open state with escalation, not a line in a feed.
+    // SOS - an open state with escalation, not a line in a feed.
     await sql`create table if not exists sos (
       id uuid primary key default gen_random_uuid(),
       circle_id uuid not null references circles(id) on delete cascade,
@@ -184,17 +184,17 @@ export default async function handler(req, res) {
                            where id = ${sos1[0].id} and status = 'open' returning id`;
     steps.sos_ack = acked[0].status === 'acked' && acked[0].acked_by === beta[0].id && race.length === 0;
 
-    // SUGGESTIONS — proposed from what the circle has already recorded.
+    // SUGGESTIONS - proposed from what the circle has already recorded.
     const sugg = await careSuggestions(sql, circleId, papa[0].id);
     steps.care_suggestions = Array.isArray(sugg) && sugg.some(x => /blood group/i.test(x.title));
 
-    // PRICING — the same plan, converted at a fixed, stated rate.
+    // PRICING - the same plan, converted at a fixed, stated rate.
     const inr = priceOf('care', 'INR'), usd = priceOf('care', 'USD');
     steps.pricing_dual = inr.amount === 2499 && inr.currency === 'INR'
       && usd.currency === 'USD' && Math.abs(usd.amount - (2499 / USD_RATE)) < 1.2
       && priceOf('free', 'INR').amount === 0;
 
-    // THE PULSE — one answer per person per day, replaceable, same style for all.
+    // THE PULSE - one answer per person per day, replaceable, same style for all.
     await ensurePulseSchema(sql);
     const pday = pulseDay(), pstyle = styleFor(pday);
     await sql`insert into pulse (circle_id, member_id, day, style, value)
@@ -210,7 +210,7 @@ export default async function handler(req, res) {
     const styles = ['2026-01-01','2026-01-02','2026-01-03','2026-01-04','2026-01-05'].map(styleFor);
     steps.pulse_rotates = new Set(styles).size === 5 && styleFor(pday) === styleFor(pday);
 
-    // ONBOARDING — the introduction is once per PERSON, and a circle knows
+    // ONBOARDING - the introduction is once per PERSON, and a circle knows
     // whether it is a family or a group.
     const kindRow = await sql`select kind from circles where id = ${circleId}`;
     const grp = await sql`insert into circles (code, name, kind) values (${'T' + makeCode().slice(1)}, 'Selftest Group', 'group') returning id, kind`;
@@ -228,7 +228,7 @@ export default async function handler(req, res) {
     steps.tour_once_per_person = before === null && once[0].toured_at !== null
       && String(once[0].toured_at) === String(twice[0].toured_at);
 
-    // MEMORY CONSENT — a private entry is invisible without a grant, but
+    // MEMORY CONSENT - a private entry is invisible without a grant, but
     // preparedness still knows it is recorded.
     await sql`create table if not exists family_book (
       id uuid primary key default gen_random_uuid(),
@@ -277,7 +277,7 @@ export default async function handler(req, res) {
                                 where circle_id = ${circleId} and about_member = ${papa[0].id} and kind = 'med'`;
     steps.memory_prep_truthful = prepCount[0].n === 1;
 
-    // MULTI-CIRCLE SIGNALS — what a person sees before opening a family.
+    // MULTI-CIRCLE SIGNALS - what a person sees before opening a family.
     const unreadFor = (who) => sql`
       select count(*)::int as n from messages ms
       join chats ch on ch.id = ms.chat_id
@@ -301,7 +301,7 @@ export default async function handler(req, res) {
 
     // Now make the read cursor do the work it exists for. Papa reads the
     // circle chat; Beta's message must stop counting for him, and Ekta's
-    // message in the DM — which he has not read — must keep counting.
+    // message in the DM - which he has not read - must keep counting.
     await sql`insert into chat_reads (chat_id, member_id) values (${everyoneId}, ${papa[0].id})
               on conflict (chat_id, member_id) do update set read_at = now()`;
     const papaAfterReading = (await unreadFor(papa[0].id))[0].n;
@@ -315,7 +315,7 @@ export default async function handler(req, res) {
                               where circle_id = ${circleId} and status = 'open'`;
     steps.circle_signals = typeof waiting[0].n === 'number' && typeof openReq[0].n === 'number';
 
-    // COINS — one pot for the family, earned by caring, spent on the AI.
+    // COINS - one pot for the family, earned by caring, spent on the AI.
     await ensureCoinSchema(sql);
     const start = await balance(sql, circleId);
     const paid1 = await award(sql, circleId, papa[0].id, 'checkin', '2026-01-01');

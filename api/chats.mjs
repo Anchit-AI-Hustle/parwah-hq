@@ -1,5 +1,5 @@
 // The chat system: one default "Everyone" chat per circle, unlimited named
-// group chats, and personal (1:1) chats — all private to the circle.
+// group chats, and personal (1:1) chats - all private to the circle.
 // Ekta is an automatic participant: mention "Ekta" in any chat and she
 // replies into the chat itself (as a message with member_id null).
 //
@@ -118,7 +118,7 @@ export default async function handler(req, res) {
           from messages m left join members mem on mem.id = m.member_id
           where m.chat_id = ${chat.id}
           order by m.created_at desc limit 50`;
-        // Viewing the chat marks it read — receipts are always on, by design.
+        // Viewing the chat marks it read - receipts are always on, by design.
         await sql`insert into chat_reads (chat_id, member_id, read_at) values (${chat.id}, ${me.id}, now())
                   on conflict (chat_id, member_id) do update set read_at = now()`;
         const reads = await sql`
@@ -168,7 +168,7 @@ export default async function handler(req, res) {
           const others = await sql`select member_id from chat_members where chat_id = ${chat.id} and member_id <> ${me.id}`;
           if (others[0]) await pushCircle(sql, circle.id, { title: '💬 ' + me.name, body: preview }, { only: others[0].member_id });
         } else {
-          // everyone in this conversation hears about it — the people named
+          // everyone in this conversation hears about it - the people named
           // with @ get the louder "mentioned you" version, once each.
           const audience = chat.kind === 'circle'
             ? await sql`select id, name from members where circle_id = ${circle.id} and id <> ${me.id}`
@@ -230,7 +230,7 @@ export default async function handler(req, res) {
     if (action === 'add_member') {
       const chat = await chatForMember(sql, circle, body.chatId, me.id);
       if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
-      if (chat.kind !== 'group') return res.status(400).json({ ok: false, error: chat.kind === 'circle' ? 'Everyone is already in the circle chat' : 'Personal chats stay 1:1 — make a group instead' });
+      if (chat.kind !== 'group') return res.status(400).json({ ok: false, error: chat.kind === 'circle' ? 'Everyone is already in the circle chat' : 'Personal chats stay 1:1 - make a group instead' });
       const addId = body.addId;
       if (!isUuid(addId)) return res.status(400).json({ ok: false, error: 'Pick a person to add' });
       const aRow = await sql`select id, name from members where id = ${addId} and circle_id = ${circle.id}`;

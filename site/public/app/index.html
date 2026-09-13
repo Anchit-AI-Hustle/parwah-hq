@@ -141,7 +141,7 @@ input[type=number],input[type=password],input[type=date],input[type=time],textar
   font-family:var(--body);font-size:1rem;background:var(--day);color:var(--ink)}
 input[type=search]{-webkit-appearance:none;appearance:none}
 textarea{resize:vertical;min-height:96px}
-/* Selects keep their native arrow — only the box is ours. */
+/* Selects keep their native arrow - only the box is ours. */
 select{border:1px solid var(--bone-2);border-radius:12px;padding:12px;font-family:var(--body);
   font-size:1rem;background:var(--day);color:var(--ink);max-width:100%}
 label + select{width:100%}
@@ -176,7 +176,7 @@ label + select{width:100%}
 .ev{background:var(--surface);border:1px solid var(--bone-2);border-left:3px solid var(--marigold);border-radius:12px;padding:12px 14px;font-size:.92rem;box-shadow:var(--sh-1)}
 .ev small{display:block;color:var(--ink-soft);font-size:.72rem;margin-top:3px}
 .ev.good{border-left-color:var(--ok)}
-/* A Choghadiya that is not running now still says which kind it is —
+/* A Choghadiya that is not running now still says which kind it is -
    the whole point of the list is to scan it and pick a time. */
 .ev.aus{border-left-color:var(--ok-line)}
 .ev.inaus{border-left-color:var(--alert-line)}
@@ -334,7 +334,7 @@ body.inapp #sosbar{padding-left:14px}
 
 /* ---- the day: one verdict, then the day as a band ----
    Good and Avoid are a STATUS, not two categories, so they wear the status
-   tokens — and never carry meaning by colour alone: every segment has a name
+   tokens - and never carry meaning by colour alone: every segment has a name
    and a ✓/✕ beside it in the list, and the band is labelled underneath. */
 .verdict{border-left:4px solid var(--marigold)}
 .verdict.ok{border-left-color:var(--ok)}
@@ -350,7 +350,7 @@ body.inapp #sosbar{padding-left:14px}
 /* The band: 2px surface gaps between fills, per-segment hit targets. */
 .tlwrap{position:relative}
 .tl{display:flex;gap:2px;height:34px;border-radius:8px;overflow:hidden;background:var(--bone)}
-/* "Now" is a position in the day, not just a window — so it is drawn where the
+/* "Now" is a position in the day, not just a window - so it is drawn where the
    clock actually is, with a label, and never relies on the colour beneath it. */
 .nowmark{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--ink);
   pointer-events:none;transform:translateX(-1px)}
@@ -382,7 +382,7 @@ body.inapp #sosbar{padding-left:14px}
 details.more{margin-top:14px}
 details.more>summary{cursor:pointer;font-weight:600;font-size:.92rem;padding:12px 14px;
   background:var(--surface);border:1px solid var(--bone-2);border-radius:12px;list-style:none}
-/* Opened, the summary and its body are ONE card — the body used to spill onto
+/* Opened, the summary and its body are ONE card - the body used to spill onto
    the page ground below a floating header. */
 details.more[open]>summary{border-radius:12px 12px 0 0;border-bottom:0}
 details.more[open]>.explain,details.more[open]>.feed,details.more[open]>.eyebrow{
@@ -571,7 +571,7 @@ details.more[open]>summary::before{content:"▾ "}
 .mp .prow2{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .member{cursor:pointer}
 
-/* Ekta floating icon — on every screen, one tap away */
+/* Ekta floating icon - on every screen, one tap away */
 .fab{position:fixed;right:16px;bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom));z-index:7;border:0;border-radius:99px;background:var(--dusk);color:var(--marigold);font-family:var(--body);font-weight:700;font-size:1rem;padding:15px 20px;cursor:pointer;box-shadow:0 10px 26px rgba(24,38,34,.4)}
 
 /* game board */
@@ -623,8 +623,8 @@ details.more[open]>summary::before{content:"▾ "}
   .tabs .side-only{display:flex}
   .tabs{top:0;bottom:0;right:auto;left:0;width:var(--side-w);border-top:0;border-right:1px solid var(--pine-2);padding-bottom:0;justify-content:flex-start}
   /* The sidebar is taller than plenty of laptop screens: everything below
-     Together — Plans, Games, the drawing board, Profile, "New family or
-     group" and the signed-in line — was simply clipped and unreachable.
+     Together - Plans, Games, the drawing board, Profile, "New family or
+     group" and the signed-in line - was simply clipped and unreachable.
      It scrolls now, and the account line stays pinned to the bottom. */
   .tabs .inner{flex-direction:column;max-width:none;align-items:stretch;gap:6px;padding:20px 14px;
     height:100%;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
@@ -657,7 +657,7 @@ details.more[open]>summary::before{content:"▾ "}
   body.inapp .fab{right:28px;bottom:28px}
 
   /* Reading and typing want a comfortable measure even when the window is
-     wide — only the grids below are allowed to use the full width. */
+     wide - only the grids below are allowed to use the full width. */
   #pane-home .card,#pane-care .card,#pane-profile .card,
   #pane-people .card,#pane-fun .card,#pane-notifs .card{max-width:640px}
   /* Memory and Vault lay themselves out in two columns below, so their cards
@@ -668,7 +668,7 @@ details.more[open]>summary::before{content:"▾ "}
   /* Memory reads as one column: the feed lines up with the card and the filters. */
   #pane-memory .feed{max-width:640px}
   /* Sixteen Choghadiya and twelve rashis are a list to scan, not prose to
-     read — on a wide screen they go two abreast rather than a mile down. */
+     read - on a wide screen they go two abreast rather than a mile down. */
   #pane-day .card{max-width:980px}
   #mu-named,#mu-day,#mu-night,#ho-all,#ho-people{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:980px}
   .addrow{max-width:640px}
@@ -725,7 +725,7 @@ details.more[open]>summary::before{content:"▾ "}
    wide window that was a narrow ribbon down the middle with the form a scroll
    away. Side by side, the screen is used and the form stays in view while you
    read the list. The span counts below match the number of children each list
-   view puts in the left column — a test asserts they still do. */
+   view puts in the left column - a test asserts they still do. */
 @media(min-width:1180px){
   #book-list-view,#vd-list-view{display:grid;grid-template-columns:minmax(0,1fr) 430px;
     gap:0 30px;align-items:start}
@@ -735,13 +735,13 @@ details.more[open]>summary::before{content:"▾ "}
     scrollbar-width:thin;max-width:none}
   #book-list-view>.card{grid-row:1/span 4}
   #vd-list-view>.card{grid-row:1/span 2}
-  /* The filters and the feed now own a whole column — let them use it. */
+  /* The filters and the feed now own a whole column - let them use it. */
   #pane-memory .feed,#pane-vault .feed,.subsec .feed{max-width:none}
   #bk-filter,#bk-about,#pane-memory .addrow{max-width:none}
 }
 
-/* Wide screens: Today becomes two columns — what you do on the left, what
-   happened on the right — instead of one narrow ribbon down the middle. */
+/* Wide screens: Today becomes two columns - what you do on the left, what
+   happened on the right - instead of one narrow ribbon down the middle. */
 @media(min-width:1240px){
   body.inapp #pane-home{display:grid;grid-template-columns:minmax(0,1fr) 336px;gap:26px;align-items:start}
   body.inapp #pane-home .homerail{position:sticky;top:30px;max-height:calc(100vh - 60px);overflow:auto;
@@ -749,7 +749,7 @@ details.more[open]>summary::before{content:"▾ "}
   body.inapp #pane-home .homerail .eyebrow{margin-top:0}
   body.inapp .widgets{grid-template-columns:repeat(3,1fr)}
   /* The hero is a header: identity and status on the left, the two things
-     you actually do on the right. Children are placed explicitly — left to
+     you actually do on the right. Children are placed explicitly - left to
      auto-flow they scatter across the grid. */
   body.inapp .homehero{display:grid;grid-template-columns:minmax(0,1fr) 250px;
     grid-template-rows:auto auto auto;gap:6px 26px;align-items:start}
@@ -821,11 +821,11 @@ details.more[open]>summary::before{content:"▾ "}
 <!-- ============ ONBOARDING ============ -->
 <div class="wrap" id="onboard">
   <h1>Your family's circle</h1>
-  <p class="lede">One private circle for your family. Check-ins, SOS and messages reach everyone in it — and only them.</p>
+  <p class="lede">One private circle for your family. Check-ins, SOS and messages reach everyone in it - and only them.</p>
   <div class="obpoints">
-    <span class="obpoint"><span class="oi" aria-hidden="true">📒</span><span><b>Where the family knows.</b> Doctors, medicines, blood groups and policies — kept current, not lost in a chat.</span></span>
+    <span class="obpoint"><span class="oi" aria-hidden="true">📒</span><span><b>Where the family knows.</b> Doctors, medicines, blood groups and policies - kept current, not lost in a chat.</span></span>
     <span class="obpoint"><span class="oi" aria-hidden="true">🚨</span><span><b>Ready before the emergency.</b> One card with everything a doctor asks for, working with no internet.</span></span>
-    <span class="obpoint"><span class="oi" aria-hidden="true">🔐</span><span><b>Papers, permissioned.</b> Aadhaar, PAN and passports — only their owner decides who can open them.</span></span>
+    <span class="obpoint"><span class="oi" aria-hidden="true">🔐</span><span><b>Papers, permissioned.</b> Aadhaar, PAN and passports - only their owner decides who can open them.</span></span>
   </div>
 
   <div class="card" id="auth-step">
@@ -868,7 +868,7 @@ details.more[open]>summary::before{content:"▾ "}
   </div>
 
 
-  <!-- SEE IT WITHOUT SIGNING IN — the five screens the validation guide
+  <!-- SEE IT WITHOUT SIGNING IN - the five screens the validation guide
        specifies, with the guide's own example family. Deliberately narrow:
        no chat, no games, no gifting, no calls, no feature menu. Reachable at
        /app/?demo=1 so an interview can open straight into it. -->
@@ -903,8 +903,8 @@ details.more[open]>summary::before{content:"▾ "}
   <div class="card" id="pickkind">
     <h3>What are you starting?</h3>
     <p class="hint" style="margin:2px 0 12px">You can be in as many of these as you like, and make more later.</p>
-    <button class="big kindpick" data-kind="family">👨‍👩‍👧‍👦 A family<span class="sub">Parents, children, grandparents — the people you look after</span></button>
-    <button class="big kindpick" data-kind="group"> 👥 A group<span class="sub">Cousins, siblings, a friends circle — anyone else</span></button>
+    <button class="big kindpick" data-kind="family">👨‍👩‍👧‍👦 A family<span class="sub">Parents, children, grandparents - the people you look after</span></button>
+    <button class="big kindpick" data-kind="group"> 👥 A group<span class="sub">Cousins, siblings, a friends circle - anyone else</span></button>
     <button class="linkbtn" id="pk-join" style="margin-top:12px">I have a code to join instead →</button>
   </div>
   <div class="card" id="createcard" hidden>
@@ -925,7 +925,7 @@ details.more[open]>summary::before{content:"▾ "}
       <button type="button" data-role="sister">🙋‍♀️ Sister</button>
       <button type="button" data-role="family" class="sel">🧡 Family</button>
     </div>
-    <label class="seniorchk"><input type="checkbox" id="c-senior"> Senior mode — big text &amp; buttons</label>
+    <label class="seniorchk"><input type="checkbox" id="c-senior"> Senior mode - big text &amp; buttons</label>
     <button class="go" id="c-go">Create the circle</button>
   </div>
 
@@ -947,7 +947,7 @@ details.more[open]>summary::before{content:"▾ "}
       <button type="button" data-role="sister">🙋‍♀️ Sister</button>
       <button type="button" data-role="family" class="sel">🧡 Family</button>
     </div>
-    <label class="seniorchk"><input type="checkbox" id="j-senior"> Senior mode — big text &amp; buttons</label>
+    <label class="seniorchk"><input type="checkbox" id="j-senior"> Senior mode - big text &amp; buttons</label>
     <button class="go" id="j-go">Join the circle</button>
     <button class="linkbtn" id="jc-back" style="margin-top:10px">← Start a new family or group instead</button>
   </div>
@@ -955,7 +955,7 @@ details.more[open]>summary::before{content:"▾ "}
   <div class="card" id="pending-step" hidden>
     <h3>🙋 Waiting for the family</h3>
     <p id="pend-msg" style="margin:6px 0 12px"></p>
-    <p class="hint">Anyone already in the circle can let you in — they have all been told. Nothing of the family's is visible to you until they do.</p>
+    <p class="hint">Anyone already in the circle can let you in - they have all been told. Nothing of the family's is visible to you until they do.</p>
     <button class="go" id="pend-check" style="margin-top:12px">Check again</button>
     <button class="linkbtn" id="pend-back" style="margin-top:10px">← Try a different code</button>
   </div>
@@ -988,7 +988,7 @@ details.more[open]>summary::before{content:"▾ "}
         <button class="go invitebtn">🧡 Invite family</button>
         <button class="go callgo" id="callnow">📹 Family call</button>
       </div>
-      <p class="hint">One tap — they join with your circle code.</p>
+      <p class="hint">One tap - they join with your circle code.</p>
     </div>
 
     <div class="card" id="famcard" style="margin-bottom:14px">
@@ -1007,18 +1007,18 @@ details.more[open]>summary::before{content:"▾ "}
     </div>
 
     <button class="card readycard" id="readycard" hidden style="margin-bottom:14px;width:100%;text-align:left">
-      <h3>Your family is <span id="rd-pct">—</span>% ready</h3>
+      <h3>Your family is <span id="rd-pct">-</span>% ready</h3>
       <div class="frbar" style="margin:8px 0 10px"><i id="rd-fill"></i></div>
       <div id="rd-gaps"></div>
       <p class="hint" id="rd-cta" style="margin-top:8px"></p>
     </button>
 
     <div id="seniorui" hidden>
-      <button class="big ok" id="btn-checkin">All is well ✅<span class="sub">One tap — the whole family relaxes</span></button>
+      <button class="big ok" id="btn-checkin">All is well ✅<span class="sub">One tap - the whole family relaxes</span></button>
       <button class="big pill" id="btn-pill">Pills taken? Yes ✔</button>
-      <button class="big sos" id="btn-sos">🆘 SOS — need help now<span class="sub">Everyone in the circle is told instantly</span></button>
+      <button class="big sos" id="btn-sos">🆘 SOS - need help now<span class="sub">Everyone in the circle is told instantly</span></button>
     </div>
-    <button class="big ecard-big" id="btn-ecard">🚨 Emergency card<span class="sub">Everything a doctor needs — works without internet</span></button>
+    <button class="big ecard-big" id="btn-ecard">🚨 Emergency card<span class="sub">Everything a doctor needs - works without internet</span></button>
 
     <div class="card" id="firstrun" hidden style="margin-bottom:14px">
       <h3>🌱 Getting Parwah useful</h3>
@@ -1035,8 +1035,8 @@ details.more[open]>summary::before{content:"▾ "}
     </div>
 
     <button class="card coincard" id="coincard" hidden style="margin-bottom:14px;width:100%;text-align:left">
-      <h3>🪙 <span id="coin-bal">—</span> family coins</h3>
-      <p class="hint" id="coin-sub" style="margin:2px 0 0">Earned by looking after each other — spent on Ekta</p>
+      <h3>🪙 <span id="coin-bal">-</span> family coins</h3>
+      <p class="hint" id="coin-sub" style="margin:2px 0 0">Earned by looking after each other - spent on Ekta</p>
     </button>
     <div class="widgets">
       <button class="widget" data-goto="people"><span class="wic" aria-hidden="true">👨‍👩‍👧</span><b>People</b><small id="w-fam">Loading…</small></button>
@@ -1047,8 +1047,8 @@ details.more[open]>summary::before{content:"▾ "}
       <button class="widget" data-goto="vault" data-sec="docs"><span class="wic" aria-hidden="true">🔐</span><b>Family vault</b><small id="w-vault">Aadhaar, PAN, passport, health papers</small></button>
       <button class="widget" data-goto="vault" data-sec="pay"><span class="wic" aria-hidden="true">💳</span><b>Payments</b><small id="w-pay">Who may use which way of paying</small></button>
       <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true">🕉</span><b>Muhurat</b><small id="w-day">Choghadiya for your city</small></button>
-      <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check — just ask</small></button>
-      <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi — play together</small></button>
+      <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check - just ask</small></button>
+      <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi - play together</small></button>
       <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
     </div>
 
@@ -1066,7 +1066,7 @@ details.more[open]>summary::before{content:"▾ "}
       <button data-sec="req">💡 Suggested<i class="dot" id="sugg-dot" hidden></i></button>
     </div>
     <div class="subsec" data-sec="rem">
-    <p class="hint" style="margin:0 0 10px">Everything the family has to do, in one list — jobs anyone can pick up, and reminders for a particular person.</p>
+    <p class="hint" style="margin:0 0 10px">Everything the family has to do, in one list - jobs anyone can pick up, and reminders for a particular person.</p>
     <div class="feed" id="rlist"><div class="ev">Nothing to do right now 🧡</div></div>
     <div class="feed" id="qlist" hidden></div>
 
@@ -1090,25 +1090,25 @@ details.more[open]>summary::before{content:"▾ "}
     </div>
 
     <div class="subsec" data-sec="req" hidden>
-    <p class="hint" style="margin:0 0 10px">Parwah noticed these from what the family has already recorded — an expiring document, something nobody has checked in months, a gap that matters at a hospital counter. Nothing here is real until you add it.</p>
-    <div class="feed" id="sugglist"><div class="ev">Nothing to suggest — the family is in good shape 🧡</div></div>
+    <p class="hint" style="margin:0 0 10px">Parwah noticed these from what the family has already recorded - an expiring document, something nobody has checked in months, a gap that matters at a hospital counter. Nothing here is real until you add it.</p>
+    <div class="feed" id="sugglist"><div class="ev">Nothing to suggest - the family is in good shape 🧡</div></div>
     </div>
 
 
   </section>
 
 
-  <!-- PEOPLE — the product is organised around the people you care about -->
+  <!-- PEOPLE - the product is organised around the people you care about -->
   <section id="pane-people" hidden>
-    <div class="ektahead"><span style="font-size:1.4rem" aria-hidden="true">👨‍👩‍👧</span><span><b>People</b><small>Everyone you care about — and how prepared the family is for each</small></span></div>
+    <div class="ektahead"><span style="font-size:1.4rem" aria-hidden="true">👨‍👩‍👧</span><span><b>People</b><small>Everyone you care about - and how prepared the family is for each</small></span></div>
     <p class="eyebrow">Preparedness</p>
-    <p class="hint" style="margin:2px 0 10px">Not a health score — a simple check that the family has the important information recorded and current for each person.</p>
+    <p class="hint" style="margin:2px 0 10px">Not a health score - a simple check that the family has the important information recorded and current for each person.</p>
     <div id="preplist"><div class="ev">Loading…</div></div>
     <div class="card" id="joinreq-card" hidden>
       <h3>🙋 Waiting to join</h3>
       <p class="hint" id="jr-count" style="margin:2px 0 10px"></p>
       <div class="feed" id="joinreqs"></div>
-      <p class="hint" style="margin-top:10px">Anyone already in the family can decide — let in only people you recognise.</p>
+      <p class="hint" style="margin-top:10px">Anyone already in the family can decide - let in only people you recognise.</p>
     </div>
     <div class="card">
       <h3>Your circle</h3>
@@ -1117,17 +1117,17 @@ details.more[open]>summary::before{content:"▾ "}
       <div id="codeform" hidden style="margin-bottom:12px">
         <input type="text" id="cc-code" maxlength="12" placeholder="e.g. SHARMAS" style="text-transform:uppercase" aria-label="New invite code">
         <button class="go" id="cc-save" style="margin-top:8px">Save invite code</button>
-        <p class="hint" style="margin-top:6px">4-12 letters and numbers, unique across Parwah. Your family joins with this code — old invite links stop working.</p>
+        <p class="hint" style="margin-top:6px">4-12 letters and numbers, unique across Parwah. Your family joins with this code - old invite links stop working.</p>
       </div>
       <div class="members" id="members"></div>
       <button class="go invitebtn" style="margin-top:14px">🧡 Invite family</button>
       <p class="hint" style="margin:14px 0 6px"><b>How people join:</b> <span id="jp-state"></span></p>
       <button class="cbtn ghost" id="jp-toggle"></button>
-      <p class="hint" style="margin-top:10px">Tap any member to see their profile — call, message privately or set a reminder for them.</p>
+      <p class="hint" style="margin-top:10px">Tap any member to see their profile - call, message privately or set a reminder for them.</p>
     </div>
   </section>
 
-  <!-- FAMILY MEMORY — where the family knows -->
+  <!-- FAMILY MEMORY - where the family knows -->
   <section id="pane-memory" hidden>
     <div class="ektahead"><span style="font-size:1.4rem" aria-hidden="true">📒</span><span><b>Family memory</b><small>WhatsApp is where the family talks. This is where the family knows.</small></span></div>
     <div id="book-list-view">
@@ -1143,14 +1143,14 @@ details.more[open]>summary::before{content:"▾ "}
         <button type="button" data-bk="insurance">🛡<span class="bkw">Insurance</span></button>
       </div>
       <select id="bk-about" aria-label="About whom" style="margin-bottom:10px"><option value="">About anyone</option></select>
-      <div class="feed" id="blist"><div class="ev">Nothing saved yet — add the family's first entry below 📒</div></div>
+      <div class="feed" id="blist"><div class="ev">Nothing saved yet - add the family's first entry below 📒</div></div>
       <div class="card" style="margin-top:14px">
         <h3 id="bf-title">Add to the family memory</h3>
         <div class="seg" id="b-kind" style="flex-wrap:wrap"><button type="button" data-k="contact" class="sel">☎️ Contact</button><button type="button" data-k="address">📍 Address</button><button type="button" data-k="med">💊 Meds</button><button type="button" data-k="fact">🩸 Health fact</button><button type="button" data-k="insurance">🛡 Insurance</button></div>
         <label for="b-about">About whom</label>
         <select id="b-about"><option value="">The whole family</option></select>
         <label for="b-name" id="b-name-l">Who / what</label>
-        <input type="text" id="b-name" maxlength="80" placeholder="e.g. Ramesh — plumber">
+        <input type="text" id="b-name" maxlength="80" placeholder="e.g. Ramesh - plumber">
         <div id="bf-contact">
           <label for="b-cat">Category</label>
           <select id="b-cat">
@@ -1192,7 +1192,7 @@ details.more[open]>summary::before{content:"▾ "}
         </div>
         <div id="bf-med" hidden>
           <label for="b-for" id="b-for-l">For which problem</label>
-          <input type="text" id="b-for" maxlength="160" placeholder="e.g. BP — as the doctor said">
+          <input type="text" id="b-for" maxlength="160" placeholder="e.g. BP - as the doctor said">
         </div>
         <div id="bf-fact" hidden>
           <label for="b-factcat">What kind of fact</label>
@@ -1205,10 +1205,10 @@ details.more[open]>summary::before{content:"▾ "}
         </div>
         <label for="b-notes">Notes</label>
         <input type="text" id="b-notes" maxlength="300" placeholder="e.g. after breakfast · comes on Tuesdays · gate code 4321">
-        <label class="seniorchk"><input type="checkbox" id="b-private"> Keep this private — only me and anyone I name</label>
+        <label class="seniorchk"><input type="checkbox" id="b-private"> Keep this private - only me and anyone I name</label>
         <button class="go" id="b-save">Save to the family memory</button>
         <button class="linkbtn" id="b-cancel" hidden style="margin-top:8px">Cancel editing</button>
-        <p class="hint">Shared with the whole circle — everyone can add, edit and keep it current.</p>
+        <p class="hint">Shared with the whole circle - everyone can add, edit and keep it current.</p>
       </div>
     </div>
     <div id="book-detail" hidden>
@@ -1241,7 +1241,7 @@ details.more[open]>summary::before{content:"▾ "}
           <select id="bd-share-who"></select>
           <button class="cbtn" id="bd-share" style="margin-top:8px">Share</button>
         </div>
-        <p class="hint" style="margin-top:10px">This is about you, so it is yours to decide. Preparedness still counts it — the family knows it is recorded, without reading it.</p>
+        <p class="hint" style="margin-top:10px">This is about you, so it is yours to decide. Preparedness still counts it - the family knows it is recorded, without reading it.</p>
       </div>
       <div class="card" id="bd-ledger-card" hidden>
         <h3>Consent history</h3>
@@ -1250,7 +1250,7 @@ details.more[open]>summary::before{content:"▾ "}
     </div>
   </section>
 
-  <!-- THE FAMILY VAULT — papers and money, with a permission on every one -->
+  <!-- THE FAMILY VAULT - papers and money, with a permission on every one -->
   <section id="pane-vault" hidden>
     <div class="seg pageseg" id="vault-seg" role="tablist" aria-label="Vault sections">
       <button data-sec="docs" class="sel">🔐 Documents</button>
@@ -1258,10 +1258,10 @@ details.more[open]>summary::before{content:"▾ "}
     </div>
 
     <div class="subsec" data-sec="docs">
-      <div class="ektahead"><span style="font-size:1.4rem" aria-hidden="true">🔐</span><span><b>Family vault</b><small>Aadhaar, PAN, passport, licence, health and birth papers — each one shared with exactly who you choose</small></span></div>
+      <div class="ektahead"><span style="font-size:1.4rem" aria-hidden="true">🔐</span><span><b>Family vault</b><small>Aadhaar, PAN, passport, licence, health and birth papers - each one shared with exactly who you choose</small></span></div>
       <div id="vd-list-view">
         <select id="vd-who" aria-label="Whose documents" style="margin-bottom:10px"><option value="">Everyone's documents</option></select>
-        <div class="feed" id="vdlist"><div class="ev">Nothing in the vault yet — add the family's first document below 🔐</div></div>
+        <div class="feed" id="vdlist"><div class="ev">Nothing in the vault yet - add the family's first document below 🔐</div></div>
         <div class="card" style="margin-top:14px">
           <h3 id="vd-ftitle">Add a document</h3>
           <label for="vd-kind">What is it</label>
@@ -1270,7 +1270,7 @@ details.more[open]>summary::before{content:"▾ "}
           <select id="vd-about"></select>
           <label for="vd-label">Call it</label>
           <input type="text" id="vd-label" maxlength="90" placeholder="e.g. Papa's passport">
-          <label for="vd-number" id="vd-number-l">Number <span class="hint" style="display:inline">— checked, then only the last 4 are kept</span></label>
+          <label for="vd-number" id="vd-number-l">Number <span class="hint" style="display:inline">- checked, then only the last 4 are kept</span></label>
           <input type="text" id="vd-number" maxlength="30" autocomplete="off" inputmode="text" placeholder="e.g. ABCDE1234F">
           <p class="hint" id="vd-numstate" style="margin:5px 0 0"></p>
           <button type="button" class="cbtn ghost" id="vd-swap" hidden style="margin-top:8px"></button>
@@ -1280,7 +1280,7 @@ details.more[open]>summary::before{content:"▾ "}
           </div>
           <label for="vd-file">Photo or PDF of the document</label>
           <input type="file" id="vd-file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf">
-          <p class="hint" id="vd-fname" style="margin-top:4px">Up to 2 MB. Kept in the vault itself — never a public link.</p>
+          <p class="hint" id="vd-fname" style="margin-top:4px">Up to 2 MB. Kept in the vault itself - never a public link.</p>
           <label for="vd-notes">Notes</label>
           <input type="text" id="vd-notes" maxlength="300" placeholder="e.g. renewal due before the Dubai trip">
           <button class="go" id="vd-save">Put it in the vault</button>
@@ -1349,7 +1349,7 @@ details.more[open]>summary::before{content:"▾ "}
         <input type="text" id="vp-note" maxlength="200" placeholder="e.g. for the chemist and groceries only">
         <button class="go" id="vp-save">Save this method</button>
         <button class="linkbtn" id="vp-cancel" hidden style="margin-top:8px">Cancel editing</button>
-        <p class="hint">Parwah never stores a full card number, CVV, PIN or password — only a name, a permission, and what was spent.</p>
+        <p class="hint">Parwah never stores a full card number, CVV, PIN or password - only a name, a permission, and what was spent.</p>
       </div>
       <div class="card" id="vp-log-card" hidden>
         <h3>Recent activity</h3>
@@ -1358,7 +1358,7 @@ details.more[open]>summary::before{content:"▾ "}
     </div>
   </section>
 
-  <!-- ONE PERSON — the sections the parent validation guide draws -->
+  <!-- ONE PERSON - the sections the parent validation guide draws -->
   <section id="pane-person" hidden>
     <button class="cbtn ghost" id="pp-back">← People</button>
     <div class="personhero" style="margin-top:12px">
@@ -1378,7 +1378,7 @@ details.more[open]>summary::before{content:"▾ "}
     </div>
   </section>
 
-  <!-- THE DAY — muhurat for where you live, and the twelve rashis -->
+  <!-- THE DAY - muhurat for where you live, and the twelve rashis -->
   <section id="pane-day" hidden>
     <div class="seg pageseg" id="day-seg" role="tablist" aria-label="Day sections">
       <button data-sec="muhurat" class="sel">🕉 Muhurat</button>
@@ -1386,13 +1386,13 @@ details.more[open]>summary::before{content:"▾ "}
     </div>
 
     <div class="subsec" data-sec="muhurat">
-      <!-- The question is "is now a good time?" — so that is the whole first
+      <!-- The question is "is now a good time?" - so that is the whole first
            screen. One verdict, what follows it, and the day at a glance. The
            sixteen periods are a reference, not a reading, so they wait behind
            a disclosure until somebody actually wants them. -->
       <div class="card verdict" id="mu-verdict">
         <p class="eyebrow" id="mu-place" style="margin-top:0">Today</p>
-        <p class="vstate" id="mu-state">—</p>
+        <p class="vstate" id="mu-state">-</p>
         <p class="vname" id="mu-name"></p>
         <p class="vmean" id="mu-mean"></p>
         <p class="vnext" id="mu-next"></p>
@@ -1419,7 +1419,7 @@ details.more[open]>summary::before{content:"▾ "}
         <h3>Times worth knowing</h3>
         <div class="avoidlist" id="mu-named"></div>
         <p class="hint" style="margin-top:12px">Worked out from today's sunrise and sunset where you
-          live — not looked up in one table for the whole country.</p>
+          live - not looked up in one table for the whole country.</p>
       </div>
 
       <details class="more" id="mu-how">
@@ -1427,13 +1427,13 @@ details.more[open]>summary::before{content:"▾ "}
         <div class="explain">
           <h4>What a Choghadiya is</h4>
           <p>Sunrise to sunset is divided into <b>eight equal parts</b>, and sunset to the next
-            sunrise into eight more. Each part is one Choghadiya — around an hour and a half, but
+            sunrise into eight more. Each part is one Choghadiya - around an hour and a half, but
             longer in summer and shorter in winter, because it follows the sun rather than the
             clock. That is why these timings are different in Delhi and in Dubai on the same day.</p>
 
           <h4>Why the same hour is Amrit today and Rog tomorrow</h4>
           <p>Every Choghadiya is ruled by a planet. The <b>first window of the day belongs to the
-            lord of that weekday</b> — Sunday to the Sun, Monday to the Moon — and the rest follow
+            lord of that weekday</b> - Sunday to the Sun, Monday to the Moon - and the rest follow
             the classical order of the planets. Change the weekday and the whole sequence shifts.
             Nothing is looked up in a table for the country.</p>
           <div class="lords" id="mu-lords"></div>
@@ -1446,20 +1446,20 @@ details.more[open]>summary::before{content:"▾ "}
 
           <h4>Abhijit Muhurat</h4>
           <p>A different division: the daylight split <b>fifteen</b> ways, of which Abhijit is the
-            eighth — the middle one, which is why it always sits on midday. About 48 minutes. It is
+            eighth - the middle one, which is why it always sits on midday. About 48 minutes. It is
             traditionally not observed on a Wednesday.</p>
 
           <h4>Where the numbers come from</h4>
           <p>Sunrise and sunset are computed from your city's latitude and longitude using the
             standard NOAA solar-position method, with the usual allowance for refraction and the
-            width of the sun's disc — the same allowance almanacs use. Nothing is fetched from
+            width of the sun's disc - the same allowance almanacs use. Nothing is fetched from
             anywhere; it is arithmetic, and it should agree with any printed panchang for your city
             to within a minute or two.</p>
         </div>
       </details>
 
       <details class="more">
-        <summary>See every Choghadiya <span class="hint" style="display:inline">— all 16 windows</span></summary>
+        <summary>See every Choghadiya <span class="hint" style="display:inline">- all 16 windows</span></summary>
         <p class="eyebrow" style="margin-top:14px">Daytime</p>
         <div class="feed" id="mu-day"></div>
         <p class="eyebrow">Night</p>
@@ -1492,7 +1492,7 @@ details.more[open]>summary::before{content:"▾ "}
         <summary>What this is, and what it is not</summary>
         <div class="explain">
           <h4>This is your sun sign</h4>
-          <p id="ho-basis">Worked out from your date of birth against fixed calendar dates — the
+          <p id="ho-basis">Worked out from your date of birth against fixed calendar dates - the
             same basis newspapers use, and the basis the reading below is written for.</p>
 
           <h4>A rashi is not quite the same thing</h4>
@@ -1505,11 +1505,11 @@ details.more[open]>summary::before{content:"▾ "}
           <h4>Where the reading comes from</h4>
           <p>All twelve are fetched once a day from a free, open horoscope source and kept for the
             whole family, so nobody's phone asks for them again. If a reading does not arrive, that
-            sign is left blank — we would rather show nothing than write one ourselves.</p>
+            sign is left blank - we would rather show nothing than write one ourselves.</p>
 
           <h4>What it is for</h4>
           <p>A shared thing to read together, the way a family reads the paper. It is not advice,
-            and nothing else in Parwah — medicines, documents, reminders — is decided by it.</p>
+            and nothing else in Parwah - medicines, documents, reminders - is decided by it.</p>
         </div>
       </details>
       <p class="hint" id="ho-src" style="margin-top:12px"></p>
@@ -1552,7 +1552,7 @@ details.more[open]>summary::before{content:"▾ "}
   <section id="pane-ekta" hidden>
     <div class="ektahead">
       <span class="dev" aria-hidden="true">एकता</span>
-      <span><b>Ekta</b><small>Your circle's helper — type or talk, Hindi ya English</small></span>
+      <span><b>Ekta</b><small>Your circle's helper - type or talk, Hindi ya English</small></span>
       <button class="cbtn ghost" id="evoice" aria-label="Toggle spoken replies">🔊 Voice on</button>
     </div>
     <div class="crow" id="ekta-offline" hidden style="margin-bottom:10px;border-left:3px solid var(--marigold)">
@@ -1590,7 +1590,7 @@ details.more[open]>summary::before{content:"▾ "}
 
   <!-- TOGETHER: calls, plans, games -->
   <section id="pane-fun" hidden>
-    <div class="ektahead"><span style="font-size:1.4rem" aria-hidden="true">🎉</span><span><b>Together</b><small>Calls, plans and games — distance is just a number</small></span></div>
+    <div class="ektahead"><span style="font-size:1.4rem" aria-hidden="true">🎉</span><span><b>Together</b><small>Calls, plans and games - distance is just a number</small></span></div>
 
     <div class="seg pageseg" id="fun-seg" role="tablist" aria-label="Together sections">
       <button data-sec="plans" class="sel">🗓 Plans & calls</button>
@@ -1600,7 +1600,7 @@ details.more[open]>summary::before{content:"▾ "}
     <div class="subsec" data-sec="plans">
     <div class="card">
       <h3>Get together now 📹</h3>
-      <p>Opens a free video room for the whole circle — works everywhere in the world. Pick the vibe:</p>
+      <p>Opens a free video room for the whole circle - works everywhere in the world. Pick the vibe:</p>
       <div class="pkind" id="call-mode">
         <button type="button" data-mode="talk" class="sel">📹 Video</button>
         <button type="button" data-mode="audio">🎙 Voice only</button>
@@ -1609,14 +1609,14 @@ details.more[open]>summary::before{content:"▾ "}
       </div>
       <input type="text" id="call-link" maxlength="300" placeholder="Optional: paste a YouTube / song / show link to share" style="margin-top:10px" aria-label="Link to share" hidden>
       <button class="go" id="callnow2" style="margin-top:12px">📹 Start now</button>
-      <p class="hint" id="call-hint">Everyone joins from chat. For music or a show: play it on your device and share your screen/tab with audio in the room — each person watches on their own subscription.</p>
+      <p class="hint" id="call-hint">Everyone joins from chat. For music or a show: play it on your device and share your screen/tab with audio in the room - each person watches on their own subscription.</p>
     </div>
 
     <p class="eyebrow">Calendar</p>
     <div class="card">
       <div class="calhead"><button id="cal-prev" aria-label="Previous month">‹</button><b id="cal-title"></b><button id="cal-next" aria-label="Next month">›</button></div>
       <div class="calgrid" id="pcal"></div>
-      <p class="hint" style="margin-top:8px">Tap a date to see that day's plans — and to start a new plan on it. Dots mark days with plans.</p>
+      <p class="hint" style="margin-top:8px">Tap a date to see that day's plans - and to start a new plan on it. Dots mark days with plans.</p>
     </div>
 
     <p class="eyebrow">Plans</p>
@@ -1638,7 +1638,7 @@ details.more[open]>summary::before{content:"▾ "}
         <label class="pick"><span>Place (meet-ups)</span><input type="text" id="p-place" maxlength="120" placeholder="optional" aria-label="Plan place"></label>
       </div>
       <button class="go" id="p-add" style="margin-top:14px">Set the plan</button>
-      <p class="hint">Everyone sees it in their own timezone — perfect when family is abroad. Add it to Google Calendar in one tap.</p>
+      <p class="hint">Everyone sees it in their own timezone - perfect when family is abroad. Add it to Google Calendar in one tap.</p>
     </div>
     </div>
 
@@ -1653,29 +1653,29 @@ details.more[open]>summary::before{content:"▾ "}
       <p class="eyebrow">Whole family · 2–12 players</p>
       <div class="card">
         <h3>Saanp Seedhi 🐍🪜</h3>
-        <p>Snakes & Ladders with a twist — snakes cost you a truth-or-dare, ladders earn rewards. Turns work across any timezone.</p>
+        <p>Snakes & Ladders with a twist - snakes cost you a truth-or-dare, ladders earn rewards. Turns work across any timezone.</p>
         <div class="prow2">
           <button class="go" id="g-start">🎲 With the family</button>
           <button class="cbtn ghost" id="g-solo">🙋 On my own</button>
         </div>
-        <p class="hint" style="margin-top:8px">Nobody free? Play against Parwah — same board, same snakes.</p>
+        <p class="hint" style="margin-top:8px">Nobody free? Play against Parwah - same board, same snakes.</p>
       </div>
       <div class="card">
         <h3>Antakshari 🎤</h3>
-        <p>Teams, turns, letters and scores — the app referees while the family sings. Opens a lobby everyone can join.</p>
+        <p>Teams, turns, letters and scores - the app referees while the family sings. Opens a lobby everyone can join.</p>
         <div class="seg" id="am-seg"><button type="button" data-m="chat" class="sel">💬 In chat / in person</button><button type="button" data-m="call">📹 On a video call</button></div>
         <button class="go" id="ga-start" style="margin-top:12px">🎤 Open Antakshari lobby</button>
       </div>
       <div class="card">
         <h3>Dumb Charades 🎭</h3>
-        <p>Teams act and guess — the app deals the movie secretly to the actor. Video-call mode is full acting mode.</p>
+        <p>Teams act and guess - the app deals the movie secretly to the actor. Video-call mode is full acting mode.</p>
         <div class="seg" id="cm-seg"><button type="button" data-m="call" class="sel">📹 Acting on video call</button><button type="button" data-m="chat">🏠 Same room / own call</button></div>
         <button class="go" id="gc-start" style="margin-top:12px">🎭 Open Charades lobby</button>
       </div>
       <p class="eyebrow">Quick duel · 2 players</p>
       <div class="card">
         <h3>Tic-Tac-Toe ⭕✕</h3>
-        <p>Challenge one person to a lightning duel — grandchild vs Dadi is the classic.</p>
+        <p>Challenge one person to a lightning duel - grandchild vs Dadi is the classic.</p>
         <div class="addrow">
           <select id="t-vs" aria-label="Challenge who"><option value="">Challenge…</option></select>
           <button class="cbtn" id="gt-start">⚔️ Start duel</button>
@@ -1749,7 +1749,7 @@ details.more[open]>summary::before{content:"▾ "}
     <div class="subsec" data-sec="board" hidden>
     <div class="card">
       <h3>Family drawing board 🎨</h3>
-      <p class="hint" style="margin:2px 0 10px">One shared canvas for the whole circle — doodle together on a call, leave little drawings for each other.</p>
+      <p class="hint" style="margin:2px 0 10px">One shared canvas for the whole circle - doodle together on a call, leave little drawings for each other.</p>
       <canvas id="dboard"></canvas>
       <div class="dtools" id="dtools">
         <button class="dcol sel" data-dc="#241F17" style="background:#241F17" aria-label="Ink"></button>
@@ -1785,14 +1785,14 @@ details.more[open]>summary::before{content:"▾ "}
         <p class="hint" id="pl-minetxt" style="margin:0 0 8px"></p>
         <button class="cbtn ghost" id="pl-cancel">Change my mind</button>
       </div>
-      <p class="hint" style="margin-top:12px"><b>Nothing is charged.</b> Parwah does not handle money — when Care opens, payment will go through a licensed partner. Reserving only tells us your family wants it.</p>
+      <p class="hint" style="margin-top:12px"><b>Nothing is charged.</b> Parwah does not handle money - when Care opens, payment will go through a licensed partner. Reserving only tells us your family wants it.</p>
       <div id="pl-others" style="margin-top:10px"></div>
     </div>
     <div class="card">
       <h3>🪙 Family coins</h3>
-      <p style="margin:2px 0 4px"><b id="coin-bal2" style="font-size:1.6rem">—</b> <span class="hint">in the family pot</span></p>
+      <p style="margin:2px 0 4px"><b id="coin-bal2" style="font-size:1.6rem">-</b> <span class="hint">in the family pot</span></p>
       <p class="hint" id="coin-mine" style="margin:0 0 10px"></p>
-      <p class="hint">One pot for the whole family. Everything you do to look after each other earns coins, and Ekta — and any other AI help — spends them. Nothing is for sale.</p>
+      <p class="hint">One pot for the whole family. Everything you do to look after each other earns coins, and Ekta - and any other AI help - spends them. Nothing is for sale.</p>
       <div id="coin-top" style="margin-top:10px"></div>
       <p class="eyebrow" style="margin-top:14px">How coins are earned</p>
       <div class="feed" id="coin-earn"></div>
@@ -1802,8 +1802,8 @@ details.more[open]>summary::before{content:"▾ "}
     <div class="card">
       <h3>You</h3>
       <div class="kv"><b>Name</b><span id="p-name"></span></div>
-      <div class="kv"><b>Mobile</b><span id="p-phone">—</span></div>
-      <div class="kv"><b>Lives in</b><span id="p-city">—</span></div>
+      <div class="kv"><b>Mobile</b><span id="p-phone">-</span></div>
+      <div class="kv"><b>Lives in</b><span id="p-city">-</span></div>
       <div class="kv"><b>Role</b><span id="p-role"></span></div>
       <div class="kv"><b>Circle</b><span id="p-circle"></span></div>
       <button class="linkbtn" id="pedit">✏️ Edit profile</button>
@@ -1870,7 +1870,7 @@ details.more[open]>summary::before{content:"▾ "}
       <button type="button" data-role="sister">🙋‍♀️ Sister</button>
       <button type="button" data-role="family">🧡 Family</button>
         </div>
-        <label class="seniorchk"><input type="checkbox" id="e-senior"> Senior mode — big text &amp; buttons</label>
+        <label class="seniorchk"><input type="checkbox" id="e-senior"> Senior mode - big text &amp; buttons</label>
         <button class="go" id="e-save">Save changes</button>
       </div>
     </div>
@@ -1880,7 +1880,7 @@ details.more[open]>summary::before{content:"▾ "}
     <div class="card">
       <h3>Plan</h3>
       <span class="plantag">Free · Beta</span>
-      <p>Everything in Parwah is free while we're in beta — for every member of your circle.</p>
+      <p>Everything in Parwah is free while we're in beta - for every member of your circle.</p>
       <p style="margin-top:8px"><b style="color:var(--ink)">Parwah Plus (coming soon):</b></p>
       <ul>
         <li>Reminder and SOS push alerts on your phone</li>
@@ -1897,7 +1897,7 @@ details.more[open]>summary::before{content:"▾ "}
       <div id="klist"></div>
       <label for="k-prov">Provider</label>
       <select id="k-prov">
-        <option value="anthropic">Anthropic (Claude) — full tools</option>
+        <option value="anthropic">Anthropic (Claude) - full tools</option>
         <option value="openai">OpenAI</option>
         <option value="gemini">Google Gemini</option>
         <option value="grok">Grok (xAI)</option>
@@ -1914,20 +1914,20 @@ details.more[open]>summary::before{content:"▾ "}
       <h3>Settings</h3>
       <div class="kv"><b>Language</b><span>English · Hindi toggle coming soon</span></div>
       <div class="kv"><b>Senior mode</b><span id="p-senior"></span></div>
-      <div class="kv"><b>Device alerts</b><span id="p-push">—</span></div>
+      <div class="kv"><b>Device alerts</b><span id="p-push">-</span></div>
       <button class="linkbtn" id="p-push-on">🔔 Turn on alerts on this device</button>
-      <p style="margin-top:10px"><b style="color:var(--ink)">Install as an app:</b> Android — Chrome menu → <i>Install app</i>. iPhone — Share → <i>Add to Home Screen</i>. <a href="../get/" target="_blank" rel="noopener">Full install guide →</a></p>
+      <p style="margin-top:10px"><b style="color:var(--ink)">Install as an app:</b> Android - Chrome menu → <i>Install app</i>. iPhone - Share → <i>Add to Home Screen</i>. <a href="../get/" target="_blank" rel="noopener">Full install guide →</a></p>
     </div>
 
     <div class="card">
       <h3>Privacy promise</h3>
-      <p>Your circle is private. No ads, no data selling, no public feed. Everything shared here is visible only to the people in your circle — and anything set <i>for</i> someone starts only when they accept it.</p>
+      <p>Your circle is private. No ads, no data selling, no public feed. Everything shared here is visible only to the people in your circle - and anything set <i>for</i> someone starts only when they accept it.</p>
     </div>
     </div>
   </section>
 </div>
 
-<!-- the one input bar — contextual: the open chat, or Ekta -->
+<!-- the one input bar - contextual: the open chat, or Ekta -->
 <div class="inputbar" id="composer" hidden>
   <div class="inner">
     <button id="emic" hidden aria-label="Speak to Ekta">🎤</button>
@@ -1984,12 +1984,12 @@ details.more[open]>summary::before{content:"▾ "}
     <div class="avatar" id="mp-av"></div>
     <h3 id="mp-name"></h3>
     <span class="rolebadge" id="mp-role"></span>
-    <div class="kv"><b>Mobile</b><span id="mp-phone">—</span></div>
-    <div class="kv"><b>Lives in</b><span id="mp-place">—</span></div>
+    <div class="kv"><b>Mobile</b><span id="mp-phone">-</span></div>
+    <div class="kv"><b>Lives in</b><span id="mp-place">-</span></div>
     <div class="kv" id="mp-sizes-row" hidden><b>Sizes</b><span id="mp-sizes"></span></div>
     <div class="kv" id="mp-likes-row" hidden><b>Loves</b><span id="mp-likes"></span></div>
     <div class="kv" id="mp-wish-row" hidden><b>Wishlist</b><span id="mp-wish"></span></div>
-    <div class="kv"><b>In the circle since</b><span id="mp-since">—</span></div>
+    <div class="kv"><b>In the circle since</b><span id="mp-since">-</span></div>
     <div class="prow2">
       <a class="cbtn" id="mp-call" hidden>📞 Call</a>
       <button class="cbtn" id="mp-dm">💬 Message privately</button>
@@ -2004,7 +2004,7 @@ details.more[open]>summary::before{content:"▾ "}
       <p class="eyebrow" style="margin-top:12px">Gift from stores near them <span id="gift-region"></span></p>
       <div class="prow2" id="gift-shop"></div>
       <button class="cbtn ghost" id="gift-tell" style="margin-top:10px">💌 Tell them something's coming</button>
-      <p class="hint" style="margin-top:8px">Opens the store or app — order to their address, send an e-gift card, or pay to their mobile number.</p>
+      <p class="hint" style="margin-top:8px">Opens the store or app - order to their address, send an e-gift card, or pay to their mobile number.</p>
     </div>
   </div>
 </div>
@@ -2069,13 +2069,13 @@ details.more[open]>summary::before{content:"▾ "}
       <p id="ec-sub"></p>
     </div>
     <div id="ec-body"></div>
-    <p class="hint" id="ec-off" hidden style="margin-top:10px">📵 Showing the last saved copy — this card works without internet.</p>
+    <p class="hint" id="ec-off" hidden style="margin-top:10px">📵 Showing the last saved copy - this card works without internet.</p>
     <div class="prow2" style="margin-top:14px">
       <button class="cbtn" id="ec-share">📤 Send to someone</button>
       <button class="cbtn ghost" id="ec-copy">📋 Copy</button>
       <button class="cbtn ghost" id="ec-print">🖨 Print</button>
     </div>
-    <p class="hint" style="margin-top:10px">Everything here comes from your family memory. Blank rows mean nobody has recorded it yet — fill them in before you need them.</p>
+    <p class="hint" style="margin-top:10px">Everything here comes from your family memory. Blank rows mean nobody has recorded it yet - fill them in before you need them.</p>
   </div>
 </div>
 
@@ -2108,7 +2108,7 @@ details.more[open]>summary::before{content:"▾ "}
   function clearAuth(){ try { localStorage.removeItem('parwah-user'); } catch (e) {} }
   function loadGroups(){ try { return JSON.parse(localStorage.getItem('parwah-circles') || '[]'); } catch (e) { return []; } }
   function saveGroups(cs){ try { localStorage.setItem('parwah-circles', JSON.stringify(cs || [])); } catch (e) {} renderGroups(); }
-  // Regional gifting — stores and cash apps shown match where the RECIPIENT lives.
+  // Regional gifting - stores and cash apps shown match where the RECIPIENT lives.
   var REGIONS = {
     IN: { flag: '🇮🇳', cash: [['GPay', 'https://pay.google.com'], ['PhonePe', 'https://www.phonepe.com'], ['Paytm', 'https://paytm.com'], ['Wise (from abroad)', 'https://wise.com'], ['Remitly (from abroad)', 'https://www.remitly.com']],
           shop: [['Amazon.in', 'https://www.amazon.in'], ['Flipkart', 'https://www.flipkart.com'], ['Myntra', 'https://www.myntra.com'], ['Ajio', 'https://www.ajio.com'], ['BigBasket', 'https://www.bigbasket.com'], ['Zomato', 'https://www.zomato.com'], ['Swiggy', 'https://www.swiggy.com']] },
@@ -2270,7 +2270,7 @@ details.more[open]>summary::before{content:"▾ "}
     $('composer').hidden = !(ekta || chat);
     $('emic').hidden = !(ekta && typeof rec !== 'undefined' && rec);
     $('ecam').hidden = !chat;
-    $('msg').placeholder = ekta ? 'Ask Ekta — type or tap the mic' : (chat ? 'Message ' + chatShort(curChat) + '…' : 'Message…');
+    $('msg').placeholder = ekta ? 'Ask Ekta - type or tap the mic' : (chat ? 'Message ' + chatShort(curChat) + '…' : 'Message…');
   }
   $('tabs').addEventListener('click', function(e){
     var b = e.target.closest('button'); if (!b) return;
@@ -2305,9 +2305,9 @@ details.more[open]>summary::before{content:"▾ "}
 
   function evLine(e){
     var who = e.member_name || 'Someone';
-    if (e.type === 'checkin') return { cls:'good', text: who + ' checked in — all is well ✅' };
+    if (e.type === 'checkin') return { cls:'good', text: who + ' checked in - all is well ✅' };
     if (e.type === 'pill')    return { cls:'good', text: who + ' took their pills 💊' };
-    if (e.type === 'sos')     return { cls:'bad',  text: '🆘 SOS from ' + who + ' — call now!' };
+    if (e.type === 'sos')     return { cls:'bad',  text: '🆘 SOS from ' + who + ' - call now!' };
     if (e.type === 'message') return { cls:'',     text: who + ': ' + (e.text || '') };
     if (e.type === 'join')    return { cls:'',     text: e.text || (who + ' joined') };
     return { cls:'', text: e.text || '' };
@@ -2360,7 +2360,7 @@ details.more[open]>summary::before{content:"▾ "}
     var lc = (data.calls || [])[0];
     $('livecall').hidden = !lc;
     if (lc) {
-      $('lc-txt').textContent = (lc.label || '📞 Family call') + ' on now — started by ' + (lc.by_name || 'family') + ' at ' + fmtTime(lc.started_at);
+      $('lc-txt').textContent = (lc.label || '📞 Family call') + ' on now - started by ' + (lc.by_name || 'family') + ' at ' + fmtTime(lc.started_at);
       $('lc-join').href = lc.room;
       $('livecall').dataset.cid = lc.id;
     }
@@ -2372,8 +2372,8 @@ details.more[open]>summary::before{content:"▾ "}
       $('sosbar').dataset.sid = so.id;
       $('sos-txt').textContent = so.status === 'acked'
         ? '🧡 ' + (so.acked_name || 'Someone') + ' is on their way to ' + so.name
-        : (mineSos ? '🆘 Your SOS is out — the family has been told' + (so.escalated ? ', and told again' : '')
-                   : '🆘 ' + so.name + ' needs help' + (so.escalated ? ' — STILL nobody has answered' : '')
+        : (mineSos ? '🆘 Your SOS is out - the family has been told' + (so.escalated ? ', and told again' : '')
+                   : '🆘 ' + so.name + ' needs help' + (so.escalated ? ' - STILL nobody has answered' : '')
                      + ' · ' + agoLine(so.created_at));
       $('sos-call').href = so.phone ? 'tel:' + encodeURIComponent(so.phone) : '#';
       $('sos-call').hidden = mineSos || !so.phone;
@@ -2386,21 +2386,21 @@ details.more[open]>summary::before{content:"▾ "}
       mh += '<span class="member" data-mprof="' + m.id + '" role="button" tabindex="0">' + esc(m.name) + ' <em>· ' + esc(relLabel(m).toLowerCase()) + '</em>' +
             (m.phone ? ' <a class="callbtn" href="tel:' + encodeURIComponent(m.phone) + '" aria-label="Call ' + esc(m.name) + '">📞</a>' : '') + '</span>';
       // My own member row is the source of truth for the number and place
-      // shown on my profile — covers accounts created before phone sign-in.
+      // shown on my profile - covers accounts created before phone sign-in.
       if (m.id === state.memberId) {
         if (m.phone) $('p-phone').textContent = m.phone;
-        $('p-city').textContent = placeLine(m) || '—';
+        $('p-city').textContent = placeLine(m) || '-';
         $('p-role').textContent = relLabel(m) + (m.role === 'parent' ? ' (senior mode)' : '') + ' · admin';
       }
     });
     $('members').innerHTML = mh;
-    $('w-fam').textContent = data.members.length + ' in the circle — ' +
+    $('w-fam').textContent = data.members.length + ' in the circle - ' +
       data.members.map(function(m){ return m.name.split(' ')[0]; }).slice(0, 4).join(', ') +
       (data.members.length > 4 ? '…' : '');
 
     // full feed (Chat tab)
     var fh = '';
-    if (!data.events.length) fh = '<div class="ev">Nothing yet — the first check-in will appear here.</div>';
+    if (!data.events.length) fh = '<div class="ev">Nothing yet - the first check-in will appear here.</div>';
     data.events.forEach(function(e){
       var l = evLine(e);
       fh += '<div class="ev ' + l.cls + '">' + esc(l.text) + '<small>' + esc(fmtTime(e.created_at)) + '</small></div>';
@@ -2414,9 +2414,9 @@ details.more[open]>summary::before{content:"▾ "}
       if (e.type === 'sos') sos = true;
       if (e.type === 'checkin' && e.member_name && ins.indexOf(e.member_name) < 0) ins.push(e.member_name);
     });
-    $('hero-status').textContent = sos ? '🆘 SOS today — see Family activity and call now'
+    $('hero-status').textContent = sos ? '🆘 SOS today - see Family activity and call now'
       : ins.length ? '✅ ' + ins.join(' & ') + ' checked in today'
-      : '🕊 No check-ins yet today — say good morning in chat';
+      : '🕊 No check-ins yet today - say good morning in chat';
 
     notifsCache = data.events;
     renderNotifs();
@@ -2459,7 +2459,7 @@ details.more[open]>summary::before{content:"▾ "}
       var l = evLine(e);
       h += '<div class="nrow' + (un ? ' unread' : '') + '" data-notif="' + i + '"><span class="nic" aria-hidden="true">' + notifIcon(e) + '</span><span style="flex:1">' + esc(l.text) + '<small>' + esc(fmtTime(e.created_at)) + '</small></span></div>';
     });
-    $('nlist').innerHTML = h || '<div class="ev">All quiet — nothing yet.</div>';
+    $('nlist').innerHTML = h || '<div class="ev">All quiet - nothing yet.</div>';
     [$('bell-dot'), $('nb-dot2')].forEach(function(d){
       if (!d) return;
       if (unread > 0) { d.textContent = unread > 9 ? '9+' : unread; d.hidden = false; }
@@ -2553,7 +2553,7 @@ details.more[open]>summary::before{content:"▾ "}
   }
 
   // ---------- chats: default family chat + groups + personal ----------
-  function chatTitle(c){ return c.kind === 'circle' ? 'Everyone — family chat' : c.name; }
+  function chatTitle(c){ return c.kind === 'circle' ? 'Everyone - family chat' : c.name; }
   function refreshChats(cb){
     if (!state) return;
     apiGet(API.chats + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
@@ -2573,7 +2573,7 @@ details.more[open]>summary::before{content:"▾ "}
     var h = '';
     chatsCache.forEach(function(c){
       var icon = c.kind === 'circle' ? '🧡' : (c.kind === 'dm' ? '👤' : '👥');
-      var prev = c.last ? (c.last.name + ': ' + c.last.text).slice(0, 70) : 'No messages yet — say hello';
+      var prev = c.last ? (c.last.name + ': ' + c.last.text).slice(0, 70) : 'No messages yet - say hello';
       h += '<button class="chatrow" data-open="' + c.id + '"><span class="cic" aria-hidden="true">' + icon +
            '</span><span class="txt"><b>' + esc(chatTitle(c)) + '</b><small>' + esc(prev) + '</small></span></button>';
     });
@@ -2587,8 +2587,8 @@ details.more[open]>summary::before{content:"▾ "}
     $('chatlist').hidden = true;
     $('chatview').hidden = false;
     $('cv-name').textContent = chatTitle(c);
-    $('cv-sub').textContent = c.kind === 'dm' ? 'Personal chat — mention Ekta to bring her in'
-      : 'Whole ' + (c.kind === 'circle' ? 'circle' : 'group') + ' — mention Ekta and she joins in';
+    $('cv-sub').textContent = c.kind === 'dm' ? 'Personal chat - mention Ekta to bring her in'
+      : 'Whole ' + (c.kind === 'circle' ? 'circle' : 'group') + ' - mention Ekta and she joins in';
     var call = $('cv-call');
     if (c.kind === 'dm' && c.otherPhone) { call.href = 'tel:' + encodeURIComponent(c.otherPhone); call.hidden = false; }
     else call.hidden = true;
@@ -2638,7 +2638,7 @@ details.more[open]>summary::before{content:"▾ "}
 
   function renderForSelect(members){
     membersCache = members;
-    // Opening the app straight on #vault — a bookmark, or a tap on a push —
+    // Opening the app straight on #vault - a bookmark, or a tap on a push -
     // used to build the vault's "whose document" list before anyone was known,
     // leaving it empty and every save refused with "Say whose document this
     // is". The family list is filled in again the moment it exists.
@@ -2656,7 +2656,7 @@ details.more[open]>summary::before{content:"▾ "}
     sel.innerHTML = h; if (cur) sel.value = cur;
     dm.innerHTML = dh;
     $('t-vs').innerHTML = '<option value="">Challenge…</option>' + dh.split('</option>').slice(1).join('</option>');
-    $('g-mem').innerHTML = gm || '<span class="hint">Invite more family first — a group needs people.</span>';
+    $('g-mem').innerHTML = gm || '<span class="hint">Invite more family first - a group needs people.</span>';
   }
 
   function carePost(body, after){
@@ -2664,7 +2664,7 @@ details.more[open]>summary::before{content:"▾ "}
     post(API.care, body).then(function(j){
       if (j.ok) { refresh(); if (after) after(j); }
       else toast(j.error || 'Could not do that');
-    }).catch(function(){ toast('No connection — try again'); });
+    }).catch(function(){ toast('No connection - try again'); });
   }
 
   function reminderRow(r){
@@ -2706,7 +2706,7 @@ details.more[open]>summary::before{content:"▾ "}
         if (!j.ok) { toast(j.error || 'Could not add it'); return; }
         toast('Added to things to do ✅');
         refresh();
-      }).catch(function(){ b.disabled = false; toast('No connection — try again'); });
+      }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
   });
 
   function renderCare(data){
@@ -2743,7 +2743,7 @@ details.more[open]>summary::before{content:"▾ "}
       if (q.due_date) sub += ' · ' + (overdue ? '<em style="color:var(--sindoor);font-style:normal">overdue</em>' : 'by ' + String(q.due_date).slice(0,10));
       qh += '<div class="crow' + (overdue ? ' urgent' : '') + '"><span class="txt">' + esc(q.title) + '<small>' + sub + '</small></span>' + right + '</div>';
     });
-    // Jobs nobody owns belong in the SAME list as reminders — a family does
+    // Jobs nobody owns belong in the SAME list as reminders - a family does
     // not think in two categories, it thinks about what is left to do.
     if (qh) rh = (rh || '') + '<div class="gtitle">Anyone can pick these up</div>' + qh;
     $('rlist').innerHTML = rh || '<div class="ev">Nothing to do right now 🧡</div>';
@@ -2756,7 +2756,7 @@ details.more[open]>summary::before{content:"▾ "}
              (x.urgent ? '⚠️ ' : '💡 ') + esc(x.title) +
              '<small>' + esc(x.why) + (x.forName ? ' · ' + esc(x.forName) : '') + '</small></span>' +
              '<button class="cbtn" data-sadd="' + esc(x.key) + '">Add it</button></div>';
-    }).join('') : '<div class="ev">Nothing to suggest — the family is in good shape 🧡</div>';
+    }).join('') : '<div class="ev">Nothing to suggest - the family is in good shape 🧡</div>';
     suggCache = sg;
     var sdot = $('sugg-dot'), urg = sg.filter(function(x){ return x.urgent; }).length;
     if (urg) { sdot.textContent = urg; sdot.hidden = false; } else sdot.hidden = true;
@@ -2780,7 +2780,7 @@ details.more[open]>summary::before{content:"▾ "}
     if (b.dataset.racc)  carePost({ action:'reminder_respond', reminderId:b.dataset.racc, accept:true }, function(){ toast('Reminder accepted 🧡'); });
     if (b.dataset.rdec)  carePost({ action:'reminder_respond', reminderId:b.dataset.rdec, accept:false });
     if (b.dataset.rdone) carePost({ action:'reminder_done', reminderId:b.dataset.rdone });
-    if (b.dataset.qclaim) carePost({ action:'request_claim', requestId:b.dataset.qclaim }, function(){ toast('Thank you — the circle knows you’re on it'); });
+    if (b.dataset.qclaim) carePost({ action:'request_claim', requestId:b.dataset.qclaim }, function(){ toast('Thank you - the circle knows you’re on it'); });
     if (b.dataset.qdone)  carePost({ action:'request_done', requestId:b.dataset.qdone });
     if (b.dataset.open)   openChat(b.dataset.open);
     if (b.dataset.goto)   { switchTab(b.dataset.goto); if (b.dataset.sec) setSec(b.dataset.goto, b.dataset.sec); }
@@ -2791,7 +2791,7 @@ details.more[open]>summary::before{content:"▾ "}
     if (b.dataset.chip)   { $('msg').value = b.dataset.chip; ektaSend(); }
   });
 
-  // "My Groups" — every circle this signed-in person belongs to, switchable.
+  // "My Groups" - every circle this signed-in person belongs to, switchable.
   // What is waiting in a circle, in the order a family would care about it.
   function circleIcon(c){ return c.kind === 'group' ? '👥' : '👨‍👩‍👧‍👦'; }
   function circleSignals(c){
@@ -2822,7 +2822,7 @@ details.more[open]>summary::before{content:"▾ "}
     $('d-groups-wrap').hidden = !cs.length;
     if (state && $('others')) renderOthers();
   }
-  // The other families' signals refresh about once a minute — often enough to
+  // The other families' signals refresh about once a minute - often enough to
   // notice, rarely enough not to cost a request every poll.
   var groupTick = 0;
   function refreshGroups(){
@@ -2832,7 +2832,7 @@ details.more[open]>summary::before{content:"▾ "}
       .then(function(j){
         if (!j.ok || !j.exists || !Array.isArray(j.circles)) return;
         // A background refresh must never empty My Groups under someone who
-        // is plainly sitting inside a circle right now — show stale over none.
+        // is plainly sitting inside a circle right now - show stale over none.
         if (state && !j.circles.some(function(c){ return c.code === state.code; })) return;
         saveGroups(j.circles);
       })
@@ -2877,9 +2877,9 @@ details.more[open]>summary::before{content:"▾ "}
         .catch(function(){});
     }
     $('p-name').textContent = state.name;
-    $('p-phone').textContent = (authUser && authUser.phone) || '—';
+    $('p-phone').textContent = (authUser && authUser.phone) || '-';
     $('p-role').textContent = state.role === 'parent' ? 'Parent (senior mode)' : 'Family';
-    $('p-senior').textContent = state.role === 'parent' ? 'On — bigger text and buttons' : 'Off — anyone can turn it on in Edit profile';
+    $('p-senior').textContent = state.role === 'parent' ? 'On - bigger text and buttons' : 'Off - anyone can turn it on in Edit profile';
     try {
       var td = new Date().toISOString().slice(0, 10);
       $('r-date').min = td; $('p-date').min = td;
@@ -2916,9 +2916,9 @@ details.more[open]>summary::before{content:"▾ "}
     post(API.events, { code: state.code, memberId: state.memberId, type: type, text: text || '' })
       .then(function(j){
         if (j.ok) { refresh(); if (after) after(); }
-        else toast(j.error || 'Could not send — try again');
+        else toast(j.error || 'Could not send - try again');
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   }
 
   // ---------- phone-first sign in / sign up ----------
@@ -2942,11 +2942,11 @@ details.more[open]>summary::before{content:"▾ "}
   // These five cards say what the app is FOR before asking for anything.
   var TOUR = [
     { t:'Parwah is where your family knows',
-      b:'WhatsApp is where your family talks — and where the doctor\u2019s number, the medicine list and the policy number all scroll away. Parwah keeps them, for everyone, in one place.' },
+      b:'WhatsApp is where your family talks - and where the doctor\u2019s number, the medicine list and the policy number all scroll away. Parwah keeps them, for everyone, in one place.' },
     { t:'Ready before the emergency, not during it',
-      b:'Blood group, allergies, medicines, doctor, insurance — recorded per person and checked for freshness, so nothing is trusted blindly. The emergency card puts it all on one screen, and works with no internet.' },
+      b:'Blood group, allergies, medicines, doctor, insurance - recorded per person and checked for freshness, so nothing is trusted blindly. The emergency card puts it all on one screen, and works with no internet.' },
     { t:'Papers and money, with a permission on each',
-      b:'Aadhaar, PAN, passport, licence, health and birth records live in the vault. Only the person they belong to decides who can open them — and every open is recorded.' },
+      b:'Aadhaar, PAN, passport, licence, health and birth records live in the vault. Only the person they belong to decides who can open them - and every open is recorded.' },
     { t:'The everyday, shared out',
       b:'Check-ins, reminders, plans and calls, a shared drawing board and games. Small things that keep a family in touch without anyone having to nag.' },
     { t:'Ekta, who actually knows your family',
@@ -3021,7 +3021,7 @@ details.more[open]>summary::before{content:"▾ "}
     state = { code: c.code, circleName: c.circleName, memberId: c.memberId, name: c.memberName || (authUser && authUser.name) || '', role: c.role };
     saveState(state);
     enterMain();
-    toast('Signed in — welcome back, ' + state.name + ' 🧡');
+    toast('Signed in - welcome back, ' + state.name + ' 🧡');
   }
   function routeAfterAuth(circles, toured){
     $('ob-err').textContent = '';
@@ -3035,14 +3035,14 @@ details.more[open]>summary::before{content:"▾ "}
       return;
     }
     // The very first time a person signs in, explain what this is before
-    // asking them to build anything. Once per person, ever — the flag lives
+    // asking them to build anything. Once per person, ever - the flag lives
     // on their profile, not on this device.
     if (toured === false) { showTour(); return; }
     routeCircles(circles);
   }
   function routeCircles(circles){
     // Signing in always lands on the list of families and groups this number
-    // belongs to — never straight into one of them, even when there is only
+    // belongs to - never straight into one of them, even when there is only
     // one, so the person can always see and choose where they are going.
     if (circles && circles.length) {
       $('cs-hello').textContent = 'Welcome back, ' + authUser.name + '! 🧡';
@@ -3051,7 +3051,7 @@ details.more[open]>summary::before{content:"▾ "}
       var bits = [];
       if (nf) bits.push(nf + (nf === 1 ? ' family' : ' families'));
       if (ng) bits.push(ng + (ng === 1 ? ' group' : ' groups'));
-      $('cs-sub').textContent = 'You are in ' + bits.join(' and ') + ' — tap any one to open it.';
+      $('cs-sub').textContent = 'You are in ' + bits.join(' and ') + ' - tap any one to open it.';
       var h = '';
       // Sorted so the circle that needs you most is the one you see first.
       var order = circles.map(function(c, i){ return { c: c, i: i }; });
@@ -3252,9 +3252,9 @@ details.more[open]>summary::before{content:"▾ "}
         saveState(state);
         upsertGroup({ code:j.code, circleName:j.circleName, kind:j.kind || newKind, memberId:j.memberId, role:j.role, memberName:name });
         enterMain();
-        toast('Circle created — share code ' + j.code + ' with family');
+        toast('Circle created - share code ' + j.code + ' with family');
       })
-      .catch(function(){ $('c-go').disabled = false; $('ob-err').textContent = 'No connection — try again.'; });
+      .catch(function(){ $('c-go').disabled = false; $('ob-err').textContent = 'No connection - try again.'; });
   });
 
   $('j-go').addEventListener('click', function(){
@@ -3277,7 +3277,7 @@ details.more[open]>summary::before{content:"▾ "}
         enterMain();
         toast('Welcome to ' + j.circleName);
       })
-      .catch(function(){ $('j-go').disabled = false; $('ob-err').textContent = 'No connection — try again.'; });
+      .catch(function(){ $('j-go').disabled = false; $('ob-err').textContent = 'No connection - try again.'; });
   });
 
   $('pend-back').addEventListener('click', function(){ showStep('setup'); });
@@ -3293,9 +3293,9 @@ details.more[open]>summary::before{content:"▾ "}
           saveGroups(j.circles || []);
           if ((j.circles || []).length) { pendingJoin = null; routeAfterAuth(j.circles, j.toured); return; }
         }
-        toast('Not yet — the family has not answered');
+        toast('Not yet - the family has not answered');
       })
-      .catch(function(){ btn.disabled = false; toast('No connection — try again'); });
+      .catch(function(){ btn.disabled = false; toast('No connection - try again'); });
   });
 
   // ---------- people waiting to join ----------
@@ -3322,7 +3322,7 @@ details.more[open]>summary::before{content:"▾ "}
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
         toast(okMsg); refresh();
-      }).catch(function(){ toast('No connection — try again'); });
+      }).catch(function(){ toast('No connection - try again'); });
   }
   $('joinreqs').addEventListener('click', function(e){
     var b = e.target.closest('button'); if (!b) return;
@@ -3335,7 +3335,7 @@ details.more[open]>summary::before{content:"▾ "}
   });
   $('jp-toggle').addEventListener('click', function(){
     var next = joinPolicy === 'open' ? 'approve' : 'open';
-    if (next === 'open' && !confirm('Anyone who has the code — or guesses it — will join with no questions asked. The family vault stays permissioned, but they will be inside the circle. Are you sure?')) return;
+    if (next === 'open' && !confirm('Anyone who has the code - or guesses it - will join with no questions asked. The family vault stays permissioned, but they will be inside the circle. Are you sure?')) return;
     joinAct({ action:'set_join_policy', policy: next }, next === 'open' ? 'The code is now enough' : 'Joining needs a yes from the family');
   });
 
@@ -3353,7 +3353,7 @@ details.more[open]>summary::before{content:"▾ "}
       h += '<div class="purow' + (a && a.call ? ' wantcall' : '') + '">' +
            '<span class="pe" aria-hidden="true">' + (a ? a.emoji : '·') + '</span>' +
            '<span><b>' + esc(m.name) + '</b><small>' +
-           (a ? esc(a.text) + (a.note ? ' — ' + esc(a.note) : '')
+           (a ? esc(a.text) + (a.note ? ' - ' + esc(a.note) : '')
               : 'Has not said yet today') + '</small></span>' +
            (a && a.call && m.id !== state.memberId && m.phone
               ? '<a class="cbtn" style="margin-left:auto" href="tel:' + encodeURIComponent(m.phone) + '">📞 Call</a>' : '') +
@@ -3367,7 +3367,7 @@ details.more[open]>summary::before{content:"▾ "}
     }).join('');
     $('pu-mine').textContent = mine
       ? 'You said ' + mine.text + ' today. Tap another if the day has turned.'
-      : 'Today\u2019s question changes tomorrow — ' + p.styleName.toLowerCase() + ' today.';
+      : 'Today\u2019s question changes tomorrow - ' + p.styleName.toLowerCase() + ' today.';
   }
   $('pu-pick').addEventListener('click', function(e){
     var b = e.target.closest('[data-pulse]'); if (!b || !state) return;
@@ -3375,7 +3375,7 @@ details.more[open]>summary::before{content:"▾ "}
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not save that'); return; }
         toast('The family can see how you are 🧡'); refresh();
-      }).catch(function(){ toast('No connection — try again'); });
+      }).catch(function(){ toast('No connection - try again'); });
   });
 
   // ---------- Screen 1: the family, as people rather than features ----------
@@ -3405,7 +3405,7 @@ details.more[open]>summary::before{content:"▾ "}
     $('pp-sub').textContent = [m && m.relation ? relLabel(m) : null, m && m.place ? 'Lives in ' + m.place : null]
       .filter(Boolean).join(' · ') || 'In your circle';
     $('pp-ready').textContent = pp
-      ? (pp.attention ? pp.pct + '% ready — ' + pp.attention + ' thing' + (pp.attention > 1 ? 's' : '') + ' to complete'
+      ? (pp.attention ? pp.pct + '% ready - ' + pp.attention + ' thing' + (pp.attention > 1 ? 's' : '') + ' to complete'
                       : 'Everything important is recorded 🧡')
       : '';
     var mine = (bookCache || []).filter(function(e){ return e.about_member === id; });
@@ -3421,7 +3421,7 @@ details.more[open]>summary::before{content:"▾ "}
     // Health: blood group, allergies, medicines with what each is for.
     fill('pp-health', mine.filter(function(e){
       return e.kind === 'med' || (e.kind === 'fact' && (e.category === 'blood' || e.category === 'allergy'));
-    }).map(function(e){ return row(e); }), 'Nothing recorded yet — blood group and allergies matter most.');
+    }).map(function(e){ return row(e); }), 'Nothing recorded yet - blood group and allergies matter most.');
     // Records: what the vault holds about them, never the documents themselves.
     var recs = recordsCache.filter(function(r){ return r.about_member === id; });
     fill('pp-records', recs.map(function(r){
@@ -3434,19 +3434,19 @@ details.more[open]>summary::before{content:"▾ "}
     fill('pp-call', mine.filter(function(e){
       return e.kind === 'contact' && ['doctor','emergency','local'].indexOf(e.category) >= 0;
     }).map(function(e){ return row(e, (CAT_LABEL[e.category] || '') + (e.phone ? ' · ' + e.phone : '')); }),
-      'Nobody recorded — a doctor and someone near them are the two that matter.');
+      'Nobody recorded - a doctor and someone near them are the two that matter.');
     // Useful to know: everything else the family repeatedly asks for.
     fill('pp-useful', mine.filter(function(e){
       return e.kind === 'address' || e.kind === 'insurance' ||
              (e.kind === 'fact' && e.category !== 'blood' && e.category !== 'allergy') ||
              (e.kind === 'contact' && ['doctor','emergency','local'].indexOf(e.category) < 0);
-    }).map(function(e){ return row(e); }), 'Nothing yet — the hospital they prefer, their chemist, anything the family keeps asking you.');
+    }).map(function(e){ return row(e); }), 'Nothing yet - the hospital they prefer, their chemist, anything the family keeps asking you.');
     // Freshness: nothing is assumed current.
     var fresh = mine.filter(function(e){ return FRESH_KINDS[e.kind]; })
       .sort(function(a, b){ return new Date(a.last_verified_at) - new Date(b.last_verified_at); });
     fill('pp-fresh', fresh.map(function(e){
       return '<div class="ev">' + (entryStale(e) ? '🟡' : '✅') + ' <b>' + esc(e.name) + '</b><small>' +
-             'Last checked ' + agoLine(e.last_verified_at) + (entryStale(e) ? ' — review due' : '') + '</small></div>';
+             'Last checked ' + agoLine(e.last_verified_at) + (entryStale(e) ? ' - review due' : '') + '</small></div>';
     }), 'Nothing that needs checking yet.');
     switchTab('person');
   }
@@ -3468,7 +3468,7 @@ details.more[open]>summary::before{content:"▾ "}
     $('rd-fill').style.width = f.pct + '%';
     $('rd-gaps').innerHTML = (f.gaps || []).slice(0, 4).map(function(g){
       return '<div class="rdgap">' + (g.state === 'missing' ? '⚠️' : '🟡') +
-             ' <span><b>' + esc(g.name) + '</b> — <em>' + esc(g.label) +
+             ' <span><b>' + esc(g.name) + '</b> - <em>' + esc(g.label) +
              (g.state === 'missing' ? ' missing' : ' needs a re-check') + '</em></span></div>';
     }).join('');
     $('rd-cta').textContent = f.gapCount
@@ -3487,7 +3487,7 @@ details.more[open]>summary::before{content:"▾ "}
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
         toast(type === 'sos_ack' ? 'The family knows you are on it 🧡' : 'Marked as sorted ✅');
         refresh();
-      }).catch(function(){ toast('No connection — try again'); });
+      }).catch(function(){ toast('No connection - try again'); });
   }
   $('sos-ack').addEventListener('click', function(){ sosPost('sos_ack'); });
   $('sos-done').addEventListener('click', function(){
@@ -3499,13 +3499,13 @@ details.more[open]>summary::before{content:"▾ "}
   // introduction, then marks the profile so it never runs again anywhere.
   var CM = [
     { sel:'#tabs button[data-tab="home"]', t:'Today',
-      b:'Everything happening right now: who has checked in, what is planned, what needs you — across every family you are in.' },
+      b:'Everything happening right now: who has checked in, what is planned, what needs you - across every family you are in.' },
     { sel:'#tabs button[data-tab="people"]', t:'People',
-      b:'Everyone you look after, and how prepared the family is for each of them. Not a health score — a check that the important things are written down.' },
+      b:'Everyone you look after, and how prepared the family is for each of them. Not a health score - a check that the important things are written down.' },
     { sel:'#tabs button[data-tab="memory"]', t:'Family memory',
       b:'Doctors, medicines, addresses, blood groups, policies. Each entry says when it was last checked, so nothing old is trusted by mistake.' },
     { sel:'#btn-ecard', t:'The emergency card',
-      b:'One screen with everything a doctor would ask for. It works with no internet — because the moment it matters is the moment the signal is worst.' },
+      b:'One screen with everything a doctor would ask for. It works with no internet - because the moment it matters is the moment the signal is worst.' },
     { sel:'#tabs button[data-tab="care"]', t:'Care',
       b:'Reminders and help requests, shared out so no one person carries it all.' }
   ];
@@ -3564,7 +3564,7 @@ details.more[open]>summary::before{content:"▾ "}
 
   // ---------- getting started, and the families you are not looking at ----
   // The checklist is computed from what the family has actually done, never
-  // from a "seen it" flag — so it is honest, and it leaves when it is done.
+  // from a "seen it" flag - so it is honest, and it leaves when it is done.
   function frDone(){ try { return localStorage.getItem('parwah-fr-hide') === '1'; } catch (e) { return false; } }
   function renderFirstRun(){
     if (!state || frDone()) { $('firstrun').hidden = true; return; }
@@ -3574,19 +3574,19 @@ details.more[open]>summary::before{content:"▾ "}
         b:'Turn on alerts for this phone',
         s:'SOS, live calls and reminders reach you with Parwah closed', go:function(){ enablePush(); } },
       { k:'people', done: members > 1, b:'Invite someone to the circle',
-        s:'Parwah does nothing on your own — this is the whole point',
+        s:'Parwah does nothing on your own - this is the whole point',
         go:function(){ var b = document.querySelector('.invitebtn'); if (b) b.click(); } },
       { k:'memory', done: (bookCache || []).length > 0, b:'Put one thing in the family memory',
-        s:'A doctor\u2019s number, a medicine, a blood group — start anywhere', go:function(){ switchTab('memory'); } },
+        s:'A doctor\u2019s number, a medicine, a blood group - start anywhere', go:function(){ switchTab('memory'); } },
       { k:'prep',   done: (prepCache || []).some(function(p){ return p.pct >= 50; }),
         b:'Get one person half-prepared', s:'Blood group, allergies, doctor, medicines', go:function(){ switchTab('people'); } },
       { k:'vault',  done: vDocs.length > 0, b:'Put one document in the vault',
-        s:'An Aadhaar or a passport — only you can open it until you share it', go:function(){ switchTab('vault'); setSec('vault','docs'); } }
+        s:'An Aadhaar or a passport - only you can open it until you share it', go:function(){ switchTab('vault'); setSec('vault','docs'); } }
     ];
     var n = steps.filter(function(x){ return x.done; }).length;
     if (n === steps.length) { $('firstrun').hidden = true; return; }
     $('firstrun').hidden = false;
-    $('fr-sub').textContent = n + ' of ' + steps.length + ' done — each one makes the next emergency easier';
+    $('fr-sub').textContent = n + ' of ' + steps.length + ' done - each one makes the next emergency easier';
     $('fr-fill').style.width = Math.round(n / steps.length * 100) + '%';
     $('fr-steps').innerHTML = steps.map(function(x, i){
       return '<button class="frstep' + (x.done ? ' done' : '') + '" data-fr="' + i + '">' +
@@ -3638,7 +3638,7 @@ details.more[open]>summary::before{content:"▾ "}
       .catch(function(){});
   }
   function money(p){
-    // Indian grouping is 2,499 and 2,49,900 — not the 3-digit western one,
+    // Indian grouping is 2,499 and 2,49,900 - not the 3-digit western one,
     // and not the hand-rolled 2-digit one that turned 2499 into "24,99".
     if (p.currency === 'USD') return p.symbol + p.amount.toFixed(2);
     var n;
@@ -3650,7 +3650,7 @@ details.more[open]>summary::before{content:"▾ "}
     if (!planData) return;
     var j = planData, cur = planCur;
     $('pl-sub').textContent = j.anyAbroad
-      ? 'Your family lives in more than one country, so the price is shown both ways — ₹1 = about ' + (1 / j.rate).toFixed(3) + ' USD at a fixed ₹' + j.rate + '.'
+      ? 'Your family lives in more than one country, so the price is shown both ways - ₹1 = about ' + (1 / j.rate).toFixed(3) + ' USD at a fixed ₹' + j.rate + '.'
       : 'One price for the whole family, however many of you there are.';
     $('pl-cur').querySelectorAll('button').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-cur') === cur);
@@ -3666,7 +3666,7 @@ details.more[open]>summary::before{content:"▾ "}
            '<p class="hint" style="margin:6px 0 8px">' + esc(pl.tagline) + '</p>' +
            '<div class="feed">' + pl.includes.map(function(x){
              return '<div class="ev" style="box-shadow:none">✓ ' + esc(x) + '</div>'; }).join('') + '</div>' +
-           (id === 'care' ? '<button class="go" data-reserve="care" style="margin-top:10px">Reserve our family\u2019s place — ' + money(pr) + '</button>' : '') +
+           (id === 'care' ? '<button class="go" data-reserve="care" style="margin-top:10px">Reserve our family\u2019s place - ' + money(pr) + '</button>' : '') +
            '</div>';
     });
     $('pl-plans').innerHTML = h;
@@ -3693,14 +3693,14 @@ details.more[open]>summary::before{content:"▾ "}
       .then(function(j){
         b.disabled = false;
         if (!j.ok) { toast(j.error || 'Could not reserve'); return; }
-        toast('Reserved — nothing charged 💛');
+        toast('Reserved - nothing charged 💛');
         refreshPlan();
-      }).catch(function(){ b.disabled = false; toast('No connection — try again'); });
+      }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
   });
   $('pl-cancel').addEventListener('click', function(){
     post(API.plan, { code: state.code, memberId: state.memberId, action: 'cancel' })
       .then(function(){ toast('Reservation withdrawn'); refreshPlan(); })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
 
   // ---------- family coins: earned by caring, spent on Ekta ----------
@@ -3717,8 +3717,8 @@ details.more[open]>summary::before{content:"▾ "}
     $('coin-bal').textContent = j.balance;
     $('coin-bal2').textContent = j.balance;
     $('coin-sub').textContent = j.balance < 10
-      ? 'Running low — check in or keep the family memory current to earn more'
-      : 'Earned by looking after each other — spent on Ekta';
+      ? 'Running low - check in or keep the family memory current to earn more'
+      : 'Earned by looking after each other - spent on Ekta';
     $('coin-mine').textContent = j.mine ? 'You have earned ' + j.mine + ' of them.' : 'You have not earned any yet.';
     $('coin-top').innerHTML = (j.top || []).length
       ? '<p class="eyebrow">Who is keeping things going</p>' + j.top.map(function(t){
@@ -3729,7 +3729,7 @@ details.more[open]>summary::before{content:"▾ "}
       return '<div class="ev">' + esc(earn[k].label) + '<small>+' + earn[k].n + ' 🪙</small></div>';
     }).join('');
     $('coin-log').innerHTML = (j.ledger || []).length ? j.ledger.map(function(l){
-      var lbl = (earn[l.reason] && earn[l.reason].label) || (l.reason === 'ekta' ? 'Asked Ekta' : l.reason === 'refund' ? 'Refunded — Ekta could not answer' : l.reason);
+      var lbl = (earn[l.reason] && earn[l.reason].label) || (l.reason === 'ekta' ? 'Asked Ekta' : l.reason === 'refund' ? 'Refunded - Ekta could not answer' : l.reason);
       return '<div class="ev">' + (l.delta > 0 ? '＋' : '−') + Math.abs(l.delta) + ' 🪙 · ' + esc(lbl) +
              '<small>' + esc(l.name || 'The family') + ' · ' + fmtTime(l.created_at) + '</small></div>';
     }).join('') : '<div class="ev">Nothing yet.</div>';
@@ -3738,10 +3738,10 @@ details.more[open]>summary::before{content:"▾ "}
 
   // ---------- invite (native share) ----------
   function inviteText(){
-    return 'I just made a private circle for our family on Parwah — ' + state.circleName + '.\n\n' +
-      'One tap of “All is well ✅” each morning and everyone relaxes. An SOS that reaches all of us in seconds. Our own little feed — no groups full of strangers, no forwards. Just us, looking out for each other.\n\n' +
+    return 'I just made a private circle for our family on Parwah - ' + state.circleName + '.\n\n' +
+      'One tap of “All is well ✅” each morning and everyone relaxes. An SOS that reaches all of us in seconds. Our own little feed - no groups full of strangers, no forwards. Just us, looking out for each other.\n\n' +
       'They took care of us. Our turn now. 🧡\n\n' +
-      'Join in 1 minute — open the link and use our circle code ' + state.code + ':';
+      'Join in 1 minute - open the link and use our circle code ' + state.code + ':';
   }
   function inviteUrl(){
     return 'https://parwah-hq.anchit-tandon.com/app/?join=' + encodeURIComponent(state.code);
@@ -3753,7 +3753,7 @@ details.more[open]>summary::before{content:"▾ "}
         navigator.share({ title: 'Join our family circle on Parwah', text: text, url: url }).catch(function(){});
       } else if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text + '\n' + url)
-          .then(function(){ toast('Invite copied — paste it in WhatsApp'); })
+          .then(function(){ toast('Invite copied - paste it in WhatsApp'); })
           .catch(function(){ window.open('https://wa.me/?text=' + encodeURIComponent(text + '\n' + url)); });
       } else {
         window.open('https://wa.me/?text=' + encodeURIComponent(text + '\n' + url));
@@ -3776,7 +3776,7 @@ details.more[open]>summary::before{content:"▾ "}
   });
   $('btn-sos').addEventListener('click', function(){
     if (!confirm('Send SOS to the whole circle?')) return;
-    sendEvent('sos', '', function(){ toast('SOS sent — the circle has been told'); });
+    sendEvent('sos', '', function(){ toast('SOS sent - the circle has been told'); });
   });
 
   // ---------- add reminder / request ----------
@@ -3806,13 +3806,13 @@ details.more[open]>summary::before{content:"▾ "}
                forMemberId: who || undefined,
                recurrence: repeatMode },
       function(j){ clear();
-        toast(j.status === 'pending' ? 'Sent — they’ll be asked to accept it' : 'Added 🧡'); });
+        toast(j.status === 'pending' ? 'Sent - they’ll be asked to accept it' : 'Added 🧡'); });
   });
   // The hint has to say which of the two is about to happen.
   function todoHint(){
     var who = $('r-for').value;
     $('r-hint').textContent = who === 'any'
-      ? 'Nobody is assigned — the first person to tap "I\u2019m on it" takes it.'
+      ? 'Nobody is assigned - the first person to tap "I\u2019m on it" takes it.'
       : (who ? 'It only starts once they accept it.' : 'A reminder for you, starting straight away.');
   }
   $('r-for').addEventListener('change', todoHint);
@@ -3901,13 +3901,13 @@ details.more[open]>summary::before{content:"▾ "}
     list.forEach(function(e){
       var sub = e.kind === 'contact' ? ((CAT_LABEL[e.category] || '') + (e.phone ? ' · ' + esc(e.phone) : ''))
               : e.kind === 'address' ? esc(e.address || '')
-              : esc(e.forwhat || '—');
+              : esc(e.forwhat || '-');
       if (e.about_name) sub = '👤 ' + esc(e.about_name) + ' · ' + sub;
       var staleTag = entryStale(e) ? ' <em style="color:var(--sindoor);font-style:normal">🟡 check</em>' : '';
       h += '<div class="ev" data-bopen="' + e.id + '" role="button" tabindex="0" style="cursor:pointer">' +
            BK_ICON[e.kind] + ' <b>' + esc(e.name) + '</b>' + staleTag + '<small>' + sub + '</small></div>';
     });
-    $('blist').innerHTML = h || '<div class="ev">' + (qy || bkFilter !== 'all' ? 'Nothing matches — try All or clear the search.' : 'Nothing saved yet — add the family\'s first entry below 📒') + '</div>';
+    $('blist').innerHTML = h || '<div class="ev">' + (qy || bkFilter !== 'all' ? 'Nothing matches - try All or clear the search.' : 'Nothing saved yet - add the family\'s first entry below 📒') + '</div>';
     var nC = bookCache.filter(function(e){ return e.kind === 'contact'; }).length;
     var nA = bookCache.filter(function(e){ return e.kind === 'address'; }).length;
     var nM = bookCache.filter(function(e){ return e.kind === 'med'; }).length;
@@ -3931,9 +3931,9 @@ details.more[open]>summary::before{content:"▾ "}
     $('bf-med').hidden = !(k === 'med' || k === 'fact' || k === 'insurance');
     $('bf-fact').hidden = k !== 'fact';
     $('b-for-l').textContent = k === 'med' ? 'For which problem' : k === 'fact' ? 'The detail' : 'Policy no / what it covers';
-    $('b-for').placeholder = k === 'med' ? 'e.g. BP — as the doctor said' : k === 'fact' ? 'e.g. B+ · allergic to penicillin' : 'e.g. Star Health 12345 · hospital cover';
+    $('b-for').placeholder = k === 'med' ? 'e.g. BP - as the doctor said' : k === 'fact' ? 'e.g. B+ · allergic to penicillin' : 'e.g. Star Health 12345 · hospital cover';
     $('b-name-l').textContent = k === 'med' ? 'Name of the dawai' : k === 'address' ? 'Place name' : k === 'fact' ? 'Fact name' : k === 'insurance' ? 'Policy / insurer' : 'Who / what';
-    $('b-name').placeholder = k === 'med' ? 'e.g. Amlopres 5' : k === 'address' ? "e.g. Dadi's house" : k === 'fact' ? 'e.g. Blood group' : k === 'insurance' ? 'e.g. Star Health family plan' : 'e.g. Ramesh — plumber';
+    $('b-name').placeholder = k === 'med' ? 'e.g. Amlopres 5' : k === 'address' ? "e.g. Dadi's house" : k === 'fact' ? 'e.g. Blood group' : k === 'insurance' ? 'e.g. Star Health family plan' : 'e.g. Ramesh - plumber';
   }
   $('b-kind').addEventListener('click', function(e){
     var b = e.target.closest('button'); if (b) setBKind(b.getAttribute('data-k'));
@@ -3970,7 +3970,7 @@ details.more[open]>summary::before{content:"▾ "}
         toast(bEditId ? 'Entry updated 📒' : 'Saved to the family memory 📒');
         clearBookForm(); refreshBook();
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
   function openBookDetail(id){
     var e = bookEntry(id); if (!e) return;
@@ -3985,14 +3985,14 @@ details.more[open]>summary::before{content:"▾ "}
     $('bd-about-row').hidden = !e.about_name;
     if (e.about_name) $('bd-about').textContent = e.about_name;
     var stale = entryStale(e);
-    $('bd-verified').textContent = agoLine(e.last_verified_at) + (stale ? ' — may be out of date 🟡' : ' ✅');
+    $('bd-verified').textContent = agoLine(e.last_verified_at) + (stale ? ' - may be out of date 🟡' : ' ✅');
     $('bd-verify').hidden = !FRESH_KINDS[e.kind];
     if (e.phone) { $('bd-call').href = 'tel:' + encodeURIComponent(e.phone); $('bd-call').hidden = false; } else $('bd-call').hidden = true;
     if (e.address) { $('bd-map').href = 'https://maps.google.com/?q=' + encodeURIComponent(e.address); $('bd-map').hidden = false; } else $('bd-map').hidden = true;
     renderBookConsent(e);
   }
 
-  // Consent belongs to the person a thing is ABOUT — not to whoever typed it,
+  // Consent belongs to the person a thing is ABOUT - not to whoever typed it,
   // and not to an admin, because a Parwah circle has none.
   function renderBookConsent(e){
     var subject = e.about_member ? e.about_member === state.memberId : e.by_member === state.memberId;
@@ -4003,8 +4003,8 @@ details.more[open]>summary::before{content:"▾ "}
     var shares = bookAccess.filter(function(a){ return a.entry_id === e.id; });
     $('bd-vis-state').textContent = priv
       ? (shares.length
-          ? 'Private — you, and ' + shares.map(function(a){ return a.name; }).join(', ')
-          : 'Private — only you')
+          ? 'Private - you, and ' + shares.map(function(a){ return a.name; }).join(', ')
+          : 'Private - only you')
       : 'Everyone in the circle can see this';
     $('bd-vis-toggle').textContent = priv ? '🔓 Share with the whole circle' : '🔒 Make this private';
     $('bd-share-wrap').hidden = !priv;
@@ -4031,7 +4031,7 @@ details.more[open]>summary::before{content:"▾ "}
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
         toast(okMsg);
         refreshBook();
-      }).catch(function(){ toast('No connection — try again'); });
+      }).catch(function(){ toast('No connection - try again'); });
   }
   $('bd-vis-toggle').addEventListener('click', function(){
     var e = bookEntry($('book-detail').dataset.bid); if (!e) return;
@@ -4089,7 +4089,7 @@ details.more[open]>summary::before{content:"▾ "}
         $('bd-verified').textContent = 'today ✅';
         refreshBook();
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
   $('bd-remove').addEventListener('click', function(){
     var e = bookEntry($('book-detail').dataset.bid); if (!e) return;
@@ -4099,13 +4099,13 @@ details.more[open]>summary::before{content:"▾ "}
         if (!j.ok) { toast(j.error || 'Could not remove'); return; }
         toast('Removed'); $('bd-back').click(); refreshBook();
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
 
   // ---------- Emergency card ----------
   // Everything a doctor, a neighbour or an ambulance needs about one person,
   // built from the family memory the circle already keeps. Cached locally so
-  // it opens in a hospital corridor with no signal — the moment it matters
+  // it opens in a hospital corridor with no signal - the moment it matters
   // most is the moment the network is worst.
   function ecSave(){
     try {
@@ -4158,7 +4158,7 @@ details.more[open]>summary::before{content:"▾ "}
 
     h += '<div class="ec-sec"><h4>Medicines &amp; what they are for</h4>';
     h += meds.length ? meds.map(function(e){
-      return '<div class="ec-row"><b>' + esc(e.name) + '</b><span>' + esc(e.forwhat || '—') +
+      return '<div class="ec-row"><b>' + esc(e.name) + '</b><span>' + esc(e.forwhat || '-') +
         (e.notes ? ' · ' + esc(e.notes) : '') +
         (entryStale(e) ? ' <i class="stale">· last checked ' + agoLine(e.last_verified_at) + '</i>' : '') + '</span></div>';
     }).join('') : '<div class="ec-row none"><b>Medicines</b><span>none recorded yet</span></div>';
@@ -4188,7 +4188,7 @@ details.more[open]>summary::before{content:"▾ "}
     $('ecard').hidden = false;
   }
   function ecardText(){
-    var t = $('ec-name').textContent + ' — emergency card (Parwah)\n';
+    var t = $('ec-name').textContent + ' - emergency card (Parwah)\n';
     $('ec-body').querySelectorAll('.ec-sec').forEach(function(sec){
       t += '\n' + sec.querySelector('h4').textContent.toUpperCase() + '\n';
       sec.querySelectorAll('.ec-row').forEach(function(r){
@@ -4215,13 +4215,13 @@ details.more[open]>summary::before{content:"▾ "}
   $('ecard').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });
   $('ec-copy').addEventListener('click', function(){
     var t = ecardText();
-    if (navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ toast('Copied — paste it anywhere 📋'); });
+    if (navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ toast('Copied - paste it anywhere 📋'); });
     else toast('Copy is not available on this device');
   });
   $('ec-share').addEventListener('click', function(){
     var t = ecardText();
-    if (navigator.share) navigator.share({ title: $('ec-name').textContent + ' — emergency card', text: t }).catch(function(){});
-    else if (navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ toast('Copied — paste into WhatsApp 📋'); });
+    if (navigator.share) navigator.share({ title: $('ec-name').textContent + ' - emergency card', text: t }).catch(function(){});
+    else if (navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ toast('Copied - paste into WhatsApp 📋'); });
     else toast('Sharing is not available on this device');
   });
   $('ec-print').addEventListener('click', function(){ window.print(); });
@@ -4240,9 +4240,9 @@ details.more[open]>summary::before{content:"▾ "}
           h += '<div class="kv"><b>' + K_LABEL[p] + '</b><span>' +
                (st.set ? '✅ set' + (st.src === 'env' ? ' (on the server)' : '') +
                  (st.src === 'vault' ? ' <button class="linkbtn" data-kclear="' + p + '">remove</button>' : '')
-                : '—') + '</span></div>';
+                : '-') + '</span></div>';
         });
-        $('klist').innerHTML = h + (any ? '' : '<p class="hint" style="margin:6px 0 10px">No key yet — Ekta cannot answer until one is added.</p>');
+        $('klist').innerHTML = h + (any ? '' : '<p class="hint" style="margin:6px 0 10px">No key yet - Ekta cannot answer until one is added.</p>');
       })
       .catch(function(){});
   }
@@ -4253,17 +4253,17 @@ details.more[open]>summary::before{content:"▾ "}
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not save the key'); return; }
         $('k-key').value = '';
-        toast('Saved — Ekta is awake 🧡');
+        toast('Saved - Ekta is awake 🧡');
         refreshKeys();
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
   $('klist').addEventListener('click', function(e){
     var b = e.target.closest('[data-kclear]'); if (!b) return;
     if (!confirm('Remove this key? Ekta will fall back to any other key that is set.')) return;
     post(API.keys, { code: state.code, memberId: state.memberId, action: 'clear', provider: b.getAttribute('data-kclear') })
       .then(function(j){ if (j.ok) { toast('Removed'); refreshKeys(); } else toast(j.error || 'Could not remove'); })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
 
   // ---------- device alerts (Web Push) ----------
@@ -4301,7 +4301,7 @@ details.more[open]>summary::before{content:"▾ "}
   function phoneCheck(cc, local){
     var d = String(local || '').replace(/[()\-\s.]/g, '');
     if (!d) return 'Please enter the mobile number';
-    if (!/^\d+$/.test(d)) return 'Digits only — the country code is picked separately';
+    if (!/^\d+$/.test(d)) return 'Digits only - the country code is picked separately';
     var r = CC_RULES[cc];
     if (!r) return d.length >= 6 && d.length <= 12 ? null : 'That number does not look right';
     if (d.length < r.min || d.length > r.max) {
@@ -4321,8 +4321,8 @@ details.more[open]>summary::before{content:"▾ "}
   function pushStatusLine(){
     if (!pushSupported()) { $('p-push').textContent = 'Not supported in this browser'; return; }
     $('p-push').textContent = Notification.permission === 'granted' ? 'On for this device 🧡'
-      : Notification.permission === 'denied' ? 'Blocked — allow notifications in browser settings'
-      : 'Off — turn on below';
+      : Notification.permission === 'denied' ? 'Blocked - allow notifications in browser settings'
+      : 'Off - turn on below';
   }
   function subscribePush(quiet){
     if (!pushSupported() || !state) return;
@@ -4335,10 +4335,10 @@ details.more[open]>summary::before{content:"▾ "}
       }).then(function(r2){
         if (r2 && r2.ok) { if (!quiet) toast('Device alerts on 🔔'); $('push-card').hidden = true; pushStatusLine(); }
       });
-    }).catch(function(){ if (!quiet) toast('Could not turn on alerts — try again'); });
+    }).catch(function(){ if (!quiet) toast('Could not turn on alerts - try again'); });
   }
   function enablePush(){
-    if (!pushSupported()) { toast('This browser cannot show device alerts — install the app from /get'); return; }
+    if (!pushSupported()) { toast('This browser cannot show device alerts - install the app from /get'); return; }
     Notification.requestPermission().then(function(p){
       if (p !== 'granted') { toast('Allow notifications to get family alerts'); pushStatusLine(); return; }
       subscribePush(false);
@@ -4454,10 +4454,10 @@ details.more[open]>summary::before{content:"▾ "}
           ektaAppend('assistant', j.error, 'thinking');
           refreshCoins();
         } else {
-          ektaAppend('assistant', j.error || 'Kuch gadbad ho gayi — try again?', 'thinking');
+          ektaAppend('assistant', j.error || 'Kuch gadbad ho gayi - try again?', 'thinking');
         }
       })
-      .catch(function(){ wait.remove(); ektaAppend('assistant', 'No connection — try again.', 'thinking'); });
+      .catch(function(){ wait.remove(); ektaAppend('assistant', 'No connection - try again.', 'thinking'); });
   }
 
 
@@ -4468,9 +4468,9 @@ details.more[open]>summary::before{content:"▾ "}
     post(API.chats, { code: state.code, memberId: state.memberId, action: 'send', chatId: curChat.id, text: v })
       .then(function(j){
         if (j.ok) { loadMsgs(); refreshChats(); }
-        else toast(j.error || 'Could not send — try again');
+        else toast(j.error || 'Could not send - try again');
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   }
   function onSend(){ if (curTab === 'ekta') ektaSend(); else sendMsg(); }
   $('send').addEventListener('click', onSend);
@@ -4494,7 +4494,7 @@ details.more[open]>summary::before{content:"▾ "}
       URL.revokeObjectURL(url);
       post(API.chats, { code: state.code, memberId: state.memberId, action: 'send', chatId: curChat.id, kind: 'image', text: data })
         .then(function(j){ if (j.ok) { loadMsgs(); refreshChats(); } else toast(j.error || 'Could not send the photo'); })
-        .catch(function(){ toast('No connection — try again'); });
+        .catch(function(){ toast('No connection - try again'); });
     };
     img.onerror = function(){ URL.revokeObjectURL(url); toast('Could not read that photo'); };
     img.src = url;
@@ -4516,7 +4516,7 @@ details.more[open]>summary::before{content:"▾ "}
              : callMode === 'watch' ? '🎬 ' + state.name + ' started a MOVIE/OTT NIGHT'
              : callMode === 'audio' ? '🎙 ' + state.name + ' started a family VOICE call (no camera needed)'
              : '📹 ' + state.name + ' started a family call';
-    var msgTxt = head + ' — tap to join: ' + room +
+    var msgTxt = head + ' - tap to join: ' + room +
       (link && callMode !== 'talk' ? '\n▶ We are playing: ' + link : '') +
       (callMode !== 'talk' ? '\n(Host: play it on your device and share your screen/tab with audio in the room)' : '');
     var fam = null; chatsCache.forEach(function(x){ if (x.kind === 'circle') fam = x; });
@@ -4530,7 +4530,7 @@ details.more[open]>summary::before{content:"▾ "}
     post(API.events, { code: state.code, memberId: state.memberId, type: 'call_start', room: room, label: lcLabel })
       .then(function(){ refresh(); }).catch(function(){});
     window.open(room, '_blank');
-    toast((callMode === 'talk' ? 'Call room' : 'Party room') + ' opened — the invite is in the family chat 🧡');
+    toast((callMode === 'talk' ? 'Call room' : 'Party room') + ' opened - the invite is in the family chat 🧡');
   }
   $('callnow').addEventListener('click', startCall);
   $('callnow2').addEventListener('click', startCall);
@@ -4549,7 +4549,7 @@ details.more[open]>summary::before{content:"▾ "}
       '&details=' + encodeURIComponent((p.room ? 'Join: ' + p.room + '\n' : '') + 'Planned on Parwah by ' + (p.by_name || 'family')) +
       (p.place ? '&location=' + encodeURIComponent(p.place) : '');
   }
-  // In-app plans calendar — dots on days with plans; tap a date to filter
+  // In-app plans calendar - dots on days with plans; tap a date to filter
   // the list and prefill the new-plan form with it.
   var plansCache = [], calSel = null, calMonth = new Date();
   calMonth.setDate(1);
@@ -4604,9 +4604,9 @@ details.more[open]>summary::before{content:"▾ "}
         '</div></div>';
     });
     $('plist').innerHTML = h || (calSel
-      ? '<div class="ev">No plans on ' + esc(fmtDue(calSel)) + ' yet — the date is set below, make one 🎈</div>'
-      : '<div class="ev">Nothing planned yet — make the first plan below 🎈</div>');
-    $('w-plan').textContent = plans.length ? plans.length + ' coming up — next: ' + plans[0].title : 'Calls, parties, get-togethers';
+      ? '<div class="ev">No plans on ' + esc(fmtDue(calSel)) + ' yet - the date is set below, make one 🎈</div>'
+      : '<div class="ev">Nothing planned yet - make the first plan below 🎈</div>');
+    $('w-plan').textContent = plans.length ? plans.length + ' coming up - next: ' + plans[0].title : 'Calls, parties, get-togethers';
   }
   $('p-add').addEventListener('click', function(){
     var t = $('p-title').value.trim();
@@ -4618,10 +4618,10 @@ details.more[open]>summary::before{content:"▾ "}
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not set the plan'); return; }
         $('p-title').value = ''; $('p-place').value = '';
-        toast('Plan set — the circle can see it 🎉');
+        toast('Plan set - the circle can see it 🎉');
         refreshFun();
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
   document.addEventListener('click', function(e){
     var b = e.target.closest('button'); if (!b || !state) return;
@@ -4725,7 +4725,7 @@ details.more[open]>summary::before{content:"▾ "}
     }
     Object.keys(LD).forEach(function(f){ drawLadder(ctx, +f, LD[f], cs); });
     Object.keys(SN).forEach(function(h){ drawSnake(ctx, +h, SN[h], cs); });
-    // tokens — grouped per cell with tiny offsets so everyone stays visible
+    // tokens - grouped per cell with tiny offsets so everyone stays visible
     var by = {};
     st.players.forEach(function(pl, i){ if (!override || override.idx !== i) (by[pl.pos] = by[pl.pos] || []).push(i); });
     Object.keys(by).forEach(function(posN){
@@ -4783,7 +4783,7 @@ details.more[open]>summary::before{content:"▾ "}
     setTimeout(function(){
       dieStop(last.roll);
       var mid = Math.min(last.from + last.roll, 100);
-      if (last.from + last.roll > 100) mid = last.from; // overshoot — stays put
+      if (last.from + last.roll > 100) mid = last.from; // overshoot - stays put
       var cv = $('board-cv'), cs = (cv.clientWidth || 320) / 10;
       var steps = [];
       for (var n = Math.max(1, last.from); n <= mid; n++) steps.push(n);
@@ -4844,8 +4844,8 @@ details.more[open]>summary::before{content:"▾ "}
 
     $('pt-title').textContent = (GNAME[kind] || 'Game') + (Number(st.n) > 1 ? ' ' + Number(st.n) : '') + (st.status === 'lobby' ? ' - lobby open' : '');
     $('pt-mode').innerHTML = (st.mode === 'call'
-      ? '📹 Video-call mode — <a href="' + esc(st.room || '#') + '" target="_blank" rel="noopener">join the room</a>'
-      : '💬 Chat / in-person mode') + ' · admin: ' + esc((st.players.filter(function(p){ return st.admins.indexOf(p.id) >= 0; }).map(function(p){ return p.name; }).join(', ')) || '—');
+      ? '📹 Video-call mode - <a href="' + esc(st.room || '#') + '" target="_blank" rel="noopener">join the room</a>'
+      : '💬 Chat / in-person mode') + ' · admin: ' + esc((st.players.filter(function(p){ return st.admins.indexOf(p.id) >= 0; }).map(function(p){ return p.name; }).join(', ')) || '-');
 
     var th = '';
     for (var t = 0; t < 2; t++) {
@@ -4868,11 +4868,11 @@ details.more[open]>summary::before{content:"▾ "}
     $('pt-teams').innerHTML = th;
 
     $('pt-status').textContent = st.status === 'lobby'
-      ? 'Lobby open — everyone in the circle was invited in chat. ' + st.players.length + ' in so far.'
+      ? 'Lobby open - everyone in the circle was invited in chat. ' + st.players.length + ' in so far.'
       : (kind === 'antakshari'
-          ? (meTurn ? 'Your stage — sing a song starting with "' + st.letter + '"!' : 'On stage: ' + (cur ? cur.name : '—') + ' · letter "' + st.letter + '"')
-          : (meTurn ? (st.prompt && String(st.prompt).indexOf('hidden') < 0 ? 'Act it out — not a word!' : 'You are the actor — draw a movie')
-                    : (st.prompt ? (cur ? cur.name : 'The actor') + ' is acting… guess out loud!' : 'Waiting for ' + (cur ? cur.name : '—') + ' to draw')));
+          ? (meTurn ? 'Your stage - sing a song starting with "' + st.letter + '"!' : 'On stage: ' + (cur ? cur.name : '-') + ' · letter "' + st.letter + '"')
+          : (meTurn ? (st.prompt && String(st.prompt).indexOf('hidden') < 0 ? 'Act it out - not a word!' : 'You are the actor - draw a movie')
+                    : (st.prompt ? (cur ? cur.name : 'The actor') + ' is acting… guess out loud!' : 'Waiting for ' + (cur ? cur.name : '-') + ' to draw')));
 
     $('pt-join').hidden = !!meP;
     $('pt-leave').hidden = !meP;
@@ -4945,12 +4945,12 @@ details.more[open]>summary::before{content:"▾ "}
         if (j.ok && j.game) { renderGame(j.game); if (j.games) renderGamesList(j.games); }
         else { toast(j.error || 'That game is over'); showGameList(); refreshFun(); }
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   }
   function renderGame(g){
     try { renderGameInner(g); }
     catch (err) {
-      // A malformed or legacy game state must never blank the page —
+      // A malformed or legacy game state must never blank the page -
       // fall back to the games list so the family can start fresh.
       showGameList();
     }
@@ -4973,7 +4973,7 @@ details.more[open]>summary::before{content:"▾ "}
       var iAmIn = st.players.some(function(p){ return p.id === state.memberId; });
       var over = st.winner || st.draw;
       $('t-status').textContent = st.winner ? '🏆 ' + st.winner + ' wins!'
-        : st.draw ? '🤝 A draw — rematch?'
+        : st.draw ? '🤝 A draw - rematch?'
         : (meTurn ? 'Your move (' + (st.turn === 0 ? '✕' : '◯') + ')' : (iAmIn ? turnP.name + "'s move…" : st.players[0].name + ' vs ' + st.players[1].name));
       var LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
       var winSet = {};
@@ -4996,7 +4996,7 @@ details.more[open]>summary::before{content:"▾ "}
     renderBoard(st);
     var myTurn = !st.winner && st.players[st.turn] && st.players[st.turn].id === state.memberId;
     $('g-status').textContent = st.winner ? '🎉 ' + st.winner + ' won! Well played, everyone.'
-      : myTurn ? 'Your turn — roll the dice!' : 'Waiting for ' + st.players[st.turn].name + '…';
+      : myTurn ? 'Your turn - roll the dice!' : 'Waiting for ' + st.players[st.turn].name + '…';
     $('g-roll').disabled = !myTurn;
     $('g-roll').textContent = myTurn ? '🎲 Roll' : '⏳ ' + (st.winner ? 'Game over' : st.players[st.turn].name + "'s turn");
     $('g-last').textContent = st.last ? st.last.by + ' rolled ' + st.last.roll + ' → ' + st.last.to + (st.last.event ? ' (' + st.last.event + ')' : '') : '';
@@ -5038,7 +5038,7 @@ details.more[open]>summary::before{content:"▾ "}
         if (starting) refreshFun();
         if (after) after(j);
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   }
   // Pick a game out of the list, and get back out of one.
   $('glist').addEventListener('click', function(e){
@@ -5101,7 +5101,7 @@ details.more[open]>summary::before{content:"▾ "}
     if (!curGame) return;
     post(API.games, { code: state.code, memberId: state.memberId, action: 'roll', gameId: curGame.id })
       .then(function(j){ if (j.ok) renderGame(j.game); else toast(j.error || 'Could not roll'); })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
   $('g-quit').addEventListener('click', function(){
     if (!curGame || !confirm('End the game for everyone?')) return;
@@ -5160,14 +5160,14 @@ details.more[open]>summary::before{content:"▾ "}
         if (!j.ok) { toast(j.error || 'Could not add'); return; }
         $('addbox').hidden = true; toast('Added to the group 🧡'); loadMsgs(); refreshChats();
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
   $('lc-end').addEventListener('click', function(){
     var cid = $('livecall').dataset.cid; if (!cid) return;
     if (!confirm('End this call for the whole family?')) return;
     post(API.events, { code: state.code, memberId: state.memberId, type: 'call_end', callId: cid })
       .then(function(j){ if (j.ok) { $('livecall').hidden = true; toast('Call ended'); refresh(); } else toast(j.error || 'Could not end'); })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
   $('chatback').addEventListener('click', closeChat);
   $('ekta-fab').addEventListener('click', function(){ switchTab('ekta'); });
@@ -5183,7 +5183,7 @@ details.more[open]>summary::before{content:"▾ "}
         $('g-name').value = ''; $('groupform').hidden = true;
         refreshChats(function(){ openChat(j.chatId); });
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
   $('dm-pick').addEventListener('change', function(){
     var other = this.value; if (!other) return;
@@ -5193,7 +5193,7 @@ details.more[open]>summary::before{content:"▾ "}
         if (!j.ok) { toast(j.error || 'Could not open the chat'); return; }
         refreshChats(function(){ openChat(j.chatId); });
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
 
   // ---------- member profiles ----------
@@ -5204,7 +5204,7 @@ details.more[open]>summary::before{content:"▾ "}
     $('mp-name').textContent = m.name;
     $('mp-role').textContent = relLabel(m) + (m.role === 'parent' ? ' · senior mode' : '') + ' · admin';
     $('mp-phone').textContent = m.phone || 'not shared';
-    $('mp-since').textContent = m.created_at ? fmtDue(String(m.created_at).slice(0, 10)) : '—';
+    $('mp-since').textContent = m.created_at ? fmtDue(String(m.created_at).slice(0, 10)) : '-';
     $('mp-place').textContent = placeLine(m) || 'not shared';
     var gl = giftLines(m);
     $('mp-sizes-row').hidden = !gl.sizes; if (gl.sizes) $('mp-sizes').textContent = gl.sizes;
@@ -5230,7 +5230,7 @@ details.more[open]>summary::before{content:"▾ "}
     var mid = $('msheet').dataset.mid; $('msheet').hidden = true;
     post(API.chats, { code: state.code, memberId: state.memberId, action: 'open_dm', otherId: mid })
       .then(function(j){ if (j.ok) refreshChats(function(){ openChat(j.chatId); }); else toast(j.error || 'Could not open the chat'); })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
   $('mp-gift').addEventListener('click', function(){
     var mid = $('msheet').dataset.mid;
@@ -5240,11 +5240,11 @@ details.more[open]>summary::before{content:"▾ "}
     var gl2 = giftLines(m);
     var bits = [gl2.sizes, gl2.loves, gl2.wish ? 'wishlist: ' + gl2.wish : ''].filter(Boolean);
     $('gift-sizes').hidden = !bits.length;
-    if (bits.length) $('gift-sizes').textContent = '🎁 Their details — ' + bits.join(' · ');
+    if (bits.length) $('gift-sizes').textContent = '🎁 Their details - ' + bits.join(' · ');
     var link = function(pair){ return '<a class="cbtn ghost" href="' + pair[1] + '" target="_blank" rel="noopener">' + esc(pair[0]) + '</a>'; };
     $('gift-cash').innerHTML = r.cash.map(link).join('');
     $('gift-shop').innerHTML = r.shop.map(link).join('');
-    $('gift-region').textContent = r.flag + (m.country ? '' : ' (India by default — ask them to set their country in their profile)');
+    $('gift-region').textContent = r.flag + (m.country ? '' : ' (India by default - ask them to set their country in their profile)');
     $('giftbox').hidden = !$('giftbox').hidden;
   });
   $('gift-tell').addEventListener('click', function(){
@@ -5257,7 +5257,7 @@ details.more[open]>summary::before{content:"▾ "}
           setTimeout(function(){ $('msg').value = 'A little something is on its way to you 🎁'; try { $('msg').focus(); } catch (e) {} }, 350);
         });
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
   $('mp-remind').addEventListener('click', function(){
     var mid = $('msheet').dataset.mid; $('msheet').hidden = true;
@@ -5287,7 +5287,7 @@ details.more[open]>summary::before{content:"▾ "}
         $('codeform').hidden = true;
         toast('Invite code is now ' + j.code + ' 🧡');
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
 
   // ---------- edit profile ----------
@@ -5342,7 +5342,7 @@ details.more[open]>summary::before{content:"▾ "}
         $('p-name').textContent = state.name;
         $('p-role').textContent = relLabel({ relation: j.relation, role: j.role }) + (j.role === 'parent' ? ' (senior mode)' : '') + ' · admin';
         if (j.phone) $('p-phone').textContent = j.phone;
-        $('p-city').textContent = placeLine({ place: j.place, country: j.country }) || '—';
+        $('p-city').textContent = placeLine({ place: j.place, country: j.country }) || '-';
         var done = function(){ $('editform').hidden = true; toast('Profile updated 🧡'); refresh(); };
         // THE COUNTRY CODE HAD TO GO WITH THE NUMBER. This posted the bare
         // local digits, and the server defaults a bare number to +91, so a
@@ -5361,10 +5361,10 @@ details.more[open]>summary::before{content:"▾ "}
               if (a.ok) { authUser = a.user; saveAuth(authUser); $('p-phone').textContent = authUser.phone; done(); }
               else toast(a.error || 'Could not update the number');
             })
-            .catch(function(){ toast('No connection — try again'); });
+            .catch(function(){ toast('No connection - try again'); });
         } else done();
       })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
 
   // ---------- drawing board ----------
@@ -5438,7 +5438,7 @@ details.more[open]>summary::before{content:"▾ "}
       if (st.p.length < 2) return;
       post(API_BOARD, { code: state.code, memberId: state.memberId, action: 'stroke', points: st.p, color: st.c, size: st.s })
         .then(function(j){ if (j.ok) { dStrokeIds[j.id] = 1; dLastTs = j.created_at; } })
-        .catch(function(){ toast('Stroke not saved — no connection'); });
+        .catch(function(){ toast('Stroke not saved - no connection'); });
     }
     cv.addEventListener('pointerup', up);
     cv.addEventListener('pointercancel', function(){ drawing = null; });
@@ -5454,7 +5454,7 @@ details.more[open]>summary::before{content:"▾ "}
     post(API_BOARD, { code: state.code, memberId: state.memberId, action: 'clear' })
       .then(function(j){
         if (j.ok) { var cv = boardCanvas(); boardCtx().clearRect(0, 0, cv.clientWidth, cv.clientHeight); dStrokeIds = {}; dLastTs = null; toast('Board wiped 🎨'); }
-      }).catch(function(){ toast('No connection — try again'); });
+      }).catch(function(){ toast('No connection - try again'); });
   });
   $('d-share').addEventListener('click', function(){
     var cv = boardCanvas();
@@ -5465,10 +5465,10 @@ details.more[open]>summary::before{content:"▾ "}
     octx.drawImage(cv, 0, 0);
     var data = out.toDataURL('image/jpeg', 0.8);
     var fam = null; chatsCache.forEach(function(x){ if (x.kind === 'circle') fam = x; });
-    if (!fam) { toast('Chat not ready yet — try again'); return; }
+    if (!fam) { toast('Chat not ready yet - try again'); return; }
     post(API.chats, { code: state.code, memberId: state.memberId, action: 'send', chatId: fam.id, kind: 'image', text: data })
       .then(function(j){ if (j.ok) { toast('Masterpiece shared to the family chat 🧡'); refreshChats(); } else toast(j.error || 'Could not share'); })
-      .catch(function(){ toast('No connection — try again'); });
+      .catch(function(){ toast('No connection - try again'); });
   });
 
   // ---------- the family vault: documents + payment permissions ----------
@@ -5510,7 +5510,7 @@ details.more[open]>summary::before{content:"▾ "}
   }
   function vStatusChip(d){
     if (d.status === 'verified') return '✅ checked by ' + esc(d.verified_name || 'family') + ' · ' + vDate(d.verified_at);
-    if (d.status === 'rejected') return '⚠️ flagged' + (d.verify_note ? ' — ' + esc(d.verify_note) : '');
+    if (d.status === 'rejected') return '⚠️ flagged' + (d.verify_note ? ' - ' + esc(d.verify_note) : '');
     return '🟡 not checked by anyone yet';
   }
 
@@ -5550,7 +5550,7 @@ details.more[open]>summary::before{content:"▾ "}
            k.icon + ' <b>' + esc(d.label) + '</b>' + vExpiry(d) +
            '<small>' + bits.join(' · ') + '</small></div>';
     });
-    $('vdlist').innerHTML = h || '<div class="ev">' + (who ? 'Nothing of theirs is in the vault, or shared with you.' : 'Nothing in the vault yet — add the family\'s first document below 🔐') + '</div>';
+    $('vdlist').innerHTML = h || '<div class="ev">' + (who ? 'Nothing of theirs is in the vault, or shared with you.' : 'Nothing in the vault yet - add the family\'s first document below 🔐') + '</div>';
   }
 
   function openDoc(id, keepScroll){
@@ -5580,12 +5580,12 @@ details.more[open]>summary::before{content:"▾ "}
       $('vdd-shares').innerHTML = gs.length ? gs.map(function(g){
         return '<div class="ev">' + (g.level === 'full' ? '📂' : '👀') + ' <b>' + esc(g.name) + '</b>' +
                '<small>' + (g.level === 'full' ? 'can open it' : 'can see it exists') +
-               ' — <button class="linkbtn" data-vrevoke="' + g.member_id + '">take access back</button></small></div>';
+               ' - <button class="linkbtn" data-vrevoke="' + g.member_id + '">take access back</button></small></div>';
       }).join('') : '<div class="ev">Only you' + (d.by_member !== state.memberId && d.by_name ? ' and ' + esc(d.by_name) + ' (who added it)' : '') + '. Nobody else.</div>';
       var ls = vLog.filter(function(l){ return l.doc_id === d.id; });
       $('vdd-log-card').hidden = !ls.length;
       $('vdd-log').innerHTML = ls.map(function(l){
-        return '<div class="ev">' + esc(l.name || 'Someone') + ' — ' + esc(l.action) + '<small>' + fmtTime(l.at) + '</small></div>';
+        return '<div class="ev">' + esc(l.name || 'Someone') + ' - ' + esc(l.action) + '<small>' + fmtTime(l.at) + '</small></div>';
       }).join('');
     } else { $('vdd-log-card').hidden = true; }
     if (!keepScroll) window.scrollTo(0, 0);
@@ -5605,12 +5605,12 @@ details.more[open]>summary::before{content:"▾ "}
   $('vd-file').addEventListener('change', function(){
     var f = this.files && this.files[0];
     vFileData = null;
-    if (!f) { $('vd-fname').textContent = 'Up to 2 MB. Kept in the vault itself — never a public link.'; return; }
-    if (f.size > 2 * 1024 * 1024) { $('vd-fname').textContent = 'That file is larger than 2 MB — please photograph it again at a smaller size.'; this.value = ''; return; }
+    if (!f) { $('vd-fname').textContent = 'Up to 2 MB. Kept in the vault itself - never a public link.'; return; }
+    if (f.size > 2 * 1024 * 1024) { $('vd-fname').textContent = 'That file is larger than 2 MB - please photograph it again at a smaller size.'; this.value = ''; return; }
     var fr = new FileReader();
     fr.onload = function(){
       vFileData = { data: String(fr.result), name: f.name, mime: f.type || 'image/jpeg' };
-      $('vd-fname').textContent = '📎 ' + f.name + ' — ready to go into the vault';
+      $('vd-fname').textContent = '📎 ' + f.name + ' - ready to go into the vault';
     };
     fr.readAsDataURL(f);
   });
@@ -5619,7 +5619,7 @@ details.more[open]>summary::before{content:"▾ "}
     ['vd-label','vd-number','vd-issued','vd-expires','vd-notes'].forEach(function(id){ $(id).value = ''; });
     vApplyShape();
     $('vd-file').value = '';
-    $('vd-fname').textContent = 'Up to 2 MB. Kept in the vault itself — never a public link.';
+    $('vd-fname').textContent = 'Up to 2 MB. Kept in the vault itself - never a public link.';
     $('vd-ftitle').textContent = 'Add a document';
     $('vd-save').textContent = 'Put it in the vault';
     $('vd-cancel').hidden = true;
@@ -5658,7 +5658,7 @@ details.more[open]>summary::before{content:"▾ "}
       if (!j.ok) { toast(j.error || 'Could not save'); return; }
       toast(vEditId ? 'Updated 🔐' : 'Safe in the vault 🔐');
       vdReset(); refreshVault();
-    }).catch(function(){ $('vd-save').disabled = false; toast('No connection — try again'); });
+    }).catch(function(){ $('vd-save').disabled = false; toast('No connection - try again'); });
   });
   function vAct(body, okMsg, then){
     // The caller is written LAST so no action body can ever overwrite it.
@@ -5667,7 +5667,7 @@ details.more[open]>summary::before{content:"▾ "}
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
         if (okMsg) toast(okMsg);
         if (then) then(j); else refreshVault();
-      }).catch(function(){ toast('No connection — try again'); });
+      }).catch(function(){ toast('No connection - try again'); });
   }
   $('vdd-open').addEventListener('click', function(){
     var d = vDoc(vOpenId); if (!d) return;
@@ -5688,7 +5688,7 @@ details.more[open]>summary::before{content:"▾ "}
   $('vdd-flag').addEventListener('click', function(){
     var note = prompt('What is wrong with it?');
     if (note === null) return;
-    vAct({ action:'reject', id: vOpenId, note: note }, 'Flagged — the owner has been told');
+    vAct({ action:'reject', id: vOpenId, note: note }, 'Flagged - the owner has been told');
   });
   $('vdd-remove').addEventListener('click', function(){
     var d = vDoc(vOpenId); if (!d) return;
@@ -5742,7 +5742,7 @@ details.more[open]>summary::before{content:"▾ "}
       }
       h += '</div>';
     });
-    $('vplist').innerHTML = h || '<div class="ev">No payment methods saved yet. Add your own below — you decide who else may use it.</div>';
+    $('vplist').innerHTML = h || '<div class="ev">No payment methods saved yet. Add your own below - you decide who else may use it.</div>';
     vPay.forEach(function(p){
       var sel = document.querySelector('[data-vpwho="' + p.id + '"]');
       if (sel) vMembersInto(sel, 'Choose a family member');
@@ -5762,7 +5762,7 @@ details.more[open]>summary::before{content:"▾ "}
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
         if (okMsg) toast(okMsg);
         refreshVault();
-      }).catch(function(){ toast('No connection — try again'); });
+      }).catch(function(){ toast('No connection - try again'); });
   }
   function vpReset(){
     vPayEditId = null;
@@ -5848,7 +5848,7 @@ details.more[open]>summary::before{content:"▾ "}
       if (!j.ok) { $('mu-sun').textContent = j.error || 'Could not work out today.'; return; }
       dayData = j; dayAt = Date.now(); renderDay();
     }).catch(function(){
-      if (!dayData) $('mu-sun').textContent = 'No connection — today’s timings need one, once.';
+      if (!dayData) $('mu-sun').textContent = 'No connection - today’s timings need one, once.';
     });
   }
 
@@ -5875,14 +5875,14 @@ details.more[open]>summary::before{content:"▾ "}
       '<small>' + esc(p.en || '') + '</small></div>';
   }
 
-  // Plain words for what a period is for. The Sanskrit name stays — a parent
-  // has kept it all their life — but nobody has to know it to use the screen.
+  // Plain words for what a period is for. The Sanskrit name stays - a parent
+  // has kept it all their life - but nobody has to know it to use the screen.
   var MU_SHORT = {
     Amrit: 'The best window of the day.',
     Shubh: 'Good for anything new or important.',
     Labh:  'Good for money matters and paperwork.',
     Chal:  'Fine for travel and errands.',
-    Udveg: 'Routine work only — nothing new.',
+    Udveg: 'Routine work only - nothing new.',
     Rog:   'Leave health matters and arguments alone.',
     Kaal:  'Don\u2019t start anything you care about.'
   };
@@ -6005,7 +6005,7 @@ details.more[open]>summary::before{content:"▾ "}
     $('mu-night').innerHTML = (p.night || []).map(fullRow).join('');
 
     // The seven names with their planets, built from the same data the screen
-    // above is drawn from — an explanation that cannot drift from the thing it
+    // above is drawn from - an explanation that cannot drift from the thing it
     // explains.
     var seen = {}, lords = '';
     all.forEach(function(x){
@@ -6034,7 +6034,7 @@ details.more[open]>summary::before{content:"▾ "}
       dRange(x.from, x.to, dayData.tz) + ' \u2014 ' + muShort(x);
   });
 
-  // A family row wants a line, not a paragraph — the first sentence carries it.
+  // A family row wants a line, not a paragraph - the first sentence carries it.
   function oneLine(t){
     var s1 = String(t || '').trim();
     var m = /^[^.!?]{20,140}[.!?]/.exec(s1);
@@ -6047,7 +6047,7 @@ details.more[open]>summary::before{content:"▾ "}
 
     if (j.signBasis && $('ho-basis')) {
       $('ho-basis').textContent = 'Worked out from your date of birth against fixed calendar ' +
-        'dates — this is your ' + j.signBasis.is + ', and it is the basis the reading is ' +
+        'dates - this is your ' + j.signBasis.is + ', and it is the basis the reading is ' +
         'written for. It is not ' + j.signBasis.isNot + '.';
     }
     $('ho-nodob').hidden = !!j.mySign;
@@ -6089,16 +6089,16 @@ details.more[open]>summary::before{content:"▾ "}
   });
 
 
-  // ---------- "What is this?" — the five screens, without an account ----------
+  // ---------- "What is this?" - the five screens, without an account ----------
   // A person who lands on Parwah and is shown only a phone field has no way to
   // find out what it is. These are the concept screens from the validation
   // guide, with the guide's own example family, so the product can be judged
   // before anything is asked of anyone. Deliberately narrow: no chat, games,
-  // gifting or calls here — this screen answers one question only.
+  // gifting or calls here - this screen answers one question only.
   var DEMO = [
     { k: 'promise', title: 'When your family needs to know,<br>nobody should have to scramble.',
       body:
-        '<p class="lede" style="margin:10px 0 16px">Parwah keeps the important things your family chooses to share organised in one place — so the right people can find them when they need them.</p>' +
+        '<p class="lede" style="margin:10px 0 16px">Parwah keeps the important things your family chooses to share organised in one place - so the right people can find them when they need them.</p>' +
         '<div class="feed">' +
         dcard('Mum', 'mother', 0) + dcard('Dad', 'father', 2) +
         dcard('Anya', 'daughter', 0) + dcard('Rohan', 'son', 1) +
@@ -6108,13 +6108,13 @@ details.more[open]>summary::before{content:"▾ "}
     { k: 'memory', title: 'Mum',
       body:
         '<p class="hint" style="margin:2px 0 12px">Everything the family has chosen to keep about one person, in one place.</p>' +
-        dsec('🩺 Health', ['Dr Mehra — Cardiologist', 'Dr Kapoor — Physician',
+        dsec('🩺 Health', ['Dr Mehra - Cardiologist', 'Dr Kapoor - Physician',
                            'Current medicines: 4', 'Allergy: Penicillin', 'Blood group: B+']) +
         dsec('📁 Records', ['Latest reports: 6', 'Insurance card: Saved', 'Medical summary: Available']) +
-        dsec('📞 People to call', ['Dad', 'Mrs Khanna — neighbour', 'Veena — close friend']) +
+        dsec('📞 People to call', ['Dad', 'Mrs Khanna - neighbour', 'Veena - close friend']) +
         dsec('💡 Useful to know', ['Preferred hospital', 'Regular pharmacy']) +
         dsec('🕒 Freshness', ['Last checked: 12 August', 'Medicines: Review due']) +
-        '<p class="hint" style="margin-top:12px">Records show that a document <b>exists</b> and whether it has been checked — never the document itself. That stays behind its owner’s permission.</p>' },
+        '<p class="hint" style="margin-top:12px">Records show that a document <b>exists</b> and whether it has been checked - never the document itself. That stays behind its owner’s permission.</p>' },
 
     { k: 'ready', title: 'Your family is 78% ready',
       body:
@@ -6126,7 +6126,7 @@ details.more[open]>summary::before{content:"▾ "}
         dline(false, 'Mum’s medicine list needs review') +
         dline(false, 'Rohan has not shared a local emergency contact') +
         '</div>' +
-        '<p class="hint" style="margin-top:12px">Parwah is not a folder you fill once. It tells you what is missing and what has gone stale, and asks you to fix it — three things, right now.</p>' },
+        '<p class="hint" style="margin-top:12px">Parwah is not a folder you fill once. It tells you what is missing and what has gone stale, and asks you to fix it - three things, right now.</p>' },
 
     { k: 'ekta', title: 'Ask Ekta about your family',
       body:
@@ -6146,16 +6146,16 @@ details.more[open]>summary::before{content:"▾ "}
         dpulse('Mum', '☀', 'Sunny', false) +
         dpulse('Dad', '🐢', 'Taking it slow', false) +
         dpulse('Rohan', '🔋', '75%', false) +
-        dpulse('Anya', '🌧', 'Rainy — a call would be nice', true) +
+        dpulse('Anya', '🌧', 'Rainy - a call would be nice', true) +
         '</div>' +
-        '<p class="hint" style="margin-top:12px">A few seconds to tell your family how you are doing. The style changes each day — weather, battery, animals, roads, food — but the purpose stays the same.</p>' },
+        '<p class="hint" style="margin-top:12px">A few seconds to tell your family how you are doing. The style changes each day - weather, battery, animals, roads, food - but the purpose stays the same.</p>' },
 
     { k: 'plan', title: 'What it costs',
       body:
         '<p class="hint" style="margin:2px 0 12px">One plan, for the whole family. Not per person.</p>' +
         '<div class="ev"><b>Parwah Family Plan</b><small>The family memory · Health &amp; emergency information · Trusted contacts · Family readiness · Ekta · The family pulse</small></div>' +
         '<p style="margin:12px 0 2px;font-size:1.5rem;font-family:var(--disp);font-weight:600">₹2,499 <span style="font-size:.95rem;font-weight:400;color:var(--ink-soft)">per family, per year</span></p>' +
-        '<p class="hint" style="margin:2px 0 0">About $29.99 at ₹85 to the dollar. Nothing is charged here — Parwah is not taking payments yet.</p>' +
+        '<p class="hint" style="margin:2px 0 0">About $29.99 at ₹85 to the dollar. Nothing is charged here - Parwah is not taking payments yet.</p>' +
         '<p class="hint" style="margin-top:14px">Ready to start? Signing in takes your mobile number and a 6-number PIN you choose, so nobody who knows the number can open your family. Nothing is posted anywhere.</p>' }
   ];
 
@@ -6165,8 +6165,8 @@ details.more[open]>summary::before{content:"▾ "}
                               : '⚠️ ' + todo + ' thing' + (todo > 1 ? 's' : '') + ' to complete') + '</small></div>';
   }
   function dsec(head, rows){
-    // Every line in a section is a peer — a second doctor is not a footnote to
-    // the first — so they are all set the same weight.
+    // Every line in a section is a peer - a second doctor is not a footnote to
+    // the first - so they are all set the same weight.
     return '<p class="eyebrow" style="margin:14px 0 6px">' + head + '</p><div class="ev">' +
       rows.map(function(r, i){
         return '<div' + (i ? ' style="margin-top:3px"' : '') + '>' + r + '</div>';
@@ -6210,7 +6210,7 @@ details.more[open]>summary::before{content:"▾ "}
   // "S-354, Greater Kailash 2" tells you nothing a stranger could act on in an
   // emergency: no city, no state, and no way to know the PIN even matches the
   // locality. India Post publishes that mapping free, so six digits fill in the
-  // rest — and when the check cannot be made, the app says so and the person
+  // rest - and when the check cannot be made, the app says so and the person
   // writes it themselves. It never guesses a city from a PIN.
   var pinTimer = null, pinAt = '', pinData = null;
 
@@ -6222,7 +6222,7 @@ details.more[open]>summary::before{content:"▾ "}
     var pin = $('b-pin').value.replace(/\s/g, '');
     var line = [street, area, city].filter(Boolean).join(', ');
     var tail = [st, pin].filter(Boolean).join(' ');
-    return [line, tail].filter(Boolean).join(' — ');
+    return [line, tail].filter(Boolean).join(' - ');
   }
   function showAddr(){
     var l = addrLine();
@@ -6238,7 +6238,7 @@ details.more[open]>summary::before{content:"▾ "}
     $('b-pinmsg').style.color = kind === 'bad' ? 'var(--alert)'
       : kind === 'good' ? 'var(--ok)' : 'var(--ink-soft)';
   }
-  // Let people write the city themselves whatever happens — a PIN we cannot
+  // Let people write the city themselves whatever happens - a PIN we cannot
   // check must never be a locked door.
   function pinManual(){
     $('b-pinout').hidden = false;
@@ -6261,17 +6261,17 @@ details.more[open]>summary::before{content:"▾ "}
       var sel = $('b-area');
       sel.innerHTML = (j.areas || []).map(function(a){
         return '<option value="' + esc(a.name) + '">' + esc(a.name) + (a.block && a.block !== a.name ? ' · ' + esc(a.block) : '') + '</option>';
-      }).join('') + '<option value="__other">Somewhere else — I will type it</option>';
+      }).join('') + '<option value="__other">Somewhere else - I will type it</option>';
       $('b-city').value = j.district || '';
       $('b-state').value = j.state || '';
       $('b-pinout').hidden = false;
-      pinMsg('✓ ' + (j.district ? j.district + ', ' : '') + j.state + ' — ' +
+      pinMsg('✓ ' + (j.district ? j.district + ', ' : '') + j.state + ' - ' +
              (j.areas || []).length + ' localit' + ((j.areas || []).length === 1 ? 'y' : 'ies') +
              ' with this PIN, from India Post.', 'good');
       showAddr();
     }).catch(function(){
       pinData = null;
-      pinMsg('No connection — type the city and state and it will be saved as you write it.', 'bad');
+      pinMsg('No connection - type the city and state and it will be saved as you write it.', 'bad');
       pinManual();
     });
   }
@@ -6295,8 +6295,8 @@ details.more[open]>summary::before{content:"▾ "}
   // ---------- the number field knows what it is asking for ----------
   // Typing a PAN into the Aadhaar box used to be a toast at save time. The
   // field now says what it wants, groups the characters as they arrive, counts
-  // up to the right length, and — when someone has plainly typed a different
-  // document — offers to switch instead of just refusing.
+  // up to the right length, and - when someone has plainly typed a different
+  // document - offers to switch instead of just refusing.
   var vShapes = {};                       // from the server: one description per ID
   var vPanHolders = {};                   // 4th letter of a PAN → what kind of holder
 
@@ -6313,24 +6313,24 @@ details.more[open]>summary::before{content:"▾ "}
     if (i < v.length) out.push(v.slice(i));
     return out.join(sp.sep);
   }
-  // Mirrors checkNumber on the server. The server stays the authority — this
+  // Mirrors checkNumber on the server. The server stays the authority - this
   // exists so nobody is told at save time what could have been said at once.
   function vCheck(kind, raw){
     var v = vBare(raw);
     if (!v) return { ok: true };
     if (kind === 'aadhaar') {
       var d = v.replace(/\D/g, '');
-      if (d.length !== 12) return { ok: false, why: 'An Aadhaar number has 12 digits — please check it' };
+      if (d.length !== 12) return { ok: false, why: 'An Aadhaar number has 12 digits - please check it' };
       if (d[0] === '0' || d[0] === '1') return { ok: false, why: 'An Aadhaar number never starts with 0 or 1' };
-      if (!vVerhoeff(d)) return { ok: false, why: 'That Aadhaar number does not add up — one digit is likely mistyped' };
+      if (!vVerhoeff(d)) return { ok: false, why: 'That Aadhaar number does not add up - one digit is likely mistyped' };
       return { ok: true };
     }
     if (kind === 'pan') return /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(v) ? { ok: true }
-      : { ok: false, why: 'A PAN looks like ABCDE1234F — five letters, four digits, one letter' };
+      : { ok: false, why: 'A PAN looks like ABCDE1234F - five letters, four digits, one letter' };
     if (kind === 'passport') return /^[A-PR-WYZ][0-9]{7}$/.test(v) ? { ok: true }
       : { ok: false, why: 'An Indian passport number is one letter followed by seven digits' };
     if (kind === 'dl') return (/^[A-Z]{2}[0-9]{2}[0-9]{4}[0-9]{7}$/.test(v) || /^[A-Z]{2}[0-9]{11,13}$/.test(v))
-      ? { ok: true } : { ok: false, why: 'A driving licence looks like DL0420110012345 — state code, RTO, year, number' };
+      ? { ok: true } : { ok: false, why: 'A driving licence looks like DL0420110012345 - state code, RTO, year, number' };
     if (kind === 'voter') return /^[A-Z]{3}[0-9]{7}$/.test(v) ? { ok: true }
       : { ok: false, why: 'A voter ID (EPIC) is three letters followed by seven digits' };
     return v.length < 3 ? { ok: false, why: 'That reference looks too short' } : { ok: true };
@@ -6347,7 +6347,7 @@ details.more[open]>summary::before{content:"▾ "}
     for (var i = 0; i < rev.length; i++) c = VD[c][VP[i % 8][Number(rev[i])]];
     return c === 0;
   }
-  // A complete, valid something-else — never a half-typed one.
+  // A complete, valid something-else - never a half-typed one.
   function vLooksLike(raw, except){
     var v = vBare(raw); if (!v) return null;
     for (var k in vShapes) {
@@ -6360,7 +6360,7 @@ details.more[open]>summary::before{content:"▾ "}
   // What a PAN actually tells you, free and offline. The Income Tax Department
   // publishes the meaning of two of the ten characters: the 4th is the kind of
   // holder, and the 5th is the first letter of the surname. Neither proves the
-  // card was issued — only the department can — but together they catch a
+  // card was issued - only the department can - but together they catch a
   // company's PAN filed under a person, and a mistyped letter.
   //
   // Indian names do not all put the surname last, so a mismatch is worth a
@@ -6408,7 +6408,7 @@ details.more[open]>summary::before{content:"▾ "}
       box.className = 'hint good';
       return;
     }
-    // Somebody has typed a different document — say which, and offer the swap.
+    // Somebody has typed a different document - say which, and offer the swap.
     var other = vLooksLike(v, kind);
     if (other) {
       box.textContent = 'That looks like a ' + vShapes[other].label + ', not ' + (sp ? 'an ' + sp.label : 'this') + '.';
@@ -6421,12 +6421,12 @@ details.more[open]>summary::before{content:"▾ "}
     // A letter is not progress towards twelve digits.
     var fits = !sp || new RegExp('^' + (sp.chars === '[0-9]' ? '[0-9]' : '[A-Z0-9]') + '*$').test(v);
     if (sp && !fits) {
-      box.textContent = 'An ' + sp.label + ' does not contain those characters — ' + sp.hint;
+      box.textContent = 'An ' + sp.label + ' does not contain those characters - ' + sp.hint;
       box.className = 'hint bad';
       return;
     }
     if (sp && v.length < sp.len) {
-      box.textContent = v.length + ' of ' + sp.len + ' — ' + sp.hint;
+      box.textContent = v.length + ' of ' + sp.len + ' - ' + sp.hint;
       box.className = 'hint';
       return;
     }
@@ -6478,8 +6478,8 @@ details.more[open]>summary::before{content:"▾ "}
     if (pref === 'auto') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', pref);
     try { localStorage.setItem('parwah-theme', pref); } catch (e) {}
-    // The browser's own chrome — the address bar on Android, the status bar on
-    // a home-screen app — is not styled by CSS and has to be told separately,
+    // The browser's own chrome - the address bar on Android, the status bar on
+    // a home-screen app - is not styled by CSS and has to be told separately,
     // or it stays cream while the app goes dark.
     var m = document.querySelector('meta[name="theme-color"]');
     if (m) m.setAttribute('content', themeIsDark() ? '#0C100D' : '#182622');
@@ -6493,7 +6493,7 @@ details.more[open]>summary::before{content:"▾ "}
     toast(b.getAttribute('data-theme-set') === 'auto' ? 'Following your device' : 'Appearance changed');
   });
   // On Automatic, follow the device the moment it changes rather than at the
-  // next reload — phones flip at sunset while the app is open.
+  // next reload - phones flip at sunset while the app is open.
   try {
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(){
       if (themePref() === 'auto') applyTheme('auto');
@@ -6513,7 +6513,7 @@ details.more[open]>summary::before{content:"▾ "}
   } catch (e) {}
   if (state && state.code && state.memberId) enterMain();
   else if (authUser && authUser.phone) {
-    // signed in on this device — refresh circles and route straight in
+    // signed in on this device - refresh circles and route straight in
     showStep('auth');
     post(API.auth, { action: 'enter', phone: authUser.phone, refresh: true })
       .then(function(j){
@@ -6522,7 +6522,7 @@ details.more[open]>summary::before{content:"▾ "}
       })
       .catch(function(){ showStep('auth'); });
   } else if (demoWanted()) {
-    // ?demo=1 — an interview, or a link someone was sent, opens on the
+    // ?demo=1 - an interview, or a link someone was sent, opens on the
     // concept rather than on a request for their phone number.
     demoAt = 0; renderDemo(); showStep('demo');
   } else {

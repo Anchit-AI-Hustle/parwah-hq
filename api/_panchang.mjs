@@ -1,8 +1,8 @@
-// PANCHANG — the day's muhurat, computed rather than fetched.
+// PANCHANG - the day's muhurat, computed rather than fetched.
 //
 // Choghadiya, Rahu Kaal and the rest are not opinions and not a feed: they
 // are arithmetic on sunrise and sunset for one place on one date, plus the
-// weekday. So this module has NO dependencies and NO network — it is fully
+// weekday. So this module has NO dependencies and NO network - it is fully
 // deterministic and can be tested to the minute.
 //
 // Every period carries a plain-English meaning. A parent who has kept
@@ -58,7 +58,7 @@ export function sunTimes(lat, lon, date) {
 // thing: the first window of a day belongs to the lord of that weekday, and
 // the rest follow the classical (Chaldean) order of the planets. Sunday
 // belongs to the Sun, so Sunday opens with Udveg; Monday to the Moon, so it
-// opens with Amrit. Nothing here is a table someone copied — CHALDEAN and
+// opens with Amrit. Nothing here is a table someone copied - CHALDEAN and
 // WEEKDAY_LORD below regenerate DAY_SEQ and NIGHT_SEQ exactly, and the test
 // suite checks that they do.
 export const CHALDEAN = ['Saturn', 'Jupiter', 'Mars', 'Sun', 'Venus', 'Mercury', 'Moon'];
@@ -80,13 +80,13 @@ export function derivedNightSeq(wd) {
 }
 
 const NATURE = {
-  Udveg:  { good: false, en: 'Restless — routine work only, avoid anything new' },
-  Chal:   { good: true,  en: 'Moving — good for travel and errands' },
-  Labh:   { good: true,  en: 'Gain — good for money matters and paperwork' },
-  Amrit:  { good: true,  en: 'Nectar — the most auspicious; best for anything important' },
-  Kaal:   { good: false, en: 'Loss — avoid starting anything you care about' },
-  Shubh:  { good: true,  en: 'Auspicious — good for ceremonies, meetings, new beginnings' },
-  Rog:    { good: false, en: 'Illness — avoid health matters and confrontation' }
+  Udveg:  { good: false, en: 'Restless - routine work only, avoid anything new' },
+  Chal:   { good: true,  en: 'Moving - good for travel and errands' },
+  Labh:   { good: true,  en: 'Gain - good for money matters and paperwork' },
+  Amrit:  { good: true,  en: 'Nectar - the most auspicious; best for anything important' },
+  Kaal:   { good: false, en: 'Loss - avoid starting anything you care about' },
+  Shubh:  { good: true,  en: 'Auspicious - good for ceremonies, meetings, new beginnings' },
+  Rog:    { good: false, en: 'Illness - avoid health matters and confrontation' }
 };
 // Day sequences, Sunday first (JS getDay(): 0 = Sunday).
 const DAY_SEQ = [
@@ -138,8 +138,8 @@ export function panchang(lat, lon, date) {
   const next = sunTimes(lat, lon, new Date(+date + 86400000));
   const nightMs = next ? (+next.sunrise - setMs) : (86400000 - dayMs);
 
-  // Abhijit is the EIGHTH MUHURTA OF FIFTEEN — the day split fifteen ways, not
-  // eight — so it is roughly 48 minutes centred on solar noon, not 90. Being
+  // Abhijit is the EIGHTH MUHURTA OF FIFTEEN - the day split fifteen ways, not
+  // eight - so it is roughly 48 minutes centred on solar noon, not 90. Being
   // the middle one of fifteen is exactly why it lands on noon. Traditionally
   // skipped on Wednesday.
   const noonMs = riseMs + dayMs / 2, half = dayMs / 30;
@@ -149,13 +149,13 @@ export function panchang(lat, lon, date) {
     day:   slice(riseMs, dayMs, DAY_SEQ[wd]),
     night: slice(setMs, nightMs, NIGHT_SEQ[wd]),
     rahuKaal:  { ...nth(riseMs, dayMs, RAHU_PART[wd]),
-      en: 'Rahu Kaal — the inauspicious hour. By custom nothing new is begun in it; ongoing work carries on.' },
+      en: 'Rahu Kaal - the inauspicious hour. By custom nothing new is begun in it; ongoing work carries on.' },
     gulikaKaal: { ...nth(riseMs, dayMs, GULIKA_PART[wd]),
-      en: 'Gulika Kaal — also avoided for new beginnings, though held to be milder than Rahu Kaal.' },
+      en: 'Gulika Kaal - also avoided for new beginnings, though held to be milder than Rahu Kaal.' },
     yamaganda: { ...nth(riseMs, dayMs, YAMAGANDA_PART[wd]),
-      en: 'Yamaganda — avoided for travel and important starts.' },
+      en: 'Yamaganda - avoided for travel and important starts.' },
     abhijit: wd === 3 ? null : { from: new Date(noonMs - half), to: new Date(noonMs + half),
-      en: 'Abhijit Muhurat — the short auspicious window around midday, good for anything important.' }
+      en: 'Abhijit Muhurat - the short auspicious window around midday, good for anything important.' }
   };
 }
 

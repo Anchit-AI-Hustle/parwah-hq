@@ -5,7 +5,7 @@
     {
       "name": "site",
       "command": "cd site/public && python3 -m http.server 3000",
-      "description": "Static preview of the public pre-launch site (site/public) at http://localhost:3000 — home, /story/, /demo/, /launch/, /get/, /app/."
+      "description": "Static preview of the public pre-launch site (site/public) at http://localhost:3000 - home, /story/, /demo/, /launch/, /get/, /app/."
     }
   ],
   "ports": [

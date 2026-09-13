@@ -1,4 +1,4 @@
-// PARWAH ANALYTICS — the marketing pages only, and only after a yes.
+// PARWAH ANALYTICS - the marketing pages only, and only after a yes.
 //
 // Two rules this file exists to keep.
 //

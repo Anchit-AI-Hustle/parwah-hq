@@ -1,4 +1,4 @@
-// What an Indian ID looks like — the rules the field applies as you type and
+// What an Indian ID looks like - the rules the field applies as you type and
 // the server applies before it stores anything. No imports, so this runs on a
 // fresh clone before npm install.
 import { DOC_ID, bare, format, progress, looksLike, checkNumber, verhoeffOk, fitsChars,
@@ -73,14 +73,14 @@ ok(checkNumber('aadhaar', '2341 2341 2346').ok, 'a spaced Aadhaar is still accep
 ok(checkNumber('aadhaar', '2341 2341 2346').last4 === '2346', 'and only its last four come back');
 ok(checkNumber('pan', 'alvpt2248r').ok, 'a lower-case PAN is accepted');
 ok(!checkNumber('aadhaar', 'ALVPT2248R').ok, 'a PAN is still refused under Aadhaar');
-ok(checkNumber('other', '').ok && checkNumber('other', '').last4 === null, 'no number at all is fine — it is optional');
+ok(checkNumber('other', '').ok && checkNumber('other', '').last4 === null, 'no number at all is fine - it is optional');
 
 
 // ---- what a PAN really encodes -------------------------------------------
 // Free, offline, and published by the Income Tax Department: the 4th character
 // is the holder's type and the 5th is the first letter of their surname. No
 // paid API, no licence. It does NOT prove the card was issued, and nothing
-// here pretends the 10th character can be checked — that algorithm has never
+// here pretends the 10th character can be checked - that algorithm has never
 // been published, so we do not invent one.
 ok(PAN_HOLDER.P === 'an individual' && PAN_HOLDER.C === 'a company' && PAN_HOLDER.H.includes('Hindu'),
    'the holder codes are the published ones');

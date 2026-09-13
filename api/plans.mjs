@@ -1,4 +1,4 @@
-// Plans — family get-togethers of every kind: video calls, watch/listen
+// Plans - family get-togethers of every kind: video calls, watch/listen
 // parties, dinners, poojas, anything. Call-type plans carry their own video
 // room; every plan renders in each member's local timezone client-side.
 // GET  /api/plans?circle=CODE&member=UUID → { ok, plans[] } (upcoming)
@@ -84,7 +84,7 @@ export default async function handler(req, res) {
                           returning id`;
       await feed(sql, circle.id, me.id, `${me.name} planned: ${title} 🗓`);
       const whenTxt = at.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
-      await pushCircle(sql, circle.id, { title: '🗓 ' + me.name + ' planned: ' + title, body: whenTxt + ' — open Parwah to say you are in' }, { except: me.id });
+      await pushCircle(sql, circle.id, { title: '🗓 ' + me.name + ' planned: ' + title, body: whenTxt + ' - open Parwah to say you are in' }, { except: me.id });
       return res.status(201).json({ ok: true, id: p[0].id });
     }
 
@@ -109,7 +109,7 @@ export default async function handler(req, res) {
       if (!isUuid(body.planId)) return res.status(400).json({ ok: false, error: 'Bad plan id' });
       const rows = await sql`select id, by_member, title from plans where id = ${body.planId} and circle_id = ${circle.id}`;
       if (!rows[0]) return res.status(404).json({ ok: false, error: 'Plan not found' });
-      // Every member is an equal admin of the circle — anyone can cancel.
+      // Every member is an equal admin of the circle - anyone can cancel.
       await sql`delete from plans where id = ${rows[0].id}`;
       await feed(sql, circle.id, me.id, `${me.name} cancelled: ${rows[0].title}`);
       await pushCircle(sql, circle.id, { title: '❌ Plan cancelled', body: me.name + ' cancelled: ' + rows[0].title }, { except: me.id });

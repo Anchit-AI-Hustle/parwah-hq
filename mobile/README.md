@@ -1,10 +1,10 @@
 # Parwah native apps (Android + iOS)
 
 Capacitor shells that wrap the live Parwah app (`https://parwah-hq.anchit-tandon.com/app/`).
-The web app is the single source of truth — native builds always show the latest
+The web app is the single source of truth - native builds always show the latest
 deploy, so the apps never go stale.
 
-## Android — automatic
+## Android - automatic
 
 `.github/workflows/android-apk.yml` builds a debug APK on every push that touches
 `mobile/` (or manually via *Run workflow*), then commits it to
@@ -15,7 +15,7 @@ For a **Play Store** release: create a signing keystore, add it as repo secrets,
 switch the workflow to `assembleRelease`, and upload the AAB from a
 `bundleRelease` build to the Play Console (one-time $25 developer account).
 
-## iOS — needs an Apple Developer account
+## iOS - needs an Apple Developer account
 
 ```
 cd mobile

@@ -2,7 +2,7 @@
 //
 // Parwah has no payment rails and will not grow its own: money moves through
 // licensed partners only. So this validates willingness to pay WITHOUT
-// pretending to take money — a family reserves a place, and that reservation
+// pretending to take money - a family reserves a place, and that reservation
 // is the signal. Nothing here touches a card.
 //
 // NRI pricing is the point, not a footnote: the person paying usually lives
@@ -24,7 +24,7 @@ export const PLANS = {
     id: 'free', name: 'Parwah', inr: 0,
     tagline: 'Everything a family needs to look after each other.',
     includes: ['The family memory and preparedness', 'The emergency card, offline',
-               'The vault — documents with a permission on each', 'Check-ins, reminders and help requests',
+               'The vault - documents with a permission on each', 'Check-ins, reminders and help requests',
                'Chat, plans, calls and games', 'Ekta, on the coins the family earns']
   },
   care: {
@@ -38,7 +38,7 @@ export const PLANS = {
 export function priceOf(planId, currency) {
   const p = PLANS[planId] || PLANS.free;
   if (currency === 'USD') {
-    // Rounded to a whole dollar, ending .99 — an exchange-rate remainder
+    // Rounded to a whole dollar, ending .99 - an exchange-rate remainder
     // printed to the cent reads like a mistake.
     const raw = p.inr / USD_RATE;
     const usd = raw === 0 ? 0 : Math.max(1, Math.round(raw + 0.5)) - 0.01;
@@ -83,7 +83,7 @@ export default async function handler(req, res) {
         select p.id, p.plan, p.currency, p.amount, p.created_at, m.name, m.id as member_id
         from plan_interest p join members m on m.id = p.member_id
         where p.circle_id = ${circle.id} order by p.created_at desc limit 20`;
-      // Where the family lives decides which currency leads — an NRI child
+      // Where the family lives decides which currency leads - an NRI child
       // should not have to convert their parents' price in their head.
       const abroad = (me.country || 'IN').toUpperCase() !== 'IN';
       const members = await sql`select country from members where circle_id = ${circle.id}`;

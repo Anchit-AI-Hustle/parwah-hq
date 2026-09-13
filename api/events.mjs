@@ -1,5 +1,5 @@
-// GET  /api/events?circle=CODE          — circle state: members + last 50 events
-// POST /api/events {code, memberId, type, text} — record a check-in, SOS, pill or message
+// GET  /api/events?circle=CODE          - circle state: members + last 50 events
+// POST /api/events {code, memberId, type, text} - record a check-in, SOS, pill or message
 import { db, ensureSchema, circleByCode, requireMember, isUuid } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   let sql;
   try {
     sql = db(); await ensureSchema(sql);
-    // An SOS is not an event that scrolls away — it is an open state with
+    // An SOS is not an event that scrolls away - it is an open state with
     // someone waiting at the end of it.
     await sql`create table if not exists sos (
       id uuid primary key default gen_random_uuid(),
@@ -49,9 +49,9 @@ async function escalateStaleSos(sql, circleId) {
                                 where id = ${s.id} and escalated = false returning id`;
       if (!claimed[0]) continue;   // another instance got there first
       await sql`insert into events (circle_id, member_id, type, text)
-                values (${circleId}, ${s.member_id}, 'care', ${'🆘 Nobody has answered ' + s.name + "'s SOS yet — please call them now"})`;
+                values (${circleId}, ${s.member_id}, 'care', ${'🆘 Nobody has answered ' + s.name + "'s SOS yet - please call them now"})`;
       await pushCircle(sql, circleId, {
-        title: '🆘 STILL NOBODY — ' + s.name + ' needs help',
+        title: '🆘 STILL NOBODY - ' + s.name + ' needs help',
         body: 'No one has picked this up in ' + SOS_ESCALATE_MIN + ' minutes. Call ' + (s.phone || 'them') + ' now.'
       }, {});
     }
@@ -82,7 +82,7 @@ async function escalateStaleSos(sql, circleId) {
         from calls c left join members m on m.id = c.by_member
         where c.circle_id = ${circle.id} and c.started_at > now() - interval '3 hours'
         order by c.started_at desc limit 3`;
-      // Requests waiting on the family — any member can decide.
+      // Requests waiting on the family - any member can decide.
       const joinReqs = await sql`
         select id, name, phone, relation, created_at from join_requests
         where circle_id = ${circle.id} and status = 'pending'
@@ -122,7 +122,7 @@ async function escalateStaleSos(sql, circleId) {
         return res.status(200).json({ ok: true });
       }
       // How you actually are, in today's vocabulary. One answer per person per
-      // day, replaceable — a day can turn.
+      // day, replaceable - a day can turn.
       if (type === 'pulse') {
         if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
         const pm = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
@@ -139,16 +139,16 @@ async function escalateStaleSos(sql, circleId) {
         await sql`insert into events (circle_id, member_id, type, text)
                   values (${circle.id}, ${pm[0].id}, 'checkin', ${pm[0].name + ' is ' + opt.e + ' ' + opt.t})`;
         await award(sql, circle.id, pm[0].id, 'checkin', day);
-        // "A call would be nice" is the reason this feature exists — it lets
+        // "A call would be nice" is the reason this feature exists - it lets
         // someone say they are not fine without having to say it.
         if (opt.call) {
           await pushCircle(sql, circle.id, { title: '🧡 ' + pm[0].name + ' could do with a call',
-            body: opt.e + ' ' + opt.t + (note ? ' — ' + note : '') }, { except: pm[0].id });
+            body: opt.e + ' ' + opt.t + (note ? ' - ' + note : '') }, { except: pm[0].id });
         }
         return res.status(201).json({ ok: true });
       }
 
-      // Somebody is on it — everyone else stops worrying, and the person who
+      // Somebody is on it - everyone else stops worrying, and the person who
       // pressed the button finds out that help is coming.
       if (type === 'sos_ack' || type === 'sos_resolve') {
         if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
@@ -166,7 +166,7 @@ async function escalateStaleSos(sql, circleId) {
           await sql`insert into events (circle_id, member_id, type, text)
                     values (${circle.id}, ${memberId}, 'care', ${am[0].name + ' is on their way to ' + row[0].name + ' 🧡'})`;
           await pushCircle(sql, circle.id, { title: '🧡 ' + am[0].name + ' is on it',
-            body: 'They are helping ' + row[0].name + ' — you do not need to call as well' }, { except: memberId });
+            body: 'They are helping ' + row[0].name + ' - you do not need to call as well' }, { except: memberId });
           return res.status(200).json({ ok: true });
         }
         await sql`update sos set status = 'resolved', resolved_at = now() where id = ${row[0].id}`;
@@ -186,10 +186,10 @@ async function escalateStaleSos(sql, circleId) {
           if (room.indexOf('https://meet.jit.si/') !== 0 || room.length > 300) return res.status(400).json({ ok: false, error: 'Bad room' });
           const label = String(req.body.label || '').trim().slice(0, 60) || null;
           const r = await sql`insert into calls (circle_id, room, label, by_member) values (${circle.id}, ${room}, ${label}, ${memberId}) returning id`;
-          await pushCircle(sql, circle.id, { title: (label || '📞 Family call') + ' on now', body: cm[0].name + ' started it — tap to join everyone' }, { except: memberId });
+          await pushCircle(sql, circle.id, { title: (label || '📞 Family call') + ' on now', body: cm[0].name + ' started it - tap to join everyone' }, { except: memberId });
           return res.status(201).json({ ok: true, callId: r[0].id });
         }
-        // anyone in the circle can end it — every member is an equal admin
+        // anyone in the circle can end it - every member is an equal admin
         if (!isUuid(req.body.callId)) return res.status(400).json({ ok: false, error: 'Bad call id' });
         await sql`delete from calls where id = ${req.body.callId} and circle_id = ${circle.id}`;
         return res.status(200).json({ ok: true });
@@ -206,7 +206,7 @@ async function escalateStaleSos(sql, circleId) {
       if (type === 'checkin' || type === 'pill') await award(sql, circle.id, memberId, type, today());
       if (type === 'sos') {
         await sql`insert into sos (circle_id, member_id) values (${circle.id}, ${memberId})`;
-        await pushCircle(sql, circle.id, { title: '🆘 SOS from ' + member[0].name, body: 'They pressed the SOS button — call them right now' }, { except: memberId });
+        await pushCircle(sql, circle.id, { title: '🆘 SOS from ' + member[0].name, body: 'They pressed the SOS button - call them right now' }, { except: memberId });
       }
       return res.status(201).json({ ok: true });
     }

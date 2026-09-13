@@ -200,7 +200,7 @@ async function fresh(opts){
   ok(sent.length > 0, `the app made API calls to check (${sent.length})`);
   ok(naked.length === 0,
      `every API call carries the token (${sent.length - naked.length} of ${sent.length})`
-     + (naked.length ? ' — bare: ' + naked.slice(0, 3).map(r => r.url).join(', ') : ''));
+     + (naked.length ? ' - bare: ' + naked.slice(0, 3).map(r => r.url).join(', ') : ''));
   await pg.close();
 }
 

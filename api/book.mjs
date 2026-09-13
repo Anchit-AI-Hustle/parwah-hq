@@ -1,11 +1,11 @@
-// FAMILY MEMORY — the structured, permissioned knowledge Parwah keeps for
+// FAMILY MEMORY - the structured, permissioned knowledge Parwah keeps for
 // the family, organised around people: contacts (housework, doctors, vets,
 // emergency), addresses, the meds-map, health facts (blood group, allergies,
 // preferences), and insurance. WhatsApp is where the family talks; this is
 // where the family KNOWS.
 //
 // Every entry can be ABOUT a specific person (about_member) or the whole
-// family, carries who wrote and last touched it, and — critically — a
+// family, carries who wrote and last touched it, and - critically - a
 // last_verified_at: freshness is a first-class feature, and stale entries
 // are surfaced, never silently assumed current.
 //
@@ -134,7 +134,7 @@ export default async function handler(req, res) {
       const members = await sql`select id, name, relation from members where circle_id = ${circle.id} order by created_at`;
       const staleBefore = Date.now() - STALE_DAYS * 86400000;
       const isStale = (e) => new Date(e.last_verified_at).getTime() < staleBefore;
-      // Preparedness: information readiness per person — never a medical score.
+      // Preparedness: information readiness per person - never a medical score.
       const prep = members.map(mm => {
         // Deliberately computed over every entry, not only the readable ones:
         // the family should know Papa HAS recorded his medicines even when
@@ -162,7 +162,7 @@ export default async function handler(req, res) {
                  pct: Math.round(okN / keys.length * 100), attention, items };
       });
       // Screen 2's "Records" row: what documents exist for each person that
-      // the caller is allowed to know about. Counts and labels only — never
+      // the caller is allowed to know about. Counts and labels only - never
       // the documents themselves, which stay behind the vault's permissions.
       let records = [];
       try {
@@ -206,7 +206,7 @@ export default async function handler(req, res) {
       return res.status(405).json({ ok: false, error: 'GET or POST only' });
     }
 
-    // Consent lives with the person a thing is about — not with whoever
+    // Consent lives with the person a thing is about - not with whoever
     // happened to type it in, and not with an admin, because there isn't one.
     async function subjectOf(id) {
       if (!isUuid(id)) return { err: 'Bad entry id' };
@@ -257,7 +257,7 @@ export default async function handler(req, res) {
                 values (${found.e.id}, ${circle.id}, ${me.id}, ${'shared it with ' + t[0].name})`;
       await pushCircle(sql, circle.id, {
         title: '📒 ' + me.name + ' shared something with you',
-        body: found.e.name + ' — open Family memory to see it'
+        body: found.e.name + ' - open Family memory to see it'
       }, { only: t[0].id });
       return res.status(200).json({ ok: true });
     }
@@ -283,7 +283,7 @@ export default async function handler(req, res) {
       if (rd.err) return res.status(rd.err === 'Entry not found' ? 404 : 403).json({ ok: false, error: rd.err });
       const ex = [rd.e];
       await sql`update family_book set last_verified_at = now(), updated_by = ${me.id} where id = ${ex[0].id}`;
-      // Freshness is the whole point of the memory — pay for it, once a month per entry.
+      // Freshness is the whole point of the memory - pay for it, once a month per entry.
       await award(sql, circle.id, me.id, 'memory_ok', ex[0].id + ':' + new Date().toISOString().slice(0, 7));
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${me.id}, 'care', ${me.name + ' checked that "' + feedName(ex[0].visibility, ex[0].name) + '" is still current ✅'})`;
@@ -325,7 +325,7 @@ export default async function handler(req, res) {
                   values (${circle.id}, ${me.id}, 'care', ${me.name + ' added ' + feedName(vis, name) + ' to the family memory ' + label})`;
         // information recorded ABOUT someone is that person's business first
         if (about && about !== me.id) {
-          await pushCircle(sql, circle.id, { title: '📒 ' + me.name + ' noted something about you', body: label + ' ' + name + ' — open Family memory to check it is right' }, { only: about });
+          await pushCircle(sql, circle.id, { title: '📒 ' + me.name + ' noted something about you', body: label + ' ' + name + ' - open Family memory to check it is right' }, { only: about });
         }
         await award(sql, circle.id, me.id, 'memory_add', r[0].id);
         return res.status(201).json({ ok: true, id: r[0].id });

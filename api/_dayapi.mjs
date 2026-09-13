@@ -1,6 +1,6 @@
 // GET /api/settings?area=day&circle=CODE&member=UUID
 // The day: muhurat computed for where this person actually lives, and the
-// twelve horoscopes. Two very different kinds of thing, kept honestly apart —
+// twelve horoscopes. Two very different kinds of thing, kept honestly apart -
 // one is arithmetic, the other is written by someone else.
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
@@ -31,15 +31,15 @@ export default async function handler(req, res) {
     const now = new Date();
     const place = placeOf(me.place);
     // The day must be THEIR day, not the server's. Slicing an ISO string gives
-    // the UTC date, so between midnight and 05:30 in India — and for most of
-    // the evening in the Americas — that is yesterday: the wrong sunrise and,
+    // the UTC date, so between midnight and 05:30 in India - and for most of
+    // the evening in the Americas - that is yesterday: the wrong sunrise and,
     // worse, the wrong weekday, which is a completely different Choghadiya
     // sequence. Ask for the date in the member's own timezone.
     const day = new Intl.DateTimeFormat('en-CA', { timeZone: place.tz }).format(now);
     const p = panchang(place.lat, place.lon, new Date(day + 'T00:00:00Z'));
     const cur = p ? currentPeriod(p, now) : null;
 
-    // Everyone's sign, so the family can read each other's — and whose
+    // Everyone's sign, so the family can read each other's - and whose
     // birthday is unknown, so it can be filled in.
     const members = await sql`select id, name, dob from members where circle_id = ${circle.id} order by created_at`;
     const people = members.map(m => {

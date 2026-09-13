@@ -159,7 +159,7 @@ export async function ensureSchema(sql) {
     state jsonb not null,
     created_at timestamptz not null default now()
   )`;
-  // A circle is a family or a group — the same machinery, named honestly,
+  // A circle is a family or a group - the same machinery, named honestly,
   // because "circle" is our word and nobody else's.
   await sql`alter table circles add column if not exists kind text not null default 'family'`;
   // Shown the introduction? Kept on the profile, not the device, so it is
@@ -196,7 +196,7 @@ export async function ensureSchema(sql) {
 }
 
 // The caller's address, as far as the platform will tell us. Used only as a
-// rate-limit key — never stored against a person.
+// rate-limit key - never stored against a person.
 export function clientIp(req) {
   const h = (req && req.headers) || {};
   const fwd = String(h['x-forwarded-for'] || h['x-real-ip'] || '').split(',')[0].trim();

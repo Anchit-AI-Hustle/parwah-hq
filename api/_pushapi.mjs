@@ -1,4 +1,4 @@
-// Device notifications — Web Push registration.
+// Device notifications - Web Push registration.
 // GET  /api/push                     → { ok, publicKey }  (VAPID, for subscribe)
 // POST /api/push {code, memberId, action:'subscribe'|'unsubscribe', sub}
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';

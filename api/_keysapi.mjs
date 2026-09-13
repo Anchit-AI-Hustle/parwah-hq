@@ -1,4 +1,4 @@
-// Ekta's brain — provider keys for the AI cascade, managed from inside the
+// Ekta's brain - provider keys for the AI cascade, managed from inside the
 // app by the family (every member is an equal admin). Values are write-only:
 // GET reports presence only, never the key. Env-configured keys cannot be
 // overwritten from here.
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const { keys, src } = await providerKeys(sql, circle.id);
       const providers = {};
-      // presence only — the key value never leaves the server
+      // presence only - the key value never leaves the server
       PROVIDERS.forEach(p => { providers[p] = { set: !!keys[p], src: src[p] }; });
       return res.status(200).json({ ok: true, providers });
     }
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     if (body.action === 'set') {
       const key = String(body.key || '').trim();
       if (!/^[A-Za-z0-9_\-.:]{12,300}$/.test(key)) {
-        return res.status(400).json({ ok: false, error: 'That does not look like an API key — paste it exactly as the provider shows it' });
+        return res.status(400).json({ ok: false, error: 'That does not look like an API key - paste it exactly as the provider shows it' });
       }
       // Written under THIS circle's name, so one family can never set over
       // another's key or spend its credit.
