@@ -1,7 +1,8 @@
 // Device notifications — Web Push registration.
 // GET  /api/push                     → { ok, publicKey }  (VAPID, for subscribe)
 // POST /api/push {code, memberId, action:'subscribe'|'unsubscribe', sub}
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
+import { tokenOf } from './_token.mjs';
 import { ensurePushSchema, vapidPublicKey } from './_push.mjs';
 
 export default async function handler(req, res) {
@@ -19,11 +20,13 @@ export default async function handler(req, res) {
       return res.status(405).json({ ok: false, error: 'GET or POST only' });
     }
     const body = req.body || {};
-    const circle = await circleByCode(sql, body.code);
-    if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
-    if (!isUuid(body.memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-    const me = await sql`select id from members where id = ${body.memberId} and circle_id = ${circle.id}`;
-    if (!me[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+    // One authorisation path. The inline version checked only that the
+    // UUID belonged to the CIRCLE, never that it belonged to the caller,
+    // and every member is shown every other member's UUID.
+    const _g = await requireMember(sql, body.code, body.memberId, tokenOf(req));
+    if (_g.err) return res.status(_g.status).json({ ok: false, error: _g.err, signin: _g.signin });
+    const circle = _g.circle;
+    const me = [_g.me];
 
     const sub = body.sub || {};
     const endpoint = String(sub.endpoint || '');

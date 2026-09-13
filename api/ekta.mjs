@@ -12,7 +12,8 @@
 //      overloaded (429/5xx), rather than going silent on the family.
 // Beneath all three, the API's server-side fallback adds an infra layer.
 import Anthropic from '@anthropic-ai/sdk';
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
+import { tokenOf } from './_token.mjs';
 import { careState, createReminder, createRequest } from './care.mjs';
 import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
 // Ekta without a model: retrieval from the family's own records. Its own
@@ -478,11 +479,13 @@ export default async function handler(req, res) {
   try { sql = db(); await ensureSchema(sql); }
   catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
   const { code, memberId, messages } = req.body || {};
-  const circle = await circleByCode(sql, code);
-  if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
-  if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-  const meRow = await sql`select id, name, role from members where id = ${memberId} and circle_id = ${circle.id}`;
-  if (!meRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+  // One authorisation path. The inline version checked only that the
+  // UUID belonged to the CIRCLE, never that it belonged to the caller,
+  // and every member is shown every other member's UUID.
+  const _g = await requireMember(sql, code, memberId, tokenOf(req));
+  if (_g.err) return res.status(_g.status).json({ ok: false, error: _g.err, signin: _g.signin });
+  const circle = _g.circle;
+  const meRow = [_g.me];
   const me = meRow[0];
 
   // Which keys THIS family has. Asked after the circle is known, because a

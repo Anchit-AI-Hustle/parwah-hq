@@ -2,7 +2,8 @@
 // Six digits in, a real locality/district/state out — or an honest "we could
 // not check that", never a guess. Behind a circle membership like every other
 // read, so this is not an open proxy to someone else's API.
-import { db, ensureSchema, circleByCode, isUuid, rateLimit, clientIp } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, rateLimit, clientIp , requireMember} from './_db.mjs';
+import { tokenOf } from './_token.mjs';
 import { lookupPin, pinError } from './_pin.mjs';
 
 export default async function handler(req, res) {
@@ -15,11 +16,13 @@ export default async function handler(req, res) {
   }
   try {
     const q = req.query || {};
-    const circle = await circleByCode(sql, q.circle);
-    if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
-    if (!isUuid(q.member)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-    const me = await sql`select id from members where id = ${q.member} and circle_id = ${circle.id}`;
-    if (!me[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+    // One authorisation path. The inline version checked only that the
+    // UUID belonged to the CIRCLE, never that it belonged to the caller,
+    // and every member is shown every other member's UUID.
+    const _g = await requireMember(sql, q.circle, q.member, tokenOf(req));
+    if (_g.err) return res.status(_g.status).json({ ok: false, error: _g.err, signin: _g.signin });
+    const circle = _g.circle;
+    const me = [_g.me];
 
     const bad = pinError(q.pin);
     if (bad) return res.status(400).json({ ok: false, error: bad });

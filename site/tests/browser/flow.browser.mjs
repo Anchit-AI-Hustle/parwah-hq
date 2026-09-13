@@ -83,14 +83,26 @@ async function fresh(opts){
   await page.route('**/api/games*', r => r.fulfill({ json:{ ok:true, games:[], game:null } }));
   await page.route('**/api/plans*', r => r.fulfill({ json:{ ok:true, plans:[] } }));
   await page.route('**/api/book*', r => r.fulfill({ json:{ ok:true, entries:[], prep:[] } }));
+  // The server this stands in for now demands a PIN and hands back a
+  // session token. Anything looser would let this suite pass against a
+  // sign-in that still lets a bare phone number in.
+  const GOOD_PIN = '481920';
   await page.route('**/api/auth', async (r) => {
     const b = JSON.parse(r.request().postData() || '{}');
+    if (b.action === 'signout') return r.fulfill({ json:{ ok:true } });
+    if (b.action === 'reset_request') return r.fulfill({ json:{ ok:true, asked:true } });
     const phone = (b.cc || '+91') + String(b.phone || '').replace(/\D/g, '');
-    if (phone === KNOWN) return r.fulfill({ json:{ ok:true, exists:true, toured:true,
-      user:{ id:'77777777-7777-4777-8777-777777777777', name:'Rohan', phone:KNOWN },
-      circles:[{ code:'ABCDEF', circleName:'Sharma Family', memberId:ME, memberName:'Rohan', members:2 }] } });
+    if (phone === KNOWN) {
+      if (!b.pin) return r.fulfill({ json:{ ok:true, exists:true, needPin:true, name:'Rohan' } });
+      if (b.pin !== GOOD_PIN) return r.fulfill({ status:401, json:{ ok:false, wrongPin:true, left:4, error:'That PIN is not right. 4 tries left.' } });
+      return r.fulfill({ json:{ ok:true, exists:true, toured:true, token:'tok_'+'x'.repeat(40),
+        user:{ id:'77777777-7777-4777-8777-777777777777', name:'Rohan', phone:KNOWN },
+        circles:[{ code:'ABCDEF', circleName:'Sharma Family', memberId:ME, memberName:'Rohan', members:2 }] } });
+    }
     if (!b.name) return r.fulfill({ json:{ ok:true, exists:false } });
-    return r.fulfill({ json:{ ok:true, exists:true, toured:true, user:{ id:'88888888-8888-4888-8888-888888888888', name:b.name, phone }, circles:[] } });
+    if (!b.pin) return r.fulfill({ json:{ ok:true, exists:false, needPin:true, error:'Your PIN is 6 numbers.' } });
+    return r.fulfill({ json:{ ok:true, exists:true, toured:true, token:'tok_'+'y'.repeat(40),
+      user:{ id:'88888888-8888-4888-8888-888888888888', name:b.name, phone }, circles:[] } });
   });
   if (opts.theme) await page.addInitScript(t => localStorage.setItem('parwah-theme', t), opts.theme);
   if (opts.signedIn) {
@@ -124,10 +136,23 @@ async function fresh(opts){
   ok(await pg.locator('#au-name').evaluate(el => el === document.activeElement), 'and the cursor is put where the fix is');
   ok(await pg.locator('#au-namewrap').isVisible(), 'the form is still there to finish');
 
+  // A NUMBER IS NO LONGER THE KEY. A new person picks a PIN in the same
+  // breath as their name, because a later, skippable step is how an account
+  // ends up without one.
   await pg.locator('#au-name').fill('Rohan Sharma');
   await pg.locator('#au-go').click();
-  await pg.waitForTimeout(700);
-  ok(await pg.locator('#auth-step').isHidden(), 'a named new number gets through');
+  await pg.waitForTimeout(500);
+  ok(await pg.locator('#au-pinwrap').isVisible(), 'a new sign-up must choose a PIN');
+  await pg.locator('#au-pin').fill('1234');
+  await pg.locator('#au-go').click(); await pg.waitForTimeout(300);
+  ok(/6 numbers/.test(await pg.locator('#ob-err').textContent()), 'a short PIN is refused before it is sent');
+  ok(await pg.locator('#auth-step').isVisible(), 'and nobody gets in on a bad PIN');
+  await pg.locator('#au-pin').fill('481920');
+  await pg.locator('#au-go').click();
+  await pg.waitForTimeout(800);
+  ok(await pg.locator('#auth-step').isHidden(), 'a name and a PIN get through');
+  const tok = await pg.evaluate(() => { try { return localStorage.getItem('parwah-token'); } catch (e) { return null; } });
+  ok(!!tok && tok.length > 20, 'and a session token is kept for every later request');
   await pg.close();
 }
 
@@ -137,8 +162,45 @@ async function fresh(opts){
   await pg.locator('#au-phone').fill('98739 45238');
   await pg.locator('#au-go').click();
   await pg.waitForTimeout(700);
-  ok(await pg.locator('#auth-step').isHidden(), 'a known number signs straight in, no name asked');
-  ok(await pg.locator('#au-namewrap').isHidden(), 'and is never asked to create a profile it already has');
+  // THE HOLE THIS CLOSES: a known number used to sign straight in.
+  ok(await pg.locator('#auth-step').isVisible(), 'a known number does NOT get in on the number alone');
+  ok(await pg.locator('#au-pinwrap').isVisible(), 'it asks for the PIN');
+  ok(await pg.locator('#au-namewrap').isHidden(), 'and does not ask it to make a profile it already has');
+  ok(await pg.locator('#au-forgot').isVisible(), 'with a way out if the PIN is forgotten');
+
+  await pg.locator('#au-pin').fill('111111');
+  await pg.locator('#au-go').click(); await pg.waitForTimeout(600);
+  ok(await pg.locator('#auth-step').isVisible(), 'a wrong PIN does not get in');
+  ok(/not right/.test(await pg.locator('#ob-err').textContent()), 'and says so, with the tries left');
+  ok((await pg.locator('#au-pin').inputValue()) === '', 'and clears the box for the next try');
+
+  // Watch BEFORE signing in: the app fetches the circle the moment it lands,
+  // and a listener attached afterwards sees nothing and proves nothing.
+  const sent = [];
+  pg.on('request', r => {
+    if (!r.url().includes('/api/')) return;
+    if (r.url().includes('/api/auth')) return;          // the call that issues the token
+    if (/\/api\/settings\?area=push$/.test(r.url())) return;  // the public VAPID key
+    sent.push({ url: r.url().split('?')[0], tok: r.headers()['x-parwah-token'] || '' });
+  });
+  await pg.locator('#au-pin').fill('481920');
+  await pg.locator('#au-go').click(); await pg.waitForTimeout(2500);
+  ok(await pg.locator('#auth-step').isHidden(), 'the right PIN signs in');
+  const t2 = await pg.evaluate(() => { try { return localStorage.getItem('parwah-token'); } catch (e) { return null; } });
+  ok(!!t2, 'and a token is issued');
+
+  // Signing in lands on the list of your families and waits. Tap in, which
+  // is what makes the app actually start reading.
+  const circleRow = pg.locator('#cs-list button[data-encircle]').first();
+  if (await circleRow.count()) { await circleRow.click(); await pg.waitForTimeout(2200); }
+
+  // EVERY later request must carry it, read or write, or the server is back
+  // to trusting a member UUID that every member can see.
+  const naked = sent.filter(r => !r.tok);
+  ok(sent.length > 0, `the app made API calls to check (${sent.length})`);
+  ok(naked.length === 0,
+     `every API call carries the token (${sent.length - naked.length} of ${sent.length})`
+     + (naked.length ? ' — bare: ' + naked.slice(0, 3).map(r => r.url).join(', ') : ''));
   await pg.close();
 }
 

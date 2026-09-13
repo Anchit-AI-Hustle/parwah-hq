@@ -138,7 +138,7 @@ for name in GUARDED:
         check(f"membership guard present: api/{name}.mjs", False, "file missing"); continue
     src = f.read_text(encoding="utf-8")
     check(f"membership guard present: api/{name}.mjs",
-          "Not a member of this circle" in src and "circleByCode" in src)
+          ("requireMember(" in src or "ownedMember(" in src) and "tokenOf(req)" in src)
 
 # 10d. SQL only ever through the tagged-template driver (parameterized)
 for f in sorted(API_DIR.glob("*.mjs")):
@@ -722,9 +722,9 @@ check("xss: svg is not an accepted image type, because it carries script",
 check("access: there is one guard that says the caller must be in the circle",
       "export async function requireMember" in _db2)
 check("access: the home feed no longer opens to a bare invite code",
-      "requireMember(sql, q.circle, q.member)" in _events)
+      "requireMember(sql, q.circle, q.member, tokenOf(req))" in _events)
 check("access: nor do reminders, requests and suggestions",
-      "requireMember(sql, q.circle, q.member)" in _care)
+      "requireMember(sql, q.circle, q.member, tokenOf(req))" in _care)
 check("access: the feed returns member_id, so your own events are not unread to you",
       "e.member_id, m.name as member_name" in _events)
 
@@ -861,6 +861,70 @@ check("analytics: the steps toward the app are counted too",
 check("analytics: the promise is proved in a browser, not just asserted here",
       (REPO / "site/tests/browser/analytics.browser.mjs").exists()
       and "analytics.browser.mjs" in (REPO / "package.json").read_text(encoding="utf-8"))
+
+# SIGN-IN. A phone number was the whole key: type one that exists and you
+# were in, as that person, with their family's vault. And every later
+# request proved who it was by sending a member UUID that the server hands
+# to everyone in the circle.
+_au = (API_DIR / "_auth.mjs").read_text(encoding="utf-8")
+_authmjs = (API_DIR / "auth.mjs").read_text(encoding="utf-8")
+_dbs = (API_DIR / "_db.mjs").read_text(encoding="utf-8")
+_appa = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+check("signin: a PIN is required, so a number alone is not the key",
+      "pinError" in _au and "verifyPin" in _authmjs and "needPin" in _authmjs)
+check("signin: the PIN is salted and run through a real KDF, not hashed once",
+      "scryptSync" in _au and "randomBytes(16)" in _au)
+check("signin: PINs are compared in constant time",
+      "timingSafeEqual" in _au)
+check("signin: the PINs a thief tries first are refused",
+      "'123456'" in _au and "'000000'" in _au)
+check("signin: wrong PINs lock the account rather than allowing a million tries",
+      "MAX_TRIES" in _au and "locked_until" in _authmjs and "lockMessage" in _authmjs)
+check("signin: a session token is issued, and only its hash is stored",
+      "newToken()" in _authmjs and "tokenHash(token)" in _authmjs and "createHash('sha256')" in _au)
+check("signin: sessions expire", "SESSION_DAYS" in _au and "expires_at" in _dbs)
+check("signin: signing out revokes the session on the server",
+      "action === 'signout'" in _authmjs and "delete from sessions" in _authmjs)
+check("signin: and there is a way to sign out everywhere, for a lost phone",
+      "signout_all" in _authmjs)
+# No SMS provider, so the family is the trust anchor. It is also a better
+# one: they know your face and your voice.
+check("signin: a forgotten PIN is recovered by the family, not by SMS",
+      "reset_request" in _authmjs and "reset_approve" in _authmjs)
+check("signin: the person asking cannot approve their own reset",
+      "Someone else in the family has to approve this, not you" in _authmjs)
+check("signin: a reset request never reveals whether a number is registered",
+      "Never reveal whether a number is registered" in _authmjs)
+check("signin: approving a reset also kills that person's old sessions",
+      "delete from sessions where user_id = ${r[0].user_id}" in _authmjs)
+# The token, not the UUID, says who is calling.
+check("signin: there is one guard, and it checks the token",
+      "export async function sessionUser" in _dbs and "AUTH_REQUIRED" in _dbs)
+check("signin: a membership must belong to whoever holds the token",
+      "That is not your membership" in _dbs)
+check("signin: authentication is on unless deliberately switched off",
+      "process.env.PARWAH_AUTH || 'on'" in _dbs)
+# _owned.mjs and _db.mjs ARE the guards: the lookup belongs there, and there
+# it is followed by the ownership test. Everywhere else it is the bug.
+_GUARD_FILES = {"_owned.mjs", "_db.mjs"}
+_inline = [p.name for p in sorted(API_DIR.glob("*.mjs"))
+           if p.name not in _GUARD_FILES
+           and "from members where id = ${memberId} and circle_id" in p.read_text(encoding="utf-8")]
+check("signin: no route still authorises by bare member UUID",
+      not _inline, ", ".join(_inline))
+_owned = (API_DIR / "_owned.mjs").read_text(encoding="utf-8")
+check("signin: and the guard itself checks the token owns that membership",
+      "sessionUser(sql, token)" in _owned and "rows[0].user_id !== u.user_id" in _owned)
+check("signin: the token travels in a header, not a query string",
+      "x-parwah-token" in (API_DIR / "_token.mjs").read_text(encoding="utf-8"))
+check("signin: the app sends it on every read and every write",
+      "function apiGet(" in _appa and "X-Parwah-Token" in _appa
+      and "fetch(API." not in _appa.replace("fetch(API.push)", ""))
+check("signin: an expired session lands on sign-in, not on silent failures",
+      "function checkSignedOut(" in _appa)
+check("signin: the PIN rules are unit-tested by the gate",
+      (REPO / "site/tests/authtest.mjs").exists()
+      and "authtest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
 
 # ---------- 10b. The day: muhurat and rashi ----------
 # The point of the section is that a family split across cities sees the SAME
@@ -1008,7 +1072,7 @@ check("address: a city is never guessed from a PIN we could not check",
       "unknown: true" in pin and "type the city and state yourself" in pin
       and "nothing here fills a gap with a plausible value" in pin)
 check("address: the lookup needs circle membership and is rate limited",
-      "circleByCode" in pinapi and "rateLimit" in pinapi and "Not a member of this circle" in pinapi)
+      "requireMember(" in pinapi and "tokenOf(req)" in pinapi and "rateLimit" in pinapi)
 # A 404 for an unknown PIN also logs a console error in every browser that
 # asks. The circle-not-found 404 above it is a different thing and stays.
 check("address: an unknown PIN is a 200 answer, not a 404 error",

@@ -1,6 +1,8 @@
 // GET  /api/events?circle=CODE          — circle state: members + last 50 events
 // POST /api/events {code, memberId, type, text} — record a check-in, SOS, pill or message
 import { db, ensureSchema, circleByCode, requireMember, isUuid } from './_db.mjs';
+import { tokenOf } from './_token.mjs';
+import { ownedMember } from './_owned.mjs';
 import { pushCircle } from './_push.mjs';
 import { award, today } from './_coins.mjs';
 
@@ -61,7 +63,7 @@ async function escalateStaleSos(sql, circleId) {
       // birth, the feed, live call rooms, and every member UUID - which is
       // exactly what the write routes below accept as proof of who you are.
       const q = req.query || {};
-      const g = await requireMember(sql, q.circle, q.member);
+      const g = await requireMember(sql, q.circle, q.member, tokenOf(req));
       if (g.err) return res.status(g.status).json({ ok: false, error: g.err });
       const circle = g.circle;
       const members = await sql`select id, name, role, phone, place, country, relation, dob, gift_info, created_at from members where circle_id = ${circle.id} order by created_at`;
@@ -112,7 +114,7 @@ async function escalateStaleSos(sql, circleId) {
       if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
       if (type === 'seen') {
         if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-        const mm = await sql`select id from members where id = ${memberId} and circle_id = ${circle.id}`;
+        const mm = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id`);
         if (!mm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
         await sql`insert into notif_seen (member_id, seen_at) values (${memberId}, now())
                   on conflict (member_id) do update set seen_at = now()`;
@@ -122,7 +124,7 @@ async function escalateStaleSos(sql, circleId) {
       // day, replaceable — a day can turn.
       if (type === 'pulse') {
         if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-        const pm = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
+        const pm = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
         if (!pm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
         await ensurePulseSchema(sql);
         const day = pulseDay(), styleKey = styleFor(day);
@@ -149,7 +151,7 @@ async function escalateStaleSos(sql, circleId) {
       // pressed the button finds out that help is coming.
       if (type === 'sos_ack' || type === 'sos_resolve') {
         if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-        const am = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
+        const am = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
         if (!am[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
         if (!isUuid(req.body.sosId)) return res.status(400).json({ ok: false, error: 'Bad SOS id' });
         const row = await sql`select s.id, s.member_id, s.status, m.name
@@ -176,7 +178,7 @@ async function escalateStaleSos(sql, circleId) {
 
       if (type === 'call_start' || type === 'call_end') {
         if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-        const cm = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
+        const cm = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
         if (!cm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
         if (type === 'call_start') {
           const room = String(req.body.room || '');
@@ -193,7 +195,7 @@ async function escalateStaleSos(sql, circleId) {
       }
       if (!TYPES.includes(type)) return res.status(400).json({ ok: false, error: 'Unknown event type' });
       if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-      const member = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
+      const member = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
       if (!member[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
       const t = String(text || '').trim().slice(0, type === 'message' ? 300 : 120);
       if (type === 'message' && !t) return res.status(400).json({ ok: false, error: 'Empty message' });

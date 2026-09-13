@@ -2,7 +2,8 @@
 // The day: muhurat computed for where this person actually lives, and the
 // twelve horoscopes. Two very different kinds of thing, kept honestly apart —
 // one is arithmetic, the other is written by someone else.
-import { db, ensureSchema, circleByCode, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
+import { tokenOf } from './_token.mjs';
 import { panchang, currentPeriod } from './_panchang.mjs';
 import { placeOf } from './_places.mjs';
 import { horoscopeToday, signOf, SIGNS, SIGN_BASIS } from './_horoscope.mjs';
@@ -17,11 +18,13 @@ export default async function handler(req, res) {
   }
   try {
     const q = req.query || {};
-    const circle = await circleByCode(sql, q.circle);
-    if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
-    if (!isUuid(q.member)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-    const meRow = await sql`select id, name, place, dob from members where id = ${q.member} and circle_id = ${circle.id}`;
-    if (!meRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+    // One authorisation path. The inline version checked only that the
+    // UUID belonged to the CIRCLE, never that it belonged to the caller,
+    // and every member is shown every other member's UUID.
+    const _g = await requireMember(sql, q.circle, q.member, tokenOf(req));
+    if (_g.err) return res.status(_g.status).json({ ok: false, error: _g.err, signin: _g.signin });
+    const circle = _g.circle;
+    const meRow = [_g.me];
     const me = meRow[0];
 
     const now = new Date();

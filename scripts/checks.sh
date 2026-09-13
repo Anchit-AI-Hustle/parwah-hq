@@ -24,6 +24,9 @@ node site/tests/ektatest.mjs
 # Escaping, image URIs and private-entry names: the rules that keep one
 # family's data out of another's screen. _sec.mjs imports nothing either.
 node site/tests/sectest.mjs
+# Sign-in: a PIN, a session token, and a lockout. _auth.mjs imports only
+# node:crypto, which is builtin, so this runs before npm install too.
+node site/tests/authtest.mjs
 # The deploy's own verification, against a server that answers red. A check
 # that cannot report a failure is not a check, and this one could not: the
 # poll used `curl -f`, which throws away the HTTP 500 body a red self-test

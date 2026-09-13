@@ -835,6 +835,14 @@ details.more[open]>summary::before{content:"▾ "}
       <select id="au-cc" class="ccsel" aria-label="Country code"></select>
       <input type="tel" id="au-phone" maxlength="14" placeholder="98765 43210" autocomplete="tel">
     </div>
+    <div id="au-pinwrap" hidden>
+      <p class="hint" id="au-pinnote" style="margin:10px 0 2px;font-weight:700;color:var(--marigold-d)"></p>
+      <label for="au-pin" id="au-pinlabel">Your 6-number PIN</label>
+      <input type="text" id="au-pin" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+             pattern="[0-9]*" placeholder="••••••" aria-describedby="au-pinnote"
+             style="letter-spacing:.5em;text-align:center;font-size:1.3rem">
+      <button class="linkbtn" id="au-forgot" hidden type="button">Forgotten your PIN?</button>
+    </div>
     <div id="au-namewrap" hidden>
       <p class="hint" id="au-newnote" hidden style="margin:10px 0 2px;font-weight:700;color:var(--marigold-d)"></p>
       <label for="au-name">Your name</label>
@@ -2150,9 +2158,32 @@ details.more[open]>summary::before{content:"▾ "}
     clearTimeout(toastTimer); toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 2800);
   }
 
+  // THE SESSION TOKEN, on every request. A header rather than the body or
+  // the query string, so it never lands in a server log, a Referer or a
+  // screenshot of the address bar.
+  function authToken(){ try { return localStorage.getItem('parwah-token') || ''; } catch (e) { return ''; } }
+  function saveToken(t){ try { t ? localStorage.setItem('parwah-token', t) : localStorage.removeItem('parwah-token'); } catch (e) {} }
+  function authHeaders(extra){
+    var h = extra || {};
+    var t = authToken();
+    if (t) h['X-Parwah-Token'] = t;
+    return h;
+  }
+  // A session that has expired or been signed out elsewhere must land the
+  // person on sign-in, not on a screen full of silent failures.
+  function checkSignedOut(j){
+    if (j && j.signin) { saveToken(''); clearAuth(); location.hash = ''; location.reload(); return true; }
+    return false;
+  }
   function post(url, body){
-    return fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) })
-      .then(function(r){ return r.json().then(function(j){ j._status = r.status; return j; }); });
+    return fetch(url, { method:'POST', headers: authHeaders({ 'Content-Type':'application/json' }), body: JSON.stringify(body) })
+      .then(function(r){ return r.json().then(function(j){ j._status = r.status; checkSignedOut(j); return j; }); });
+  }
+  // The GET equivalent, so the fifteen read paths do not each have to
+  // remember. apiGet(url) is fetch(url) with the token attached.
+  function apiGet(url){
+    return fetch(url, { headers: authHeaders({}) })
+      .then(function(r){ return r.json().then(function(j){ checkSignedOut(j); return j; }); });
   }
 
   function rolePicker(id){
@@ -2481,8 +2512,7 @@ details.more[open]>summary::before{content:"▾ "}
   function refresh(){
     if (!state) return;
     homeOffline(false);
-    fetch(API.events + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
-      .then(function(r){ return r.json(); })
+    apiGet(API.events + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){
         if (j.ok) { homeOffline(false); seenAt = j.seenAt || seenAt; joinReqs = j.joinRequests || []; joinPolicy = j.joinPolicy || 'approve'; render(j); renderForSelect(j.members); renderJoinReqs(); renderPulse(j.pulse); return; }
         // Not ok, and not a code change we can heal from below: say so.
@@ -2501,8 +2531,7 @@ details.more[open]>summary::before{content:"▾ "}
         }
       })
       .catch(function(){ homeOffline(true); });
-    fetch(API.care + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
-      .then(function(r){ return r.json(); })
+    apiGet(API.care + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){
         if (j.ok) { renderCare(j); return; }
         // Two Home widgets sat on "Loading..." for ever when this failed.
@@ -2527,8 +2556,7 @@ details.more[open]>summary::before{content:"▾ "}
   function chatTitle(c){ return c.kind === 'circle' ? 'Everyone — family chat' : c.name; }
   function refreshChats(cb){
     if (!state) return;
-    fetch(API.chats + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
-      .then(function(r){ return r.json(); })
+    apiGet(API.chats + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){
         if (!j.ok) { if (!chatsCache || !chatsCache.length) loadFail('clist', 'your chats'); return; }
         chatsCache = j.chats;
@@ -2577,8 +2605,7 @@ details.more[open]>summary::before{content:"▾ "}
   }
   function loadMsgs(){
     if (!curChat) return;
-    fetch(API.chats + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + '&chat=' + encodeURIComponent(curChat.id))
-      .then(function(r){ return r.json(); })
+    apiGet(API.chats + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + '&chat=' + encodeURIComponent(curChat.id))
       .then(function(j){
         if (!j.ok || !curChat) return;
         curChatMembers = j.members || [];
@@ -3071,17 +3098,53 @@ details.more[open]>summary::before{content:"▾ "}
     if (!$('au-namewrap').hidden && !$('au-name').value.trim()) {
       authErr('Please type your name so your family knows who joined.', 'au-name'); return;
     }
+    // A PIN is what makes a phone number stop being the whole key.
+    if (!$('au-pinwrap').hidden && $('au-pin').value.trim().length !== 6) {
+      authErr('Your PIN is 6 numbers.', 'au-pin'); return;
+    }
     var btn = this; btn.disabled = true; $('ob-err').textContent = '';
-    post(API.auth, { action: 'enter', phone: phone, cc: cc, name: $('au-name').value.trim() })
+    post(API.auth, { action: 'enter', phone: phone, cc: cc, name: $('au-name').value.trim(),
+                     pin: $('au-pin').value.trim() || undefined,
+                     device: (navigator.platform || 'device') })
       .then(function(j){
         btn.disabled = false;
+        // A PIN that is wrong, or an account locked after five tries: both
+        // keep the person on this screen with the reason and a way out.
+        if (!j.ok && (j.wrongPin || j.locked)) {
+          $('au-pinwrap').hidden = false;
+          $('au-forgot').hidden = false;
+          $('au-pin').value = '';
+          authErr(j.error, 'au-pin');
+          return;
+        }
         if (!j.ok) { authErr(j.error || 'Could not sign you in.'); return; }
+        // A known number that has a PIN, or one that needs to choose its
+        // first. Both ask here rather than letting the number alone in.
+        if (j.exists && (j.needPin || j.setPin)) {
+          $('au-pinwrap').hidden = false;
+          $('au-forgot').hidden = !j.needPin;
+          $('au-pinlabel').textContent = j.setPin ? 'Choose a 6-number PIN' : 'Your 6-number PIN';
+          $('au-pinnote').hidden = false;
+          $('au-pinnote').textContent = j.setPin
+            ? 'Parwah now asks for a PIN as well as your number, so nobody who knows the number can open your family. Choose six numbers you will remember.'
+            : 'Welcome back' + (j.name ? ', ' + j.name : '') + '. Type your PIN.';
+          $('au-go').textContent = j.setPin ? 'Set my PIN & continue' : 'Sign in';
+          if (j.error) authErr(j.error, 'au-pin'); else { $('ob-err').textContent = ''; try { $('au-pin').focus(); } catch (e) {} }
+          return;
+        }
         if (!j.exists) {
           // Say what happened. "We have not seen this number before" is the
           // news; a field quietly appearing is not, and a mistyped digit
           // otherwise makes a second profile without anyone noticing.
           var first = $('au-namewrap').hidden;
           $('au-namewrap').hidden = false;
+          // A new person picks their PIN in the same breath as their name.
+          // A later, skippable step is how an account ends up without one.
+          $('au-pinwrap').hidden = false;
+          $('au-pinlabel').textContent = 'Choose a 6-number PIN';
+          $('au-pinnote').hidden = false;
+          $('au-pinnote').textContent = 'You will type this to open Parwah. Six numbers, not your birth year.';
+          if (j.error) authErr(j.error, 'au-pin');
           $('au-go').textContent = 'Create my profile & continue';
           $('au-newnote').hidden = false;
           if (first) $('au-newnote').textContent = 'This number is new to Parwah, so we will set you up. Already have an account? Check the number above.';
@@ -3089,10 +3152,32 @@ details.more[open]>summary::before{content:"▾ "}
           return;
         }
         authUser = j.user; saveAuth(authUser);
+        if (j.token) saveToken(j.token);
+        if (j.pinResets && j.pinResets.length) pendingResets = j.pinResets;
         routeAfterAuth(j.circles || [], j.toured);
       })
       .catch(function(){ btn.disabled = false; authErr('No connection - try again.'); });
   });
+  var pendingResets = [];
+  // NO SMS TO FALL BACK ON, so the family is the way back in. Someone
+  // already in your circle knows your face and your voice, which is a
+  // better check than a text to a number that may be the thing you lost.
+  $('au-forgot').addEventListener('click', function(){
+    var phone = $('au-phone').value.trim(), cc = $('au-cc').value;
+    if (phoneCheck(cc, phone)) { authErr('Type your number first, then tap this again.', 'au-phone'); return; }
+    if (!confirm('Ask your family to let you back in?\n\nSomeone already in your circle will get a request to approve. Once they do, you can set a new PIN.')) return;
+    post(API.auth, { action: 'reset_request', phone: phone, cc: cc })
+      .then(function(j){
+        if (!j.ok) { authErr(j.error || 'Could not ask just now.'); return; }
+        $('ob-err').textContent = '';
+        $('au-pinnote').hidden = false;
+        $('au-pinnote').textContent = j.noFamily
+          ? 'You are not in a family yet, so there is nobody to approve this. Write to care@parwah.in and we will help.'
+          : 'Asked. When someone in your family approves it, come back here and you can set a new PIN.';
+      })
+      .catch(function(){ authErr('No connection - try again.'); });
+  });
+  $('au-pin').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
   $('au-phone').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
   $('au-name').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
   $('circle-step').addEventListener('click', function(e){
@@ -3104,11 +3189,17 @@ details.more[open]>summary::before{content:"▾ "}
     showStep('setup');
   });
   function doSignOut(){
-    if (confirm('Sign out of Parwah on this device?')) {
-      clearAuth(); clearState();
+    if (!confirm('Sign out of Parwah on this device?')) return;
+    // Tell the server too, or the token keeps working for ninety days on
+    // whatever copy of it is out there.
+    var t = authToken();
+    var done = function(){
+      saveToken(''); clearAuth(); clearState();
       try { localStorage.removeItem('parwah-circles'); } catch (e) {}
       location.hash = ''; location.reload();
-    }
+    };
+    if (!t) { done(); return; }
+    post(API.auth, { action: 'signout', token: t }).then(done).catch(done);
   }
   $('signout').addEventListener('click', doSignOut);
 
@@ -3542,8 +3633,7 @@ details.more[open]>summary::before{content:"▾ "}
   var planCur = null, planData = null;
   function refreshPlan(){
     if (!state) return;
-    fetch(API.plan + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
-      .then(function(r){ return r.json(); })
+    apiGet(API.plan + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){ if (j.ok) { planData = j; if (!planCur) planCur = j.prefer || 'INR'; renderPlan(); } })
       .catch(function(){});
   }
@@ -3617,8 +3707,7 @@ details.more[open]>summary::before{content:"▾ "}
   var coinBal = null;
   function refreshCoins(){
     if (!state) return;
-    fetch(API.coins + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
-      .then(function(r){ return r.json(); })
+    apiGet(API.coins + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){ if (j.ok) renderCoins(j); })
       .catch(function(){});
   }
@@ -3787,8 +3876,7 @@ details.more[open]>summary::before{content:"▾ "}
   var CAT_LABEL = { housework: '🧹 Housework', doctor: '🩺 Doctor', vet: '🐾 Vet', driver: '🚗 Driver', shops: '🛒 Shops', repairs: '🔧 Repairs', emergency: '🆘 Emergency', local: '📍 Someone near them', other: '📦 Other' };
   function refreshBook(){
     if (!state) return;
-    fetch(API.book + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
-      .then(function(r){ return r.json(); })
+    apiGet(API.book + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){ if (j.ok) { bookCache = j.entries || []; prepCache = j.prep || []; bookAccess = j.access || []; bookConsent = j.consent || [];
           recordsCache = j.records || []; renderReady(j.family); renderFamCards();
           if (personId && curTab === 'person') openPerson(personId); bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); ecSave();
@@ -4142,8 +4230,7 @@ details.more[open]>summary::before{content:"▾ "}
   var K_LABEL = { anthropic: 'Anthropic (Claude)', anthropic_ws: '↳ Anthropic workspace ID', openai: 'OpenAI', gemini: 'Google Gemini', grok: 'Grok (xAI)', kimi: 'Kimi (Moonshot)' };
   function refreshKeys(){
     if (!state) return;
-    fetch(API.keys + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
-      .then(function(r){ return r.json(); })
+    apiGet(API.keys + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){
         if (!j.ok) return;
         var h = '', any = false;
@@ -4853,8 +4940,7 @@ details.more[open]>summary::before{content:"▾ "}
   }
   function openGame(id){
     if (!state) return;
-    fetch(API.games + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + '&game=' + encodeURIComponent(id))
-      .then(function(r){ return r.json(); })
+    apiGet(API.games + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + '&game=' + encodeURIComponent(id))
       .then(function(j){
         if (j.ok && j.game) { renderGame(j.game); if (j.games) renderGamesList(j.games); }
         else { toast(j.error || 'That game is over'); showGameList(); refreshFun(); }
@@ -4937,8 +5023,8 @@ details.more[open]>summary::before{content:"▾ "}
         if (j.games) renderGamesList(j.games);
         if (curGame && j.game) renderGame(j.game);
       }).catch(function(){});
-    fetch(API.plans + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
-      .then(function(r){ return r.json(); }).then(function(j){ if (j.ok) renderPlans(j.plans); }).catch(function(){});
+    apiGet(API.plans + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
+      .then(function(j){ if (j.ok) renderPlans(j.plans); }).catch(function(){});
   }
   function gamePost(body, after){
     body.code = state.code; body.memberId = state.memberId;
@@ -5431,7 +5517,7 @@ details.more[open]>summary::before{content:"▾ "}
   function refreshVault(){
     if (!state) return;
     var qs = '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId);
-    fetch(API.vault + qs).then(function(r){ return r.json(); }).then(function(j){
+    apiGet(API.vault + qs).then(function(j){
       if (!j.ok) return;
       vDocs = j.docs || []; vGrants = j.grants || []; vLog = j.log || []; vKinds = j.kinds || {};
       vShapes = j.idShapes || vShapes; vPanHolders = j.panHolders || vPanHolders;
@@ -5443,7 +5529,7 @@ details.more[open]>summary::before{content:"▾ "}
       renderDocs();
       if (vOpenId) openDoc(vOpenId, true);
     }).catch(function(){});
-    fetch(API.pay + qs).then(function(r){ return r.json(); }).then(function(j){
+    apiGet(API.pay + qs).then(function(j){
       if (!j.ok) return;
       vPay = j.methods || []; vPerms = j.perms || []; vPayLog = j.log || []; vPayKinds = j.kinds || {};
       if (!$('vp-kind').options.length) vFillSelect($('vp-kind'), vPayKinds);
@@ -5758,7 +5844,7 @@ details.more[open]>summary::before{content:"▾ "}
     // The panchang only changes with the day, so a screen re-open re-uses it.
     if (!force && dayData && Date.now() - dayAt < 10 * 60 * 1000) { renderDay(); return; }
     var qs = '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId);
-    fetch(API.day + qs).then(function(r){ return r.json(); }).then(function(j){
+    apiGet(API.day + qs).then(function(j){
       if (!j.ok) { $('mu-sun').textContent = j.error || 'Could not work out today.'; return; }
       dayData = j; dayAt = Date.now(); renderDay();
     }).catch(function(){
@@ -6168,7 +6254,7 @@ details.more[open]>summary::before{content:"▾ "}
     pinMsg('Checking ' + raw + '…');
     var qs = '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) +
              '&pin=' + encodeURIComponent(raw);
-    fetch(API.pin + qs).then(function(r){ return r.json(); }).then(function(j){
+    apiGet(API.pin + qs).then(function(j){
       if ($('b-pin').value.replace(/\s/g, '') !== raw) return;   // they kept typing
       if (!j.ok) { pinData = null; pinMsg(j.error || 'We could not check that PIN code.', 'bad'); pinManual(); return; }
       pinData = j;

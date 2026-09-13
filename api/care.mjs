@@ -2,6 +2,7 @@
 // GET  /api/care?circle=CODE — reminders + open/claimed requests for the circle
 // POST /api/care {code, memberId, action, ...} — see ACTIONS below
 import { db, ensureSchema, circleByCode, requireMember, isUuid } from './_db.mjs';
+import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 import { award, today } from './_coins.mjs';
 
@@ -164,7 +165,7 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const q = req.query || {};
-      const g = await requireMember(sql, q.circle, q.member);
+      const g = await requireMember(sql, q.circle, q.member, tokenOf(req));
       if (g.err) return res.status(g.status).json({ ok: false, error: g.err });
       const state = await careState(sql, g.circle.id);
       // Scoped to the caller: the suggestions used to name private entries.
@@ -178,11 +179,13 @@ export default async function handler(req, res) {
     }
 
     const { code, memberId, action } = req.body || {};
-    const circle = await circleByCode(sql, code);
-    if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
-    if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-    const meRow = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
-    if (!meRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+    // One authorisation path. The inline version checked only that the
+    // UUID belonged to the CIRCLE, never that it belonged to the caller,
+    // and every member is shown every other member's UUID.
+    const _g = await requireMember(sql, code, memberId, tokenOf(req));
+    if (_g.err) return res.status(_g.status).json({ ok: false, error: _g.err, signin: _g.signin });
+    const circle = _g.circle;
+    const meRow = [_g.me];
     const me = meRow[0];
 
     if (action === 'reminder_create') {

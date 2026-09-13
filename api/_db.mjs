@@ -1,5 +1,6 @@
 // Shared database helpers for the Parwah app API.
 import { neon } from '@neondatabase/serverless';
+import { createHash } from 'node:crypto';
 
 let schemaReady = false;
 
@@ -82,6 +83,36 @@ export async function ensureSchema(sql) {
     created_at timestamptz not null default now()
   )`;
   await sql`alter table members add column if not exists user_id uuid references users(id) on delete set null`;
+  // A PIN, so knowing someone's number is no longer the whole key. Null
+  // until the person sets one, which is how existing accounts keep working
+  // until their next sign-in asks them to choose it.
+  await sql`alter table users add column if not exists pin_hash text`;
+  await sql`alter table users add column if not exists pin_salt text`;
+  await sql`alter table users add column if not exists pin_set_at timestamptz`;
+  await sql`alter table users add column if not exists pin_tries int not null default 0`;
+  await sql`alter table users add column if not exists locked_until timestamptz`;
+  // Sessions: only the HASH of a token is stored, so a copy of this table is
+  // not a set of working logins.
+  await sql`create table if not exists sessions (
+    token_hash text primary key,
+    user_id uuid not null references users(id) on delete cascade,
+    device text,
+    created_at timestamptz not null default now(),
+    last_used_at timestamptz not null default now(),
+    expires_at timestamptz not null
+  )`;
+  await sql`create index if not exists sessions_user on sessions (user_id)`;
+  // Getting back in without an SMS: someone already in your circle vouches.
+  await sql`create table if not exists pin_resets (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references users(id) on delete cascade,
+    circle_id uuid references circles(id) on delete cascade,
+    status text not null default 'pending',
+    decided_by uuid references members(id) on delete set null,
+    created_at timestamptz not null default now(),
+    decided_at timestamptz
+  )`;
+
   await sql`alter table members add column if not exists place text`;
   await sql`alter table members add column if not exists dob date`;
   await sql`alter table members add column if not exists country text`;
@@ -211,15 +242,46 @@ export function makeCode() {
 // is what the write routes accept as proof of who you are.
 //
 // → { circle, me } on success, or { err, status } to return verbatim.
-export async function requireMember(sql, code, memberId) {
+// WHO IS CALLING. A session token identifies the caller now; the member UUID
+// only says which membership they are acting through. Those UUIDs are handed
+// to every member of a circle, so on their own they proved nothing.
+export async function sessionUser(sql, token) {
+  if (!token || typeof token !== 'string') return null;
+  const h = createHash('sha256').update(token).digest('hex');
+  const rows = await sql`select s.user_id, u.name from sessions s
+                         join users u on u.id = s.user_id
+                         where s.token_hash = ${h} and s.expires_at > now()`;
+  if (!rows[0]) return null;
+  // Touched rather than rotated: a family shares one tablet, and rotating on
+  // every request logs the other person out mid-sentence.
+  try { await sql`update sessions set last_used_at = now() where token_hash = ${h}`; } catch (e) {}
+  return rows[0];
+}
+
+export async function requireMember(sql, code, memberId, token) {
   const circle = await circleByCode(sql, code);
   if (!circle) return { err: 'No circle found with that code', status: 404 };
   if (!isUuid(memberId)) return { err: 'Not a member of this circle', status: 403 };
-  const rows = await sql`select id, name, role from members
+  const rows = await sql`select id, name, role, user_id from members
                          where id = ${memberId} and circle_id = ${circle.id}`;
   if (!rows[0]) return { err: 'Not a member of this circle', status: 403 };
+  // The membership must belong to whoever holds the token. Without this a
+  // member could act as any other member in the circle simply by sending
+  // their UUID, which every screen already shows them.
+  if (AUTH_REQUIRED) {
+    const u = await sessionUser(sql, token);
+    if (!u) return { err: 'Please sign in again', status: 401, signin: true };
+    if (rows[0].user_id && rows[0].user_id !== u.user_id) {
+      return { err: 'That is not your membership', status: 403 };
+    }
+  }
   return { circle, me: rows[0] };
 }
+
+// Set PARWAH_AUTH=off only to keep a half-migrated deployment usable while
+// every client updates. It defaults ON: the safe value is the default, so
+// forgetting to set anything leaves the door shut rather than open.
+export const AUTH_REQUIRED = String(process.env.PARWAH_AUTH || 'on').toLowerCase() !== 'off';
 
 export async function circleByCode(sql, code) {
   const clean = String(code || '').toUpperCase().trim();

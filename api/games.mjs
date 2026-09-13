@@ -6,7 +6,8 @@
 // GET  /api/games?circle=CODE&member=UUID          → { ok, games[], game|null }
 // GET  /api/games?circle=CODE&member=UUID&game=ID  → { ok, game, games[] }
 // POST /api/games {code, memberId, action:'start'|'roll'|'end', gameId?}
-import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat } from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat , requireMember} from './_db.mjs';
+import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 // How games are named, numbered and listed. Its own dependency-free module so
 // the deploy gate can unit-test it on a fresh clone, before npm install.
@@ -365,11 +366,13 @@ export default async function handler(req, res) {
     const body = req.body || {};
     const code = req.method === 'GET' ? q.circle : body.code;
     const memberId = req.method === 'GET' ? q.member : body.memberId;
-    const circle = await circleByCode(sql, code);
-    if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
-    if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-    const meRow = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
-    if (!meRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+    // One authorisation path. The inline version checked only that the
+    // UUID belonged to the CIRCLE, never that it belonged to the caller,
+    // and every member is shown every other member's UUID.
+    const _g = await requireMember(sql, code, memberId, tokenOf(req));
+    if (_g.err) return res.status(_g.status).json({ ok: false, error: _g.err, signin: _g.signin });
+    const circle = _g.circle;
+    const meRow = [_g.me];
     const me = meRow[0];
 
     if (req.method === 'GET') {

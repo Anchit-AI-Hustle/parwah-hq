@@ -1,5 +1,7 @@
 // POST /api/circle — create a care circle or join one with its code.
 import { db, ensureSchema, makeCode, circleByCode, isUuid, normPhone, phoneError, rateLimit, clientIp } from './_db.mjs';
+import { tokenOf } from './_token.mjs';
+import { ownedMember } from './_owned.mjs';
 import { pushCircle } from './_push.mjs';
 import { award } from './_coins.mjs';
 
@@ -141,7 +143,7 @@ export default async function handler(req, res) {
       if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
       const memberId = req.body.memberId;
       if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-      const mRow = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
+      const mRow = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
       if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
       if (!isUuid(req.body.requestId)) return res.status(400).json({ ok: false, error: 'Bad request' });
       const rq = await sql`select * from join_requests where id = ${req.body.requestId} and circle_id = ${circle.id} and status = 'pending'`;
@@ -177,7 +179,7 @@ export default async function handler(req, res) {
       if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
       const memberId = req.body.memberId;
       if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-      const mRow = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
+      const mRow = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
       if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
       const policy = req.body.policy === 'open' ? 'open' : 'approve';
       await sql`update circles set join_policy = ${policy} where id = ${circle.id}`;
@@ -197,7 +199,7 @@ export default async function handler(req, res) {
       if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
       const memberId = req.body.memberId;
       if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-      const mRow = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
+      const mRow = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
       if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
       const newCode = String(req.body.newCode || '').toUpperCase().replace(/\s+/g, '');
       if (!/^[A-Z0-9]{4,12}$/.test(newCode)) {
@@ -221,7 +223,7 @@ export default async function handler(req, res) {
       if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
       const memberId = req.body.memberId;
       if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-      const mRow = await sql`select id, name from members where id = ${memberId} and circle_id = ${circle.id}`;
+      const mRow = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
       if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
       // LEAVING USED TO DESTROY RECORDS SILENTLY. vault_docs.about_member,
       // pay_methods.owner_member and family_book.about_member all cascade on
@@ -254,7 +256,7 @@ export default async function handler(req, res) {
       if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
       const memberId = req.body.memberId;
       if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
-      const mRow = await sql`select id, name, role, phone, place, country, relation, dob, user_id from members where id = ${memberId} and circle_id = ${circle.id}`;
+      const mRow = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name, role, phone, place, country, relation, dob, user_id`);
       if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
       const cur = mRow[0];
       const newName = name || cur.name;
