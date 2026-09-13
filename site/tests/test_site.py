@@ -1426,6 +1426,54 @@ check("theme: text on a coloured chip and on a dark panel are separate tokens",
       "--on-accent:" in _css and "--on-dark:" in _css
       and "is how a themed app ends up with invisible buttons" in _css)
 
+# SHARE CARDS. A page with no Open Graph tags is a blank grey rectangle in
+# WhatsApp, and worse than that to a machine: tools that build something FROM
+# a url - a preview, an ad, a video - read these tags first, and several of
+# them reject a page outright when there is nothing to read, reporting it as
+# an invalid address rather than an empty one. Every page on this site had
+# none.
+_BASE = "https://parwah-hq.anchit-tandon.com"
+for _p in SITE_PAGES:
+    _h = _p.read_text(encoding="utf-8")
+    _rel = _p.relative_to(ROOT / "public")
+    _missing = [t for t in ("og:title", "og:description", "og:image", "og:url",
+                            "twitter:card") if t not in _h]
+    check(f"share card: {_rel} has one", not _missing, ", ".join(_missing))
+    # The one that is always got wrong. A relative og:image is resolved by
+    # nobody: every scraper wants an absolute URL and most simply report no
+    # image, which reads as a broken page rather than a missing tag.
+    _imgs = re.findall(r'(?:property|name)="(?:og|twitter):image"\s+content="([^"]+)"', _h)
+    check(f"share card: {_rel} names its image absolutely",
+          bool(_imgs) and all(i.startswith("https://") for i in _imgs),
+          ", ".join(i for i in _imgs if not i.startswith("https://")))
+    # A card that points at a page that is not this one is worse than none.
+    _url = re.findall(r'property="og:url"\s+content="([^"]+)"', _h)
+    _want = _BASE + "/" + (str(_rel.parent) + "/" if str(_rel.parent) != "." else "")
+    check(f"share card: {_rel} points at itself", _url == [_want],
+          f"says {_url} wanted {_want}")
+# THE INVITE IS THE GROWTH LOOP, and it goes out through WhatsApp: the app
+# shares /app/?join=CODE with wa.me/?text=. WhatsApp builds its preview from
+# these tags, and the app page had none, so every invite one family member
+# sent another arrived as a blank grey rectangle with a bare link under it.
+_app_h = (ROOT / "public" / "app" / "index.html").read_text(encoding="utf-8")
+for _t in ("og:title", "og:description", "og:image", "twitter:card"):
+    check(f"invite preview: the app carries {_t}", _t in _app_h)
+check("invite preview: and its image is absolute, like every other one",
+      'content="https://parwah-hq.anchit-tandon.com/og.png"' in _app_h)
+# Meta tags are not tracking. This must not be read as permission to add any.
+check("invite preview: the app still carries no analytics",
+      "analytics.js" not in _app_h and "googletagmanager" not in _app_h)
+
+# The image has to exist, at the size every platform crops to.
+for _card in ("og.png", "og-story.png"):
+    _f = ROOT / "public" / _card
+    check(f"share card: {_card} is actually shipped", _f.exists())
+    if _f.exists():
+        import struct as _struct
+        _b = _f.read_bytes()
+        _w, _hh = _struct.unpack(">II", _b[16:24])
+        check(f"share card: {_card} is 1200x630", (_w, _hh) == (1200, 630), f"{_w}x{_hh}")
+
 # THE LAUNCH LIST. The rule on this site has always been WhatsApp first and
 # no fake forms: a form ships only when a real backend receives it. This is
 # that backend. Its logic is unit-tested in site/tests/waitlisttest.mjs; what
