@@ -8,6 +8,7 @@
 // No OTP yet (SMS provider is a roadmap item) — the shape is ready for an
 // OTP check to slot in here without any client-flow change.
 import { db, ensureSchema, isUuid, normPhone, phoneError, rateLimit, clientIp, sessionUser } from './_db.mjs';
+import { fail, failDb } from './_fail.mjs';
 import { pushCircle } from './_push.mjs';
 import { pinError, hashPin, verifyPin, newToken, tokenHash, looksLikeToken,
          MAX_TRIES, LOCK_MINUTES, lockMessage, SESSION_DAYS } from './_auth.mjs';
@@ -50,7 +51,7 @@ export default async function handler(req, res) {
   }
   let sql;
   try { sql = db(); await ensureSchema(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  catch (e) { return failDb(res, e); }
 
   try {
     const body = req.body || {};
@@ -242,6 +243,6 @@ export default async function handler(req, res) {
       user: { id: user.id, name: user.name, phone: user.phone },
       toured: !!user.toured_at, circles, pinResets: resets });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return fail(res, e);
   }
 }

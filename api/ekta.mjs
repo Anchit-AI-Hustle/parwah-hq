@@ -12,6 +12,7 @@
 //      overloaded (429/5xx), rather than going silent on the family.
 // Beneath all three, the API's server-side fallback adds an infra layer.
 import Anthropic from '@anthropic-ai/sdk';
+import { fail, failDb } from './_fail.mjs';
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
 import { tokenOf } from './_token.mjs';
 import { careState, createReminder, createRequest } from './care.mjs';
@@ -477,7 +478,7 @@ export default async function handler(req, res) {
   }
   let sql;
   try { sql = db(); await ensureSchema(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  catch (e) { return failDb(res, e); }
   const { code, memberId, messages } = req.body || {};
   // One authorisation path. The inline version checked only that the
   // UUID belonged to the CIRCLE, never that it belonged to the caller,

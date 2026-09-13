@@ -3,13 +3,14 @@
 // not check that", never a guess. Behind a circle membership like every other
 // read, so this is not an open proxy to someone else's API.
 import { db, ensureSchema, circleByCode, isUuid, rateLimit, clientIp , requireMember} from './_db.mjs';
+import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { lookupPin, pinError } from './_pin.mjs';
 
 export default async function handler(req, res) {
   let sql;
   try { sql = db(); await ensureSchema(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  catch (e) { return failDb(res, e); }
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ ok: false, error: 'GET only' });
@@ -38,6 +39,6 @@ export default async function handler(req, res) {
     const out = await lookupPin(sql, q.pin);
     return res.status(200).json(out);
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return fail(res, e);
   }
 }

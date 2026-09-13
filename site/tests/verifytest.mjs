@@ -47,6 +47,9 @@ function run(port) {
   const env = {
     ...process.env,
     PARWAH_POLL_SECONDS: '0', PARWAH_POLL_TRIES: '4', PARWAH_MAX_RED: '2',
+    // The probes write to the database, so they are behind the deploy
+    // secret and the verifier refuses to run without it.
+    PARWAH_DIAG_SECRET: process.env.PARWAH_DIAG_SECRET || 'test-diag-key',
   };
   return new Promise((resolve) => {
     execFile('bash', [SCRIPT, `http://127.0.0.1:${port}`],
@@ -169,7 +172,24 @@ await withServer([{ status: 503, body: '' }], async (port) => {
   ok('an empty 503 body reports its status', r.out.includes('HTTP 503'));
 });
 
-// 11. No argument is a usage error, not a silent pass.
+// 11. Without the diagnostics key the verifier refuses rather than polling a
+// 403 forty times and calling production unreachable.
+{
+  const srv = await serve([GREEN_DB]);
+  const port = srv.address().port;
+  let code = 0, out = '';
+  try {
+    execFileSync('bash', [SCRIPT, `http://127.0.0.1:${port}`], {
+      encoding: 'utf8', stdio: 'pipe',
+      env: { ...process.env, PARWAH_DIAG_SECRET: '', CRON_SECRET: '' },
+    });
+  } catch (e) { code = e.status; out = String(e.stdout || '') + String(e.stderr || ''); }
+  await new Promise((r) => srv.close(r));
+  ok('no diagnostics key is an error, not a false red', code !== 0);
+  ok('and it says which variable to set', /PARWAH_DIAG_SECRET/.test(out));
+}
+
+// 12. No argument is a usage error, not a silent pass.
 {
   let code = 0;
   try { execFileSync('bash', [SCRIPT], { encoding: 'utf8', stdio: 'pipe' }); }

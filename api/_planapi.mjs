@@ -12,6 +12,7 @@
 // GET  /api/settings?area=plan&circle=CODE&member=UUID → plans, rate, reservations
 // POST { action:'reserve'|'cancel', plan, currency }
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
+import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 
 // The rate is fixed and stated, never a live lookup: a price that moves while
@@ -63,7 +64,7 @@ async function ensurePlanSchema(sql) {
 export default async function handler(req, res) {
   let sql;
   try { sql = db(); await ensureSchema(sql); await ensurePlanSchema(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  catch (e) { return failDb(res, e); }
   try {
     const q = req.query || {}, body = req.body || {};
     const code = req.method === 'GET' ? q.circle : body.code;
@@ -122,6 +123,6 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return fail(res, e);
   }
 }

@@ -24,6 +24,14 @@ BASE="${1:-}"
 [ -n "$BASE" ] || { echo "usage: ops/verify-live.sh <base-url>" >&2; exit 2; }
 BASE="${BASE%/}"
 
+# The probes write to the database, so they are behind the deploy secret.
+# Without it this cannot verify, and saying so beats polling a 403 forty times.
+DIAG_KEY="${PARWAH_DIAG_SECRET:-${CRON_SECRET:-}}"
+if [ -z "$DIAG_KEY" ]; then
+  echo "FAILED: PARWAH_DIAG_SECRET is not set here, so the live self-test cannot be run." >&2
+  echo "        Set the same value you set on the Vercel project and run this again." >&2
+  exit 1
+fi
 POLL="${PARWAH_POLL_SECONDS:-10}"
 TRIES="${PARWAH_POLL_TRIES:-40}"
 MAX_RED="${PARWAH_MAX_RED:-12}"
@@ -58,7 +66,7 @@ snippet() {
 log "verifying $BASE"
 BODY=''; CODE=000; RED=0; VERDICT=none
 for i in $(seq 1 "$TRIES"); do
-  fetch "$BASE/api/diag?probe=db" 60
+  fetch "$BASE/api/diag?probe=db&key=$DIAG_KEY" 60
   case "$BODY" in
     *'"ok":true'*)
       VERDICT=green; break ;;
@@ -102,7 +110,7 @@ esac
 # The day's arithmetic, on the build that is now live. Only an explicit
 # failure is fatal: this probe also reports whether the horoscope source
 # answered, and someone else's uptime is not our deploy's problem.
-fetch "$BASE/api/diag?probe=day" 60
+fetch "$BASE/api/diag?probe=day&key=$DIAG_KEY" 60
 case "$BODY" in
   *'"ok":true'*)  log "muhurat check: $(printf '%s' "$BODY" | sed -n 's/.*"summary":"\([^"]*\)".*/\1/p')" ;;
   *'"ok":false'*) log "$BODY"; die "the muhurat self-test is RED on production" ;;

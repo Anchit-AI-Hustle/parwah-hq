@@ -926,6 +926,43 @@ check("signin: the PIN rules are unit-tested by the gate",
       (REPO / "site/tests/authtest.mjs").exists()
       and "authtest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
 
+# WHAT A STRANGER LEARNS WHEN SOMETHING BREAKS, AND WHAT THEY CAN MAKE
+# HAPPEN. Every route sent e.message straight to the caller, and Postgres
+# names the schema in its errors. The diagnostics probes were open to the
+# world and every one of them WRITES.
+_failmod = (API_DIR / "_fail.mjs").read_text(encoding="utf-8")
+_diag = (API_DIR / "diag.mjs").read_text(encoding="utf-8")
+_verify = (REPO / "ops/verify-live.sh").read_text(encoding="utf-8")
+check("leak: there is one place that decides what an error says",
+      "export function fail(" in _failmod and "export function failDb(" in _failmod)
+check("leak: the real error goes to the server log, not the browser",
+      "console.error('[parwah " in _failmod)
+check("leak: and the caller gets a reference to quote back",
+      "ref ' + ref" in _failmod and "randomBytes(4)" in _failmod)
+_leaky = sorted(p.name for p in API_DIR.glob("*.mjs")
+                if "error: String(e && e.message || e)" in p.read_text(encoding="utf-8")
+                and p.name not in {"_selftest.mjs", "_health.mjs", "_ektaselftest.mjs", "ekta.mjs"})
+check("leak: no route returns a raw database error to the caller",
+      not _leaky, ", ".join(_leaky))
+# The probes create circles, members, chats, vault rows and coin ledger
+# entries on every hit. Open, that is an unauthenticated write endpoint.
+check("leak: the probes that write need the diagnostics key",
+      "function authorised(req)" in _diag and "PARWAH_DIAG_SECRET" in _diag)
+check("leak: with no key configured they stay off rather than open",
+      "stay off until PARWAH_DIAG_SECRET is set" in _diag)
+check("leak: the liveness check is open but touches nothing",
+      "Liveness only" in _diag and "db_configured" in _diag)
+check("leak: the deploy verifier sends the key",
+      "DIAG_KEY" in _verify and "probe=db&key=$DIAG_KEY" in _verify)
+check("leak: and refuses to run without it, rather than reporting a false red",
+      "PARWAH_DIAG_SECRET is not set here" in _verify)
+# Nothing private may ever be served.
+_vign = (REPO / ".vercelignore").read_text(encoding="utf-8")
+for _p in ("hq/", ".claude/", "CLAUDE.md"):
+    check(f"leak: {_p} can never be uploaded", _p in _vign)
+check("leak: the build serves only site/public",
+      "cp -r site/public public" in (REPO / "package.json").read_text(encoding="utf-8"))
+
 # ---------- 10b. The day: muhurat and rashi ----------
 # The point of the section is that a family split across cities sees the SAME
 # screen: the parent reads the Choghadiya they have always kept, the grandchild

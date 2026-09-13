@@ -7,6 +7,7 @@
 // GET  /api/games?circle=CODE&member=UUID&game=ID  → { ok, game, games[] }
 // POST /api/games {code, memberId, action:'start'|'roll'|'end', gameId?}
 import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat , requireMember} from './_db.mjs';
+import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 // How games are named, numbered and listed. Its own dependency-free module so
@@ -359,7 +360,7 @@ async function nextNumber(sql, circleId, kind) {
 export default async function handler(req, res) {
   let sql;
   try { sql = db(); await ensureSchema(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  catch (e) { return failDb(res, e); }
 
   try {
     const q = req.query || {};
@@ -596,6 +597,6 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return fail(res, e);
   }
 }

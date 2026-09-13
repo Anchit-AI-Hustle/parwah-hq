@@ -1,6 +1,7 @@
 // GET  /api/events?circle=CODE          — circle state: members + last 50 events
 // POST /api/events {code, memberId, type, text} — record a check-in, SOS, pill or message
 import { db, ensureSchema, circleByCode, requireMember, isUuid } from './_db.mjs';
+import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
 import { pushCircle } from './_push.mjs';
@@ -30,7 +31,7 @@ export default async function handler(req, res) {
       created_at timestamptz not null default now()
     )`;
     await sql`create index if not exists sos_circle_open on sos (circle_id, status, created_at desc)`;
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  } catch (e) { return failDb(res, e); }
 
 // There is no scheduler on this platform, so escalation rides on the polling
 // the family is already doing: any read of the circle checks for an SOS that
@@ -213,6 +214,6 @@ async function escalateStaleSos(sql, circleId) {
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ ok: false, error: 'GET or POST only' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return fail(res, e);
   }
 }

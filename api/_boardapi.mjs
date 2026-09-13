@@ -4,6 +4,7 @@
 // GET  /api/board?circle=CODE&member=UUID&after=ISO → {ok, strokes[], clearedAt}
 // POST /api/board {code, memberId, action:'stroke'|'clear', ...}
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
+import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 
 export default async function handler(req, res) {
@@ -22,7 +23,7 @@ export default async function handler(req, res) {
       circle_id uuid primary key references circles(id) on delete cascade,
       cleared_at timestamptz not null default now()
     )`;
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  } catch (e) { return failDb(res, e); }
 
   try {
     const q = req.query || {};
@@ -79,6 +80,6 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return fail(res, e);
   }
 }

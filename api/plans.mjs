@@ -4,6 +4,7 @@
 // GET  /api/plans?circle=CODE&member=UUID → { ok, plans[] } (upcoming)
 // POST /api/plans {code, memberId, action:'create'|'rsvp'|'cancel', ...}
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
+import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 
@@ -35,7 +36,7 @@ export default async function handler(req, res) {
       created_at timestamptz not null default now()
     )`;
     await sql`alter table plans add column if not exists expected int`;
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  } catch (e) { return failDb(res, e); }
 
   try {
     const q = req.query || {};
@@ -117,6 +118,6 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return fail(res, e);
   }
 }

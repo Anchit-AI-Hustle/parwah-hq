@@ -15,6 +15,7 @@
 //   are recorded, missing, or due a re-check.
 // POST /api/book {code, memberId, action:'add'|'update'|'remove'|'verify'}
 import { db, ensureSchema, circleByCode, isUuid, normPhone, phoneError , requireMember} from './_db.mjs';
+import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 // A private entry's NAME is as private as the entry: adding, verifying or
 // removing a private medicine used to put its name in every member's feed.
@@ -80,7 +81,7 @@ export default async function handler(req, res) {
       at timestamptz not null default now()
     )`;
     await sql`create index if not exists book_consent_entry on book_consent (entry_id, at desc)`;
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  } catch (e) { return failDb(res, e); }
 
   try {
     const q = req.query || {};
@@ -364,6 +365,6 @@ export default async function handler(req, res) {
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return fail(res, e);
   }
 }

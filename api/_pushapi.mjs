@@ -2,13 +2,14 @@
 // GET  /api/push                     → { ok, publicKey }  (VAPID, for subscribe)
 // POST /api/push {code, memberId, action:'subscribe'|'unsubscribe', sub}
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
+import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { ensurePushSchema, vapidPublicKey } from './_push.mjs';
 
 export default async function handler(req, res) {
   let sql;
   try { sql = db(); await ensureSchema(sql); await ensurePushSchema(sql); }
-  catch (e) { return res.status(500).json({ ok: false, error: String(e && e.message || e) }); }
+  catch (e) { return failDb(res, e); }
 
   try {
     if (req.method === 'GET') {
@@ -51,6 +52,6 @@ export default async function handler(req, res) {
     }
     return res.status(400).json({ ok: false, error: 'Unknown action' });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e && e.message || e) });
+    return fail(res, e);
   }
 }
