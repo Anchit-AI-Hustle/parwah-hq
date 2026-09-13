@@ -963,6 +963,45 @@ for _p in ("hq/", ".claude/", "CLAUDE.md"):
 check("leak: the build serves only site/public",
       "cp -r site/public public" in (REPO / "package.json").read_text(encoding="utf-8"))
 
+# DEPLOYING WITHOUT A LAPTOP. Vercel's git integration stopped creating
+# deployments, and ops/deploy.sh needs a machine that can reach
+# api.vercel.com - which the development sandbox cannot. Eleven commits of
+# security fixes sat on main undeployed for a day because of that.
+_wf_path = REPO / ".github/workflows/deploy.yml"
+check("deploy: there is a workflow that ships without a laptop", _wf_path.exists())
+_wf = _wf_path.read_text(encoding="utf-8") if _wf_path.exists() else ""
+check("deploy: it fires on every push to main", "branches:" in _wf and "- main" in _wf)
+check("deploy: and can be re-run by hand after a failure", "workflow_dispatch" in _wf)
+check("deploy: one at a time, and never cancelled midway",
+      "group: deploy-production" in _wf and "cancel-in-progress: false" in _wf)
+# Order matters: the gate cannot run after the deploy and mean anything.
+_gate_at = _wf.find("npm test")
+_ship_at = _wf.find("vercel deploy --prod")
+_verify_at = _wf.find("ops/verify-live.sh")
+check("deploy: the gate runs BEFORE production, not after",
+      0 < _gate_at < _ship_at)
+check("deploy: and the live database is proved AFTER, or it is a rumour",
+      0 < _ship_at < _verify_at)
+check("deploy: source is deployed so the Vercel build runs the gate again",
+      "--prebuilt" not in _wf)
+# A deploy that ships and then cannot be verified is worse than one that
+# never started, so the secrets are checked before anything can half-succeed.
+check("deploy: it names the missing secret before doing anything",
+      "Missing repository secret" in _wf
+      and _wf.find("Missing repository secret") < _ship_at)
+# Every VERCEL_TOKEN must be set FROM the secret store, never assigned a
+# literal. Matching the variable's name is not the test; matching a value is.
+_tok_assign = re.findall(r"VERCEL_TOKEN:\s*(\S+)", _wf)
+check("deploy: the token only ever comes from the secret store",
+      bool(_tok_assign) and all(t.startswith("${{") for t in _tok_assign),
+      ", ".join(t for t in _tok_assign if not t.startswith("${{")))
+check("deploy: and no credential is written into the workflow",
+      not re.search(r"(?<![\w$.{])[A-Za-z0-9]{24}(?![\w}])", _wf))
+check("deploy: a failure is reported rather than passing quietly",
+      "if: failure()" in _wf and "Deploy FAILED" in _wf)
+check("deploy: and the run says what went live",
+      "GITHUB_STEP_SUMMARY" in _wf and "Live at" in _wf)
+
 # ---------- 10b. The day: muhurat and rashi ----------
 # The point of the section is that a family split across cities sees the SAME
 # screen: the parent reads the Choghadiya they have always kept, the grandchild

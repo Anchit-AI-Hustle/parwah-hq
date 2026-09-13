@@ -1,0 +1,130 @@
+# DEPLOYING WITHOUT A LAPTOP.
+#
+# Vercel's git integration for this project stopped creating deployments,
+# which is why ops/deploy.sh exists. But that script needs a machine that
+# can reach api.vercel.com, and the development sandbox cannot, so eleven
+# commits of security fixes sat on main undeployed for a day. GitHub's
+# runners have no such restriction.
+#
+# This does what ops/deploy.sh does, in the same order and with the same
+# refusals: the gate first, then production, then PROVE IT against the live
+# database before calling it done. A deploy that is not verified is a rumour.
+#
+# TWO REPOSITORY SECRETS ARE REQUIRED, and this fails loudly without them
+# rather than half-deploying:
+#   VERCEL_TOKEN         vercel.com/account/settings/tokens, scoped to the
+#                        team that owns the project
+#   PARWAH_DIAG_SECRET   the same value set on the Vercel project, or the
+#                        self-test cannot be run at all
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:        # so a failed deploy can be retried by hand
+
+permissions:
+  contents: read
+
+# One deploy at a time, and never cancel one midway: a half-finished deploy
+# is the one state worse than a late one.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  VERCEL_ORG_ID: team_yC0I2xlKsitxFcfizef9EDQl
+  VERCEL_PROJECT_ID: prj_n8jIIXMHjsT9NK4AVr5I0yj6tkj4
+  PROD_URL: https://parwah-hq.anchit-tandon.com
+
+jobs:
+  deploy:
+    name: Gate, deploy, and verify against the live database
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Say which secret is missing, before doing anything that could half
+      # succeed. A deploy that ships and then cannot be verified is worse
+      # than one that never started.
+      - name: Check the secrets this needs
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          PARWAH_DIAG_SECRET: ${{ secrets.PARWAH_DIAG_SECRET }}
+        run: |
+          missing=
+          [ -n "$VERCEL_TOKEN" ] || missing="$missing VERCEL_TOKEN"
+          [ -n "$PARWAH_DIAG_SECRET" ] || missing="$missing PARWAH_DIAG_SECRET"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing"
+            echo "Add them under Settings, Secrets and variables, Actions."
+            echo "PARWAH_DIAG_SECRET must match the value set on the Vercel project."
+            exit 1
+          fi
+          echo "Both secrets are present."
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      # The same gate the build runs. A red tree must never reach production,
+      # and finding that out here costs 30 seconds instead of a rollback.
+      - name: Run the deploy gate
+        run: npm test
+
+      - name: Install the Vercel CLI
+        run: npm install --no-save vercel@latest
+
+      # Source, not a prebuilt bundle: the Vercel build runs scripts/checks.sh
+      # again, so the gate guards the deployment itself and not just this job.
+      - name: Deploy to production
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -o pipefail
+          npx vercel deploy --prod --yes --token="$VERCEL_TOKEN" 2>&1 | tee deploy.log
+          url="$(grep -Eo 'https://[a-zA-Z0-9.-]+\.vercel\.app' deploy.log | tail -1)"
+          [ -n "$url" ] || { echo "::error::The deploy produced no URL"; exit 1; }
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed $url"
+
+      # THE PART PEOPLE SKIP. ops/verify-live.sh polls the live self-test,
+      # names the failing step on the first red attempt rather than after
+      # giving up, and tells a build that is still landing apart from one
+      # that is broken.
+      - name: Prove it against the live database
+        env:
+          PARWAH_DIAG_SECRET: ${{ secrets.PARWAH_DIAG_SECRET }}
+        run: bash ops/verify-live.sh "$PROD_URL"
+
+      - name: Say what is live
+        run: |
+          echo "### Deployed to production :rocket:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| | |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Commit | \`${GITHUB_SHA:0:7}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Live at | ${PROD_URL} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Build | ${{ steps.deploy.outputs.url }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Verified against the live database after deploying." >> "$GITHUB_STEP_SUMMARY"
+
+      # A failed deploy must not be quiet. The log holds the failing step by
+      # name, because verify-live.sh prints it rather than discarding it.
+      - name: Report a failure
+        if: failure()
+        run: |
+          echo "### Deploy FAILED :x:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit \`${GITHUB_SHA:0:7}\` did not reach production, or reached it and did not verify." >> "$GITHUB_STEP_SUMMARY"
+          echo "Open the job log: the failing step is named there." >> "$GITHUB_STEP_SUMMARY"
