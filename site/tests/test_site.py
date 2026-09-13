@@ -825,6 +825,43 @@ check("prompts: no key, token or connection string is pasted into it",
 check("prompts: the book is not shipped to the public site",
       not (REPO / "site/public/docs").exists())
 
+# ANALYTICS: MEASURE THE FUNNEL, LEAVE THE FAMILY ALONE.
+_an_path = REPO / "site/public/analytics.js"
+check("analytics: the tracking file exists", _an_path.exists())
+_an = _an_path.read_text(encoding="utf-8") if _an_path.exists() else ""
+for _mp in ["index.html", "story/index.html", "get/index.html",
+            "launch/index.html", "demo/index.html"]:
+    check(f"analytics: {_mp} is measured",
+          "analytics.js" in (REPO / "site/public" / _mp).read_text(encoding="utf-8"))
+# THE APP IS NOT. The home page promises "Reassurance, never surveillance",
+# and the app is where a family keeps health facts, documents and addresses.
+_app_t = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+check("analytics: the app is NOT measured, because the promise is not surveillance",
+      "analytics.js" not in _app_t)
+check("analytics: and the app carries no Google tag of its own",
+      "googletagmanager" not in _app_t and "gtag(" not in _app_t)
+check("analytics: the file says why the app is exempt, so nobody adds it later",
+      "not loaded inside /app/" in _an)
+# Nothing may reach Google before a real choice.
+check("analytics: ships inert until an ID is pasted in", "var GA4 = ''" in _an)
+check("analytics: with no ID there is no bar and no request", "if (!GA4) return;" in _an)
+check("analytics: the tag is fetched on consent, not hard-coded into the page",
+      "document.createElement('script')" in _an and _an.count("googletagmanager") == 1)
+check("analytics: the answer is remembered", "localStorage.setItem(KEY" in _an)
+check("analytics: Do Not Track is already an answer", "doNotTrack" in _an)
+check("analytics: no advertising signals, and the IP truncated",
+      "allow_google_signals: false" in _an and "anonymize_ip: true" in _an)
+check("analytics: a click before consent is held, not lost",
+      "if (queue.length < 20) queue.push" in _an)
+# One conversion, however it is reached.
+check("analytics: joining the list is one event, with the route recorded",
+      "'join_waitlist'" in _an and "method: 'whatsapp'" in _an and "method: 'email'" in _an)
+check("analytics: the steps toward the app are counted too",
+      "'open_app'" in _an and "'open_demo'" in _an and "'open_install'" in _an)
+check("analytics: the promise is proved in a browser, not just asserted here",
+      (REPO / "site/tests/browser/analytics.browser.mjs").exists()
+      and "analytics.browser.mjs" in (REPO / "package.json").read_text(encoding="utf-8"))
+
 # ---------- 10b. The day: muhurat and rashi ----------
 # The point of the section is that a family split across cities sees the SAME
 # screen: the parent reads the Choghadiya they have always kept, the grandchild
