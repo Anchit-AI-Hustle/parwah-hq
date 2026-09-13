@@ -328,6 +328,31 @@ for (const theme of ['light', 'dark']) {
   await pg.close();
 }
 
+// ONE H1 AT A TIME. The gate checks that a marketing page has exactly one
+// h1; the app has three, one per screen, which is correct for an app and
+// wrong for a document. The property that actually matters to a screen
+// reader is that only one of them is ever on screen, and that can only be
+// known in a browser, so it is asserted here rather than exempted there.
+{
+  const pg = await fresh({ viewport:{ width:390, height:844 }, signedIn:true });
+  const seen = [];
+  const countVisible = () => pg.evaluate(() =>
+    [...document.querySelectorAll('h1')].filter(h => {
+      const r = h.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && getComputedStyle(h).visibility !== 'hidden';
+    }).map(h => (h.textContent || '').trim().slice(0, 30)));
+  seen.push(await countVisible());
+  for (const tab of ['care', 'together', 'day']) {
+    const t = pg.locator(`#tabs [data-tab="${tab}"]:visible`).first();
+    if (await t.count()) { await t.click(); await pg.waitForTimeout(350); seen.push(await countVisible()); }
+  }
+  const worst = seen.reduce((a, b) => (b.length > a.length ? b : a), []);
+  ok(worst.length <= 1,
+     'never more than one h1 on screen at once' + (worst.length > 1 ? ': ' + worst.join(' | ') : ''));
+  ok(seen.some(v => v.length === 1), 'and a screen does have one, rather than none');
+  await pg.close();
+}
+
 ok(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.slice(0,3).join(' / ') : ''));
 await browser.close(); server.close();
 console.log(`\n${pass} passed, ${fail} failed`);

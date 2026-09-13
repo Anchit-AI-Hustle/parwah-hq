@@ -5,7 +5,24 @@ from pathlib import Path
 from html.parser import HTMLParser
 
 ROOT = Path(__file__).resolve().parents[1]
-PAGES = [ROOT / "public" / "index.html", ROOT / "public" / "story" / "index.html", ROOT / "public" / "launch" / "index.html", ROOT / "public" / "get" / "index.html"]
+# Discovered, not listed. This was four hardcoded paths, which meant /demo/
+# was never structure-checked, link-checked, anchor-checked or claims-checked,
+# and every page added after it inherited the same silence. A check that does
+# not know about a page cannot fail on it.
+PAGES = sorted((ROOT / "public").rglob("*.html"))
+# The marketing pages are documents; /app/ and /demo/ are applications. Two
+# rules genuinely differ between them: a document has exactly one h1, an app
+# has one per screen and shows one screen at a time (asserted in the browser
+# suite, where visibility is knowable); and the shared stylesheet is the
+# marketing design system, which the app deliberately does not use.
+SITE_PAGES = [p for p in PAGES
+              if not {"app", "demo"} & set(p.relative_to(ROOT / "public").parts)]
+
+def markup_only(html):
+    """Drop script and style bodies. A href inside a JS template string is
+    not a link a person can follow, and treating it as one produced four
+    false dead links in the app on the first run of this scan."""
+    return re.sub(r"<(script|style)\b[^>]*>.*?</\1>", " ", html, flags=re.S | re.I)
 FAILS = []
 
 def check(name, ok, detail=""):
@@ -35,9 +52,9 @@ for p in PAGES:
 
 # ---------- 2. Internal links resolve ----------
 for p in PAGES:
-    html = p.read_text(encoding="utf-8"); bad = []
+    html = markup_only(p.read_text(encoding="utf-8")); bad = []
     for href in re.findall(r'href="([^"]+)"', html):
-        if href.startswith(("http","mailto:","#")): continue
+        if href.startswith(("http","mailto:","#","tel:","data:")): continue
         target = (p.parent / href.split("#")[0]).resolve()
         if target.is_dir(): target = target / "index.html"
         if not target.exists(): bad.append(href)
@@ -45,7 +62,7 @@ for p in PAGES:
 
 # ---------- 3. Anchor targets exist ----------
 for p in PAGES:
-    html = p.read_text(encoding="utf-8")
+    html = markup_only(p.read_text(encoding="utf-8"))
     ids = set(re.findall(r'id="([^"]+)"', html)); bad = []
     for href in re.findall(r'href="#([^"]+)"', html):
         if href not in ids: bad.append("#"+href)
@@ -131,14 +148,30 @@ WA_NUMBER = "919873945238"
 ph = sum(p.read_text(encoding="utf-8").count("91XXXXXXXXXX") for p in PAGES)
 wa = sum(p.read_text(encoding="utf-8").count(f"wa.me/{WA_NUMBER}") for p in PAGES)
 check("wa.me placeholder fully replaced", ph == 0, f"found {ph} leftover placeholder link(s)")
-check("wa.me links present and consistent", wa == 3, f"expected 3 links to wa.me/{WA_NUMBER}, found {wa}")
+# Not a fixed count any more: pages get added, and a check that has to be
+# edited every time one is added gets edited without being thought about.
+# What must hold is that every wa.me link on the site is THIS number.
+_wa_all = sum(len(re.findall(r"wa\.me/(\d+)", p.read_text(encoding="utf-8"))) for p in PAGES)
+_wa_wrong = sorted({n for p in PAGES
+                    for n in re.findall(r"wa\.me/(\d+)", p.read_text(encoding="utf-8"))
+                    if n != WA_NUMBER})
+check("wa.me links present", wa >= 3, f"found {wa} links to wa.me/{WA_NUMBER}")
+check("wa.me links all go to the real number, none to another",
+      not _wa_wrong and _wa_all == wa, ", ".join(_wa_wrong))
 
 # ---------- 6. A11y basics ----------
 for p in PAGES:
     html = p.read_text(encoding="utf-8")
-    ok = ('lang="en"' in html and 'name="viewport"' in html
-          and html.count("<h1") == 1 and 'aria-label' in html)
-    check(f"a11y basics (lang/viewport/single-h1/aria): {p.relative_to(ROOT)}", ok)
+    missing = [n for n, present in (
+        ("lang", 'lang="en"' in html),
+        ("viewport", 'name="viewport"' in html),
+        ("aria-label", 'aria-label' in html),
+    ) if not present]
+    check(f"a11y basics (lang/viewport/aria): {p.relative_to(ROOT)}",
+          not missing, ", ".join(missing))
+for p in SITE_PAGES:
+    n = p.read_text(encoding="utf-8").count("<h1")
+    check(f"a11y: exactly one h1: {p.relative_to(ROOT)}", n == 1, f"found {n}")
 css = (ROOT/"public"/"styles.css").read_text(encoding="utf-8")
 check("a11y: focus-visible style", ":focus-visible" in css)
 check("a11y: reduced motion respected", "prefers-reduced-motion" in css)
@@ -158,7 +191,7 @@ for p in PAGES:
         check(f"js syntax: {p.relative_to(ROOT)} script#{i}", r.returncode == 0, r.stderr.strip()[:120])
 
 # ---------- 9. Shared stylesheet + fonts wired ----------
-for p in PAGES:
+for p in SITE_PAGES:
     html = p.read_text(encoding="utf-8")
     check(f"styles.css linked: {p.relative_to(ROOT)}", "styles.css" in html)
     check(f"fonts wired: {p.relative_to(ROOT)}", "fonts.googleapis.com" in html and "Fraunces" in html)
@@ -929,10 +962,18 @@ check("prompts: the book is not shipped to the public site",
 _an_path = REPO / "site/public/analytics.js"
 check("analytics: the tracking file exists", _an_path.exists())
 _an = _an_path.read_text(encoding="utf-8") if _an_path.exists() else ""
-for _mp in ["index.html", "story/index.html", "get/index.html",
-            "launch/index.html", "demo/index.html"]:
-    check(f"analytics: {_mp} is measured",
-          "analytics.js" in (REPO / "site/public" / _mp).read_text(encoding="utf-8"))
+# Discovered, like every other page scan here. This was a list of five
+# filenames, so a marketing page added later would have shipped unmeasured
+# and nobody would have known until the funnel had a hole in it.
+# /demo/ counts as marketing for this purpose even though it is an app:
+# it is a page we send traffic to.
+_measured = [q for q in PAGES
+             if "app" not in q.relative_to(ROOT / "public").parts]
+check("analytics: there are marketing pages to measure", len(_measured) >= 5,
+      f"{len(_measured)} pages")
+for _mp in _measured:
+    check(f"analytics: {_mp.relative_to(ROOT / 'public')} is measured",
+          "analytics.js" in _mp.read_text(encoding="utf-8"))
 # THE APP IS NOT. The home page promises "Reassurance, never surveillance",
 # and the app is where a family keeps health facts, documents and addresses.
 _app_t = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
