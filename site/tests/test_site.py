@@ -51,16 +51,80 @@ for p in PAGES:
         if href not in ids: bad.append("#"+href)
     check(f"anchor targets: {p.relative_to(ROOT)}", not bad, ", ".join(bad))
 
-# ---------- 4. Banned therapeutic claims (ASCI guardrail) ----------
-BANNED = ["cure","treats ","treatment","heals","prevent","reverse","remedy",
-          "medicine","therapeutic","clinically proven","doctor recommended",
-          "pain relief","arthritis relief","guaranteed result"]
-for p in PAGES:
-    text = re.sub(r"<[^>]+>"," ", p.read_text(encoding="utf-8")).lower()
-    # mandatory legal disclaimer uses negative claim language - exempt it, keep marketing copy strict
-    text = text.replace("our products are not medicines and are not intended to diagnose", "")
-    hits = sorted({b for b in BANNED if b in text})
-    check(f"zero-claims scan: {p.relative_to(ROOT)}", not hits, ", ".join(hits))
+# ---------- 4. Banned therapeutic claims and dignity-first voice ----------
+# Two rule sets merged when the D2C products brand folded into this repo.
+# Each list had terms the other lacked: this one banned prevent, remedy and
+# pain relief; that one banned arthritis, diabetes, elderly and burden. The
+# last two are voice rules, not claims, and they are the ones that matter
+# for copy about mobility and bathroom safety.
+#
+# Word boundaries, not substrings. The old list banned the substring "cure",
+# so the first person to write "secure" would have turned the gate red for
+# the wrong reason. It passed only because no scanned page said it.
+BANNED = {
+    # therapeutic claims
+    "cure":                r"\bcure[sd]?\b",
+    "treat":               r"\btreat(s|ed|ing|ment|ments)?\b",
+    "heal":                r"\bheal(s|ed|ing)?\b",
+    "therapy":             r"\btherap(y|ies|eutic|ist|ists)\b",
+    "remedy":              r"\bremed(y|ies)\b",
+    "medicinal":           r"\bmedicinal\b",
+    "calling it medicine": r"\b(is|are|as)\s+(a\s+)?medicines?\b",
+    "prevents":            r"\bprevent(s|ed|ing|ion)?\b",
+    "reverses":            r"\breverse[sd]?\b",
+    "clinically proven":   r"clinically\s+proven",
+    "doctor recommended":  r"doctor[\s-]+recommended",
+    "pain relief":         r"\bpain\s+relief\b",
+    "guaranteed result":   r"\bguaranteed\s+results?\b",
+    # named conditions: never ours to mention next to a product
+    "arthritis":           r"\barthritis\b",
+    "diabetes":            r"\bdiabet(es|ic)\b",
+    # dignity-first voice: seniors have agency and are not a weight
+    "elderly":             r"\belderly\b",
+    "burden":              r"\bburden(s|ed|some)?\b",
+}
+
+def page_copy(path):
+    """The words a person reads. Not the code, and not the legal disclaimer.
+
+    Script and style bodies are stripped because a banned word inside a
+    variable name is not a claim to anyone. The disclaimer is exempted by
+    its element, <p class="legal">, rather than by matching its sentence:
+    the old exemption was a 46-character string, so rewording the
+    disclaimer would have silently switched the exemption off and turned
+    the gate red on the very text that keeps us compliant.
+    """
+    h = path.read_text(encoding="utf-8")
+    h = re.sub(r"<(script|style)\b[^>]*>.*?</\1>", " ", h, flags=re.S | re.I)
+    h = re.sub(r'<([a-z]+)[^>]*class="[^"]*\blegal\b[^"]*"[^>]*>.*?</\1>',
+               " ", h, flags=re.S | re.I)
+    return re.sub(r"<[^>]+>", " ", h).lower()
+
+# Every page, discovered rather than listed. The old scan named four files,
+# so /demo/ was never checked at all and any page added later would have
+# escaped silently. merge/ is included because that copy is queued to move
+# into the site and must clear the bar before it does.
+_repo_root = ROOT.parent
+CLAIM_PAGES = sorted(list((ROOT / "public").rglob("*.html"))
+                     + list((_repo_root / "merge").rglob("*.html")))
+# Six live pages plus whatever is staged. If this ever drops to the four
+# that used to be hardcoded, the discovery has broken and the scan is
+# quietly covering less than it claims to.
+check("claims: the scan finds the pages instead of being told them",
+      len(CLAIM_PAGES) >= 6, f"{len(CLAIM_PAGES)} pages scanned")
+for p in CLAIM_PAGES:
+    text = page_copy(p)
+    hits = sorted({label for label, pat in BANNED.items() if re.search(pat, text)})
+    check(f"zero-claims scan: {p.relative_to(_repo_root)}", not hits, ", ".join(hits))
+
+# CLAUDE.md summarises these rules for whoever writes the next page, and a
+# summary that disagrees with the gate is worse than no summary: it tells
+# someone a word is safe when the build will reject it. The list here is the
+# authority; the document must name every term in it.
+_claude_md = (_repo_root / "CLAUDE.md").read_text(encoding="utf-8").lower()
+_undocumented = [k for k in BANNED if k not in _claude_md]
+check("claims: every banned term is written down where authors will read it",
+      not _undocumented, ", ".join(_undocumented))
 
 # ---------- 5. WhatsApp number guard (real number live; placeholder must never return) ----------
 WA_NUMBER = "919873945238"
