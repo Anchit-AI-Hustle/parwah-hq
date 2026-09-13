@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parwah - They took care of you. Take care back.</title>
+<meta name="description" content="Parwah is a new Indian brand of daily-living essentials for parents - ortho comfort, bathroom safety and daily aids, chosen with dignity. Join the launch list.">
+<meta property="og:title" content="Parwah - They took care of you. Take care back.">
+<meta property="og:description" content="Daily-living essentials for parents, chosen with dignity. Launching soon in India. Join the launch list.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://parwah.in/">
+<meta property="og:image" content="https://parwah.in/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Parwah - They took care of you. Take care back.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://parwah.in/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FBF7F1; --card:#FFFFFF; --ink:#2A2521; --muted:#6B6158;
+    --teal:#175A50; --teal-deep:#0F423A; --marigold:#E8A13D; --line:#EADFD2;
+    --serif:"Fraunces",Georgia,serif; --sans:"Inter",system-ui,sans-serif;
+    --hindi:"Tiro Devanagari Hindi",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.6;font-size:17px}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 24px}
+  a{color:var(--teal);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  header{padding:22px 0;border-bottom:1px solid var(--line)}
+  .nav{display:flex;align-items:baseline;justify-content:space-between;gap:16px}
+  .wordmark{font-family:var(--serif);font-weight:600;font-size:1.5rem;letter-spacing:.14em;color:var(--teal-deep)}
+  .wordmark .hindi{font-family:var(--hindi);font-size:1.05rem;letter-spacing:0;color:var(--marigold);margin-left:.5em}
+  .nav-links{display:flex;gap:22px;font-size:.95rem;font-weight:500}
+  .nav-links a{color:var(--ink)}
+
+  .hero{padding:88px 0 72px;text-align:center}
+  .hero .kicker{font-size:.85rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--marigold)}
+  .hero h1{font-family:var(--serif);font-weight:600;font-size:clamp(2.2rem,5.5vw,3.6rem);line-height:1.15;margin:18px auto 20px;max-width:17ch;color:var(--teal-deep)}
+  .hero p{max-width:56ch;margin:0 auto 32px;color:var(--muted);font-size:1.1rem}
+  .btn{display:inline-block;background:var(--teal);color:#FDF9F3;font-weight:600;padding:14px 30px;border-radius:999px;border:none;font-size:1rem;cursor:pointer}
+  .btn:hover{background:var(--teal-deep);text-decoration:none}
+  .btn-ghost{display:inline-block;margin-left:14px;font-weight:600;padding:14px 10px}
+  .hindi-note{margin-top:26px;font-size:.95rem;color:var(--muted)}
+  .hindi-note .hindi{font-family:var(--hindi);color:var(--teal-deep);font-size:1.1rem}
+
+  section{padding:64px 0}
+  .section-title{font-family:var(--serif);font-weight:600;font-size:1.9rem;color:var(--teal-deep);margin-bottom:10px}
+  .section-sub{color:var(--muted);max-width:60ch;margin-bottom:36px}
+
+  .cats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+  .cat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:26px 22px}
+  .cat svg{width:38px;height:38px;stroke:var(--teal);stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round;margin-bottom:14px}
+  .cat h3{font-family:var(--serif);font-weight:600;font-size:1.15rem;margin-bottom:6px}
+  .cat p{font-size:.93rem;color:var(--muted)}
+  .cat .soon{display:inline-block;margin-top:10px;font-size:.75rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--marigold)}
+
+  .promise{background:var(--teal-deep);color:#F5EFE6;border-radius:18px;padding:56px 40px}
+  .promise .section-title{color:#F5EFE6}
+  .promise-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:28px;margin-top:26px}
+  .promise h3{font-family:var(--serif);font-size:1.15rem;margin-bottom:8px;color:var(--marigold)}
+  .promise p{font-size:.95rem;color:#DCD2C3}
+
+  .story-teaser{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:34px 32px}
+  .story-teaser p{color:var(--muted);max-width:58ch}
+
+  .join{border-top:1px solid var(--line)}
+  form{max-width:520px;margin-top:8px}
+  label{display:block;font-weight:600;font-size:.9rem;margin:18px 0 6px}
+  .optional{color:var(--muted);font-weight:400}
+  input[type=text],input[type=email],input[type=tel]{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);font:inherit;color:var(--ink)}
+  input:focus{outline:2px solid var(--marigold);border-color:var(--marigold)}
+  .consent{display:flex;gap:10px;align-items:flex-start;margin:20px 0;font-size:.9rem;color:var(--muted)}
+  .consent input{margin-top:4px}
+  .form-note{margin-top:14px;font-size:.85rem;color:var(--muted)}
+  .msg{display:none;margin-top:18px;padding:14px 16px;border-radius:10px;font-size:.95rem}
+  .msg.ok{display:block;background:#E7F2EC;color:var(--teal-deep);border:1px solid #BFDCCB}
+  .msg.err{display:block;background:#FBEEE0;color:#8A5A1B;border:1px solid #EBD3AE}
+
+  footer{border-top:1px solid var(--line);padding:36px 0 44px;font-size:.85rem;color:var(--muted)}
+  footer .wordmark{font-size:1.05rem}
+  footer p{margin-top:10px;max-width:72ch}
+
+  /* The launch list is the only thing this page is for, so the banner must
+     never sit on top of it. It is a bar at the foot, dismissed once. */
+  .consent-bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--teal-deep);color:#F5EFE6;
+    padding:14px 20px;display:none;gap:14px;align-items:center;flex-wrap:wrap;font-size:.88rem;
+    box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+  .consent-bar.show{display:flex}
+  .consent-bar p{flex:1;min-width:240px;margin:0;color:#DCD2C3}
+  .consent-bar a{color:var(--marigold)}
+  .consent-bar button{border:0;border-radius:999px;padding:10px 18px;font:inherit;font-weight:600;cursor:pointer;
+    min-height:44px}
+  .cb-yes{background:var(--marigold);color:var(--teal-deep)}
+  .cb-no{background:transparent;color:#F5EFE6;border:1px solid rgba(245,239,230,.45)}
+
+  @media (max-width:640px){
+    /* The nav used to vanish here, taking the only link to the story with
+       it, on the device most of this traffic arrives on. */
+    .nav-links{gap:14px;font-size:.85rem}
+    .nav-links a[href="#join"]{display:none}
+    .story-teaser{grid-template-columns:1fr}
+    .btn-ghost{margin-left:0;display:block;margin-top:10px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <div class="wordmark">PARWAH<span class="hindi">परवाह</span></div>
+    <nav class="nav-links">
+      <a href="/story/">Our story</a>
+      <a href="#join">Join the launch list</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero wrap">
+    <div class="kicker">Launching soon · India</div>
+    <h1>They took care of you. Take care back.</h1>
+    <p>Parwah is a new Indian brand of daily-living essentials for parents - chosen for comfort, safety and independence, and delivered with the dignity they deserve.</p>
+    <a class="btn" href="#join">Join the launch list</a>
+    <a class="btn-ghost" href="/story/">Read why we're building this →</a>
+    <p class="hindi-note"><span class="hindi">परवाह</span> is the Hindi word for care - the quiet, everyday kind.</p>
+  </section>
+
+  <section class="wrap" id="range">
+    <h2 class="section-title">What we're bringing first</h2>
+    <p class="section-sub">A focused first range of well-made essentials, each one tested and chosen for everyday comfort, stability and ease.</p>
+    <div class="cats">
+      <div class="cat">
+        <svg viewBox="0 0 24 24"><path d="M4 18c0-4 3-7 8-7s8 3 8 7"/><path d="M4 18h16"/><path d="M12 11V4"/><path d="M9 6.5C9 5 10.3 4 12 4s3 1 3 2.5"/></svg>
+        <h3>Ortho comfort</h3>
+        <p>Cushions, supports and seating that make long days easier on knees, backs and joints.</p>
+      </div>
+      <div class="cat">
+        <svg viewBox="0 0 24 24"><path d="M6 4v16"/><path d="M6 8h9a3 3 0 0 1 3 3v9"/><path d="M6 12h6"/></svg>
+        <h3>Bathroom safety</h3>
+        <p>Grab bars, shower stools and anti-slip essentials - every one shipped with its load rating and install guide.</p>
+      </div>
+      <div class="cat">
+        <svg viewBox="0 0 24 24"><path d="M8 4h8l-1 9a3 3 0 0 1-6 0z"/><path d="M9 20h6"/><path d="M12 13v7"/></svg>
+        <h3>Daily living aids</h3>
+        <p>Reachers, easy-grip tableware and small tools that keep everyday routines independent.</p>
+      </div>
+      <div class="cat">
+        <svg viewBox="0 0 24 24"><path d="M12 20c5 0 8-3.5 8-8 0-2-1-4-2-5-2 3-6 1-8 4-1.6 2.4-1 6 2 9z"/><path d="M12 20c-3-3-4-6-3-9"/></svg>
+        <h3>Senior nutrition</h3>
+        <p>Everyday nutrition made for older appetites and routines.</p>
+        <span class="soon">Coming later</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="promise">
+      <h2 class="section-title">Dignity first. Always.</h2>
+      <div class="promise-grid">
+        <div>
+          <h3>Chosen, not dumped</h3>
+          <p>A short, honest catalogue we would give our own parents - not a warehouse of hospital-grade grey plastic.</p>
+        </div>
+        <div>
+          <h3>Safe by the numbers</h3>
+          <p>Every safety product carries its tested load rating and clear install guidance. No product goes live without its test certificate on file.</p>
+        </div>
+        <div>
+          <h3>Made for how parents live</h3>
+          <p>Simple instructions, WhatsApp help in Hindi and English, and packaging a 70-year-old can open without calling for scissors.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="story-teaser">
+      <div>
+        <h2 class="section-title">Why Parwah exists</h2>
+        <p>It usually starts with something small - a rail that isn't there, a jar that won't open, a bathroom that suddenly feels risky. We're building the brand we wished existed the day we noticed.</p>
+      </div>
+      <a class="btn" href="/story/">Read our story</a>
+    </div>
+  </section>
+
+  <section class="wrap join" id="join">
+    <h2 class="section-title">Be first in line</h2>
+    <p class="section-sub">Join the launch list for early access, launch-week pricing and our short guide to making a parent's home safer this month.</p>
+    <form id="waitlist-form" novalidate>
+      <label for="wl-name">Your name</label>
+      <input type="text" id="wl-name" name="name" autocomplete="name" required>
+      <label for="wl-email">Email</label>
+      <input type="email" id="wl-email" name="email" autocomplete="email" required>
+      <label for="wl-whatsapp">WhatsApp number <span class="optional">(optional)</span></label>
+      <input type="tel" id="wl-whatsapp" name="whatsapp" autocomplete="tel" placeholder="+91">
+      <div class="consent">
+        <input type="checkbox" id="wl-consent" required>
+        <label for="wl-consent" style="margin:0;font-weight:400">I agree to receive launch updates from Parwah by email and, if I've shared my number, on WhatsApp. Opt out anytime.</label>
+      </div>
+      <button class="btn" type="submit" id="wl-submit">Join the launch list</button>
+      <div class="msg" id="wl-msg" role="status"></div>
+      <p class="form-note">We'll only write when there's something worth reading. No spam, ever.</p>
+    </form>
+  </section>
+</main>
+
+<div class="consent-bar" id="consent-bar" role="region" aria-label="Cookie choice">
+  <p>We would like to use Google Analytics to see which pages help people, and nothing more. No advertising cookies, no selling your data. You can change your mind any time.</p>
+  <button class="cb-yes" id="cb-yes" type="button">Allow</button>
+  <button class="cb-no" id="cb-no" type="button">No thanks</button>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="wordmark">PARWAH<span class="hindi">परवाह</span></div>
+    <p>© 2026 Parwah. Made with care in India. Our products support everyday comfort, stability and independence; they are not medical devices and we make no medical claims.</p>
+  </div>
+</footer>
+
+<script>
+// Launch-list backend config. Paste the Supabase project URL + publishable
+// (anon) key here once project `parwah` is live - see CLAUDE.md backlog item 1.
+// The publishable key is safe to expose; RLS only permits inserts.
+var PARWAH_WAITLIST = {
+  supabaseUrl: "",
+  supabaseKey: ""
+};
+
+// WHERE A SIGNUP GOES WHEN THE DATABASE IS NOT WIRED YET. Without this the
+// only thing this page exists to do fails silently for every visitor: the
+// form takes the details, then says the list is "being connected right now"
+// and throws them away. A signup that arrives as an email is worth far more
+// than a signup that arrives nowhere.
+//
+// Change this address if the domain mailbox is not live yet.
+var PARWAH_CONTACT = {
+  email: "care@parwah.in"
+};
+
+// Analytics, off until there is an ID and the visitor has said yes. Paste
+// the GA4 measurement ID (G-XXXXXXXXXX) here and it starts working; leave it
+// empty and no banner is shown and nothing is loaded.
+var PARWAH_ANALYTICS = {
+  ga4: ""
+};
+
+// ANALYTICS, AFTER CONSENT AND NOT BEFORE. India's DPDP Act wants a real
+// choice, so nothing from Google is fetched until someone says Allow. With
+// no measurement ID set, no banner appears and no request is ever made.
+var track = function () {};
+(function analytics() {
+  var KEY = "parwah-consent";
+  var bar = document.getElementById("consent-bar");
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch (e) {}
+
+  function load() {
+    if (!PARWAH_ANALYTICS.ga4 || window.dataLayer) return;
+    var sc = document.createElement("script");
+    sc.async = true;
+    sc.src = "https://www.googletagmanager.com/gtag/js?id=" + PARWAH_ANALYTICS.ga4;
+    document.head.appendChild(sc);
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { window.dataLayer.push(arguments); }
+    window.gtag = gtag;
+    gtag("js", new Date());
+    gtag("config", PARWAH_ANALYTICS.ga4, { anonymize_ip: true });
+    // Joining the list is the only conversion this site has. Queue it until
+    // gtag exists so a signup made before consent is not lost.
+    track = function (name, params) { try { gtag("event", name, params || {}); } catch (e) {} };
+  }
+
+  function remember(answer) {
+    try { localStorage.setItem(KEY, answer); } catch (e) {}
+    if (bar) bar.classList.remove("show");
+    if (answer === "yes") load();
+  }
+
+  if (!PARWAH_ANALYTICS.ga4) return;          // nothing to ask about
+  if (saved === "yes") { load(); return; }
+  if (saved === "no") return;
+  if (bar) {
+    bar.classList.add("show");
+    document.getElementById("cb-yes").addEventListener("click", function () { remember("yes"); });
+    document.getElementById("cb-no").addEventListener("click", function () { remember("no"); });
+  }
+})();
+
+(function () {
+  var form = document.getElementById("waitlist-form");
+  var msg = document.getElementById("wl-msg");
+  var btn = document.getElementById("wl-submit");
+
+  function show(kind, text) {
+    msg.className = "msg " + kind;
+    msg.textContent = text;
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!form.reportValidity()) return;
+
+    var name = document.getElementById("wl-name").value.trim();
+    var email = document.getElementById("wl-email").value.trim();
+    var wa = document.getElementById("wl-whatsapp").value.trim();
+
+    // No database yet: hand the signup to the mail client rather than
+    // dropping it. The person sees their own details in the draft, so it is
+    // obvious what is being sent and to whom.
+    if (!PARWAH_WAITLIST.supabaseUrl || !PARWAH_WAITLIST.supabaseKey) {
+      if (!PARWAH_CONTACT.email) {
+        show("err", "The launch list is being connected right now - please try again in a little while.");
+        return;
+      }
+      var body = "Please add me to the Parwah launch list."
+        + "\n\nName: " + name
+        + "\nEmail: " + email
+        + (wa ? "\nWhatsApp: " + wa : "")
+        + "\nConsent to launch updates: yes"
+        + "\n\nSent from parwah.in";
+      var href = "mailto:" + PARWAH_CONTACT.email
+        + "?subject=" + encodeURIComponent("Launch list: " + (name || "new signup"))
+        + "&body=" + encodeURIComponent(body);
+      // A real link, clicked. Assigning location.href is blocked for external
+      // schemes by some mobile browsers, and on a desktop with no mail client
+      // configured it does nothing at all - which would leave the person
+      // exactly where they started. The same link stays on screen so there
+      // is always something to click.
+      var open = document.createElement("a");
+      open.href = href; open.id = "wl-mailto"; open.rel = "noopener";
+      open.style.display = "none";
+      document.body.appendChild(open);
+      open.click();
+      msg.className = "msg ok";
+      msg.innerHTML = "Almost there - your email app is opening with a message ready to send. "
+        + "If nothing opened, <a href=\"" + href.replace(/"/g, "&quot;") + "\">click here to send it</a>.";
+      track("join_waitlist", { method: "email" });
+      return;
+    }
+
+    btn.disabled = true;
+    fetch(PARWAH_WAITLIST.supabaseUrl + "/rest/v1/waitlist", {
+      method: "POST",
+      headers: {
+        "apikey": PARWAH_WAITLIST.supabaseKey,
+        "Authorization": "Bearer " + PARWAH_WAITLIST.supabaseKey,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({
+        name: name,
+        email: email,
+        whatsapp: wa || null,
+        consent: document.getElementById("wl-consent").checked,
+        source: "parwah-site"
+      })
+    }).then(function (res) {
+      if (res.status === 201) {
+        form.reset();
+        track("join_waitlist", { method: "form" });
+        show("ok", "You're on the list. We'll be in touch before launch - thank you for caring.");
+      } else if (res.status === 409) {
+        show("ok", "You're already on the list - we've saved your spot.");
+      } else {
+        show("err", "Something went wrong on our side. Please try again in a minute.");
+      }
+    }).catch(function () {
+      show("err", "Couldn't reach the list right now. Please check your connection and try again.");
+    }).finally(function () {
+      btn.disabled = false;
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

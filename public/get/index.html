@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get the Parwah app</title>
+<meta name="description" content="Install Parwah on your phone - Android and iPhone. Your family's circle, one tap away.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Albert+Sans:wght@400;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<style>
+.getwrap{max-width:660px;margin:0 auto;padding:40px 20px 80px}
+.platform{background:#fff;border:1px solid var(--bone-2,#E3D9C2);border-radius:18px;padding:22px;margin:16px 0;box-shadow:0 8px 24px rgba(36,31,23,.06)}
+.platform h2{font-family:"Fraunces",Georgia,serif;font-size:1.2rem;margin-bottom:8px}
+.platform ol{margin:10px 0 0 20px}
+.platform li{margin-bottom:8px;color:#4C4437}
+.getbtn{display:inline-block;background:#E8A23D;color:#182622;font-weight:700;border-radius:999px;padding:14px 26px;text-decoration:none;margin-top:12px}
+.getbtn.dark{background:#182622;color:#E8A23D}
+.badge-soon{display:inline-block;background:#EFE8D8;color:#4C4437;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:4px 12px;margin-left:8px}
+#direct-android{display:none}
+</style>
+</head>
+<body>
+<header class="dusk">
+  <div class="wrap">
+    <nav class="nav" aria-label="Main">
+      <a class="mark" href="../" aria-label="Parwah home">
+        <span class="dev" aria-hidden="true">परवाह</span>
+        <span class="latin">Parwah</span>
+      </a>
+      <a class="link" href="../app/">Open the app</a>
+    </nav>
+  </div>
+  <section class="hero" style="padding-bottom:30px">
+    <div class="wrap">
+      <h1 class="rv in">Put Parwah on your phone.</h1>
+      <p class="sub rv in">Installs in under a minute - its own icon, full screen, works on Android and iPhone today. Store versions are on the way.</p>
+    </div>
+  </section>
+</header>
+
+<div class="getwrap">
+  <div class="platform" id="p-android">
+    <h2>🤖 Android</h2>
+    <p>Installs straight from the browser - no store needed:</p>
+    <ol>
+      <li>Open <a href="../app/">the Parwah app</a> in <b>Chrome</b></li>
+      <li>Tap the <b>⋮ menu</b> (top-right)</li>
+      <li>Tap <b>“Install app”</b> (or “Add to Home screen”)</li>
+    </ol>
+    <a class="getbtn" href="../app/">Open the app to install</a>
+    <a class="getbtn dark" id="direct-android" href="#">⬇ Direct APK download</a>
+    <p style="margin-top:10px;color:#4C4437;font-size:.85rem">Google Play version<span class="badge-soon">Coming soon</span></p>
+  </div>
+
+  <div class="platform" id="p-ios">
+    <h2>🍎 iPhone &amp; iPad</h2>
+    <p>Installs from Safari in three taps:</p>
+    <ol>
+      <li>Open <a href="../app/">the Parwah app</a> in <b>Safari</b></li>
+      <li>Tap the <b>Share</b> button (square with ↑)</li>
+      <li>Tap <b>“Add to Home Screen”</b></li>
+    </ol>
+    <a class="getbtn" href="../app/">Open the app to install</a>
+    <p style="margin-top:10px;color:#4C4437;font-size:.85rem">App Store version<span class="badge-soon">Coming soon</span></p>
+  </div>
+
+  <div class="platform">
+    <h2>💻 Desktop</h2>
+    <p>Just open <a href="../app/">parwah-hq.anchit-tandon.com/app</a> - the full experience with a sidebar, or install it from Chrome's address-bar install icon.</p>
+  </div>
+</div>
+
+<footer class="dusk">
+  <div class="wrap">
+    <p class="legal">One version everywhere: the phone apps and the website are always the same, always current - updates reach every device the moment they ship. © 2026 Parwah. Made with parwah, in India.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // Surface the matching platform first
+  var ua = navigator.userAgent || '';
+  if (/iPhone|iPad|iPod/i.test(ua)) {
+    var ios = document.getElementById('p-ios');
+    ios.parentNode.insertBefore(ios, document.getElementById('p-android'));
+  }
+  // If a signed APK is ever hosted at /downloads/parwah.apk, the direct button appears automatically.
+  fetch('../downloads/parwah.apk', { method: 'HEAD' }).then(function(r){
+    if (r.ok) { var a = document.getElementById('direct-android'); a.href = '../downloads/parwah.apk'; a.style.display = 'inline-block'; }
+  }).catch(function(){});
+})();
+</script>
+<script defer src="../analytics.js"></script>
+</body>
+</html>

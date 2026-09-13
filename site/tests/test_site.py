@@ -994,8 +994,18 @@ check("leak: and refuses to run without it, rather than reporting a false red",
       "PARWAH_DIAG_SECRET is not set here" in _verify)
 # Nothing private may ever be served.
 _vign = (REPO / ".vercelignore").read_text(encoding="utf-8")
-for _p in ("hq/", ".claude/", "CLAUDE.md"):
+for _p in ("hq/", ".claude/", "CLAUDE.md", "merge/"):
     check(f"leak: {_p} can never be uploaded", _p in _vign)
+# merge/ holds the source of the deleted parwah-site repo while the two
+# brands are merged into one. It has not been through this repo's claims
+# guardrails, so the one thing that must stay true is that none of it is
+# served. Being outside site/public is what makes that true, so assert it
+# rather than trust it.
+_staged = sorted((REPO / "merge").rglob("*.html")) if (REPO / "merge").exists() else []
+_served = [str(f.relative_to(REPO)) for f in _staged
+           if "public" in f.relative_to(REPO).parts]
+check("leak: staged merge copy is never served",
+      not _served, ", ".join(_served[:3]))
 check("leak: the build serves only site/public",
       "cp -r site/public public" in (REPO / "package.json").read_text(encoding="utf-8"))
 

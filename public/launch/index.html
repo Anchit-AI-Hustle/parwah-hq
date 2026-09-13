@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parwah - Launching soon across India</title>
+<meta name="description" content="Parwah is launching soon - join the list on WhatsApp for early access to the family-care app and first pick of the launch collection.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Albert+Sans:wght@400;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+
+<header class="dusk">
+  <div class="wrap">
+    <nav class="nav" aria-label="Main">
+      <a class="mark" href="../" aria-label="Parwah home">
+        <span class="dev" aria-hidden="true">परवाह</span>
+        <span class="latin">Parwah</span>
+      </a>
+      <a class="link" href="../">See everything Parwah does</a>
+    </nav>
+  </div>
+  <section class="hero">
+    <div class="ghost" aria-hidden="true">प</div>
+    <div class="wrap">
+      <p class="eyebrow rv" style="color:var(--marigold)">Launching soon · India</p>
+      <h1 class="rv">Put your family <em>first in line.</em></h1>
+      <p class="sub rv">The Parwah app - daily check-ins, SOS, do-it-for-them bookings, safe money and gifts with dignity - opens soon across India. Join the launch list and you'll hear it from us first.</p>
+      <div class="ctas rv">
+        <a class="btn btn-wa" href="https://wa.me/919873945238?text=Hi%20Parwah%20-%20add%20me%20to%20the%20launch%20list.%20My%20city%3A%20" rel="noopener">Join the launch list on WhatsApp</a>
+        <a class="btn btn-ghost" href="../demo/">Try the app demo</a>
+      </div>
+      <p class="quiet rv"><b>One message when we open.</b> Early access to the app, first pick of the launch collection, no spam, no daily forwards.</p>
+    </div>
+  </section>
+</header>
+
+<section class="sec launch on-day" id="launch">
+  <div class="thread" aria-hidden="true"></div>
+  <div class="wrap">
+    <p class="eyebrow rv">Founding families</p>
+    <h2 class="rv">The first 500 families get founding-member pricing.</h2>
+    <p class="lede rv">Early access to the app, launch-collection pricing that never comes back, and a direct line to the team building this - your feedback shapes what ships next.</p>
+    <p class="alt rv">Prefer email? Write to <a href="mailto:care@parwah.in?subject=Add%20me%20to%20the%20Parwah%20launch%20list">care@parwah.in</a></p>
+    <div class="ctas rv">
+      <a class="btn btn-ghost" href="../">Back to the home page</a>
+    </div>
+  </div>
+</section>
+
+<footer class="dusk">
+  <div class="wrap">
+    <div class="f-grid">
+      <a class="mark" href="../" aria-label="Parwah home">
+        <span class="dev" aria-hidden="true">परवाह</span>
+        <span class="latin">Parwah</span>
+      </a>
+      <nav class="f-links" aria-label="Footer">
+        <a href="../">Home</a>
+        <a href="../demo/">App demo</a>
+        <a href="../story/">Our story</a>
+        <a href="mailto:care@parwah.in">Contact</a>
+      </nav>
+    </div>
+    <p class="legal">Parwah builds family-care tools and sells daily-living aids chosen for safety, comfort and ease of use. Our products are not medicines and are not intended to diagnose or address any medical condition - for health concerns, please consult a qualified doctor. © 2026 Parwah. Made with parwah, in India.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var els=document.querySelectorAll('.rv');
+  if(!('IntersectionObserver' in window)){els.forEach(function(e){e.classList.add('in')});return;}
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}});
+  },{threshold:0.15});
+  els.forEach(function(e){io.observe(e)});
+})();
+</script>
+<script defer src="../analytics.js"></script>
+</body>
+</html>
