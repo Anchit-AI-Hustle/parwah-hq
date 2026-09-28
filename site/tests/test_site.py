@@ -262,6 +262,26 @@ hdrs = {h["key"] for blk in vj.get("headers", []) for h in blk.get("headers", []
 for need in ("X-Content-Type-Options", "X-Frame-Options", "Referrer-Policy"):
     check(f"security header set: {need}", need in hdrs)
 
+# THE DOMAIN OPENS THE APP. parwah-hq.anchit-tandon.com goes straight to /app/.
+# It is a REDIRECT, not a rewrite, and that is load-bearing: the app loads
+# manifest.webmanifest, apple-touch-icon.png and sw.js by relative path and
+# its manifest scope is /app/, so serving it at "/" would 404 the manifest
+# and the service worker and quietly break install-to-home-screen.
+_redir = [r for r in vj.get("redirects", []) if r.get("source") == "/"]
+check("routing: the bare domain opens the app",
+      len(_redir) == 1 and _redir[0].get("destination") == "/app/")
+check("routing: by redirect, so the app's relative paths and PWA scope hold",
+      not any(r.get("source") == "/" for r in vj.get("rewrites", [])))
+# Temporary, because a permanent redirect is cached by browsers for a very
+# long time: if the marketing home page ever goes back on "/", everyone who
+# visited once would keep being sent to /app/ regardless.
+check("routing: and not permanent, so it can be undone",
+      _redir and _redir[0].get("permanent") is False)
+# A wider pattern here would send /api/ and every page to the app.
+check("routing: it matches the root alone, not every path",
+      all(r.get("source") == "/" for r in vj.get("redirects", [])
+          if r.get("destination") == "/app/"))
+
 # 10c. every data endpoint proves circle membership before touching data
 # every module that touches circle data must prove membership first
 GUARDED = ["_boardapi", "_keysapi", "_pushapi", "_vaultapi", "book", "care", "chats", "circle", "events", "games", "plans"]
