@@ -1,0 +1,100 @@
+# EVERY PULL REQUEST MERGES ITSELF - ONCE IT HAS PASSED EVERYTHING.
+#
+# Automatic, not unconditional. The tests are the only thing between a pull
+# request and production: on 28 September a change that had passed the gate
+# still put every existing family into a reload loop, a hundred reloads a
+# second, because no test covered someone upgrading from the old version.
+# So a PR here merges the moment the full suite is green, and never before.
+# Red waits, with the failing check named.
+#
+# What "the full suite" means is the same three things as a deploy:
+#   1. the deploy gate            npm test
+#   2. what Vercel will build     ops/vercel-input.sh, the stripped upload
+#   3. nine real-browser suites   npm run test:browser
+name: Pull request
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+# A new push to the same PR makes the running test stale: cancel it and test
+# the new commit instead. Merging is separately pinned to the tested commit.
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Gate, Vercel build and browser suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      # The default checkout for a pull_request is the MERGE of the PR into
+      # main, so this tests what main will actually become, not the branch
+      # in isolation.
+      - name: Check out the result of merging
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run the deploy gate
+        run: npm test
+
+      - name: Build exactly what Vercel will build
+        run: bash ops/vercel-input.sh
+
+      # Pinned, and the browser installed by the same version that drives it:
+      # a mismatch fails to launch rather than failing a test.
+      - name: Install a browser for the browser suites
+        run: |
+          npm i --no-save --no-audit --no-fund playwright-core@1.49.1
+          npx --yes playwright-core@1.49.1 install --with-deps chromium
+
+      - name: Run the nine browser suites
+        run: npm run test:browser
+
+  merge:
+    name: Merge, then deploy
+    needs: verify
+    # Drafts are marked not-ready by their author. A PR from a fork is code
+    # from outside this repository, and it does not merge itself here.
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      # --match-head-commit: merge exactly the commit that was tested. If a
+      # new commit arrived while the suite ran, this refuses rather than
+      # merging code nothing has checked.
+      # --merge, not --squash: this repository's commit messages are its
+      # documentation, and a squash would throw them away.
+      - name: Merge the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: gh pr merge "$PR" --repo "$GITHUB_REPOSITORY" --merge --delete-branch --match-head-commit "$SHA"
+
+      # A merge made with this workflow's token does not fire other
+      # workflows' push triggers - GitHub suppresses them to prevent loops -
+      # so the deploy would silently never run. A dispatch is the one event
+      # that token is allowed to start.
+      - name: Start the production deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main

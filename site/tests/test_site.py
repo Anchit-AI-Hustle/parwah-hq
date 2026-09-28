@@ -1202,6 +1202,46 @@ check("deploy: CI runs the gate on a current Node, not a deprecated one",
       bool(_wf_node) and int(_wf_node.group(1)) >= 22,
       _wf_node.group(1) if _wf_node else "no node-version pinned")
 
+# EVERY PULL REQUEST MERGES ITSELF - ONCE IT HAS PASSED EVERYTHING. Not
+# unconditional: the tests are the only thing between a PR and production.
+_pr_path = REPO / ".github/workflows/pr.yml"
+check("automerge: there is a workflow for pull requests", _pr_path.exists())
+_pr = _pr_path.read_text(encoding="utf-8") if _pr_path.exists() else ""
+check("automerge: it runs on every pull request into main",
+      "pull_request:" in _pr and "branches: [main]" in _pr
+      and all(t in _pr for t in ("opened", "synchronize", "reopened", "ready_for_review")))
+check("automerge: it never uses pull_request_target (fork code with write access)",
+      "pull_request_target" not in _pr)
+# Only what actually runs counts: the header comment names the same commands.
+_pr_runs = "\n".join(l.strip() for l in _pr.splitlines()
+                      if not l.lstrip().startswith("#"))
+_pr_merge_at = _pr_runs.find("gh pr merge")
+_pr_merge_cmd = re.findall(r"run: (gh pr merge .*)", _pr_runs)
+check("automerge: the merge waits for the tests to pass",
+      0 < _pr_runs.find("needs: verify") < _pr_merge_at)
+check("automerge: the tests are the same three as a deploy",
+      all(0 < _pr_runs.find("run: " + step) < _pr_runs.find("needs: verify") for step in
+          ("npm test", "bash ops/vercel-input.sh", "npm run test:browser")))
+check("automerge: it merges exactly the commit that was tested",
+      len(_pr_merge_cmd) == 1 and '--match-head-commit "$SHA"' in _pr_merge_cmd[0]
+      and "SHA: ${{ github.event.pull_request.head.sha }}" in _pr_runs)
+check("automerge: drafts and forks never merge themselves",
+      "pull_request.draft == false" in _pr_runs
+      and "head.repo.full_name == github.repository" in _pr_runs)
+check("automerge: commit messages survive the merge (no squash)",
+      len(_pr_merge_cmd) == 1 and " --merge " in _pr_merge_cmd[0]
+      and "--squash" not in _pr_merge_cmd[0] and "--rebase" not in _pr_merge_cmd[0],
+      "; ".join(_pr_merge_cmd))
+# A merge made with the workflow token fires no push workflows, so without
+# this the deploy would silently never run.
+check("automerge: and production deploys after the merge",
+      0 < _pr_merge_at < _pr_runs.find("run: gh workflow run deploy.yml"))
+check("automerge: the only token it uses is the workflow's own",
+      set(re.findall(r"GH_TOKEN:\s*(\S+(?: \S+)*)", _pr)) == {"${{ github.token }}"})
+_pr_node = re.search(r"node-version:\s*(\d+)", _pr)
+check("automerge: it tests on the same Node as the deploy",
+      bool(_pr_node) and bool(_wf_node) and _pr_node.group(1) == _wf_node.group(1))
+
 # ---------- 10b. The day: muhurat and rashi ----------
 # The point of the section is that a family split across cities sees the SAME
 # screen: the parent reads the Choghadiya they have always kept, the grandchild
