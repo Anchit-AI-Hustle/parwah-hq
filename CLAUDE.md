@@ -43,6 +43,10 @@ Commerce is NOT built here. Per the locked PRD, Shopify is the commerce layer at
 5. **Grade-6 reading level** for consumer copy; Devanagari accents are brand voice.
 6. **Test before commit.** Run `python site/tests/test_site.py` after ANY site change;
    all checks green before commit. Verify every Vercel deployment is green after push.
+7. **Pull requests merge themselves - only when green.** `.github/workflows/pr.yml`
+   runs the gate, `ops/vercel-input.sh` and `npm run test:browser` on every PR into
+   `main`, then merges exactly the tested commit and dispatches the deploy. Never
+   add a way around the tests; to hold a PR back, mark it as a draft.
 
 ## The brand merge (decided 2026-09-13)
 
