@@ -147,9 +147,19 @@ ok(/(Next good window|This window ends at|Good the rest)/.test(vnext),
 // ---- the day as one band, in real time ----
 const segs = page.locator('#mu-tl button');
 ok(await segs.count() === 16, 'the whole day is one band of sixteen windows');
-const widths = await page.locator('#mu-tl').evaluate(el =>
-  [...el.querySelectorAll('button')].map(b => b.getBoundingClientRect().width));
-ok(new Set(widths.map(w => Math.round(w))).size > 1,
+// Each segment's share of the band must be its share of the day and night.
+// This compared ROUNDED PIXEL widths, which failed for a fortnight around
+// every equinox: on 28 September a day period is 89.9 minutes and a night
+// one 90.1, so all sixteen really are about 21 px wide and the correct band
+// looked like a regression. Comparing the shares to the durations holds in
+// every season - and still catches equal boxes, which would put 6.250% on
+// every segment where the real day share is 6.243%.
+const shares = await page.locator('#mu-tl').evaluate(el =>
+  [...el.querySelectorAll('button')].map(b => parseFloat(b.style.flexBasis)));
+const seq = LIVE.day.concat(LIVE.night);
+const t0 = +new Date(seq[0].from), span = +new Date(seq[seq.length - 1].to) - t0;
+const want = seq.map(x => (+new Date(x.to) - +new Date(x.from)) / span * 100);
+ok(shares.length === 16 && shares.every((w, i) => Math.abs(w - want[i]) < 0.001),
    'the segments are real durations, not equal boxes');
 ok(await page.locator('#mu-tl button.now').count() === 1, 'exactly one segment is marked as now');
 const key = await page.locator('.tlkey').textContent();

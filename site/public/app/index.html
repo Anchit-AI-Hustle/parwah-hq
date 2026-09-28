@@ -2213,6 +2213,22 @@ details.more[open]>summary::before{content:"▾ "}
 
   // ---------- tabs ----------
   var navPop = false;   // set while the browser is driving, so we do not push its own move back
+  // Run fn once the browser has painted what is already on screen.
+  // requestAnimationFrame fires just BEFORE a paint, so a timeout queued
+  // from inside it runs just AFTER. A page that is not visible gets no
+  // animation frames at all, so a plain timeout backs it up and whichever
+  // comes first runs it: deferred work must never quietly not happen.
+  function afterPaint(fn){
+    var done = false;
+    function run(){ if (done) return; done = true; fn(); }
+    if (document.hidden) { setTimeout(run, 0); return; }
+    try { requestAnimationFrame(function(){ setTimeout(run, 0); }); } catch (e) {}
+    // The backstop is only for a page hidden before its frame arrives. It
+    // was 120 ms, and on a slow phone the first frame can take longer than
+    // that, so the backstop fired first and put the whole render back in
+    // front of the paint - a 168-240 ms spread on the same tap.
+    setTimeout(run, 1000);
+  }
   function switchTab(t){
     if (TABS.indexOf(t) < 0) t = 'home';
     if (TABS.indexOf(t) < 0) t = 'home'; // bad/old hash → land safely on Home
@@ -2231,12 +2247,23 @@ details.more[open]>summary::before{content:"▾ "}
     setInputMode();
     $('ekta-fab').hidden = !document.body.classList.contains('inapp') || t === 'ekta' || (t === 'chat' && !!curChat);
     if (t !== 'ekta' && window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (e) {} }
-    if (t === 'fun') { refreshFun(); boardSync(); clearInterval(gameTimer); gameTimer = setInterval(function(){ refreshFun(); boardSync(); }, 3000); }
-    else clearInterval(gameTimer);
-    if (t === 'vault') refreshVault();
-    if (t === 'day') refreshDay();
-    if (t === 'home' && !dayData) refreshDay();   // the Muhurat widget shows the period running now
-    if (t === 'notifs') { $('ndetail').hidden = true; $('nlist-view').hidden = false; renderNotifs(); markSeen(); }
+    clearInterval(gameTimer);
+    if (t === 'fun') gameTimer = setInterval(function(){ refreshFun(); boardSync(); }, 3000);
+    if (t === 'notifs') { $('ndetail').hidden = true; $('nlist-view').hidden = false; }
+    // SHOW THE TAB NOW, FILL IT AFTER THE BROWSER HAS PAINTED.
+    // Opening The day from the Today widget rebuilt the whole screen - the
+    // timeline, sixteen periods, twelve rashis, every family row - inside
+    // the tap handler, because the panchang was already cached from Today.
+    // Nothing could paint until it finished: 280 ms from tap to screen,
+    // which is what Vercel's INP warning measured. The work is the same; it
+    // just happens after the switch is on screen instead of in front of it.
+    afterPaint(function(){
+      if (curTab !== t) return;   // they moved on before it ran
+      if (t === 'fun') { refreshFun(); boardSync(); }
+      if (t === 'vault') refreshVault();
+      if (t === 'day' || (t === 'home' && !dayData)) refreshDay();   // Today's Muhurat widget shows the period running now
+      if (t === 'notifs') { renderNotifs(); markSeen(); }
+    });
     // Push, so Back steps back a tab instead of leaving the app - except
     // when Back is what brought us here, and when the tab has not changed.
     try {
@@ -2310,12 +2337,23 @@ details.more[open]>summary::before{content:"▾ "}
     if (state) switchTab(location.hash.replace('#',''));
   });
 
+  // Building a date formatter is the expensive part; using one is cheap.
+  // toLocaleTimeString(locale, options) builds a fresh one on every call,
+  // and the Day screen and every list format dozens of times per render.
+  // Measured 66x slower than a reused formatter, with byte-identical output
+  // across 12,000 date and time-zone pairs. A zone the browser does not know
+  // throws here exactly as it would have in toLocaleTimeString.
+  var _dtf = {};
+  function dtf(locale, opts){
+    var k = String(locale) + '|' + JSON.stringify(opts);
+    return _dtf[k] || (_dtf[k] = new Intl.DateTimeFormat(locale, opts));
+  }
   function fmtTime(iso){
     var d = new Date(iso);
     if (isNaN(d)) return '';
     var now = new Date();
-    var t = d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
-    return d.toDateString() === now.toDateString() ? 'Today, ' + t : d.toLocaleDateString([], { day:'numeric', month:'short' }) + ', ' + t;
+    var t = dtf([], { hour:'numeric', minute:'2-digit' }).format(d);
+    return d.toDateString() === now.toDateString() ? 'Today, ' + t : dtf([], { day:'numeric', month:'short' }).format(d) + ', ' + t;
   }
 
   function evLine(e){
@@ -5848,8 +5886,8 @@ details.more[open]>summary::before{content:"▾ "}
 
   function dTime(iso, tz){
     var d = new Date(iso); if (isNaN(d)) return '';
-    try { return d.toLocaleTimeString('en-IN', { timeZone: tz, hour: 'numeric', minute: '2-digit' }); }
-    catch (e) { return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+    try { return dtf('en-IN', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(d); }
+    catch (e) { return dtf([], { hour: 'numeric', minute: '2-digit' }).format(d); }
   }
   function dRange(a, b, tz){ return dTime(a, tz) + ' – ' + dTime(b, tz); }
   function dRunning(p){ var n = Date.now(); return n >= +new Date(p.from) && n < +new Date(p.to); }

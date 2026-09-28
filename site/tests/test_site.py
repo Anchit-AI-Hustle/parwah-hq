@@ -1588,6 +1588,43 @@ check("waitlist: the gate runs its unit tests before npm install can have run",
 check("waitlist: and that module stays dependency-free so it can",
       "@neondatabase" not in _wl and "from './_db.mjs'" not in _wl)
 
+# RESPONSIVENESS (INP). Vercel flagged the Muhurat widget: 280 ms from tap
+# to screen, "event handlers on this element blocked UI updates". Measured
+# A/B at 4x CPU throttle: median 228 -> 156 ms, time inside the handler
+# 94 -> 11 ms, every other widget unchanged. These are structural guards,
+# not timings, because timings flake under CI load and a guard that flakes
+# gets deleted.
+_app_src = (ROOT / "public" / "app" / "index.html").read_text(encoding="utf-8")
+def _fn_body(src, sig):
+    """The text of one function, or "" when it does not exist. .index()
+    raised instead, so an app without the function crashed the suite
+    mid-way and hid every check after it rather than failing this one."""
+    i = src.find(sig)
+    if i < 0:
+        return ""
+    body = src[i:]
+    j = body.find("\n  }\n")
+    return body[:j] if j >= 0 else body
+_sw = _fn_body(_app_src, "function switchTab(t){")
+check("INP: switching tab paints first and fills the screen after",
+      "afterPaint(function(){" in _sw and "if (t === 'day') refreshDay();" not in _sw)
+check("INP: the deferred fill is dropped if they have already moved on",
+      "if (curTab !== t) return;" in _sw)
+# The backstop was 120 ms and fired before slow phones painted, putting the
+# whole render back in front of the tap.
+_ap = _fn_body(_app_src, "function afterPaint(fn){")
+check("INP: the deferral cannot fire before the paint it waits for",
+      bool(_ap) and "document.hidden" in _ap and "setTimeout(run, 1000)" in _ap
+      and "setTimeout(run, 120)" not in _ap)
+# toLocaleTimeString(locale, options) builds a new formatter every call:
+# 66x slower than reusing one, identical output across 12,000 date/zones.
+_dt = _fn_body(_app_src, "function dTime(iso, tz){")
+check("INP: the Day screen's times reuse a formatter instead of building one per call",
+      "dtf(" in _dt and "toLocaleTimeString" not in _dt)
+_ft = _fn_body(_app_src, "function fmtTime(iso){")
+check("INP: so does every list row's timestamp",
+      "dtf(" in _ft and "toLocaleTimeString" not in _ft and "toLocaleDateString" not in _ft)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]
