@@ -84,6 +84,14 @@ jobs:
       - name: Run the deploy gate
         run: npm test
 
+      # `npm test` ran on a FULL checkout. Vercel builds something smaller:
+      # .vercelignore strips hq/, CLAUDE.md, merge/ and more, and then runs
+      # the gate again on what is left. A check that reads a stripped file
+      # passes above and kills every production build - that happened, with
+      # CLAUDE.md. This builds the exact upload before anything is shipped.
+      - name: Build exactly what Vercel will build
+        run: bash ops/vercel-input.sh
+
       - name: Install the Vercel CLI
         run: npm install --no-save vercel@latest
 

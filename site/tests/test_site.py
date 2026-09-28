@@ -138,10 +138,24 @@ for p in CLAIM_PAGES:
 # summary that disagrees with the gate is worse than no summary: it tells
 # someone a word is safe when the build will reject it. The list here is the
 # authority; the document must name every term in it.
-_claude_md = (_repo_root / "CLAUDE.md").read_text(encoding="utf-8").lower()
-_undocumented = [k for k in BANNED if k not in _claude_md]
-check("claims: every banned term is written down where authors will read it",
-      not _undocumented, ", ".join(_undocumented))
+#
+# CLAUDE.md is kept out of every Vercel upload by .vercelignore, on purpose,
+# and this line once read it unconditionally: every production build died on
+# FileNotFoundError before a single page was checked. So it is skipped only
+# where its absence is by design - Vercel's builder - and a CI run that
+# cannot find it still fails, because that would mean the checkout is wrong.
+import os as _os
+_claude_path = _repo_root / "CLAUDE.md"
+if _claude_path.exists():
+    _claude_md = _claude_path.read_text(encoding="utf-8").lower()
+    _undocumented = [k for k in BANNED if k not in _claude_md]
+    check("claims: every banned term is written down where authors will read it",
+          not _undocumented, ", ".join(_undocumented))
+elif _os.environ.get("GITHUB_ACTIONS") == "true":
+    check("claims: CLAUDE.md is in the CI checkout, so the ban list can be compared",
+          False, "missing from a full checkout")
+else:
+    print("SKIP  claims: CLAUDE.md is not in this build input (.vercelignore keeps it out) - compared in CI instead")
 
 # ---------- 5. WhatsApp number guard (real number live; placeholder must never return) ----------
 WA_NUMBER = "919873945238"
@@ -1168,6 +1182,14 @@ check("deploy: the token only ever comes from the secret store",
       ", ".join(t for t in _tok_assign if not t.startswith("${{")))
 check("deploy: and no credential is written into the workflow",
       not re.search(r"(?<![\w$.{])[A-Za-z0-9]{24}(?![\w}])", _wf))
+# The gate passing on a full checkout is not the gate passing on Vercel: the
+# upload is stripped by .vercelignore first. CI builds that exact input.
+_vi = REPO / "ops/vercel-input.sh"
+check("deploy: there is a way to build exactly what Vercel receives", _vi.exists())
+check("deploy: and CI builds that input BEFORE shipping, not after",
+      0 < _wf.find("ops/vercel-input.sh") < _wf.find("vercel deploy --prod"))
+check("deploy: it strips by .vercelignore, the same list Vercel uses",
+      _vi.exists() and ".vercelignore" in _vi.read_text(encoding="utf-8"))
 check("deploy: a failure is reported rather than passing quietly",
       "if: failure()" in _wf and "Deploy FAILED" in _wf)
 check("deploy: and the run says what went live",
