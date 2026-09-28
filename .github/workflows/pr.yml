@@ -38,6 +38,10 @@ jobs:
       # in isolation.
       - name: Check out the result of merging
         uses: actions/checkout@v4
+        with:
+          # Full history: move.browser.mjs installs the real pre-move app
+          # from an older commit, and a shallow clone does not have it.
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
