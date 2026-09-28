@@ -845,6 +845,7 @@ details.more[open]>summary::before{content:"▾ "}
 
   <div class="card" id="auth-step">
     <h3>Sign in with your mobile number</h3>
+<p class="hint" id="au-why" hidden style="margin:4px 0 12px;font-weight:600;color:var(--marigold-d)">Parwah now asks for a 6-number PIN, so your family's records open only for you. Sign in with your number once to set it - your circles are all still here.</p>
     <label for="au-phone">Mobile number</label>
     <div class="phrow">
       <select id="au-cc" class="ccsel" aria-label="Country code"></select>
@@ -2185,10 +2186,29 @@ details.more[open]>summary::before{content:"▾ "}
     return h;
   }
   // A session that has expired or been signed out elsewhere must land the
-  // person on sign-in, not on a screen full of silent failures.
+  // person on sign-in, not on a screen full of silent failures - and it must
+  // LAND. This used to clear only the account and reload: the circle stayed
+  // in storage, the boot went straight back into it, the server said "sign
+  // in" again, and the page reloaded again. 368 loads in 3.5 seconds, on the
+  // first visit of every family who used Parwah before sign-in tokens. The
+  // circle list comes back from the server at sign-in, so nothing is lost by
+  // clearing it here.
+  var signingOut = false;
   function checkSignedOut(j){
-    if (j && j.signin) { saveToken(''); clearAuth(); location.hash = ''; location.reload(); return true; }
-    return false;
+    if (!(j && j.signin)) return false;
+    if (signingOut) return true;          // several calls fail at once on boot: act once
+    signingOut = true;
+    saveToken(''); clearAuth(); clearState();
+    try { localStorage.removeItem('parwah-circles'); } catch (e) {}
+    // Whatever else goes wrong, never more than one reload for this. A loop
+    // is the one failure worse than any screen it could land on.
+    var last = 0;
+    try { last = +sessionStorage.getItem('parwah-signout-at') || 0; } catch (e) {}
+    if (Date.now() - last < 15000) { signingOut = false; try { showStep('auth'); } catch (e) {} return true; }
+    try { sessionStorage.setItem('parwah-signout-at', String(Date.now()));
+          sessionStorage.setItem('parwah-why-signin', '1'); } catch (e) {}
+    location.hash = ''; location.reload();
+    return true;
   }
   function post(url, body){
     return fetch(url, { method:'POST', headers: authHeaders({ 'Content-Type':'application/json' }), body: JSON.stringify(body) })
@@ -6560,6 +6580,12 @@ details.more[open]>summary::before{content:"▾ "}
   }
   state = loadState();
   authUser = loadAuth();
+  try {
+    if (sessionStorage.getItem('parwah-why-signin')) {
+      sessionStorage.removeItem('parwah-why-signin');
+      $('au-why').hidden = false;
+    }
+  } catch (e) {}
   try {
     var jc = new URLSearchParams(location.search).get('join');
     if (jc) pendingJoin = jc.toUpperCase().slice(0, 12);

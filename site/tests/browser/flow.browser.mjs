@@ -353,6 +353,45 @@ for (const theme of ['light', 'dark']) {
   await pg.close();
 }
 
+// UPGRADING FROM BEFORE SIGN-IN TOKENS.
+// Every browser that used Parwah before tokens existed holds a circle but no
+// session. The first visit after tokens shipped got "please sign in" from the
+// server; the app cleared the ACCOUNT, left the CIRCLE, reloaded, booted
+// straight back into the circle, was told to sign in again - and reloaded
+// for ever. Production, every existing family, the page never settling. No
+// check here covered it, because every other case starts clean or signed in.
+{
+  const ctx = await browser.newContext({ viewport:{ width:390, height:844 }, serviceWorkers:'block' });
+  const pg = await ctx.newPage();
+  let loads = 0;
+  // Count the page being FETCHED. Two counters were tried first and both
+  // were wrong: 'framenavigated' also fires for #home and location.hash = '',
+  // which are not reloads, and 'load' never fires inside the loop at all,
+  // because each reload is torn down by the next before it finishes - it
+  // reported one load on the broken app, and would have passed it. Every
+  // reload, finished or not, has to request the document.
+  pg.on('request', r => { if (r.resourceType() === 'document') loads++; });
+  // Exactly what the server sends a request with no session.
+  await pg.route('**/api/**', r => r.fulfill({ status: 401, json:{ ok:false, error:'Please sign in again', signin:true } }));
+  await pg.addInitScript(() => {
+    // Seed ONCE. An init script runs again on every reload, and re-seeding
+    // would manufacture the very loop this is checking for.
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    localStorage.setItem('parwah', JSON.stringify({ code:'ABCDEF', memberId:'11111111-1111-1111-1111-111111111111', name:'Rohan', role:'family', circleName:'Test Family' }));
+    localStorage.setItem('parwah-user', JSON.stringify({ id:'77777777-7777-4777-8777-777777777777', name:'Rohan', phone:'+919873945238' }));
+  });
+  await pg.goto(BASE + '/app/').catch(() => {});
+  await pg.waitForTimeout(3500);
+  ok(loads <= 2, 'an old session reloads at most once, never in a loop (' + loads + ' real page loads in 3.5 s)');
+  ok(await pg.locator('#auth-step').isVisible().catch(() => false), 'and it lands on sign-in');
+  ok(await pg.evaluate(() => localStorage.getItem('parwah')).catch(() => 'x') === null,
+     'with the stale circle cleared from this device, so the boot cannot go back into it');
+  ok(await pg.locator('#au-why').isVisible().catch(() => false),
+     'and it says why it is asking, rather than looking like a crash');
+  await ctx.close();
+}
+
 ok(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.slice(0,3).join(' / ') : ''));
 await browser.close(); server.close();
 console.log(`\n${pass} passed, ${fail} failed`);

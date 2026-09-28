@@ -1625,6 +1625,19 @@ _ft = _fn_body(_app_src, "function fmtTime(iso){")
 check("INP: so does every list row's timestamp",
       "dtf(" in _ft and "toLocaleTimeString" not in _ft and "toLocaleDateString" not in _ft)
 
+# NEVER A RELOAD LOOP. Shipping sign-in tokens put every existing family into
+# one: "please sign in" cleared the account but not the circle, the boot went
+# straight back into the circle, and the page reloaded ~100 times a second.
+# Proved in flow.browser.mjs (349 fetches in 3.5 s before, 2 after); these
+# hold the two properties that make it impossible.
+_so = _fn_body(_app_src, "function checkSignedOut(j){")
+check("signout: being told to sign in clears the circle too, so the boot cannot re-enter it",
+      "clearState()" in _so and "clearAuth()" in _so)
+check("signout: and it can never reload more than once in a row",
+      "parwah-signout-at" in _so and "showStep('auth')" in _so)
+check("signout: a returning family is told why, not dropped on a bare login",
+      'id="au-why"' in _app_src and "parwah-why-signin" in _app_src)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]
