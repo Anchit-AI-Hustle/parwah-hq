@@ -10,7 +10,7 @@
 # What "the full suite" means is the same three things as a deploy:
 #   1. the deploy gate            npm test
 #   2. what Vercel will build     ops/vercel-input.sh, the stripped upload
-#   3. nine real-browser suites   npm run test:browser
+#   3. real-browser suites   npm run test:browser
 name: Pull request
 
 on:
@@ -61,7 +61,7 @@ jobs:
           npm i --no-save --no-audit --no-fund playwright-core@1.49.1
           npx --yes playwright-core@1.49.1 install --with-deps chromium
 
-      - name: Run the nine browser suites
+      - name: Run the browser suites
         run: npm run test:browser
 
   merge:

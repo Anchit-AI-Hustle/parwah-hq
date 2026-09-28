@@ -276,6 +276,35 @@ hdrs = {h["key"] for blk in vj.get("headers", []) for h in blk.get("headers", []
 for need in ("X-Content-Type-Options", "X-Frame-Options", "Referrer-Policy"):
     check(f"security header set: {need}", need in hdrs)
 
+# THE PHONE APPS FRAME THE APP. The iPhone and Android apps are a Floot shell
+# that shows /app/ in a frame. Every other page still refuses to be framed
+# (clickjacking), and /app/ allows exactly the shell's origins - never a
+# wildcard, because any site allowed to frame the app could overlay it.
+_hblocks = {b.get("source"): {h["key"]: h["value"] for h in b.get("headers", [])}
+            for b in vj.get("headers", [])}
+_rest = _hblocks.get("/((?!app/).*)", {})
+_app = _hblocks.get("/app/(.*)", {})
+check("framing: every page but the app still refuses to be framed",
+      _rest.get("X-Frame-Options") == "SAMEORIGIN" and "/(.*)" not in _hblocks,
+      ", ".join(_hblocks))
+check("framing: the app keeps the other security headers",
+      _app.get("X-Content-Type-Options") == "nosniff" and "Referrer-Policy" in _app)
+_fa = re.fullmatch(r"frame-ancestors ((?:\S+ ?)+)", _app.get("Content-Security-Policy", ""))
+_fa_list = _fa.group(1).split() if _fa else []
+_FA_ALLOWED = {"'self'", "https://parwah.floot.app", "capacitor://localhost", "https://localhost",
+               "https://floot.com", "https://2fea47ff-4e55-4bdb-ae0a-46d1768aebeb.sandbox.floot.app"}
+check("framing: the app may be framed only by the Parwah shell",
+      bool(_fa_list) and set(_fa_list) <= _FA_ALLOWED and "https://parwah.floot.app" in _fa_list,
+      " ".join(_fa_list))
+check("framing: and never by a wildcard",
+      not any("*" in o or o in ("https:", "http:", "data:", "blob:") for o in _fa_list))
+# The shell waits for this before showing the app. It goes to any origin, so
+# it must carry nothing about the family.
+_ready = re.findall(r"postMessage\((.*?)\)",
+                    (REPO / "site/public/app/index.html").read_text(encoding="utf-8"))
+check("framing: the app tells the shell it started, and nothing more",
+      _ready == ["{ parwah: 'ready' }, '*'"], "; ".join(_ready))
+
 # THE DOMAIN OPENS THE APP. parwah-hq.anchit-tandon.com goes straight to /app/.
 # It is a REDIRECT, not a rewrite, and that is load-bearing: the app loads
 # manifest.webmanifest, apple-touch-icon.png and sw.js by relative path and

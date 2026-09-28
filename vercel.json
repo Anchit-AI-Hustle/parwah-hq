@@ -15,7 +15,7 @@
   },
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/((?!app/).*)",
       "headers": [
         {
           "key": "X-Content-Type-Options",
@@ -28,6 +28,23 @@
         {
           "key": "Referrer-Policy",
           "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    },
+    {
+      "source": "/app/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors 'self' https://parwah.floot.app capacitor://localhost https://localhost https://floot.com https://2fea47ff-4e55-4bdb-ae0a-46d1768aebeb.sandbox.floot.app"
         }
       ]
     }

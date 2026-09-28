@@ -6607,6 +6607,10 @@ details.more[open]>summary::before{content:"▾ "}
   } else {
     showStep('auth');
   }
+  // Inside the iPhone and Android apps this page runs in a frame, and the
+  // app shows its own loading screen until it hears this. It says only that
+  // Parwah has started - nothing about the family, so any origin may hear it.
+  try { if (window.parent !== window) window.parent.postMessage({ parwah: 'ready' }, '*'); } catch (e) {}
 })();
 </script>
 </body>
