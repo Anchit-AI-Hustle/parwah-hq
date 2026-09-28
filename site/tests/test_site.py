@@ -10,13 +10,15 @@ ROOT = Path(__file__).resolve().parents[1]
 # and every page added after it inherited the same silence. A check that does
 # not know about a page cannot fail on it.
 PAGES = sorted((ROOT / "public").rglob("*.html"))
-# The marketing pages are documents; /app/ and /demo/ are applications. Two
+# The marketing pages are documents; the app (at the root, "/") and /demo/
+# are applications. Two
 # rules genuinely differ between them: a document has exactly one h1, an app
 # has one per screen and shows one screen at a time (asserted in the browser
 # suite, where visibility is knowable); and the shared stylesheet is the
 # marketing design system, which the app deliberately does not use.
+APP_PAGE = ROOT / "public" / "index.html"
 SITE_PAGES = [p for p in PAGES
-              if not {"app", "demo"} & set(p.relative_to(ROOT / "public").parts)]
+              if p != APP_PAGE and "demo" not in p.relative_to(ROOT / "public").parts]
 
 def markup_only(html):
     """Drop script and style bodies. A href inside a JS template string is
@@ -276,17 +278,71 @@ hdrs = {h["key"] for blk in vj.get("headers", []) for h in blk.get("headers", []
 for need in ("X-Content-Type-Options", "X-Frame-Options", "Referrer-Policy"):
     check(f"security header set: {need}", need in hdrs)
 
+# THE APP LIVES AT THE ROOT. parwah-hq.anchit-tandon.com IS the app - not a
+# redirect to it - so the address a family sees and shares is the domain
+# itself, and /#day, /#vault, /?join=CODE are the app's own routes.
+_pub = REPO / "site/public"
+_apph = (_pub / "index.html").read_text(encoding="utf-8")
+check("routing: the root page is the app",
+      "postMessage({ parwah: 'ready' }" in _apph and 'id="au-why"' in _apph)
+check("routing: served as it is, not redirected or rewritten",
+      not any(r.get("source") == "/" for r in vj.get("redirects", []) + vj.get("rewrites", [])))
+check("routing: the old home page moved to /welcome/, not deleted",
+      (_pub / "welcome/index.html").exists())
+_man = _json.loads((_pub / "manifest.webmanifest").read_text(encoding="utf-8"))
+check("routing: the installed app opens at, and covers, the whole domain",
+      _man.get("start_url") == "/" and _man.get("scope") == "/")
+# The id is the installed app's identity. Changing it would make every phone
+# that installed Parwah see a second, different app instead of an update.
+check("routing: and keeps its identity, so installs update rather than duplicate",
+      _man.get("id") == "/app/")
+_sw = (_pub / "sw.js").read_text(encoding="utf-8")
+check("routing: the offline worker lives at the root and caches the root",
+      "'/'" in _sw and "/app/" not in _sw)
+# Old links, old installs and the Floot shell's first build all say /app/.
+# Browsers carry the #route through a redirect, so /app/#day lands on /#day.
+_old = {r.get("source"): r for r in vj.get("redirects", [])}
+check("routing: the old address still works, and lands on the root",
+      all(_old.get(src, {}).get("destination") == "/" for src in ("/app", "/app/", "/app/index.html")))
+check("routing: the app's old file addresses follow it",
+      _old.get("/app/:file(manifest\\.webmanifest|icon-192\\.png|icon-512\\.png|icon-512-maskable\\.png|apple-touch-icon\\.png|mark\\.svg)", {}).get("destination") == "/:file")
+# Temporary, because browsers cache a permanent redirect for a very long time.
+check("routing: none of those redirects is permanent, so they can be undone",
+      all(r.get("permanent") is False for r in vj.get("redirects", [])))
+check("routing: no redirect can catch the API",
+      not any("api" in r.get("source", "") or r.get("source") in ("/(.*)", "/:path*")
+              for r in vj.get("redirects", [])))
+# A service worker script cannot be redirected: the browser refuses it. The
+# old /app/sw.js has to stay a real file, and what it does is remove itself.
+_oldsw = (_pub / "app/sw.js")
+check("routing: the old /app/ worker is a real file that is never redirected",
+      _oldsw.exists() and not any("sw" in src for src in _old))
+_oldsw_s = _oldsw.read_text(encoding="utf-8") if _oldsw.exists() else ""
+_oldsw_code = "\n".join(l for l in _oldsw_s.splitlines() if not l.strip().startswith("//"))
+check("routing: and all it does is unregister itself, deleting nothing shared",
+      "registration.unregister()" in _oldsw_code
+      and not any(w in _oldsw_code for w in ("caches", "fetch", "importScripts")))
+_stale = []
+for _p in PAGES:
+    for _h in re.findall(r'href="([^"]*)"', markup_only(_p.read_text(encoding="utf-8"))):
+        if re.search(r"(^|/)app/", _h): _stale.append(f"{_p.relative_to(ROOT)}: {_h}")
+check("routing: no page links to the old /app/ address", not _stale, "; ".join(_stale[:4]))
+check("routing: invite links share the root, not /app/",
+      "anchit-tandon.com/?join=" in _apph and "anchit-tandon.com/app/" not in _apph)
+check("routing: a reminder tapped on the phone opens the root",
+      "payload.url || '/'" in (REPO / "api/_push.mjs").read_text(encoding="utf-8"))
+
 # THE PHONE APPS FRAME THE APP. The iPhone and Android apps are a Floot shell
-# that shows /app/ in a frame. Every other page still refuses to be framed
-# (clickjacking), and /app/ allows exactly the shell's origins - never a
+# that shows the app in a frame. Every other page still refuses to be framed
+# (clickjacking), and the app allows exactly the shell's origins - never a
 # wildcard, because any site allowed to frame the app could overlay it.
 _hblocks = {b.get("source"): {h["key"]: h["value"] for h in b.get("headers", [])}
             for b in vj.get("headers", [])}
-_rest = _hblocks.get("/((?!app/).*)", {})
-_app = _hblocks.get("/app/(.*)", {})
+_rest = _hblocks.get("/(.+)", {})
+_app = _hblocks.get("/", {})
 check("framing: every page but the app still refuses to be framed",
-      _rest.get("X-Frame-Options") == "SAMEORIGIN" and "/(.*)" not in _hblocks,
-      ", ".join(_hblocks))
+      _rest.get("X-Frame-Options") == "SAMEORIGIN" and "/(.*)" not in _hblocks
+      and "X-Frame-Options" not in _app, ", ".join(_hblocks))
 check("framing: the app keeps the other security headers",
       _app.get("X-Content-Type-Options") == "nosniff" and "Referrer-Policy" in _app)
 _fa = re.fullmatch(r"frame-ancestors ((?:\S+ ?)+)", _app.get("Content-Security-Policy", ""))
@@ -300,30 +356,9 @@ check("framing: and never by a wildcard",
       not any("*" in o or o in ("https:", "http:", "data:", "blob:") for o in _fa_list))
 # The shell waits for this before showing the app. It goes to any origin, so
 # it must carry nothing about the family.
-_ready = re.findall(r"postMessage\((.*?)\)",
-                    (REPO / "site/public/app/index.html").read_text(encoding="utf-8"))
+_ready = re.findall(r"postMessage\((.*?)\)", _apph)
 check("framing: the app tells the shell it started, and nothing more",
       _ready == ["{ parwah: 'ready' }, '*'"], "; ".join(_ready))
-
-# THE DOMAIN OPENS THE APP. parwah-hq.anchit-tandon.com goes straight to /app/.
-# It is a REDIRECT, not a rewrite, and that is load-bearing: the app loads
-# manifest.webmanifest, apple-touch-icon.png and sw.js by relative path and
-# its manifest scope is /app/, so serving it at "/" would 404 the manifest
-# and the service worker and quietly break install-to-home-screen.
-_redir = [r for r in vj.get("redirects", []) if r.get("source") == "/"]
-check("routing: the bare domain opens the app",
-      len(_redir) == 1 and _redir[0].get("destination") == "/app/")
-check("routing: by redirect, so the app's relative paths and PWA scope hold",
-      not any(r.get("source") == "/" for r in vj.get("rewrites", [])))
-# Temporary, because a permanent redirect is cached by browsers for a very
-# long time: if the marketing home page ever goes back on "/", everyone who
-# visited once would keep being sent to /app/ regardless.
-check("routing: and not permanent, so it can be undone",
-      _redir and _redir[0].get("permanent") is False)
-# A wider pattern here would send /api/ and every page to the app.
-check("routing: it matches the root alone, not every path",
-      all(r.get("source") == "/" for r in vj.get("redirects", [])
-          if r.get("destination") == "/app/"))
 
 # 10c. every data endpoint proves circle membership before touching data
 # every module that touches circle data must prove membership first
@@ -343,9 +378,9 @@ for f in sorted(API_DIR.glob("*.mjs")):
           "sql(" not in src.replace("sql('','')", "") and ".query(" not in src)
 
 # 10e. service worker never caches API responses; app JS avoids eval
-sw = (REPO / "site/public/app/sw.js").read_text(encoding="utf-8")
+sw = (REPO / "site/public/sw.js").read_text(encoding="utf-8")
 check("security: service worker bypasses /api/", "/api/" in sw)
-app_html = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+app_html = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 check("security: no eval in app", "eval(" not in app_html and "new Function(" not in app_html)
 
 # 10f. THE VAULT - the promises made to the family are checked here, not
@@ -370,7 +405,7 @@ check("vault: a PAN is read for what it actually encodes",
       and "an individual" in docid and "a company" in docid)
 check("vault: and never claims to verify the undisclosed check digit",
       "has never published" in docid and "does NOT pretend" in docid)
-_appv = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+_appv = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 check("vault: a surname mismatch is a note, never a refusal",
       "Worth a look" in _appv and "not every name puts the surname last" in _appv
       and "vPanNote" in _appv)
@@ -388,7 +423,7 @@ check("vault: only the owner re-permissions their payment method",
       "ownedMethod" in vault and "owner_member !== me.id" in vault)
 check("vault: uploads are size- and type-limited",
       "MAX_FILE" in vault and "OK_MIME" in vault)
-app_src = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+app_src = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 check("vault: the app never renders more than a masked number",
       "'•••• •••• '" in app_src and "'••••' + esc(d.last4)" in app_src)
 
@@ -431,7 +466,7 @@ check("circles: your own messages never count as unread",
       "ms.member_id is distinct from m.id" in auth)
 check("circles: unread respects private chats you are not in",
       "ch.kind = 'circle' or cm.member_id is not null" in auth)
-appsrc = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+appsrc = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 check("circles: the sign-in list leads with the circle that needs you",
       "circleSignals" in appsrc and "needsyou" in appsrc)
 
@@ -766,7 +801,7 @@ check("games: the list logic imports nothing, so the gate can test it early",
 check("games: the list logic is unit-tested by the gate",
       (REPO / "site/tests/gametest.mjs").exists()
       and "gametest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
-app_games = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+app_games = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 check("games: the app opens on the list of games, not inside one",
       'id="game-list"' in app_games and 'id="glist"' in app_games)
 check("games: every row says whose turn it is, not by colour alone",
@@ -831,14 +866,14 @@ check("ekta: the retrieval logic imports nothing, so the gate tests it early",
 check("ekta: the retrieval logic is unit-tested by the gate",
       (REPO / "site/tests/ektatest.mjs").exists()
       and "ektatest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
-_appe = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+_appe = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 check("ekta: the app says plainly when she is reading from records",
       'id="ekta-offline"' in _appe and "Answering from your family records" in _appe)
 check("ekta: and says the degraded answer cost no coins",
       "This answer is free." in _appe)
 
 # SIGNING UP, SIGNING IN, AND MOVING BETWEEN FEATURES.
-_appf = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+_appf = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 # --cream is the token for text ON a dark ground, so in dark it equals --ink.
 # A card that used it as a BACKGROUND painted white on white, and a new
 # family's whole five-card introduction was invisible in dark mode.
@@ -888,7 +923,7 @@ check("day: the test asserts the day asked for is the day answered",
 
 # ONE FAMILY'S DATA MUST NOT REACH ANOTHER'S SCREEN.
 _sec = (API_DIR / "_sec.mjs").read_text(encoding="utf-8")
-_appx = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+_appx = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 _events = (API_DIR / "events.mjs").read_text(encoding="utf-8")
 _care = (API_DIR / "care.mjs").read_text(encoding="utf-8")
 _book = (API_DIR / "book.mjs").read_text(encoding="utf-8")
@@ -1030,8 +1065,9 @@ _an = _an_path.read_text(encoding="utf-8") if _an_path.exists() else ""
 # and nobody would have known until the funnel had a hole in it.
 # /demo/ counts as marketing for this purpose even though it is an app:
 # it is a page we send traffic to.
-_measured = [q for q in PAGES
-             if "app" not in q.relative_to(ROOT / "public").parts]
+# The app is excluded by being the app, wherever it lives - it moved from
+# /app/ to the root, and a path-based rule would have demanded analytics on it.
+_measured = [q for q in PAGES if q != APP_PAGE]
 check("analytics: there are marketing pages to measure", len(_measured) >= 5,
       f"{len(_measured)} pages")
 for _mp in _measured:
@@ -1039,13 +1075,13 @@ for _mp in _measured:
           "analytics.js" in _mp.read_text(encoding="utf-8"))
 # THE APP IS NOT. The home page promises "Reassurance, never surveillance",
 # and the app is where a family keeps health facts, documents and addresses.
-_app_t = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+_app_t = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 check("analytics: the app is NOT measured, because the promise is not surveillance",
       "analytics.js" not in _app_t)
 check("analytics: and the app carries no Google tag of its own",
       "googletagmanager" not in _app_t and "gtag(" not in _app_t)
 check("analytics: the file says why the app is exempt, so nobody adds it later",
-      "not loaded inside /app/" in _an)
+      "It is not loaded by the app" in _an)
 # Nothing may reach Google before a real choice.
 check("analytics: ships inert until an ID is pasted in", "var GA4 = ''" in _an)
 check("analytics: with no ID there is no bar and no request", "if (!GA4) return;" in _an)
@@ -1073,7 +1109,7 @@ check("analytics: the promise is proved in a browser, not just asserted here",
 _au = (API_DIR / "_auth.mjs").read_text(encoding="utf-8")
 _authmjs = (API_DIR / "auth.mjs").read_text(encoding="utf-8")
 _dbs = (API_DIR / "_db.mjs").read_text(encoding="utf-8")
-_appa = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+_appa = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 check("signin: a PIN is required, so a number alone is not the key",
       "pinError" in _au and "verifyPin" in _authmjs and "needPin" in _authmjs)
 check("signin: the PIN is salted and run through a real KDF, not hashed once",
@@ -1280,7 +1316,7 @@ pan = (API_DIR / "_panchang.mjs").read_text(encoding="utf-8")
 horo = (API_DIR / "_horoscope.mjs").read_text(encoding="utf-8")
 plc = (API_DIR / "_places.mjs").read_text(encoding="utf-8")
 dayapi = (API_DIR / "_dayapi.mjs").read_text(encoding="utf-8")
-appday = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+appday = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 
 check("day: muhurat is computed from sunrise, never fetched",
       "fetch(" not in pan and "import" not in pan.split("export")[0],
@@ -1365,7 +1401,7 @@ check("day: the probe separates our arithmetic from someone else's uptime",
 # They were right - on a phone the entry screen was a headline and a phone
 # field. The validation guide asks for the same thing from the other side:
 # show five narrow concept screens, and NOT the full app.
-appob = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+appob = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 check("entry: a phone sees what Parwah is, not only a sign-in box",
       '<div class="obpoints">' in appob and 'class="obpoints deskonly"' not in appob)
 check("entry: the explanation is legible on the cream ground, not sidebar grey",
@@ -1404,7 +1440,7 @@ check("guide demo: it is plainly an example, not someone's real family",
 # that mapping free, so six digits fill in the rest.
 pin = (API_DIR / "_pin.mjs").read_text(encoding="utf-8")
 pinapi = (API_DIR / "_pinapi.mjs").read_text(encoding="utf-8")
-appad = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+appad = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 
 check("address: the PIN rules are dependency-free, like the phone rules",
       "import" not in pin.split("export")[0] and "PIN_SOURCE" in pin)
@@ -1490,7 +1526,7 @@ if _ren.exists():
 # A second theme is only possible if NOTHING is a bare colour outside the token
 # block. These checks are what stop the next feature quietly hardcoding #fff
 # into a card and being invisible at night.
-_appt = (REPO / "site/public/app/index.html").read_text(encoding="utf-8")
+_appt = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 _css = _appt[_appt.index("<style>"):_appt.index("</style>")]
 _dark_end = _css.index("}", _css.index(':root[data-theme="dark"]{'))
 _after = _css[_dark_end:]
@@ -1591,10 +1627,10 @@ check("assets: every image a page asks for is actually in the build",
       not _asset_missing, "; ".join(_asset_missing[:4]))
 
 # THE INVITE IS THE GROWTH LOOP, and it goes out through WhatsApp: the app
-# shares /app/?join=CODE with wa.me/?text=. WhatsApp builds its preview from
+# shares /?join=CODE with wa.me/?text=. WhatsApp builds its preview from
 # these tags, and the app page had none, so every invite one family member
 # sent another arrived as a blank grey rectangle with a bare link under it.
-_app_h = (ROOT / "public" / "app" / "index.html").read_text(encoding="utf-8")
+_app_h = (ROOT / "public" / "index.html").read_text(encoding="utf-8")
 for _t in ("og:title", "og:description", "og:image", "twitter:card"):
     check(f"invite preview: the app carries {_t}", _t in _app_h)
 check("invite preview: and its image is absolute, like every other one",
@@ -1663,7 +1699,7 @@ check("waitlist: and that module stays dependency-free so it can",
 # 94 -> 11 ms, every other widget unchanged. These are structural guards,
 # not timings, because timings flake under CI load and a guard that flakes
 # gets deleted.
-_app_src = (ROOT / "public" / "app" / "index.html").read_text(encoding="utf-8")
+_app_src = (ROOT / "public" / "index.html").read_text(encoding="utf-8")
 def _fn_body(src, sig):
     """The text of one function, or "" when it does not exist. .index()
     raised instead, so an app without the function crashed the suite

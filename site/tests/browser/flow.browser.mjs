@@ -112,7 +112,7 @@ async function fresh(opts){
       localStorage.setItem('parwah-fr-hide', '1');
     });
   }
-  await page.goto(BASE + '/app/');
+  await page.goto(BASE + '/');
   await page.waitForTimeout(700);
   return page;
 }
@@ -381,7 +381,7 @@ for (const theme of ['light', 'dark']) {
     localStorage.setItem('parwah', JSON.stringify({ code:'ABCDEF', memberId:'11111111-1111-1111-1111-111111111111', name:'Rohan', role:'family', circleName:'Test Family' }));
     localStorage.setItem('parwah-user', JSON.stringify({ id:'77777777-7777-4777-8777-777777777777', name:'Rohan', phone:'+919873945238' }));
   });
-  await pg.goto(BASE + '/app/').catch(() => {});
+  await pg.goto(BASE + '/').catch(() => {});
   await pg.waitForTimeout(3500);
   ok(loads <= 2, 'an old session reloads at most once, never in a loop (' + loads + ' real page loads in 3.5 s)');
   ok(await pg.locator('#auth-step').isVisible().catch(() => false), 'and it lands on sign-in');

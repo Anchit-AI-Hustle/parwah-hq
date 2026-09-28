@@ -86,8 +86,9 @@ re-authored into this design system, never pasted.
 - hq/index.html - 9-tab console incl. live finance engine (do not edit casually; it has
   its own test suite in the source workspace).
 - site/public/ - the live site. Two halves, one story:
-  `/` platform pitch · `/story/` the 11pm phone call · `/care/` the range ·
-  `/story/aisle/` the day you notice · `/launch/` · `/get/` · `/demo/` · `/app/`
+  `/` the app itself (the old `/app/` address redirects there) ·
+  `/welcome/` platform pitch · `/story/` the 11pm phone call · `/care/` the range ·
+  `/story/aisle/` the day you notice · `/launch/` · `/get/` · `/demo/`
   Shared design system in `site/public/styles.css`; pages add only their own
   page-specific classes in a single `<style>` block, as `/get/` does.
 - site/tests/test_site.py - the site test suite.

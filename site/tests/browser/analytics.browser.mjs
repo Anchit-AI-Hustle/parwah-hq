@@ -35,7 +35,7 @@ const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath
 let pass = 0, fail = 0;
 const ok = (c, n) => { c ? pass++ : (fail++, console.log('FAIL  ' + n)); if (c) console.log('PASS  ' + n); };
 
-const MARKETING = ['/', '/story/', '/story/aisle/', '/care/', '/get/', '/launch/', '/demo/'];
+const MARKETING = ['/welcome/', '/story/', '/story/aisle/', '/care/', '/get/', '/launch/', '/demo/'];
 
 // Serve the file with an ID pasted in, exactly as the operator will do.
 async function open(url, { withId = false, dnt = false, storage = null } = {}) {
@@ -70,7 +70,7 @@ for (const url of MARKETING) {
 // ---- 2. THE APP IS NEVER INSTRUMENTED. This is the promise on the site's
 // own home page: reassurance, never surveillance.
 {
-  const { pg, google } = await open('/app/', { withId: true });
+  const { pg, google } = await open('/', { withId: true });
   await pg.waitForTimeout(800);
   ok(google.length === 0, 'the app sends nothing to Google, even with an ID configured');
   const has = await pg.evaluate(() => !!document.querySelector('script[src*="analytics.js"]'));
@@ -80,7 +80,7 @@ for (const url of MARKETING) {
 
 // ---- 3. with an ID: the choice comes first
 {
-  const { pg, google } = await open('/', { withId: true });
+  const { pg, google } = await open('/welcome/', { withId: true });
   ok(await pg.locator('.pw-consent').isVisible(), 'with an ID, the choice is offered');
   ok(google.length === 0, 'and still nothing is fetched before the answer');
   const b = await pg.locator('.pw-yes').boundingBox();
@@ -92,7 +92,7 @@ for (const url of MARKETING) {
 
 // ---- 4. No thanks means no thanks, and it sticks
 {
-  const { pg, google } = await open('/', { withId: true });
+  const { pg, google } = await open('/welcome/', { withId: true });
   await pg.click('.pw-no'); await pg.waitForTimeout(600);
   ok(google.length === 0, 'No thanks sends nothing');
   ok(await pg.locator('.pw-consent').count() === 0, 'and the bar goes away');
@@ -104,12 +104,12 @@ for (const url of MARKETING) {
 
 // ---- 5. Allow loads the tag, once, and is remembered
 {
-  const { pg, google } = await open('/', { withId: true });
+  const { pg, google } = await open('/welcome/', { withId: true });
   await pg.click('.pw-yes'); await pg.waitForTimeout(1500);
   ok(google.length > 0, `Allow loads the tag (${google.length} request)`);
   ok(await pg.locator('.pw-consent').count() === 0, 'and the bar goes away');
   await pg.close();
-  const second = await open('/', { withId: true, storage: 'yes' });
+  const second = await open('/welcome/', { withId: true, storage: 'yes' });
   await second.pg.waitForTimeout(1200);
   ok(second.google.length > 0, 'a returning visitor who said yes is not asked again');
   ok(await second.pg.locator('.pw-consent').count() === 0, 'and sees no bar');
@@ -118,7 +118,7 @@ for (const url of MARKETING) {
 
 // ---- 6. Do Not Track is already an answer
 {
-  const { pg, google } = await open('/', { withId: true, dnt: true });
+  const { pg, google } = await open('/welcome/', { withId: true, dnt: true });
   await pg.waitForTimeout(700);
   ok(google.length === 0, 'Do Not Track is honoured without asking');
   ok(await pg.locator('.pw-consent').count() === 0, 'and no bar is shown');
@@ -127,7 +127,7 @@ for (const url of MARKETING) {
 
 // ---- 7. the conversion this site exists to cause
 {
-  const { pg } = await open('/', { withId: true, storage: 'yes' });
+  const { pg } = await open('/welcome/', { withId: true, storage: 'yes' });
   await pg.waitForTimeout(900);
   const sent = [];
   await pg.exposeFunction('__ev', (n, p) => sent.push([n, p]));
@@ -144,7 +144,7 @@ for (const url of MARKETING) {
   await pg.waitForTimeout(400);
   ok(sent.some(e => e[0] === 'join_waitlist' && e[1] && e[1].method === 'whatsapp'),
      'a WhatsApp click is counted as joining the launch list');
-  await pg.evaluate(() => { const a = document.querySelector('a[href^="app/"]'); if (a) { a.setAttribute('target','_blank'); a.click(); } });
+  await pg.evaluate(() => { const a = document.querySelector('a[href="../"]'); if (a) { a.setAttribute('target','_blank'); a.click(); } });
   await pg.waitForTimeout(300);
   ok(sent.some(e => e[0] === 'open_app'), 'opening the app is counted');
   await pg.close();

@@ -49,7 +49,7 @@ await pg.route('**/api/book*area=vault*',r=>{
     members:[{id:ME,name:'Anchit Tandon',relation:'son'}]}});});
 await pg.route('**/api/book*area=pay*',r=>r.fulfill({json:{ok:true,kinds:{},methods:[],perms:[],log:[],members:[]}}));
 await pg.addInitScript(()=>{localStorage.setItem('parwah',JSON.stringify({code:'ABCDEF',memberId:'11111111-1111-1111-1111-111111111111',name:'Anchit Tandon',role:'family',circleName:'T'}));localStorage.setItem('parwah-fr-hide','1');});
-await pg.goto(BASE + '/app/#vault'); await pg.waitForTimeout(800);
+await pg.goto(BASE + '/#vault'); await pg.waitForTimeout(800);
 
 const num=pg.locator('#vd-number'), st=pg.locator('#vd-numstate'), sw=pg.locator('#vd-swap');
 await pg.selectOption('#vd-kind','aadhaar'); await pg.waitForTimeout(150);

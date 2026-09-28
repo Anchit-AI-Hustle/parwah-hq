@@ -107,7 +107,7 @@ await page.addInitScript(() => {
   localStorage.setItem('parwah-user', JSON.stringify({ id:'77777777-7777-4777-8777-777777777777', name:'Rohan', phone:'+919873945238' }));
   localStorage.setItem('parwah-fr-hide', '1');
 });
-await page.goto(BASE + '/app/');
+await page.goto(BASE + '/');
 await page.waitForTimeout(600);
 
 // ---- the Today widget knows what is running now ----

@@ -38,7 +38,7 @@ async function fresh(vp){
 
 // ---- a phone gets the explanation, not just a phone field ----
 let pg=await fresh({width:390,height:844});
-await pg.goto(BASE + '/app/'); await pg.waitForTimeout(500);
+await pg.goto(BASE + '/'); await pg.waitForTimeout(500);
 ok(await pg.locator('.obpoints').isVisible(), 'a phone sees what Parwah is, not only a sign-in box');
 ok((await pg.locator('.obpoint').count())===3, 'all three points are on the phone screen');
 ok(await pg.locator('#au-see').isVisible(), 'and a way to see it properly without signing in');
@@ -102,7 +102,7 @@ await pg.close();
 
 // ---- ?demo=1 opens straight into it ----
 pg=await fresh({width:390,height:844});
-await pg.goto(BASE + '/app/?demo=1'); await pg.waitForTimeout(600);
+await pg.goto(BASE + '/?demo=1'); await pg.waitForTimeout(600);
 ok(await pg.locator('#demo-step').isVisible(), '?demo=1 opens on the concept, for an interview');
 ok(await pg.locator('#auth-step').isHidden(), 'and not on a request for a phone number');
 await pg.close();
@@ -111,7 +111,7 @@ await pg.close();
 pg=await fresh({width:390,height:844});
 await pg.route('**/api/events*',r=>r.fulfill({json:{ok:true,circleName:'T',code:'ABCDEF',members:[],events:[],seenAt:null,joinRequests:[],sos:[],calls:[]}}));
 await pg.addInitScript(()=>{localStorage.setItem('parwah',JSON.stringify({code:'ABCDEF',memberId:'11111111-1111-1111-1111-111111111111',name:'R',role:'family',circleName:'T'}));localStorage.setItem('parwah-fr-hide','1');});
-await pg.goto(BASE + '/app/?demo=1'); await pg.waitForTimeout(600);
+await pg.goto(BASE + '/?demo=1'); await pg.waitForTimeout(600);
 ok(await pg.locator('#onboard').isHidden(), 'someone already in a circle is not sent to the demo');
 await pg.close();
 

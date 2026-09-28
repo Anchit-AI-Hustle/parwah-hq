@@ -2,7 +2,7 @@
 //
 // Two rules this file exists to keep.
 //
-// It is not loaded inside /app/. The app is where a family keeps health
+// It is not loaded by the app, which opens at the root of the domain. The app is where a family keeps health
 // facts, documents, addresses and who checked in on whom. This brand's
 // promise on its own home page is "Reassurance, never surveillance", and
 // sending that behaviour to Google would make the promise false. Measure the
@@ -56,6 +56,17 @@
   // Joining the launch list is the only thing these pages exist to cause.
   // It happens on WhatsApp or by email, so both are the same event with the
   // route recorded, and the funnel reads as one number.
+  // The app is the root of this domain (it was /app/ until it moved there).
+  // Resolved, not pattern-matched on the text: every page links to it with a
+  // different relative path ("../", "../../"), and a text match on "app/"
+  // silently stopped counting the day the app moved.
+  function opensApp(href) {
+    try {
+      var u = new URL(href, location.href);
+      return u.origin === location.origin && (u.pathname === '/' || /^\/app\/?$/.test(u.pathname));
+    } catch (e) { return false; }
+  }
+
   document.addEventListener('click', function (ev) {
     var a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
     if (!a) return;
@@ -64,7 +75,7 @@
       track('join_waitlist', { method: 'whatsapp', page: location.pathname });
     } else if (href.indexOf('mailto:') === 0) {
       track('join_waitlist', { method: 'email', page: location.pathname });
-    } else if (/(^|\/)app\/?($|[?#])/.test(href)) {
+    } else if (opensApp(href)) {
       track('open_app', { page: location.pathname });
     } else if (/(^|\/)demo\/?($|[?#])/.test(href)) {
       track('open_demo', { page: location.pathname });

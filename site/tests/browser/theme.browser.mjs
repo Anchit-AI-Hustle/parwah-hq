@@ -51,7 +51,7 @@ for (const mode of ['light','dark']) {
   await pg.route('**/api/book*area=vault*',r=>r.fulfill({json:{ok:true,maxFile:1,kinds:{},idShapes:{},docs:[],grants:[],log:[],members:[]}}));
   await pg.route('**/api/book*',r=>r.fulfill({json:book}));
   await pg.addInitScript(()=>{localStorage.setItem('parwah',JSON.stringify({code:'ABCDEF',memberId:'11111111-1111-1111-1111-111111111111',name:'Anchit Tandon',role:'family',circleName:'T'}));localStorage.setItem('parwah-fr-hide','1');});
-  await pg.goto(BASE + '/app/'); await pg.waitForTimeout(700);
+  await pg.goto(BASE + '/'); await pg.waitForTimeout(700);
 
   const bg=await pg.evaluate(()=>getComputedStyle(document.body).backgroundColor);
   const dark = mode==='dark';
@@ -110,7 +110,7 @@ pg.on('pageerror',e=>errors.push('pageerror: '+e.message));
 await pg.route('**/api/**',r=>r.fulfill({json:{ok:false,error:'stub'}}));
 await pg.route('**/api/events*',r=>r.fulfill({json:events}));
 await pg.addInitScript(()=>{localStorage.setItem('parwah',JSON.stringify({code:'ABCDEF',memberId:'11111111-1111-1111-1111-111111111111',name:'A',role:'family',circleName:'T'}));localStorage.setItem('parwah-fr-hide','1');});
-await pg.goto(BASE + '/app/#profile'); await pg.waitForTimeout(700);
+await pg.goto(BASE + '/#profile'); await pg.waitForTimeout(700);
 ok(await pg.locator('#themeseg button.sel').textContent()==='Automatic','it starts on Automatic');
 const lightBg=await pg.evaluate(()=>getComputedStyle(document.body).backgroundColor);
 await pg.click('[data-theme-set="dark"]'); await pg.waitForTimeout(250);
@@ -131,7 +131,7 @@ await pg2.route('**/api/**',r=>r.fulfill({json:{ok:false,error:'stub'}}));
 await pg2.route('**/api/events*',r=>r.fulfill({json:events}));
 await pg2.addInitScript(()=>{localStorage.setItem('parwah',JSON.stringify({code:'ABCDEF',memberId:'11111111-1111-1111-1111-111111111111',name:'A',role:'family',circleName:'T'}));
   localStorage.setItem('parwah-fr-hide','1'); localStorage.setItem('parwah-theme','light');});
-await pg2.goto(BASE + '/app/#profile'); await pg2.waitForTimeout(600);
+await pg2.goto(BASE + '/#profile'); await pg2.waitForTimeout(600);
 const l=await pg2.evaluate(`(${CONTRAST})('rgb(255,255,255)',getComputedStyle(document.body).backgroundColor)`);
 ok(l<2,'choosing Light beats a device set to dark');
 await pg2.close();

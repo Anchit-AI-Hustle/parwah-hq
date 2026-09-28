@@ -61,7 +61,7 @@ export async function pushCircle(sql, circleId, payload, { except = null, only =
         and (${except}::uuid is null or s.member_id <> ${except})
         and (${only}::uuid is null or s.member_id = ${only})
       limit 60`;
-    const body = JSON.stringify({ title: payload.title, body: payload.body || '', url: payload.url || '/app/' });
+    const body = JSON.stringify({ title: payload.title, body: payload.body || '', url: payload.url || '/' });
     await Promise.allSettled(subs.map(s =>
       wp.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, { TTL: 3600 })
         .catch(async (e) => {

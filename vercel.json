@@ -3,8 +3,23 @@
   "trailingSlash": true,
   "redirects": [
     {
-      "source": "/",
-      "destination": "/app/",
+      "source": "/app",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/app/",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/app/index.html",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/app/:file(manifest\\.webmanifest|icon-192\\.png|icon-512\\.png|icon-512-maskable\\.png|apple-touch-icon\\.png|mark\\.svg)",
+      "destination": "/:file",
       "permanent": false
     }
   ],
@@ -15,7 +30,7 @@
   },
   "headers": [
     {
-      "source": "/((?!app/).*)",
+      "source": "/(.+)",
       "headers": [
         {
           "key": "X-Content-Type-Options",
@@ -32,7 +47,7 @@
       ]
     },
     {
-      "source": "/app/(.*)",
+      "source": "/",
       "headers": [
         {
           "key": "X-Content-Type-Options",

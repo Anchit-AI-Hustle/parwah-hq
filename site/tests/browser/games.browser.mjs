@@ -108,7 +108,7 @@ async function open(viewport){
     localStorage.setItem('parwah-user', JSON.stringify({ id:'77777777-7777-4777-8777-777777777777', name:'Rohan', phone:'+919873945238' }));
     localStorage.setItem('parwah-fr-hide', '1');
   });
-  await page.goto(BASE + '/app/');
+  await page.goto(BASE + '/');
   await page.waitForTimeout(700);
   return page;
 }
@@ -208,7 +208,7 @@ await dk.addInitScript(() => {
   localStorage.setItem('parwah', JSON.stringify({ code:'ABCDEF', memberId:'11111111-1111-1111-1111-111111111111', name:'Rohan', role:'family', circleName:'Test Family' }));
   localStorage.setItem('parwah-fr-hide', '1');
 });
-await dk.goto(BASE + '/app/');
+await dk.goto(BASE + '/');
 await dk.waitForTimeout(700);
 await toGames(dk);
 const contrast = await dk.locator('#glist .gturn').first().evaluate(el => {

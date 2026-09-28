@@ -104,7 +104,7 @@ ok('a never-checked fact says so', /never checked/.test(stalePhrase(null, false)
 // from the app itself, so a chip added later is held to this too.
 {
   const { readFileSync } = await import('node:fs');
-  const html = readFileSync(new URL('../public/app/index.html', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
   const chips = [...html.matchAll(/data-chip="([^"]+)"/g)].map(m => m[1]);
   ok('the app offers suggestion chips', chips.length >= 4);
   for (const c of chips) ok('chip has an offline answer, not a refusal: ' + c.slice(0, 40), classify(c) !== 'unknown');

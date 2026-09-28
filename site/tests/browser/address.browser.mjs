@@ -52,7 +52,7 @@ await pg.route('**/api/settings*area=pin*',r=>{
     areas:[{name:'Greater Kailash',block:'New Delhi',kind:'Sub Post Office'},
            {name:'Kailash Colony',block:'New Delhi',kind:'Branch Post Office'}]}});});
 await pg.addInitScript(()=>{localStorage.setItem('parwah',JSON.stringify({code:'ABCDEF',memberId:'11111111-1111-1111-1111-111111111111',name:'Rohan',role:'family',circleName:'T'}));localStorage.setItem('parwah-fr-hide','1');});
-await pg.goto(BASE + '/app/#memory'); await pg.waitForTimeout(700);
+await pg.goto(BASE + '/#memory'); await pg.waitForTimeout(700);
 
 // the filter row is readable, not a row of bare emoji
 const chips=await pg.locator('#bk-filter button').allTextContents();

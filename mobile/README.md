@@ -4,12 +4,12 @@
 
 The store apps are built by Floot from a thin shell project, "Parwah"
 (`parwah.floot.app`, app id `com.parwah.app`). Its one page shows
-`https://parwah-hq.anchit-tandon.com/app/` full-screen in a frame, with a
+`https://parwah-hq.anchit-tandon.com/` (the app lives at the root of the domain) full-screen in a frame, with a
 loading screen until the app posts `{ parwah: 'ready' }`, and a retry screen
 if it never does. No family data passes through Floot; its visitor analytics
 are switched off.
 
-For this to work, `/app/` sends `Content-Security-Policy: frame-ancestors`
+For this to work, the app (`/`) sends `Content-Security-Policy: frame-ancestors`
 listing exactly the shell's origins (see `vercel.json`); every other page
 keeps `X-Frame-Options: SAMEORIGIN`. `site/tests/browser/shell.browser.mjs`
 checks the frame behaviour in Chromium (Android's engine). Sign-in staying
@@ -23,7 +23,7 @@ shell ever has to be replaced.
 
 ## Capacitor shell (not in use)
 
-Capacitor shells that wrap the live Parwah app (`https://parwah-hq.anchit-tandon.com/app/`).
+Capacitor shells that wrap the live Parwah app (`https://parwah-hq.anchit-tandon.com/`).
 The web app is the single source of truth - native builds always show the latest
 deploy, so the apps never go stale.
 

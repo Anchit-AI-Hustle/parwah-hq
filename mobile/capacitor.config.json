@@ -3,7 +3,7 @@
   "appName": "Parwah",
   "webDir": "www",
   "server": {
-    "url": "https://parwah-hq.anchit-tandon.com/app/",
+    "url": "https://parwah-hq.anchit-tandon.com/",
     "cleartext": false
   },
   "android": {

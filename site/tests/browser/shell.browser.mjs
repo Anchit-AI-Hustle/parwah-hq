@@ -1,7 +1,7 @@
 // THE PHONE APPS SHOW THIS APP INSIDE A FRAME.
 //
 // The iPhone and Android apps are a thin Floot shell (parwah.floot.app) that
-// shows /app/ full-screen in a frame from another origin. Three things have
+// shows the app (the root of the domain) full-screen in a frame from another origin. Three things have
 // to hold for that to be the same app and not a broken copy of it:
 //
 //   1. the app tells the shell it has started. The shell shows its own
@@ -48,7 +48,7 @@ const APP_ORIGIN = 'http://127.0.0.1:' + app.address().port;
 // origin), doing what the Floot page does: frame the app, and accept the
 // ready message only from the app's origin.
 const SHELL_HTML = `<!doctype html><meta charset="utf-8"><title>shell</title>
-<body style="margin:0"><iframe id="f" src="${APP_ORIGIN}/app/" style="border:0;width:390px;height:844px"></iframe>
+<body style="margin:0"><iframe id="f" src="${APP_ORIGIN}/" style="border:0;width:390px;height:844px"></iframe>
 <script>
   window.heard = [];
   window.addEventListener('message', function (e) {
@@ -112,7 +112,7 @@ await solo.addInitScript(() => {
   const orig = window.postMessage.bind(window);
   window.postMessage = function () { window.sent++; return orig.apply(null, arguments); };
 });
-await solo.goto(APP_ORIGIN + '/app/');
+await solo.goto(APP_ORIGIN + '/');
 await solo.waitForTimeout(800);
 ok(await solo.evaluate(() => window.sent) === 0, 'opened directly in a browser, the app sends no message');
 
