@@ -95,6 +95,64 @@ ok('and it says what she CAN still do', /what do we have for Papa/.test(no) && /
 ok('the offline model is named so the client can tell', LOCAL_MODEL === 'parwah-local');
 ok('a never-checked fact says so', /never checked/.test(stalePhrase(null, false)));
 
+
+// ---- EVERY SUGGESTION CHIP HAS AN OFFLINE ANSWER ----
+// The four chips under Ekta send fixed sentences. With no AI credit, three of
+// them got the wrong answer: "Set a daily reminder" and "Please ask the circle
+// for help" contain words the circle pattern matches, so both got a circle
+// summary; "Is it a scam?" matched nothing and was refused. Read the chips
+// from the app itself, so a chip added later is held to this too.
+{
+  const { readFileSync } = await import('node:fs');
+  const html = readFileSync(new URL('../public/app/index.html', import.meta.url), 'utf8');
+  const chips = [...html.matchAll(/data-chip="([^"]+)"/g)].map(m => m[1]);
+  ok('the app offers suggestion chips', chips.length >= 4);
+  for (const c of chips) ok('chip has an offline answer, not a refusal: ' + c.slice(0, 40), classify(c) !== 'unknown');
+  const byText = t => chips.find(c => c.includes(t)) || '';
+  ok('the circle-update chip reads the circle', classify(byText('update on my circle')) === 'circle');
+  ok('the reminder chip is a reminder, not a circle summary', classify(byText('daily reminder')) === 'remind');
+  ok('the scam chip is a scam check', classify(byText('OTP')) === 'scam');
+  ok('the help chip asks the circle, not a summary', classify(byText('ask the circle')) === 'help');
+}
+// ---- AND NOTHING THAT WAS RIGHT BEFORE MOVED ----
+ok('a question about a reminder is still a circle question', classify('Is there a reminder for Papa\'s pills?') === 'circle');
+ok('what is due is still a circle question', classify('what reminders are due today') === 'circle');
+ok('a scam question that opens politely is still a scam question', classify('Hi, is this OTP message a scam?') === 'scam');
+ok('a postal PIN code is not a scam', classify("what is papa's pin code") !== 'scam');
+ok('a plain greeting is still a greeting', classify('Namaste') === 'greet');
+
+// ---- THE SCAM ANSWER ----
+// Checked for before use: calling a missing export crashed the suite, and
+// a crash stops it before it reports which chips were answered wrongly.
+const _lib = await import('../../api/_ektalocal.mjs');
+ok('offline Ekta can answer a scam question at all', typeof _lib.renderScam === 'function');
+ok('offline Ekta can say what it cannot do', typeof _lib.renderCannotDo === 'function');
+if (typeof _lib.renderScam === 'function' && typeof _lib.renderCannotDo === 'function') {
+  const { renderScam, renderCannotDo } = _lib;
+  const otp = renderScam('I got a message asking for an OTP for a payment. Is it a scam?', 'billing');
+  ok('an OTP request is called a scam plainly', /^Yes, treat it as a scam/.test(otp));
+  ok('it gives the national cyber-crime helpline', otp.includes('1930'));
+  ok('and the reporting site', otp.includes('cybercrime.gov.in'));
+  ok('it never tells anyone to share a code with a caller', !/\b(share|give|tell) (it|the otp|your otp)\b/i.test(otp));
+  // Couriers in India do ask for a delivery code at the door. Listing them
+  // among those who never ask would be wrong, and a person who has just
+  // handed one over would stop trusting everything else in the answer.
+  ok('it does not contradict the one legitimate code, the delivery code',
+     !/courier/i.test(otp) && /delivery code/i.test(otp));
+  ok('it says it is standard advice, not something from the records', /not something from your records/.test(otp));
+  ok('it does not claim to have read the family records', !/exactly what is saved/.test(otp));
+  ok('a general scam question gets a softer opening', !/^Yes/.test(renderScam('how do I spot fraud', 'billing')));
+  // ---- WHAT SHE CANNOT DO OFFLINE, SHE SAYS SO ----
+  for (const kind of ['remind', 'help']) {
+    const r = renderCannotDo(kind, 'billing');
+    ok(kind + ': never claims to have done it', !/\b(i('| ha)ve (set|added|sent|posted|created)|done\b|all set)/i.test(r));
+    ok(kind + ': says plainly that it will not pretend', /will not pretend/.test(r));
+    ok(kind + ': points at the real form, by its real name', r.includes('Things to do') && r.includes('Add something to do'));
+    ok(kind + ': no em dash', !r.includes('\u2014'));
+  }
+  ok('help: explains that "Anyone" reaches the whole circle', /Anyone/.test(renderCannotDo('help', 'billing')) && /I'm on it/.test(renderCannotDo('help', 'billing')));
+  ok('scam answer: no em dash', !otp.includes('\u2014'));
+}
 if (fails.length) {
   console.error(`ektatest: ${fails.length} FAILED of ${pass + fails.length}`);
   for (const f of fails) console.error('  - ' + f);

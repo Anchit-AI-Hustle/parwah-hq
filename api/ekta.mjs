@@ -20,7 +20,8 @@ import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
 // Ekta without a model: retrieval from the family's own records. Its own
 // dependency-free module so the gate can unit-test it before npm install.
 import { LOCAL_MODEL, isDeadKey, isBillingFailure, isAuthFailure, classify, whoIsAsked,
-         renderSummary, renderMemory, renderCircle, offlineNote, cannotAnswer } from './_ektalocal.mjs';
+         renderSummary, renderMemory, renderCircle, offlineNote, cannotAnswer,
+         renderScam, renderCannotDo } from './_ektalocal.mjs';
 import { spend, EARN } from './_coins.mjs';
 
 const ASSISTANT_NAME = 'Ekta'; // one-line swap if the persona name changes
@@ -377,6 +378,11 @@ export async function localTurn(sql, circle, me, history, reason) {
   } catch (e) { /* the answer degrades, it does not fail */ }
   const who = whoIsAsked(text, names);
   const say = (body) => ({ reply: body + '\n\n' + offlineNote(reason), actions: [], model: LOCAL_MODEL, escalate: false, offline: true });
+  // These three are not read from the records, so they do not carry the
+  // "exactly what is saved" footer: each says what it is in its own words.
+  const plain = (body) => ({ reply: body, actions: [], model: LOCAL_MODEL, escalate: false, offline: true });
+  if (intent === 'scam') return plain(renderScam(text, reason));
+  if (intent === 'remind' || intent === 'help') return plain(renderCannotDo(intent, reason));
 
   try {
     if (intent === 'summary') {

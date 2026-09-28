@@ -44,7 +44,17 @@ const RE = {
   summary: /\b(doctor|hospital|appointment|clinic|check ?up|checkup|visit|emergency|casualty|admit|surgery|prepare|summary|taking (him|her|them|mum|mom|papa|dad|maa|amma))\b/i,
   memory:  /\b(medicine|medicines|dawa|dawai|tablet|blood ?group|allerg|insurance|policy|doctor'?s? number|contact|address|plumber|electrician|maid|records?|recorded|papers?|documents?)\b/i,
   circle:  /\b(check ?in|checked in|today|kaisa|kaise|how (is|are)|everything ok|all ok|what'?s happening|kya ho raha|reminder|reminders|request|requests|due|pending|task|todo|to do|family|circle|who)\b/i,
-  greet:   /^\s*(hi|hello|hey|namaste|namaskar|hii+|salaam|adaab|good (morning|evening|afternoon))\b/i
+  greet:   /^\s*(hi|hello|hey|namaste|namaskar|hii+|salaam|adaab|good (morning|evening|afternoon))\b/i,
+  // The three the suggestion chips send, which the patterns above either
+  // swallowed or missed: "Set a daily reminder" and "Please ask the circle
+  // for help" both contain words the circle pattern matches (reminder,
+  // circle), so they were answered with a circle summary; and "Is it a
+  // scam?" matched nothing at all and was refused.
+  scam:    /\b(otp|one[- ]time (password|code)|scam|scammer|fraud|phishing|kyc|upi ?pin|atm ?pin|card ?pin|cvv|lottery|you (have )?won|refund|customer care|account (is |has been )?(blocked|suspended|frozen|closed))\b/i,
+  // An instruction, not a question: "is there a reminder for Papa" is still
+  // a question about the circle.
+  remind:  /^\s*(please\s+)?(set|add|create|make|put|schedule)\b[^?]*\breminder\b|\bremind me\b/i,
+  help:    /\b(ask (the )?(circle|family|everyone|someone)|ask for help)\b/i
 };
 // A named person, so "what do we have for Papa" answers about Papa.
 export function whoIsAsked(text, memberNames) {
@@ -61,7 +71,12 @@ export function whoIsAsked(text, memberNames) {
 }
 export function classify(text) {
   const t = String(text || '');
-  if (RE.greet.test(t)) return 'greet';
+  // Safety first, and before the greeting: "Hi, is this OTP message a scam?"
+  // is a scam question that happens to start politely.
+  if (RE.scam.test(t))   return 'scam';
+  if (RE.greet.test(t))  return 'greet';
+  if (RE.remind.test(t)) return 'remind';
+  if (RE.help.test(t))   return 'help';
   if (RE.summary.test(t)) return 'summary';
   if (RE.memory.test(t))  return 'memory';
   if (RE.circle.test(t))  return 'circle';
@@ -156,6 +171,52 @@ export function renderCircle(payload) {
 }
 
 // The honest footer. A family must never be told that a limit is an answer.
+function offlineWhy(reason) {
+  return reason === 'billing' ? 'my AI key has no credit right now'
+    : reason === 'auth' ? 'my AI key is not working right now'
+    : reason === 'none' ? 'no AI key is set up yet'
+    : 'I could not reach my AI right now';
+}
+
+// A scam question does not need a model, and the right answer does not
+// change from family to family - which is exactly why it can be given
+// offline, word for word, and why it must never be improvised.
+export function renderScam(text, reason) {
+  const t = String(text || '');
+  const asked = /\b(otp|one[- ]time (password|code)|upi ?pin|atm ?pin|card ?pin|cvv)\b/i.test(t);
+  const lead = asked
+    ? 'Yes, treat it as a scam. Anyone asking for an OTP or a PIN to do with a payment, a bank or UPI is trying to take money.'
+    : 'Here is how to tell, and what to do.';
+  return [lead, '',
+    bullets([
+      'No bank, UPI app, KYC desk or government office will ever ask you for an OTP, UPI PIN, card PIN or CVV. Not on a call, not by SMS, not on WhatsApp.',
+      'An OTP is only for you to type into an app or website you opened yourself. The one code you do hand over is a delivery code, to the person at your door.',
+      'Do not tap links in the message, and do not call back a number it gives you.',
+      'If money has already gone, call 1930 straight away. It is the national cyber-crime helpline. You can also report at cybercrime.gov.in, and tell your bank.',
+      'Tell someone in your circle. A second pair of eyes stops most of these.'
+    ]), '',
+    'This is the standard advice, the same for every family, not something from your records. I am giving it without a conversation because ' + offlineWhy(reason) + '.'
+  ].join(NL);
+}
+
+// Offline she cannot create anything. Saying so, and pointing at the exact
+// place in the app where it takes a few seconds, is the useful answer; a
+// circle summary in reply to "set a reminder" was the useless one.
+export function renderCannotDo(kind, reason) {
+  const where = kind === 'help'
+    ? ['I cannot post that to the circle while ' + offlineWhy(reason) + ', and I will not pretend I did.', '',
+       'You can ask them yourself in a few seconds:',
+       bullets(['Open Care, then Things to do.',
+                'Under "Add something to do", write what you need.',
+                'Leave "For" as Anyone. It goes to the whole circle, and the first person to tap "I\'m on it" takes it.'])]
+    : ['I cannot set reminders while ' + offlineWhy(reason) + ', and I will not pretend I did.', '',
+       'You can add it yourself in a few seconds:',
+       bullets(['Open Care, then Things to do.',
+                'Under "Add something to do", write it, for example "Check in".',
+                'Set the time, choose Daily if it repeats, and tap Add it.'])];
+  return where.join(NL);
+}
+
 export function offlineNote(reason) {
   const why = reason === 'billing' ? 'my AI key has no credit right now'
     : reason === 'auth' ? 'my AI key is not working right now'
