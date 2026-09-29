@@ -6230,8 +6230,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         locMe.precision = locPrec;
         // The stored point is still the rounded area until a fresh fix
         // arrives: restart the watch at the new accuracy and send one now,
-        // so "exact" is never just a label on an area.
-        locStopWatch(); locLast = null;
+        // so "exact" is never just a label on an area. The watch restarts
+        // here, not only in refreshLoc(), so a failed reload cannot leave a
+        // share switched on with nothing being sent.
+        locStopWatch(); locLast = null; locStartWatch();
         if (locPrec === 'exact' && navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(function(pos){
             locSend(pos, 'update').then(function(){ refreshLoc(); }).catch(function(){});
