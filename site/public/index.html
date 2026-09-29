@@ -169,7 +169,7 @@ body{font-family:var(--body);color:var(--ink);min-height:100vh;min-height:100dvh
 .bar .appname{font-family:var(--disp);font-weight:600;white-space:nowrap}
 .bar-actions{margin-left:auto;display:flex;align-items:center;gap:var(--space-2);flex:0 0 auto}
 .metile{width:32px;height:32px;border-radius:50%;border:0;margin-left:var(--space-8);
-  background:linear-gradient(135deg,var(--marigold),var(--sindoor));color:var(--dusk);
+  background:var(--grad);color:var(--on-bright);
   font-family:var(--disp);font-weight:700;font-size:var(--fs-12);letter-spacing:.02em;
   display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
 .metile:focus-visible{outline:2px solid var(--marigold);outline-offset:2px}
@@ -308,7 +308,7 @@ button.pcard:not(:disabled){box-shadow:0 0 0 2px var(--marigold)}
 button.pcard:disabled{opacity:.45;cursor:default}
 .vboard{display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(7,auto);gap:var(--space-4);width:100%;max-width:520px;margin:var(--space-8) auto}
 .vc{min-height:52px;border:1px solid var(--bone-2);border-radius:var(--radius-8);background:var(--surface);color:var(--ink);font-size:var(--fs-12);line-height:1.2;padding:var(--space-8) var(--space-2) var(--space-2);display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;overflow:hidden}
-.vc b{font-size:clamp(.62rem,2.6vw,.8rem);letter-spacing:.02em;white-space:nowrap}
+.vc b{font-size:var(--fs-12);letter-spacing:0;white-space:nowrap}
 .vc .band{position:absolute;top:0;left:0;right:0;height:5px}
 .vc.corner{background:var(--surface-2)}
 .vc .vdots{display:flex;gap:var(--space-2);flex-wrap:wrap;justify-content:center;margin-top:auto}
@@ -699,7 +699,7 @@ details.more[open]>summary::before{content:"▾ "}
 .msheet{position:fixed;inset:0;background:rgba(24,38,34,.55);z-index:var(--z-sheet);display:flex;align-items:center;justify-content:center;padding:var(--space-20)}
 .msheet .mp{background:var(--day);border-radius:var(--radius-20);max-width:380px;width:100%;padding:var(--space-24);position:relative;box-shadow:0 20px 60px rgba(0,0,0,.35)}
 .mp .x{position:absolute;top:12px;right:12px;border:0;background:var(--bone);border-radius:var(--radius-pill);width:30px;height:30px;cursor:pointer}
-.avatar{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--marigold),var(--sindoor));color:var(--dusk);font-family:var(--disp);font-weight:700;font-size:var(--fs-24);display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-12)}
+.avatar{width:64px;height:64px;border-radius:50%;background:var(--grad);color:var(--on-bright);font-family:var(--disp);font-weight:700;font-size:var(--fs-24);display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-12)}
 .mp h3{font-family:var(--disp);font-size:var(--fs-20)}
 .mp .rolebadge{display:inline-block;background:var(--bone);border-radius:var(--radius-pill);padding:var(--space-4) var(--space-12);font-size:var(--fs-12);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:var(--space-8) 0 var(--space-12)}
 .mp .prow2{display:flex;gap:var(--space-8);flex-wrap:wrap;margin-top:var(--space-16)}
@@ -5867,7 +5867,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // A seven-square ring has no room for "Hyderabad" on a phone: squares show
   // the city codes families know from their tickets; the full name is on the
   // Buy button, in what happened, and for screen readers.
-  var VBOARD = [['Start','corner',0,'Start'],['Jaipur','brown',60,'JAI'],['Family card','card',0,'💌'],['Udaipur','brown',60,'UDR'],['Income tax','tax',0,'🧾'],['Rajdhani Express','rail',200,'🚆'],
+  var VBOARD = [['Start','corner',0,'🏁'],['Jaipur','brown',60,'JAI'],['Family card','card',0,'💌'],['Udaipur','brown',60,'UDR'],['Income tax','tax',0,'🧾'],['Rajdhani Express','rail',200,'🚆'],
     ['Lucknow','sky',100,'LKO'],['Varanasi','sky',100,'VNS'],['Amritsar','sky',120,'ATQ'],['Chai break','corner',0,'☕'],['Pune','pink',140,'PNQ'],['Hyderabad','pink',140,'HYD'],
     ['Family card','card',0,'💌'],['Chennai','pink',160,'MAA'],['Shatabdi Express','rail',200,'🚆'],['Kolkata','orange',180,'CCU'],['Bengaluru','orange',200,'BLR'],['Rest house','corner',0,'🛏'],
     ['Ahmedabad','red',220,'AMD'],['Family card','card',0,'💌'],['Delhi','red',240,'DEL'],['Traffic jam','corner',0,'🚦'],['Mumbai','blue',350,'BOM'],['Goa','blue',400,'GOI']];
