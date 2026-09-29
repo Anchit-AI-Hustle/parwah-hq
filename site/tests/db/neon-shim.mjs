@@ -3,9 +3,16 @@
 // tested end to end against a real database. Test-only: see register.mjs.
 import pg from 'pg';
 
+// One pool per database, however many times a handler asks for one: every
+// request calls db(), and a pool each ran PostgreSQL out of connections.
+const pools = new Map();
 export function neon(url) {
-  const pool = new pg.Pool({ connectionString: url, max: 8 });
-  (globalThis.__parwahPools ||= []).push(pool);
+  let pool = pools.get(url);
+  if (!pool) {
+    pool = new pg.Pool({ connectionString: url, max: 8 });
+    pools.set(url, pool);
+    (globalThis.__parwahPools ||= []).push(pool);
+  }
   const sql = (strings, ...vals) => {
     let text = strings[0];
     for (let i = 0; i < vals.length; i++) text += '$' + (i + 1) + strings[i + 1];

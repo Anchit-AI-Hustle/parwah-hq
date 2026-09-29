@@ -9,7 +9,8 @@
 export const MAX_ACTIVE = 12;
 export const GAME_LABEL = {
   snakes: 'Saanp Seedhi 🐍🪜', ttt: 'Tic-Tac-Toe ⭕✕',
-  antakshari: 'Antakshari 🎤', charades: 'Dumb Charades 🎭'
+  antakshari: 'Antakshari 🎤', charades: 'Dumb Charades 🎭',
+  ludo: 'Ludo 🎯', bhabhi: 'Bhabhi 🃏', vyapar: 'Vyapar 🏠'
 };
 export function gameName(kind, n) {
   const base = GAME_LABEL[kind] || 'Game';
@@ -42,7 +43,7 @@ export function gameSummary(g, memberId) {
   const party = kind === 'antakshari' || kind === 'charades';
   const lobby = party && st.status === 'lobby';
   const cur = party ? (lobby ? null : currentPlayer(st)) : seats[st.turn];
-  const over = !!(st.winner || st.draw);
+  const over = !!(st.winner || st.draw || st.loser);
   return {
     id: g.id, kind, n: Number(st.n) || 1, name: gameName(kind, st.n),
     status: g.status, lobby: lobby || undefined,

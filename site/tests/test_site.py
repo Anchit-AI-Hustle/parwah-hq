@@ -563,6 +563,15 @@ check("layout: Today uses two columns on a wide screen",
 care = (API_DIR / "care.mjs").read_text(encoding="utf-8")
 events = (API_DIR / "events.mjs").read_text(encoding="utf-8")
 plan = (API_DIR / "_planapi.mjs").read_text(encoding="utf-8")
+check("games: Ludo, Bhabhi and Vyapar are real games, not Coming soon tiles",
+      all('data-bstart="' + k + '"' in appsrc for k in ("ludo", "bhabhi", "vyapar"))
+      and "More coming" not in appsrc and "<small>Coming soon</small>" not in appsrc)
+_bg = (API_DIR / "_boardgames.mjs").read_text(encoding="utf-8")
+_gm = (API_DIR / "games.mjs").read_text(encoding="utf-8")
+check("games: a board move saves only on the version it was made on (two taps never both land)",
+      "coalesce((state->>'v')::int, 0) = ${v0}" in _gm)
+check("games: in Bhabhi each player is sent only their own hand",
+      "bhabhiView(game.state, memberId)" in _gm and "v.hands = st.hands.map((h, i) => (i === me ? h : []))" in _bg)
 _bare = [l.strip() for l in appsrc.splitlines()
          if "fetch(" in l and "authHeaders" not in l and "function apiGet" not in l
          and "fetch(API.push)" not in l and not l.strip().startswith("//")]

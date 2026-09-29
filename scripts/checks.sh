@@ -39,6 +39,9 @@ node site/tests/verifytest.mjs
 # Repeating family tasks: when the next one is due, on the family's own
 # clock. _recur.mjs imports nothing, so this runs before npm install too.
 node site/tests/recurtest.mjs
+# Ludo, Bhabhi and Vyapar: every rule with the dice fixed, and whole games
+# between opponents that must finish. _boardgames.mjs imports nothing.
+node site/tests/boardgametest.mjs
 test -f site/tests/test_site.py || { echo "site test suite missing from build input"; exit 1; }
 if command -v python3 >/dev/null 2>&1; then
   python3 site/tests/test_site.py

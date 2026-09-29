@@ -19,8 +19,8 @@ const row = (state, id) => ({ id: id || 'g1', kind: state.kind, status: 'active'
 ok('the first game of a kind is just its name', gameName('snakes', 1) === 'Saanp Seedhi 🐍🪜');
 ok('a second game of the same kind is numbered', gameName('snakes', 2) === 'Saanp Seedhi 🐍🪜 2');
 ok('a missing number reads as the first', gameName('ttt', undefined) === 'Tic-Tac-Toe ⭕✕');
-ok('every kind has a name', Object.keys(GAME_LABEL).length === 4 && !!GAME_LABEL.charades);
-ok('an unknown kind still gets a name', gameName('ludo', 1) === 'Game');
+ok('every kind has a name', Object.keys(GAME_LABEL).length === 7 && ['charades', 'ludo', 'bhabhi', 'vyapar'].every(k => !!GAME_LABEL[k]));
+ok('an unknown kind still gets a name', gameName('chess', 1) === 'Game');
 
 // ---- numbering counts from the highest still running, not from how many
 // there are: ending the first game must never make a later game collide.
