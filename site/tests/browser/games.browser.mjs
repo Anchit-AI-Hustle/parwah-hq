@@ -69,7 +69,8 @@ const errors = [];
 let pass = 0, fail = 0;
 const ok = (cond, name) => { cond ? pass++ : (fail++, console.log('FAIL  ' + name)); if (cond) console.log('PASS  ' + name); };
 
-let started = [];                       // every start_* the app sent
+let started = [];
+const unsigned = [];                    // every games call sent without the sign-in token                       // every start_* the app sent
 const notFound = [];                    // every 4xx the app actually received
 async function open(viewport){
   const page = await browser.newPage({ viewport, serviceWorkers:'block' });
@@ -83,6 +84,10 @@ async function open(viewport){
   await page.route('**/api/plans*', r => r.fulfill({ json:{ ok:true, plans:[] } }));
   await page.route('**/api/games*', async (r) => {
     const req = r.request();
+    // Like the real server: no sign-in token, no game. A stub that answered
+    // anyone hid a refresh that forgot the token and closed every open game.
+    unsigned.push(!req.headers()['x-parwah-token']);
+    if (!req.headers()['x-parwah-token']) return r.fulfill({ status:401, json:{ ok:false, error:'Please sign in again', signin:true } });
     if (req.method() === 'GET') {
       const u = new URL(req.url());
       const one = u.searchParams.get('game');
@@ -107,6 +112,7 @@ async function open(viewport){
     localStorage.setItem('parwah', JSON.stringify({ code:'ABCDEF', memberId:'11111111-1111-1111-1111-111111111111', name:'Rohan', role:'family', circleName:'Test Family' }));
     localStorage.setItem('parwah-user', JSON.stringify({ id:'77777777-7777-4777-8777-777777777777', name:'Rohan', phone:'+919873945238' }));
     localStorage.setItem('parwah-fr-hide', '1');
+    localStorage.setItem('parwah-token', 'tok-rohan');
   });
   await page.goto(BASE + '/');
   await page.waitForTimeout(700);
@@ -165,6 +171,12 @@ const secondName = (await second.locator('.txt b').textContent()).trim();
 await second.click();
 await pg.waitForTimeout(500);
 ok((await pg.locator('#gm-name').textContent()).trim() === secondName, 'the second Saanp Seedhi opens as itself, not the first');
+// An open game stays open through the tab's refreshes (every 3s). It used to
+// close itself a moment after opening: the refresh went out without the
+// sign-in token, and its failure was read as "the game is gone".
+await pg.waitForTimeout(7000);
+ok(await pg.locator('#game-on').isVisible() && (await pg.locator('#gm-name').textContent()).trim() === secondName,
+   'an open game is still open after two refreshes');
 
 // start another while games are already running
 await pg.locator('#g-back').click();
@@ -174,6 +186,8 @@ await pg.locator('#g-solo').click();
 await pg.waitForTimeout(700);
 ok(started.indexOf('start') >= 0, 'starting is allowed while other games are on');
 ok(await pg.locator('#game-on').isVisible(), 'the game you just started is the one you are looking at');
+await pg.waitForTimeout(3500);
+ok(await pg.locator('#game-on').isVisible(), 'and it is still open after the next refresh');
 await pg.locator('#g-back').click();
 await pg.waitForTimeout(600);
 ok(await pg.locator('#glist button[data-gopen]').count() === before + 1, 'the new game joins the list beside the others');
@@ -221,6 +235,7 @@ const contrast = await dk.locator('#glist .gturn').first().evaluate(el => {
 });
 ok(contrast >= 4.5, 'the turn badge is legible in dark (' + contrast + ':1)');
 
+ok(unsigned.length > 0 && !unsigned.some(Boolean), 'every games call carries the sign-in token (' + unsigned.filter(Boolean).length + ' without, of ' + unsigned.length + ')');
 ok(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.slice(0,3).join(' / ') : ''));
 await browser.close(); server.close();
 console.log(`\n${pass} passed, ${fail} failed`);

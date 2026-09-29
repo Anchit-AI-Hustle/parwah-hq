@@ -563,6 +563,11 @@ check("layout: Today uses two columns on a wide screen",
 care = (API_DIR / "care.mjs").read_text(encoding="utf-8")
 events = (API_DIR / "events.mjs").read_text(encoding="utf-8")
 plan = (API_DIR / "_planapi.mjs").read_text(encoding="utf-8")
+_bare = [l.strip() for l in appsrc.splitlines()
+         if "fetch(" in l and "authHeaders" not in l and "function apiGet" not in l
+         and "fetch(API.push)" not in l and not l.strip().startswith("//")]
+check("auth: every API call carries the sign-in token (apiGet/post; only the public push key is fetched bare)",
+      not _bare, "; ".join(_bare[:3]))
 check("todo: reminders and tasks are one list, in three parts: Needs attention, Today, Coming up",
       all(k in appsrc for k in ("'g-need', 'Needs attention'", "'g-today', 'Today'", "'g-soon', 'Coming up'"))
       and "(data.reminders || []).forEach" in appsrc and "taskCache.forEach" in appsrc)
