@@ -6,6 +6,7 @@ import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 import { award, today } from './_coins.mjs';
+import { ensureTaskSchema, taskList, taskHistory, taskAction, sweepOverdue } from './_tasks.mjs';
 
 async function feed(sql, circleId, memberId, text) {
   await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'care', ${text})`;
@@ -20,15 +21,9 @@ export async function careState(sql, circleId) {
     left join members b on b.id = r.by_member
     where r.circle_id = ${circleId} and r.status in ('pending','accepted')
     order by r.created_at desc limit 30`;
-  const requests = await sql`
-    select q.id, q.title, q.status, q.created_at, q.due_date, q.about_member,
-           b.name as by_name, c.name as claimed_name, a.name as about_name
-    from requests q
-    left join members b on b.id = q.by_member
-    left join members c on c.id = q.claimed_by
-    left join members a on a.id = q.about_member
-    where q.circle_id = ${circleId} and q.status in ('open','claimed')
-    order by q.due_date nulls last, q.created_at desc limit 30`;
+  // The family's tasks: still to do, and what was finished in the last days.
+  await ensureTaskSchema(sql);
+  const requests = await taskList(sql, circleId);
   return { reminders, requests };
 }
 
@@ -101,7 +96,7 @@ export async function careSuggestions(sql, circleId, memberId) {
 
   // Never propose something the family is already doing.
   try {
-    const open = await sql`select lower(title) as t from requests where circle_id = ${circleId} and status in ('open','claimed')`;
+    const open = await sql`select lower(title) as t from requests where circle_id = ${circleId} and status in ('open','assigned','claimed')`;
     const openR = await sql`select lower(title) as t from reminders where circle_id = ${circleId} and status in ('pending','accepted')`;
     const busy = new Set(open.concat(openR).map(x => x.t));
     return out.filter(s => !busy.has(s.title.toLowerCase()))
@@ -159,8 +154,7 @@ export default async function handler(req, res) {
   let sql;
   try {
     sql = db(); await ensureSchema(sql);
-    await sql`alter table requests add column if not exists due_date date`;
-    await sql`alter table requests add column if not exists about_member uuid references members(id) on delete set null`;
+    await ensureTaskSchema(sql);
   } catch (e) { return failDb(res, e); }
 
   try {
@@ -168,6 +162,15 @@ export default async function handler(req, res) {
       const q = req.query || {};
       const g = await requireMember(sql, q.circle, q.member, tokenOf(req));
       if (g.err) return res.status(g.status).json({ ok: false, error: g.err });
+      // One task's history, when asked for.
+      if (q.task) {
+        const history = await taskHistory(sql, g.circle.id, q.task);
+        if (!history) return res.status(404).json({ ok: false, error: 'That task is not here any more' });
+        return res.status(200).json({ ok: true, history });
+      }
+      // Anything that just ran late is announced once, here or on any
+      // other phone's next look - whichever comes first.
+      await sweepOverdue(sql, g.circle.id);
       const state = await careState(sql, g.circle.id);
       // Scoped to the caller: the suggestions used to name private entries.
       const suggestions = await careSuggestions(sql, g.circle.id, g.me.id);
@@ -236,27 +239,15 @@ export default async function handler(req, res) {
       return res.status(out.error ? 400 : 201).json(out.error ? { ok: false, ...out } : out);
     }
 
-    if (action === 'request_claim' || action === 'request_done') {
-      const { requestId } = req.body;
-      if (!isUuid(requestId)) return res.status(400).json({ ok: false, error: 'Bad request id' });
-      const row = await sql`select id, title, status, by_member from requests where id = ${requestId} and circle_id = ${circle.id}`;
-      if (!row[0]) return res.status(404).json({ ok: false, error: 'Request not found' });
-      if (action === 'request_claim') {
-        if (row[0].status !== 'open') return res.status(409).json({ ok: false, error: 'Someone already took this' });
-        await sql`update requests set status = 'claimed', claimed_by = ${me.id} where id = ${requestId}`;
-        await feed(sql, circle.id, me.id, `${me.name} is on it: ${row[0].title}`);
-        if (row[0].by_member && row[0].by_member !== me.id) {
-          await pushCircle(sql, circle.id, { title: '🙌 ' + me.name + ' is on it', body: row[0].title }, { only: row[0].by_member });
-        }
-      } else {
-        await sql`update requests set status = 'done' where id = ${requestId}`;
-        await feed(sql, circle.id, me.id, `${me.name} finished: ${row[0].title} ✔`);
-        await award(sql, circle.id, me.id, 'reminder', requestId);
-        if (row[0].by_member && row[0].by_member !== me.id) {
-          await pushCircle(sql, circle.id, { title: '✔ ' + me.name + ' finished it', body: row[0].title }, { only: row[0].by_member });
-        }
+    // Tasks, and the older claim/done calls, share one lifecycle with its
+    // permission checks: a job can no longer be claimed twice at once, or
+    // closed by someone who neither asked for it nor has it.
+    if (/^task_/.test(action) || action === 'request_claim' || action === 'request_done') {
+      const out = await taskAction(sql, circle, me, req.body);
+      if (out.json.ok && out.json.status === 'done') {
+        await award(sql, circle.id, me.id, 'reminder', req.body.taskId || req.body.requestId);
       }
-      return res.status(200).json({ ok: true });
+      return res.status(out.status).json(out.json);
     }
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });

@@ -36,6 +36,9 @@ node site/tests/waitlisttest.mjs
 # poll used `curl -f`, which throws away the HTTP 500 body a red self-test
 # replies with, so the failing step never reached anybody's log.
 node site/tests/verifytest.mjs
+# Repeating family tasks: when the next one is due, on the family's own
+# clock. _recur.mjs imports nothing, so this runs before npm install too.
+node site/tests/recurtest.mjs
 test -f site/tests/test_site.py || { echo "site test suite missing from build input"; exit 1; }
 if command -v python3 >/dev/null 2>&1; then
   python3 site/tests/test_site.py

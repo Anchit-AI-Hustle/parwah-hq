@@ -563,10 +563,19 @@ check("layout: Today uses two columns on a wide screen",
 care = (API_DIR / "care.mjs").read_text(encoding="utf-8")
 events = (API_DIR / "events.mjs").read_text(encoding="utf-8")
 plan = (API_DIR / "_planapi.mjs").read_text(encoding="utf-8")
-check("todo: reminders and jobs are one list, not two tabs",
-      "Anyone can pick these up" in appsrc and "'#qlist'" not in appsrc.split("id=\"qlist\"")[0])
-check("todo: one form raises either kind, decided by who it is for",
-      "who === 'any'" in appsrc and "request_create" in appsrc and "reminder_create" in appsrc)
+check("todo: reminders and tasks are one list, in three parts: Needs attention, Today, Coming up",
+      all(k in appsrc for k in ("'g-need', 'Needs attention'", "'g-today', 'Today'", "'g-soon', 'Coming up'"))
+      and "(data.reminders || []).forEach" in appsrc and "taskCache.forEach" in appsrc)
+check("todo: one form makes a task; who does it decides open, given, or mine",
+      "action:'task_create'" in appsrc and "ownerId: who === 'any' ? undefined : (who || 'me')" in appsrc)
+tasks_src = (API_DIR / "_tasks.mjs").read_text(encoding="utf-8")
+check("todo: a late task is announced once per occurrence (the update is the lock)",
+      "overdue_alerted_for is distinct from due_at" in tasks_src and "set overdue_alerted_for = due_at" in tasks_src)
+check("todo: a repeating task makes one next time, never two",
+      "requests_series_due on requests (series_id, due_at)" in tasks_src and "on conflict do nothing" in tasks_src)
+check("todo: taking and finishing are conditional updates, not read-then-write",
+      "where id = ${t.id} and status = ${t.status}" in tasks_src
+      and "where id = ${t.id} and status in ('open','assigned','claimed') returning id" in tasks_src)
 check("todo: suggestions come from what the family already recorded",
       "careSuggestions" in care and "vault_docs" in care and "family_book" in care)
 check("todo: a suggestion is never created behind the family's back",
@@ -753,6 +762,7 @@ CIRCLE_WIDE_OK = {
     ("events.mjs", "on now"):             "a live call is open to all",
     ("events.mjs", "could do with a call"): "the point of the pulse",
     ("care.mjs",   "needs a hand"):       "a job anyone can pick up",
+    ("_tasks.mjs", "payload, {})"):       "late, and nobody has it - or the family chose to tell everyone",
     ("plans.mjs",  ""):                   "a plan invites the whole circle",
     ("games.mjs",  "lobby is open"):      "an open lobby invites everyone",
 }

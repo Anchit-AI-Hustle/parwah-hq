@@ -158,7 +158,7 @@ body{font-family:var(--body);color:var(--ink);min-height:100vh;min-height:100dvh
 .meitem{border:0;background:none;color:var(--cream);font-family:var(--body);font-size:.9rem;
   text-align:left;padding:9px 10px;border-radius:8px;cursor:pointer}
 .meitem:hover{background:rgba(255,255,255,.08)}
-.wrap{max-width:560px;margin:0 auto;padding:20px 16px;padding-bottom:calc(var(--tabs-h) + 96px + env(safe-area-inset-bottom))}
+.wrap{max-width:560px;margin:0 auto;padding:20px 16px;padding-bottom:calc(var(--tabs-h) + 150px + env(safe-area-inset-bottom))}
 h1{font-family:var(--disp);font-weight:600;font-size:1.5rem;margin-bottom:6px}
 .lede{color:var(--ink-soft);font-size:.95rem;margin-bottom:20px}
 .card{background:var(--surface);border:1px solid var(--bone-2);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 1px 2px rgba(36,31,23,.03),0 8px 22px rgba(36,31,23,.05)}
@@ -274,6 +274,13 @@ label + select{width:100%}
 .twist.dare b{color:var(--sindoor)}
 .twist.reward{background:var(--tint-ok);border-color:var(--ok);color:var(--ink)}
 .twist.reward b{color:var(--ok)}
+.tlink{all:unset;cursor:pointer;font-weight:600;color:var(--ink);display:block}
+.tlink:hover{text-decoration:underline}
+.tlink:focus-visible{outline:2px solid var(--marigold);outline-offset:2px;border-radius:4px}
+.gnote{font-weight:500;letter-spacing:0;text-transform:none;opacity:.8}
+.donebox summary{cursor:pointer;list-style:revert}
+.donebox .crow{opacity:.78}
+#tsheet .feed .crow{box-shadow:none}
 .gtitle{font-size:.76rem;font-weight:700;letter-spacing:.06em;color:var(--ink-soft);margin:16px 0 8px}
 .gtitle:first-child{margin-top:0}
 .crow.late small{color:var(--sindoor);font-weight:600}
@@ -619,6 +626,8 @@ details.more[open]>summary::before{content:"▾ "}
 .seenline{align-self:flex-end;font-size:.68rem;color:var(--ink-soft);margin-top:-4px}
 
 /* member profile sheet */
+.fab.chatfab{bottom:calc(var(--tabs-h) + 84px + env(safe-area-inset-bottom));background:var(--surface);color:var(--dusk);border:1px solid var(--bone-2)}
+#nc-list{display:flex;flex-direction:column;gap:8px;margin-top:8px;max-height:44vh;overflow-y:auto}
 .msheet{position:fixed;inset:0;background:rgba(24,38,34,.55);z-index:25;display:flex;align-items:center;justify-content:center;padding:20px}
 .msheet .mp{background:var(--day);border-radius:20px;max-width:380px;width:100%;padding:22px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.35)}
 .mp .x{position:absolute;top:12px;right:12px;border:0;background:var(--bone);border-radius:99px;width:30px;height:30px;cursor:pointer}
@@ -712,6 +721,7 @@ details.more[open]>summary::before{content:"▾ "}
   body.inapp .inputbar .inner{max-width:1484px}
   body.inapp .toast{left:calc(50% + var(--side-w)/2);bottom:26px}
   body.inapp .fab{right:28px;bottom:28px}
+  body.inapp .fab.chatfab{bottom:94px}
 
   /* Reading and typing want a comfortable measure even when the window is
      wide - only the grids below are allowed to use the full width. */
@@ -1160,26 +1170,37 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
       <button data-sec="req">💡 Suggested<i class="dot" id="sugg-dot" hidden></i></button>
     </div>
     <div class="subsec" data-sec="rem">
-    <p class="hint" style="margin:0 0 10px">Everything the family has to do, in one list - jobs anyone can pick up, and reminders for a particular person.</p>
+    <p class="hint" style="margin:0 0 10px">What needs doing, who is handling it, and when it is done - the whole family sees the same list.</p>
     <div class="feed" id="rlist"><div class="ev">Nothing to do right now 🧡</div></div>
     <div class="feed" id="qlist" hidden></div>
 
     <div class="card" style="margin-top:16px">
       <h3>Add something to do</h3>
-      <input type="text" id="r-title" maxlength="140" placeholder="e.g. book the gas refill · BP pills" aria-label="What needs doing">
+      <input type="text" id="r-title" maxlength="140" placeholder="e.g. book the gas refill · Papa's 9 pm tablets" aria-label="What needs doing">
       <div class="pickrow">
         <label class="pick" id="r-datewrap"><span>Date</span><input type="date" id="r-date" aria-label="Date"></label>
         <label class="pick"><span>Time</span><input type="time" id="r-time" aria-label="Time"></label>
-        <label class="pick"><span>For</span><select id="r-for" aria-label="For whom"></select></label>
-        <label class="pick"><span>Repeat</span>
-          <div class="seg" id="r-seg" role="group" aria-label="Repeat">
-            <button type="button" data-rep="once" class="sel">Once</button>
-            <button type="button" data-rep="daily">Daily</button>
-          </div>
-        </label>
+        <label class="pick"><span>Who does it</span><select id="r-for" aria-label="Who does it"></select></label>
+        <label class="pick"><span>For whom</span><select id="r-about" aria-label="Who it is for"><option value="">The whole family</option></select></label>
       </div>
+      <div class="pick" style="margin-top:12px"><span>Repeat</span>
+        <div class="seg" id="r-seg" role="group" aria-label="Repeat">
+          <button type="button" data-rep="once" class="sel">Once</button>
+          <button type="button" data-rep="daily">Daily</button>
+          <button type="button" data-rep="weekly">Weekly</button>
+          <button type="button" data-rep="monthly">Monthly</button>
+        </div>
+      </div>
+      <details id="r-more" style="margin-top:12px">
+        <summary>How you will know it is done, and who hears if it runs late</summary>
+        <label class="pick" style="display:block;margin-top:10px"><span>Done when</span>
+          <input type="text" id="r-donewhen" maxlength="200" placeholder="e.g. cylinder delivered, receipt in the vault"></label>
+        <label class="pick" style="display:block;margin-top:10px"><span>If it runs late, tell</span>
+          <select id="r-esc"><option value="people">The person doing it, and me</option><option value="everyone">Everyone in the family</option></select></label>
+      </details>
       <button class="go" id="r-add" style="margin-top:14px">Add it</button>
-      <p class="hint" id="r-hint">Left as "Anyone", it goes to the whole circle and the first person to tap "I'm on it" takes it. Given to a person, it only starts once they accept.</p>
+      <p class="hint" id="r-hint">Nobody is given it yet - the first person to tap "I'm on it" takes it.</p>
+      <p class="hint">No medical details needed here - "Papa's 9 pm tablets" is enough.</p>
     </div>
     </div>
 
@@ -2196,6 +2217,54 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
 </div>
 
 <button class="fab" id="ekta-fab" hidden aria-label="Ask Ekta">✨ Ekta</button>
+<button class="fab chatfab" id="chat-fab" hidden aria-label="Start a new chat" aria-haspopup="dialog">💬 New chat</button>
+
+<div class="msheet" id="tsheet" hidden role="dialog" aria-modal="true" aria-labelledby="ts-title">
+  <div class="mp" style="max-width:460px;max-height:88vh;overflow-y:auto">
+    <button class="x" id="ts-x" aria-label="Close">✕</button>
+    <p class="eyebrow" id="ts-state" style="margin:0 0 4px"></p>
+    <h3 id="ts-title" style="margin:0 34px 10px 0"></h3>
+    <div class="crow late" id="ts-late" hidden style="margin-bottom:10px"><span class="txt"><b>Running late</b><small id="ts-late-next"></small></span></div>
+    <div id="ts-facts" class="feed"></div>
+    <div id="ts-done" hidden style="margin-top:12px">
+      <label for="ts-note">Anything the family should know? (optional)</label>
+      <input type="text" id="ts-note" maxlength="280" placeholder="e.g. receipt is in the blue folder">
+      <button class="go" id="ts-done-go" style="margin-top:10px">Mark it done ✔</button>
+    </div>
+    <div id="ts-give" hidden style="margin-top:12px">
+      <label for="ts-give-to">Give it to</label>
+      <select id="ts-give-to"></select>
+      <button class="go" id="ts-give-go" style="margin-top:10px">Give it</button>
+    </div>
+    <div id="ts-edit" hidden style="margin-top:12px">
+      <label for="ts-e-title">What needs doing</label>
+      <input type="text" id="ts-e-title" maxlength="200">
+      <div class="pickrow">
+        <label class="pick"><span>Date</span><input type="date" id="ts-e-date"></label>
+        <label class="pick"><span>Time</span><input type="time" id="ts-e-time"></label>
+        <label class="pick"><span>Repeat</span><select id="ts-e-rep"><option value="once">Once</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></label>
+        <label class="pick"><span>If late, tell</span><select id="ts-e-esc"><option value="people">Doer and asker</option><option value="everyone">Everyone</option></select></label>
+      </div>
+      <label for="ts-e-done" style="margin-top:10px">Done when</label>
+      <input type="text" id="ts-e-done" maxlength="200">
+      <button class="go" id="ts-e-save" style="margin-top:10px">Save changes</button>
+    </div>
+    <div class="prow2" id="ts-actions" style="margin-top:14px;flex-wrap:wrap"></div>
+    <p class="eyebrow" style="margin:18px 0 6px">What happened</p>
+    <div id="ts-hist" class="feed"><div class="ev">Loading…</div></div>
+  </div>
+</div>
+
+<div class="msheet" id="ncsheet" hidden role="dialog" aria-modal="true" aria-labelledby="nc-title">
+  <div class="mp">
+    <button class="x" id="nc-x" aria-label="Close">✕</button>
+    <h3 id="nc-title" style="margin:0 0 12px">Start a chat</h3>
+    <button class="chatrow" id="nc-family"><span class="cic" aria-hidden="true">🧡</span><span class="txt"><b>Family chat</b><small>Everyone in the circle</small></span></button>
+    <button class="chatrow" id="nc-group" style="margin-top:8px"><span class="cic" aria-hidden="true">👥</span><span class="txt"><b>New group chat</b><small>Pick a few people and name it</small></span></button>
+    <p class="eyebrow" style="margin:16px 0 0">Just the two of you</p>
+    <div id="nc-list"></div>
+  </div>
+</div>
 
 <div class="msheet" id="ecard" hidden>
   <div class="mp ecard-mp">
@@ -2389,6 +2458,10 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
     curTab = t;
     setInputMode();
     $('ekta-fab').hidden = !document.body.classList.contains('inapp') || t === 'ekta' || (t === 'chat' && !!curChat);
+    // New chat floats beside Ekta, and steps aside inside an open chat.
+    $('chat-fab').hidden = $('ekta-fab').hidden;
+    $('ncsheet').hidden = true;
+    $('tsheet').hidden = true;
     if (t !== 'ekta' && window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (e) {} }
     clearInterval(gameTimer);
     if (t === 'fun') gameTimer = setInterval(function(){ refreshFun(); boardSync(); }, 3000);
@@ -2850,6 +2923,9 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
       }
     });
     sel.innerHTML = h; if (cur) sel.value = cur;
+    var ab = $('r-about'), abCur = ab.value, ah = '<option value="">The whole family</option>';
+    members.forEach(function(m){ ah += '<option value="' + m.id + '">' + (m.id === state.memberId ? 'Me' : esc(m.name)) + '</option>'; });
+    ab.innerHTML = ah; if (abCur) ab.value = abCur;
     dm.innerHTML = dh;
     $('t-vs').innerHTML = '<option value="">Challenge…</option>' + dh.split('</option>').slice(1).join('</option>');
     $('g-mem').innerHTML = gm || '<span class="hint">Invite more family first - a group needs people.</span>';
@@ -2905,45 +2981,220 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
       }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
   });
 
+  // ---------- family tasks ----------
+  var taskCache = [], tsId = null;
+  var REP_WORD = { daily:'every day', weekly:'every week', monthly:'every month' };
+  function localDay(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function clockOf(d){ return dtf([], { hour:'numeric', minute:'2-digit' }).format(d); }
+  function taskOpen(q){ return q.status === 'open' || q.status === 'assigned' || q.status === 'claimed'; }
+  function taskLate(q){ return taskOpen(q) && !!q.due_at && new Date(q.due_at) < new Date(); }
+  function taskDue(q){
+    if (!q.due_at) return q.due_date ? 'by ' + fmtDue(q.due_date) : '';
+    var d = new Date(q.due_at), day = fmtDue(localDay(d));
+    return q.all_day ? 'by ' + day : day + ', ' + clockOf(d);
+  }
+  function taskWho(q){
+    var me = state.memberId;
+    if (q.status === 'done') return 'Done by ' + (q.completed_by === me ? 'you' : (q.completed_name || 'someone')) + ', ' + fmtTime(q.completed_at);
+    if (q.status === 'open') return 'Nobody has it yet';
+    if (q.status === 'assigned') return q.claimed_by === me ? 'Waiting for your yes' : 'Waiting for ' + (q.claimed_name || 'them') + ' to say yes';
+    return q.claimed_by === me ? 'You have it' : (q.claimed_name || 'Someone') + ' has it';
+  }
+  function taskRow(q){
+    var me = state.memberId, late = taskLate(q), bits = [];
+    if (q.about_name) bits.push('for ' + (q.about_member === me ? 'you' : q.about_name));
+    var due = taskDue(q); if (due) bits.push(due);
+    if (REP_WORD[q.recurrence]) bits.push(REP_WORD[q.recurrence]);
+    bits.push(taskWho(q));
+    var right = '';
+    if (q.status === 'open') right = '<button class="cbtn" data-tack="' + q.id + '">I’m on it</button>';
+    else if (q.status === 'assigned' && q.claimed_by === me) right = '<button class="cbtn" data-tack="' + q.id + '">Yes, I’ll do it</button>';
+    else if (q.status === 'claimed' && q.claimed_by === me) right = '<button class="cbtn ghost" data-tdone="' + q.id + '">Done ✔</button>';
+    else if (late && q.by_member === me) right = '<button class="cbtn" data-topen="' + q.id + '">Sort it out</button>';
+    else if (q.status === 'done') right = '<span class="badge on">Done</span>';
+    return '<div class="crow' + (late ? ' late urgent' : '') + '" data-task="' + q.id + '"><span class="txt">' +
+           '<button class="tlink" data-topen="' + q.id + '">' + esc(q.title) + '</button>' +
+           '<small>' + esc(bits.join(' · ')) + (late ? ' · running late' : '') + '</small></span>' + right + '</div>';
+  }
+  function dueKey(x){
+    if (x.t) {
+      if (x.t.due_at) return Date.parse(x.t.due_at);
+      return x.t.due_date ? Date.parse(String(x.t.due_date).slice(0,10) + 'T23:59') : Infinity;
+    }
+    var r = x.r, tm = r.time_of_day ? String(r.time_of_day).slice(0,5) : '23:59';
+    if (r.due_date) return Date.parse(String(r.due_date).slice(0,10) + 'T' + tm);
+    return r.recurrence === 'daily' ? Date.parse(localDay(new Date()) + 'T' + tm) : Infinity;
+  }
+
+  // ---------- one task, up close ----------
+  var TS_WORD = { created:'added it', assigned:'gave it to', acknowledged:'said yes', declined:'handed it back',
+                  done:'finished it', reopened:'reopened it', archived:'put it away', edited:'changed it',
+                  overdue:'' };
+  function tsTask(){ var q = null; taskCache.forEach(function(x){ if (x.id === tsId) q = x; }); return q; }
+  function tsOpen(id, mode){
+    tsId = id;
+    if (!tsTask()) return;
+    $('tsheet').hidden = false;
+    tsRender(mode);
+    tsHistory();
+    var f = mode === 'done' ? $('ts-note') : $('ts-x');
+    setTimeout(function(){ f.focus(); }, 30);
+  }
+  function tsClose(){ $('tsheet').hidden = true; tsId = null; }
+  function tsHistory(){
+    var id = tsId;
+    if (!id) return;
+    apiGet(API.care + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + '&task=' + encodeURIComponent(id))
+      .then(function(j){
+        if (id !== tsId) return;
+        if (!j.ok) { $('ts-hist').innerHTML = '<div class="ev">Could not load what happened - try again in a moment.</div>'; return; }
+        $('ts-hist').innerHTML = j.history.map(function(h){
+          var line = h.action === 'overdue' ? 'Running late - the family was told'
+            : esc(h.name || 'Someone') + ' ' + TS_WORD[h.action] + (h.action === 'assigned' && h.note ? ' ' + esc(h.note) : '');
+          var note = h.action !== 'assigned' && h.note ? '<small>“' + esc(h.note) + '”</small>' : '';
+          return '<div class="crow"><span class="txt">' + line + note + '<small>' + esc(fmtTime(h.created_at)) + '</small></span></div>';
+        }).join('') || '<div class="ev">Nothing yet.</div>';
+      }).catch(function(){ if (id === tsId) $('ts-hist').innerHTML = '<div class="ev">No connection - what happened will show when you are back online.</div>'; });
+  }
+  function tsRender(mode){
+    var q = tsTask(); if (!q) { tsClose(); return; }
+    var me = state.memberId, creator = q.by_member === me, owner = q.claimed_by === me, open = taskOpen(q);
+    $('ts-state').textContent = q.status === 'done' ? 'Done' : q.status === 'open' ? 'Anyone can take this' : q.status === 'assigned' ? 'Waiting for a yes' : 'Being handled';
+    $('ts-title').textContent = q.title;
+    var late = taskLate(q);
+    $('ts-late').hidden = !late;
+    if (late) $('ts-late-next').textContent = owner ? 'Next step: mark it done, set a new time, or hand it back.'
+      : creator ? 'Next step: set a new time, or give it to someone who can do it today.'
+      : q.claimed_by ? (q.claimed_name || 'They') + ' has it. A call might help.' : 'Nobody has it yet. Can you take it?';
+    var facts = [];
+    facts.push(['Who is doing it', taskWho(q)]);
+    if (q.about_name) facts.push(['For', q.about_member === me ? 'You' : q.about_name]);
+    if (taskDue(q)) facts.push(['When', taskDue(q)]);
+    if (REP_WORD[q.recurrence]) facts.push(['Repeats', REP_WORD[q.recurrence]]);
+    if (q.done_when) facts.push(['Done when', q.done_when]);
+    if (q.completion_note) facts.push(['Note when done', q.completion_note]);
+    facts.push(['Asked by', creator ? 'You' : (q.by_name || 'Someone')]);
+    $('ts-facts').innerHTML = facts.map(function(f){ return '<div class="crow"><span class="txt"><small>' + esc(f[0]) + '</small>' + esc(f[1]) + '</span></div>'; }).join('');
+    var a = [];
+    if (q.status === 'open') a.push(['tack', 'I’m on it', 'go']);
+    if (q.status === 'assigned' && owner) a.push(['tack', 'Yes, I’ll do it', 'go']);
+    if (open && (!q.claimed_by || owner || creator) && !(q.status === 'assigned' && owner)) a.push(['done', 'Mark it done', q.status === 'claimed' && owner ? 'go' : 'cbtn ghost']);
+    if (open && owner) a.push(['decline', 'Hand it back', 'cbtn ghost']);
+    if (open && (creator || owner)) { a.push(['give', 'Give to someone', 'cbtn ghost']); a.push(['edit', 'Change it', 'cbtn ghost']); a.push(['archive', 'Put it away', 'cbtn ghost']); }
+    if (q.status === 'done' && (creator || owner || q.completed_by === me)) a.push(['reopen', 'Reopen', 'cbtn']);
+    a.push(['talk', '💬 Talk about it', 'cbtn ghost']);
+    $('ts-actions').innerHTML = a.map(function(x){ return '<button class="' + x[2] + '" data-ts="' + x[0] + '">' + x[1] + '</button>'; }).join('');
+    $('ts-done').hidden = mode !== 'done' || !open;
+    $('ts-give').hidden = true; $('ts-edit').hidden = true;
+  }
+  function tsPost(body, msg){
+    body.taskId = tsId;
+    carePost(body, function(){ if (msg) toast(msg); tsHistory(); });
+  }
+  $('ts-x').addEventListener('click', tsClose);
+  $('tsheet').addEventListener('click', function(e){ if (e.target === this) tsClose(); });
+  $('tsheet').addEventListener('keydown', function(e){ if (e.key === 'Escape') tsClose(); });
+  $('ts-actions').addEventListener('click', function(e){
+    var b = e.target.closest('[data-ts]'); if (!b) return;
+    var k = b.getAttribute('data-ts'), q = tsTask(); if (!q) return;
+    if (k === 'tack') tsPost({ action:'task_ack' }, 'Thank you - the family knows you have it 🧡');
+    if (k === 'done') { $('ts-done').hidden = false; $('ts-note').focus(); }
+    if (k === 'decline') { if (confirm('Hand this back so someone else can take it?')) tsPost({ action:'task_decline' }, 'Handed back - the family has been told'); }
+    if (k === 'archive') { if (confirm('Put this away? It leaves the list; its history is kept.')) { tsPost({ action:'task_archive' }, 'Put away'); tsClose(); } }
+    if (k === 'reopen') tsPost({ action:'task_reopen' }, 'Reopened');
+    if (k === 'give') {
+      var h = '<option value="">Anyone - whoever is free</option>';
+      (membersCache || []).forEach(function(m){ h += '<option value="' + m.id + '">' + (m.id === state.memberId ? 'Me' : esc(m.name)) + '</option>'; });
+      $('ts-give-to').innerHTML = h; $('ts-give-to').value = q.claimed_by || '';
+      $('ts-give').hidden = false; $('ts-edit').hidden = true; $('ts-give-to').focus();
+    }
+    if (k === 'edit') {
+      $('ts-e-title').value = q.title;
+      var d = q.due_at ? new Date(q.due_at) : null;
+      $('ts-e-date').value = d ? localDay(d) : (q.due_date ? String(q.due_date).slice(0,10) : '');
+      $('ts-e-time').value = d && !q.all_day ? String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') : '';
+      $('ts-e-rep').value = q.recurrence || 'once';
+      $('ts-e-esc').value = q.escalate || 'people';
+      $('ts-e-done').value = q.done_when || '';
+      $('ts-edit').hidden = false; $('ts-give').hidden = true; $('ts-e-title').focus();
+    }
+    if (k === 'talk') {
+      tsClose();
+      var fam = null; chatsCache.forEach(function(x){ if (x.kind === 'circle') fam = x; });
+      if (fam) { openChat(fam.id); $('msg').value = 'About "' + q.title + '": '; $('msg').focus(); }
+      else switchTab('chat');
+    }
+  });
+  $('ts-done-go').addEventListener('click', function(){
+    var note = $('ts-note').value.trim();
+    tsPost({ action:'task_done', note: note || undefined }, 'Done ✔ The family can see it');
+    $('ts-note').value = ''; $('ts-done').hidden = true;
+  });
+  $('ts-give-go').addEventListener('click', function(){
+    var to = $('ts-give-to').value;
+    tsPost({ action:'task_assign', ownerId: to || undefined }, to === state.memberId ? 'It is yours now' : to ? 'Given - they will be asked to say yes' : 'Open to anyone now');
+    $('ts-give').hidden = true;
+  });
+  $('ts-e-save').addEventListener('click', function(){
+    var t = $('ts-e-title').value.trim();
+    if (!t) { toast('Say what needs doing'); return; }
+    var due = dueFrom($('ts-e-date').value, $('ts-e-time').value), rep = $('ts-e-rep').value;
+    if (rep !== 'once' && !due.dueAt && !due.dueDate) { toast('A repeating task needs a date or a time'); return; }
+    tsPost({ action:'task_edit', title:t, dueAt: due.dueAt || '', dueDate: due.dueDate || '', recurrence: rep,
+             escalate: $('ts-e-esc').value, doneWhen: $('ts-e-done').value, tz: homeTz() }, 'Saved');
+    $('ts-edit').hidden = true;
+  });
+  function homeTz(){ try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } }
+  // A date and a time from the form, as the server wants them: an instant
+  // when there is a time, or just the date ("by the end of that day").
+  function dueFrom(d, t){
+    if (d && t) return { dueAt: new Date(d + 'T' + t).toISOString() };
+    if (d) return { dueDate: d };
+    if (t) return { dueAt: new Date(localDay(new Date()) + 'T' + t).toISOString() };
+    return {};
+  }
+
   function renderCare(data){
-    var mine = [], active = [], others = [], waiting = 0;
-    data.reminders.forEach(function(r){
-      if (r.status === 'pending' && r.for_id === state.memberId) { mine.push(r); waiting++; }
-      else if (r.status === 'pending') others.push(r);
-      else active.push(r);
+    var me = state.memberId, today = localDay(new Date());
+    var need = [], now = [], soon = [], done = [], waiting = 0;
+    (data.reminders || []).forEach(function(r){
+      var x = { r:r, html: reminderRow(r) };
+      var late = r.status === 'accepted' && r.recurrence !== 'daily' && isOverdue(r.due_date);
+      if (r.status === 'pending' && r.for_id === me) { need.push(x); waiting++; }
+      else if (late) need.push(x);
+      else if (r.status === 'accepted' && (r.recurrence === 'daily' || String(r.due_date || '').slice(0,10) === today)) now.push(x);
+      else soon.push(x);
     });
-    var bySchedule = function(a, b){
-      var ka = (a.due_date ? String(a.due_date).slice(0,10) : '9999-12-31') + ' ' + (a.time_of_day || '99:99');
-      var kb = (b.due_date ? String(b.due_date).slice(0,10) : '9999-12-31') + ' ' + (b.time_of_day || '99:99');
-      return ka < kb ? -1 : ka > kb ? 1 : 0;
-    };
+    taskCache = data.requests || [];
+    taskCache.forEach(function(q){
+      var x = { t:q, html: taskRow(q) };
+      if (q.status === 'done') { done.push(x); return; }
+      var mineToAnswer = q.status === 'assigned' && q.claimed_by === me;
+      if (mineToAnswer) waiting++;
+      if (taskLate(q) || mineToAnswer) need.push(x);
+      else if (q.due_at && localDay(new Date(q.due_at)) === today) now.push(x);
+      else soon.push(x);
+    });
+    var byDue = function(a, b){ return dueKey(a) - dueKey(b); };
     var rh = '';
-    var group = function(title, arr){
+    var group = function(id, title, note, arr){
       if (!arr.length) return;
-      arr.sort(bySchedule);
-      rh += '<div class="gtitle">' + title + '</div>';
-      arr.forEach(function(r){ rh += reminderRow(r); });
+      arr.sort(byDue);
+      rh += '<div class="gtitle" id="' + id + '">' + title + (note ? ' <span class="gnote">' + note + '</span>' : '') + '</div>';
+      arr.forEach(function(x){ rh += x.html; });
     };
-    group('Needs your yes 🧡', mine);
-    group('Active', active);
-    group('Waiting for others', others);
-    var qh = '';
-    data.requests.forEach(function(q){
-      var talk = '<button class="cbtn ghost" data-qtalk="' + esc(q.title) + '" aria-label="Discuss in chat">💬</button>';
-      var right = (q.status === 'open'
-        ? '<button class="cbtn" data-qclaim="' + q.id + '">I’m on it</button>'
-        : '<span class="badge on">' + esc(q.claimed_name || 'Someone') + ' is on it</span><button class="cbtn ghost" data-qdone="' + q.id + '">Done ✔</button>') + talk;
-      var sub = 'asked by ' + esc(q.by_name || 'someone');
-      if (q.about_name) sub = '👤 ' + esc(q.about_name) + ' · ' + sub;
-      var overdue = q.due_date && String(q.due_date).slice(0,10) < new Date().toISOString().slice(0,10);
-      if (q.due_date) sub += ' · ' + (overdue ? '<em style="color:var(--sindoor);font-style:normal">overdue</em>' : 'by ' + String(q.due_date).slice(0,10));
-      qh += '<div class="crow' + (overdue ? ' urgent' : '') + '"><span class="txt">' + esc(q.title) + '<small>' + sub + '</small></span>' + right + '</div>';
-    });
-    // Jobs nobody owns belong in the SAME list as reminders - a family does
-    // not think in two categories, it thinks about what is left to do.
-    if (qh) rh = (rh || '') + '<div class="gtitle">Anyone can pick these up</div>' + qh;
-    $('rlist').innerHTML = rh || '<div class="ev">Nothing to do right now 🧡</div>';
+    group('g-need', 'Needs attention', 'late, or waiting for your yes', need);
+    group('g-today', 'Today', '', now);
+    group('g-soon', 'Coming up', '', soon);
+    if (done.length) {
+      rh += '<details class="donebox"><summary class="gtitle" id="g-done">Done in the last few days (' + done.length + ')</summary>';
+      done.forEach(function(x){ rh += x.html; });
+      rh += '</details>';
+    }
+    $('rlist').innerHTML = rh || '<div class="ev">Nothing to do right now 🧡 Add the next thing the family should not forget.</div>';
     $('qlist').hidden = true;
+    if (tsId && !$('tsheet').hidden) tsRender();
+    window._careCounts = { need: need.length, today: now.length, soon: soon.length, waiting: waiting };
 
     // What Parwah noticed, offered rather than imposed.
     var sg = data.suggestions || [];
@@ -2964,11 +3215,11 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
     var dot = $('care-dot');
     if (waiting > 0) { dot.textContent = waiting; dot.hidden = false; }
     else dot.hidden = true;
-    var act = 0;
-    data.reminders.forEach(function(r){ if (r.status === 'accepted') act++; });
-    var todoN = act + (data.requests || []).length;
-    $('w-rem').textContent = (todoN ? todoN + (todoN === 1 ? ' thing to do' : ' things to do') : 'Nothing to do')
-      + (waiting ? ' · ' + waiting + ' waiting for you' : '');
+    var cc = window._careCounts, parts = [];
+    if (cc.need) parts.push(cc.need + (cc.need === 1 ? ' needs attention' : ' need attention'));
+    if (cc.today) parts.push(cc.today + ' today');
+    if (cc.soon) parts.push(cc.soon + ' coming up');
+    $('w-rem').textContent = parts.length ? parts.join(' · ') : 'Nothing to do';
   }
 
   document.addEventListener('click', function(e){
@@ -2977,6 +3228,9 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
     if (b.dataset.rdec)  carePost({ action:'reminder_respond', reminderId:b.dataset.rdec, accept:false });
     if (b.dataset.rdone) carePost({ action:'reminder_done', reminderId:b.dataset.rdone });
     if (b.dataset.qclaim) carePost({ action:'request_claim', requestId:b.dataset.qclaim }, function(){ toast('Thank you - the circle knows you’re on it'); });
+    if (b.dataset.tack)   carePost({ action:'task_ack', taskId:b.dataset.tack }, function(){ toast('Thank you - the family knows you have it 🧡'); });
+    if (b.dataset.tdone)  tsOpen(b.dataset.tdone, 'done');
+    if (b.dataset.topen)  tsOpen(b.dataset.topen);
     if (b.dataset.qdone)  carePost({ action:'request_done', requestId:b.dataset.qdone });
     if (b.dataset.open)   openChat(b.dataset.open);
     if (b.dataset.goto)   { switchTab(b.dataset.goto); if (b.dataset.sec) setSec(b.dataset.goto, b.dataset.sec); }
@@ -3211,6 +3465,8 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
   // opened, they type it once and choose a PIN or password, as at sign-in.
   function askNewSecret(){
     $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
+    // The floating buttons belong to the app, never on top of a sign-in form.
+    $('ekta-fab').hidden = true; $('chat-fab').hidden = true; $('ncsheet').hidden = true; $('tsheet').hidden = true;
     try { drawerOpen(false); } catch (e) {}
     var sp = splitE164(authUser && authUser.phone);
     if (sp) { $('au-cc').value = sp.cc; $('au-phone').value = sp.local; }
@@ -3222,6 +3478,8 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
   // From inside the app: leave the circle screen and start another one.
   function newCircleFromApp(){
     $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
+    // The floating buttons belong to the app, never on top of a sign-in form.
+    $('ekta-fab').hidden = true; $('chat-fab').hidden = true; $('ncsheet').hidden = true; $('tsheet').hidden = true;
     drawerOpen(false);
     showSetup();
   }
@@ -3761,7 +4019,7 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
     { sel:'#btn-ecard', t:'The emergency card',
       b:'One screen with everything a doctor would ask for. It works with no internet - because the moment it matters is the moment the signal is worst.' },
     { sel:'#tabs button[data-tab="care"]', t:'Care',
-      b:'Reminders and help requests, shared out so no one person carries it all.' }
+      b:'What needs doing, who has it, and when it is done - shared, so no one person carries it all.' }
   ];
   var cmI = 0, cmOn = false;
   function coachDone(){
@@ -4039,35 +4297,31 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
     var b = e.target.closest('button'); if (!b) return;
     repeatMode = b.getAttribute('data-rep');
     this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
-    $('r-datewrap').hidden = repeatMode === 'daily'; // a daily reminder has no single date
   });
   $('r-add').addEventListener('click', function(){
     var t = $('r-title').value.trim();
     if (!t) { toast('Say what needs doing'); return; }
     var who = $('r-for').value;
-    var clear = function(){ $('r-title').value=''; $('r-time').value=''; $('r-date').value=''; };
-    // For a person it is a reminder they accept; for anyone it is a job the
-    // circle can pick up. One list, one form, two honest outcomes.
-    if (who === 'any') {
-      carePost({ action:'request_create', title:t,
-                 dueDate: repeatMode === 'once' ? ($('r-date').value || undefined) : undefined },
-        function(){ clear(); toast('Asked the whole family 🧡'); });
-      return;
-    }
-    carePost({ action:'reminder_create', title:t,
-               timeOfDay:$('r-time').value || undefined,
-               dueDate: repeatMode === 'once' ? ($('r-date').value || undefined) : undefined,
-               forMemberId: who || undefined,
-               recurrence: repeatMode },
-      function(j){ clear();
-        toast(j.status === 'pending' ? 'Sent - they’ll be asked to accept it' : 'Added 🧡'); });
+    var due = dueFrom($('r-date').value, $('r-time').value);
+    if (repeatMode !== 'once' && !due.dueAt && !due.dueDate) { toast('Pick when it starts - a date or a time'); return; }
+    var body = { action:'task_create', title:t, recurrence: repeatMode, tz: homeTz(),
+                 ownerId: who === 'any' ? undefined : (who || 'me'),
+                 aboutMemberId: $('r-about').value || undefined,
+                 doneWhen: $('r-donewhen').value.trim() || undefined,
+                 escalate: $('r-esc').value };
+    if (due.dueAt) body.dueAt = due.dueAt; else if (due.dueDate) body.dueDate = due.dueDate;
+    carePost(body, function(j){
+      $('r-title').value = ''; $('r-time').value = ''; $('r-date').value = ''; $('r-donewhen').value = '';
+      toast(j.status === 'assigned' ? 'Sent - they will be asked to say yes'
+        : j.status === 'claimed' ? 'Added - it is yours 🧡' : 'Asked the whole family 🧡');
+    });
   });
-  // The hint has to say which of the two is about to happen.
+  // The hint has to say what is about to happen.
   function todoHint(){
     var who = $('r-for').value;
     $('r-hint').textContent = who === 'any'
-      ? 'Nobody is assigned - the first person to tap "I\u2019m on it" takes it.'
-      : (who ? 'It only starts once they accept it.' : 'A reminder for you, starting straight away.');
+      ? 'Nobody is given it yet - the first person to tap "I’m on it" takes it.'
+      : (who ? 'They will be asked to say yes, and you will see when they do.' : 'It is yours - the family can see it and when it is done.');
   }
   $('r-for').addEventListener('change', todoHint);
 
@@ -5425,6 +5679,52 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
   });
   $('chatback').addEventListener('click', closeChat);
   $('ekta-fab').addEventListener('click', function(){ switchTab('ekta'); });
+
+  // ---------- new chat, from anywhere ----------
+  function ncClose(){ $('ncsheet').hidden = true; $('chat-fab').focus(); }
+  function ncOpen(){
+    var h = '';
+    (membersCache || []).forEach(function(m){
+      if (m.id === state.memberId) return;
+      h += '<button class="chatrow" data-dm="' + esc(m.id) + '"><span class="cic" aria-hidden="true">👤</span><span class="txt"><b>' +
+           esc(m.name) + '</b><small>' + esc(relLabel(m)) + '</small></span></button>';
+    });
+    $('nc-list').innerHTML = h ||
+      '<p class="hint" style="margin:0">Nobody else is here yet. Invite them and you can chat one to one.</p>' +
+      '<button class="go" id="nc-invite" style="margin-top:8px">🧡 Invite family</button>';
+    $('ncsheet').hidden = false;
+    $('nc-family').focus();
+  }
+  // Go to a chat by what it is, fetching the list first when it is not here yet.
+  function ncGo(find){
+    function go(){ var c = null; chatsCache.forEach(function(x){ if (!c && find(x)) c = x; }); if (c) { openChat(c.id); return true; } }
+    $('ncsheet').hidden = true;
+    if (!go()) refreshChats(function(){ if (!go()) toast('Could not open the chat - try again'); });
+  }
+  $('chat-fab').addEventListener('click', ncOpen);
+  $('nc-x').addEventListener('click', ncClose);
+  $('ncsheet').addEventListener('click', function(e){ if (e.target === this) ncClose(); });
+  $('ncsheet').addEventListener('keydown', function(e){ if (e.key === 'Escape') ncClose(); });
+  $('nc-family').addEventListener('click', function(){ ncGo(function(c){ return c.kind === 'circle'; }); });
+  $('nc-group').addEventListener('click', function(){
+    $('ncsheet').hidden = true;
+    if (curChat) closeChat(); else switchTab('chat');
+    $('groupform').hidden = false;
+    $('g-name').focus();
+  });
+  $('nc-list').addEventListener('click', function(e){
+    if (e.target.closest('#nc-invite')) { $('ncsheet').hidden = true; var b = document.querySelector('.invitebtn'); if (b) b.click(); return; }
+    var b = e.target.closest('[data-dm]'); if (!b) return;
+    var other = b.getAttribute('data-dm');
+    b.disabled = true;
+    post(API.chats, { code: state.code, memberId: state.memberId, action: 'open_dm', otherId: other })
+      .then(function(j){
+        b.disabled = false;
+        if (!j.ok) { toast(j.error || 'Could not open the chat'); return; }
+        ncGo(function(c){ return c.id === j.chatId; });
+      })
+      .catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
   $('newgroup').addEventListener('click', function(){ $('groupform').hidden = !$('groupform').hidden; });
   $('g-create').addEventListener('click', function(){
     var name = $('g-name').value.trim();

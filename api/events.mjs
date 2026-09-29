@@ -5,6 +5,7 @@ import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
 import { pushCircle } from './_push.mjs';
+import { ensureTaskSchema, sweepOverdue } from './_tasks.mjs';
 import { award, today } from './_coins.mjs';
 
 import { pulseToday, ensurePulseSchema, optionOf, styleFor, today as pulseDay } from './_pulse.mjs';
@@ -89,6 +90,9 @@ async function escalateStaleSos(sql, circleId) {
         order by created_at limit 20`;
       const pol = await sql`select join_policy from circles where id = ${circle.id}`;
       await escalateStaleSos(sql, circle.id);
+      // Every open phone looks, so a late task is announced within a poll;
+      // the sweep claims each alert, so it is still announced only once.
+      try { await ensureTaskSchema(sql); await sweepOverdue(sql, circle.id); } catch (e) { /* never break a read */ }
       const pulse = await pulseToday(sql, circle.id);
       const sosOpen = await sql`
         select s.id, s.member_id, s.status, s.escalated, s.created_at, s.acked_at,
