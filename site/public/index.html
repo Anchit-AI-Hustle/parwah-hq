@@ -2523,6 +2523,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     return m.place + (r && m.country !== 'XX' ? ' ' + r.flag : (m.country === 'XX' ? ' 🌍' : ''));
   }
   var curTab = 'home', curGame = null, gameTimer = null, planKind = 'call', gamesList = [];
+  // While People is open, other people's positions reload on their own.
+  var LOC_POLL_MS = 30000, locTimer = null;
 
   function demoWanted(){
     try { return new URLSearchParams(location.search).get('demo') === '1'; } catch (e) { return false; }
@@ -2638,7 +2640,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     clearInterval(gameTimer);
     if (t === 'fun') gameTimer = setInterval(function(){ refreshFun(); boardSync(); }, 3000);
     if (t === 'notifs') { $('ndetail').hidden = true; $('nlist-view').hidden = false; }
-    if (t === 'people') refreshLoc();
+    clearInterval(locTimer);
+    if (t === 'people') { refreshLoc(); locTimer = setInterval(function(){ if (!document.hidden) refreshLoc(); }, LOC_POLL_MS); }
     // SHOW THE TAB NOW, FILL IT AFTER THE BROWSER HAS PAINTED.
     // Opening The day from the Today widget rebuilt the whole screen - the
     // timeline, sixteen periods, twelve rashis, every family row - inside
@@ -6188,7 +6191,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       var next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       // Sent when you have moved 50 m, or every two minutes - not every wobble.
       if (locLast && Date.now() - locLast.at < 120000 && locDist(locLast, next) < 50) return;
-      locSend(pos, 'update').then(function(j){ if (j.ok && curTab === 'people') refreshLoc(); }).catch(function(){});
+      // Refused means sharing was stopped or changed (here or on another
+      // phone): reload, which stops this watch if sharing is now off.
+      locSend(pos, 'update').then(function(j){ if (!j.ok || curTab === 'people') refreshLoc(); }).catch(function(){});
     }, function(err){ if (err && err.code === 1) { locGeoError(err); } }, { enableHighAccuracy: locPrec === 'exact', maximumAge: 60000, timeout: 30000 });
   }
   function locStopWatch(){ if (locWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(locWatch); locWatch = null; }
@@ -6219,7 +6224,21 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     locPrec = b.getAttribute('data-prec');
     this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
     if (locMe.sharing) post(locUrl(), { code: state.code, memberId: state.memberId, action: 'precision', precision: locPrec })
-      .then(function(j){ if (j.ok) { toast(locPrec === 'area' ? 'Now sharing your area only' : 'Now sharing your exact location'); refreshLoc(); } }).catch(function(){});
+      .then(function(j){
+        if (!j.ok) { refreshLoc(); return; }
+        toast(locPrec === 'area' ? 'Now sharing your area only' : 'Now sharing your exact location');
+        locMe.precision = locPrec;
+        // The stored point is still the rounded area until a fresh fix
+        // arrives: restart the watch at the new accuracy and send one now,
+        // so "exact" is never just a label on an area.
+        locStopWatch(); locLast = null;
+        if (locPrec === 'exact' && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function(pos){
+            locSend(pos, 'update').then(function(){ refreshLoc(); }).catch(function(){});
+          }, function(){}, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+        }
+        refreshLoc();
+      }).catch(function(){});
   });
 
   // ---------- member profiles ----------

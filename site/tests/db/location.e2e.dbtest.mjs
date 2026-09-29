@@ -126,14 +126,22 @@ ok('Area only: the exact spot is no longer stored', s2.precision === 'area' && s
 await M.reload(); await M.waitForTimeout(1000);
 ok('Meera now sees only his area', /area only/.test(await M.locator('#loc-list .crow', { hasText: 'Rohan' }).textContent()));
 
-// ---- stop
+// ---- back to exact: a fresh fix is sent, so "exact" is never a label on an area
+await R.click('#loc-prec [data-prec="exact"]');
+await R.waitForTimeout(1500);
+const s2b = await share();
+ok('switching back to exact sends a fresh position straight away', s2b.precision === 'exact' && s2b.accuracy === 15 && Math.abs(s2b.lat - PUNE.latitude) < 1e-5, JSON.stringify(s2b));
+
+// ---- stop, seen by Meera without her doing anything
+ok('Meera still sees Rohan before he stops', await M.locator('#loc-list .crow', { hasText: 'Rohan' }).count() === 1);
 await R.click('#loc-stop');
 await R.waitForTimeout(900);
 const s3 = await share();
 ok('Rohan stops: his position is deleted', s3.enabled === false && s3.lat === null && s3.lng === null);
 ok('his screen says he is not sharing', /not sharing/.test(await R.textContent('#loc-status')) && await R.isVisible('#loc-share'));
-await M.reload(); await M.waitForTimeout(1000);
-ok('Meera no longer sees him', await M.locator('#loc-list .crow', { hasText: 'Rohan' }).count() === 0);
+let gone = false;
+for (let i = 0; i < 34 && !gone; i++) { await M.waitForTimeout(1000); gone = await M.locator('#loc-list .crow', { hasText: 'Rohan' }).count() === 0; }
+ok('Meera no longer sees him, within 30 seconds, without reloading or leaving People', gone);
 
 // ---- a phone that says no
 const D = await phone(meera, DELHI, false);
