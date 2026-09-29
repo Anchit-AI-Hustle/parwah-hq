@@ -159,6 +159,39 @@ let gone = false;
 for (let i = 0; i < 34 && !gone; i++) { await M.waitForTimeout(1000); gone = await M.locator('#loc-list .crow', { hasText: 'Rohan' }).count() === 0; }
 ok('Meera no longer sees him, within 30 seconds, without reloading or leaving People', gone);
 
+// ---- Stop wins over a precision change still on its way, even offline after
+await R.click('#loc-share');
+await R.waitForTimeout(1200);
+ok('Rohan shares again', (await share()).enabled === true);
+await R.route('**/api/settings?area=location*', async (route) => {
+  const req = route.request();
+  if (req.method() === 'GET') return route.abort();          // every reload fails
+  const body = req.postDataJSON() || {};
+  if (body.action === 'precision') {                          // the reply is slow
+    const res = await route.fetch();
+    await new Promise(r => setTimeout(r, 1500));
+    return route.fulfill({ response: res });
+  }
+  return route.continue();
+});
+const sentAfter = [];
+let stopped = false;
+R.on('request', (req) => {
+  if (stopped && req.method() === 'POST' && /area=location/.test(req.url()) && (req.postDataJSON() || {}).action === 'update') sentAfter.push(req.url());
+});
+await R.click('#loc-prec [data-prec="area"]');
+await R.waitForTimeout(150);
+await R.click('#loc-stop');
+stopped = true;
+await R.waitForTimeout(2200);                                 // the slow reply lands after Stop
+await R.context().setGeolocation({ latitude: 18.5590, longitude: 73.7868, accuracy: 15 });
+await R.waitForTimeout(2500);
+const s4 = await share();
+ok('after Stop, a late precision reply does not start reading the location again', sentAfter.length === 0, sentAfter.length);
+ok('and nothing is stored', s4.enabled === false && s4.lat === null, JSON.stringify(s4));
+await R.unroute('**/api/settings?area=location*');
+await R.context().setGeolocation(PUNE);
+
 // ---- a phone that says no
 const D = await phone(meera, DELHI, false);
 await D.click('#loc-share');
