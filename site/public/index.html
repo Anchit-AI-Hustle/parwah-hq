@@ -815,7 +815,8 @@ body.senior{background:
   background-attachment:fixed}
 h1,h2,h3,.appname{letter-spacing:-.02em}
 .card{border-radius:20px;box-shadow:var(--sh-1)}
-.go,.big.ok:not(.done),.em.u,.inputbar button,.cbtn:not(.ghost):not(.no){background:var(--grad);color:var(--on-bright)}
+/* Status keeps its own colour: the Emergency card button stays alert red. */
+.go,.big.ok:not(.done),.em.u,.inputbar button,.cbtn:not(.ghost):not(.no):not(.ecard-btn){background:var(--grad);color:var(--on-bright)}
 .go,.big.ok:not(.done){box-shadow:0 10px 26px rgba(255,120,30,.30)}
 .go{transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
 .go:not(:disabled):hover{transform:translateY(-2px)}
