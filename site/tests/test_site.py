@@ -269,6 +269,9 @@ EN_FORMS = [
     ("%E2%80" + "%93",    "percent-encoded en dash"),
     ("&nd" + "ash;",      "ndash entity"),
     ("&#82" + "11;",      "decimal en dash entity"),
+    # Escaped in script: invisible in the source, a dash on the screen.
+    ("\\u20" + "14",      "escaped em dash in script"),
+    ("\\u20" + "13",      "escaped en dash in script"),
 ]
 _user_facing = lambda f: f.parts[len(REPO.parts):][:2] == ("site", "public") or f.parts[len(REPO.parts):][:1] == ("api",)
 _dashed = []
@@ -1380,11 +1383,27 @@ check("day: the screen leads with a verdict, not a table",
       and "A good time right now" in appday and "Better to wait" in appday)
 check("day: and says what to do next, so the verdict is actionable",
       "Next good window:" in appday and "This window ends at" in appday)
-# Abhijit is auspicious and used to sit under a heading that said "avoid".
-check("day: the fixed-times card does not call an auspicious window a bad one",
-      "Times to avoid today" not in appday and "Times worth knowing" in appday)
-check("day: the sixteen windows are a reference, behind a disclosure",
-      "See every Choghadiya" in appday and "details class=\"more\"" in appday)
+# Abhijit is auspicious and once sat under a heading that said "avoid". It
+# now has its own tab, "Good times", apart from the times to avoid.
+_good_tab = appday[appday.find('id="mp-good"'):appday.find('id="mp-avoid"')]
+check("day: an auspicious window is never filed under the times to avoid",
+      'id="mu-good"' in _good_tab and 'id="mu-avoid"' not in _good_tab
+      and "{ name: 'Abhijit Muhurat', per: p.abhijit, good: true }" in appday)
+check("day: the sixteen windows are a reference, folded inside Hourly",
+      "The 16 Choghadiya windows" in appday and 'id="mp-hours"' in appday
+      and appday.find('id="mp-hours"') < appday.find('id="mu-day"') < appday.find('id="mp-good"'))
+# ONE answer for every moment. Three layers (the Choghadiya, the three times
+# to avoid, Abhijit) used to be shown separately, so the same 9:12 am read
+# "Chal, good" in one place and "Yamaganda, avoid" in another.
+check("day: the verdict, band, coming up and hours all read one timeline",
+      "function muTimeline(p)" in appday and "muTimeline(p); muSegs = segs;" in appday
+      and re.search(r"\n\s+renderHours\(segs, p, tz\);", appday) is not None
+      and "segs.slice(at + 1, at + 6)" in appday)
+check("day: the detail is in tabs, and the day opens on the overview",
+      'role="tablist"' in appday and 'id="mu-tabs"' in appday
+      and "if (t === 'day' && curTab !== 'day') showMuTab('overview');" in appday)
+check("day: no city is told apart from an unknown one",
+      "unset: true" in plc and "j.place.unset" in appday and 'id="mu-addcity"' in appday)
 check("day: all twelve rashis are behind a disclosure too, yours is not",
       "See all twelve rashis" in appday and 'id="ho-mine"' in appday)
 # Good/avoid is a STATUS, and status must never be carried by colour alone.
@@ -1405,7 +1424,7 @@ check("day: Abhijit is the 8th of fifteen muhurtas, not an eighth of the day",
 check("day: the day is the member's own day, not the server's",
       "Intl.DateTimeFormat('en-CA', { timeZone: place.tz })" in dayapi)
 check("day: the screen explains how the timings are worked out",
-      'id="mu-how"' in appday and "How this is worked out" in appday
+      'id="mu-how"' in appday and "How the day is worked out" in appday
       and "eight equal parts" in appday and "NOAA" in appday)
 # It computes a tropical sun sign. Calling that a Vedic rashi would be a lie.
 check("day: the app never claims to know a rashi it cannot compute",

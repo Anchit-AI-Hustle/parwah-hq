@@ -136,6 +136,8 @@ ok(placeOf('Bengaluru').lat === placeOf('Bangalore').lat, 'both names of one cit
 ok(placeOf('Dubai').tz === 'Asia/Dubai', 'an NRI city keeps its own timezone');
 ok(placeOf('Nowhereville').guessed === true, 'an unknown place is flagged, never passed off as known');
 ok(placeOf('').guessed === true && placeOf('').lat === 28.6139, 'no place at all falls back to Delhi, and says it is a fallback');
+ok(placeOf('').unset === true && !placeOf('Chhotapur').unset && !placeOf('Pune').unset,
+   'no city at all is told apart from a city we do not know, so the app can say "add your city"');
 ok(placeOf('Nowhereville').name === 'Nowhereville', 'the flagged fallback still echoes what was typed');
 ok(Object.values(CITIES).every(c => c.length === 3 && Math.abs(c[0]) <= 90 && Math.abs(c[1]) <= 180 && /\//.test(c[2])),
   'every city has a sane latitude, longitude and IANA timezone');

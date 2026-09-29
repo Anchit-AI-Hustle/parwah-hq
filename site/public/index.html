@@ -402,6 +402,32 @@ body.inapp #sosbar{padding-left:14px}
 .sw.nowk{background:var(--ink);width:4px;border-radius:1px}
 
 .avoidlist{display:flex;flex-direction:column}
+.mufacts{display:flex;flex-direction:column;gap:7px;margin-top:12px;padding-top:12px;border-top:1px solid var(--bone-2)}
+.mufact{display:grid;grid-template-columns:1.3em 1fr;align-items:baseline;gap:8px;font-size:.92rem;line-height:1.4}
+.mufact .i{font-weight:800;text-align:center}
+.mufact.ok .i{color:var(--ok)}.mufact.no .i{color:var(--alert)}.mufact .i{color:var(--marigold-d)}
+.mufact.ok .i{color:var(--ok)}.mufact.no .i{color:var(--alert)}
+.mufact .t{color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.mutabs{margin:0 0 14px;overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap}
+.mutabs::-webkit-scrollbar{display:none}
+.mutabs{gap:3px}
+.mutabs button{white-space:nowrap;min-width:0;flex:1 1 auto;padding:10px 8px;font-size:.84rem}
+.mutabs button:focus-visible{outline:3px solid var(--marigold);outline-offset:-3px}
+.mulist{display:flex;flex-direction:column}
+.murow{display:grid;grid-template-columns:5.2em 1fr;align-items:start;gap:2px 12px;padding:11px 0;border-top:1px dashed var(--bone-2)}
+.murow:first-child{border-top:0;padding-top:2px}
+.murow .when{font-variant-numeric:tabular-nums;font-weight:700;font-size:.9rem;white-space:nowrap;padding-top:1px}
+.murow .what{min-width:0;font-size:.9rem;line-height:1.4}
+.murow .what b{font-weight:700}
+.murow .what small{display:block;color:var(--ink-soft);font-size:.84rem;margin-top:2px}
+.murow .chip{display:inline-block;vertical-align:1px;margin-left:8px;font-size:.68rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:99px;padding:2px 8px;white-space:nowrap}
+.murow .chip.ok{background:var(--tint-ok);color:var(--ok)}
+.murow .chip.no{background:var(--tint-bad);color:var(--alert)}
+.murow .chip.mix{background:var(--tint-warm);color:var(--ink)}
+.murow.now{background:var(--tint-warm-2);border-radius:12px;padding:11px 10px;margin:0 -10px;border-top-color:transparent}
+.murow.done{opacity:.55}
+.murow .tag{display:inline-block;margin-left:6px;font-size:.7rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--sindoor)}
+.muempty{color:var(--ink-soft);font-size:.9rem;padding:4px 0}
 .avoidrow{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:11px 0;
   border-top:1px solid var(--bone-2)}
 .avoidrow:first-child{border-top:0;padding-top:2px}
@@ -701,7 +727,7 @@ details.more[open]>summary::before{content:"▾ "}
   /* Sixteen Choghadiya and twelve rashis are a list to scan, not prose to
      read - on a wide screen they go two abreast rather than a mile down. */
   #pane-day .card{max-width:980px}
-  #mu-named,#mu-day,#mu-night,#ho-all,#ho-people{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:980px}
+  #mu-day,#mu-night,#ho-all,#ho-people{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:980px}
   .addrow{max-width:640px}
   /* The memory filters share the card's measure instead of racing to the window edge. */
   #bk-filter,#bk-about{max-width:640px}
@@ -1454,44 +1480,94 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
     </div>
 
     <div class="subsec" data-sec="muhurat">
-      <!-- The question is "is now a good time?" - so that is the whole first
-           screen. One verdict, what follows it, and the day at a glance. The
-           sixteen periods are a reference, not a reading, so they wait behind
-           a disclosure until somebody actually wants them. -->
+      <!-- One question first: is now a good time, and until when. Then the
+           day in three facts. Everything else waits behind a tab, so the
+           first screen reads in five seconds. -->
       <div class="card verdict" id="mu-verdict">
         <p class="eyebrow" id="mu-place" style="margin-top:0">Today</p>
         <p class="vstate" id="mu-state">-</p>
         <p class="vname" id="mu-name"></p>
         <p class="vmean" id="mu-mean"></p>
         <p class="vnext" id="mu-next"></p>
+        <div class="mufacts" id="mu-facts"></div>
+      </div>
+      <div class="card" id="mu-guesscard" hidden style="border-left:4px solid var(--marigold)">
+        <p class="hint" id="mu-guess" style="margin:0"></p>
+        <button class="cbtn" id="mu-addcity" type="button" style="margin-top:10px">Add my city</button>
       </div>
 
-      <div class="card">
-        <h3>The day at a glance</h3>
-        <p class="hint" id="mu-sun" style="margin:2px 0 12px"></p>
-        <div class="tlwrap" style="margin-top:20px">
-          <div class="tl" id="mu-tl" role="img" aria-label="Today's auspicious and inauspicious periods"></div>
-          <div class="nowmark" id="mu-nowmark" hidden></div>
+      <div class="seg mutabs" id="mu-tabs" role="tablist" aria-label="The day in detail">
+        <button role="tab" id="mt-overview" data-mt="overview" class="sel" aria-selected="true" aria-controls="mp-overview">Overview</button>
+        <button role="tab" id="mt-hours" data-mt="hours" aria-selected="false" aria-controls="mp-hours" tabindex="-1" aria-label="Hour by hour">Hourly</button>
+        <button role="tab" id="mt-good" data-mt="good" aria-selected="false" aria-controls="mp-good" tabindex="-1" aria-label="Good times">✓ Good</button>
+        <button role="tab" id="mt-avoid" data-mt="avoid" aria-selected="false" aria-controls="mp-avoid" tabindex="-1" aria-label="Times to avoid">✕ Avoid</button>
+        <button role="tab" id="mt-how" data-mt="how" aria-selected="false" aria-controls="mp-how" tabindex="-1" aria-label="How it works">About</button>
+      </div>
+
+      <div class="mtab" id="mp-overview" data-mt="overview" role="tabpanel" aria-labelledby="mt-overview">
+        <div class="card">
+          <h3>The day at a glance</h3>
+          <p class="hint" id="mu-sun" style="margin:2px 0 12px"></p>
+          <div class="tlwrap" style="margin-top:20px">
+            <div class="tl" id="mu-tl" role="img" aria-label="Today's good times and times to wait"></div>
+            <div class="nowmark" id="mu-nowmark" hidden></div>
+          </div>
+          <div class="tlax" id="mu-tlax"></div>
+          <p class="hint" id="mu-tlpick" style="margin-top:10px;min-height:1.3em"></p>
+          <div class="tlkey">
+            <span><i class="sw ok" aria-hidden="true"></i>✓ Good time</span>
+            <span><i class="sw no" aria-hidden="true"></i>✕ Better to wait</span>
+            <span><i class="sw nowk" aria-hidden="true"></i>Now</span>
+          </div>
         </div>
-        <div class="tlax" id="mu-tlax"></div>
-        <p class="hint" id="mu-tlpick" style="margin-top:10px;min-height:1.3em"></p>
-        <div class="tlkey">
-          <span><i class="sw ok" aria-hidden="true"></i>✓ Good time</span>
-          <span><i class="sw no" aria-hidden="true"></i>✕ Better to wait</span>
-          <span><i class="sw nowk" aria-hidden="true"></i>Now</span>
+        <div class="card">
+          <h3>Coming up</h3>
+          <div class="mulist" id="mu-soon"></div>
         </div>
-        <p class="hint" id="mu-guess" hidden style="margin-top:10px"></p>
       </div>
 
-      <div class="card">
-        <h3>Times worth knowing</h3>
-        <div class="avoidlist" id="mu-named"></div>
-        <p class="hint" style="margin-top:12px">Worked out from today's sunrise and sunset where you
-          live - not looked up in one table for the whole country.</p>
+      <div class="mtab" id="mp-hours" data-mt="hours" role="tabpanel" aria-labelledby="mt-hours" hidden>
+        <div class="card">
+          <h3>Hour by hour</h3>
+          <p class="hint" style="margin:2px 0 10px">Each hour from now until tomorrow's sunrise: a good time, better to wait, or a bit of both.</p>
+          <div class="mulist" id="mu-hours"></div>
+          <button class="linkbtn" id="mu-earlier" type="button" style="margin-top:10px">Show earlier today</button>
+        </div>
+        <details class="more">
+          <summary>The 16 Choghadiya windows <span class="hint" style="display:inline">- the traditional list</span></summary>
+          <p class="eyebrow" style="margin-top:14px">Daytime</p>
+          <div class="feed" id="mu-day"></div>
+          <p class="eyebrow">Night</p>
+          <div class="feed" id="mu-night"></div>
+        </details>
       </div>
 
-      <details class="more" id="mu-how">
-        <summary>How this is worked out</summary>
+      <div class="mtab" id="mp-good" data-mt="good" role="tabpanel" aria-labelledby="mt-good" hidden>
+        <div class="card">
+          <h3>Special good times today</h3>
+          <div class="mulist" id="mu-good"></div>
+        </div>
+        <div class="card">
+          <h3>Also good today</h3>
+          <div class="mulist" id="mu-good2"></div>
+        </div>
+      </div>
+
+      <div class="mtab" id="mp-avoid" data-mt="avoid" role="tabpanel" aria-labelledby="mt-avoid" hidden>
+        <div class="card">
+          <h3>Times to avoid today</h3>
+          <p class="hint" style="margin:2px 0 10px">By custom nothing new is begun in these. Work already under way carries on.</p>
+          <div class="mulist" id="mu-avoid"></div>
+        </div>
+        <div class="card">
+          <h3>Also better to wait</h3>
+          <div class="mulist" id="mu-avoid2"></div>
+        </div>
+      </div>
+
+      <div class="mtab" id="mp-how" data-mt="how" role="tabpanel" aria-labelledby="mt-how" hidden>
+        <div class="card" id="mu-how">
+          <h3>How the day is worked out</h3>
         <div class="explain">
           <h4>What a Choghadiya is</h4>
           <p>Sunrise to sunset is divided into <b>eight equal parts</b>, and sunset to the next
@@ -1524,15 +1600,8 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
             anywhere; it is arithmetic, and it should agree with any printed panchang for your city
             to within a minute or two.</p>
         </div>
-      </details>
-
-      <details class="more">
-        <summary>See every Choghadiya <span class="hint" style="display:inline">- all 16 windows</span></summary>
-        <p class="eyebrow" style="margin-top:14px">Daytime</p>
-        <div class="feed" id="mu-day"></div>
-        <p class="eyebrow">Night</p>
-        <div class="feed" id="mu-night"></div>
-      </details>
+        </div>
+      </div>
     </div>
 
     <div class="subsec" data-sec="rashi" hidden>
@@ -2315,6 +2384,8 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
       var seg = $(t + '-seg'), cur = seg && seg.querySelector('.sel');
       if (cur) setSec(t, cur.getAttribute('data-sec'));
     }
+    // Arriving at the day always starts on its plain summary.
+    if (t === 'day' && curTab !== 'day') showMuTab('overview');
     curTab = t;
     setInputMode();
     $('ekta-fab').hidden = !document.body.classList.contains('inapp') || t === 'ekta' || (t === 'chat' && !!curChat);
@@ -6071,116 +6142,227 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
   };
   function muShort(p){ return (p && MU_SHORT[p.name]) || (p && p.en) || ''; }
 
+// ---- one timeline for the whole day ----
+  // Three layers decide whether a moment is good, and they used to be shown
+  // separately, so 9:12 am could read "Chal, good" and "Yamaganda, avoid" in
+  // the same screen. Now every part of the screen reads from ONE answer:
+  //   a time to avoid (Rahu Kaal, Yamaganda, Gulika Kaal) wins; then
+  //   Abhijit Muhurat makes midday good; otherwise the Choghadiya decides.
+  var SPECIAL_SHORT = {
+    'Rahu Kaal': 'Nothing new is begun in it. Work already under way carries on.',
+    'Yamaganda': 'Avoid travel and important new starts.',
+    'Gulika Kaal': 'Avoid new beginnings; milder than Rahu Kaal.',
+    'Abhijit Muhurat': 'The short window around midday, good for anything important.'
+  };
+  function muSpecials(p){
+    return [
+      { name: 'Rahu Kaal', per: p.rahuKaal, good: false },
+      { name: 'Yamaganda', per: p.yamaganda, good: false },
+      { name: 'Gulika Kaal', per: p.gulikaKaal, good: false },
+      { name: 'Abhijit Muhurat', per: p.abhijit, good: true }
+    ].filter(function(x){ return x.per && x.per.from && x.per.to; });
+  }
+  function muTimeline(p){
+    var all = (p.day || []).concat(p.night || []);
+    if (!all.length) return [];
+    var sp = muSpecials(p);
+    var t0 = +new Date(all[0].from), t1 = +new Date(all[all.length - 1].to);
+    var cuts = [t0, t1];
+    all.forEach(function(x){ cuts.push(+new Date(x.from), +new Date(x.to)); });
+    sp.forEach(function(x){ cuts.push(+new Date(x.per.from), +new Date(x.per.to)); });
+    cuts = cuts.filter(function(t){ return t >= t0 && t <= t1; }).sort(function(a, b){ return a - b; })
+      .filter(function(t, i, a){ return i === 0 || t !== a[i - 1]; });
+    function inside(t, a, b){ return t >= +new Date(a) && t < +new Date(b); }
+    var out = [];
+    for (var i = 0; i < cuts.length - 1; i++) {
+      var mid = (cuts[i] + cuts[i + 1]) / 2, hit = null, k;
+      for (k = 0; k < sp.length && !hit; k++) if (!sp[k].good && inside(mid, sp[k].per.from, sp[k].per.to)) hit = { label: sp[k].name, good: false, special: true };
+      for (k = 0; k < sp.length && !hit; k++) if (sp[k].good && inside(mid, sp[k].per.from, sp[k].per.to)) hit = { label: sp[k].name, good: true, special: true };
+      for (k = 0; k < all.length && !hit; k++) if (inside(mid, all[k].from, all[k].to)) hit = { label: all[k].name, good: all[k].good !== false, special: false, win: all[k] };
+      if (!hit) continue;
+      var last = out[out.length - 1];
+      if (last && last.label === hit.label && last.to === cuts[i]) { last.to = cuts[i + 1]; continue; }
+      hit.from = cuts[i]; hit.to = cuts[i + 1];
+      out.push(hit);
+    }
+    return out;
+  }
+  function segWhy(s){ return SPECIAL_SHORT[s.label] || muShort({ name: s.label }); }
+  function iso(t){ return new Date(t).toISOString(); }
+  var muSegs = [];
+
   function renderMuhurat(){
     var j = dayData; if (!j) return;
     var tz = j.tz, p = j.panchang;
     var place = (j.place && j.place.name) || 'your city';
     $('mu-place').textContent = 'Today in ' + place;
-    $('mu-guess').hidden = !(j.place && j.place.guessed);
+    $('mu-guesscard').hidden = !(j.place && j.place.guessed);
     if (j.place && j.place.guessed) {
-      $('mu-guess').textContent = 'We don\u2019t know \u201c' + place + '\u201d yet, so these are Delhi timings. ' +
-        'Put your city in your profile and they\u2019ll be worked out for you.';
+      $('mu-guess').textContent = j.place.unset
+        ? 'These are New Delhi timings, because your city is not in your profile yet. Add it and every time on this screen is worked out for where you live.'
+        : 'We don’t know “' + place + '” yet, so these are New Delhi timings. Add the nearest big city in your profile and they’ll be worked out for you.';
+      if (j.place.unset) { place = 'New Delhi'; $('mu-place').textContent = 'Today in ' + place; }
     }
     var card = $('mu-verdict');
-    if (!p) {
+    if (!p || !(p.day || []).length) {
       card.className = 'card verdict';
       $('mu-state').textContent = 'The sun does not rise or set here today.';
       $('mu-name').textContent = ''; $('mu-mean').textContent = ''; $('mu-next').textContent = '';
+      $('mu-facts').innerHTML = '';
       $('mu-sun').textContent = ''; $('mu-tl').innerHTML = ''; $('mu-tlax').innerHTML = '';
       return;
     }
-    $('mu-sun').textContent = 'Sunrise ' + dTime(p.sunrise, tz) + ' \u00b7 Sunset ' + dTime(p.sunset, tz) +
-      ' \u00b7 for ' + place + '.';
+    $('mu-sun').textContent = 'Sunrise ' + dTime(p.sunrise, tz) + ' · Sunset ' + dTime(p.sunset, tz) +
+      ' · for ' + place + '.';
 
     var all = (p.day || []).concat(p.night || []);
+    var segs = muTimeline(p); muSegs = segs;
+    var now = Date.now();
     var at = -1;
-    all.forEach(function(x, i){ if (at < 0 && dRunning(x)) at = i; });
-    var cur = at >= 0 ? all[at] : null;
-    var rahuNow = p.rahuKaal && dRunning(p.rahuKaal);
+    segs.forEach(function(s, i){ if (at < 0 && now >= s.from && now < s.to) at = i; });
+    var cur = at >= 0 ? segs[at] : null;
 
     // ---- the verdict: the one thing the screen exists to answer ----
     if (!cur) {
       card.className = 'card verdict';
-      $('mu-state').textContent = 'Between today\u2019s windows';
+      $('mu-state').textContent = 'Between today’s windows';
       $('mu-name').textContent = ''; $('mu-mean').textContent = '';
     } else {
-      var good = cur.good !== false && !rahuNow;
-      card.className = 'card verdict ' + (good ? 'ok' : 'no');
-      $('mu-state').textContent = good ? '\u2713 A good time right now' : '\u2715 Better to wait';
-      $('mu-name').textContent = cur.name + ' \u00b7 until ' + dTime(cur.to, tz);
-      $('mu-mean').textContent = rahuNow && cur.good !== false
-        ? muShort(cur) + ' But Rahu Kaal is running, and by custom nothing new is begun in it.'
-        : muShort(cur);
+      card.className = 'card verdict ' + (cur.good ? 'ok' : 'no');
+      $('mu-state').textContent = cur.good ? '✓ A good time right now' : '✕ Better to wait';
+      $('mu-name').textContent = cur.label + ' · until ' + dTime(iso(cur.to), tz);
+      $('mu-mean').textContent = segWhy(cur);
     }
-
-    // ---- and what comes next, so the answer is actionable ----
     var nxt = '';
-    if (at >= 0) {
+    if (cur) {
       var nextGood = null, nextBad = null;
-      for (var i = at + 1; i < all.length; i++) {
-        var x = all[i], xGood = x.good !== false;
-        if (xGood && !nextGood) nextGood = x;
-        if (!xGood && !nextBad) nextBad = x;
+      for (var i = at + 1; i < segs.length; i++) {
+        if (segs[i].good && !nextGood) nextGood = segs[i];
+        if (!segs[i].good && !nextBad) nextBad = segs[i];
       }
-      if (cur.good === false || rahuNow) {
-        nxt = nextGood ? 'Next good window: <b>' + esc(nextGood.name) + ', ' + esc(dTime(nextGood.from, tz)) + '</b>'
-                       : 'No further good window before tomorrow\u2019s sunrise.';
+      if (!cur.good) {
+        nxt = nextGood ? 'Next good window: <b>' + esc(nextGood.label) + ', ' + esc(dTime(iso(nextGood.from), tz)) + '</b>'
+                       : 'No further good window before tomorrow’s sunrise.';
       } else {
-        nxt = nextBad ? 'This window ends at <b>' + esc(dTime(cur.to, tz)) + '</b>, then ' +
-                        esc(nextBad.name) + ' \u2014 better to wait.'
+        nxt = nextBad ? 'This window ends at <b>' + esc(dTime(iso(cur.to), tz)) + '</b>. After it, ' +
+                        esc(nextBad.label) + ' is better to wait.'
                       : 'Good the rest of the day.';
       }
     }
     $('mu-next').innerHTML = nxt;
 
-    // ---- the day as one band ----
-    // Widths are real time, so the band is a picture of the day rather than a
-    // row of equal boxes. It never carries meaning alone: the key names both
-    // states, and tapping a segment says which one it is.
-    var t0 = +new Date(all[0].from), t1 = +new Date(all[all.length - 1].to), span = t1 - t0;
-    var now = Date.now();
-    $('mu-tl').innerHTML = all.map(function(x, i){
-      var w = (+new Date(x.to) - +new Date(x.from)) / span * 100;
-      var isNow = i === at;
-      return '<button type="button" data-tl="' + i + '" data-good="' + (x.good === false ? 0 : 1) + '"' +
-        (isNow ? ' class="now"' : '') + ' aria-pressed="false"' +
+    // ---- the day in three lines ----
+    var sp = muSpecials(p);
+    var ahead = function(t){ return t > now; };
+    var bestPool = segs.filter(function(s){ return s.good && (s.label === 'Amrit' || s.label === 'Abhijit Muhurat') && ahead(s.to); })
+      .map(function(s){ return { name: s.label, from: s.from, to: s.to }; });
+    var best = bestPool[0] || segs.filter(function(s){ return s.good && ahead(s.to); }).map(function(s){ return { name: s.label, from: s.from, to: s.to }; })[0];
+    var avoidNext = sp.filter(function(x){ return !x.good && ahead(+new Date(x.per.to)); })
+      .sort(function(a, b){ return +new Date(a.per.from) - +new Date(b.per.from); })[0];
+    function fact(cls, k, name, range){
+      var icon = cls === 'ok' ? '✓' : cls === 'no' ? '✕' : '☀';
+      return '<div class="mufact ' + cls + '"><span class="i" aria-hidden="true">' + icon + '</span>' +
+        '<span>' + esc(k) + ' <b>' + esc(name) + '</b>' + (range ? '<span class="t"> · ' + esc(range) + '</span>' : '') + '</span></div>';
+    }
+    $('mu-facts').innerHTML =
+      (best ? fact('ok', 'Best time ahead:', best.name, dRange(iso(best.from), iso(best.to), tz) + (now >= best.from ? ', now' : ''))
+            : fact('ok', 'Best time ahead:', 'tomorrow', 'today’s good windows have passed')) +
+      (avoidNext ? fact('no', 'Next to avoid:', avoidNext.name, dRange(avoidNext.per.from, avoidNext.per.to, tz) + (dRunning(avoidNext.per) ? ', now' : ''))
+                 : fact('ok', 'Next to avoid:', 'nothing big', 'Rahu Kaal and the rest are done for today')) +
+      fact('', 'Sun:', 'rises ' + dTime(p.sunrise, tz) + ', sets ' + dTime(p.sunset, tz), '');
+
+    // ---- the day as one band, from the same timeline ----
+    // Widths are real time. It never carries meaning alone: the key names
+    // both states, and tapping a segment says which one it is.
+    var t0 = segs[0].from, t1 = segs[segs.length - 1].to, span = t1 - t0;
+    $('mu-tl').innerHTML = segs.map(function(s, i){
+      var w = (s.to - s.from) / span * 100;
+      return '<button type="button" data-tl="' + i + '" data-good="' + (s.good ? 1 : 0) + '"' +
+        (i === at ? ' class="now"' : '') + ' aria-pressed="false"' +
         ' style="flex:0 0 ' + w.toFixed(3) + '%"' +
-        ' title="' + esc(x.name + ' \u00b7 ' + dRange(x.from, x.to, tz)) + '">' +
-        '<span class="sr">' + esc(x.name + ', ' + dRange(x.from, x.to, tz) +
-          (x.good === false ? ', better to wait' : ', a good time')) + '</span></button>';
+        ' title="' + esc(s.label + ' · ' + dRange(iso(s.from), iso(s.to), tz)) + '">' +
+        '<span class="sr">' + esc(s.label + ', ' + dRange(iso(s.from), iso(s.to), tz) +
+          (s.good ? ', a good time' : ', better to wait')) + '</span></button>';
     }).join('');
     $('mu-tlax').innerHTML = '<span>' + esc(dTime(p.sunrise, tz)) + ' sunrise</span>' +
       '<span>' + esc(dTime(p.sunset, tz)) + ' sunset</span>' +
-      '<span>' + esc(dTime(all[all.length - 1].to, tz)) + ' next sunrise</span>';
+      '<span>' + esc(dTime(iso(t1), tz)) + ' next sunrise</span>';
     var mark = $('mu-nowmark'), inDay = now >= t0 && now <= t1;
     mark.hidden = !inDay;
     if (inDay) mark.style.left = ((now - t0) / span * 100).toFixed(3) + '%';
     $('mu-tlpick').textContent = cur
-      ? 'Now: ' + cur.name + ', ' + dRange(cur.from, cur.to, tz) + '. Tap any part of the day to see what it is.'
+      ? 'Now: ' + cur.label + ', ' + dRange(iso(cur.from), iso(cur.to), tz) + '. Tap any part of the day to see what it is.'
       : 'Tap any part of the day to see what it is.';
 
-    // ---- the three to avoid, and the one to use, in one card ----
-    function avoidRow(name, per, good){
-      if (!per) return '';
-      return '<div class="avoidrow' + (good ? ' good' : '') + '">' +
-        '<b>' + (good ? '\u2713 ' : '\u2715 ') + esc(name) + '</b>' +
-        '<span class="t">' + esc(dRange(per.from, per.to, tz)) + '</span>' +
-        '<small>' + esc(per.en || '') + '</small></div>';
+    // ---- rows ----
+    function muRow(whenTxt, chipCls, chipTxt, title, sub, st){
+      return '<div class="murow' + (st ? ' ' + st : '') + '">' +
+        '<span class="when">' + esc(whenTxt) + '</span>' +
+        '<span class="what"><b>' + esc(title) + '</b><span class="chip ' + chipCls + '">' + esc(chipTxt) + '</span>' +
+        (st === 'now' ? '<span class="tag">Now</span>' : st === 'done' ? '<span class="tag" style="color:var(--ink-soft)">Done</span>' : '') +
+        (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span></div>';
     }
-    var named = avoidRow('Rahu Kaal', p.rahuKaal) + avoidRow('Gulika Kaal', p.gulikaKaal) +
-                avoidRow('Yamaganda', p.yamaganda);
-    named += p.abhijit ? avoidRow('Abhijit Muhurat', p.abhijit, true)
-      : '<div class="avoidrow good"><b>Abhijit Muhurat</b><span class="t">Not today</span>' +
-        '<small>The midday auspicious window is traditionally skipped on Wednesday.</small></div>';
-    $('mu-named').innerHTML = named;
+    function statusOf(from, to){ return now >= to ? 'done' : (now >= from ? 'now' : ''); }
+
+    // Coming up: the next changes in the day, exactly as the verdict sees it.
+    var soon = segs.slice(at + 1, at + 6);
+    $('mu-soon').innerHTML = soon.length ? soon.map(function(s){
+      return muRow(dTime(iso(s.from), tz), s.good ? 'ok' : 'no', s.good ? (s.special ? 'Special' : 'Good') : (s.special ? 'Avoid' : 'Wait'),
+        s.label, 'Until ' + dTime(iso(s.to), tz) + '. ' + segWhy(s), '');
+    }).join('') : '<p class="muempty">Nothing else before tomorrow’s sunrise.</p>';
+
+    // Good times and times to avoid: the traditional list, each in its own
+    // words, and any good window a time to avoid falls across says so.
+    // A good window a time to avoid falls across is only partly good. The
+    // row says exactly which part, from the same timeline as everything else.
+    function goodRow(name, from, to, chip, why){
+      var parts = segs.filter(function(s){ return s.label === name && s.good && s.from < to && s.to > from; });
+      var blocker = sp.filter(function(s){ return !s.good && +new Date(s.per.from) < to && +new Date(s.per.to) > from; })[0];
+      var range = (from >= +new Date(p.sunset) ? 'Tonight, ' : '') + dRange(iso(from), iso(to), tz) + '. ' + why;
+      if (!parts.length && blocker) {
+        return muRow(dTime(iso(from), tz), 'no', 'Covered', name,
+          range + ' ' + blocker.name + ' covers all of it today, so it is better to wait.', statusOf(from, to));
+      }
+      var total = parts.reduce(function(n, s){ return n + (s.to - s.from); }, 0);
+      var note = blocker && total < to - from - 60000
+        ? ' Good ' + parts.map(function(s){ return dRange(iso(s.from), iso(s.to), tz); }).join(' and ') + '; ' + blocker.name + ' takes the rest.'
+        : '';
+      return muRow(dTime(iso(from), tz), 'ok', chip, name, range + note, statusOf(from, to));
+    }
+    function specialRow(x){
+      var f = +new Date(x.per.from), t = +new Date(x.per.to);
+      if (x.good) return goodRow(x.name, f, t, 'Special', SPECIAL_SHORT[x.name] || '');
+      return muRow(dTime(x.per.from, tz), 'no', 'Avoid', x.name,
+        dRange(x.per.from, x.per.to, tz) + '. ' + (SPECIAL_SHORT[x.name] || ''), statusOf(f, t));
+    }
+    function winRow(x, chip){
+      var f = +new Date(x.from), t = +new Date(x.to);
+      if (x.good !== false) return goodRow(x.name, f, t, chip || 'Good', muShort(x));
+      return muRow(dTime(x.from, tz), 'no', chip || 'Wait', x.name,
+        (f >= +new Date(p.sunset) ? 'Tonight, ' : '') + dRange(x.from, x.to, tz) + '. ' + muShort(x), statusOf(f, t));
+    }
+    var byFrom = function(a, b){ return +new Date(a.from || a.per.from) - +new Date(b.from || b.per.from); };
+    var goodList = sp.filter(function(x){ return x.good; }).map(function(x){ return { sp: x, from: x.per.from }; })
+      .concat(all.filter(function(x){ return x.name === 'Amrit'; }).map(function(x){ return { win: x, from: x.from }; }))
+      .sort(byFrom);
+    $('mu-good').innerHTML = goodList.map(function(g){ return g.sp ? specialRow(g.sp) : winRow(g.win, 'Best'); }).join('') +
+      (p.abhijit ? '' : muRow('Midday', 'mix', 'Not today', 'Abhijit Muhurat', 'The midday window is traditionally not observed on a Wednesday.', ''));
+    $('mu-good2').innerHTML = all.filter(function(x){ return x.good !== false && x.name !== 'Amrit'; }).map(function(x){ return winRow(x); }).join('')
+      || '<p class="muempty">No other good windows today.</p>';
+    $('mu-avoid').innerHTML = sp.filter(function(x){ return !x.good; }).sort(function(a, b){ return +new Date(a.per.from) - +new Date(b.per.from); }).map(specialRow).join('');
+    $('mu-avoid2').innerHTML = all.filter(function(x){ return x.good === false; }).map(function(x){ return winRow(x); }).join('')
+      || '<p class="muempty">Nothing else to wait for today.</p>';
+
+    // ---- hour by hour, from the same timeline ----
+    renderHours(segs, p, tz);
 
     // ---- the full sixteen, for whoever opens the drawer ----
     function fullRow(x){
       var isNow = dRunning(x);
       return '<div class="ev' + (isNow ? (x.good === false ? ' bad' : ' good') :
              (x.good === false ? ' inaus' : ' aus')) + '">' +
-        '<b>' + (x.good === false ? '\u2715 ' : '\u2713 ') + esc(x.name) + '</b>' +
-        (isNow ? ' <small style="display:inline;color:var(--sindoor)">\u00b7 now</small>' : '') +
+        '<b>' + (x.good === false ? '✕ ' : '✓ ') + esc(x.name) + '</b>' +
+        (isNow ? ' <small style="display:inline;color:var(--sindoor)">· now</small>' : '') +
         '<br>' + esc(dRange(x.from, x.to, tz)) +
         '<small>' + esc(muShort(x)) + '</small></div>';
     }
@@ -6195,26 +6377,105 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
       if (seen[x.name] || !x.lord) return;
       seen[x.name] = 1;
       lords += '<div class="lordrow ' + (x.good === false ? 'no' : 'yes') + '">' +
-        '<b>' + (x.good === false ? '\u2715 ' : '\u2713 ') + esc(x.name) + '</b>' +
+        '<b>' + (x.good === false ? '✕ ' : '✓ ') + esc(x.name) + '</b>' +
         '<span>' + esc(x.lord) + '</span></div>';
     });
     $('mu-lords').innerHTML = lords;
 
-    var w = $('w-day');
-    if (w) w.textContent = cur
-      ? ((cur.good !== false && !rahuNow ? '\u2713 Good time' : '\u2715 Better to wait') + ' \u00b7 until ' + dTime(cur.to, tz))
+    var wd = $('w-day');
+    if (wd) wd.textContent = cur
+      ? ((cur.good ? '✓ Good time' : '✕ Better to wait') + ' · until ' + dTime(iso(cur.to), tz))
       : ('Choghadiya for ' + place);
   }
 
   // Tapping the band answers "what is that bit?" without opening anything.
   $('mu-tl').addEventListener('click', function(e){
     var b = e.target.closest('button[data-tl]'); if (!b || !dayData) return;
-    var p = dayData.panchang; if (!p) return;
-    var all = (p.day || []).concat(p.night || []);
-    var x = all[+b.getAttribute('data-tl')]; if (!x) return;
+    var s = muSegs[+b.getAttribute('data-tl')]; if (!s) return;
     this.querySelectorAll('button').forEach(function(o){ o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
-    $('mu-tlpick').textContent = (x.good === false ? '\u2715 ' : '\u2713 ') + x.name + ', ' +
-      dRange(x.from, x.to, dayData.tz) + ' \u2014 ' + muShort(x);
+    $('mu-tlpick').textContent = (s.good ? '✓ ' : '✕ ') + s.label + ', ' +
+      dRange(iso(s.from), iso(s.to), dayData.tz) + '. ' + segWhy(s);
+  });
+
+  // ---- hour by hour ----
+  // What a family actually asks is "is 3 o'clock all right?", so this is the
+  // clock, not the sixteen traditional windows: each hour, whether it is good,
+  // better to wait, or changes part-way, and exactly when.
+  var muEarlier = false;
+  function renderHours(segs, p, tz){
+    if (!segs.length) { $('mu-hours').innerHTML = ''; return; }
+    var t0 = segs[0].from, t1 = segs[segs.length - 1].to;
+    var off = 0;
+    try {
+      dtf('en-GB', { timeZone: tz, minute: 'numeric', second: 'numeric' }).formatToParts(new Date(t0)).forEach(function(x){
+        if (x.type === 'minute') off += +x.value * 60000;
+        if (x.type === 'second') off += +x.value * 1000;
+      });
+    } catch (e) { off = new Date(t0).getMinutes() * 60000 + new Date(t0).getSeconds() * 1000; }
+    var start = t0 - off - (t0 % 1000);
+    var hourFmt = function(t){ try { return dtf('en-IN', { timeZone: tz, hour: 'numeric' }).format(new Date(t)); } catch (e) { return dTime(iso(t), tz); } };
+    var rows = [], now = Date.now();
+    for (var h = start; h < t1; h += 3600000) {
+      var e = h + 3600000;
+      var inH = segs.filter(function(s){ return s.from < e && s.to > h; });
+      if (!inH.length) continue;
+      var allGood = inH.every(function(s){ return s.good; }), allBad = inH.every(function(s){ return !s.good; });
+      var title = inH.map(function(s, i){ return i === 0 ? s.label : s.label + ' from ' + dTime(iso(s.from), tz); }).join(', then ');
+      var sub;
+      if (inH.length === 1) sub = segWhy(inH[0]);
+      else if (allGood) sub = 'A good time the whole hour.';
+      else if (allBad) sub = 'Better to wait the whole hour.';
+      else {
+        var goods = inH.filter(function(s){ return s.good; });
+        sub = inH[0].good ? 'Good until ' + dTime(iso(inH[0].to), tz) + ', then better to wait.'
+                          : 'Better to wait until ' + dTime(iso(goods[0].from), tz) + ', then good.';
+      }
+      var st = now >= e ? 'done' : (now >= h ? 'now' : '');
+      rows.push({ st: st, html: '<div class="murow' + (st ? ' ' + st : '') + '">' +
+        '<span class="when">' + esc(hourFmt(h)) + '</span>' +
+        '<span class="what"><b>' + esc(title) + '</b><span class="chip ' + (allGood ? 'ok' : allBad ? 'no' : 'mix') + '">' +
+        (allGood ? 'Good' : allBad ? 'Wait' : 'Mixed') + '</span>' +
+        (st === 'now' ? '<span class="tag">Now</span>' : '') + '<small>' + esc(sub) + '</small></span></div>' });
+    }
+    var left = rows.filter(function(r){ return r.st !== 'done'; });
+    var shown = muEarlier ? rows : left;
+    $('mu-hours').innerHTML = shown.map(function(r){ return r.html; }).join('') ||
+      '<p class="muempty">The day is over. Tomorrow’s hours arrive after sunrise.</p>';
+    var earlier = rows.length - left.length;
+    $('mu-earlier').hidden = !earlier;
+    $('mu-earlier').textContent = muEarlier ? 'Hide earlier hours' : 'Show earlier today (' + earlier + (earlier === 1 ? ' hour)' : ' hours)');
+  }
+  $('mu-earlier').addEventListener('click', function(){ muEarlier = !muEarlier; renderMuhurat(); });
+
+  // ---- the day's tabs ----
+  // Overview first, every time the screen opens: the plain answer is the
+  // point. The detail is one tap away, and the arrow keys move between tabs.
+  function showMuTab(t, focus){
+    var tabs = document.querySelectorAll('#mu-tabs [data-mt]');
+    tabs.forEach(function(b){
+      var on = b.getAttribute('data-mt') === t;
+      b.classList.toggle('sel', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;
+      if (on && focus) { try { b.focus(); b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) {} }
+    });
+    document.querySelectorAll('#pane-day .mtab').forEach(function(pn){ pn.hidden = pn.getAttribute('data-mt') !== t; });
+  }
+  $('mu-tabs').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-mt]'); if (b) showMuTab(b.getAttribute('data-mt'));
+  });
+  $('mu-tabs').addEventListener('keydown', function(e){
+    var tabs = Array.prototype.slice.call(document.querySelectorAll('#mu-tabs [data-mt]'));
+    var i = tabs.indexOf(document.activeElement); if (i < 0) return;
+    var j = e.key === 'ArrowRight' ? (i + 1) % tabs.length : e.key === 'ArrowLeft' ? (i - 1 + tabs.length) % tabs.length
+          : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -1;
+    if (j < 0) return;
+    e.preventDefault(); showMuTab(tabs[j].getAttribute('data-mt'), true);
+  });
+  $('mu-addcity').addEventListener('click', function(){
+    switchTab('profile');
+    if ($('editform').hidden) $('pedit').click();
+    var c = $('e-place'); if (c) { c.scrollIntoView({ block: 'center' }); try { c.focus(); } catch (e) {} }
   });
 
   // A family row wants a line, not a paragraph - the first sentence carries it.
@@ -6564,7 +6825,7 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
     } else {
       out += ' <span style="color:var(--alert)">The 5th letter of a PAN is the first letter of the ' +
         'holder\u2019s surname. This one is <b>' + esc(initial) + '</b>, but this is filed under ' +
-        esc(who) + '. Worth a look \u2014 though not every name puts the surname last.</span>';
+        esc(who) + '. Worth a look, though not every name puts the surname last.</span>';
     }
     return out;
   }
