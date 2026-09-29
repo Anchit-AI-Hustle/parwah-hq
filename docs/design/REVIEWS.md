@@ -51,6 +51,12 @@ inventory.
 | 15 | 5 Error prevention | Game moves, task claims and "done" are protected against double taps | 0 | Good: keep the pattern |
 | 16 | 9 Recovery | Errors say how to fix ("Follow suit - you have a heart", "Someone moved a moment ago") | 0 | Good: keep the pattern |
 
+### Found after merge (Codex review of PR #16), fixed in PR #17
+| # | Finding | Sev | Status |
+|---|---|---|---|
+| 19 | The gate let any fluid `clamp()` size through, and the audit skipped board text: Vyapar city codes rendered at about 10px on phones | 3 | Fixed: 12px token; `clamp()` only between ramp tokens; board text audited |
+| 20 | The contrast audit skipped text on gradients (every primary button) | 3 | Fixed: text is checked against every gradient stop; this found the avatar initials at 2.64:1 (dark on sindoor), now on the button gradient token |
+
 ### Verdict
 **Approved with follow-ups.** Every severity 3 and 4 finding is fixed and
 guarded by a test that fails if it comes back. The severity 2 follow-ups

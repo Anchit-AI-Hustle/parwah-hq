@@ -53,10 +53,18 @@ function measure(minTap) {
   const name = (el) => (el.id ? '#' + el.id : el.tagName.toLowerCase() + (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/)[0] : '')) + ' "' + (el.getAttribute('aria-label') || el.textContent || el.value || '').trim().slice(0, 24) + '"';
   const L = (c) => { const m = c.match(/[\d.]+/g); if (!m) return 1; return m.slice(0, 3).map(Number).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0); };
   const alpha = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return 1; const p = m[1].split(',').map(s => s.trim()); return p.length === 4 ? +p[3] : 1; };
+  // Everything the text could be sitting on: a solid colour, or every stop
+  // of a gradient (primary buttons are gradients; the text must pass on the
+  // worst of them). A photo behind text cannot be measured and is skipped.
   const bgOf = (el) => { let n = el; while (n) { const c = getComputedStyle(n);
-      if (c.backgroundImage && /gradient|url/.test(c.backgroundImage) && n !== document.body && n !== document.documentElement) return null;   // a picture behind: not measurable here
-      if (alpha(c.backgroundColor) > 0.9) return c.backgroundColor; n = n.parentElement; }
-    return getComputedStyle(document.body).backgroundColor; };
+      if (alpha(c.backgroundColor) > 0.9) return [c.backgroundColor];
+      if (n !== document.body && n !== document.documentElement && c.backgroundImage && c.backgroundImage !== 'none') {
+        if (/url\(/.test(c.backgroundImage)) return null;
+        const stops = (c.backgroundImage.match(/rgba?\([^)]+\)/g) || []).filter(s => alpha(s) > 0.5);
+        if (stops.length) return stops;
+      }
+      n = n.parentElement; }
+    return [getComputedStyle(document.body).backgroundColor]; };
   const out = { overflow: document.scrollingElement.scrollWidth - innerWidth, small: [], tiny: [], lowc: [] };
   // Controls a finger uses.
   document.querySelectorAll('button, a[href], input:not([type=hidden]), select, [role=tab], summary').forEach(el => {
@@ -74,11 +82,12 @@ function measure(minTap) {
   while (walker.nextNode()) {
     const t = walker.currentNode; if (!t.textContent.trim()) continue;
     const el = t.parentElement; if (!el || seen.has(el) || !vis(el)) continue; seen.add(el);
-    if (el.closest('.lboard, .vboard, svg, [aria-hidden="true"]')) continue;
+    if (el.closest('svg, [aria-hidden="true"]')) continue;          // board text counts: a floor is a floor
     const cs = getComputedStyle(el), size = parseFloat(cs.fontSize);
     if (size < 12 - 0.01) out.tiny.push(name(el) + ' ' + size.toFixed(1) + 'px');
-    const bg = bgOf(el); if (!bg) continue;
-    const a = L(cs.color), b = L(bg), ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    const bgs = bgOf(el); if (!bgs) continue;
+    const a = L(cs.color);
+    const ratio = Math.min(...bgs.map(bg => { const b = L(bg); return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); }));
     const large = size >= 24 || (size >= 18.66 && +cs.fontWeight >= 700);
     if (alpha(cs.color) > 0.5 && ratio < (large ? 3 : 4.5) - 0.01) out.lowc.push(name(el) + ' ' + ratio.toFixed(2));
   }

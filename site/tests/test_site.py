@@ -1635,8 +1635,15 @@ def _raw_space(v):
     return bad
 _rs = [p + ":" + v for p, v in _decls(_comp + " ;" + _inline, _SP) if _raw_space(v)]
 check(f"dls: spacing comes from the 4pt tokens, never raw px ({len(_rs)} raw)", not _rs, "; ".join(_rs[:4]))
-_rf = [v for p, v in _decls(_comp + " ;" + _inline, "font-size")
-       if re.search(r"\d(px|rem)\b", v) and "clamp" not in v]
+# A fluid size is allowed only between two ramp tokens: clamp(var(--fs-14),
+# 4vw, var(--fs-20)). A raw bound let a "12px floor" render at 10px.
+def _raw_type(v):
+    if "clamp" in v:
+        inner = re.sub(r"var\(--fs-\d+\)", "", v)
+        inner = re.sub(r"-?\d*\.?\d+(vw|vh|vmin|vmax|%)", "", inner)
+        return bool(re.search(r"\d(px|rem|em)\b", inner))
+    return bool(re.search(r"\d(px|rem)\b", v))
+_rf = [v for p, v in _decls(_comp + " ;" + _inline, "font-size") if _raw_type(v)]
 check(f"dls: type sizes come from the type ramp ({len(_rf)} raw)", not _rf, "; ".join(_rf[:4]))
 _rr = [v for p, v in _decls(_comp + " ;" + _inline, "border-radius") if re.search(r"\dpx\b", v)]
 check(f"dls: corners come from the radius tokens ({len(_rr)} raw)", not _rr, "; ".join(_rr[:4]))
