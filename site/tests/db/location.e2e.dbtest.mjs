@@ -118,11 +118,27 @@ const href = await row.locator('a').getAttribute('href');
 ok('and one tap to open it in Maps', href.startsWith('https://www.google.com/maps/search/?api=1&query=18.52043'), href);
 ok('the family feed says Rohan is sharing', (await admin.query(`select count(*)::int as n from events where type = 'location' and text like 'Rohan is sharing%'`)).rows[0].n === 1);
 
-// ---- area only
+// ---- area only, on a connection that drops the reload straight after
+let dropped = 0;
+await R.route('**/api/settings?area=location&circle=*', (route) => {
+  if (route.request().method() === 'GET' && dropped === 0) { dropped++; return route.abort(); }
+  return route.continue();
+});
 await R.click('#loc-prec [data-prec="area"]');
 await R.waitForTimeout(900);
 const s2 = await share();
 ok('Area only: the exact spot is no longer stored', s2.precision === 'area' && s2.accuracy === 1100 && Math.abs(s2.lat - PUNE.latitude) > 1e-4);
+// Rohan leaves People and moves across Pune; the reload after switching failed.
+await R.evaluate(() => { location.hash = '#home'; });
+await R.waitForTimeout(400);
+await R.context().setGeolocation({ latitude: 18.5590, longitude: 73.7868, accuracy: 15 });
+await R.waitForTimeout(2500);
+const s2m = await share();
+ok('even when the reload after switching failed, his area keeps following him', dropped === 1 && s2m.precision === 'area' && s2m.lat === 18.555 && s2m.lng === 73.785, JSON.stringify({ dropped, lat: s2m.lat, lng: s2m.lng }));
+await R.unroute('**/api/settings?area=location&circle=*');
+await R.context().setGeolocation(PUNE);
+await R.evaluate(() => { location.hash = '#people'; });
+await R.waitForTimeout(900);
 await M.reload(); await M.waitForTimeout(1000);
 ok('Meera now sees only his area', /area only/.test(await M.locator('#loc-list .crow', { hasText: 'Rohan' }).textContent()));
 
