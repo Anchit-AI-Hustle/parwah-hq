@@ -130,6 +130,51 @@ const PUNE = { lat: 18.520430, lng: 73.856743, accuracy: 12 };
   ok('no stopped share anywhere still holds a position', left === 0);
 }
 
+// ---- a position already on its way when Stop lands must not restart sharing
+// The phone checks "still sharing?", then Stop is tapped and lands, then the
+// position write runs. Replayed exactly: Stop is made to land between the
+// check and the write.
+{
+  await call(meera, { body: { action: 'share', ...PUNE, precision: 'exact' } });
+  const pool = globalThis.__parwahPools[0], real = pool.query.bind(pool);
+  let armed = true;
+  pool.query = async (text, params) => {
+    if (armed && /^\s*(insert into location_shares|update location_shares set lat)/.test(text)) {
+      armed = false;
+      await admin.query('update location_shares set enabled = false, lat = null, lng = null, accuracy = null, updated_at = null, enabled_at = null where member_id = $1', [meera.id]);
+    }
+    return real(text, params);
+  };
+  const r = await call(meera, { body: { action: 'update', lat: 18.6, lng: 73.9, accuracy: 10 } });
+  pool.query = real;
+  const m = await row(meera);
+  ok('the late position is refused', r.status === 409 && armed === false, r.status);
+  ok('and sharing stays off, with nothing stored', m.enabled === false && m.lat === null && m.lng === null, JSON.stringify(m));
+  ok('nobody sees Meera', !(await look(rohan)).shares.some(x => x.name === 'Meera'));
+}
+
+// ---- a precision switch that races an update never stores exact under "area"
+{
+  await call(meera, { body: { action: 'share', ...PUNE, precision: 'exact' } });
+  const pool = globalThis.__parwahPools[0], real = pool.query.bind(pool);
+  let armed = true;
+  pool.query = async (text, params) => {
+    if (armed && /^\s*update location_shares set lat/.test(text)) {
+      armed = false;
+      await call(meera, { body: { action: 'precision', precision: 'area' } });
+    }
+    return real(text, params);
+  };
+  const r = await call(meera, { body: { action: 'update', lat: 18.612345, lng: 73.912345, accuracy: 5 } });
+  pool.query = real;
+  const m = await row(meera);
+  ok('an exact position that arrives after switching to area only is refused', r.status === 409 && armed === false, r.status);
+  ok('and what is stored is still the area', m.precision === 'area' && m.accuracy === 1100 && String(m.lat).split('.')[1].length <= 4, JSON.stringify(m));
+  ok('stopping or switching after the fact is refused cleanly too',
+     (await call(meera, { body: { action: 'stop' } })).status === 200 &&
+     (await call(meera, { body: { action: 'precision', precision: 'exact' } })).status === 409);
+}
+
 await admin.end();
 for (const p of globalThis.__parwahPools || []) await p.end();
 if (fails.length) { console.error(`location.dbtest: ${fails.length} FAILED of ${pass + fails.length}`); for (const f of fails) console.error('  - ' + f); process.exit(1); }

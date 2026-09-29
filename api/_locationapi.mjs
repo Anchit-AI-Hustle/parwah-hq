@@ -89,7 +89,18 @@ export default async function handler(req, res) {
       if (action === 'update' && !(cur && cur.enabled)) return res.status(409).json({ ok: false, error: 'Turn on sharing first' });
       const pos = validPosition(body.lat, body.lng, body.accuracy);
       if (pos.error) return res.status(400).json({ ok: false, error: pos.error });
-      const precision = action === 'share' ? (PRECISIONS.includes(body.precision) ? body.precision : 'exact') : cur.precision;
+      if (action === 'update') {
+        // A position already on its way when the person taps Stop must never
+        // switch sharing back on: the write only lands on a row that is still
+        // shared, at the precision it was rounded for.
+        const s = shareable(pos, cur.precision);
+        const done = await sql`update location_shares set lat = ${s.lat}, lng = ${s.lng}, accuracy = ${s.accuracy}, updated_at = now()
+                               where circle_id = ${circle.id} and member_id = ${me.id} and enabled and precision = ${cur.precision}
+                               returning member_id`;
+        if (!done.length) return res.status(409).json({ ok: false, error: 'Sharing changed a moment ago' });
+        return res.status(200).json({ ok: true, sharing: true, precision: cur.precision });
+      }
+      const precision = PRECISIONS.includes(body.precision) ? body.precision : 'exact';
       const s = shareable(pos, precision);
       await sql`insert into location_shares (circle_id, member_id, enabled, precision, lat, lng, accuracy, updated_at, enabled_at)
                 values (${circle.id}, ${me.id}, true, ${precision}, ${s.lat}, ${s.lng}, ${s.accuracy}, now(), now())
@@ -97,7 +108,7 @@ export default async function handler(req, res) {
                   lat = ${s.lat}, lng = ${s.lng}, accuracy = ${s.accuracy}, updated_at = now(),
                   enabled_at = coalesce(case when location_shares.enabled then location_shares.enabled_at end, now())`;
       // Starting is everyone's business: the family should know it can see you.
-      if (action === 'share' && !(cur && cur.enabled)) {
+      if (!(cur && cur.enabled)) {
         await feed(sql, circle.id, me.id, `${me.name} is sharing ${precision === 'area' ? 'their area' : 'their location'} with ${whoFor(circle)}`);
       }
       return res.status(200).json({ ok: true, sharing: true, precision });
@@ -109,8 +120,11 @@ export default async function handler(req, res) {
       // Moving to "area only" coarsens what is stored now, not just what is shown.
       let lat = cur.lat, lng = cur.lng, acc = cur.accuracy;
       if (body.precision === 'area' && lat !== null) { const s = shareable({ lat, lng, accuracy: acc }, 'area'); lat = s.lat; lng = s.lng; acc = s.accuracy; }
-      await sql`update location_shares set precision = ${body.precision}, lat = ${lat}, lng = ${lng}, accuracy = ${acc}
-                where circle_id = ${circle.id} and member_id = ${me.id}`;
+      // Moving to "exact" keeps the rounded point (and its 1.1 km accuracy)
+      // until the phone sends a fresh fix, so nobody is shown a false "exact".
+      const done = await sql`update location_shares set precision = ${body.precision}, lat = ${lat}, lng = ${lng}, accuracy = ${acc}
+                             where circle_id = ${circle.id} and member_id = ${me.id} and enabled returning member_id`;
+      if (!done.length) return res.status(409).json({ ok: false, error: 'Turn on sharing first' });
       return res.status(200).json({ ok: true, precision: body.precision });
     }
 
