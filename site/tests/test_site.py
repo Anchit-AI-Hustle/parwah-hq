@@ -210,7 +210,7 @@ for p in PAGES:
 for p in SITE_PAGES:
     html = p.read_text(encoding="utf-8")
     check(f"styles.css linked: {p.relative_to(ROOT)}", "styles.css" in html)
-    check(f"fonts wired: {p.relative_to(ROOT)}", "fonts.googleapis.com" in html and "Fraunces" in html)
+    check(f"fonts wired: {p.relative_to(ROOT)}", "fonts.googleapis.com" in html and "Bricolage+Grotesque" in html)
 
 
 # ---------- 10. SECURITY ----------
@@ -1561,7 +1561,7 @@ check("theme: the choice is applied before the first paint",
       _appt.index("localStorage.getItem('parwah-theme')") < _appt.index("</head>")
       and "before the first paint" in _appt)
 check("theme: the browser's own chrome is told too, since CSS cannot reach it",
-      'meta[name="theme-color"]' in _appt and "#0C100D" in _appt)
+      'meta[name="theme-color"]' in _appt and "#0B0710" in _appt)
 check("theme: on Automatic it follows the device as it changes, not at next reload",
       "addEventListener('change'" in _appt and "themePref() === 'auto'" in _appt)
 # Marigold is a light amber; white on it measures 2.17, which is why every

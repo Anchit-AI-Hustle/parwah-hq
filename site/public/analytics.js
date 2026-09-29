@@ -98,13 +98,13 @@
     var css = document.createElement('style');
     css.textContent =
       '.pw-consent{position:fixed;left:0;right:0;bottom:0;z-index:60;display:flex;gap:12px;align-items:center;'
-      + 'flex-wrap:wrap;padding:14px 20px calc(14px + env(safe-area-inset-bottom));background:#182622;color:#EFE8D8;'
+      + 'flex-wrap:wrap;padding:14px 20px calc(14px + env(safe-area-inset-bottom));background:#2A1235;color:#FFE9DA;'
       + 'font:500 .88rem/1.5 system-ui,sans-serif;box-shadow:0 -6px 24px rgba(0,0,0,.25)}'
-      + '.pw-consent p{flex:1;min-width:240px;margin:0;color:#CFC6B8}'
+      + '.pw-consent p{flex:1;min-width:240px;margin:0;color:#D2BCD9}'
       + '.pw-consent button{border:0;border-radius:999px;padding:11px 20px;font:inherit;font-weight:700;'
       + 'cursor:pointer;min-height:44px}'
-      + '.pw-yes{background:#E8A23D;color:#182622}'
-      + '.pw-no{background:transparent;color:#EFE8D8;border:1px solid rgba(239,232,216,.45)}'
+      + '.pw-yes{background:#FFB31A;color:#2A1235}'
+      + '.pw-no{background:transparent;color:#FFE9DA;border:1px solid rgba(255,243,230,.45)}'
       + '@media(prefers-reduced-motion:no-preference){.pw-consent{animation:pwup .28s ease-out}'
       + '@keyframes pwup{from{transform:translateY(100%)}to{transform:none}}}';
     document.head.appendChild(css);

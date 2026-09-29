@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Parwah App</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#182622">
+<meta name="theme-color" content="#2A1235">
 <script>
 /* Runs before the first paint, on purpose. Anything later and the app is drawn
    light and then repainted dark, which is the flash every themed site is
@@ -27,7 +27,7 @@
 <meta property="og:image" content="https://parwah-hq.anchit-tandon.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Parwah brand card, dark green with a marigold rule: They took care of you. Take care back.">
+<meta property="og:image:alt" content="Parwah brand card, deep jamun with a marigold flower and a toran: They took care of you. Take care back.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Parwah - your family's circle">
 <meta name="twitter:description" content="One private circle for your family - daily check-ins, SOS and messages, with their consent at the core.">
@@ -39,7 +39,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Parwah">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Albert+Sans:wght@400;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
 /* ---------- COLOUR ----------
    Every colour in this file is a token. Nothing is a bare hex outside this
@@ -49,30 +49,38 @@
 
    The dark set is designed, not inverted. A flipped light palette gives you
    grey text on grey and a marigold that glares; these steps keep the brand's
-   warm green-black, lift the accents that were tuned for paper, and deepen the
-   shadows because a shadow on a dark ground has to be darker to be seen. */
+   warm jamun-black, lift the accents that were tuned for paper, and deepen the
+   shadows because a shadow on a dark ground has to be darker to be seen.
+
+   Palette: Mela (2026-09). The names are the original ones so every rule in
+   this file kept working; the values changed. --dusk is jamun, --pine and
+   --pine-2 are the raised jamuns, --bone is blush, --sindoor carries the rani
+   ink used for small emphasis, and --rani, --peacock, --flame and --grad are
+   the Mela additions. */
 :root{
   color-scheme:light;
-  --dusk:#182622; --pine:#24463C; --pine-2:#1E3A31;
-  --day:#FAF7EF; --bone:#EFE8D8; --bone-2:#E3D9C2;
-  --surface:#FFFFFF; --surface-2:#FFFDF8;
-  --marigold:#E8A23D; --marigold-d:#C9861F; --sindoor:#A64B2A;
-  --ink:#241F17; --ink-soft:#4C4437; --cream:#EFE8D8; --dim:#A8B3A6;
-  --ok:#2F7A4D; --alert:#B3372B;
-  --tint-warm:#FDF4E3; --tint-warm-2:#FDF7EA; --tint-ok:#E7F2EA; --tint-bad:#FDF1EF;
-  --ok-line:#7FA98C; --alert-line:#C48B7E; --live:#7CE0A3;
+  --dusk:#2A1235; --pine:#3B1B4A; --pine-2:#43205A;
+  --day:#FFF6EA; --bone:#FFE9DA; --bone-2:#F0DCC8;
+  --surface:#FFFFFF; --surface-2:#FFFBF5;
+  --marigold:#FFB31A; --marigold-d:#8F5300; --sindoor:#B80F5E;
+  --ink:#221428; --ink-soft:#5E4B5E; --cream:#FFF3E6; --dim:#D2BCD9;
+  --ok:#0A7650; --alert:#BD2E17;
+  --tint-warm:#FFF0CC; --tint-warm-2:#FFF6DE; --tint-ok:#E1F5EC; --tint-bad:#FFE6DF;
+  --ok-line:#6FC39F; --alert-line:#E8A08F; --live:#43D9A0;
   /* Text sitting ON something coloured. Two jobs, not one: an accent chip
      (marigold, red, green) LIGHTENS in dark mode, so its label has to go dark
      or it disappears; a permanently dark surface (the hero, the drawer head)
      stays dark in both themes and keeps white. Collapsing these into one token
      is how a themed app ends up with invisible buttons. */
   --on-accent:#FFFFFF; --on-dark:#FFFFFF;
-  --sh-sm:0 1px 3px rgba(0,0,0,.08);
-  --sh-1:0 1px 2px rgba(36,31,23,.03),0 6px 16px rgba(36,31,23,.04);
-  --sh-2:0 2px 4px rgba(36,31,23,.04),0 14px 30px rgba(36,31,23,.10);
-  --glow1:rgba(232,162,61,.16); --glow2:rgba(36,70,60,.09); --glow3:rgba(166,75,42,.07);
+  --sh-sm:0 1px 3px rgba(34,20,40,.08);
+  --sh-1:0 1px 2px rgba(34,20,40,.04),0 8px 22px rgba(34,20,40,.06);
+  --sh-2:0 2px 6px rgba(34,20,40,.06),0 20px 40px rgba(34,20,40,.12);
+  --glow1:rgba(255,179,26,.26); --glow2:rgba(217,20,111,.12); --glow3:rgba(0,161,154,.12);
   --tabs-h:62px; --side-w:232px;
-  --disp:"Fraunces",Georgia,serif; --body:"Albert Sans",system-ui,sans-serif; --dev:"Tiro Devanagari Hindi",serif;
+  --disp:"Bricolage Grotesque","Plus Jakarta Sans",system-ui,sans-serif; --body:"Plus Jakarta Sans",system-ui,sans-serif; --dev:"Baloo 2","Plus Jakarta Sans",sans-serif;
+  --rani:#D9146F; --peacock:#00A19A; --flame:#FF5B2E; --on-bright:#1E0F26; --dot:rgba(34,20,40,.09);
+  --grad:linear-gradient(115deg,var(--marigold),var(--flame));
 }
 
 /* The dark steps, written once and referenced by both the automatic and the
@@ -80,36 +88,40 @@
 @media(prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     color-scheme:dark;
-    --dusk:#0C100D; --pine:#213A32; --pine-2:#1A211C;
-    --day:#101410; --bone:#1F261F; --bone-2:#333D34;
-    --surface:#191F1A; --surface-2:#1E2620;
-    --marigold:#E8A23D; --marigold-d:#F0B357; --sindoor:#D9825E;
-    --ink:#ECE8DF; --ink-soft:#AEB5AB; --cream:#ECE8DF; --dim:#8A938A;
-    --ok:#63B183; --alert:#E0705B;
-    --tint-warm:#2C2416; --tint-warm-2:#282116; --tint-ok:#16281D; --tint-bad:#2B1714;
-    --ok-line:#4F7A61; --alert-line:#8F5C4E; --live:#7CE0A3;
-  --on-accent:#101410; --on-dark:#FFFFFF;
+    --dusk:#0B0710; --pine:#2E1839; --pine-2:#231530;
+    --day:#120C18; --bone:#1C1224; --bone-2:#3A2B45;
+    --surface:#1F1628; --surface-2:#251A30;
+    --marigold:#FFBE3B; --marigold-d:#FFC857; --sindoor:#FF7EB6;
+    --ink:#FFF3E6; --ink-soft:#CDB8D6; --cream:#FFF3E6; --dim:#A898AF;
+    --ok:#43D9A0; --alert:#FF7A5C;
+    --tint-warm:#3A2A0E; --tint-warm-2:#33240C; --tint-ok:#10291F; --tint-bad:#3A1810;
+    --ok-line:#2C6B52; --alert-line:#8A3F2E; --live:#43D9A0;
+  --on-accent:#1A0F20; --on-dark:#FFFFFF;
     --sh-sm:0 1px 3px rgba(0,0,0,.5);
-    --sh-1:0 1px 2px rgba(0,0,0,.35),0 6px 16px rgba(0,0,0,.4);
-    --sh-2:0 2px 4px rgba(0,0,0,.4),0 14px 30px rgba(0,0,0,.55);
-    --glow1:rgba(232,162,61,.07); --glow2:rgba(36,70,60,.16); --glow3:rgba(166,75,42,.05);
+    --sh-1:0 1px 2px rgba(0,0,0,.4),0 8px 22px rgba(0,0,0,.45);
+    --sh-2:0 2px 6px rgba(0,0,0,.45),0 20px 40px rgba(0,0,0,.6);
+    --glow1:rgba(255,190,59,.10); --glow2:rgba(255,79,154,.12); --glow3:rgba(43,212,196,.08);
+    --rani:#FF4F9A; --peacock:#2BD4C4; --flame:#FF7A4F; --on-bright:#1E0F26; --dot:rgba(255,243,230,.06);
+  --grad:linear-gradient(115deg,var(--marigold),var(--flame));
   }
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --dusk:#0C100D; --pine:#213A32; --pine-2:#1A211C;
-  --day:#101410; --bone:#1F261F; --bone-2:#333D34;
-  --surface:#191F1A; --surface-2:#1E2620;
-  --marigold:#E8A23D; --marigold-d:#F0B357; --sindoor:#D9825E;
-  --ink:#ECE8DF; --ink-soft:#AEB5AB; --cream:#ECE8DF; --dim:#8A938A;
-  --ok:#63B183; --alert:#E0705B;
-  --tint-warm:#2C2416; --tint-warm-2:#282116; --tint-ok:#16281D; --tint-bad:#2B1714;
-  --ok-line:#4F7A61; --alert-line:#8F5C4E; --live:#7CE0A3;
-  --on-accent:#101410; --on-dark:#FFFFFF;
+  --dusk:#0B0710; --pine:#2E1839; --pine-2:#231530;
+  --day:#120C18; --bone:#1C1224; --bone-2:#3A2B45;
+  --surface:#1F1628; --surface-2:#251A30;
+  --marigold:#FFBE3B; --marigold-d:#FFC857; --sindoor:#FF7EB6;
+  --ink:#FFF3E6; --ink-soft:#CDB8D6; --cream:#FFF3E6; --dim:#A898AF;
+  --ok:#43D9A0; --alert:#FF7A5C;
+  --tint-warm:#3A2A0E; --tint-warm-2:#33240C; --tint-ok:#10291F; --tint-bad:#3A1810;
+  --ok-line:#2C6B52; --alert-line:#8A3F2E; --live:#43D9A0;
+  --on-accent:#1A0F20; --on-dark:#FFFFFF;
   --sh-sm:0 1px 3px rgba(0,0,0,.5);
-  --sh-1:0 1px 2px rgba(0,0,0,.35),0 6px 16px rgba(0,0,0,.4);
-  --sh-2:0 2px 4px rgba(0,0,0,.4),0 14px 30px rgba(0,0,0,.55);
-  --glow1:rgba(232,162,61,.07); --glow2:rgba(36,70,60,.16); --glow3:rgba(166,75,42,.05);
+  --sh-1:0 1px 2px rgba(0,0,0,.4),0 8px 22px rgba(0,0,0,.45);
+  --sh-2:0 2px 6px rgba(0,0,0,.45),0 20px 40px rgba(0,0,0,.6);
+  --glow1:rgba(255,190,59,.10); --glow2:rgba(255,79,154,.12); --glow3:rgba(43,212,196,.08);
+  --rani:#FF4F9A; --peacock:#2BD4C4; --flame:#FF7A4F; --on-bright:#1E0F26; --dot:rgba(255,243,230,.06);
+  --grad:linear-gradient(115deg,var(--marigold),var(--flame));
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:var(--body);color:var(--ink);min-height:100vh;min-height:100dvh;line-height:1.5;-webkit-text-size-adjust:100%;
@@ -620,7 +632,7 @@ details.more[open]>summary::before{content:"▾ "}
 
 /* home hero card */
 .homehero{background:linear-gradient(135deg,var(--dusk) 0%,var(--pine) 78%);color:var(--cream);border-radius:20px;padding:22px 20px 20px;margin-bottom:18px;position:relative;overflow:hidden;box-shadow:0 14px 34px rgba(24,38,34,.28)}
-.homehero::before{content:"";position:absolute;right:-40px;top:-40px;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle,rgba(232,162,61,.28),transparent 70%)}
+.homehero::before{content:"";position:absolute;right:-40px;top:-40px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,rgba(255,79,154,.34),transparent 70%)}
 .homehero::after{content:"❁ ❁ ❁";position:absolute;top:16px;right:18px;color:var(--marigold);opacity:.65;letter-spacing:.45em;font-size:.72rem}
 .homehero h1{color:var(--on-dark)}
 .homehero .lede{color:var(--dim);margin-bottom:10px}
@@ -778,6 +790,35 @@ details.more[open]>summary::before{content:"▾ "}
 }
 [hidden]{display:none!important}
 @media(prefers-reduced-motion:reduce){.big:active{transform:none}.toast{transition:none}}
+
+/* ---------- MELA (2026-09) ----------
+   The look of an Indian fair: marigold and flame in one warm gradient on every
+   primary action, rani pink and peacock as the accents, jamun for the dark
+   panels, and a ground that is never plain - three soft glows and a faint
+   rangoli dot grid. Only var() here; every value lives in the token blocks. */
+body{background:
+    radial-gradient(var(--dot) 1.3px,transparent 1.5px) 0 0/22px 22px,
+    radial-gradient(1100px 480px at 88% -120px, var(--glow1), transparent 60%),
+    radial-gradient(850px 420px at -12% 34%, var(--glow2), transparent 55%),
+    radial-gradient(700px 380px at 110% 90%, var(--glow3), transparent 55%),
+    var(--day);
+  background-attachment:fixed}
+/* A parent's screen stays calm: the glows remain, the dot grid goes. */
+body.senior{background:
+    radial-gradient(1100px 480px at 88% -120px, var(--glow1), transparent 60%),
+    radial-gradient(850px 420px at -12% 34%, var(--glow2), transparent 55%),
+    var(--day);
+  background-attachment:fixed}
+h1,h2,h3,.appname{letter-spacing:-.02em}
+.card{border-radius:20px;box-shadow:var(--sh-1)}
+.go,.big.ok:not(.done),.em.u,.inputbar button,.cbtn:not(.ghost):not(.no){background:var(--grad);color:var(--on-bright)}
+.go,.big.ok:not(.done){box-shadow:0 10px 26px rgba(255,120,30,.30)}
+.go{transition:transform .2s cubic-bezier(.34,1.56,.64,1)}
+.go:not(:disabled):hover{transform:translateY(-2px)}
+.chips button,.member,.gchk,.pchip{border-width:1.5px}
+.tabs button.sel::after{left:30%;right:30%;height:4px;background:var(--grad)}
+.homehero,.personhero{border-radius:24px}
+@media(prefers-reduced-motion:reduce){.go{transition:none}.go:not(:disabled):hover{transform:none}}
 </style>
 </head>
 <body>
@@ -6555,7 +6596,7 @@ details.more[open]>summary::before{content:"▾ "}
     // a home-screen app - is not styled by CSS and has to be told separately,
     // or it stays cream while the app goes dark.
     var m = document.querySelector('meta[name="theme-color"]');
-    if (m) m.setAttribute('content', themeIsDark() ? '#0C100D' : '#182622');
+    if (m) m.setAttribute('content', themeIsDark() ? '#0B0710' : '#2A1235');
     $('themeseg').querySelectorAll('button').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-theme-set') === pref);
     });
