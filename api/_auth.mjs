@@ -21,38 +21,65 @@
 // all of this on a fresh clone, before npm install.
 import { scryptSync, randomBytes, timingSafeEqual, createHash } from 'node:crypto';
 
-// ---- the PIN ------------------------------------------------------------
-// Six digits, because this is typed by a 70-year-old on a phone, often in a
-// hurry. Six digits with a hard lockout is stronger in practice than eight
-// characters written on a sticky note next to the handset.
-export const PIN_LEN = 6;
+// ---- the PIN or password ------------------------------------------------
+// The person chooses: a PIN of 4 to 6 numbers, quick to type on a phone in a
+// hurry, or a password for anyone who prefers one. Either way it is short-
+// lived to guess: five wrong tries lock the number for fifteen minutes.
+export const PIN_MIN = 4;
+export const PIN_MAX = 6;
+export const PASS_MIN = 8;
+export const PASS_MAX = 64;
+// Every secret set before PINs could be 4 to 6 numbers or a password was a
+// 6-digit PIN. users.secret_v says which rules a secret was chosen under;
+// null means the old rules, and that person chooses again after signing in.
+export const SECRET_V = 2;
 
 // The ones a thief tries first. Blocking them costs a person nothing and
-// removes the handful of PINs that would otherwise be guessed immediately.
+// removes the handful that would otherwise be guessed immediately.
 const WEAK = new Set([
   '000000', '111111', '222222', '333333', '444444', '555555', '666666',
   '777777', '888888', '999999', '123456', '654321', '123123', '112233',
-  '121212', '789456', '159753', '147258', '102030', '098765', '012345'
+  '121212', '789456', '159753', '147258', '102030', '098765', '012345',
+  '1234', '4321', '1212', '1122', '2580', '0852', '1004', '2000', '2020',
+  '6969', '1313', '2468', '1357', '0123', '9876', '5683', '7777', '12345', '54321'
+]);
+const WEAK_PASSWORDS = new Set([
+  'password', 'password1', 'password12', 'password123', 'passw0rd', 'qwerty123',
+  'qwerty12', 'abc12345', 'abcd1234', 'iloveyou1', 'welcome1', 'welcome123',
+  'admin123', 'letmein1', 'india123', 'parwah123', 'parwah@123', 'test1234'
 ]);
 
-export function pinError(pin) {
-  const p = String(pin == null ? '' : pin);
-  if (!/^[0-9]+$/.test(p)) return 'Your PIN is ' + PIN_LEN + ' numbers.';
-  if (p.length !== PIN_LEN) return 'Your PIN is ' + PIN_LEN + ' numbers, you typed ' + p.length + '.';
-  if (WEAK.has(p)) return 'That PIN is one of the first anyone would try. Please pick another.';
-  // A run like 456789, forwards or backwards, is the same problem.
-  let up = true, down = true;
-  for (let i = 1; i < p.length; i++) {
-    if (+p[i] !== +p[i - 1] + 1) up = false;
-    if (+p[i] !== +p[i - 1] - 1) down = false;
+// One rule for choosing, used by sign-up, the first secret of an old
+// account, and the change from an old 6-digit PIN. Signing in with an
+// existing secret is never checked against it: that is verifyPin's job.
+export function pinError(secret) {
+  const p = String(secret == null ? '' : secret);
+  if (!p) return 'Choose a PIN of 4 to 6 numbers, or a password.';
+  if (/^[0-9]+$/.test(p)) {
+    if (p.length < PIN_MIN || p.length > PIN_MAX) {
+      return 'A PIN is 4 to 6 numbers, and you typed ' + p.length + '. For something longer, use a password with a letter in it.';
+    }
+    if (WEAK.has(p) || /^(\d)\1+$/.test(p)) return 'That PIN is one of the first anyone would try. Please pick another.';
+    // A run like 3456 or 987654, forwards or backwards, is the same problem.
+    let up = true, down = true;
+    for (let i = 1; i < p.length; i++) {
+      if (+p[i] !== +p[i - 1] + 1) up = false;
+      if (+p[i] !== +p[i - 1] - 1) down = false;
+    }
+    if (up || down) return 'That PIN is one of the first anyone would try. Please pick another.';
+    return null;
   }
-  if (up || down) return 'That PIN is one of the first anyone would try. Please pick another.';
+  if (p.length < PASS_MIN) return 'A password needs at least 8 characters, and you typed ' + p.length + '.';
+  if (p.length > PASS_MAX) return 'A password can be up to 64 characters.';
+  // Letters in any script count as letters: a Hindi password is a password.
+  if (!/\p{L}/u.test(p) || !/[^\p{L}]/u.test(p)) return 'Mix letters with numbers or symbols, so it is hard to guess.';
+  if (WEAK_PASSWORDS.has(p.toLowerCase())) return 'That password is one of the first anyone would try. Please pick another.';
   return null;
 }
 
-// scrypt, not a bare hash: a six-digit PIN has a million possibilities, so
+// scrypt, not a bare hash: a 4-number PIN has ten thousand possibilities, so
 // the only thing standing between a stolen database and every PIN in it is
-// how long each guess takes.
+// how long each guess takes. Passwords go through exactly the same.
 const SCRYPT = { N: 16384, r: 8, p: 1, keylen: 32 };
 export function hashPin(pin, salt) {
   const s = salt || randomBytes(16).toString('hex');
@@ -69,14 +96,14 @@ export function verifyPin(pin, salt, hash) {
 }
 
 // ---- lockout ------------------------------------------------------------
-// Five tries, then fifteen minutes. Enough that a real person who has
-// forgotten which of two PINs they used gets there; far too slow to walk
-// through a million.
+// Five tries, then fifteen minutes, per mobile number. Enough that a real
+// person who has forgotten which of two PINs they used gets there; far too
+// slow to walk through even ten thousand.
 export const MAX_TRIES = 5;
 export const LOCK_MINUTES = 15;
 export function lockMessage(until) {
   const mins = Math.max(1, Math.ceil((new Date(until) - Date.now()) / 60000));
-  return 'Too many wrong PINs. Try again in ' + mins + (mins === 1 ? ' minute' : ' minutes')
+  return 'Too many wrong tries. Try again in ' + mins + (mins === 1 ? ' minute' : ' minutes')
     + ', or ask someone already in your family to let you back in.';
 }
 

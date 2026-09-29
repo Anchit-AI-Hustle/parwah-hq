@@ -106,7 +106,7 @@ export async function horoscopeToday(sql, day) {
   }
   const signs = SIGNS.map(s => ({
     key: s.k, name: s.en, hi: s.hi,
-    dates: s.from.join('/') + ' – ' + s.to.join('/'),
+    dates: s.from.join('/') + ' - ' + s.to.join('/'),
     text: bySign[s.k] ? bySign[s.k].text : null,
     source: bySign[s.k] ? bySign[s.k].source : null
   }));

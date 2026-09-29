@@ -6,28 +6,47 @@
 // There was no second factor and no session - every later request proved
 // who it was by sending a member UUID the server hands to everyone in the
 // circle.
-import { PIN_LEN, pinError, hashPin, verifyPin, newToken, tokenHash,
-         looksLikeToken, MAX_TRIES, LOCK_MINUTES, lockMessage, SESSION_DAYS }
+import { pinError, hashPin, verifyPin, newToken, tokenHash,
+         looksLikeToken, MAX_TRIES, LOCK_MINUTES, lockMessage, SESSION_DAYS,
+         PIN_MIN, PIN_MAX, PASS_MIN, SECRET_V }
   from '../../api/_auth.mjs';
 
 let pass = 0; const fails = [];
 const ok = (name, cond) => cond ? pass++ : fails.push(name);
 
-// ---- the PIN a person is allowed to choose
-ok('a good PIN is accepted', pinError('481920') === null);
-ok('six numbers is the rule', PIN_LEN === 6 && pinError('48192') !== null && pinError('4819201') !== null);
-ok('letters are refused', pinError('48a920') !== null);
-ok('an empty PIN is refused', pinError('') !== null && pinError(null) !== null && pinError(undefined) !== null);
+// ---- the PIN or password a person is allowed to choose
+ok('the rule is 4 to 6 numbers, or a password of 8 or more', PIN_MIN === 4 && PIN_MAX === 6 && PASS_MIN === 8);
+ok('a 4-number PIN is accepted', pinError('4819') === null);
+ok('a 5-number PIN is accepted', pinError('48192') === null);
+ok('a 6-number PIN is accepted', pinError('481920') === null);
+ok('3 numbers is too short', /4 to 6 numbers/.test(pinError('481')));
+ok('7 numbers is too long for a PIN, and says to use a password', /4 to 6 numbers/.test(pinError('4819201')) && /password/.test(pinError('4819201')));
+ok('the refusal counts what was typed', /typed 3\b/.test(pinError('481')));
+ok('a password with letters and numbers is accepted', pinError('ghar4family') === null);
+ok('a password with letters and a symbol is accepted', pinError('Ghar@Sukh') === null);
+ok('a password in Hindi counts as letters', pinError('परवाह@घर1') === null);
+ok('a password under 8 is refused', /at least 8/.test(pinError('gh4r@1')));
+ok('a password of only letters is refused', /Mix letters/.test(pinError('familyfirst')));
+ok('a password over 64 is refused', pinError('a1'.repeat(33)) !== null);
+ok('an empty choice is refused, and says what to do', /PIN of 4 to 6 numbers, or a password/.test(pinError('')) && pinError(null) !== null && pinError(undefined) !== null);
 // The handful a thief tries first cost nothing to block.
-for (const weak of ['123456', '000000', '111111', '654321', '121212'])
-  ok(`the obvious PIN ${weak} is refused`, pinError(weak) !== null);
-ok('a run forwards is refused', pinError('456789') !== null);
-ok('a run backwards is refused', pinError('987654') !== null);
-ok('a near-run is still allowed', pinError('456780') === null);
-ok('the refusal says what to do', /pick another|6 numbers/i.test(pinError('123456')));
+for (const weak of ['123456', '000000', '111111', '654321', '121212', '1234', '0000', '1111', '4321', '2580', '7777'])
+  ok(`the obvious PIN ${weak} is refused`, /pick another/.test(pinError(weak) || ''));
+for (const weak of ['password1', 'Password1', 'abcd1234', 'parwah@123'])
+  ok(`the obvious password ${weak} is refused`, /pick another/.test(pinError(weak) || ''));
+ok('a 4-number run forwards is refused', pinError('3456') !== null);
+ok('a run backwards is refused', pinError('987654') !== null && pinError('8765') !== null);
+ok('a near-run is still allowed', pinError('456780') === null && pinError('4568') === null);
+ok('no copy uses an em or en dash', !/[\u2013\u2014]/.test(
+  ['', '48', '4819201', 'abc', 'familyfirst', '1234', 'password1', 'a1'.repeat(40)].map(pinError).join(' ') + lockMessage(new Date(Date.now() + 60000))));
+ok('secrets chosen under these rules are marked, so old ones can be told apart', SECRET_V >= 2);
 
 // ---- storing it
 {
+  // A password is stored exactly as a PIN is.
+  const hp = hashPin('Ghar@Sukh7');
+  ok('a password is hashed, not stored', hp.hash.length === 64 && !hp.hash.includes('Ghar'));
+  ok('the same password verifies, a near miss does not', verifyPin('Ghar@Sukh7', hp.salt, hp.hash) && !verifyPin('ghar@Sukh7', hp.salt, hp.hash));
   const h = hashPin('481920');
   ok('a PIN is salted', !!h.salt && h.salt.length >= 16);
   ok('and hashed, not stored', h.hash.length === 64 && h.hash !== '481920');

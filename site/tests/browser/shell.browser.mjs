@@ -66,7 +66,7 @@ let chromium;
 try { ({ chromium } = await import('playwright-core')); }
 catch {
   console.log('playwright-core is not installed - see site/tests/browser/day.browser.mjs.');
-  app.close(); shell.close(); process.exit(0);
+  app.close(); shell.close(); process.exit(process.env.CI ? 1 : 0);
 }
 
 let pass = 0, fail = 0;

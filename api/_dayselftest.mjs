@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     add('Monday opens with Amrit', p.day[0].name === 'Amrit', p.day[0].name);
     add('Rahu Kaal is the second eighth on a Monday',
       hhmm(p.rahuKaal.from) === '07:34' && hhmm(p.rahuKaal.to) === '09:10',
-      hhmm(p.rahuKaal.from) + '–' + hhmm(p.rahuKaal.to) + ' IST');
+      hhmm(p.rahuKaal.from) + '-' + hhmm(p.rahuKaal.to) + ' IST');
     add('eight day parts and eight night parts', p.day.length === 8 && p.night.length === 8);
     let sq = 0;
     for (let wd = 0; wd < 7; wd++) {

@@ -53,7 +53,7 @@ const RUNNING = LIVE.day[2];
 
 // Two signs deliberately missing, to prove the app says so rather than filling in.
 const hsigns = SIGNS.map((s, i) => ({ key:s.k, name:s.en, hi:s.hi,
-  dates: s.from.join('/') + ' – ' + s.to.join('/'),
+  dates: s.from.join('/') + ' - ' + s.to.join('/'),
   text: (i === 4 || i === 9) ? null : 'A steady day for ' + s.en + '. Say the thing you have been putting off.',
   source: (i === 4 || i === 9) ? null : 'horoscope-app-api' }));
 
@@ -87,7 +87,7 @@ try { ({ chromium } = await import('playwright-core')); }
 catch {
   console.log('playwright-core is not installed - see the note at the top of this file.');
   console.log('The deploy gate does not need it: run `npm test` for the checks that do gate a deploy.');
-  process.exit(0);
+  process.exit(process.env.CI ? 1 : 0);
 }
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 const errors = [];

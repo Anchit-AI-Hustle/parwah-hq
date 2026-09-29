@@ -145,7 +145,7 @@ export function antakshariTurn(st, memberId, action, nextLetter) {
     st.letter = L;
     advanceTurn(st);
     const nxt = currentPlayer(st);
-    return { announce: '🎶 ' + me.name + ' sang on "' + st.last.letter + '"! ' + TEAM_NAMES[me.team] + ' +1 (now ' + st.teamScores[0] + '–' + st.teamScores[1] + '). Next: ' + (nxt ? nxt.name : '-') + ' on "' + L + '"' };
+    return { announce: '🎶 ' + me.name + ' sang on "' + st.last.letter + '"! ' + TEAM_NAMES[me.team] + ' +1 (now ' + st.teamScores[0] + '-' + st.teamScores[1] + '). Next: ' + (nxt ? nxt.name : '-') + ' on "' + L + '"' };
   }
   if (action === 'pass') {
     st.last = { by: me.name, did: 'pass', letter: st.letter };
@@ -171,7 +171,7 @@ export function charadesTurn(st, memberId, action, rng) {
     let announce;
     if (action === 'guessed') {
       me.score += 1; st.teamScores[me.team] += 1;
-      announce = '🎬 ' + TEAM_NAMES[me.team] + ' got it! The movie was "' + movie + '" (' + st.teamScores[0] + '–' + st.teamScores[1] + ').';
+      announce = '🎬 ' + TEAM_NAMES[me.team] + ' got it! The movie was "' + movie + '" (' + st.teamScores[0] + '-' + st.teamScores[1] + ').';
     } else {
       announce = '🙈 Nobody guessed "' + movie + '"! Tough luck, ' + TEAM_NAMES[me.team] + '.';
     }
@@ -185,7 +185,7 @@ export function charadesTurn(st, memberId, action, rng) {
 }
 export function partyEndSummary(st) {
   const a = st.teamScores[0], b = st.teamScores[1];
-  const teamLine = a === b ? 'It is a tie, ' + a + '–' + b + '!' : (a > b ? TEAM_NAMES[0] : TEAM_NAMES[1]) + ' wins ' + Math.max(a, b) + '–' + Math.min(a, b) + '!';
+  const teamLine = a === b ? 'It is a tie, ' + a + '-' + b + '!' : (a > b ? TEAM_NAMES[0] : TEAM_NAMES[1]) + ' wins ' + Math.max(a, b) + '-' + Math.min(a, b) + '!';
   const top = st.players.slice().sort((x, y) => y.score - x.score)[0];
   return '🏆 Game over! ' + teamLine + (top && top.score > 0 ? ' Star of the match: ' + top.name + ' (' + top.score + ').' : '') + ' 🧡';
 }

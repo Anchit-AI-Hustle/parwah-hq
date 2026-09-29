@@ -845,7 +845,7 @@ details.more[open]>summary::before{content:"▾ "}
 
   <div class="card" id="auth-step">
     <h3>Sign in with your mobile number</h3>
-<p class="hint" id="au-why" hidden style="margin:4px 0 12px;font-weight:600;color:var(--marigold-d)">Parwah now asks for a 6-number PIN, so your family's records open only for you. Sign in with your number once to set it - your circles are all still here.</p>
+<p class="hint" id="au-why" hidden style="margin:4px 0 12px;font-weight:600;color:var(--marigold-d)">Parwah now lets you choose a PIN or a password, so your family's records open only for you. Sign in with your number once to set it. Your circles are all still here.</p>
     <label for="au-phone">Mobile number</label>
     <div class="phrow">
       <select id="au-cc" class="ccsel" aria-label="Country code"></select>
@@ -853,11 +853,17 @@ details.more[open]>summary::before{content:"▾ "}
     </div>
     <div id="au-pinwrap" hidden>
       <p class="hint" id="au-pinnote" style="margin:10px 0 2px;font-weight:700;color:var(--marigold-d)"></p>
-      <label for="au-pin" id="au-pinlabel">Your 6-number PIN</label>
-      <input type="text" id="au-pin" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
-             pattern="[0-9]*" placeholder="••••••" aria-describedby="au-pinnote"
-             style="letter-spacing:.5em;text-align:center;font-size:1.3rem">
-      <button class="linkbtn" id="au-forgot" hidden type="button">Forgotten your PIN?</button>
+      <label for="au-pin" id="au-pinlabel">Your PIN or password</label>
+      <input type="password" id="au-pin" autocomplete="current-password" maxlength="64"
+             placeholder="PIN or password" aria-describedby="au-pinnote au-pinrule"
+             style="letter-spacing:.2em;text-align:center;font-size:1.2rem">
+      <p class="hint" id="au-pinrule" hidden style="margin:6px 0 0">A PIN of 4 to 6 numbers, or a password of 8 or more characters that mixes letters with numbers or symbols.</p>
+      <div id="au-pin2wrap" hidden>
+        <label for="au-pin2">Type it again</label>
+        <input type="password" id="au-pin2" autocomplete="new-password" maxlength="64"
+               placeholder="The same again" style="letter-spacing:.2em;text-align:center;font-size:1.2rem">
+      </div>
+      <button class="linkbtn" id="au-forgot" hidden type="button">Forgotten your PIN or password?</button>
     </div>
     <div id="au-namewrap" hidden>
       <p class="hint" id="au-newnote" hidden style="margin:10px 0 2px;font-weight:700;color:var(--marigold-d)"></p>
@@ -1666,7 +1672,7 @@ details.more[open]>summary::before{content:"▾ "}
     <div id="game-none">
       <p class="eyebrow">Start a new game</p>
       <p class="hint" style="margin:-6px 0 10px">You can have more than one going at once, even two of the same game.</p>
-      <p class="eyebrow">Whole family · 2–12 players</p>
+      <p class="eyebrow">Whole family · 2 to 12 players</p>
       <div class="card">
         <h3>Saanp Seedhi 🐍🪜</h3>
         <p>Snakes & Ladders with a twist - snakes cost you a truth-or-dare, ladders earn rewards. Turns work across any timezone.</p>
@@ -2941,8 +2947,10 @@ details.more[open]>summary::before{content:"▾ "}
     if (authUser && authUser.phone) {
       post(API.auth, { action: 'enter', phone: authUser.phone, refresh: true })
         .then(function(j){
-          if (!j.ok || !j.exists) return;
+          // Only a reply that says who this is may replace who this is.
+          if (!j.ok || !j.exists || !j.user) return;
           authUser = j.user; saveAuth(authUser); saveGroups(j.circles || []);
+          if (j.changeSecret) { askNewSecret(); return; }
           // First time this person has ever reached a circle: point at the
           // interface once, then never again on any device.
           if (j.toured === false) setTimeout(startCoach, 700);
@@ -3082,6 +3090,18 @@ details.more[open]>summary::before{content:"▾ "}
   $('jc-back').addEventListener('click', showSetup);
   $('cs-newfam').addEventListener('click', function(){ startCreate('family'); });
   $('cs-newgrp').addEventListener('click', function(){ startCreate('group'); });
+  // Signed in with an old 6-digit PIN (or none): the first time the app is
+  // opened, they type it once and choose a PIN or password, as at sign-in.
+  function askNewSecret(){
+    $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
+    try { drawerOpen(false); } catch (e) {}
+    var sp = splitE164(authUser && authUser.phone);
+    if (sp) { $('au-cc').value = sp.cc; $('au-phone').value = sp.local; }
+    showStep('auth');
+    secretBox('enter', 'Parwah now lets you use a PIN of 4 to 6 numbers or a password. Type your current PIN once, then choose your new one. Your circles are all still here.');
+    $('au-go').textContent = 'Continue';
+    try { $('au-pin').focus(); } catch (e) {}
+  }
   // From inside the app: leave the circle screen and start another one.
   function newCircleFromApp(){
     $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
@@ -3162,6 +3182,39 @@ details.more[open]>summary::before{content:"▾ "}
     try { $('ob-err').scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
     if (focusId) { try { $(focusId).focus(); } catch (e) {} }
   }
+  // The secret box is either for typing the PIN or password you have, or
+  // for choosing one: a new account, an account with none yet, or replacing
+  // an old 6-digit PIN (which is carried along, proved a moment ago).
+  var secretMode = 'enter', oldSecret = '';
+  function secretBox(mode, note){
+    var choosing = mode !== 'enter';
+    secretMode = mode;
+    $('au-pinwrap').hidden = false;
+    $('au-pin2wrap').hidden = !choosing;
+    $('au-pinrule').hidden = !choosing;
+    $('au-pin').value = ''; $('au-pin2').value = '';
+    $('au-pin').setAttribute('autocomplete', choosing ? 'new-password' : 'current-password');
+    $('au-pinlabel').textContent = choosing ? 'Choose a PIN or password' : 'Your PIN or password';
+    $('au-pinnote').hidden = !note;
+    $('au-pinnote').textContent = note || '';
+  }
+  // The same rule the server applies, for an answer before the round trip.
+  // The server is the one that decides; it also refuses the obvious ones.
+  function secretRule(v){
+    if (!v) return 'Choose a PIN of 4 to 6 numbers, or a password.';
+    if (/^[0-9]+$/.test(v)) return v.length >= 4 && v.length <= 6 ? null
+      : 'A PIN is 4 to 6 numbers, and you typed ' + v.length + '. For something longer, use a password with a letter in it.';
+    if (v.length < 8) return 'A password needs at least 8 characters, and you typed ' + v.length + '.';
+    if (!/\p{L}/u.test(v) || !/[^\p{L}]/u.test(v)) return 'Mix letters with numbers or symbols, so it is hard to guess.';
+    return null;
+  }
+  function secretCheck(){
+    var v = $('au-pin').value;
+    if (secretMode === 'enter') return v ? null : 'Type your PIN or password.';
+    var e = secretRule(v); if (e) return e;
+    if (v !== $('au-pin2').value) return 'The two do not match. Please type it the same way twice.';
+    return null;
+  }
   $('au-go').addEventListener('click', function(){
     var phone = $('au-phone').value.trim(), cc = $('au-cc').value;
     var perr = phoneCheck(cc, phone);
@@ -3171,37 +3224,49 @@ details.more[open]>summary::before{content:"▾ "}
     if (!$('au-namewrap').hidden && !$('au-name').value.trim()) {
       authErr('Please type your name so your family knows who joined.', 'au-name'); return;
     }
-    // A PIN is what makes a phone number stop being the whole key.
-    if (!$('au-pinwrap').hidden && $('au-pin').value.trim().length !== 6) {
-      authErr('Your PIN is 6 numbers.', 'au-pin'); return;
+    // A PIN or password is what makes a phone number stop being the whole key.
+    if (!$('au-pinwrap').hidden) {
+      var se = secretCheck();
+      if (se) { authErr(se, /match/.test(se) ? 'au-pin2' : 'au-pin'); return; }
     }
+    var secret = $('au-pin').value;
     var btn = this; btn.disabled = true; $('ob-err').textContent = '';
     post(API.auth, { action: 'enter', phone: phone, cc: cc, name: $('au-name').value.trim(),
-                     pin: $('au-pin').value.trim() || undefined,
+                     // Replacing an old 6-digit PIN sends it once more, with the new one.
+                     pin: secretMode === 'change' ? oldSecret : (secret || undefined),
+                     newPin: secretMode === 'change' ? secret : undefined,
                      device: (navigator.platform || 'device') })
       .then(function(j){
         btn.disabled = false;
         // A PIN that is wrong, or an account locked after five tries: both
         // keep the person on this screen with the reason and a way out.
         if (!j.ok && (j.wrongPin || j.locked)) {
-          $('au-pinwrap').hidden = false;
+          secretBox('enter');
           $('au-forgot').hidden = false;
-          $('au-pin').value = '';
           authErr(j.error, 'au-pin');
           return;
         }
         if (!j.ok) { authErr(j.error || 'Could not sign you in.'); return; }
         // A known number that has a PIN, or one that needs to choose its
         // first. Both ask here rather than letting the number alone in.
+        // An old 6-digit PIN that has just proved who this is: before going
+        // in, they choose a PIN or password under the new rules.
+        if (j.exists && j.changeSecret) {
+          if (secretMode === 'enter') oldSecret = secret;
+          secretBox('change', 'Welcome back' + (j.name ? ', ' + j.name : '') + '. You can now use a PIN of 4 to 6 numbers or a password. Choose yours to continue.');
+          $('au-forgot').hidden = true;
+          $('au-go').textContent = 'Save and continue';
+          if (j.error) authErr(j.error, 'au-pin'); else { $('ob-err').textContent = ''; try { $('au-pin').focus(); } catch (e) {} }
+          return;
+        }
+        // A known number that has a PIN or password, or one that needs to
+        // choose its first. Both ask here rather than letting the number in.
         if (j.exists && (j.needPin || j.setPin)) {
-          $('au-pinwrap').hidden = false;
+          secretBox(j.setPin ? 'choose' : 'enter', j.setPin
+            ? 'Parwah asks for a PIN or password as well as your number, so nobody who knows the number can open your family.'
+            : 'Welcome back' + (j.name ? ', ' + j.name : '') + '. Type your PIN or password.');
           $('au-forgot').hidden = !j.needPin;
-          $('au-pinlabel').textContent = j.setPin ? 'Choose a 6-number PIN' : 'Your 6-number PIN';
-          $('au-pinnote').hidden = false;
-          $('au-pinnote').textContent = j.setPin
-            ? 'Parwah now asks for a PIN as well as your number, so nobody who knows the number can open your family. Choose six numbers you will remember.'
-            : 'Welcome back' + (j.name ? ', ' + j.name : '') + '. Type your PIN.';
-          $('au-go').textContent = j.setPin ? 'Set my PIN & continue' : 'Sign in';
+          $('au-go').textContent = j.setPin ? 'Save and continue' : 'Sign in';
           if (j.error) authErr(j.error, 'au-pin'); else { $('ob-err').textContent = ''; try { $('au-pin').focus(); } catch (e) {} }
           return;
         }
@@ -3213,10 +3278,7 @@ details.more[open]>summary::before{content:"▾ "}
           $('au-namewrap').hidden = false;
           // A new person picks their PIN in the same breath as their name.
           // A later, skippable step is how an account ends up without one.
-          $('au-pinwrap').hidden = false;
-          $('au-pinlabel').textContent = 'Choose a 6-number PIN';
-          $('au-pinnote').hidden = false;
-          $('au-pinnote').textContent = 'You will type this to open Parwah. Six numbers, not your birth year.';
+          if (first || j.error) secretBox('choose', 'You will type this when you sign in. Not your birth year or your phone number.');
           if (j.error) authErr(j.error, 'au-pin');
           $('au-go').textContent = 'Create my profile & continue';
           $('au-newnote').hidden = false;
@@ -3224,6 +3286,7 @@ details.more[open]>summary::before{content:"▾ "}
           try { $('au-name').focus(); } catch (e) {}
           return;
         }
+        secretMode = 'enter'; oldSecret = '';
         authUser = j.user; saveAuth(authUser);
         if (j.token) saveToken(j.token);
         if (j.pinResets && j.pinResets.length) pendingResets = j.pinResets;
@@ -3238,7 +3301,7 @@ details.more[open]>summary::before{content:"▾ "}
   $('au-forgot').addEventListener('click', function(){
     var phone = $('au-phone').value.trim(), cc = $('au-cc').value;
     if (phoneCheck(cc, phone)) { authErr('Type your number first, then tap this again.', 'au-phone'); return; }
-    if (!confirm('Ask your family to let you back in?\n\nSomeone already in your circle will get a request to approve. Once they do, you can set a new PIN.')) return;
+    if (!confirm('Ask your family to let you back in?\n\nSomeone already in your circle will get a request to approve. Once they do, you can choose a new PIN or password.')) return;
     post(API.auth, { action: 'reset_request', phone: phone, cc: cc })
       .then(function(j){
         if (!j.ok) { authErr(j.error || 'Could not ask just now.'); return; }
@@ -3246,11 +3309,12 @@ details.more[open]>summary::before{content:"▾ "}
         $('au-pinnote').hidden = false;
         $('au-pinnote').textContent = j.noFamily
           ? 'You are not in a family yet, so there is nobody to approve this. Write to care@parwah.in and we will help.'
-          : 'Asked. When someone in your family approves it, come back here and you can set a new PIN.';
+          : 'Asked. When someone in your family approves it, come back here and you can choose a new PIN or password.';
       })
       .catch(function(){ authErr('No connection - try again.'); });
   });
   $('au-pin').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
+  $('au-pin2').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
   $('au-phone').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
   $('au-name').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
   $('circle-step').addEventListener('click', function(e){
@@ -5909,7 +5973,7 @@ details.more[open]>summary::before{content:"▾ "}
     try { return dtf('en-IN', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(d); }
     catch (e) { return dtf([], { hour: 'numeric', minute: '2-digit' }).format(d); }
   }
-  function dRange(a, b, tz){ return dTime(a, tz) + ' – ' + dTime(b, tz); }
+  function dRange(a, b, tz){ return dTime(a, tz) + ' - ' + dTime(b, tz); }
   function dRunning(p){ var n = Date.now(); return n >= +new Date(p.from) && n < +new Date(p.to); }
 
   function refreshDay(force){
@@ -6229,7 +6293,7 @@ details.more[open]>summary::before{content:"▾ "}
         '<div class="ev"><b>Parwah Family Plan</b><small>The family memory · Health &amp; emergency information · Trusted contacts · Family readiness · Ekta · The family pulse</small></div>' +
         '<p style="margin:12px 0 2px;font-size:1.5rem;font-family:var(--disp);font-weight:600">₹2,499 <span style="font-size:.95rem;font-weight:400;color:var(--ink-soft)">per family, per year</span></p>' +
         '<p class="hint" style="margin:2px 0 0">About $29.99 at ₹85 to the dollar. Nothing is charged here - Parwah is not taking payments yet.</p>' +
-        '<p class="hint" style="margin-top:14px">Ready to start? Signing in takes your mobile number and a 6-number PIN you choose, so nobody who knows the number can open your family. Nothing is posted anywhere.</p>' }
+        '<p class="hint" style="margin-top:14px">Ready to start? Signing in takes your mobile number and a PIN or password you choose, so nobody who knows the number can open your family. Nothing is posted anywhere.</p>' }
   ];
 
   function dcard(name, rel, todo){
