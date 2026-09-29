@@ -284,6 +284,14 @@ for f in _dash_files:
 check("copy: no em dashes anywhere, and no en dashes in anything a person sees",
       not _dashed, "; ".join(_dashed[:4]))
 
+# PUSHES DO NOT DEPLOY. Vercel's Hobby plan refuses to build a private
+# organisation repository from Git, so every push to every branch posted a
+# red "Cannot deploy" check next to the real ones. Production and previews
+# are deployed on purpose instead (the deploy workflow, or directly), from a
+# commit that has passed the gate here and on Vercel's own builder.
+check("deploy: a push never triggers a Vercel deployment by itself",
+      _json.loads((REPO / "vercel.json").read_text(encoding="utf-8")).get("git", {}).get("deploymentEnabled") is False)
+
 # 10b. security headers enforced platform-wide
 vj = _json.loads((REPO / "vercel.json").read_text(encoding="utf-8"))
 hdrs = {h["key"] for blk in vj.get("headers", []) for h in blk.get("headers", [])}
