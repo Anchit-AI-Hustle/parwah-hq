@@ -1609,6 +1609,26 @@ _ondim = [sel for sel in (".purow small{", ".rdgap em{", ".frstep small{", ".ec-
 _ondim += ["inline family label"] * _appt.count('<em style="font-style:normal;color:var(--dim)">')
 check("theme: muted text on light cards uses --dim-day, not the dark-panel --dim",
       not _ondim and "--dim-day:" in _css, ", ".join(_ondim))
+
+# The Mela gradient is for ordinary actions. A button that also wears a
+# status class (red alert, green ok) must keep that colour: the Emergency card
+# button went festive orange because the gradient rule out-specified
+# .ecard-btn (Codex review, PR #7). Every status class that shares an element
+# with .cbtn or .go has to be excluded from the gradient rule by name.
+_stat = set()
+for _m in re.finditer(r"([^{}]+)\{([^}]*)\}", _css):
+    if re.search(r"background:var\(--(alert|ok|sindoor|tint-bad|tint-ok)\)", _m.group(2)):
+        _stat.update(re.findall(r"\.([a-zA-Z][\w-]*)", _m.group(1)))
+_stat -= {"cbtn", "go", "ghost", "no"}
+_grad_rule = [l for l in _css.splitlines() if "background:var(--grad)" in l and ".cbtn" in l]
+_mixed = set()
+for _cl in re.findall(r"""class=["']([^"']*)["']""", _appt):
+    _parts = _cl.split()
+    if "cbtn" in _parts or "go" in _parts:
+        _mixed.update(c for c in _parts if c in _stat)
+_unexcluded = sorted(c for c in _mixed if not all(":not(." + c + ")" in l for l in _grad_rule))
+check("theme: a status button keeps its status colour under the Mela gradient",
+      bool(_grad_rule) and not _unexcluded, ", ".join(_unexcluded))
 check("theme: text on a coloured chip and on a dark panel are separate tokens",
       "--on-accent:" in _css and "--on-dark:" in _css
       and "is how a themed app ends up with invisible buttons" in _css)
