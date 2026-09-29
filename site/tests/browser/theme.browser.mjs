@@ -50,6 +50,11 @@ for (const mode of ['light','dark']) {
   await pg.route('**/api/events*',r=>r.fulfill({json:events}));
   await pg.route('**/api/book*area=vault*',r=>r.fulfill({json:{ok:true,maxFile:1,kinds:{},idShapes:{},docs:[],grants:[],log:[],members:[]}}));
   await pg.route('**/api/book*',r=>r.fulfill({json:book}));
+  await pg.route('**/api/care*',r=>r.fulfill({json:{ok:true,reminders:[],suggestions:[],requests:[
+    {id:'t1',title:'Pay the electricity bill',status:'open',due_at:new Date(Date.now()-3600e3).toISOString(),tz:'Asia/Kolkata',recurrence:'once',
+     by_member:ME,by_name:'Anchit Tandon',claimed_by:null,created_at:now,overdue:true},
+    {id:'t2',title:'Book the gas refill',status:'claimed',due_at:new Date(Date.now()+86400e3).toISOString(),tz:'Asia/Kolkata',recurrence:'weekly',
+     by_member:ME,by_name:'Anchit Tandon',claimed_by:ME,claimed_name:'Anchit Tandon',done_when:'Delivery date confirmed',created_at:now}]}}));
   await pg.addInitScript(()=>{localStorage.setItem('parwah',JSON.stringify({code:'ABCDEF',memberId:'11111111-1111-1111-1111-111111111111',name:'Anchit Tandon',role:'family',circleName:'T'}));localStorage.setItem('parwah-fr-hide','1');});
   await pg.goto(BASE + '/'); await pg.waitForTimeout(700);
 
@@ -86,6 +91,50 @@ for (const mode of ['light','dark']) {
     const need = large?3:4.5;
     ok(ratio>=need, `${mode}: ${label} passes WCAG AA (${ratio.toFixed(2)} vs ${need} needed)`);
   }
+  // Floating buttons and sheets sit outside the page flow (position:fixed has
+  // no offsetParent), so the loop above never saw them. The New chat button
+  // shipped dark-on-dark in dark mode because of exactly that. Measure them,
+  // and everything new on Care, directly.
+  const measure = async (sel, label) => {
+    const r = await pg.evaluate(sel => {
+      const el = [...document.querySelectorAll(sel)].find(e => e.getClientRects().length && e.textContent.trim());
+      if (!el) return null;
+      const cs = getComputedStyle(el); let n = el, bg = null;
+      while (n) {
+        const c = getComputedStyle(n);
+        // A solid colour wins: the page's own faint dot pattern is a gradient
+        // too, and its first stop is a nearly transparent dot, not the ground.
+        if (c.backgroundColor !== 'rgba(0, 0, 0, 0)' && c.backgroundColor !== 'transparent') { bg = c.backgroundColor; break; }
+        if (c.backgroundImage && /gradient/.test(c.backgroundImage)) { bg = (c.backgroundImage.match(/rgba?\([^)]+\)/g) || [])[0]; break; }
+        n = n.parentElement;
+      }
+      return { fg: cs.color, bg: bg || getComputedStyle(document.body).backgroundColor, size: parseFloat(cs.fontSize), weight: cs.fontWeight };
+    }, sel);
+    if (!r) { ok(false, `${mode}: ${label} not found`); return; }
+    const ratio = await pg.evaluate(`(${CONTRAST})('${r.fg}','${r.bg}')`);
+    const need = (r.size >= 24 || (r.size >= 18.66 && +r.weight >= 700)) ? 3 : 4.5;
+    ok(ratio >= need, `${mode}: ${label} passes WCAG AA (${ratio.toFixed(2)} vs ${need} needed)`);
+  };
+  await pg.evaluate(() => location.hash = '#home'); await pg.waitForTimeout(400);
+  await measure('#chat-fab', 'the floating New chat button');
+  await measure('#ekta-fab', 'the floating Ekta button');
+  await pg.click('#chat-fab'); await pg.waitForTimeout(250);
+  await measure('#nc-title', 'the New chat sheet title');
+  await measure('#nc-family b', 'a New chat choice');
+  await measure('#nc-family small', 'a New chat choice\'s detail');
+  await pg.keyboard.press('Escape');
+  await pg.evaluate(() => location.hash = '#care'); await pg.waitForTimeout(700);
+  await measure('#rlist .tlink', 'a task title');
+  await measure('#rlist .crow small', 'a task\'s who and when');
+  await measure('#rlist .crow.late small', 'a late task\'s warning line');
+  await measure('#rlist .gtitle', 'the Needs attention heading');
+  await pg.click('#rlist .tlink'); await pg.waitForTimeout(400);
+  await measure('#ts-title', 'the task sheet title');
+  await measure('#ts-facts small', 'the task sheet labels');
+  await measure('#ts-facts .txt', 'the task sheet facts');
+  await measure('#ts-actions .cbtn.ghost', 'the task sheet quiet buttons');
+  await pg.keyboard.press('Escape');
+
   // The accent chips are the reason --on-accent and --on-dark exist, and they
   // are easier to get wrong than anything else: in dark mode the accents
   // LIGHTEN, so white-on-red stops working. Measure the token pairs directly
