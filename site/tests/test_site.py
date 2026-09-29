@@ -1569,6 +1569,14 @@ check("theme: on Automatic it follows the device as it changes, not at next relo
 _amber = [l for l in _css.splitlines()
           if "var(--marigold)" in l and "color:var(--on-accent)" in l]
 check("theme: nothing puts white text on the amber", not _amber, "; ".join(_amber)[:110])
+# --dim is muted text on the DARK panels. On a light card it measured 1.6:1
+# (Codex review, PR #7), so muted text on light cards wears --dim-day. No
+# colour reads 4.5:1 on white and on jamun at once, which is why it is two tokens.
+_ondim = [sel for sel in (".purow small{", ".rdgap em{", ".frstep small{", ".ec-row.none span{")
+          if "var(--dim)" in _css[_css.index(sel):_css.index("}", _css.index(sel))]]
+_ondim += ["inline family label"] * _appt.count('<em style="font-style:normal;color:var(--dim)">')
+check("theme: muted text on light cards uses --dim-day, not the dark-panel --dim",
+      not _ondim and "--dim-day:" in _css, ", ".join(_ondim))
 check("theme: text on a coloured chip and on a dark panel are separate tokens",
       "--on-accent:" in _css and "--on-dark:" in _css
       and "is how a themed app ends up with invisible buttons" in _css)

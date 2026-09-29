@@ -56,14 +56,18 @@
    this file kept working; the values changed. --dusk is jamun, --pine and
    --pine-2 are the raised jamuns, --bone is blush, --sindoor carries the rani
    ink used for small emphasis, and --rani, --peacock, --flame and --grad are
-   the Mela additions. */
+   the Mela additions.
+
+   --dim is muted text ON the dark panels (drawer, tab bar, hero); --dim-day
+   is muted text on the light cards. One token cannot do both: nothing is
+   4.5:1 on white and on jamun at once. */
 :root{
   color-scheme:light;
   --dusk:#2A1235; --pine:#3B1B4A; --pine-2:#43205A;
   --day:#FFF6EA; --bone:#FFE9DA; --bone-2:#F0DCC8;
   --surface:#FFFFFF; --surface-2:#FFFBF5;
   --marigold:#FFB31A; --marigold-d:#8F5300; --sindoor:#B80F5E;
-  --ink:#221428; --ink-soft:#5E4B5E; --cream:#FFF3E6; --dim:#D2BCD9;
+  --ink:#221428; --ink-soft:#5E4B5E; --cream:#FFF3E6; --dim:#D2BCD9; --dim-day:#6F5B72;
   --ok:#0A7650; --alert:#BD2E17;
   --tint-warm:#FFF0CC; --tint-warm-2:#FFF6DE; --tint-ok:#E1F5EC; --tint-bad:#FFE6DF;
   --ok-line:#6FC39F; --alert-line:#E8A08F; --live:#43D9A0;
@@ -92,7 +96,7 @@
     --day:#120C18; --bone:#1C1224; --bone-2:#3A2B45;
     --surface:#1F1628; --surface-2:#251A30;
     --marigold:#FFBE3B; --marigold-d:#FFC857; --sindoor:#FF7EB6;
-    --ink:#FFF3E6; --ink-soft:#CDB8D6; --cream:#FFF3E6; --dim:#A898AF;
+    --ink:#FFF3E6; --ink-soft:#CDB8D6; --cream:#FFF3E6; --dim:#A898AF; --dim-day:#A898AF;
     --ok:#43D9A0; --alert:#FF7A5C;
     --tint-warm:#3A2A0E; --tint-warm-2:#33240C; --tint-ok:#10291F; --tint-bad:#3A1810;
     --ok-line:#2C6B52; --alert-line:#8A3F2E; --live:#43D9A0;
@@ -111,7 +115,7 @@
   --day:#120C18; --bone:#1C1224; --bone-2:#3A2B45;
   --surface:#1F1628; --surface-2:#251A30;
   --marigold:#FFBE3B; --marigold-d:#FFC857; --sindoor:#FF7EB6;
-  --ink:#FFF3E6; --ink-soft:#CDB8D6; --cream:#FFF3E6; --dim:#A898AF;
+  --ink:#FFF3E6; --ink-soft:#CDB8D6; --cream:#FFF3E6; --dim:#A898AF; --dim-day:#A898AF;
   --ok:#43D9A0; --alert:#FF7A5C;
   --tint-warm:#3A2A0E; --tint-warm-2:#33240C; --tint-ok:#10291F; --tint-bad:#3A1810;
   --ok-line:#2C6B52; --alert-line:#8A3F2E; --live:#43D9A0;
@@ -337,7 +341,7 @@ label + select{width:100%}
 .purow:last-child{border-bottom:0}
 .purow .pe{font-size:1.35rem;line-height:1;width:28px;text-align:center}
 .purow b{font-weight:600}
-.purow small{display:block;color:var(--dim);font-size:.78rem}
+.purow small{display:block;color:var(--dim-day);font-size:.78rem}
 .purow.wantcall{background:rgba(179,38,30,.05);border-radius:8px;padding-left:6px}
 .purow.wantcall small{color:var(--sindoor)}
 .puopt{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 10px;margin-bottom:6px;
@@ -346,7 +350,7 @@ label + select{width:100%}
 .puopt.sel{border-color:var(--marigold);background:rgba(232,162,61,.10)}
 .readycard .frbar i{background:var(--pine)}
 .rdgap{display:flex;gap:8px;align-items:baseline;font-size:.88rem;padding:3px 0}
-.rdgap em{font-style:normal;color:var(--dim)}
+.rdgap em{font-style:normal;color:var(--dim-day)}
 /* An unanswered SOS outranks everything else on the screen. */
 #sosbar{position:fixed;top:0;left:0;right:0;z-index:12;display:flex;align-items:center;gap:10px;
   padding:11px 14px;background:var(--alert);color:var(--on-accent);font-size:.9rem;font-weight:600;
@@ -460,7 +464,7 @@ details.more[open]>summary::before{content:"▾ "}
 .frstep .tick{flex:0 0 22px;height:22px;border-radius:99px;border:2px solid var(--bone-2);display:flex;align-items:center;justify-content:center;font-size:.72rem}
 .frstep.done .tick{border-color:var(--pine);background:var(--pine);color:var(--on-dark)}
 .frstep.done b{text-decoration:line-through;opacity:.6}
-.frstep small{display:block;color:var(--dim);font-size:.76rem}
+.frstep small{display:block;color:var(--dim-day);font-size:.76rem}
 
 /* what is waiting in a circle you are not currently inside */
 .gcount{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;margin-left:6px;border-radius:99px;background:var(--sindoor);color:var(--on-accent);font-size:.62rem;font-weight:700;vertical-align:middle}
@@ -523,7 +527,7 @@ details.more[open]>summary::before{content:"▾ "}
 .ec-row b{min-width:104px;color:var(--ink)}
 .ec-row span{flex:1;color:var(--ink-soft)}
 .ec-row .stale{color:var(--sindoor);font-size:.76rem}
-.ec-row.none span{color:var(--dim);font-style:italic}
+.ec-row.none span{color:var(--dim-day);font-style:italic}
 .ec-row a{color:var(--marigold-d);font-weight:600;text-decoration:none}
 @media print{
   body>*{display:none!important}
@@ -3501,7 +3505,7 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
       var line = pp.attention === 0 ? 'Important information up to date'
         : pp.attention + ' thing' + (pp.attention > 1 ? 's' : '') + ' to complete';
       return '<div class="ev" data-person="' + pp.memberId + '" role="button" tabindex="0" style="cursor:pointer">' +
-             '<b>' + esc(pp.name) + '</b>' + (pp.relation ? ' <em style="font-style:normal;color:var(--dim)">· ' + esc(pp.relation) + '</em>' : '') +
+             '<b>' + esc(pp.name) + '</b>' + (pp.relation ? ' <em style="font-style:normal;color:var(--dim-day)">· ' + esc(pp.relation) + '</em>' : '') +
              '<small>' + (pp.attention === 0 ? '✅ ' : '⚠️ ') + line + '</small></div>';
     }).join('');
   }
@@ -6190,8 +6194,8 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
     $('ho-people').innerHTML = people.length ? people.map(function(m){
       var s = m.sign ? signs.filter(function(x){ return x.key === m.sign; })[0] : null;
       return '<div class="ev"><b>' + esc(m.name) + '</b>' +
-        (m.hasDob ? ' <em style="font-style:normal;color:var(--dim)">· ' + esc(m.signName || '') + '</em>'
-                  : ' <em style="font-style:normal;color:var(--dim)">· birthday not added yet</em>') +
+        (m.hasDob ? ' <em style="font-style:normal;color:var(--dim-day)">· ' + esc(m.signName || '') + '</em>'
+                  : ' <em style="font-style:normal;color:var(--dim-day)">· birthday not added yet</em>') +
         (s && s.text ? '<small>' + esc(oneLine(s.text)) + '</small>' : '') + '</div>';
     }).join('') : '<div class="ev">No one else in this circle yet.</div>';
   }
@@ -6274,7 +6278,7 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
   ];
 
   function dcard(name, rel, todo){
-    return '<div class="ev"><b>' + name + '</b> <em style="font-style:normal;color:var(--dim)">· ' + rel + '</em>' +
+    return '<div class="ev"><b>' + name + '</b> <em style="font-style:normal;color:var(--dim-day)">· ' + rel + '</em>' +
       '<small>' + (todo === 0 ? '✅ Important information up to date'
                               : '⚠️ ' + todo + ' thing' + (todo > 1 ? 's' : '') + ' to complete') + '</small></div>';
   }
