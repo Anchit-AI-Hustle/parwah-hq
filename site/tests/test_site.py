@@ -210,7 +210,7 @@ for p in PAGES:
 for p in SITE_PAGES:
     html = p.read_text(encoding="utf-8")
     check(f"styles.css linked: {p.relative_to(ROOT)}", "styles.css" in html)
-    check(f"fonts wired: {p.relative_to(ROOT)}", "fonts.googleapis.com" in html and "Fraunces" in html)
+    check(f"fonts wired: {p.relative_to(ROOT)}", "fonts.googleapis.com" in html and "Bricolage+Grotesque" in html)
 
 
 # ---------- 10. SECURITY ----------
@@ -1593,7 +1593,7 @@ check("theme: the choice is applied before the first paint",
       _appt.index("localStorage.getItem('parwah-theme')") < _appt.index("</head>")
       and "before the first paint" in _appt)
 check("theme: the browser's own chrome is told too, since CSS cannot reach it",
-      'meta[name="theme-color"]' in _appt and "#0C100D" in _appt)
+      'meta[name="theme-color"]' in _appt and "#0B0710" in _appt)
 check("theme: on Automatic it follows the device as it changes, not at next reload",
       "addEventListener('change'" in _appt and "themePref() === 'auto'" in _appt)
 # Marigold is a light amber; white on it measures 2.17, which is why every
@@ -1601,6 +1601,14 @@ check("theme: on Automatic it follows the device as it changes, not at next relo
 _amber = [l for l in _css.splitlines()
           if "var(--marigold)" in l and "color:var(--on-accent)" in l]
 check("theme: nothing puts white text on the amber", not _amber, "; ".join(_amber)[:110])
+# --dim is muted text on the DARK panels. On a light card it measured 1.6:1
+# (Codex review, PR #7), so muted text on light cards wears --dim-day. No
+# colour reads 4.5:1 on white and on jamun at once, which is why it is two tokens.
+_ondim = [sel for sel in (".purow small{", ".rdgap em{", ".frstep small{", ".ec-row.none span{")
+          if "var(--dim)" in _css[_css.index(sel):_css.index("}", _css.index(sel))]]
+_ondim += ["inline family label"] * _appt.count('<em style="font-style:normal;color:var(--dim)">')
+check("theme: muted text on light cards uses --dim-day, not the dark-panel --dim",
+      not _ondim and "--dim-day:" in _css, ", ".join(_ondim))
 check("theme: text on a coloured chip and on a dark panel are separate tokens",
       "--on-accent:" in _css and "--on-dark:" in _css
       and "is how a themed app ends up with invisible buttons" in _css)

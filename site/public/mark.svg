@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Parwah">
-  <g fill="#E8A23D">
+  <g fill="#FFB31A">
     <ellipse id="p" cx="32" cy="14" rx="6" ry="9.2"/>
     <use href="#p" transform="rotate(45 32 32)"/>
     <use href="#p" transform="rotate(90 32 32)"/>
@@ -9,5 +9,5 @@
     <use href="#p" transform="rotate(270 32 32)"/>
     <use href="#p" transform="rotate(315 32 32)"/>
   </g>
-  <circle cx="32" cy="32" r="8.6" fill="#C8452F"/>
+  <circle cx="32" cy="32" r="8.6" fill="#FF5B2E"/>
 </svg>

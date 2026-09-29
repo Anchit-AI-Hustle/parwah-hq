@@ -75,12 +75,28 @@ The words move, the markup does not. That site used one inline `<style>` block
 per page; this one uses shared tokens in `site/public/styles.css`. Copy is
 re-authored into this design system, never pasted.
 
-## Design system (site/ - do not drift)
-- Palette: neem-dusk #182622 · pine #24463C · day #FAF7EF · bone #EFE8D8 ·
-  marigold #E8A23D · sindoor #A64B2A · ink #241F17
-- Type: Fraunces (display) · Albert Sans (body/UI) · Tiro Devanagari Hindi (परवाह)
-- Signature: the garland thread (marigold dashed line + petal dots) on day sections.
-- Motion: reveal-on-scroll only; prefers-reduced-motion respected.
+## Design system (site/ - do not drift): Mela, adopted 2026-09-29
+The look of an Indian fair, built for two audiences: the adult child who chooses
+Parwah gets a lively, modern app; the parent who uses it daily gets the same
+colours, calmer (senior mode drops the dot grid). Full spec: the "Parwah"
+Design System artifact (tokens, 23 components, brand book).
+- Palette: jamun #2A1235 · day #FFF6EA · blush #FFE9DA · marigold #FFB31A ·
+  flame #FF5B2E · rani #D9146F · peacock #00A19A · ink #221428.
+  Night theme (app): day #120C18, dusk #0B0710, accents lifted.
+- Token names are the original ones so no rule had to change: `--dusk` is jamun,
+  `--pine`/`--pine-2` are raised jamuns, `--bone` is blush, `--sindoor` is the
+  rani ink for small emphasis. New: `--rani`, `--peacock`, `--flame`, `--grad`.
+- Primary actions wear `--grad` (marigold -> flame) with dark `--on-bright` text,
+  never white. Status (ok / alert, ✓ / !) never borrows the vibe colours.
+- Type: Bricolage Grotesque (display, 700-800, tight tracking) · Plus Jakarta Sans
+  (body/UI) · Baloo 2 (परवाह and every Devanagari word).
+- Grounds are never plain: soft marigold/rani/peacock glows plus a faint rangoli
+  dot grid on day sections, jamun with glows on dark ones.
+- Signatures: the toran (marigold + flame flowers along the top of the dark
+  header), the garland thread (dashed marigold -> rani), the ghost प.
+- Motion: reveal-on-scroll and a small bounce on buttons; prefers-reduced-motion
+  turns all of it off.
+- Every text pair is WCAG AA (4.5:1) in both themes; the browser suite measures it.
 
 ## Current state
 - hq/index.html - 9-tab console incl. live finance engine (do not edit casually; it has

@@ -117,7 +117,7 @@ await pg.click('[data-theme-set="dark"]'); await pg.waitForTimeout(250);
 const darkBg=await pg.evaluate(()=>getComputedStyle(document.body).backgroundColor);
 ok(darkBg!==lightBg,'choosing Dark repaints the page');
 ok(await pg.evaluate(()=>document.documentElement.getAttribute('data-theme'))==='dark','and stamps the choice on the root');
-ok(await pg.evaluate(()=>document.querySelector('meta[name="theme-color"]').content)==='#0C100D',
+ok(await pg.evaluate(()=>document.querySelector('meta[name="theme-color"]').content)==='#0B0710',
    'and tells the browser chrome, which CSS cannot reach');
 ok(await pg.evaluate(()=>localStorage.getItem('parwah-theme'))==='dark','the choice is remembered');
 await pg.reload(); await pg.waitForTimeout(500);

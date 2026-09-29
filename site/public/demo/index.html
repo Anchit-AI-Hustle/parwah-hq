@@ -14,22 +14,22 @@
 <meta property="og:image" content="https://parwah-hq.anchit-tandon.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Parwah brand card, dark green with a marigold rule: They took care of you. Take care back.">
+<meta property="og:image:alt" content="Parwah brand card, deep jamun with a marigold flower and a toran: They took care of you. Take care back.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Parwah App - Live Demo">
 <meta name="twitter:description" content="">
 <meta name="twitter:image" content="https://parwah-hq.anchit-tandon.com/og.png">
 <link rel="canonical" href="https://parwah-hq.anchit-tandon.com/demo/">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Albert+Sans:wght@400;600;700&family=Tiro+Devanagari+Hindi&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --dusk:#182622; --pine:#24463C; --pine-2:#1E3A31;
-  --day:#FAF7EF; --bone:#EFE8D8; --bone-2:#E3D9C2;
-  --marigold:#E8A23D; --marigold-d:#C9861F; --sindoor:#A64B2A;
-  --ink:#241F17; --ink-soft:#4C4437; --cream:#EFE8D8; --dim:#A8B3A6;
-  --ok:#2F7A4D; --alert:#B3372B;
-  --disp:"Fraunces",Georgia,serif; --body:"Albert Sans",system-ui,sans-serif; --dev:"Tiro Devanagari Hindi",serif;
+  --dusk:#2A1235; --pine:#5A2A6E; --pine-2:#43205A;
+  --day:#FFF6EA; --bone:#FFE9DA; --bone-2:#F0DCC8;
+  --marigold:#FFB31A; --marigold-d:#8F5300; --sindoor:#B80F5E;
+  --ink:#221428; --ink-soft:#5E4B5E; --cream:#FFE9DA; --dim:#D2BCD9;
+  --ok:#0A7650; --alert:#BD2E17;
+  --disp:"Bricolage Grotesque","Plus Jakarta Sans",system-ui,sans-serif; --body:"Plus Jakarta Sans",system-ui,sans-serif; --dev:"Baloo 2","Plus Jakarta Sans",sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-height:100vh;padding:28px 16px 60px}
@@ -39,7 +39,7 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
 .top p{color:var(--dim);font-size:.92rem;max-width:62ch;margin:0 auto}
 .top .tag{display:inline-block;margin-top:10px;border:1px dashed var(--marigold-d);color:var(--marigold);border-radius:8px;padding:4px 12px;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase}
 .stage{display:flex;gap:28px;justify-content:center;flex-wrap:wrap;max-width:980px;margin:0 auto}
-.phone{width:340px;max-width:94vw;background:#0D1613;border-radius:34px;padding:12px;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+.phone{width:340px;max-width:94vw;background:#0B0710;border-radius:34px;padding:12px;box-shadow:0 24px 60px rgba(0,0,0,.45)}
 .phone .label{text-align:center;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);padding:6px 0 10px}
 .screen{background:var(--day);color:var(--ink);border-radius:24px;overflow:hidden;height:600px;display:flex;flex-direction:column}
 .appbar{background:var(--dusk);color:var(--cream);padding:14px 16px;display:flex;align-items:center;gap:10px}
@@ -80,15 +80,15 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
 .avatar{width:46px;height:46px;border-radius:50%;background:var(--pine);color:var(--marigold);font-family:var(--disp);font-weight:700;font-size:1.05rem;display:flex;align-items:center;justify-content:center;flex:none}
 .status b{font-family:var(--disp)}
 .status .st{font-size:.82rem;color:var(--ink-soft)}
-.status .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#C9861F;margin-right:5px}
+.status .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#8F5300;margin-right:5px}
 .status.ok .dot{background:var(--ok)}
-.status.sos{border-color:var(--alert);background:#FDF1EF}
+.status.sos{border-color:var(--alert);background:#FFE6DF}
 .status.sos .dot{background:var(--alert)}
 .feed{display:flex;flex-direction:column;gap:10px}
 .ev{background:#fff;border:1px solid var(--bone-2);border-left:3px solid var(--marigold);border-radius:12px;padding:12px 14px;font-size:.9rem;animation:pop .25s ease}
 .ev small{display:block;color:var(--ink-soft);font-size:.72rem;margin-top:3px}
 .ev.good{border-left-color:var(--ok)}
-.ev.bad{border-left-color:var(--alert);background:#FDF1EF;font-weight:600}
+.ev.bad{border-left-color:var(--alert);background:#FFE6DF;font-weight:600}
 @keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .act{background:#fff;border:1px solid var(--bone-2);border-radius:14px;padding:14px 10px;font-family:var(--body);font-weight:600;font-size:.85rem;color:var(--ink);cursor:pointer}
@@ -215,7 +215,7 @@ body{font-family:var(--body);background:var(--dusk);color:var(--cream);min-heigh
   // pills
   $('meds').addEventListener('click', function(){
     this.innerHTML='Taken ✔ Well done!';
-    this.style.background='#E7F2EA';
+    this.style.background='#E1F5EC';
     if($('shareMeds').checked){ feedAdd('Papa took his morning pills 💊','good'); toast('Circle updated: pills taken 💊'); }
     else{ toast('Noted on Papa’s phone only - sharing is off'); }
   });
