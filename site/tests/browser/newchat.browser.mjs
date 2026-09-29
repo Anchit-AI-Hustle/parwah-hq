@@ -172,6 +172,23 @@ for (const [label, viewport] of [['phone', { width:390, height:844 }], ['wide sc
   await page.close();
 }
 
+// The smallest phone: the floating buttons are round icons and cover none of
+// the controls they float over. With their words they hid "Start duel".
+{
+  const page = await open({ width:320, height:682 });
+  const fab = await box(page, '#chat-fab'), ek = await box(page, '#ekta-fab');
+  ok(fab && fab.width <= 60 && Math.abs(fab.width - fab.height) < 2, 'small phone: New chat is a round icon (' + (fab && Math.round(fab.width)) + 'px)');
+  ok(ek && ek.width <= 60, 'small phone: so is Ekta');
+  ok(!overlap(fab, ek), 'small phone: and they do not overlap each other');
+  ok(await page.getAttribute('#chat-fab', 'aria-label') === 'Start a new chat' && await page.getAttribute('#ekta-fab', 'aria-label') === 'Ask Ekta',
+     'small phone: both still have their names for screen readers');
+  // What they cover is the width they take: with words, the pair spread
+  // across more than half of a 320px screen and sat on "Start duel".
+  const covered = Math.max(fab.width, ek.width) / 320;
+  ok(covered <= 0.2, 'small phone: the floating buttons take at most a fifth of the width (' + Math.round(covered * 100) + '%)');
+  await page.close();
+}
+
 // Alone in the circle: no dead end, a way to invite.
 {
   const page = await open({ width:390, height:844 }, [eventsJson.members[0]]);
