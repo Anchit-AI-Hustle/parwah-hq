@@ -1488,7 +1488,7 @@ appob = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 check("entry: a phone sees what Parwah is, not only a sign-in box",
       '<div class="obpoints">' in appob and 'class="obpoints deskonly"' not in appob)
 check("entry: the explanation is legible on the cream ground, not sidebar grey",
-      ".obpoint{display:flex;gap:11px;align-items:flex-start;font-size:.92rem;line-height:1.45;color:var(--ink-soft)}" in appob)
+      ".obpoint{display:flex;gap:var(--space-12);align-items:flex-start;font-size:var(--fs-14);line-height:1.45;color:var(--ink-soft)}" in appob)
 check("entry: there is a way to see the product before it asks for anything",
       'id="au-see"' in appob and 'id="demo-step"' in appob and "showStep('demo')" in appob)
 check("entry: an interview can open straight onto the concept",
@@ -1617,10 +1617,59 @@ _loose = re.findall(r"#[0-9A-Fa-f]{3,8}\b", _after)
 check(f"theme: every colour is a token, none loose in the components ({len(_loose)} loose)",
       not _loose, ", ".join(sorted(set(_loose))[:6]))
 
+# ---------- 10h. The design language system (docs/design/DESIGN_SYSTEM.md) ----------
+# Every spacing, type size, corner, layer and duration is a token. Raw values
+# are allowed only inside the token block itself. Layout sizes (56px and up),
+# hairlines (1px), zero, em-relative and fluid clamp() type are not rhythm.
+_comp = _css[_css.index("}", _css.index(":root{")) + 1:]
+_mk = _appt[_appt.index("</style>"):]
+_inline = " ;".join(re.findall(r'style=\\?"([^"\\]*)', _mk))
+def _decls(text, prop_re):
+    return [(m.group(1), m.group(2)) for m in re.finditer(r"(?<![\w-])(" + prop_re + r")\s*:\s*([^;{}\"]+)", text)]
+_SP = r"(?:padding|margin)(?:-(?:top|right|bottom|left))?|gap|row-gap|column-gap"
+def _raw_space(v):
+    bad = []
+    for n, u in re.findall(r"(-?\d*\.?\d+)(px|rem)\b", v):
+        px = abs(float(n)) * (16 if u == "rem" else 1)
+        if px not in (0, 1) and px < 56: bad.append(n + u)
+    return bad
+_rs = [p + ":" + v for p, v in _decls(_comp + " ;" + _inline, _SP) if _raw_space(v)]
+check(f"dls: spacing comes from the 4pt tokens, never raw px ({len(_rs)} raw)", not _rs, "; ".join(_rs[:4]))
+_rf = [v for p, v in _decls(_comp + " ;" + _inline, "font-size")
+       if re.search(r"\d(px|rem)\b", v) and "clamp" not in v]
+check(f"dls: type sizes come from the type ramp ({len(_rf)} raw)", not _rf, "; ".join(_rf[:4]))
+_rr = [v for p, v in _decls(_comp + " ;" + _inline, "border-radius") if re.search(r"\dpx\b", v)]
+check(f"dls: corners come from the radius tokens ({len(_rr)} raw)", not _rr, "; ".join(_rr[:4]))
+_rz = [v for p, v in _decls(_comp + " ;" + _inline, "z-index") if re.fullmatch(r"\s*-?\d+\s*", v)]
+check(f"dls: layers are named tokens, never numbers ({len(_rz)} raw)", not _rz, "; ".join(_rz[:4]))
+_rt = [v for p, v in _decls(_comp, "transition") if re.search(r"(?<![\w-])\d*\.?\d+m?s\b", v)]
+check(f"dls: motion uses the duration tokens ({len(_rt)} raw)", not _rt, "; ".join(_rt[:3]))
+_used = set(re.findall(r"var\((--(?:space|fs|radius|z|motion)-[a-z0-9]+)\)", _appt))
+_defined = set(re.findall(r"(--(?:space|fs|radius|z|motion)-[a-z0-9]+)\s*:", _css[_css.index(":root{"):_css.index("}", _css.index(":root{"))]))
+check("dls: every token used is defined", _used <= _defined, ", ".join(sorted(_used - _defined)))
+check("dls: reduced motion switches off every animation, present and future",
+      "@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important" in _appt)
+check("dls: keyboard focus is one visible ring from tokens, in both themes",
+      ":focus-visible{outline:3px solid var(--focus-ring)" in _appt and "outline:none" not in _css and "outline:0;" not in _css)
+_head = _appt[:_appt.index("<body")]
+_man = (REPO / "site/public/manifest.webmanifest").read_text(encoding="utf-8")
+check("brand: Parwah is tagged as the family superapp (title, meta, share cards, manifest, schema, screens)",
+      "<title>Parwah - the family superapp</title>" in _head and 'content="Parwah - the family superapp"' in _head
+      and "family superapp" in _man and '"categories"' in _man and '"SoftwareApplication"' in _head
+      and 'class="eyebrow superapp">The family superapp<' in _appt and 'class="side-tag">family superapp<' in _appt)
+check("dls: the design system, checklist and review are written down",
+      all((REPO / f).exists() for f in ("docs/design/DESIGN_SYSTEM.md", "docs/design/CHECKLIST.md", "docs/design/REVIEWS.md")))
+check("dls: every pull request carries the design checklist",
+      (REPO / ".github/pull_request_template.md").exists()
+      and "Design sanity" in (REPO / ".github/pull_request_template.md").read_text(encoding="utf-8"))
+
 _light = dict(re.findall(r"(--[a-z0-9-]+):\s*([^;]+);",
                          _css[_css.index(":root{"):_css.index("}", _css.index(":root{"))]))
 _dark = dict(re.findall(r"(--[a-z0-9-]+):\s*([^;]+);", _css[_css.index(':root[data-theme="dark"]{'):_dark_end]))
 _notype = {"--tabs-h", "--side-w", "--disp", "--body", "--dev", "color-scheme"}
+# Spacing, type, radius, layer, motion and tap tokens are the same in both
+# themes by design; only colours need a dark value.
+_notype |= {t for t in _light if re.match(r"--(space|fs|radius|z|motion|tap|avatar)-", t)}
 _missing = sorted(t for t in _light if t not in _notype and t not in _dark)
 check(f"theme: every colour token has a dark value ({len(_dark)} of {len(_light) - len(_notype)})",
       not _missing, ", ".join(_missing[:6]))
