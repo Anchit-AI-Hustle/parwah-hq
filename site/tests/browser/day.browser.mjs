@@ -57,10 +57,11 @@ const hsigns = SIGNS.map((s, i) => ({ key:s.k, name:s.en, hi:s.hi,
   text: (i === 4 || i === 9) ? null : 'A steady day for ' + s.en + '. Say the thing you have been putting off.',
   source: (i === 4 || i === 9) ? null : 'horoscope-app-api' }));
 
-let dayMode = 'normal';   // 'normal' | 'nodob' | 'guessed'
+let dayMode = 'normal';   // 'normal' | 'nodob' | 'guessed' | 'unset'
 function dayJson(){
   return { ok:true, day: new Date().toISOString().slice(0,10),
-    place: dayMode === 'guessed' ? { name:'Chhotapur', lat:28.6139, lon:77.2090, tz:'Asia/Kolkata', guessed:true }
+    place: dayMode === 'unset' ? { name:'New Delhi', lat:28.6139, lon:77.2090, tz:'Asia/Kolkata', guessed:true, unset:true }
+         : dayMode === 'guessed' ? { name:'Chhotapur', lat:28.6139, lon:77.2090, tz:'Asia/Kolkata', guessed:true }
                                  : { name:'Delhi', lat:28.6139, lon:77.2090, tz:'Asia/Kolkata', guessed:false },
     tz:'Asia/Kolkata', panchang: LIVE,
     current: RUNNING,
@@ -127,16 +128,31 @@ const sun = await page.locator('#mu-sun').textContent();
 ok(/Sunrise \d/.test(sun) && /Sunset \d/.test(sun) && sun.includes('Delhi'), 'sunrise and sunset are shown for that city → ' + sun);
 ok(await page.locator('#mu-guess').isHidden(), 'a known city carries no fallback warning');
 
-// ---- the verdict, which is the whole point of the screen ----
+// ---- ONE ANSWER FOR EVERY MOMENT ----
+// Rahu Kaal, Yamaganda and Gulika Kaal outrank the Choghadiya; Abhijit makes
+// midday good; otherwise the Choghadiya decides. This is written here again,
+// independently, so the app is checked against the rule rather than itself.
+const SP = [['Rahu Kaal', LIVE.rahuKaal, false], ['Yamaganda', LIVE.yamaganda, false],
+            ['Gulika Kaal', LIVE.gulikaKaal, false], ['Abhijit Muhurat', LIVE.abhijit, true]].filter(x => x[1]);
+const SEQ = LIVE.day.concat(LIVE.night);
+function truth(t){
+  for (const [n, per, g] of SP) if (!g && t >= +new Date(per.from) && t < +new Date(per.to)) return { label: n, good: false };
+  for (const [n, per, g] of SP) if (g && t >= +new Date(per.from) && t < +new Date(per.to)) return { label: n, good: true };
+  const w = SEQ.find(x => t >= +new Date(x.from) && t < +new Date(x.to));
+  return w ? { label: w.name, good: w.good !== false } : null;
+}
+const NOW = truth(Date.now());
+
 const state = (await page.locator('#mu-state').textContent()).trim();
 ok(/^(✓ A good time right now|✕ Better to wait|Between)/.test(state),
    'the screen opens with a verdict, in words → ' + state);
 const good = state.startsWith('✓');
+ok(good === NOW.good, `the verdict follows the one rule: ${NOW.label} is ${NOW.good ? 'good' : 'a time to wait'}`);
 ok(await page.locator('#mu-verdict').getAttribute('class') === 'card verdict ' + (good ? 'ok' : 'no'),
    'and the card carries the matching status, not colour alone');
 const vname = await page.locator('#mu-name').textContent();
-ok(vname.includes(RUNNING.name) && /until \d/.test(vname),
-   'the period is named, with when it ends → ' + vname);
+ok(vname.startsWith(NOW.label) && /until \d/.test(vname),
+   'what is running now is named, with when it ends → ' + vname);
 const vmean = await page.locator('#mu-mean').textContent();
 ok(vmean.length > 15 && !/-/.test(vmean.slice(0, 8)),
    'and what it is for, in a plain sentence → ' + vmean);
@@ -144,50 +160,102 @@ const vnext = await page.locator('#mu-next').textContent();
 ok(/(Next good window|This window ends at|Good the rest)/.test(vnext),
    'followed by what happens next → ' + vnext);
 
-// ---- the day as one band, in real time ----
+// ---- the day in three lines, inside the answer ----
+const facts = await page.locator('#mu-facts .mufact').allTextContents();
+ok(facts.length === 3, 'three facts under the answer, not three more cards');
+ok(/Best time ahead/.test(facts[0]) && /Next to avoid/.test(facts[1]) && /rises .* sets /.test(facts[2]),
+   'best time ahead, next to avoid, and the sun → ' + facts.map(f => f.trim()).join(' | '));
+
+// ---- five tabs, overview first ----
+const tabs = page.locator('#mu-tabs [role="tab"]');
+ok(await tabs.count() === 5, 'the detail is five tabs');
+ok(await page.locator('#mu-tabs').getAttribute('role') === 'tablist', 'announced as tabs');
+ok(await page.locator('#mt-overview').getAttribute('aria-selected') === 'true', 'Overview is chosen when the day opens');
+const visiblePanels = async () => (await page.locator('#pane-day .mtab').evaluateAll(ps => ps.filter(p => !p.hidden).map(p => p.dataset.mt))).join();
+ok(await visiblePanels() === 'overview', 'and only its panel shows');
+const boxes = await tabs.evaluateAll(bs => bs.map(b => b.getBoundingClientRect().right));
+ok(boxes.every(r => r <= 390), 'on a phone all five tabs fit on screen, none hidden off the edge');
+
+// ---- the band, from the same answer ----
 const segs = page.locator('#mu-tl button');
-ok(await segs.count() === 16, 'the whole day is one band of sixteen windows');
-// Each segment's share of the band must be its share of the day and night.
-// This compared ROUNDED PIXEL widths, which failed for a fortnight around
-// every equinox: on 28 September a day period is 89.9 minutes and a night
-// one 90.1, so all sixteen really are about 21 px wide and the correct band
-// looked like a regression. Comparing the shares to the durations holds in
-// every season - and still catches equal boxes, which would put 6.250% on
-// every segment where the real day share is 6.243%.
-const shares = await page.locator('#mu-tl').evaluate(el =>
-  [...el.querySelectorAll('button')].map(b => parseFloat(b.style.flexBasis)));
-const seq = LIVE.day.concat(LIVE.night);
-const t0 = +new Date(seq[0].from), span = +new Date(seq[seq.length - 1].to) - t0;
-const want = seq.map(x => (+new Date(x.to) - +new Date(x.from)) / span * 100);
-ok(shares.length === 16 && shares.every((w, i) => Math.abs(w - want[i]) < 0.001),
-   'the segments are real durations, not equal boxes');
-ok(await page.locator('#mu-tl button.now').count() === 1, 'exactly one segment is marked as now');
+const n = await segs.count();
+ok(n >= 8, 'the whole day is one band (' + n + ' parts)');
+const shares = await page.locator('#mu-tl').evaluate(el => [...el.querySelectorAll('button')].map(b => parseFloat(b.style.flexBasis)));
+ok(Math.abs(shares.reduce((a, b) => a + b, 0) - 100) < 0.01, 'the parts add up to the whole day and night');
+const t0 = +new Date(SEQ[0].from), span = +new Date(SEQ[SEQ.length - 1].to) - t0;
+const titles = await segs.evaluateAll(bs => bs.map(b => [b.title, b.dataset.good]));
+let acc = t0, agree = 0;
+for (let i = 0; i < n; i++) {
+  const mid = acc + shares[i] / 100 * span / 2;
+  const t = truth(mid);
+  if (t && titles[i][0].startsWith(t.label) && (titles[i][1] === '1') === t.good) agree++;
+  acc += shares[i] / 100 * span;
+}
+ok(agree === n, `every part of the band is the rule's answer for that time (${agree}/${n})`);
+ok(await page.locator('#mu-tl button.now').count() === 1, 'exactly one part is marked as now');
+ok((await page.locator('#mu-tl button.now').getAttribute('title')).startsWith(NOW.label), 'and it is the same one the verdict names');
 const key = await page.locator('.tlkey').textContent();
-ok(/Good time/.test(key) && /Better to wait/.test(key) && /Now/.test(key),
-   'a key names every state the band uses');
+ok(/Good time/.test(key) && /Better to wait/.test(key) && /Now/.test(key), 'a key names every state the band uses');
 ok((await page.locator('#mu-tl button .sr').first().textContent()).length > 20,
-   'and every segment carries its own words for a screen reader');
-await segs.nth(5).click(); await page.waitForTimeout(150);
+   'and every part carries its own words for a screen reader');
+await segs.nth(Math.min(5, n - 1)).click(); await page.waitForTimeout(150);
 const picked = await page.locator('#mu-tlpick').textContent();
 ok(/^[✓✕] /.test(picked) && picked.length > 25, 'tapping a part of the day says what it is → ' + picked);
-ok(await segs.nth(5).getAttribute('aria-pressed') === 'true', 'and the tapped segment says it is selected');
+ok(await segs.nth(Math.min(5, n - 1)).getAttribute('aria-pressed') === 'true', 'and the tapped part says it is selected');
 
-// ---- the sixteen are a reference, not the reading ----
-ok(await page.locator('#mu-day .ev').first().isHidden(),
-   'the full list starts closed - it is a reference, not the answer');
-await page.locator('details.more summary').first().click(); await page.waitForTimeout(200);
+// ---- coming up never contradicts the band ----
+const soon = await page.locator('#mu-soon .murow').evaluateAll(rs => rs.map(r => ({
+  label: r.querySelector('.what b').textContent, chip: r.querySelector('.chip').textContent })));
+ok(soon.length >= 3, 'coming up lists the next changes in the day');
+ok(soon.every(r => titles.some(t => t[0].startsWith(r.label))), 'each one is a part of the same band');
+const nextGoodName = (vnext.match(/Next good window: ([^,]+),/) || [])[1];
+if (nextGoodName) ok(soon.some(r => r.label === nextGoodName && /Good|Special/i.test(r.chip)),
+  'the "next good window" in the answer is the same one coming up marks good → ' + nextGoodName);
+
+// ---- hour by hour ----
+await page.click('#mt-hours'); await page.waitForTimeout(150);
+ok(await visiblePanels() === 'hours', 'the Hourly tab shows only the hours');
+const hours = await page.locator('#mu-hours .murow').evaluateAll(rs => rs.map(r => ({
+  now: r.classList.contains('now'), chip: r.querySelector('.chip').textContent, text: r.textContent })));
+ok(hours.length >= 12, 'every hour from now to tomorrow\'s sunrise (' + hours.length + ')');
+ok(hours[0].now, 'starting with the hour we are in, marked now');
+ok(hours.every(h => /^(Good|Wait|Mixed)$/.test(h.chip)), 'each hour is Good, Wait or Mixed');
+ok(hours.filter(h => h.chip === 'Mixed').every(h => /until|from/.test(h.text)), 'a mixed hour says exactly when it changes');
+const before = hours.length;
+await page.click('#mu-earlier'); await page.waitForTimeout(150);
+ok(await page.locator('#mu-hours .murow').count() > before, 'earlier hours of today are one tap away');
+ok(await page.locator('#mu-day .ev').first().isHidden(), 'the traditional sixteen stay folded: a reference, not the reading');
+await page.locator('#mp-hours details.more summary').click(); await page.waitForTimeout(200);
 ok(await page.locator('#mu-day .ev').count() === 8, 'opened, the eight day windows are there');
 ok(await page.locator('#mu-night .ev').count() === 8, 'and the eight night ones');
 const dayRows = await page.locator('#mu-day .ev').allTextContents();
 ok(dayRows.every(t => /^[✓✕]/.test(t.trim())), 'each carries a tick or a cross, not just a colour');
-ok(dayRows.filter(t => t.includes('· now')).length === 1, 'exactly one is marked as running now');
 
-const named = await page.locator('#mu-named .avoidrow').allTextContents();
-ok(named.some(t => t.includes('Rahu Kaal') && /nothing new/i.test(t)), 'Rahu Kaal is explained, not just named');
-ok(named.length === 4, 'the three to avoid and the one to use sit in one card, not four');
-ok(named.some(t => t.includes('Gulika Kaal')), 'Gulika Kaal is listed');
-ok(named.some(t => t.includes('Yamaganda')), 'Yamaganda is listed');
-ok(named.some(t => t.includes('Abhijit')), 'Abhijit is listed');
+// ---- keyboard: arrow keys move between tabs ----
+await page.focus('#mt-hours'); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(100);
+ok(await page.locator('#mt-good').getAttribute('aria-selected') === 'true' && await visiblePanels() === 'good',
+   'the right arrow moves to the next tab');
+
+// ---- good times ----
+const goodRows = await page.locator('#mu-good .murow, #mu-good2 .murow').evaluateAll(rs => rs.map(r => ({
+  label: r.querySelector('.what b').textContent, chip: r.querySelector('.chip').textContent, text: r.textContent })));
+ok(goodRows.some(r => r.label === 'Abhijit Muhurat'), 'Abhijit Muhurat is among the special good times');
+ok(goodRows.some(r => r.label === 'Amrit'), 'and Amrit, the best window');
+ok(goodRows.filter(r => r.chip === 'Covered').every(r => /covers all of it/.test(r.text)),
+   'a good window that a time to avoid covers is marked covered, not good');
+// Independently: which good windows does a time to avoid cover completely?
+const covered = SEQ.filter(w => w.good !== false && SP.some(([, per, g]) => !g && +new Date(per.from) <= +new Date(w.from) && +new Date(per.to) >= +new Date(w.to)));
+ok(goodRows.filter(r => r.chip === 'Covered').length === covered.length,
+   `and exactly those (${covered.length}) are marked covered`);
+
+// ---- times to avoid ----
+await page.click('#mt-avoid'); await page.waitForTimeout(150);
+const avoid = await page.locator('#mu-avoid .murow').allTextContents();
+ok(avoid.length === 3, 'the three times to avoid are listed together');
+ok(avoid.some(t => t.includes('Rahu Kaal') && /Nothing new/i.test(t)), 'Rahu Kaal is explained, not just named');
+ok(avoid.some(t => t.includes('Yamaganda')) && avoid.some(t => t.includes('Gulika Kaal')), 'with Yamaganda and Gulika Kaal');
+ok(await page.locator('#mu-avoid2 .murow').count() === SEQ.filter(w => w.good === false).length,
+   'and every Choghadiya that is better to wait');
 
 // ---- rashifal ----
 await page.click('#day-seg button[data-sec="rashi"]');
@@ -231,9 +299,9 @@ ok(await page.locator('#e-dob').isVisible() && (await page.locator('#e-dob').get
 // ---- the explainers: the family can find out how any of this works ----
 await page.reload(); await page.waitForTimeout(400);
 await page.evaluate(() => { location.hash = '#day'; }); await page.waitForTimeout(600);
-ok(await page.locator('#mu-how .explain').first().isHidden(), 'the explanation waits until asked for');
-await page.locator('#mu-how summary').click(); await page.waitForTimeout(200);
-const how = await page.locator('#mu-how .explain').textContent();
+ok(await page.locator('#mu-how').isHidden(), 'the explanation waits until asked for');
+await page.click('#mt-how'); await page.waitForTimeout(200);
+const how = await page.locator('#mu-how').textContent();
 ok(/eight equal parts/.test(how), 'it says the day is split into eight');
 ok(/lord of that weekday/.test(how), 'and why the sequence moves with the weekday');
 ok(/fifteen/.test(how) && /48 minutes/.test(how), 'and that Abhijit is a fifteenth, not an eighth');
@@ -263,6 +331,26 @@ await page.waitForTimeout(600);
 ok(await page.locator('#mu-guess').isVisible(), 'an unknown city warns that these are fallback timings');
 const g = await page.locator('#mu-guess').textContent();
 ok(g.includes('Chhotapur') && g.includes('Delhi') && /profile/i.test(g), 'and says exactly what to do about it → ' + g.slice(0, 90));
+
+// ---- no city at all is not an unknown city ----
+dayMode = 'unset';
+await page.reload();
+await page.waitForTimeout(400);
+await page.evaluate(() => { location.hash = '#day'; });
+await page.waitForTimeout(600);
+const g2 = await page.locator('#mu-guess').textContent();
+ok(/not in your profile yet/.test(g2) && !/don.t know/.test(g2), 'no city says "add your city", not "we don\'t know New Delhi" → ' + g2.slice(0, 80));
+ok((await page.locator('#mu-place').textContent()).includes('New Delhi'), 'and names the city the timings are for');
+await page.click('#mu-addcity'); await page.waitForTimeout(400);
+ok(await page.locator('#editform').isVisible() && await page.locator('#e-place').evaluate(el => el === document.activeElement),
+   '"Add my city" opens the profile with the city box ready to type in');
+
+// ---- arriving again starts on the overview ----
+await page.evaluate(() => { location.hash = '#day'; }); await page.waitForTimeout(400);
+await page.click('#mt-avoid'); await page.waitForTimeout(100);
+await page.evaluate(() => { location.hash = '#home'; }); await page.waitForTimeout(300);
+await page.evaluate(() => { location.hash = '#day'; }); await page.waitForTimeout(400);
+ok(await page.locator('#mt-overview').getAttribute('aria-selected') === 'true', 'coming back to the day starts on the overview again');
 
 ok(errors.length === 0, 'no page errors' + (errors.length ? ' - ' + errors.slice(0,3).join(' | ') : ''));
 console.log('\n' + pass + ' passed, ' + fail + ' failed');

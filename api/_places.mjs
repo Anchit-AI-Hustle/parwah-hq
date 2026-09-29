@@ -55,7 +55,9 @@ export const DEFAULT_PLACE = { name: 'New Delhi', lat: 28.6139, lon: 77.2090, tz
 
 export function placeOf(text) {
   const t = String(text || '').trim().toLowerCase();
-  if (!t) return DEFAULT_PLACE;
+  // No city at all is not an unknown city: the app says "add your city",
+  // not "we don't know New Delhi".
+  if (!t) return { ...DEFAULT_PLACE, unset: true };
   if (CITIES[t]) { const c = CITIES[t]; return { name: text.trim(), lat: c[0], lon: c[1], tz: c[2], guessed: false }; }
   // "Pune, Maharashtra" / "Greater Noida" - try each comma part, then any
   // known city named inside the string.
