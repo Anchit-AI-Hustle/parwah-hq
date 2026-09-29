@@ -102,6 +102,9 @@ for (const theme of ['light', 'dark']) {
     await page.route('**/api/**', r => r.fulfill({ json: { ok: false, error: 'stub' } }));
     await page.route('**/api/events*', r => r.fulfill({ json: EV }));
     await page.route('**/api/care*', r => r.fulfill({ json: CARE }));
+    await page.route('**/api/settings?area=location*', r => r.fulfill({ json: { ok:true, me:{ sharing:true, precision:'exact', updatedAt:now },
+      shares:[{ memberId:ME, name:'Rohan', mine:true, lat:28.61, lng:77.2, accuracy:15, precision:'exact', updatedAt:now, stale:false },
+              { memberId:'22222222-2222-2222-2222-222222222222', name:'Papa', relation:'father', lat:18.52, lng:73.85, accuracy:1100, precision:'area', updatedAt:new Date(Date.now() - 7200e3).toISOString(), stale:true }] } }));
     await page.addInitScript(() => {
       localStorage.setItem('parwah', JSON.stringify({ code:'ABCDEF', memberId:'11111111-1111-1111-1111-111111111111', name:'Rohan', role:'family', circleName:'Sharma Family' }));
       localStorage.setItem('parwah-user', JSON.stringify({ id:'7', name:'Rohan', toured:true }));
