@@ -262,14 +262,23 @@ EM_FORMS = [
     ("&#82" + "12;",      "decimal entity"),
     ("&#x20" + "14;",     "hex entity"),
 ]
+# En dashes: none in what a person sees - the site, and every message the
+# server sends back. Copy uses a hyphen, or words ("2 to 12 players").
+EN_FORMS = [
+    ("\u2013",            "en dash"),
+    ("%E2%80" + "%93",    "percent-encoded en dash"),
+    ("&nd" + "ash;",      "ndash entity"),
+    ("&#82" + "11;",      "decimal en dash entity"),
+]
+_user_facing = lambda f: f.parts[len(REPO.parts):][:2] == ("site", "public") or f.parts[len(REPO.parts):][:1] == ("api",)
 _dashed = []
 for f in _dash_files:
     body = f.read_text(encoding="utf-8", errors="ignore")
-    for needle, label in EM_FORMS:
+    for needle, label in EM_FORMS + (EN_FORMS if _user_facing(f) else []):
         n = body.lower().count(needle.lower())
         if n:
             _dashed.append(f"{f.relative_to(REPO)}: {n} {label}")
-check("copy: no em dashes anywhere, encoded ones included",
+check("copy: no em dashes anywhere, and no en dashes in anything a person sees",
       not _dashed, "; ".join(_dashed[:4]))
 
 # 10b. security headers enforced platform-wide
@@ -1120,6 +1129,29 @@ check("signin: the PINs a thief tries first are refused",
       "'123456'" in _au and "'000000'" in _au)
 check("signin: wrong PINs lock the account rather than allowing a million tries",
       "MAX_TRIES" in _au and "locked_until" in _authmjs and "lockMessage" in _authmjs)
+# A PIN of 4 to 6 numbers or a password, the person's choice. An old 6-digit
+# PIN signs in once, then a new one is chosen before any session is issued.
+check("signin: a PIN of 4 to 6 numbers, or a password",
+      "PIN_MIN = 4" in _au and "PIN_MAX = 6" in _au and "PASS_MIN = 8" in _au and "PIN_LEN" not in _au)
+check("signin: an old 6-digit PIN is marked, and replaced before a session is issued",
+      "add column if not exists secret_v" in _dbs and "changeSecret: true" in _authmjs
+      and 0 < _authmjs.find("if (user.secret_v !== SECRET_V) {") < _authmjs.find("const token = newToken()"))
+# The try is claimed in the database, while unlocked, BEFORE the PIN is
+# checked. Read-check-then-write let a burst of guesses all be checked.
+_claim = re.search(r"pin_tries = pin_tries \+ 1\s+where id = \$\{user\.id\} and \(locked_until is null or locked_until <= now\(\)\)", _authmjs)
+check("signin: each try is claimed before it is checked, so a burst cannot beat the lock",
+      _claim is not None and _claim.start() < _authmjs.find("verifyPin(body.pin, user.pin_salt, user.pin_hash)"))
+check("signin: a background refresh proves itself with the session, not a PIN",
+      "sessionUser(sql, tokenOf(req))" in _authmjs and "su.user_id === user.id" in _authmjs)
+check("signin: the box takes a PIN or a password, typed out of sight",
+      re.search(r'<input type="password" id="au-pin"', _appa) is not None
+      and 'id="au-pin2"' in _appa and 'maxlength="6"' not in _appa.split('id="au-pin"')[1][:200])
+_old_copy = re.findall(r"6-number|[Ss]ix numbers|(?<!to )\b6 numbers", _appa)
+check("signin: no copy still asks for six numbers", not _old_copy, ", ".join(_old_copy))
+check("signin: the lock and the old-PIN path are tested against a real database",
+      (REPO / "site/tests/db/signin.dbtest.mjs").exists()
+      and "test:db" in (REPO / "package.json").read_text(encoding="utf-8")
+      and "npm run test:db" in (REPO / ".github/workflows/pr.yml").read_text(encoding="utf-8"))
 check("signin: a session token is issued, and only its hash is stored",
       "newToken()" in _authmjs and "tokenHash(token)" in _authmjs and "createHash('sha256')" in _au)
 check("signin: sessions expire", "SESSION_DAYS" in _au and "expires_at" in _dbs)

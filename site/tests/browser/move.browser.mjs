@@ -68,7 +68,7 @@ const BASE = 'http://127.0.0.1:' + server.address().port;
 
 let chromium;
 try { ({ chromium } = await import('playwright-core')); }
-catch { console.log('playwright-core is not installed - see site/tests/browser/day.browser.mjs.'); server.close(); process.exit(0); }
+catch { console.log('playwright-core is not installed - see site/tests/browser/day.browser.mjs.'); server.close(); process.exit(process.env.CI ? 1 : 0); }
 
 let pass = 0, fail = 0;
 const ok = (c, m) => { console.log((c ? 'PASS  ' : 'FAIL  ') + m); c ? pass++ : fail++; };

@@ -11,7 +11,8 @@ import { db, ensureSchema, isUuid, normPhone, phoneError, rateLimit, clientIp, s
 import { fail, failDb } from './_fail.mjs';
 import { pushCircle } from './_push.mjs';
 import { pinError, hashPin, verifyPin, newToken, tokenHash, looksLikeToken,
-         MAX_TRIES, LOCK_MINUTES, lockMessage, SESSION_DAYS } from './_auth.mjs';
+         MAX_TRIES, LOCK_MINUTES, lockMessage, SESSION_DAYS, SECRET_V } from './_auth.mjs';
+import { tokenOf } from './_token.mjs';
 import { joinError, joinRow, joinedMessage } from './_waitlist.mjs';
 
 // Every circle this number belongs to, each carrying what is waiting in it.
@@ -201,7 +202,7 @@ export default async function handler(req, res) {
     if (!np) return res.status(400).json({ ok: false, error: phoneError(body.cc) });
     const phone = np.e164;
 
-    let rows = await sql`select id, name, phone, toured_at, pin_hash, pin_salt, pin_tries, locked_until
+    let rows = await sql`select id, name, phone, toured_at, pin_hash, pin_salt, pin_tries, locked_until, secret_v
                          from users where phone = ${phone}`;
     const isNew = !rows[0];
     if (isNew) {
@@ -213,16 +214,32 @@ export default async function handler(req, res) {
       if (perr) return res.status(200).json({ ok: true, exists: false, needPin: true, error: perr });
       const h = hashPin(body.pin);
       try {
-        rows = await sql`insert into users (phone, phone_cc, phone_local, name, pin_hash, pin_salt, pin_set_at)
-                         values (${phone}, ${np.cc}, ${np.local}, ${name}, ${h.hash}, ${h.salt}, now())
-                         returning id, name, phone, toured_at, pin_hash, pin_salt, pin_tries, locked_until`;
+        rows = await sql`insert into users (phone, phone_cc, phone_local, name, pin_hash, pin_salt, pin_set_at, secret_v)
+                         values (${phone}, ${np.cc}, ${np.local}, ${name}, ${h.hash}, ${h.salt}, now(), ${SECRET_V})
+                         returning id, name, phone, toured_at, pin_hash, pin_salt, pin_tries, locked_until, secret_v`;
       } catch (e) {
         // raced with another signup for the same phone - fall through to sign-in
-        rows = await sql`select id, name, phone, toured_at, pin_hash, pin_salt, pin_tries, locked_until
+        rows = await sql`select id, name, phone, toured_at, pin_hash, pin_salt, pin_tries, locked_until, secret_v
                          from users where phone = ${phone}`;
       }
     }
     const user = rows[0];
+
+    // A BACKGROUND REFRESH FROM A DEVICE ALREADY SIGNED IN. The app re-reads
+    // the circle list for the number it holds; it has no PIN to send, and
+    // must not need one. Its session token says who it is. Without this the
+    // reply was "PIN needed" with no user in it, and the app kept that.
+    if (!isNew && body.refresh === true) {
+      const su = await sessionUser(sql, tokenOf(req));
+      if (su && su.user_id === user.id) {
+        const circles = await circlesOf(sql, user.id);
+        return res.status(200).json({ ok: true, exists: true,
+          user: { id: user.id, name: user.name, phone: user.phone },
+          toured: !!user.toured_at, circles,
+          // An old 6-digit PIN: the app asks for a new PIN or password.
+          changeSecret: !user.pin_hash || user.secret_v !== SECRET_V });
+      }
+    }
 
     if (!isNew) {
       // An account made before PINs existed, or one the family has just let
@@ -232,24 +249,51 @@ export default async function handler(req, res) {
         if (perr) return res.status(200).json({ ok: true, exists: true, setPin: true, name: user.name, error: body.pin ? perr : null });
         const h = hashPin(body.pin);
         await sql`update users set pin_hash = ${h.hash}, pin_salt = ${h.salt}, pin_set_at = now(),
-                  pin_tries = 0, locked_until = null where id = ${user.id}`;
+                  pin_tries = 0, locked_until = null, secret_v = ${SECRET_V} where id = ${user.id}`;
       } else {
         if (user.locked_until && new Date(user.locked_until) > new Date()) {
           return res.status(429).json({ ok: false, locked: true, error: lockMessage(user.locked_until) });
         }
         if (!body.pin) return res.status(200).json({ ok: true, exists: true, needPin: true, name: user.name });
-        if (!verifyPin(body.pin, user.pin_salt, user.pin_hash)) {
-          const tries = (user.pin_tries || 0) + 1;
-          if (tries >= MAX_TRIES) {
-            const until = new Date(Date.now() + LOCK_MINUTES * 60000).toISOString();
-            await sql`update users set pin_tries = 0, locked_until = ${until} where id = ${user.id}`;
-            return res.status(429).json({ ok: false, locked: true, error: lockMessage(until) });
-          }
-          await sql`update users set pin_tries = ${tries} where id = ${user.id}`;
-          return res.status(401).json({ ok: false, wrongPin: true, left: MAX_TRIES - tries,
-            error: 'That PIN is not right. ' + (MAX_TRIES - tries) + ' ' + (MAX_TRIES - tries === 1 ? 'try' : 'tries') + ' left.' });
+        // Each try is claimed in the database BEFORE it is checked, and only
+        // while the number is not locked. Read-check-then-write let a burst
+        // of guesses sent at once all be checked before the lock landed.
+        const claim = await sql`update users set pin_tries = pin_tries + 1
+                                where id = ${user.id} and (locked_until is null or locked_until <= now())
+                                returning pin_tries`;
+        if (!claim[0]) {
+          const l = await sql`select locked_until from users where id = ${user.id}`;
+          return res.status(429).json({ ok: false, locked: true, error: lockMessage(l[0] && l[0].locked_until) });
         }
-        if (user.pin_tries) await sql`update users set pin_tries = 0, locked_until = null where id = ${user.id}`;
+        const tries = claim[0].pin_tries;
+        const lockNow = async () => {
+          const until = new Date(Date.now() + LOCK_MINUTES * 60000).toISOString();
+          await sql`update users set pin_tries = 0, locked_until = ${until}
+                    where id = ${user.id} and (locked_until is null or locked_until <= now())`;
+          const l = await sql`select locked_until from users where id = ${user.id}`;
+          return res.status(429).json({ ok: false, locked: true, error: lockMessage((l[0] && l[0].locked_until) || until) });
+        };
+        // Tries beyond the fifth were claimed by guesses already in flight.
+        if (tries > MAX_TRIES) return lockNow();
+        if (!verifyPin(body.pin, user.pin_salt, user.pin_hash)) {
+          if (tries >= MAX_TRIES) return lockNow();
+          return res.status(401).json({ ok: false, wrongPin: true, left: MAX_TRIES - tries,
+            error: 'That PIN or password is not right. ' + (MAX_TRIES - tries) + ' ' + (MAX_TRIES - tries === 1 ? 'try' : 'tries') + ' left.' });
+        }
+        await sql`update users set pin_tries = 0, locked_until = null where id = ${user.id}`;
+        // An old 6-digit PIN has just proved who this is, once. Before any
+        // session is issued, they choose a PIN or password under the new
+        // rules; the old PIN has to come with it, so this cannot be skipped.
+        if (user.secret_v !== SECRET_V) {
+          if (body.newPin == null || body.newPin === '') {
+            return res.status(200).json({ ok: true, exists: true, changeSecret: true, name: user.name });
+          }
+          const nerr = pinError(body.newPin);
+          if (nerr) return res.status(200).json({ ok: true, exists: true, changeSecret: true, name: user.name, error: nerr });
+          const h = hashPin(body.newPin);
+          await sql`update users set pin_hash = ${h.hash}, pin_salt = ${h.salt}, pin_set_at = now(),
+                    pin_tries = 0, locked_until = null, secret_v = ${SECRET_V} where id = ${user.id}`;
+        }
       }
     }
 

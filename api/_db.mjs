@@ -91,6 +91,9 @@ export async function ensureSchema(sql) {
   await sql`alter table users add column if not exists pin_set_at timestamptz`;
   await sql`alter table users add column if not exists pin_tries int not null default 0`;
   await sql`alter table users add column if not exists locked_until timestamptz`;
+  // Which rules the secret was chosen under (see SECRET_V in _auth.mjs).
+  // Null is the old 6-digit PIN: it still signs in once, then is replaced.
+  await sql`alter table users add column if not exists secret_v int`;
   // Sessions: only the HASH of a token is stored, so a copy of this table is
   // not a set of working logins.
   await sql`create table if not exists sessions (

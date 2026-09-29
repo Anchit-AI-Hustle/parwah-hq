@@ -19,6 +19,8 @@
 import http from 'http';
 import { readFile } from 'fs/promises';
 import path from 'path';
+// The real rule, so this stand-in server cannot drift from the real one.
+import { pinError } from '../../../api/_auth.mjs';
 
 const ROOT = new URL('../../public', import.meta.url).pathname;
 const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.png':'image/png', '.svg':'image/svg+xml', '.webmanifest':'application/manifest+json' };
@@ -41,6 +43,10 @@ const ME = '11111111-1111-1111-1111-111111111111';
 const PAPA = '22222222-2222-2222-2222-222222222222';
 const now = new Date().toISOString();
 const KNOWN = '+919873945238';
+// Signed up before PINs could be 4 to 6 numbers or a password: an old
+// 6-digit PIN, which signs in once and is then replaced.
+const LEGACY = '+919811100200';
+const legacyChanged = [];
 
 const eventsJson = { ok:true, circleName:'Sharma Family', code:'ABCDEF', seenAt:now, joinRequests:[], joinPolicy:'approve',
   sos:[], sosEscalateMin:5, pulse:null, calls:[],
@@ -53,7 +59,7 @@ try { ({ chromium } = await import('playwright-core')); }
 catch {
   console.log('playwright-core is not installed - see the note at the top of this file.');
   console.log('The deploy gate does not need it: run `npm test` for the checks that do gate a deploy.');
-  server.close(); process.exit(0);
+  server.close(); process.exit(process.env.CI ? 1 : 0);
 }
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 const errors = [];
@@ -92,6 +98,22 @@ async function fresh(opts){
     if (b.action === 'signout') return r.fulfill({ json:{ ok:true } });
     if (b.action === 'reset_request') return r.fulfill({ json:{ ok:true, asked:true } });
     const phone = (b.cc || '+91') + String(b.phone || '').replace(/\D/g, '');
+    if (phone === LEGACY) {
+      if (!b.pin) return r.fulfill({ json:{ ok:true, exists:true, needPin:true, name:'Papa' } });
+      if (b.pin !== '481920') return r.fulfill({ status:401, json:{ ok:false, wrongPin:true, left:4, error:'That PIN or password is not right. 4 tries left.' } });
+      if (!b.newPin) return r.fulfill({ json:{ ok:true, exists:true, changeSecret:true, name:'Papa' } });
+      const e = pinError(b.newPin);
+      if (e) return r.fulfill({ json:{ ok:true, exists:true, changeSecret:true, name:'Papa', error:e } });
+      legacyChanged.push(b.newPin);
+      return r.fulfill({ json:{ ok:true, exists:true, toured:true, token:'tok_'+'z'.repeat(40),
+        user:{ id:'99999999-9999-4999-8999-999999999999', name:'Papa', phone:LEGACY },
+        circles:[{ code:'ABCDEF', circleName:'Sharma Family', memberId:ME, memberName:'Papa', members:2 }] } });
+    }
+    if (b.refresh === true && opts.changeSecretOnOpen) {
+      return r.fulfill({ json:{ ok:true, exists:true, changeSecret:true, toured:true,
+        user:{ id:'77777777-7777-4777-8777-777777777777', name:'Rohan', phone:KNOWN },
+        circles:[{ code:'ABCDEF', circleName:'Sharma Family', memberId:ME, memberName:'Rohan', members:2 }] } });
+    }
     if (phone === KNOWN) {
       if (!b.pin) return r.fulfill({ json:{ ok:true, exists:true, needPin:true, name:'Rohan' } });
       if (b.pin !== GOOD_PIN) return r.fulfill({ status:401, json:{ ok:false, wrongPin:true, left:4, error:'That PIN is not right. 4 tries left.' } });
@@ -100,7 +122,8 @@ async function fresh(opts){
         circles:[{ code:'ABCDEF', circleName:'Sharma Family', memberId:ME, memberName:'Rohan', members:2 }] } });
     }
     if (!b.name) return r.fulfill({ json:{ ok:true, exists:false } });
-    if (!b.pin) return r.fulfill({ json:{ ok:true, exists:false, needPin:true, error:'Your PIN is 6 numbers.' } });
+    const perr = pinError(b.pin);
+    if (perr) return r.fulfill({ json:{ ok:true, exists:false, needPin:true, error:b.pin ? perr : null } });
     return r.fulfill({ json:{ ok:true, exists:true, toured:true, token:'tok_'+'y'.repeat(40),
       user:{ id:'88888888-8888-4888-8888-888888888888', name:b.name, phone }, circles:[] } });
   });
@@ -142,17 +165,55 @@ async function fresh(opts){
   await pg.locator('#au-name').fill('Rohan Sharma');
   await pg.locator('#au-go').click();
   await pg.waitForTimeout(500);
-  ok(await pg.locator('#au-pinwrap').isVisible(), 'a new sign-up must choose a PIN');
-  await pg.locator('#au-pin').fill('1234');
+  ok(await pg.locator('#au-pinwrap').isVisible(), 'a new sign-up must choose a PIN or password');
+  ok(await pg.locator('#au-pin2wrap').isVisible(), 'and type it twice, since nobody can see what they typed');
+  ok(/4 to 6 numbers/.test(await pg.locator('#au-pinrule').textContent()), 'the rule is shown before they choose');
+  await pg.locator('#au-pin').fill('12');
+  await pg.locator('#au-pin2').fill('12');
   await pg.locator('#au-go').click(); await pg.waitForTimeout(300);
-  ok(/6 numbers/.test(await pg.locator('#ob-err').textContent()), 'a short PIN is refused before it is sent');
+  ok(/4 to 6 numbers/.test(await pg.locator('#ob-err').textContent()), 'a 2-number PIN is refused before it is sent');
   ok(await pg.locator('#auth-step').isVisible(), 'and nobody gets in on a bad PIN');
-  await pg.locator('#au-pin').fill('481920');
+  await pg.locator('#au-pin').fill('4819');
+  await pg.locator('#au-pin2').fill('4818');
+  await pg.locator('#au-go').click(); await pg.waitForTimeout(300);
+  ok(/do not match/.test(await pg.locator('#ob-err').textContent()), 'two different entries are caught');
+  await pg.locator('#au-pin').fill('4819');
+  await pg.locator('#au-pin2').fill('4819');
   await pg.locator('#au-go').click();
   await pg.waitForTimeout(800);
-  ok(await pg.locator('#auth-step').isHidden(), 'a name and a PIN get through');
+  ok(await pg.locator('#auth-step').isHidden(), 'a name and a 4-number PIN get through');
   const tok = await pg.evaluate(() => { try { return localStorage.getItem('parwah-token'); } catch (e) { return null; } });
   ok(!!tok && tok.length > 20, 'and a session token is kept for every later request');
+  await pg.close();
+}
+
+// ---------- AN OLD 6-DIGIT PIN: signs in once, then chooses a new one ----------
+{
+  const pg = await fresh({ viewport:{ width:390, height:844 } });
+  await pg.locator('#au-phone').fill('98111 00200');
+  await pg.locator('#au-go').click(); await pg.waitForTimeout(600);
+  ok(await pg.locator('#au-pin2wrap').isHidden(), 'an old account is asked for its PIN, not to choose one yet');
+  await pg.locator('#au-pin').fill('481920');
+  await pg.locator('#au-go').click(); await pg.waitForTimeout(600);
+  ok(await pg.locator('#auth-step').isVisible(), 'the old 6-digit PIN is accepted once, but does not go straight in');
+  ok(await pg.locator('#au-pin2wrap').isVisible() && /Choose a PIN or password/.test(await pg.locator('#au-pinlabel').textContent()),
+     'it asks for a new PIN or password');
+  ok(/4 to 6 numbers or a password/.test(await pg.locator('#au-pinnote').textContent()), 'and says why, in plain words');
+  ok((await pg.locator('#au-pin').inputValue()) === '', 'with an empty box, not the old PIN in it');
+  await pg.locator('#au-pin').fill('Ghar@Sukh7');
+  await pg.locator('#au-pin2').fill('Ghar@Sukh7');
+  await pg.locator('#au-go').click(); await pg.waitForTimeout(900);
+  ok(await pg.locator('#auth-step').isHidden(), 'a password is a valid choice, and gets them in');
+  ok(legacyChanged.includes('Ghar@Sukh7'), 'and the old PIN travelled with the new one, so the change is proved');
+  await pg.close();
+}
+{
+  // Already signed in on this phone with an old PIN: the first open asks.
+  const pg = await fresh({ viewport:{ width:390, height:844 }, signedIn:true, changeSecretOnOpen:true });
+  await pg.waitForTimeout(1500);
+  ok(await pg.locator('#auth-step').isVisible(), 'opening the app signed in with an old PIN asks for a new one first');
+  ok((await pg.locator('#au-phone').inputValue()).replace(/\D/g, '') === '9873945238', 'with their number already filled in');
+  ok(/current PIN/.test(await pg.locator('#au-pinnote').textContent()), 'and asks for the current PIN once, as a sign-in would');
   await pg.close();
 }
 

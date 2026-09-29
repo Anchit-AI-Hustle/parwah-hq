@@ -32,6 +32,20 @@ jobs:
     name: Gate, Vercel build and browser suites
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    # A throwaway PostgreSQL, so sign-in is tested with the real handler and
+    # the real SQL: the lock, the old-PIN path, and guesses sent at once.
+    services:
+      postgres:
+        image: postgres:16
+        # Throwaway and reachable only from this job, so no password: nothing
+        # that looks like a credential is ever written into the repository.
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: parwah_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
     steps:
       # The default checkout for a pull_request is the MERGE of the PR into
       # main, so this tests what main will actually become, not the branch
@@ -60,10 +74,17 @@ jobs:
 
       # Pinned, and the browser installed by the same version that drives it:
       # a mismatch fails to launch rather than failing a test.
-      - name: Install a browser for the browser suites
+      # One install for both test-only packages: a second --no-save install
+      # would remove the first.
+      - name: Install a browser and a database driver for the tests
         run: |
-          npm i --no-save --no-audit --no-fund playwright-core@1.49.1
+          npm i --no-save --no-audit --no-fund playwright-core@1.49.1 pg@8
           npx --yes playwright-core@1.49.1 install --with-deps chromium
+
+      - name: Sign in against a real database
+        env:
+          PARWAH_TEST_DATABASE_URL: postgres://postgres@localhost:5432/parwah_test
+        run: npm run test:db
 
       - name: Run the browser suites
         run: npm run test:browser

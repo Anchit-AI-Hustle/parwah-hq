@@ -21,7 +21,7 @@ try { ({ chromium } = await import('playwright-core')); }
 catch {
   console.log('playwright-core is not installed - see the note at the top of this file.');
   console.log('The deploy gate does not need it: run `npm test` for the checks that do gate a deploy.');
-  process.exit(0);
+  process.exit(process.env.CI ? 1 : 0);
 }
 const b=await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 const errors=[]; let pass=0, fail=0;
