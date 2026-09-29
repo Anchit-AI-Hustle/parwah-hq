@@ -47,6 +47,14 @@ Commerce is NOT built here. Per the locked PRD, Shopify is the commerce layer at
    runs the gate, `ops/vercel-input.sh` and `npm run test:browser` on every PR into
    `main`, then merges exactly the tested commit and dispatches the deploy. Never
    add a way around the tests; to hold a PR back, mark it as a draft.
+   **While GitHub Actions is blocked for the organisation** (no runner starts),
+   the owner has authorised Claude (2026-09-29) to merge and deploy without asking
+   each time, once ALL of these pass on the exact commit: `npm test`,
+   `bash ops/vercel-input.sh`, `CI=1 npm run test:browser`, `npm run test:db`,
+   and the Vercel preview checked from outside. Then deploy `main` to production,
+   confirm READY, check the live site, and report afterwards. Anything that
+   deletes data, touches secrets or `hq/`, or is not a fix or requested feature
+   still needs asking first.
 
 ## The brand merge (decided 2026-09-13)
 

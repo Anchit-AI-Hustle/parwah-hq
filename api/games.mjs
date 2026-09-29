@@ -14,6 +14,9 @@ import { pushCircle } from './_push.mjs';
 // the deploy gate can unit-test it on a fresh clone, before npm install.
 import { MAX_ACTIVE, gameName, numberAfter, gameSummary, isBot, teamList, currentPlayer } from './_gamelist.mjs';
 export { MAX_ACTIVE, GAME_LABEL, gameName, numberAfter, gameSummary, isBot, currentPlayer } from './_gamelist.mjs';
+// Ludo, Bhabhi and Vyapar: the rules live in their own dependency-free module.
+import { boardStart, boardMove, runBoardBots, botSeats, bhabhiView, BOARD_SEATS, isOver as boardOver, vyEnd } from './_boardgames.mjs';
+const BOARD_KINDS = ['ludo', 'bhabhi', 'vyapar'];
 
 const SNAKES  = { 99:41, 95:75, 92:88, 89:68, 74:53, 64:60, 62:19, 49:11, 46:25, 16:6 };
 const LADDERS = { 2:38, 7:14, 8:31, 15:26, 21:42, 28:84, 36:44, 51:67, 71:91, 78:98, 87:94 };
@@ -272,6 +275,8 @@ export function runBots(st, rng) {
 
 // Never leak the secret movie to anyone but the actor.
 export function publicState(game, memberId) {
+  // In Bhabhi each player sees only their own cards.
+  if (game && game.state && game.state.kind === 'bhabhi') return { ...game, state: bhabhiView(game.state, memberId) };
   if (!game || !game.state || game.state.kind !== 'charades' || !game.state.prompt) return game;
   const actor = currentPlayer(game.state);
   if (actor && actor.id === memberId) return game;
@@ -513,6 +518,71 @@ export default async function handler(req, res) {
       return res.status(201).json({ ok: true, game: g[0] });
     }
 
+    // ---------- Ludo, Bhabhi, Vyapar ----------
+    if (body.action === 'start_board') {
+      const kind = body.game;
+      if (!BOARD_KINDS.includes(kind)) return res.status(400).json({ ok: false, error: 'Pick a game' });
+      if (await atCap(sql, circle.id)) return res.status(409).json({ ok: false, error: CAP_MSG });
+      const [min, max, soloBots] = BOARD_SEATS[kind];
+      const solo = body.solo === true;
+      let people = [{ id: me.id, name: me.name }];
+      if (solo) people = people.concat(botSeats(soloBots));
+      else {
+        const ids = Array.isArray(body.playerIds) ? [...new Set(body.playerIds.filter(x => isUuid(x) && x !== me.id))] : [];
+        if (ids.length + 1 > max) return res.status(400).json({ ok: false, error: 'At most ' + max + ' players in this game' });
+        if (ids.length) {
+          const rows = await sql`select id, name from members where circle_id = ${circle.id} and id = any(${ids})`;
+          if (rows.length !== ids.length) return res.status(404).json({ ok: false, error: 'Someone picked is not in this circle' });
+          people = people.concat(ids.map(id => rows.find(r => r.id === id)));
+        }
+        // Not enough people free: Parwah fills the empty seats.
+        if (people.length < min) people = people.concat(botSeats(min - people.length));
+      }
+      const state = boardStart(kind, people);
+      if (state.error) return res.status(400).json({ ok: false, error: state.error });
+      state.n = await nextNumber(sql, circle.id, kind); state.by = me.name; state.byId = me.id;
+      runBoardBots(state);                       // if Parwah goes first, it plays now
+      const g = await sql`insert into games (circle_id, kind, status, state)
+                          values (${circle.id}, ${kind}, 'active', ${JSON.stringify(state)}::jsonb)
+                          returning id, kind, status, state, created_at`;
+      const humans = people.filter(p => !p.bot);
+      if (humans.length > 1) {
+        const nm = gameName(kind, state.n);
+        await feed(sql, circle.id, me.id, `${me.name} started ${nm} with ${humans.slice(1).map(p => p.name).join(', ')}`);
+        await pushPlayers(sql, circle.id, state, { title: '🎲 ' + me.name + ' started ' + nm, body: 'You are playing - open Together, Games' }, me.id);
+      }
+      return res.status(201).json({ ok: true, game: publicState(g[0], me.id) });
+    }
+    if (body.action === 'play') {
+      if (!isUuid(body.gameId)) return res.status(400).json({ ok: false, error: 'Bad game id' });
+      const rows = await sql`select id, kind, status, state from games where id = ${body.gameId} and circle_id = ${circle.id}`;
+      const g = rows[0];
+      if (!g || g.status !== 'active') return res.status(404).json({ ok: false, error: 'That game is over or was ended' });
+      const st = g.state;
+      if (!BOARD_KINDS.includes(st.kind)) return res.status(400).json({ ok: false, error: 'Not that kind of game' });
+      const v0 = Number(st.v) || 0;
+      const out = boardMove(st, me.id, body.move || {});
+      if (out.error) return res.status(409).json({ ok: false, error: out.error });
+      const botLines = runBoardBots(st);
+      const done = boardOver(st);
+      st.v = v0 + 1;
+      // Saved only if nobody else moved first: two taps at once cannot both land.
+      const saved = await sql`update games set status = ${done ? 'done' : 'active'}, state = ${JSON.stringify(st)}::jsonb
+                              where id = ${g.id} and coalesce((state->>'v')::int, 0) = ${v0} returning id`;
+      if (!saved[0]) return res.status(409).json({ ok: false, error: 'Someone moved a moment ago - here is the board now', stale: true });
+      const solo = st.players.filter(p => !isBot(p)).length < 2;
+      const lines = [out.announce].concat(botLines).filter(Boolean);
+      if (lines.length && !solo) { for (const t of lines) await announce(t); }
+      if (done && !solo) await feed(sql, circle.id, me.id, lines[lines.length - 1] || (gameName(st.kind, st.n) + ' is over'));
+      if (!done && !solo) {
+        const nxt = st.players[st.turn];
+        if (nxt && !isBot(nxt) && nxt.id !== me.id) {
+          await pushCircle(sql, circle.id, { title: '🎲 Your turn', body: gameName(st.kind, st.n) + ' - ' + me.name + ' has played' }, { only: nxt.id });
+        }
+      }
+      return res.status(200).json({ ok: true, game: publicState({ id: g.id, kind: st.kind, status: done ? 'done' : 'active', state: st }, me.id) });
+    }
+
     const PARTY_ACTS = ['join_game', 'leave_game', 'kick', 'promote', 'begin', 'sang', 'pass', 'draw', 'guessed', 'flop'];
     if (PARTY_ACTS.includes(body.action)) {
       if (!isUuid(body.gameId)) return res.status(400).json({ ok: false, error: 'Bad game id' });
@@ -553,7 +623,13 @@ export default async function handler(req, res) {
           const inIt = (st.players || []).some(p => p && p.id === me.id) || st.byId === me.id;
           if (!inIt) return res.status(403).json({ ok: false, error: 'Only someone playing this game can end it' });
         }
+        let endLine = null;
+        if (st.kind === 'vyapar' && !st.winner) {
+          endLine = vyEnd(st);
+          await sql`update games set state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
+        }
         await sql`update games set status = 'done' where id = ${g.id}`;
+        if (endLine && st.players.filter(p => !isBot(p)).length > 1) await announce(endLine);
         try {
           if (st.kind === 'antakshari' || st.kind === 'charades') {
             const chatId = await ensureCircleChat(sql, circle.id);

@@ -61,7 +61,9 @@ PARWAH_TEST_DATABASE_URL=postgres://postgres@localhost:5432/parwah_test npm run 
 
 `test:db` wipes the database it is given (the name must end in `_test`) and runs the real
 handlers against it: sign-in and lockout, the task lifecycle and its permissions,
-repeats, one-time late alerts, and the care screen end to end in a browser.
+repeats, one-time late alerts, the care screen end to end in a browser, and Ludo, Bhabhi
+and Vyapar played to the end by tapping (their rules are unit-tested in the gate by
+`site/tests/boardgametest.mjs`, against `api/_boardgames.mjs`).
 
 ## Building this with Claude
 
