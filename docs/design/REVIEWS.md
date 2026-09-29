@@ -70,3 +70,20 @@ guarded by a test that fails if it comes back. The severity 2 follow-ups
   320, 390 and 1280px, light and dark: no sideways scroll, touch minimum,
   12px floor, WCAG AA, the sticky bar, and a visible focus ring.
 - Every pull request carries the design checklist (`.github/pull_request_template.md`).
+
+## Review 2: location sharing (People)
+
+Checklist and heuristic pass on the new "Where everyone is" card, phone light
+and dark at 320 and 390px, desktop at 1280px.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 21 | 1 Visibility | The card always says whether you are sharing, how precisely and when it last updated | 0 | Good: keep |
+| 22 | 3 Control | One tap stops sharing, and the button says it deletes the location | 0 | Good: keep |
+| 23 | 2 Real-world match | "Area only" reads as the neighbourhood, never the house; the rounding happens on the server | 0 | Good: keep |
+| 24 | 4 Consistency | Built only from existing atoms: `.card`, `.seg`, `.go`, `.cbtn`, `.crow`, `.linkbtn`; no new tokens | 0 | Good |
+| 25 | Accessibility | An old position is shown in the alert colour and also in words ("last seen 2 hours ago"), never by colour alone | 0 | Good |
+| 26 | 5 Error prevention | When the phone blocks location, the card says how to allow it instead of failing silently | 0 | Good: tested end to end |
+
+**Approved.** No new findings above severity 0; the design suite covers the
+card in all 66 screen measurements.

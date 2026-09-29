@@ -1658,6 +1658,18 @@ check("dls: reduced motion switches off every animation, present and future",
       "@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important" in _appt)
 check("dls: keyboard focus is one visible ring from tokens, in both themes",
       ":focus-visible{outline:3px solid var(--focus-ring)" in _appt and "outline:none" not in _css and "outline:0;" not in _css)
+_loc = (API_DIR / "_locationapi.mjs").read_text(encoding="utf-8")
+check("location: only the person turns it on; there is no action to share for someone else",
+      "requireMember(sql, code, memberId, tokenOf(req))" in _loc and "values (${circle.id}, ${me.id}, true" in _loc
+      and "otherId" not in _loc and "targetId" not in _loc)
+check("location: stopping deletes the position, not just hides it",
+      "set enabled = false, lat = null, lng = null, accuracy = null" in _loc)
+check("location: area only is rounded on the server, so an exact spot is never stored",
+      "shareable(pos, precision)" in _loc and "body.precision === 'area' && lat !== null" in _loc)
+check("location: sharing is per family or group, and only its members can look",
+      "where s.circle_id = ${circle.id} and s.enabled and s.lat is not null" in _loc)
+check("location: the app says who can see it and that stopping deletes it",
+      "Only people in it can see it, you can stop any time, and stopping deletes it." in _appt)
 _head = _appt[:_appt.index("<body")]
 _man = (REPO / "site/public/manifest.webmanifest").read_text(encoding="utf-8")
 check("brand: Parwah is tagged as the family superapp (title, meta, share cards, manifest, schema, screens)",

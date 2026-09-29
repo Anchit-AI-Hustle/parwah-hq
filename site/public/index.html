@@ -932,6 +932,8 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
 .side-name{display:flex;flex-direction:column;line-height:1.1}
 .side-tag{font-family:var(--body);font-size:var(--fs-12);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-top:var(--space-2)}
 #onboard > .superapp{margin:0 0 var(--space-4)}
+.locstatus{margin:0 0 var(--space-12);font-weight:600;color:var(--ink)}
+.locstatus.on{color:var(--ok)}
 /* ---- Motion: anyone who asked their phone for less motion gets none,
    including from animations added after this line was written. ---- */
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
@@ -1313,6 +1315,23 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <!-- PEOPLE - the product is organised around the people you care about -->
   <section id="pane-people" hidden>
     <div class="ektahead"><span style="font-size:var(--fs-24)" aria-hidden="true">👨‍👩‍👧</span><span><b>People</b><small>Everyone you care about - and how prepared the family is for each</small></span></div>
+    <div class="card" id="loc-card">
+      <h3>📍 Where everyone is</h3>
+      <p class="hint" id="loc-why" style="margin:var(--space-4) 0 var(--space-12)"></p>
+      <p id="loc-status" class="locstatus" aria-live="polite"></p>
+      <div class="pick"><span>How precise</span>
+        <div class="seg" id="loc-prec" role="group" aria-label="How precise">
+          <button type="button" data-prec="exact" class="sel">📍 Exact</button>
+          <button type="button" data-prec="area">🏙 Area only</button>
+        </div>
+      </div>
+      <button class="go" id="loc-share">📍 Share my location</button>
+      <button class="cbtn no" id="loc-stop" hidden style="margin-top:var(--space-12);width:100%">Stop sharing and delete my location</button>
+      <p class="hint" id="loc-err" hidden style="margin-top:var(--space-12);color:var(--alert)"></p>
+      <p class="pickhead">Sharing now</p>
+      <div class="feed" id="loc-list"><div class="ev">Loading…</div></div>
+      <p class="hint" style="margin-top:var(--space-12)">Locations update whenever Parwah is open on the phone. Area only shows the neighbourhood, never the house.</p>
+    </div>
     <p class="eyebrow">Preparedness</p>
     <p class="hint" style="margin:var(--space-2) 0 var(--space-12)">Not a health score - a simple check that the family has the important information recorded and current for each person.</p>
     <div id="preplist"><div class="ev">Loading…</div></div>
@@ -2455,7 +2474,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var API = { circle: '/api/circle', events: '/api/events', care: '/api/care', ekta: '/api/ekta', chats: '/api/chats', games: '/api/games', plans: '/api/plans', auth: '/api/auth', book: '/api/book', vault: '/api/book?area=vault', pay: '/api/book?area=pay', push: '/api/settings?area=push', keys: '/api/settings?area=keys', coins: '/api/settings?area=coins', plan: '/api/settings?area=plan', day: '/api/settings?area=day', pin: '/api/settings?area=pin' };
+  var API = { circle: '/api/circle', events: '/api/events', care: '/api/care', ekta: '/api/ekta', chats: '/api/chats', games: '/api/games', plans: '/api/plans', auth: '/api/auth', book: '/api/book', vault: '/api/book?area=vault', pay: '/api/book?area=pay', push: '/api/settings?area=push', keys: '/api/settings?area=keys', coins: '/api/settings?area=coins', plan: '/api/settings?area=plan', day: '/api/settings?area=day', pin: '/api/settings?area=pin', location: '/api/settings?area=location' };
   var TABS = ['home','people','person','memory','vault','care','day','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
@@ -2619,6 +2638,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     clearInterval(gameTimer);
     if (t === 'fun') gameTimer = setInterval(function(){ refreshFun(); boardSync(); }, 3000);
     if (t === 'notifs') { $('ndetail').hidden = true; $('nlist-view').hidden = false; }
+    if (t === 'people') refreshLoc();
     // SHOW THE TAB NOW, FILL IT AFTER THE BROWSER HAS PAINTED.
     // Opening The day from the Today widget rebuilt the whole screen - the
     // timeline, sixteen periods, twelve rashis, every family row - inside
@@ -2732,6 +2752,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (e.type === 'sos')     return { cls:'bad',  text: '🆘 SOS from ' + who + ' - call now!' };
     if (e.type === 'message') return { cls:'',     text: who + ': ' + (e.text || '') };
     if (e.type === 'join')    return { cls:'',     text: e.text || (who + ' joined') };
+    if (e.type === 'location') return { cls:'',    text: '📍 ' + (e.text || '') };
     return { cls:'', text: e.text || '' };
   }
 
@@ -3472,6 +3493,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('bell').hidden = false;
     renderGroups();
     pushBoot();
+    refreshLoc();
     refreshKeys();
     if (authUser && authUser.phone) {
       post(API.auth, { action: 'enter', phone: authUser.phone, refresh: true })
@@ -6075,6 +6097,129 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         refreshChats(function(){ openChat(j.chatId); });
       })
       .catch(function(){ toast('No connection - try again'); });
+  });
+
+  // ---------- location sharing (consent first) ----------
+  // Only you turn it on, per family or group; everyone in it sees who is
+  // sharing; stopping deletes the position on the server (api/_locationapi.mjs).
+  // The arithmetic mirrors api/_geo.mjs, which the gate unit-tests.
+  var locMe = { sharing: false, precision: 'exact' }, locShares = [], locWatch = null, locLast = null, locPrec = 'exact', locHere = null;
+  function locDist(a, b){
+    var R = 6371000, r = function(d){ return d * Math.PI / 180; };
+    var h = Math.pow(Math.sin(r(b.lat - a.lat) / 2), 2) + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.pow(Math.sin(r(b.lng - a.lng) / 2), 2);
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+  function locDistText(m){
+    if (m < 100) return 'right here';
+    if (m < 1000) return Math.round(m / 10) * 10 + ' m away';
+    if (m < 10000) return (Math.round(m / 100) / 10) + ' km away';
+    return Math.round(m / 1000).toLocaleString('en-IN') + ' km away';
+  }
+  function locAgo(iso){
+    var min = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
+    if (min < 1) return 'just now';
+    if (min < 60) return min + ' min ago';
+    var h = Math.round(min / 60); if (h < 24) return h + (h === 1 ? ' hour ago' : ' hours ago');
+    var d = Math.round(h / 24); return d + (d === 1 ? ' day ago' : ' days ago');
+  }
+  function locMaps(lat, lng){ return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(lat + ',' + lng); }
+  function locUrl(){ return API.location + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId); }
+  function refreshLoc(){
+    if (!state) return;
+    apiGet(locUrl()).then(function(j){
+      if (!j.ok) { $('loc-list').innerHTML = '<div class="ev">Could not load locations - try again in a moment.</div>'; return; }
+      locMe = j.me; locShares = j.shares || []; locPrec = locMe.precision || 'exact';
+      renderLoc();
+      if (locMe.sharing) locStartWatch(); else locStopWatch();
+      locHereIfAllowed();
+    }).catch(function(){ $('loc-list').innerHTML = '<div class="ev">No connection - locations will show when you are back online.</div>'; });
+  }
+  function renderLoc(){
+    var circle = esc(state.circleName || 'your family');
+    $('loc-why').innerHTML = 'Share where you are with <b>' + circle + '</b>. Only people in it can see it, you can stop any time, and stopping deletes it.';
+    var on = !!locMe.sharing;
+    $('loc-status').className = 'locstatus' + (on ? ' on' : '');
+    $('loc-status').textContent = on
+      ? 'You are sharing ' + (locMe.precision === 'area' ? 'your area' : 'your exact location') + ' with ' + (state.circleName || 'your family') + (locMe.updatedAt ? ' · updated ' + locAgo(locMe.updatedAt) : '')
+      : 'You are not sharing your location.';
+    $('loc-share').hidden = on;
+    $('loc-stop').hidden = !on;
+    $('loc-prec').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-prec') === locPrec); });
+    var mine = null; locShares.forEach(function(x){ if (x.mine) mine = x; });
+    var from = locLast || locHere || (mine ? { lat: mine.lat, lng: mine.lng } : null);
+    $('loc-list').innerHTML = locShares.length ? locShares.map(function(x){
+      var bits = [];
+      if (!x.mine && x.relation) bits.push(x.relation.charAt(0).toUpperCase() + x.relation.slice(1));
+      bits.push(x.precision === 'area' ? 'area only' : (x.accuracy ? 'within ' + (x.accuracy < 1000 ? x.accuracy + ' m' : (Math.round(x.accuracy / 100) / 10) + ' km') : 'exact'));
+      bits.push((x.stale ? 'last seen ' : 'updated ') + locAgo(x.updatedAt));
+      if (from && !x.mine) bits.push(locDistText(locDist(from, x)));
+      return '<div class="crow' + (x.stale ? ' late' : '') + '"><span class="txt"><b>' + esc(x.mine ? 'You' : x.name) + '</b><small>' + esc(bits.join(' · ')) + '</small></span>' +
+             '<a class="cbtn ghost" href="' + esc(locMaps(x.lat, x.lng)) + '" target="_blank" rel="noopener" aria-label="Open ' + esc(x.mine ? 'your' : x.name + "'s") + ' location in Maps">🗺 Open in Maps</a></div>';
+    }).join('') : '<div class="ev">Nobody here is sharing yet. When someone turns it on, they appear here.</div>';
+  }
+  // How far away someone is, without sharing yourself: if this phone has
+  // already allowed location, read it here, on the phone, for the distance
+  // only. It is never sent, and Parwah never asks just for this.
+  function locHereIfAllowed(){
+    if (locHere || locLast || !locShares.length || !navigator.permissions || !navigator.geolocation) return;
+    navigator.permissions.query({ name: 'geolocation' }).then(function(p){
+      if (p.state !== 'granted') return;
+      navigator.geolocation.getCurrentPosition(function(pos){
+        locHere = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        renderLoc();
+      }, function(){}, { maximumAge: 300000, timeout: 15000 });
+    }).catch(function(){});
+  }
+  function locError(msg){ var e = $('loc-err'); e.textContent = msg; e.hidden = !msg; }
+  function locGeoError(err){
+    locError(err && err.code === 1
+      ? 'Your phone is not letting Parwah see your location. Allow location for Parwah in your phone or browser settings, then tap Share again.'
+      : 'Your location could not be found just now. Step near a window or turn on location, then try again.');
+  }
+  function locSend(pos, action){
+    var body = { code: state.code, memberId: state.memberId, action: action, lat: pos.coords.latitude, lng: pos.coords.longitude,
+                 accuracy: pos.coords.accuracy, precision: locPrec };
+    locLast = { lat: body.lat, lng: body.lng, at: Date.now() };
+    return post(locUrl(), body);
+  }
+  function locStartWatch(){
+    if (locWatch !== null || !navigator.geolocation || document.hidden) return;
+    locWatch = navigator.geolocation.watchPosition(function(pos){
+      var next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      // Sent when you have moved 50 m, or every two minutes - not every wobble.
+      if (locLast && Date.now() - locLast.at < 120000 && locDist(locLast, next) < 50) return;
+      locSend(pos, 'update').then(function(j){ if (j.ok && curTab === 'people') refreshLoc(); }).catch(function(){});
+    }, function(err){ if (err && err.code === 1) { locGeoError(err); } }, { enableHighAccuracy: locPrec === 'exact', maximumAge: 60000, timeout: 30000 });
+  }
+  function locStopWatch(){ if (locWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(locWatch); locWatch = null; }
+  document.addEventListener('visibilitychange', function(){ if (document.hidden) locStopWatch(); else if (locMe.sharing) locStartWatch(); });
+  $('loc-share').addEventListener('click', function(){
+    locError('');
+    if (!navigator.geolocation) { locError('This phone or browser cannot share its location.'); return; }
+    var b = this; b.disabled = true;
+    navigator.geolocation.getCurrentPosition(function(pos){
+      locSend(pos, 'share').then(function(j){
+        b.disabled = false;
+        if (!j.ok) { locError(j.error || 'Could not start sharing'); return; }
+        toast('Sharing with ' + (state.circleName || 'your family') + ' 📍');
+        refreshLoc();
+      }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+    }, function(err){ b.disabled = false; locGeoError(err); }, { enableHighAccuracy: locPrec === 'exact', timeout: 20000, maximumAge: 0 });
+  });
+  $('loc-stop').addEventListener('click', function(){
+    locStopWatch(); locLast = null;
+    post(locUrl(), { code: state.code, memberId: state.memberId, action: 'stop' }).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not stop'); return; }
+      toast('Stopped. Your location is deleted.');
+      refreshLoc();
+    }).catch(function(){ toast('No connection - try again'); });
+  });
+  $('loc-prec').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-prec]'); if (!b) return;
+    locPrec = b.getAttribute('data-prec');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
+    if (locMe.sharing) post(locUrl(), { code: state.code, memberId: state.memberId, action: 'precision', precision: locPrec })
+      .then(function(j){ if (j.ok) { toast(locPrec === 'area' ? 'Now sharing your area only' : 'Now sharing your exact location'); refreshLoc(); } }).catch(function(){});
   });
 
   // ---------- member profiles ----------
