@@ -56,6 +56,16 @@ Commerce is NOT built here. Per the locked PRD, Shopify is the commerce layer at
    deletes data, touches secrets or `hq/`, or is not a fix or requested feature
    still needs asking first.
 
+8. **Design sanity on every change.** Parwah has a design language system:
+   `docs/design/DESIGN_SYSTEM.md` (tokens, atomic inventory),
+   `docs/design/CHECKLIST.md` (the designer checklist and leader-review
+   template) and `docs/design/REVIEWS.md` (every leader review). Any change
+   someone can see or use is built from tokens only, runs the checklist, and
+   passes the "dls:" gate checks and `site/tests/browser/design.browser.mjs`
+   (no sideways scroll at 320/390/1280px, 44px touch targets, 12px text floor,
+   WCAG AA in both themes, visible focus, sticky top bar). A new screen, a new
+   pattern or a release also gets a leader review recorded in `REVIEWS.md`.
+
 ## The brand merge (decided 2026-09-13)
 
 The D2C senior-products site and the family-care platform are ONE product, told

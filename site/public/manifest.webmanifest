@@ -1,7 +1,7 @@
 {
-  "name": "Parwah - Apni family ki parwah karein",
+  "name": "Parwah - the family superapp",
   "short_name": "Parwah",
-  "description": "One private circle for your family - daily check-ins, SOS and messages.",
+  "description": "The family superapp: care tasks, check-ins, SOS, chat, family memory, documents and games in one private circle.",
   "id": "/app/",
   "start_url": "/",
   "scope": "/",
@@ -26,5 +26,10 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "categories": [
+    "lifestyle",
+    "social",
+    "productivity"
   ]
 }
