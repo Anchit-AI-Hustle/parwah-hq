@@ -17,7 +17,7 @@ export default async function handler(req, res) {
 
   const { action, circleName, code, memberName, role, phone, userId } = req.body || {};
   // Family role labels - purely descriptive; every member is an equal admin.
-  const RELATIONS = ['father', 'mother', 'grandfather', 'grandmother', 'son', 'daughter', 'brother', 'sister', 'family'];
+  const RELATIONS = ['father', 'mother', 'grandfather', 'grandmother', 'son', 'daughter', 'brother', 'sister', 'friend', 'family'];
   const relation = RELATIONS.includes(req.body.relation) ? req.body.relation : null;
   // Gifting details - sizes and tastes so anyone in the family can gift
   // confidently. Whitelisted keys, each a short free-text field.
