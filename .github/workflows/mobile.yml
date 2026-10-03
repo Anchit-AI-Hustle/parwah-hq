@@ -107,7 +107,11 @@ jobs:
           APK=$(ls out/*.apk)
           "$BT/aapt2" dump badging "$APK" | grep -E "^package:|sdkVersion|targetSdkVersion|uses-permission:|application-label:" | tee out/android-badging.txt
           grep -q "package: name='com.parwah.app'" out/android-badging.txt
-          grep -q "sdkVersion:'24'" out/android-badging.txt
+          # The minimum Android version, read from the compiled manifest itself
+          # (this aapt2 does not print it in the badging summary): 24 = Android 7.0.
+          MIN=$("$BT/aapt2" dump xmltree --file AndroidManifest.xml "$APK" | grep -m1 "minSdkVersion" | tee -a out/android-badging.txt)
+          echo "$MIN"
+          echo "$MIN" | grep -qE "=24$|0x18$|=24[^0-9]|0x18[^0-9a-f]" || { echo "::error::minSdkVersion is not 24 (Android 7.0): $MIN"; exit 1; }
           "$BT/apksigner" verify --verbose --print-certs "$APK" | tee out/android-signature.txt
           if [ "${{ steps.key.outputs.signed }}" = "true" ]; then
             got=$(grep -m1 "SHA-256 digest" out/android-signature.txt | awk '{print $NF}')
