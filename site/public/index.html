@@ -6110,6 +6110,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // Bumped by Stop: any reply still on its way from an earlier tap is
   // ignored, so nothing started before Stop can read the location after it.
   var locGen = 0;
+  // True from the Stop tap until the server has answered: no reload in that
+  // window may switch sharing back on, whatever it read.
+  var locStopping = false;
   function locDist(a, b){
     var R = 6371000, r = function(d){ return d * Math.PI / 180; };
     var h = Math.pow(Math.sin(r(b.lat - a.lat) / 2), 2) + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.pow(Math.sin(r(b.lng - a.lng) / 2), 2);
@@ -6134,7 +6137,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (!state) return;
     var gen = locGen;
     apiGet(locUrl()).then(function(j){
-      if (gen !== locGen) return;   // read before a Stop: out of date
+      if (gen !== locGen || locStopping) return;   // read before or during a Stop: out of date
       if (!j.ok) { $('loc-list').innerHTML = '<div class="ev">Could not load locations - try again in a moment.</div>'; return; }
       locMe = j.me; locShares = j.shares || []; locPrec = locMe.precision || 'exact';
       renderLoc();
@@ -6191,7 +6194,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     return post(locUrl(), body);
   }
   function locStartWatch(){
-    if (!locMe.sharing || locWatch !== null || !navigator.geolocation || document.hidden) return;
+    if (locStopping || !locMe.sharing || locWatch !== null || !navigator.geolocation || document.hidden) return;
     locWatch = navigator.geolocation.watchPosition(function(pos){
       var next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       // Sent when you have moved 50 m, or every two minutes - not every wobble.
@@ -6217,12 +6220,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }, function(err){ b.disabled = false; locGeoError(err); }, { enableHighAccuracy: locPrec === 'exact', timeout: 20000, maximumAge: 0 });
   });
   $('loc-stop').addEventListener('click', function(){
-    locGen++; locMe.sharing = false; locStopWatch(); locLast = null;
+    locGen++; locStopping = true; locMe.sharing = false; locStopWatch(); locLast = null;
     post(locUrl(), { code: state.code, memberId: state.memberId, action: 'stop' }).then(function(j){
-      if (!j.ok) { toast(j.error || 'Could not stop'); return; }
+      locStopping = false; locGen++;
+      if (!j.ok) { toast(j.error || 'Could not stop'); refreshLoc(); return; }
       toast('Stopped. Your location is deleted.');
       refreshLoc();
-    }).catch(function(){ toast('No connection - try again'); });
+    }).catch(function(){ locStopping = false; locGen++; toast('No connection - try again'); refreshLoc(); });
   });
   $('loc-prec').addEventListener('click', function(e){
     var b = e.target.closest('button[data-prec]'); if (!b) return;
