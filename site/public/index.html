@@ -17,6 +17,11 @@
   } catch (e) {}
 })();
 </script>
+<script>
+  /* Inside the Android or iPhone app (its web view says "ParwahApp/"), the
+     links to install the app are pointless, so the page hides them. */
+  if (/\bParwahApp\//.test(navigator.userAgent)) document.documentElement.classList.add('native-app');
+</script>
 <meta name="description" content="Parwah is the family superapp: care tasks, check-ins, SOS, chat, a shared family memory, documents and games - one private circle, with consent at the core.">
 <meta name="keywords" content="family superapp, super app for families, parents care app, family app India, care circle, family chat, SOS, family games">
 <meta name="application-name" content="Parwah">
@@ -224,6 +229,10 @@ label + select{width:100%}
 .big.sos{background:var(--alert);color:var(--on-accent);font-family:var(--body);font-size:var(--fs-20);letter-spacing:.05em}
 .senior .feed .ev{font-size:var(--fs-16)}
 .senior .tabs button{font-size:var(--fs-12)}
+/* A parent's phone: nothing floats over All is well, Pills or SOS. Chat is on
+   the tab bar and Ekta is in the menu and on Today's shortcuts, so the two
+   floating buttons only cost the SOS label. Desktop keeps them: there is room. */
+@media(max-width:899px){body.senior .fab{display:none!important}}
 
 /* feed */
 .eyebrow{font-size:var(--fs-12);letter-spacing:.2em;text-transform:uppercase;color:var(--sindoor);font-weight:700;margin:var(--space-20) 0 var(--space-12)}
@@ -958,6 +967,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
    install link is in the menu ("Get the app"), so it steps out of the bar.
    Last in the sheet: it must win over the icon atoms above. */
 @media (max-width:360px){#getapp{display:none}}
+.native-app #getapp,.native-app .ditem[href="get/"]{display:none}
 </style>
 </head>
 <body>
@@ -2274,31 +2284,31 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <div class="inner">
     <div class="side-brand side-only"><span class="dev" aria-hidden="true">परवाह</span><span class="side-name">Parwah<small class="side-tag">family superapp</small></span></div>
     <button data-tab="home" class="sel"><span class="ic" aria-hidden="true">🏠</span>Today</button>
-    <button data-tab="notifs" class="deskonly" id="side-nb" style="position:relative"><span class="ic" aria-hidden="true">🔔</span>Notifications<i class="dot" id="nb-dot2" hidden></i></button>
+    <button data-tab="chat"><span class="ic" aria-hidden="true">💬</span>Chat</button>
+    <button data-tab="care"><span class="ic" aria-hidden="true">✅</span>Care<i class="dot" id="care-dot" hidden></i></button>
+    <div class="subnav side-only" data-parent="care">
+      <button data-tab="care" data-sec="rem">Things to do</button>
+      <button data-tab="care" data-sec="req">Suggested</button>
+    </div>
     <button data-tab="people"><span class="ic" aria-hidden="true">👨‍👩‍👧</span>People</button>
-    <button data-tab="memory"><span class="ic" aria-hidden="true">📒</span>Memory</button>
+    <button data-tab="notifs" class="deskonly" id="side-nb" style="position:relative"><span class="ic" aria-hidden="true">🔔</span>Notifications<i class="dot" id="nb-dot2" hidden></i></button>
+    <button data-tab="ekta" class="deskonly"><span class="ic" aria-hidden="true">✨</span>Ask Ekta</button>
+    <button data-tab="memory" class="deskonly"><span class="ic" aria-hidden="true">📒</span>Memory</button>
     <button data-tab="vault" class="deskonly"><span class="ic" aria-hidden="true">🔐</span>Vault</button>
     <div class="subnav side-only" data-parent="vault">
       <button data-tab="vault" data-sec="docs">Documents</button>
       <button data-tab="vault" data-sec="pay">Payments</button>
     </div>
-    <button data-tab="care"><span class="ic" aria-hidden="true">🔔</span>Care<i class="dot" id="care-dot" hidden></i></button>
-    <button data-tab="day" class="deskonly"><span class="ic" aria-hidden="true">🕉</span>The day</button>
-    <div class="subnav side-only" data-parent="day">
-      <button data-tab="day" data-sec="muhurat">Muhurat</button>
-      <button data-tab="day" data-sec="rashi">Rashifal</button>
-    </div>
-    <div class="subnav side-only" data-parent="care">
-      <button data-tab="care" data-sec="rem">Things to do</button>
-      <button data-tab="care" data-sec="req">Suggested</button>
-    </div>
-    <button data-tab="ekta" class="deskonly"><span class="ic" aria-hidden="true">✨</span>Ask Ekta</button>
-    <button data-tab="chat" class="deskonly"><span class="ic" aria-hidden="true">💬</span>Chat</button>
     <button data-tab="fun" class="deskonly"><span class="ic" aria-hidden="true">🎉</span>Together</button>
     <div class="subnav side-only" data-parent="fun">
       <button data-tab="fun" data-sec="plans">Plans &amp; calls</button>
       <button data-tab="fun" data-sec="games">Games</button>
       <button data-tab="fun" data-sec="board">Drawing board</button>
+    </div>
+    <button data-tab="day" class="deskonly"><span class="ic" aria-hidden="true">🕉</span>The day</button>
+    <div class="subnav side-only" data-parent="day">
+      <button data-tab="day" data-sec="muhurat">Muhurat</button>
+      <button data-tab="day" data-sec="rashi">Rashifal</button>
     </div>
     <button data-tab="profile" class="deskonly"><span class="ic" aria-hidden="true">👤</span>Profile</button>
     <div class="sidehead side-only" id="side-groups-head" hidden>👨‍👩‍👧‍👦 My Groups</div>
@@ -2343,8 +2353,17 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <div class="dpanel">
     <div class="dhead"><span class="dev" aria-hidden="true">परवाह</span> Parwah <button class="x" id="drawer-x" aria-label="Close menu">✕</button></div>
     <button class="ditem" data-tab="home">🏠 Today</button>
-    <button class="ditem" data-tab="notifs">🔔 Notifications</button>
+    <button class="ditem" data-tab="chat">💬 Chat</button>
+    <div class="dgroup">
+      <button class="ditem dparent" data-grp="care">✅ Care <span class="caret">▾</span></button>
+      <div class="dsub">
+        <button class="ditem sub" data-tab="care" data-sec="rem">Things to do</button>
+        <button class="ditem sub" data-tab="care" data-sec="req">Suggested</button>
+      </div>
+    </div>
     <button class="ditem" data-tab="people">👨‍👩‍👧 People</button>
+    <button class="ditem" data-tab="notifs">🔔 Notifications</button>
+    <button class="ditem" data-tab="ekta">✨ Ask Ekta</button>
     <button class="ditem" data-tab="memory">📒 Family memory</button>
     <div class="dgroup">
       <button class="ditem dparent" data-grp="vault">🔐 Family vault <span class="caret">▾</span></button>
@@ -2354,27 +2373,18 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       </div>
     </div>
     <div class="dgroup">
-      <button class="ditem dparent" data-grp="day">🕉 The day <span class="caret">▾</span></button>
-      <div class="dsub">
-        <button class="ditem sub" data-tab="day" data-sec="muhurat">Muhurat &amp; Choghadiya</button>
-        <button class="ditem sub" data-tab="day" data-sec="rashi">Daily rashifal</button>
-      </div>
-    </div>
-    <div class="dgroup">
-      <button class="ditem dparent" data-grp="care">🔔 Care <span class="caret">▾</span></button>
-      <div class="dsub">
-        <button class="ditem sub" data-tab="care" data-sec="rem">Things to do</button>
-        <button class="ditem sub" data-tab="care" data-sec="req">Suggested</button>
-      </div>
-    </div>
-    <button class="ditem" data-tab="ekta">✨ Ask Ekta</button>
-    <button class="ditem" data-tab="chat">💬 Chat</button>
-    <div class="dgroup">
       <button class="ditem dparent" data-grp="fun">🎉 Together <span class="caret">▾</span></button>
       <div class="dsub">
         <button class="ditem sub" data-tab="fun" data-sec="plans">Plans &amp; calls</button>
         <button class="ditem sub" data-tab="fun" data-sec="games">Games</button>
         <button class="ditem sub" data-tab="fun" data-sec="board">Drawing board</button>
+      </div>
+    </div>
+    <div class="dgroup">
+      <button class="ditem dparent" data-grp="day">🕉 The day <span class="caret">▾</span></button>
+      <div class="dsub">
+        <button class="ditem sub" data-tab="day" data-sec="muhurat">Muhurat &amp; Choghadiya</button>
+        <button class="ditem sub" data-tab="day" data-sec="rashi">Daily rashifal</button>
       </div>
     </div>
     <button class="ditem" data-tab="profile">👤 Profile</button>

@@ -129,11 +129,11 @@ async function fresh(opts){
   });
   if (opts.theme) await page.addInitScript(t => localStorage.setItem('parwah-theme', t), opts.theme);
   if (opts.signedIn) {
-    await page.addInitScript(() => {
-      localStorage.setItem('parwah', JSON.stringify({ code:'ABCDEF', memberId:'11111111-1111-1111-1111-111111111111', name:'Rohan', role:'family', circleName:'Sharma Family' }));
+    await page.addInitScript(role => {
+      localStorage.setItem('parwah', JSON.stringify({ code:'ABCDEF', memberId:'11111111-1111-1111-1111-111111111111', name:'Rohan', role, circleName:'Sharma Family' }));
       localStorage.setItem('parwah-user', JSON.stringify({ id:'77777777-7777-4777-8777-777777777777', name:'Rohan', phone:'+919873945238' }));
       localStorage.setItem('parwah-fr-hide', '1');
-    });
+    }, opts.role || 'family');
   }
   await page.goto(BASE + '/');
   await page.waitForTimeout(700);
@@ -285,13 +285,41 @@ for (const theme of ['light', 'dark']) {
   await pg.close();
 }
 
+// ---------- A PARENT'S TODAY: nothing covers check-in or SOS ----------
+// A parent's check-in and SOS are the most important buttons in the app. On a
+// phone the floating chat and Ekta buttons sat over the SOS label, so a parent's
+// calm screen drops them (Chat is a tab, Ekta is in the menu and shortcuts).
+for (const vp of [{ width:320, height:640 }, { width:390, height:844 }]) {
+  const pg = await fresh({ viewport:vp, signedIn:true, role:'parent' });
+  const r = await pg.evaluate(() => {
+    const box = el => { const b = el.getBoundingClientRect(); return { t:b.top, b:b.bottom, l:b.left, r:b.right, w:b.width }; };
+    const sos = document.getElementById('btn-sos'), ok = document.getElementById('btn-checkin');
+    const fabs = [...document.querySelectorAll('.fab')].filter(f => f.getBoundingClientRect().width > 0).map(box);
+    const s = box(sos);
+    return { shown: s.w > 0 && box(ok).w > 0,
+             covered: fabs.filter(f => f.l < s.r && f.r > s.l && f.t < s.b && f.b > s.t).length,
+             fabs: fabs.length };
+  });
+  ok(r.shown, vp.width + 'px parent: All is well and SOS are on Today');
+  ok(r.covered === 0 && r.fabs === 0, vp.width + 'px parent: nothing floats over SOS (' + r.fabs + ' floating buttons)');
+  await pg.close();
+}
+{
+  // A family member's phone keeps its floating buttons; only the parent's calm screen drops them.
+  const pg = await fresh({ viewport:{ width:390, height:844 }, signedIn:true });
+  const n = await pg.evaluate(() => [...document.querySelectorAll('.fab')].filter(f => f.getBoundingClientRect().width > 0).length);
+  ok(n >= 1, 'a family member still has the floating chat and Ekta buttons (' + n + ')');
+  await pg.close();
+}
+
 // ---------- MOVING BETWEEN FEATURES ----------
 {
   const pg = await fresh({ viewport:{ width:390, height:844 }, signedIn:true });
-  // Only four tabs are reachable on a phone without opening the drawer:
-  // home, people, memory, care. Everything else is behind the hamburger,
-  // which is why its size (checked below) matters so much.
-  const tabs = ['people', 'memory', 'care'];
+  // Only four tabs are reachable on a phone without opening the drawer, in
+  // order of how often a family uses them: Today, Chat, Care, People.
+  // Everything else is behind the hamburger, which is why its size (checked
+  // below) matters so much.
+  const tabs = ['people', 'chat', 'care'];
   for (const t of tabs) {
     await pg.locator('#tabs [data-tab="' + t + '"]:visible').first().click();
     await pg.waitForTimeout(350);
@@ -301,12 +329,12 @@ for (const theme of ['light', 'dark']) {
   // Back used to leave the app entirely, because every switch REPLACED
   // the history entry instead of pushing one.
   await pg.goBack(); await pg.waitForTimeout(450);
-  ok((await pg.evaluate(() => location.hash)) === '#memory', 'Back steps back a feature');
+  ok((await pg.evaluate(() => location.hash)) === '#chat', 'Back steps back a feature');
   await pg.goBack(); await pg.waitForTimeout(450);
   ok((await pg.evaluate(() => location.hash)) === '#people', 'and again');
   ok(await pg.locator('#pane-people').isVisible(), 'and the screen follows the address, not just the URL');
   await pg.goForward(); await pg.waitForTimeout(450);
-  ok((await pg.evaluate(() => location.hash)) === '#memory', 'Forward works too');
+  ok((await pg.evaluate(() => location.hash)) === '#chat', 'Forward works too');
   ok(await pg.locator('#app').count() > 0 || await pg.locator('#tabs').isVisible(), 'Back never left the app');
   await pg.close();
 }

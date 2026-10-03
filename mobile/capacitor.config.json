@@ -2,14 +2,33 @@
   "appId": "com.parwah.app",
   "appName": "Parwah",
   "webDir": "www",
+  "backgroundColor": "#2A1235",
+  "appendUserAgent": "ParwahApp/1.0",
   "server": {
     "url": "https://parwah-hq.anchit-tandon.com/",
-    "cleartext": false
+    "cleartext": false,
+    "errorPath": "index.html"
   },
   "android": {
-    "allowMixedContent": false
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
   },
   "ios": {
-    "contentInset": "automatic"
+    "contentInset": "never",
+    "scheme": "Parwah"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchAutoHide": true,
+      "backgroundColor": "#2A1235",
+      "showSpinner": false,
+      "androidScaleType": "CENTER_CROP"
+    },
+    "SystemBars": {
+      "insetsHandling": "native",
+      "initialViewportFitValueHint": "cover",
+      "style": "DARK"
+    }
   }
 }

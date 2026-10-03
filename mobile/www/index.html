@@ -2,22 +2,57 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
 <title>Parwah</title>
+<!-- Shown by the phone app only when it cannot reach Parwah (no internet, or
+     the server is down). It lives inside the app, so it must work with no
+     network at all: system fonts, inline art, no requests. -->
 <style>
-  body{font-family:system-ui,sans-serif;background:#FFF6EA;color:#221428;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center;padding:24px}
-  .card{max-width:320px}
-  h1{color:#5A2A6E}
-  a{color:#8F5300}
+  :root{--jamun:#2A1235;--cream:#FFF3E6;--dim:#D2BCD9;--marigold:#FFB31A;--flame:#FF5B2E;--on-bright:#1E0F26}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--cream);
+    background:radial-gradient(60% 55% at 100% 0%,rgba(255,79,154,.38),transparent 70%),
+               radial-gradient(55% 55% at 0% 100%,rgba(255,179,26,.28),transparent 70%),var(--jamun);
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    padding:calc(24px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))}
+  main{max-width:340px}
+  svg{width:96px;height:96px;display:block;margin:0 auto 20px}
+  h1{margin:0 0 4px;font-size:32px;font-weight:800;letter-spacing:-.02em}
+  .dev{margin:0 0 20px;color:var(--marigold);font-size:20px;font-weight:700}
+  p{margin:0 0 24px;color:var(--dim);font-size:16px;line-height:1.5}
+  button{border:0;border-radius:999px;min-height:48px;padding:14px 28px;font:inherit;font-size:16px;font-weight:700;
+    color:var(--on-bright);background:linear-gradient(115deg,var(--marigold),var(--flame));cursor:pointer}
+  button:focus-visible{outline:3px solid var(--marigold);outline-offset:3px}
+  #wait{display:none;margin-top:16px;font-size:14px}
 </style>
 </head>
 <body>
-<!-- Fallback only - the app shell loads from the live server (capacitor.config server.url).
-     This page shows if the device is fully offline on first launch. -->
-<div class="card">
-  <h1>परवाह Parwah</h1>
-  <p>Connect to the internet once to load your family circle - after that the app works like any other.</p>
-  <p><a href="https://parwah-hq.anchit-tandon.com/">Open Parwah</a></p>
-</div>
+<main>
+  <svg viewBox="0 0 64 64" aria-hidden="true">
+    <g fill="#FFB31A">
+      <ellipse id="p" cx="32" cy="15" rx="6" ry="9.4"/>
+      <use href="#p" transform="rotate(45 32 32)"/><use href="#p" transform="rotate(90 32 32)"/>
+      <use href="#p" transform="rotate(135 32 32)"/><use href="#p" transform="rotate(180 32 32)"/>
+      <use href="#p" transform="rotate(225 32 32)"/><use href="#p" transform="rotate(270 32 32)"/>
+      <use href="#p" transform="rotate(315 32 32)"/>
+    </g>
+    <circle cx="32" cy="32" r="8.6" fill="#FF5B2E"/>
+  </svg>
+  <h1>Parwah</h1>
+  <p class="dev" lang="hi">परवाह</p>
+  <p>We could not reach your family just now. Check your internet, then try again. Your family is still there.</p>
+  <button type="button" id="again">Try again</button>
+  <p id="wait" role="status">Trying…</p>
+</main>
+<script>
+  // Go back to the live app. If the phone comes back online on its own, go
+  // without waiting for a tap.
+  var APP = 'https://parwah-hq.anchit-tandon.com/';
+  function retry(){ document.getElementById('wait').style.display = 'block'; location.href = APP; }
+  document.getElementById('again').addEventListener('click', retry);
+  window.addEventListener('online', retry);
+</script>
 </body>
 </html>

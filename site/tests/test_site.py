@@ -1748,6 +1748,32 @@ for _cl in re.findall(r"""class=["']([^"']*)["']""", _appt):
 _unexcluded = sorted(c for c in _mixed if not all(":not(." + c + ")" in l for l in _grad_rule))
 check("theme: a status button keeps its status colour under the Mela gradient",
       bool(_grad_rule) and not _unexcluded, ", ".join(_unexcluded))
+
+# ---------- ORDER: by how often a family really uses each thing ----------
+# Owner's rule (2026-10-03): every list of features runs in descending order
+# of real-life use. Daily several times (Today, Chat), daily (Care), often
+# (People, Notifications), sometimes (Ekta, Memory), rarely (Vault, Together,
+# The day, Profile). The Today screen's own cards and shortcuts are ranked in
+# docs/design/TODAY.md and guarded by the "today:" checks.
+_navseg = _appt[_appt.index('<nav class="tabs" id="tabs"'):_appt.index('id="side-groups-head"')]
+_nav = re.findall(r'<button data-tab="(\w+)"(?! data-sec)([^>]*)>', _navseg)
+_want_nav = ["home", "chat", "care", "people", "notifs", "ekta", "memory", "vault", "fun", "day", "profile"]
+check("order: the sidebar runs by real-life use",
+      [t for t, _ in _nav] == _want_nav, " > ".join(t for t, _ in _nav))
+check("order: the phone tab bar is Today, Chat, Care, People",
+      [t for t, a in _nav if "deskonly" not in a] == ["home", "chat", "care", "people"],
+      " > ".join(t for t, a in _nav if "deskonly" not in a))
+_drw = _appt[_appt.index('<div class="dhead">'):_appt.index('id="d-groups-wrap"')]
+_drw_top = re.findall(r'class="ditem(?: dparent)?" data-(?:tab|grp)="(\w+)"', _drw)
+check("order: the menu drawer runs by real-life use",
+      _drw_top == _want_nav, " > ".join(_drw_top))
+check("order: on a parent's phone nothing floats over All is well, Pills or SOS",
+      "@media(max-width:899px){body.senior .fab{display:none!important}}" in _css)
+check("phone app: the native Android/iPhone app hides the links to install it",
+      "ParwahApp\\/" in _appt and ".native-app #getapp" in _css
+      and ('"appendUserAgent": "ParwahApp/' in (REPO / "mobile" / "capacitor.config.json").read_text()
+           # Vercel's upload leaves mobile/ out (.vercelignore); CI has it.
+           if (REPO / "mobile" / "capacitor.config.json").exists() else True))
 check("theme: text on a coloured chip and on a dark panel are separate tokens",
       "--on-accent:" in _css and "--on-dark:" in _css
       and "is how a themed app ends up with invisible buttons" in _css)
