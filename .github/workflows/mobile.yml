@@ -1,0 +1,244 @@
+# THE PHONE APPS: build Android and iOS, prove they work, publish a release.
+#
+# Parwah's apps are Capacitor shells around the live app at
+# parwah-hq.anchit-tandon.com, so every web deploy reaches the phones at once.
+# This workflow builds them and proves each one on a real emulator or
+# simulator before anything is published:
+#   android   signed release APK + Play Store AAB (test-signed until the
+#             PARWAH_KEYSTORE_* secrets exist), signature checked
+#   android-device   installs on Android 11 and Android 15 emulators: opens,
+#             loads the live app, shows the offline page with no internet,
+#             never crashes
+#   ios       unsigned IPA (for sideloading until an Apple Developer account
+#             signs it) and a run on the newest iPhone simulator
+#   release   only when all of the above pass, on main or by hand: one GitHub
+#             Release with every file and the screenshots
+# The release never goes to the public site by itself: the APK reaches
+# /downloads/ through a pull request, which the normal gate tests.
+name: Phone apps
+
+on:
+  push:
+    branches: [main]
+    paths: ['mobile/**', '.github/workflows/mobile.yml']
+  pull_request:
+    branches: [main]
+    paths: ['mobile/**', '.github/workflows/mobile.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The release key's certificate. A signed build must carry exactly this.
+  RELEASE_CERT_SHA256: 2772b36b906ee3328e470f8c5fcd6230c0bac7f3e177d79e8e82ba861bc13c41
+
+jobs:
+  android:
+    name: Android build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      signed: ${{ steps.key.outputs.signed }}
+      version: ${{ steps.ver.outputs.name }}
+    env:
+      PARWAH_KEYSTORE_PASSWORD: ${{ secrets.PARWAH_KEYSTORE_PASSWORD }}
+      PARWAH_KEY_ALIAS: ${{ secrets.PARWAH_KEY_ALIAS }}
+      PARWAH_KEY_PASSWORD: ${{ secrets.PARWAH_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install and copy the app config into the native project
+        working-directory: mobile
+        run: npm ci && npx cap sync android
+
+      - name: Version
+        id: ver
+        run: |
+          name=$(node -p "require('./mobile/package.json').version")
+          echo "PARWAH_VERSION_NAME=$name" >> "$GITHUB_ENV"
+          echo "PARWAH_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Release key, if the secrets have been added
+        id: key
+        env:
+          KS: ${{ secrets.PARWAH_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS" ]; then
+            echo "$KS" | base64 -d > "$RUNNER_TEMP/release.p12"
+            echo "PARWAH_KEYSTORE_PATH=$RUNNER_TEMP/release.p12" >> "$GITHUB_ENV"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No release key secrets yet - building a TEST APK (debug-signed). Add PARWAH_KEYSTORE_* secrets to sign releases."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build
+        working-directory: mobile/android
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/out"
+          if [ "${{ steps.key.outputs.signed }}" = "true" ]; then
+            ./gradlew --no-daemon assembleRelease bundleRelease
+            cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/out/parwah.apk"
+            cp app/build/outputs/bundle/release/app-release.aab "$GITHUB_WORKSPACE/out/parwah.aab"
+          else
+            ./gradlew --no-daemon assembleDebug
+            cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/out/parwah-test.apk"
+          fi
+          rm -f "$RUNNER_TEMP/release.p12"
+
+      - name: Check the APK
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          APK=$(ls out/*.apk)
+          "$BT/aapt2" dump badging "$APK" | grep -E "^package:|sdkVersion|targetSdkVersion|uses-permission:|application-label:" | tee out/android-badging.txt
+          grep -q "package: name='com.parwah.app'" out/android-badging.txt
+          grep -q "sdkVersion:'24'" out/android-badging.txt
+          "$BT/apksigner" verify --verbose --print-certs "$APK" | tee out/android-signature.txt
+          if [ "${{ steps.key.outputs.signed }}" = "true" ]; then
+            got=$(grep -m1 "SHA-256 digest" out/android-signature.txt | awk '{print $NF}')
+            [ "$got" = "$RELEASE_CERT_SHA256" ] || { echo "::error::Signed with the wrong key ($got)"; exit 1; }
+            echo "Signed with the Parwah release key."
+          fi
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: out/
+          if-no-files-found: error
+
+  android-device:
+    name: Android ${{ matrix.label }} emulator
+    needs: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - api: 30
+            label: '11'
+          - api: 35
+            label: '15'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: android
+          path: out
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Install and use the app on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: bash mobile/ci/android-smoke.sh "$(ls out/*.apk | head -1)" shots/android-${{ matrix.label }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-${{ matrix.label }}-proof
+          path: shots/
+
+  ios:
+    name: iOS build and iPhone simulator
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install and copy the app config into the native project
+        working-directory: mobile
+        run: npm ci && npx cap sync ios
+
+      - name: Build for iPhone (unsigned) and package an IPA
+        working-directory: mobile/ios/App
+        run: |
+          VER=$(node -p "require('../../package.json').version")
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Parwah.xcarchive" archive \
+            MARKETING_VERSION="$VER" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" | tail -20
+          mkdir -p "$RUNNER_TEMP/ipa/Payload" "$GITHUB_WORKSPACE/out"
+          cp -R "$RUNNER_TEMP/Parwah.xcarchive/Products/Applications/App.app" "$RUNNER_TEMP/ipa/Payload/"
+          (cd "$RUNNER_TEMP/ipa" && zip -qry "$GITHUB_WORKSPACE/out/parwah-ios-unsigned.ipa" Payload)
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' -c 'Print :CFBundleShortVersionString' -c 'Print :MinimumOSVersion' \
+            "$RUNNER_TEMP/ipa/Payload/App.app/Info.plist" | tee "$GITHUB_WORKSPACE/out/ios-info.txt"
+          ls -la "$GITHUB_WORKSPACE/out"
+
+      - name: Build for the iPhone simulator
+        working-directory: mobile/ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/sim" build CODE_SIGNING_ALLOWED=NO | tail -5
+
+      - name: Open it on an iPhone simulator
+        run: bash mobile/ci/ios-smoke.sh "$RUNNER_TEMP/sim/Build/Products/Debug-iphonesimulator/App.app" shots/ios
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios
+          path: |
+            out/
+            shots/
+
+  release:
+    name: Publish the release
+    needs: [android, android-device, ios]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: art
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SIGNED: ${{ needs.android.outputs.signed }}
+          VER: ${{ needs.android.outputs.version }}
+        run: |
+          mkdir files
+          find art -type f \( -name '*.apk' -o -name '*.aab' -o -name '*.ipa' -o -name 'android-*.txt' -o -name 'ios-*.txt' \) -exec cp {} files/ \;
+          for d in art/*-proof art/ios; do
+            for p in $(find "$d" -name '*.png' 2>/dev/null); do
+              cp "$p" "files/$(basename "$d")-$(basename "$p")"
+            done
+          done
+          ls -la files
+          TAG="mobile-v${VER}-build${GITHUB_RUN_NUMBER}"
+          if [ "$SIGNED" = "true" ]; then KIND="Signed Android release"; PRE=""; else KIND="TEST build (Android not yet release-signed)"; PRE="--prerelease"; fi
+          gh release create "$TAG" files/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" $PRE \
+            --title "Parwah apps ${VER} (build ${GITHUB_RUN_NUMBER})" \
+            --notes "${KIND}. Android: parwah.apk installs on Android 7.0+; parwah.aab is for Google Play. iOS: parwah-ios-unsigned.ipa needs signing (AltStore/Sideloadly with an Apple ID, or an Apple Developer account). Proven on Android 11 and 15 emulators and the iPhone simulator: screenshots attached. Commit ${GITHUB_SHA}."

@@ -2,18 +2,18 @@
   "name": "parwah-mobile",
   "version": "1.0.0",
   "private": true,
-  "description": "Native Android/iOS shells for the Parwah app (Capacitor wrapper over the live PWA).",
+  "description": "Parwah for Android and iOS: native Capacitor apps around the live Parwah app.",
   "scripts": {
-    "add:android": "cap add android",
-    "add:ios": "cap add ios",
-    "sync": "cap sync"
+    "sync": "cap sync",
+    "assets": "node scripts/make-assets.mjs"
   },
   "dependencies": {
-    "@capacitor/android": "^6.1.2",
-    "@capacitor/core": "^6.1.2",
-    "@capacitor/ios": "^6.1.2"
+    "@capacitor/android": "8.5.2",
+    "@capacitor/core": "8.5.2",
+    "@capacitor/ios": "8.5.2",
+    "@capacitor/splash-screen": "8.0.2"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.1.2"
+    "@capacitor/cli": "8.5.2"
   }
 }
