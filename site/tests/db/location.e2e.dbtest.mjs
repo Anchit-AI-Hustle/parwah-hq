@@ -159,6 +159,79 @@ let gone = false;
 for (let i = 0; i < 34 && !gone; i++) { await M.waitForTimeout(1000); gone = await M.locator('#loc-list .crow', { hasText: 'Rohan' }).count() === 0; }
 ok('Meera no longer sees him, within 30 seconds, without reloading or leaving People', gone);
 
+// ---- Stop wins over a precision change still on its way, even offline after
+await R.click('#loc-share');
+await R.waitForTimeout(1200);
+ok('Rohan shares again', (await share()).enabled === true);
+await R.route('**/api/settings?area=location*', async (route) => {
+  const req = route.request();
+  if (req.method() === 'GET') return route.abort();          // every reload fails
+  const body = req.postDataJSON() || {};
+  if (body.action === 'precision') {                          // the reply is slow
+    const res = await route.fetch();
+    await new Promise(r => setTimeout(r, 1500));
+    return route.fulfill({ response: res });
+  }
+  return route.continue();
+});
+const sentAfter = [];
+let stopped = false;
+R.on('request', (req) => {
+  if (stopped && req.method() === 'POST' && /area=location/.test(req.url()) && (req.postDataJSON() || {}).action === 'update') sentAfter.push(req.url());
+});
+await R.click('#loc-prec [data-prec="area"]');
+await R.waitForTimeout(150);
+await R.click('#loc-stop');
+stopped = true;
+await R.waitForTimeout(2200);                                 // the slow reply lands after Stop
+await R.context().setGeolocation({ latitude: 18.5590, longitude: 73.7868, accuracy: 15 });
+await R.waitForTimeout(2500);
+const s4 = await share();
+ok('after Stop, a late precision reply does not start reading the location again', sentAfter.length === 0, sentAfter.length);
+ok('and nothing is stored', s4.enabled === false && s4.lat === null, JSON.stringify(s4));
+await R.unroute('**/api/settings?area=location*');
+await R.context().setGeolocation(PUNE);
+
+// ---- while Stop is still on its way, a reload that reads "sharing" cannot restart it
+await R.click('#loc-share');
+await R.waitForTimeout(1500);
+ok('Rohan shares once more', (await share()).enabled === true);
+let stopAt = 0;
+const readAfterStop = [];
+await R.route('**/api/settings?area=location*', async (route) => {
+  const req = route.request();
+  const body = req.method() === 'POST' ? (req.postDataJSON() || {}) : {};
+  if (body.action === 'update') {
+    if (stopAt) readAfterStop.push(Date.now() - stopAt);
+    const res = await route.fetch();                          // the server takes it at once...
+    await new Promise(r => setTimeout(r, 800));               // ...the answer is slow
+    return route.fulfill({ response: res });
+  }
+  if (body.action === 'stop') {
+    await new Promise(r => setTimeout(r, 2500));              // Stop is slow to arrive
+    return route.continue();
+  }
+  return route.continue();
+});
+await R.context().setGeolocation({ latitude: 18.5590, longitude: 73.7868, accuracy: 15 });   // a move: one update goes out
+await R.waitForTimeout(150);
+let stopsSent = 0;
+R.on('request', (req) => { if (req.method() === 'POST' && (req.postDataJSON() || {}).action === 'stop') stopsSent++; });
+await R.click('#loc-stop');
+stopAt = Date.now();
+await R.evaluate(() => document.getElementById('loc-stop').click());   // an impatient second tap
+await R.waitForTimeout(100);
+ok('a second tap on Stop while the first is on its way sends nothing more', stopsSent === 1, stopsSent);
+await R.waitForTimeout(1300);                                  // the update's answer has come back and reloaded
+await R.context().setGeolocation({ latitude: 18.6000, longitude: 73.7500, accuracy: 15 });   // moves again while Stop is on its way
+await R.waitForTimeout(3000);
+const s5 = await share();
+ok('while Stop was on its way, the phone did not read the location again', readAfterStop.length === 0, readAfterStop.join(','));
+ok('and once Stop lands, nothing is stored', s5.enabled === false && s5.lat === null, JSON.stringify(s5));
+ok('his screen says he is not sharing', /not sharing/.test(await R.textContent('#loc-status')));
+await R.unroute('**/api/settings?area=location*');
+await R.context().setGeolocation(PUNE);
+
 // ---- a phone that says no
 const D = await phone(meera, DELHI, false);
 await D.click('#loc-share');
