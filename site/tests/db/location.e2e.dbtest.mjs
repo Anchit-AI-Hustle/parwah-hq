@@ -232,6 +232,41 @@ ok('his screen says he is not sharing', /not sharing/.test(await R.textContent('
 await R.unroute('**/api/settings?area=location*');
 await R.context().setGeolocation(PUNE);
 
+// ---- a Stop that cannot reach the server still stops this phone, even after a reload
+await R.click('#loc-share');
+await R.waitForTimeout(1500);
+ok('Rohan shares yet again', (await share()).enabled === true);
+await R.route('**/api/settings?area=location*', (route) => {
+  const req = route.request();
+  if (req.method() === 'POST' && (req.postDataJSON() || {}).action === 'stop') return route.abort();
+  return route.continue();
+});
+const sentAfterFail = [];
+let failedAt = 0;
+R.on('request', (req) => { if (failedAt && req.method() === 'POST' && (req.postDataJSON() || {}).action === 'update') sentAfterFail.push(req.url()); });
+await R.click('#loc-stop');
+failedAt = Date.now();
+await R.waitForTimeout(1200);
+await R.context().setGeolocation({ latitude: 18.5590, longitude: 73.7868, accuracy: 15 });
+await R.waitForTimeout(2500);
+ok('Stop could not reach the server: the phone still sends nothing', sentAfterFail.length === 0, sentAfterFail.length);
+ok('and says so plainly', /stopped sending; tap Stop again/.test(await R.textContent('#loc-status')), await R.textContent('#loc-status'));
+await R.reload(); await R.waitForTimeout(1500);
+await R.context().setGeolocation({ latitude: 18.6000, longitude: 73.7500, accuracy: 15 });
+await R.waitForTimeout(2500);
+ok('even after the page is reloaded', sentAfterFail.length === 0, sentAfterFail.length);
+await R.unroute('**/api/settings?area=location*');
+await R.click('#loc-stop');
+await R.waitForTimeout(1200);
+const s6 = await share();
+ok('tapping Stop again, with a connection, deletes it', s6.enabled === false && s6.lat === null, JSON.stringify(s6));
+await R.click('#loc-share');
+await R.waitForTimeout(1500);
+ok('and sharing again later works as before', (await share()).enabled === true && /You are sharing/.test(await R.textContent('#loc-status')) && !/stopped sending/.test(await R.textContent('#loc-status')));
+await R.click('#loc-stop');
+await R.waitForTimeout(1000);
+await R.context().setGeolocation(PUNE);
+
 // ---- a phone that says no
 const D = await phone(meera, DELHI, false);
 await D.click('#loc-share');
