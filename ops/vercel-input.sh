@@ -47,7 +47,12 @@ PY
 
 cd "$OUT"
 npm ci --silent --no-audit --no-fund
-if ! npm run build > vercel-build.log 2>&1; then
+# Vercel's builder never sets GITHUB_ACTIONS. Running inside a GitHub job,
+# this script inherited it, and the gate took the stripped upload for a full
+# CI checkout and demanded CLAUDE.md, which .vercelignore removes on purpose:
+# every pull request went red here. The full checkout (npm test) still runs
+# with it set, so a CI checkout missing CLAUDE.md still fails there.
+if ! env -u GITHUB_ACTIONS npm run build > vercel-build.log 2>&1; then
   echo "vercel-input: THE BUILD VERCEL WILL RUN FAILS on the files Vercel will receive:" >&2
   grep -E "^FAIL|Traceback|Error|CHECK\(S\) FAILED" vercel-build.log | head -20 >&2
   exit 1

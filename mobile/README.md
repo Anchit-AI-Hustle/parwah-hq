@@ -1,63 +1,71 @@
-# Parwah native apps (Android + iOS)
+# Parwah for Android and iPhone
 
-## Current route: the Floot shell
+Native apps built with Capacitor 8 around the live Parwah app at
+`https://parwah-hq.anchit-tandon.com/`. The apps open the live app directly
+(not in a frame), so every web deploy reaches every phone at once and the
+apps never go stale. App id: `com.parwah.app`.
 
-The store apps are built by Floot from a thin shell project, "Parwah"
-(`parwah.floot.app`, app id `com.parwah.app`). Its one page shows
-`https://parwah-hq.anchit-tandon.com/` (the app lives at the root of the domain) full-screen in a frame, with a
-loading screen until the app posts `{ parwah: 'ready' }`, and a retry screen
-if it never does. No family data passes through Floot; its visitor analytics
-are switched off.
+| | Android | iPhone / iPad |
+|---|---|---|
+| Runs on | Android 7.0 and later (minSdk 24), phones and tablets | iOS 15 and later, iPhone and iPad |
+| Built by | `.github/workflows/mobile.yml` on GitHub (Linux) | the same workflow (macOS, latest Xcode) |
+| You get | `parwah.apk` (install directly) and `parwah.aab` (Google Play) | `parwah-ios-unsigned.ipa` |
+| Proven on | Android 11 and Android 15 emulators, every build | the newest iPhone simulator, every build |
 
-For this to work, the app (`/`) sends `Content-Security-Policy: frame-ancestors`
-listing exactly the shell's origins (see `vercel.json`); every other page
-keeps `X-Frame-Options: SAMEORIGIN`. `site/tests/browser/shell.browser.mjs`
-checks the frame behaviour in Chromium (Android's engine). Sign-in staying
-remembered inside the frame on iPhone has to be checked on a real device.
+## What is native
 
-Inside the frame the browser does not allow web push, so reminders do not
-arrive as phone notifications in the store apps.
+- Location (for "Where everyone is"), camera and microphone (family calls,
+  photos, the voice helper) and photo picking. Each is asked for only when the
+  person uses the feature; phones without a camera or GPS can still install.
+- An offline page in Parwah's own look (`www/index.html`) with "Try again",
+  shown when the phone cannot reach Parwah. It needs no network.
+- Icons and splash screens in the Mela look, light and dark, generated from
+  `assets/` (`npx @capacitor/assets generate`).
+- The app adds `ParwahApp/1.0` to its browser identity, so the web app hides
+  its "Get the app" links inside it.
+- The sign-in token never leaves the phone in a cloud backup.
 
-The Capacitor project below is the alternative that needs no frame, if the
-shell ever has to be replaced.
+## Releases
 
-## Capacitor shell (not in use)
+Every push to `main` that touches `mobile/` (or **Run workflow** by hand)
+builds both apps, installs and opens them on the emulators and the simulator,
+and only then publishes one GitHub Release with the APK, the AAB, the IPA and
+the screenshots. The APK reaches the public `/get/` page through a pull
+request that adds it to `site/public/downloads/parwah.apk`; the button there
+appears on its own once the file exists.
 
-Capacitor shells that wrap the live Parwah app (`https://parwah-hq.anchit-tandon.com/`).
-The web app is the single source of truth - native builds always show the latest
-deploy, so the apps never go stale.
+### Android signing (release key)
 
-## Android - automatic
+The release key is NOT in this repository. It lives in four GitHub secrets:
+`PARWAH_KEYSTORE_BASE64`, `PARWAH_KEYSTORE_PASSWORD`, `PARWAH_KEY_ALIAS`
+(`parwah`), `PARWAH_KEY_PASSWORD`. The owner holds the backup. Certificate
+SHA-256: `27:72:B3:6B:90:6E:E3:32:8E:47:0F:8C:5F:CD:62:30:C0:BA:C7:F3:E1:77:D7:9E:8E:82:BA:86:1B:C1:3C:41`;
+the workflow refuses a signed build that does not carry exactly this.
+Without the secrets the workflow builds a TEST APK (debug-signed, marked as a
+prerelease): it installs, but the next release will not install over it.
 
-`.github/workflows/android-apk.yml` builds a debug APK on every push that touches
-`mobile/` (or manually via *Run workflow*), then commits it to
-`site/public/downloads/parwah.apk`. Vercel deploys it, and the direct-install
-button on `/get/` lights up automatically.
+For Google Play: create the app in the Play Console (one-time US$25), turn on
+Play App Signing and upload `parwah.aab`.
 
-For a **Play Store** release: create a signing keystore, add it as repo secrets,
-switch the workflow to `assembleRelease`, and upload the AAB from a
-`bundleRelease` build to the Play Console (one-time $25 developer account).
+### iPhone signing
 
-## iOS - needs an Apple Developer account
+Apple only lets a signed app install on an iPhone. Until there is an Apple
+Developer account (US$99 a year), the IPA is unsigned and can be installed
+with your own Apple ID through AltStore or Sideloadly (re-signed every 7
+days), and everyone else uses Safari's Share > Add to Home Screen, which the
+web app already supports. With an account: add the signing certificate and
+provisioning profile as secrets and export a signed IPA for TestFlight and
+the App Store.
+
+## Building on a computer
 
 ```
 cd mobile
-npm install
-npx cap add ios
-npx cap open ios   # requires a Mac with Xcode
+npm ci
+npx cap sync
+npx cap open android   # Android Studio
+npx cap open ios       # Xcode, on a Mac
 ```
 
-Sign with the Apple Developer team (US$99/yr), then archive → TestFlight →
-App Store. Until then, iPhone users get the full-screen app via Safari →
-Share → **Add to Home Screen** (the PWA manifest makes it feel native).
-
-## Local Android build
-
-```
-cd mobile
-npm install
-npx cap add android
-npx cap sync android
-cd android && ./gradlew assembleDebug
-# APK at android/app/build/outputs/apk/debug/app-debug.apk
-```
+The Floot shell (`parwah.floot.app`) that frames the app is the earlier route
+and still works; these apps replace it.
