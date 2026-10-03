@@ -6220,13 +6220,17 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }, function(err){ b.disabled = false; locGeoError(err); }, { enableHighAccuracy: locPrec === 'exact', timeout: 20000, maximumAge: 0 });
   });
   $('loc-stop').addEventListener('click', function(){
+    // One Stop at a time: a second tap while the first is on its way would
+    // share the latch, and its answer could release the first one early.
+    if (locStopping) return;
+    var btn = this; btn.disabled = true;
     locGen++; locStopping = true; locMe.sharing = false; locStopWatch(); locLast = null;
     post(locUrl(), { code: state.code, memberId: state.memberId, action: 'stop' }).then(function(j){
-      locStopping = false; locGen++;
+      locStopping = false; locGen++; btn.disabled = false;
       if (!j.ok) { toast(j.error || 'Could not stop'); refreshLoc(); return; }
       toast('Stopped. Your location is deleted.');
       refreshLoc();
-    }).catch(function(){ locStopping = false; locGen++; toast('No connection - try again'); refreshLoc(); });
+    }).catch(function(){ locStopping = false; locGen++; btn.disabled = false; toast('No connection - try again'); refreshLoc(); });
   });
   $('loc-prec').addEventListener('click', function(e){
     var b = e.target.closest('button[data-prec]'); if (!b) return;

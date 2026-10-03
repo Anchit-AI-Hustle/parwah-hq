@@ -215,8 +215,13 @@ await R.route('**/api/settings?area=location*', async (route) => {
 });
 await R.context().setGeolocation({ latitude: 18.5590, longitude: 73.7868, accuracy: 15 });   // a move: one update goes out
 await R.waitForTimeout(150);
+let stopsSent = 0;
+R.on('request', (req) => { if (req.method() === 'POST' && (req.postDataJSON() || {}).action === 'stop') stopsSent++; });
 await R.click('#loc-stop');
 stopAt = Date.now();
+await R.evaluate(() => document.getElementById('loc-stop').click());   // an impatient second tap
+await R.waitForTimeout(100);
+ok('a second tap on Stop while the first is on its way sends nothing more', stopsSent === 1, stopsSent);
 await R.waitForTimeout(1300);                                  // the update's answer has come back and reloaded
 await R.context().setGeolocation({ latitude: 18.6000, longitude: 73.7500, accuracy: 15 });   // moves again while Stop is on its way
 await R.waitForTimeout(3000);
