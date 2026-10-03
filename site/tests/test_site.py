@@ -1658,6 +1658,16 @@ check("dls: reduced motion switches off every animation, present and future",
       "@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important" in _appt)
 check("dls: keyboard focus is one visible ring from tokens, in both themes",
       ":focus-visible{outline:3px solid var(--focus-ring)" in _appt and "outline:none" not in _css and "outline:0;" not in _css)
+_today_doc = (REPO / "docs" / "design" / "TODAY.md").read_text(encoding="utf-8")
+_wgrid = re.search(r'<div class="widgets" id="widgets">(.*?)</div>', _appt, re.S).group(1)
+_wnames = re.findall(r'<b>([^<]+)</b>', _wgrid)
+_docnames = re.findall(r"^\| \d+ \| ([^|]+?) \|", _today_doc, re.M)
+check("today: the widgets are in the order of docs/design/TODAY.md (most used and most at stake first)",
+      _wnames == _docnames and _wnames[:3] == ["Things to do", "People", "Chats"], " > ".join(_wnames))
+_home = _appt[_appt.index('<section id="pane-home">'):_appt.index('<div class="homerail">')]
+_pos = [_home.index(m) for m in ('class="homehero"', 'id="seniorui"', 'id="pulsecard"', 'id="widgets"', 'id="btn-ecard"', 'id="famcard"')]
+check("today: family card, then a parent's big buttons, the daily check, the widgets, the emergency card, then the rest",
+      _pos == sorted(_pos), str(_pos))
 _loc = (API_DIR / "_locationapi.mjs").read_text(encoding="utf-8")
 check("location: only the person turns it on; there is no action to share for someone else",
       "requireMember(sql, code, memberId, tokenOf(req))" in _loc and "values (${circle.id}, ${me.id}, true" in _loc

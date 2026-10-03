@@ -87,3 +87,19 @@ and dark at 320 and 390px, desktop at 1280px.
 
 **Approved.** No new findings above severity 0; the design suite covers the
 card in all 66 screen measurements.
+
+## Review 3: what comes first on Today
+
+The owner asked for the most useful and most important things to come
+first, ranked by real family use. Today had the widgets at the very bottom,
+below a mostly empty "Your family" card and the emergency card. The order
+mixed daily tools (Things to do) with rare ones (Payments, Muhurat).
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 27 | 8 Minimalist / 6 Recognition | The widgets, the way into every part of the app, started about 1,000px down a phone | 3 | Fixed: they now come straight after the daily check |
+| 28 | 2 Real-world match | Widget order did not follow how often families use each thing or what is at stake | 2 | Fixed: scored and ranked in `TODAY.md`; the gate keeps the order |
+| 29 | 7 Flexibility | A parent's All is well, Pills and SOS buttons came after three cards | 3 | Fixed: they now come straight after the family card |
+| 13 | 8 Minimalist | (Review 1) Today ranks nothing by what needs you | 2 | Partly fixed: a fixed, scored order. Live counts on the widgets ("1 needs attention") show what needs you, without moving buttons under a finger |
+
+**Approved.**
