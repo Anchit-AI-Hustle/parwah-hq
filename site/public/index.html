@@ -1208,13 +1208,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <p class="hint">One tap - they join with your circle code.</p>
     </div>
 
-    <div class="card" id="famcard" style="margin-bottom:var(--space-16)">
-      <h3>Your family</h3>
-      <div class="feed" id="fam-cards"></div>
-      <button class="go" id="fam-view" style="margin-top:var(--space-12)">View family</button>
-      <p class="hint" style="margin-top:var(--space-8)">You decide who can see what.</p>
+    <div id="seniorui" hidden>
+      <button class="big ok" id="btn-checkin">All is well ✅<span class="sub">One tap - the whole family relaxes</span></button>
+      <button class="big pill" id="btn-pill">Pills taken? Yes ✔</button>
+      <button class="big sos" id="btn-sos">🆘 SOS - need help now<span class="sub">Everyone in the circle is told instantly</span></button>
     </div>
-
     <div class="card" id="pulsecard" style="margin-bottom:var(--space-16)">
       <h3>How are my people today?</h3>
       <p class="hint" id="pu-ask" style="margin:var(--space-2) 0 var(--space-12)"></p>
@@ -1223,6 +1221,31 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <p class="hint" id="pu-mine" style="margin-top:var(--space-8)"></p>
     </div>
 
+    <!-- Ranked by real family use: how often (1-5) x what is at stake (1-5).
+         The scores and the reasoning are in docs/design/TODAY.md; the gate keeps this order. -->
+    <div class="widgets" id="widgets">
+      <button class="widget" data-goto="care" data-sec="rem"><span class="wic" aria-hidden="true">✅</span><b>Things to do</b><small id="w-rem">Loading…</small></button>
+      <button class="widget" data-goto="people"><span class="wic" aria-hidden="true">👨‍👩‍👧</span><b>People</b><small id="w-fam">Loading…</small></button>
+      <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b>Chats</b><small id="w-chat">Family + personal</small></button>
+      <button class="widget" data-goto="memory"><span class="wic" aria-hidden="true">📒</span><b>Family memory</b><small id="w-book">Contacts, addresses, meds-map, facts</small></button>
+      <button class="widget" data-goto="vault" data-sec="docs"><span class="wic" aria-hidden="true">🔐</span><b>Family vault</b><small id="w-vault">Aadhaar, PAN, passport, health papers</small></button>
+      <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true">💡</span><b>Suggested</b><small id="w-req">Loading…</small></button>
+      <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
+      <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check - just ask</small></button>
+      <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true">🕉</span><b>Muhurat</b><small id="w-day">Choghadiya for your city</small></button>
+      <button class="widget" data-goto="vault" data-sec="pay"><span class="wic" aria-hidden="true">💳</span><b>Payments</b><small id="w-pay">Who may use which way of paying</small></button>
+      <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi - play together</small></button>
+    </div>
+    <button class="big ecard-big" id="btn-ecard">🚨 Emergency card<span class="sub">Everything a doctor needs - works without internet</span></button>
+
+    <div class="card" id="famcard" style="margin-bottom:var(--space-16)">
+      <h3>Your family</h3>
+      <div class="feed" id="fam-cards"></div>
+      <button class="go" id="fam-view" style="margin-top:var(--space-12)">View family</button>
+      <p class="hint" style="margin-top:var(--space-8)">You decide who can see what.</p>
+    </div>
+
+
     <button class="card readycard" id="readycard" hidden style="margin-bottom:var(--space-16);width:100%;text-align:left">
       <h3>Your family is <span id="rd-pct">-</span>% ready</h3>
       <div class="frbar" style="margin:var(--space-8) 0 var(--space-12)"><i id="rd-fill"></i></div>
@@ -1230,12 +1253,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <p class="hint" id="rd-cta" style="margin-top:var(--space-8)"></p>
     </button>
 
-    <div id="seniorui" hidden>
-      <button class="big ok" id="btn-checkin">All is well ✅<span class="sub">One tap - the whole family relaxes</span></button>
-      <button class="big pill" id="btn-pill">Pills taken? Yes ✔</button>
-      <button class="big sos" id="btn-sos">🆘 SOS - need help now<span class="sub">Everyone in the circle is told instantly</span></button>
-    </div>
-    <button class="big ecard-big" id="btn-ecard">🚨 Emergency card<span class="sub">Everything a doctor needs - works without internet</span></button>
 
     <div class="card" id="firstrun" hidden style="margin-bottom:var(--space-16)">
       <h3>🌱 Getting Parwah useful</h3>
@@ -1255,19 +1272,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <h3>🪙 <span id="coin-bal">-</span> family coins</h3>
       <p class="hint" id="coin-sub" style="margin:var(--space-2) 0 0">Earned by looking after each other - spent on Ekta</p>
     </button>
-    <div class="widgets">
-      <button class="widget" data-goto="people"><span class="wic" aria-hidden="true">👨‍👩‍👧</span><b>People</b><small id="w-fam">Loading…</small></button>
-      <button class="widget" data-goto="care" data-sec="rem"><span class="wic" aria-hidden="true">✅</span><b>Things to do</b><small id="w-rem">Loading…</small></button>
-      <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true">💡</span><b>Suggested</b><small id="w-req">Loading…</small></button>
-      <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b>Chats</b><small id="w-chat">Family + personal</small></button>
-      <button class="widget" data-goto="memory"><span class="wic" aria-hidden="true">📒</span><b>Family memory</b><small id="w-book">Contacts, addresses, meds-map, facts</small></button>
-      <button class="widget" data-goto="vault" data-sec="docs"><span class="wic" aria-hidden="true">🔐</span><b>Family vault</b><small id="w-vault">Aadhaar, PAN, passport, health papers</small></button>
-      <button class="widget" data-goto="vault" data-sec="pay"><span class="wic" aria-hidden="true">💳</span><b>Payments</b><small id="w-pay">Who may use which way of paying</small></button>
-      <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true">🕉</span><b>Muhurat</b><small id="w-day">Choghadiya for your city</small></button>
-      <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check - just ask</small></button>
-      <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi - play together</small></button>
-      <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
-    </div>
 
     </div>
     <div class="homerail">
