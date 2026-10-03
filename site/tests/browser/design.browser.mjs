@@ -114,6 +114,8 @@ for (const theme of ['light', 'dark']) {
     for (const pane of PANES) {
       await page.evaluate(p => { location.hash = '#' + p; }, pane);
       await page.waitForTimeout(350);
+      // Today's More is measured open: what is under it is still Parwah.
+      if (pane === 'home') await page.evaluate(() => { const d = document.getElementById('more'); if (d) d.open = true; });
       await page.evaluate(() => window.scrollTo(0, 0));
       // Touch layouts need 44px; the desktop layout (900px+) is used with a
       // mouse, where 36px is comfortable (WCAG AA asks for 24).

@@ -119,9 +119,11 @@ async function open(viewport){
   return page;
 }
 async function toGames(page){
-  // The way a person actually gets there: the Games card on Home. This is
-  // the navigation the feature is judged on, so the test uses it too.
-  await page.locator('button[data-goto="fun"][data-sec="games"]').first().click();
+  // The way a person actually gets there: Games is under More on Today (the
+  // five things come first). This is the navigation the feature is judged on,
+  // so the test uses it too.
+  if (!(await page.locator('#more').evaluate(d => d.open))) await page.click('#more > summary');
+  await page.locator('#more button[data-goto="fun"][data-sec="games"]').click();
   await page.waitForTimeout(900);
 }
 

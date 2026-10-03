@@ -316,10 +316,10 @@ for (const vp of [{ width:320, height:640 }, { width:390, height:844 }]) {
 {
   const pg = await fresh({ viewport:{ width:390, height:844 }, signedIn:true });
   // Only four tabs are reachable on a phone without opening the drawer, in
-  // order of how often a family uses them: Today, Chat, Care, People.
+  // order of utility: Today, Vault, Care, People (docs/design/TODAY.md).
   // Everything else is behind the hamburger, which is why its size (checked
   // below) matters so much.
-  const tabs = ['people', 'chat', 'care'];
+  const tabs = ['people', 'vault', 'care'];
   for (const t of tabs) {
     await pg.locator('#tabs [data-tab="' + t + '"]:visible').first().click();
     await pg.waitForTimeout(350);
@@ -329,12 +329,12 @@ for (const vp of [{ width:320, height:640 }, { width:390, height:844 }]) {
   // Back used to leave the app entirely, because every switch REPLACED
   // the history entry instead of pushing one.
   await pg.goBack(); await pg.waitForTimeout(450);
-  ok((await pg.evaluate(() => location.hash)) === '#chat', 'Back steps back a feature');
+  ok((await pg.evaluate(() => location.hash)) === '#vault', 'Back steps back a feature');
   await pg.goBack(); await pg.waitForTimeout(450);
   ok((await pg.evaluate(() => location.hash)) === '#people', 'and again');
   ok(await pg.locator('#pane-people').isVisible(), 'and the screen follows the address, not just the URL');
   await pg.goForward(); await pg.waitForTimeout(450);
-  ok((await pg.evaluate(() => location.hash)) === '#chat', 'Forward works too');
+  ok((await pg.evaluate(() => location.hash)) === '#vault', 'Forward works too');
   ok(await pg.locator('#app').count() > 0 || await pg.locator('#tabs').isVisible(), 'Back never left the app');
   await pg.close();
 }

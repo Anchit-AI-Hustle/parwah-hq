@@ -414,18 +414,7 @@ button.pcard:disabled{opacity:.45;cursor:default}
 .personhero h1{margin:0;font-size:var(--fs-30)}
 .personhero .lede{margin:var(--space-2) 0 var(--space-12);opacity:.85}
 .crow.urgent{border-left-color:var(--sindoor)}
-/* the family pulse and the one readiness number */
-.purow{display:flex;align-items:center;gap:var(--space-12);padding:var(--space-8) var(--space-2);border-bottom:1px solid var(--bone-2);font-size:var(--fs-14)}
-.purow:last-child{border-bottom:0}
-.purow .pe{font-size:var(--fs-20);line-height:1;width:28px;text-align:center}
-.purow b{font-weight:600}
-.purow small{display:block;color:var(--dim-day);font-size:var(--fs-12)}
-.purow.wantcall{background:rgba(179,38,30,.05);border-radius:var(--radius-8);padding-left:var(--space-8)}
-.purow.wantcall small{color:var(--sindoor)}
-.puopt{display:flex;align-items:center;gap:var(--space-8);width:100%;text-align:left;padding:var(--space-8) var(--space-12);margin-bottom:var(--space-8);
-  border:1px solid var(--bone-2);border-radius:var(--radius-12);background:var(--surface);font:inherit;color:inherit;cursor:pointer}
-.puopt .pe{font-size:var(--fs-20)}
-.puopt.sel{border-color:var(--marigold);background:rgba(232,162,61,.10)}
+/* the one readiness number */
 .readycard .frbar i{background:var(--pine)}
 .rdgap{display:flex;gap:var(--space-8);align-items:baseline;font-size:var(--fs-14);padding:var(--space-4) 0}
 .rdgap em{font-style:normal;color:var(--dim-day)}
@@ -553,6 +542,16 @@ details.more[open]>summary::before{content:"▾ "}
 .trdots i{width:7px;height:7px;border-radius:var(--radius-pill);background:var(--bone-2)}
 .trdots i.on{background:var(--marigold);width:20px}
 .kindpick{margin-bottom:var(--space-12)}
+/* Today: the five things, then everything else under More */
+.todaymore{margin:var(--space-16) 0}
+.todaymore>summary{position:relative;display:flex;flex-direction:column;justify-content:center;min-height:var(--tap-min);padding:var(--space-12) var(--space-40) var(--space-12) var(--space-16);cursor:pointer;
+  border:1px solid var(--bone-2);border-radius:var(--radius-16);background:var(--surface);font-weight:700;font-size:var(--fs-16);color:var(--ink);list-style:none}
+.todaymore>summary::-webkit-details-marker{display:none}
+.todaymore>summary::marker{content:"";font-size:0}
+.todaymore>summary::after{content:"▾";position:absolute;right:var(--space-16);top:50%;transform:translateY(-50%)}
+.todaymore[open]>summary::after{content:"▴"}
+.todaymore>summary small{font-weight:400;font-size:var(--fs-12);color:var(--ink-soft)}
+.todaymore .coincard{margin-top:var(--space-12)}
 .side-new{width:100%;text-align:left;padding:var(--space-8) var(--space-12) var(--space-8) var(--space-32);font-size:var(--fs-12);font-weight:600;color:var(--marigold);background:none;border:0;cursor:pointer;font-family:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .coach{position:fixed;inset:0;z-index:var(--z-coach)}
 .coachhole{position:absolute;border-radius:var(--radius-16);box-shadow:0 0 0 9999px rgba(20,16,10,.72);transition:var(--motion-base);pointer-events:none}
@@ -1213,37 +1212,37 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="big pill" id="btn-pill">Pills taken? Yes ✔</button>
       <button class="big sos" id="btn-sos">🆘 SOS - need help now<span class="sub">Everyone in the circle is told instantly</span></button>
     </div>
-    <div class="card" id="pulsecard" style="margin-bottom:var(--space-16)">
-      <h3>How are my people today?</h3>
-      <p class="hint" id="pu-ask" style="margin:var(--space-2) 0 var(--space-12)"></p>
-      <div class="feed" id="pu-people"></div>
-      <div id="pu-pick" style="margin-top:var(--space-12)"></div>
-      <p class="hint" id="pu-mine" style="margin-top:var(--space-8)"></p>
-    </div>
-
-    <!-- Ranked by real family use: how often (1-5) x what is at stake (1-5).
-         The scores and the reasoning are in docs/design/TODAY.md; the gate keeps this order. -->
+    <!-- THE FIVE THINGS. Families talk on WhatsApp; Parwah holds what WhatsApp
+         cannot: the papers, the medicines, who does what, who is who, and the
+         card for an emergency. Ranked by utility in docs/design/TODAY.md; the
+         gate keeps this order. Everything else is one tap away under More. -->
     <div class="widgets" id="widgets">
+      <button class="widget" data-goto="vault" data-sec="docs"><span class="wic" aria-hidden="true">🔐</span><b>Vault</b><small id="w-vault">Aadhaar, PAN, licence, policies - download in one tap</small></button>
+      <button class="widget" data-goto="memory" data-bk="health"><span class="wic" aria-hidden="true">🩺</span><b>Health</b><small id="w-health">Medicines, blood groups, allergies</small></button>
       <button class="widget" data-goto="care" data-sec="rem"><span class="wic" aria-hidden="true">✅</span><b>Things to do</b><small id="w-rem">Loading…</small></button>
-      <button class="widget" data-goto="people"><span class="wic" aria-hidden="true">👨‍👩‍👧</span><b>People</b><small id="w-fam">Loading…</small></button>
+      <button class="widget" data-goto="people"><span class="wic" aria-hidden="true">👨‍👩‍👧</span><b>Family</b><small id="w-fam">Loading…</small></button>
+    </div>
+    <button class="big ecard-big" id="btn-ecard">🚨 Emergency card<span class="sub">Everything a doctor needs - works without internet</span></button>
+
+    <details class="todaymore" id="more">
+      <summary>More<small>Chats, contacts, plans, Ekta, muhurat, payments, games</small></summary>
+      <div class="widgets" id="morewidgets">
       <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b>Chats</b><small id="w-chat">Family + personal</small></button>
-      <button class="widget" data-goto="memory"><span class="wic" aria-hidden="true">📒</span><b>Family memory</b><small id="w-book">Contacts, addresses, meds-map, facts</small></button>
-      <button class="widget" data-goto="vault" data-sec="docs"><span class="wic" aria-hidden="true">🔐</span><b>Family vault</b><small id="w-vault">Aadhaar, PAN, passport, health papers</small></button>
+      <button class="widget" data-goto="memory"><span class="wic" aria-hidden="true">📒</span><b>Contacts &amp; addresses</b><small id="w-book">Doctors, neighbours, addresses</small></button>
       <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true">💡</span><b>Suggested</b><small id="w-req">Loading…</small></button>
       <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
       <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check - just ask</small></button>
       <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true">🕉</span><b>Muhurat</b><small id="w-day">Choghadiya for your city</small></button>
       <button class="widget" data-goto="vault" data-sec="pay"><span class="wic" aria-hidden="true">💳</span><b>Payments</b><small id="w-pay">Who may use which way of paying</small></button>
       <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi - play together</small></button>
-    </div>
-    <button class="big ecard-big" id="btn-ecard">🚨 Emergency card<span class="sub">Everything a doctor needs - works without internet</span></button>
+      </div>
+      <button class="card coincard" id="coincard" hidden style="margin-bottom:var(--space-16);width:100%;text-align:left">
+      <h3>🪙 <span id="coin-bal">-</span> family coins</h3>
+      <p class="hint" id="coin-sub" style="margin:var(--space-2) 0 0">Earned by looking after each other - spent on Ekta</p>
+    </button>
+    </details>
 
-    <div class="card" id="famcard" style="margin-bottom:var(--space-16)">
-      <h3>Your family</h3>
-      <div class="feed" id="fam-cards"></div>
-      <button class="go" id="fam-view" style="margin-top:var(--space-12)">View family</button>
-      <p class="hint" style="margin-top:var(--space-8)">You decide who can see what.</p>
-    </div>
+
 
 
     <button class="card readycard" id="readycard" hidden style="margin-bottom:var(--space-16);width:100%;text-align:left">
@@ -1268,10 +1267,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <div class="feed" id="otlist"></div>
     </div>
 
-    <button class="card coincard" id="coincard" hidden style="margin-bottom:var(--space-16);width:100%;text-align:left">
-      <h3>🪙 <span id="coin-bal">-</span> family coins</h3>
-      <p class="hint" id="coin-sub" style="margin:var(--space-2) 0 0">Earned by looking after each other - spent on Ekta</p>
-    </button>
 
     </div>
     <div class="homerail">
@@ -2293,21 +2288,21 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <div class="inner">
     <div class="side-brand side-only"><span class="dev" aria-hidden="true">परवाह</span><span class="side-name">Parwah<small class="side-tag">family superapp</small></span></div>
     <button data-tab="home" class="sel"><span class="ic" aria-hidden="true">🏠</span>Today</button>
-    <button data-tab="chat"><span class="ic" aria-hidden="true">💬</span>Chat</button>
+    <button data-tab="vault"><span class="ic" aria-hidden="true">🔐</span>Vault</button>
+    <div class="subnav side-only" data-parent="vault">
+      <button data-tab="vault" data-sec="docs">Documents</button>
+      <button data-tab="vault" data-sec="pay">Payments</button>
+    </div>
+    <button data-tab="memory" class="deskonly"><span class="ic" aria-hidden="true">📒</span>Memory</button>
     <button data-tab="care"><span class="ic" aria-hidden="true">✅</span>Care<i class="dot" id="care-dot" hidden></i></button>
     <div class="subnav side-only" data-parent="care">
       <button data-tab="care" data-sec="rem">Things to do</button>
       <button data-tab="care" data-sec="req">Suggested</button>
     </div>
     <button data-tab="people"><span class="ic" aria-hidden="true">👨‍👩‍👧</span>People</button>
+    <button data-tab="chat" class="deskonly"><span class="ic" aria-hidden="true">💬</span>Chat</button>
     <button data-tab="notifs" class="deskonly" id="side-nb" style="position:relative"><span class="ic" aria-hidden="true">🔔</span>Notifications<i class="dot" id="nb-dot2" hidden></i></button>
     <button data-tab="ekta" class="deskonly"><span class="ic" aria-hidden="true">✨</span>Ask Ekta</button>
-    <button data-tab="memory" class="deskonly"><span class="ic" aria-hidden="true">📒</span>Memory</button>
-    <button data-tab="vault" class="deskonly"><span class="ic" aria-hidden="true">🔐</span>Vault</button>
-    <div class="subnav side-only" data-parent="vault">
-      <button data-tab="vault" data-sec="docs">Documents</button>
-      <button data-tab="vault" data-sec="pay">Payments</button>
-    </div>
     <button data-tab="fun" class="deskonly"><span class="ic" aria-hidden="true">🎉</span>Together</button>
     <div class="subnav side-only" data-parent="fun">
       <button data-tab="fun" data-sec="plans">Plans &amp; calls</button>
@@ -2362,7 +2357,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <div class="dpanel">
     <div class="dhead"><span class="dev" aria-hidden="true">परवाह</span> Parwah <button class="x" id="drawer-x" aria-label="Close menu">✕</button></div>
     <button class="ditem" data-tab="home">🏠 Today</button>
-    <button class="ditem" data-tab="chat">💬 Chat</button>
+    <div class="dgroup">
+      <button class="ditem dparent" data-grp="vault">🔐 Family vault <span class="caret">▾</span></button>
+      <div class="dsub">
+        <button class="ditem sub" data-tab="vault" data-sec="docs">Documents</button>
+        <button class="ditem sub" data-tab="vault" data-sec="pay">Payments</button>
+      </div>
+    </div>
+    <button class="ditem" data-tab="memory">📒 Family memory</button>
     <div class="dgroup">
       <button class="ditem dparent" data-grp="care">✅ Care <span class="caret">▾</span></button>
       <div class="dsub">
@@ -2371,16 +2373,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       </div>
     </div>
     <button class="ditem" data-tab="people">👨‍👩‍👧 People</button>
+    <button class="ditem" data-tab="chat">💬 Chat</button>
     <button class="ditem" data-tab="notifs">🔔 Notifications</button>
     <button class="ditem" data-tab="ekta">✨ Ask Ekta</button>
-    <button class="ditem" data-tab="memory">📒 Family memory</button>
-    <div class="dgroup">
-      <button class="ditem dparent" data-grp="vault">🔐 Family vault <span class="caret">▾</span></button>
-      <div class="dsub">
-        <button class="ditem sub" data-tab="vault" data-sec="docs">Documents</button>
-        <button class="ditem sub" data-tab="vault" data-sec="pay">Payments</button>
-      </div>
-    </div>
     <div class="dgroup">
       <button class="ditem dparent" data-grp="fun">🎉 Together <span class="caret">▾</span></button>
       <div class="dsub">
@@ -2979,7 +2974,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     homeOffline(false);
     apiGet(API.events + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){
-        if (j.ok) { homeOffline(false); seenAt = j.seenAt || seenAt; joinReqs = j.joinRequests || []; joinPolicy = j.joinPolicy || 'approve'; render(j); renderForSelect(j.members); renderJoinReqs(); renderPulse(j.pulse); return; }
+        if (j.ok) { homeOffline(false); seenAt = j.seenAt || seenAt; joinReqs = j.joinRequests || []; joinPolicy = j.joinPolicy || 'approve'; render(j); renderForSelect(j.members); renderJoinReqs(); return; }
         // Not ok, and not a code change we can heal from below: say so.
         homeOffline(true);
         // Circle code changed by another member? Re-map by membership and recover.
@@ -3435,6 +3430,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (b.dataset.qdone)  carePost({ action:'request_done', requestId:b.dataset.qdone });
     if (b.dataset.open)   openChat(b.dataset.open);
     if (b.dataset.goto)   { switchTab(b.dataset.goto); if (b.dataset.sec) setSec(b.dataset.goto, b.dataset.sec); }
+    if (b.dataset.bk) setBkFilter(b.dataset.bk);
     if (b.dataset.qtalk)  {
       var fam = null; chatsCache.forEach(function(x){ if (x.kind === 'circle') fam = x; });
       if (fam) { openChat(fam.id); $('msg').value = 'About "' + b.dataset.qtalk + '": '; $('msg').focus(); }
@@ -4057,59 +4053,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     joinAct({ action:'set_join_policy', policy: next }, next === 'open' ? 'The code is now enough' : 'Joining needs a yes from the family');
   });
 
-  // ---------- the family pulse ----------
-  var pulseData = null;
-  function renderPulse(p){
-    if (!p) return;
-    pulseData = p;
-    $('pu-ask').textContent = p.ask;
-    var byId = {};
-    (p.answers || []).forEach(function(a){ byId[a.memberId] = a; });
-    var h = '';
-    (membersCache || []).forEach(function(m){
-      var a = byId[m.id];
-      h += '<div class="purow' + (a && a.call ? ' wantcall' : '') + '">' +
-           '<span class="pe" aria-hidden="true">' + (a ? a.emoji : '·') + '</span>' +
-           '<span><b>' + esc(m.name) + '</b><small>' +
-           (a ? esc(a.text) + (a.note ? ' - ' + esc(a.note) : '')
-              : 'Has not said yet today') + '</small></span>' +
-           (a && a.call && m.id !== state.memberId && m.phone
-              ? '<a class="cbtn" style="margin-left:auto" href="tel:' + encodeURIComponent(m.phone) + '">📞 Call</a>' : '') +
-           '</div>';
-    });
-    $('pu-people').innerHTML = h || '<div class="ev">Nobody in the circle yet.</div>';
-    var mine = byId[state.memberId];
-    $('pu-pick').innerHTML = (p.options || []).map(function(o){
-      return '<button class="puopt' + (mine && mine.value === o.k ? ' sel' : '') + '" data-pulse="' + o.k + '">' +
-             '<span class="pe" aria-hidden="true">' + o.e + '</span><span>' + esc(o.t) + '</span></button>';
-    }).join('');
-    $('pu-mine').textContent = mine
-      ? 'You said ' + mine.text + ' today. Tap another if the day has turned.'
-      : 'Today\u2019s question changes tomorrow - ' + p.styleName.toLowerCase() + ' today.';
-  }
-  $('pu-pick').addEventListener('click', function(e){
-    var b = e.target.closest('[data-pulse]'); if (!b || !state) return;
-    post(API.events, { code: state.code, memberId: state.memberId, type: 'pulse', value: b.getAttribute('data-pulse') })
-      .then(function(j){
-        if (!j.ok) { toast(j.error || 'Could not save that'); return; }
-        toast('The family can see how you are 🧡'); refresh();
-      }).catch(function(){ toast('No connection - try again'); });
-  });
 
   // ---------- Screen 1: the family, as people rather than features ----------
   var recordsCache = [];
-  function renderFamCards(){
-    if (!state || !prepCache.length) { $('famcard').hidden = true; return; }
-    $('famcard').hidden = false;
-    $('fam-cards').innerHTML = prepCache.map(function(pp){
-      var line = pp.attention === 0 ? 'Important information up to date'
-        : pp.attention + ' thing' + (pp.attention > 1 ? 's' : '') + ' to complete';
-      return '<div class="ev" data-person="' + pp.memberId + '" role="button" tabindex="0" style="cursor:pointer">' +
-             '<b>' + esc(pp.name) + '</b>' + (pp.relation ? ' <em style="font-style:normal;color:var(--dim-day)">· ' + esc(pp.relation) + '</em>' : '') +
-             '<small>' + (pp.attention === 0 ? '✅ ' : '⚠️ ') + line + '</small></div>';
-    }).join('');
-  }
-  $('fam-view').addEventListener('click', function(){ switchTab('people'); });
 
   // ---------- Screen 2: one person, in the sections the guide names ----------
   var personId = null;
@@ -4592,7 +4538,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (!state) return;
     apiGet(API.book + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){ if (j.ok) { bookCache = j.entries || []; prepCache = j.prep || []; bookAccess = j.access || []; bookConsent = j.consent || [];
-          recordsCache = j.records || []; renderReady(j.family); renderFamCards();
+          recordsCache = j.records || []; renderReady(j.family);
           if (personId && curTab === 'person') openPerson(personId); bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); ecSave();
           var openId = $('book-detail').hidden ? null : $('book-detail').dataset.bid;
           if (openId && bookEntry(openId)) openBookDetail(openId);
@@ -4605,7 +4551,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var qy = $('b-search').value.trim().toLowerCase();
     bkAbout = $('bk-about').value;
     var list = bookCache.filter(function(e){
-      if (bkFilter !== 'all' && e.kind !== bkFilter) return false;
+      if (bkFilter === 'health' ? !(e.kind === 'med' || e.kind === 'fact') : (bkFilter !== 'all' && e.kind !== bkFilter)) return false;
       if (bkAbout === 'fam' && e.about_member) return false;
       if (bkAbout && bkAbout !== 'fam' && e.about_member !== bkAbout) return false;
       if (!qy) return true;
@@ -4625,15 +4571,27 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var nC = bookCache.filter(function(e){ return e.kind === 'contact'; }).length;
     var nA = bookCache.filter(function(e){ return e.kind === 'address'; }).length;
     var nM = bookCache.filter(function(e){ return e.kind === 'med'; }).length;
+    var nF = bookCache.filter(function(e){ return e.kind === 'fact'; }).length;
     $('w-book').textContent = bookCache.length
-      ? nC + ' contacts · ' + nA + ' addresses · ' + nM + ' meds'
-      : 'Contacts, addresses, meds-map';
+      ? nC + ' contacts · ' + nA + ' addresses'
+      : 'Doctors, neighbours, addresses';
+    $('w-health').textContent = (nM || nF)
+      ? nM + ' medicine' + (nM === 1 ? '' : 's') + ' · ' + nF + ' health fact' + (nF === 1 ? '' : 's')
+      : 'Medicines, blood groups, allergies';
+  }
+  // The Health shortcut opens medicines and health facts together; the
+  // section buttons show both as chosen.
+  function setBkFilter(k){
+    bkFilter = k;
+    $('bk-filter').querySelectorAll('button').forEach(function(x){
+      var v = x.getAttribute('data-bk');
+      x.classList.toggle('sel', k === 'health' ? (v === 'med' || v === 'fact') : v === k);
+    });
+    renderBook();
   }
   $('bk-filter').addEventListener('click', function(e){
     var b = e.target.closest('button'); if (!b) return;
-    bkFilter = b.getAttribute('data-bk');
-    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
-    renderBook();
+    setBkFilter(b.getAttribute('data-bk'));
   });
   $('b-search').addEventListener('input', renderBook);
   $('bk-about').addEventListener('change', renderBook);
