@@ -208,8 +208,10 @@ label + select{width:100%}
 .rolepick{display:flex;gap:var(--space-12);margin-top:var(--space-8)}
 .rolepick button{flex:1;border:1.5px solid var(--bone-2);background:var(--surface);border-radius:var(--radius-12);padding:var(--space-12);font-family:var(--body);font-weight:600;font-size:var(--fs-14);cursor:pointer;color:var(--ink)}
 .rolepick button.sel{border-color:var(--marigold);background:var(--tint-warm)}
-.relpick{flex-wrap:wrap;gap:var(--space-8)}
-.relpick button{flex:0 0 calc(33.33% - 6px);padding:var(--space-12) var(--space-4);font-size:var(--fs-12)}
+.relpick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-8)}
+.relpick button{padding:var(--space-12) var(--space-4);font-size:var(--fs-12)}
+/* Ten choices in three columns: "Family" (none of the others) takes its own row. */
+.relpick button[data-role="family"]{grid-column:1/-1}
 .seniorchk{display:flex;align-items:center;gap:var(--space-12);margin-top:var(--space-8);min-height:44px;font-size:var(--fs-16);color:var(--ink-soft);cursor:pointer}
 .seniorchk input{width:24px;height:24px;flex:none;accent-color:var(--marigold)}
 .go{border:0;width:100%;margin-top:var(--space-16);background:var(--marigold);color:var(--dusk);font-weight:700;font-size:var(--fs-16);border-radius:var(--radius-pill);padding:var(--space-16);cursor:pointer}
@@ -966,7 +968,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 /* The narrowest phones: the bar keeps menu, name, alerts and account; the
    install link is in the menu ("Get the app"), so it steps out of the bar.
    Last in the sheet: it must win over the icon atoms above. */
-@media (max-width:360px){#getapp{display:none}}
+@media (max-width:360px){#getapp{display:none}.relpick{grid-template-columns:repeat(2,minmax(0,1fr))}.relpick button[data-role="family"]{grid-column:auto}}
 .native-app #getapp,.native-app .ditem[href="get/"]{display:none}
 </style>
 </head>
@@ -1126,7 +1128,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <input type="text" id="c-name" maxlength="60" placeholder="e.g. Rohan">
     <label for="c-circle">Circle name</label>
     <input type="text" id="c-circle" maxlength="60" placeholder="e.g. Sharma Family">
-    <label>Your role in the family (everyone is an equal admin)</label>
+    <label id="c-role-label">Your role in the family (everyone is an equal admin)</label>
     <div class="rolepick relpick" id="c-role">
       <button type="button" data-role="father">👨 Father</button>
       <button type="button" data-role="mother">👩 Mother</button>
@@ -1136,6 +1138,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button type="button" data-role="daughter">👧 Daughter</button>
       <button type="button" data-role="brother">🙋 Brother</button>
       <button type="button" data-role="sister">🙋‍♀️ Sister</button>
+      <button type="button" data-role="friend">🤝 Friend</button>
       <button type="button" data-role="family" class="sel">🧡 Family</button>
     </div>
     <label class="seniorchk"><input type="checkbox" id="c-senior"> Senior mode - big text &amp; buttons</label>
@@ -1148,7 +1151,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <input type="text" id="j-code" maxlength="12" placeholder="e.g. KJM4PW or SHARMAS" style="text-transform:uppercase;letter-spacing:.2em">
     <label for="j-name">Your name</label>
     <input type="text" id="j-name" maxlength="60" placeholder="e.g. Papa">
-    <label>Your role in the family (everyone is an equal admin)</label>
+    <label>Your role (everyone is an equal admin)</label>
     <div class="rolepick relpick" id="j-role">
       <button type="button" data-role="father">👨 Father</button>
       <button type="button" data-role="mother">👩 Mother</button>
@@ -1158,6 +1161,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button type="button" data-role="daughter">👧 Daughter</button>
       <button type="button" data-role="brother">🙋 Brother</button>
       <button type="button" data-role="sister">🙋‍♀️ Sister</button>
+      <button type="button" data-role="friend">🤝 Friend</button>
       <button type="button" data-role="family" class="sel">🧡 Family</button>
     </div>
     <label class="seniorchk"><input type="checkbox" id="j-senior"> Senior mode - big text &amp; buttons</label>
@@ -2198,7 +2202,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <input type="text" id="e-likes" maxlength="120" placeholder="e.g. chai, cricket, gardening, ghazals">
         <label for="e-wish">Wishlist</label>
         <input type="text" id="e-wish" maxlength="120" placeholder="e.g. walking shoes, a good shawl">
-        <label>Your role in the family</label>
+        <label>Your role</label>
         <div class="rolepick relpick" id="e-role">
       <button type="button" data-role="father">👨 Father</button>
       <button type="button" data-role="mother">👩 Mother</button>
@@ -2208,6 +2212,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button type="button" data-role="daughter">👧 Daughter</button>
       <button type="button" data-role="brother">🙋 Brother</button>
       <button type="button" data-role="sister">🙋‍♀️ Sister</button>
+      <button type="button" data-role="friend">🤝 Friend</button>
       <button type="button" data-role="family">🧡 Family</button>
         </div>
         <label class="seniorchk"><input type="checkbox" id="e-senior"> Senior mode - big text &amp; buttons</label>
@@ -3636,6 +3641,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('c-head').textContent = newKind === 'group' ? 'Start a new group' : 'Start a new family';
     $('c-circle').placeholder = newKind === 'group' ? 'e.g. The Cousins' : 'e.g. Sharma Family';
     $('c-go').textContent = newKind === 'group' ? 'Create the group' : 'Create the family';
+    $('c-role-label').textContent = 'Your role in the ' + newKind + ' (everyone is an equal admin)';
+    // In a group of friends "Friend" is the likely answer; in a family, "Family".
+    var defRole = newKind === 'group' ? 'friend' : 'family';
+    $('c-role').querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x.getAttribute('data-role') === defRole); });
     if (authUser && !$('c-name').value) $('c-name').value = authUser.name;
     showStep('setup');
     try { $('c-circle').focus(); } catch (e) {}
@@ -3957,7 +3966,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         saveState(state);
         upsertGroup({ code:j.code, circleName:j.circleName, kind:j.kind || newKind, memberId:j.memberId, role:j.role, memberName:name });
         enterMain();
-        toast('Circle created - share code ' + j.code + ' with family');
+        toast((newKind === 'group' ? 'Group' : 'Family') + ' created - share code ' + j.code + ' with ' + (newKind === 'group' ? 'the group' : 'your family'));
       })
       .catch(function(){ $('c-go').disabled = false; $('ob-err').textContent = 'No connection - try again.'; });
   });

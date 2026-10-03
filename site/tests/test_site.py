@@ -1658,6 +1658,15 @@ check("dls: reduced motion switches off every animation, present and future",
       "@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important" in _appt)
 check("dls: keyboard focus is one visible ring from tokens, in both themes",
       ":focus-visible{outline:3px solid var(--focus-ring)" in _appt and "outline:none" not in _css and "outline:0;" not in _css)
+_circ = (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+_rels = re.findall(r"'([a-z]+)'", re.search(r"const RELATIONS = \[([^\]]*)\]", _circ).group(1))
+for _pick in ("c-role", "j-role", "e-role"):
+    _box = re.search(r'id="' + _pick + r'">(.*?)</div>', _appt, re.S).group(1)
+    _roles = re.findall(r'data-role="([a-z]+)"', _box)
+    check("roles: every choice in " + _pick + " is one the server keeps, Friend included",
+          "friend" in _roles and set(_roles) <= set(_rels) and set(_rels) <= set(_roles), ",".join(_roles))
+check("roles: a new group asks for your role in the group, and starts on Friend",
+      "'Your role in the ' + newKind" in _appt and "newKind === 'group' ? 'friend' : 'family'" in _appt)
 _loc = (API_DIR / "_locationapi.mjs").read_text(encoding="utf-8")
 check("location: only the person turns it on; there is no action to share for someone else",
       "requireMember(sql, code, memberId, tokenOf(req))" in _loc and "values (${circle.id}, ${me.id}, true" in _loc
