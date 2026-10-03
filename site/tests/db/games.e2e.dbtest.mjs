@@ -96,6 +96,12 @@ ok('the Coming soon game tiles are gone', (await R.locator('#pane-fun >> text=Co
 for (const k of ['ludo', 'bhabhi', 'vyapar']) ok(`${k}: its card is there to start`, await R.locator(`[data-bstart="${k}"]`).count() === 1);
 ok('each game card lets you pick family to play with', (await R.locator('.bpick[data-for="ludo"] input[type=checkbox]').count()) === 1);
 
+// A tap, the way a finger taps. The board re-renders on its own between the
+// check and the tap (the other player moves, buttons bounce), so a button seen
+// enabled can be disabled a moment later: tap at once, give up after 3s, and
+// the loop looks again. True only if the tap landed.
+const tap = (loc) => loc.click({ force: true, timeout: 3000 }).then(() => true, () => false);
+
 // ---------------- Ludo, alone, to the end ----------------
 {
   await R.click('[data-bsolo="ludo"]');
@@ -108,8 +114,9 @@ ok('each game card lets you pick family to play with', (await R.locator('.bpick[
     if (s.winner) break;
     if (!(await vis(R, '#g-ludo'))) { stayedOpen = false; break; }
     const tok = R.locator('#lboard button[data-ltok]');
-    if (await tok.count()) { await tok.first().click({ force: true }); picks++; }   // it pulses: a finger does not wait for it to stop
-    else if (await R.locator('#l-roll:not([disabled])').count()) { await R.click('#l-roll'); rolls++; }
+    const roll = R.locator('#l-roll:not([disabled])');
+    if (await tok.count()) { if (await tap(tok.first())) picks++; }   // it pulses: a finger does not wait for it to stop
+    else if (await roll.count()) { if (await tap(roll)) rolls++; }
     await R.waitForTimeout(60);
   }
   const g = await lastGame('ludo');
@@ -140,7 +147,7 @@ ok('each game card lets you pick family to play with', (await R.locator('.bpick[
     const s = (await lastGame('bhabhi')).state;
     if (s.loser) break;
     const can = R.locator('#b-hand button[data-bcard]:not([disabled])');
-    if (await can.count()) { await can.first().click(); plays++; }
+    if (await can.count()) { if (await tap(can.first())) plays++; }
     await R.waitForTimeout(60);
   }
   const g = await lastGame('bhabhi');
@@ -164,8 +171,8 @@ ok('each game card lets you pick family to play with', (await R.locator('.bpick[
     if (s.winner) break;
     const buy = R.locator('#v-acts [data-vdo="buy"]');
     const roll = R.locator('#v-acts [data-vdo="roll"]');
-    if (await buy.count()) { await buy.click(); buys++; }
-    else if (await roll.count()) { await roll.click(); rolls++; }
+    if (await buy.count()) { if (await tap(buy)) buys++; }
+    else if (await roll.count()) { if (await tap(roll)) rolls++; }
     await R.waitForTimeout(60);
   }
   const s = (await lastGame('vyapar')).state;

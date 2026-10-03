@@ -9,6 +9,10 @@ node_modules/
 # test_site.py now fails if a page asks for an image the build lacks.
 *.png
 !site/public/**/*.png
+# The phone apps' icons and splash screens, and the art they are made from.
+!mobile/assets/*.png
+!mobile/android/app/src/main/res/**/*.png
+!mobile/ios/App/App/Assets.xcassets/**/*.png
 
 # local deploy cron state
 .deploy-state

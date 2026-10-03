@@ -3,6 +3,38 @@
 Newest first. Each review uses `CHECKLIST.md`; severities are Nielsen's:
 0 not a problem, 1 cosmetic, 2 minor, 3 major, 4 blocker.
 
+## Review 4 - 2026-10-03 - navigation by real-life use, and the phone apps
+
+**Reviewer:** Claude, acting as senior product designer.
+**Scope:** the order of the phone tab bar, the sidebar and the menu drawer; a
+parent's Today on a phone; the first Android and iPhone apps (icons, splash,
+offline page, permission wording). Phone light and dark at 320 and 390px,
+desktop at 1280px. Today's own cards and shortcuts are ranked separately in
+`docs/design/TODAY.md` (Review 3, PR #23).
+**Rule from the owner:** everything runs in descending order of real-life use.
+
+| Use | Navigation, in this order |
+|---|---|
+| Several times a day | Today, Chat |
+| Daily | Care |
+| Often | People, Notifications |
+| Sometimes | Ask Ekta, Family memory |
+| Rarely | Vault, Together, The day, Profile |
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 30 | 7 Shortcuts for the frequent | Chat, used several times a day, was not on the phone tab bar; Family memory, used now and then, was | 2 | Fixed: Today, Chat, Care, People |
+| 31 | 4 Consistency | Sidebar and drawer ran in build order (The day above Chat, Vault above Care) | 2 | Fixed: one order everywhere, guarded by the gate |
+| 32 | 1 Visibility | On a parent's phone the floating chat and Ekta buttons covered the SOS label | 3 | Fixed: no floating buttons on a parent's phone (Chat is a tab, Ekta in the menu and shortcuts); measured at 320 and 390px |
+| 33 | 6 Recognition | Care and Notifications both used the bell | 1 | Fixed: Care is ✅, as on its shortcut |
+| 34 | 9 Recovery | The phone app with no internet would show a browser error | 3 | Fixed: an offline page in Parwah's look with Try again, tested on the emulator |
+| 35 | 2 Real-world match | Permission prompts are the first words a parent reads from the app | 0 | Good: plain words saying what each is for and that it is asked only when used |
+| 36 | 8 Minimalist | Inside the phone app, "Get the app" links pointed at itself | 1 | Fixed: hidden when the app's web view says ParwahApp |
+
+**Verdict: Approved with follow-ups.** Nothing above severity 1 is open.
+Follow-ups: the iPhone app needs an Apple Developer account to be signed
+(owner); the Android release key secrets must be added to GitHub (owner).
+
 ## Review 1 - 2026-09-29 - the whole app, and the design system itself
 
 **Reviewer:** Claude, acting as senior product designer (design systems).
