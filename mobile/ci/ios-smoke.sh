@@ -45,5 +45,10 @@ PY
 echo "light share of the middle of the screen: ${LIGHT}%"
 [ "${LIGHT:-0}" -ge 30 ] && pass "the live Parwah app is on screen" || bad "the screen is still dark (splash or offline page)"
 rm -f "$OUT/iphone.bmp"
+# A small copy of the screenshot in the log, so it can be reviewed by anyone
+# who can read the log but not download the artifacts.
+if sips -Z 420 -s format jpeg -s formatOptions 55 "$OUT/iphone.png" --out "$OUT/iphone-small.jpg" >/dev/null 2>&1; then
+  echo "SCREENSHOT iphone BEGIN"; base64 -i "$OUT/iphone-small.jpg" | fold -w 900; echo "SCREENSHOT iphone END"
+fi
 [ $fail -eq 0 ] && echo "IOS SMOKE TEST PASSED" || echo "IOS SMOKE TEST FAILED"
 exit $fail

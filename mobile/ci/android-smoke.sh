@@ -55,5 +55,13 @@ if grep -qE "FATAL EXCEPTION|Process: $PKG" "$OUT/logcat.txt"; then
   bad "the app crashed"; grep -A15 "FATAL EXCEPTION" "$OUT/logcat.txt" | head -40
 else pass "no crash in the log"; fi
 
+# Small copies of the screenshots in the log, so they can be reviewed by
+# anyone who can read the log but not download the artifacts.
+for shot in online offline; do
+  if command -v convert >/dev/null && convert "$OUT/$shot.png" -resize 360x -quality 55 "$OUT/$shot-small.jpg" 2>/dev/null; then
+    echo "SCREENSHOT $shot BEGIN"; base64 -w 900 "$OUT/$shot-small.jpg"; echo "SCREENSHOT $shot END"
+  fi
+done
+
 [ $fail -eq 0 ] && echo "ANDROID SMOKE TEST PASSED" || echo "ANDROID SMOKE TEST FAILED"
 exit $fail
