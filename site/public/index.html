@@ -6136,6 +6136,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // True from the Stop tap until the server has answered: no reload in that
   // window may switch sharing back on, whatever it read.
   var locStopping = false;
+  // Set by a Stop tap and kept until Stop goes through or the person shares
+  // again: if Stop could not reach the server, the phone still stops reading
+  // its location, whatever the server says.
+  // Kept per family or group, and on the phone, so a reload cannot undo it.
+  var locHeld = {};
+  function locHoldKey(){ return 'parwah-loc-held:' + (state ? state.code + ':' + state.memberId : ''); }
+  function locSetHeld(on){ var k = locHoldKey(); locHeld[k] = on; try { if (on) localStorage.setItem(k, '1'); else localStorage.removeItem(k); } catch (e) {} }
+  function locIsHeld(){ var k = locHoldKey(); if (locHeld[k]) return true; try { return localStorage.getItem(k) === '1'; } catch (e) { return false; } }
   function locDist(a, b){
     var R = 6371000, r = function(d){ return d * Math.PI / 180; };
     var h = Math.pow(Math.sin(r(b.lat - a.lat) / 2), 2) + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.pow(Math.sin(r(b.lng - a.lng) / 2), 2);
@@ -6175,6 +6183,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('loc-status').className = 'locstatus' + (on ? ' on' : '');
     $('loc-status').textContent = on
       ? 'You are sharing ' + (locMe.precision === 'area' ? 'your area' : 'your exact location') + ' with ' + (state.circleName || 'your family') + (locMe.updatedAt ? ' · updated ' + locAgo(locMe.updatedAt) : '')
+        + (locIsHeld() ? '. This phone has stopped sending; tap Stop again to delete it.' : '')
       : 'You are not sharing your location.';
     $('loc-share').hidden = on;
     $('loc-stop').hidden = !on;
@@ -6217,7 +6226,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     return post(locUrl(), body);
   }
   function locStartWatch(){
-    if (locStopping || !locMe.sharing || locWatch !== null || !navigator.geolocation || document.hidden) return;
+    if (locIsHeld() || locStopping || !locMe.sharing || locWatch !== null || !navigator.geolocation || document.hidden) return;
     locWatch = navigator.geolocation.watchPosition(function(pos){
       var next = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       // Sent when you have moved 50 m, or every two minutes - not every wobble.
@@ -6237,6 +6246,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       locSend(pos, 'share').then(function(j){
         b.disabled = false;
         if (!j.ok) { locError(j.error || 'Could not start sharing'); return; }
+        locSetHeld(false);
         toast('Sharing with ' + (state.circleName || 'your family') + ' 📍');
         refreshLoc();
       }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
@@ -6247,13 +6257,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // share the latch, and its answer could release the first one early.
     if (locStopping) return;
     var btn = this; btn.disabled = true;
-    locGen++; locStopping = true; locMe.sharing = false; locStopWatch(); locLast = null;
+    locGen++; locStopping = true; locSetHeld(true); locMe.sharing = false; locStopWatch(); locLast = null;
     post(locUrl(), { code: state.code, memberId: state.memberId, action: 'stop' }).then(function(j){
       locStopping = false; locGen++; btn.disabled = false;
-      if (!j.ok) { toast(j.error || 'Could not stop'); refreshLoc(); return; }
+      if (!j.ok) { toast((j.error || 'Could not stop') + '. This phone has stopped sending; tap Stop again to delete it.'); refreshLoc(); return; }
+      locSetHeld(false);
       toast('Stopped. Your location is deleted.');
       refreshLoc();
-    }).catch(function(){ locStopping = false; locGen++; btn.disabled = false; toast('No connection - try again'); refreshLoc(); });
+    }).catch(function(){ locStopping = false; locGen++; btn.disabled = false; toast('No connection. This phone has stopped sending; tap Stop again to delete it.'); refreshLoc(); });
   });
   $('loc-prec').addEventListener('click', function(e){
     var b = e.target.closest('button[data-prec]'); if (!b) return;
