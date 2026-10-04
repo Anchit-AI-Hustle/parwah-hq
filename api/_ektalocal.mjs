@@ -90,8 +90,9 @@ const ASKS_IF = /^\s*(did|was|were)\b|\b(any time|at any point|ever(?! since))\b
 const WORSE = /\b((is|it'?s|getting) worse|worsening|badh (raha|rahi)|zyada ho)/i;
 // Refers back when what is getting worse is the pronoun, or nothing at all
 // ("it is worse today", "he is getting worse", "...and is getting worse",
-// "; worsening today"), not "he says his knee pain is worse".
-const REFERS_BACK = /^\s*((it|this|that|he|she|they|woh?|ye[h]?)\s+)?((is|'s|has been|keeps)\s+)?((getting|becoming)\s+)?(worse|worsening|badh (raha|rahi)|zyada)/i;
+// "; worsening today", "Is he getting worse?"), not "he says his knee pain
+// is worse".
+const REFERS_BACK = /^\s*((is|isn'?t|has|does|kya)\s+)?((it|this|that|he|she|they|woh?|ye[h]?)\s+)?((is|'s|has been|keeps)\s+)?((getting|becoming)\s+)?(worse|worsening|badh (raha|rahi)|zyada)/i;
 // Every signal is read in its own part of the message, so a separate
 // question ("...and has this ever happened before?") does not cancel a
 // current emergency in another part.
