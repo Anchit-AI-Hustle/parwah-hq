@@ -37,6 +37,18 @@ ok('but after moving 100 m', G.worthSending(last, { lat: PUNE.lat + 0.0009, lng:
 ok('and every two minutes regardless', G.worthSending(last, PUNE, now + 120000));
 ok('maps link is a plain search for the point', G.mapsUrl(18.5, 73.8) === 'https://www.google.com/maps/search/?api=1&query=18.5%2C73.8');
 ok('two precisions: exact and area', G.PRECISIONS.join() === 'exact,area');
+// How long to share, like Find My.
+{
+  const t0 = Date.parse('2026-10-04T10:00:00Z');
+  ok('no end time means until you stop', G.shareUntil(undefined, t0) === null && G.shareUntil('', t0) === null);
+  ok('an hour from now is accepted', +G.shareUntil('2026-10-04T11:00:00Z', t0) === Date.parse('2026-10-04T11:00:00Z'));
+  ok('a time already gone, or under 5 minutes away, is refused', !!G.shareUntil('2026-10-04T09:00:00Z', t0).error && !!G.shareUntil('2026-10-04T10:02:00Z', t0).error);
+  ok('more than a week is refused', !!G.shareUntil('2026-10-20T10:00:00Z', t0).error);
+  ok('nonsense is refused', !!G.shareUntil('tonight', t0).error);
+}
+ok('the map on the screen is Google\'s plain embed, close in for exact', G.embedUrl(18.5, 73.8, 'exact') === 'https://maps.google.com/maps?q=18.5%2C73.8&z=16&output=embed');
+ok('and zoomed out for area only, so the house is never centred', /&z=13&/.test(G.embedUrl(18.5, 73.8, 'area')));
+ok('directions go to Google Maps, from wherever the phone is', G.directionsUrl(18.5, 73.8) === 'https://www.google.com/maps/dir/?api=1&destination=18.5%2C73.8');
 
 if (fails.length) {
   console.error(`geotest: ${fails.length} FAILED of ${pass + fails.length}`);

@@ -76,7 +76,11 @@ const DELHI = { latitude: 28.613939, longitude: 77.209023, accuracy: 20 };
 async function phone(who, geo, allow = true) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block', geolocation: geo,
                                          permissions: allow ? ['geolocation'] : [] });
+  // Google's map is a page of its own: tests never reach it, and the setup
+  // below runs only in Parwah's page, not inside that frame.
+  await ctx.route(/^https:\/\/maps\.google\.com\//, r => r.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>map</title>' }));
   await ctx.addInitScript(([w]) => {
+    if (window !== window.top) return;
     localStorage.setItem('parwah', JSON.stringify({ code: 'SHARMA', memberId: w.id, name: w.name, role: 'family', circleName: 'Sharma Family' }));
     localStorage.setItem('parwah-user', JSON.stringify({ id: w.userId, name: w.name, phone: w.phone, toured: true }));
     localStorage.setItem('parwah-token', w.token);
@@ -99,12 +103,17 @@ ok('People shows where everyone is', await R.isVisible('#loc-card') && /Where ev
 ok('it says who would see it, and that stopping deletes it', /Sharma Family/.test(await R.textContent('#loc-why')) && /stopping deletes it/.test(await R.textContent('#loc-why')));
 ok('nothing is shared until you choose to', /not sharing/.test(await R.textContent('#loc-status')) && /Nobody here is sharing yet/.test(await R.textContent('#loc-list')));
 
-// ---- Rohan shares
+// ---- Rohan shares, for an hour
+ok('before sharing, he can choose how long', await R.isVisible('#loc-for') && /1 hour/.test(await R.textContent('#loc-for')) && /Until tonight/.test(await R.textContent('#loc-for')) && /Until I stop/.test(await R.textContent('#loc-for')));
+await R.click('#loc-for [data-for="hour"]');
 await R.click('#loc-share');
 await R.waitForTimeout(1200);
 const s1 = await share();
 ok('Rohan taps Share: his position from the phone is saved', s1 && s1.enabled && Math.abs(s1.lat - PUNE.latitude) < 1e-5 && s1.accuracy === 15);
 ok('his screen says he is sharing, with whom', /You are sharing your exact location with Sharma Family/.test(await R.textContent('#loc-status')));
+const ends = (await admin.query('select expires_at from location_shares where member_id = $1', [rohan.id])).rows[0].expires_at;
+ok('for an hour: it ends by itself in an hour, and his screen says until when', ends && Math.abs(+ends - Date.now() - 3600000) < 120000 && /until \d{1,2}:\d{2}/i.test(await R.textContent('#loc-status')), String(ends));
+ok('and once sharing, the how-long choice steps aside', !(await R.isVisible('#loc-for')));
 ok('and offers a way to stop', await R.isVisible('#loc-stop') && !(await R.isVisible('#loc-share')));
 await M.reload(); await M.waitForTimeout(1000);
 const row = M.locator('#loc-list .crow', { hasText: 'Rohan' });
@@ -114,8 +123,15 @@ ok('with how precise and how fresh', /within 15 m/.test(sub) && /updated just no
 ok('and how far from her, worked out on her phone although she is not sharing', /1,173 km away/.test(sub), sub);
 const sent = (await admin.query('select count(*)::int as n from location_shares where member_id = $1', [meera.id])).rows[0].n;
 ok('her own position was never sent', sent === 0);
-const href = await row.locator('a').getAttribute('href');
-ok('and one tap to open it in Maps', href.startsWith('https://www.google.com/maps/search/?api=1&query=18.52043'), href);
+ok('she sees until when he is sharing', /until \d{1,2}:\d{2}/i.test(sub), sub);
+const href = await row.locator('a', { hasText: 'Directions' }).getAttribute('href');
+ok('and one tap for directions to him in Google Maps', href.startsWith('https://www.google.com/maps/dir/?api=1&destination=18.52043'), href);
+ok('no map is loaded until she asks for one (it sends the point to Google)', await M.isHidden('#loc-map') && !(await M.locator('#loc-map-frame').getAttribute('src')));
+await row.locator('[data-locmap]').click(); await M.waitForTimeout(300);
+const src = await M.locator('#loc-map-frame').getAttribute('src');
+ok('Map shows him on a map on the screen, like Find My', await M.isVisible('#loc-map') && src.startsWith('https://maps.google.com/maps?q=18.52043') && /output=embed/.test(src) && /&z=16&/.test(src), src);
+ok('it says whose map it is, and that the map is Google\'s', /Map showing where Rohan is/.test(await M.locator('#loc-map-frame').getAttribute('title')) && /sends this point to Google/.test(await M.textContent('#loc-map-cap')));
+ok('and opens in Google Maps too', (await M.locator('#loc-map-open').getAttribute('href')).startsWith('https://www.google.com/maps/search/?api=1&query=18.52043'));
 ok('the family feed says Rohan is sharing', (await admin.query(`select count(*)::int as n from events where type = 'location' and text like 'Rohan is sharing%'`)).rows[0].n === 1);
 
 // ---- area only, on a connection that drops the reload straight after
@@ -141,6 +157,8 @@ await R.evaluate(() => { location.hash = '#people'; });
 await R.waitForTimeout(900);
 await M.reload(); await M.waitForTimeout(1000);
 ok('Meera now sees only his area', /area only/.test(await M.locator('#loc-list .crow', { hasText: 'Rohan' }).textContent()));
+await M.locator('#loc-list .crow', { hasText: 'Rohan' }).locator('[data-locmap]').click(); await M.waitForTimeout(300);
+ok('and his map is zoomed out to the area, so the house is never centred', /&z=13&/.test(await M.locator('#loc-map-frame').getAttribute('src')) && /area only/.test(await M.textContent('#loc-map-cap')));
 
 // ---- back to exact: a fresh fix is sent, so "exact" is never a label on an area
 await R.click('#loc-prec [data-prec="exact"]');
@@ -158,6 +176,7 @@ ok('his screen says he is not sharing', /not sharing/.test(await R.textContent('
 let gone = false;
 for (let i = 0; i < 34 && !gone; i++) { await M.waitForTimeout(1000); gone = await M.locator('#loc-list .crow', { hasText: 'Rohan' }).count() === 0; }
 ok('Meera no longer sees him, within 30 seconds, without reloading or leaving People', gone);
+ok('and the map of him closes with him', await M.isHidden('#loc-map'));
 
 // ---- Stop wins over a precision change still on its way, even offline after
 await R.click('#loc-share');

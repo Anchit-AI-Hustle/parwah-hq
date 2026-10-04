@@ -175,6 +175,32 @@ const PUNE = { lat: 18.520430, lng: 73.856743, accuracy: 12 };
      (await call(meera, { body: { action: 'precision', precision: 'exact' } })).status === 409);
 }
 
+// ---- sharing for a set time ends by itself, and deletes the position
+{
+  await call(rohan, { body: { action: 'stop' } });
+  ok('an end time under 5 minutes away is refused', (await call(rohan, { body: { action: 'share', ...PUNE, until: new Date(Date.now() + 60000).toISOString() } })).status === 400);
+  const until = new Date(Date.now() + 3600000).toISOString();
+  const r = await call(rohan, { body: { action: 'share', ...PUNE, until } });
+  ok('Rohan shares for an hour', r.status === 200 && r.sharing === true);
+  const m = await look(meera);
+  const s = m.shares.find(x => x.name === 'Rohan');
+  ok('Meera sees when his sharing ends', s && +new Date(s.until) === Date.parse(until), JSON.stringify(s));
+  ok('and so does he', +new Date((await look(rohan)).me.until) === Date.parse(until));
+  // The hour passes.
+  await admin.query(`update location_shares set expires_at = now() - interval '1 second' where member_id = $1`, [rohan.id]);
+  const after = await look(meera);
+  ok('when the time is up, Meera no longer sees him', !after.shares.some(x => x.name === 'Rohan'));
+  const gone = await row(rohan);
+  ok('and his position is deleted, as if he had tapped Stop', gone.enabled === false && gone.lat === null && gone.lng === null && gone.expires_at === null, JSON.stringify(gone));
+  ok('the family is told it ended, as he chose', (await admin.query(`select count(*)::int as n from events where type = 'location' and text like 'Rohan''s location sharing ended%'`)).rows[0].n === 1);
+  ok('a position still on its way afterwards is refused', (await call(rohan, { body: { action: 'update', ...PUNE } })).status === 409);
+  ok('his own screen says he is not sharing', (await look(rohan)).me.sharing === false);
+  // Sharing again with no end time lasts until he stops.
+  await call(rohan, { body: { action: 'share', ...PUNE } });
+  ok('sharing again with no end time has none', (await row(rohan)).expires_at === null && (await look(rohan)).me.until === null);
+  await call(rohan, { body: { action: 'stop' } });
+}
+
 await admin.end();
 for (const p of globalThis.__parwahPools || []) await p.end();
 if (fails.length) { console.error(`location.dbtest: ${fails.length} FAILED of ${pass + fails.length}`); for (const f of fails) console.error('  - ' + f); process.exit(1); }

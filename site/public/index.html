@@ -1014,6 +1014,11 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
 #onboard > .superapp{margin:0 0 var(--space-4)}
 .locstatus{margin:0 0 var(--space-12);font-weight:600;color:var(--ink)}
 .locstatus.on{color:var(--ok)}
+/* The map of one person, opened on a tap (Find My's detail view). */
+.locmap{margin:0 0 var(--space-12)}
+.locmap iframe{display:block;width:100%;height:260px;border:0;border-radius:var(--radius-16);background:var(--bone)}
+.locmap .row{display:flex;gap:var(--space-8);flex-wrap:wrap;margin-top:var(--space-8)}
+.crow .locacts{display:flex;gap:var(--space-8);flex-wrap:wrap}
 /* ---- Motion: anyone who asked their phone for less motion gets none,
    including from animations added after this line was written. ---- */
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
@@ -1490,10 +1495,25 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <button type="button" data-prec="area">🏙 Area only</button>
         </div>
       </div>
+      <div class="pick" id="loc-forpick"><span>For how long</span>
+        <div class="seg" id="loc-for" role="group" aria-label="For how long">
+          <button type="button" data-for="hour">1 hour</button>
+          <button type="button" data-for="tonight">Until tonight</button>
+          <button type="button" data-for="always" class="sel">Until I stop</button>
+        </div>
+      </div>
       <button class="go" id="loc-share">📍 Share my location</button>
       <button class="cbtn no" id="loc-stop" hidden style="margin-top:var(--space-12);width:100%">Stop sharing and delete my location</button>
       <p class="hint" id="loc-err" hidden style="margin-top:var(--space-12);color:var(--alert)"></p>
       <p class="pickhead">Sharing now</p>
+      <div class="locmap" id="loc-map" hidden>
+        <iframe id="loc-map-frame" title="Map" loading="lazy" referrerpolicy="no-referrer"></iframe>
+        <p class="hint" id="loc-map-cap" style="margin:var(--space-8) 0 0"></p>
+        <div class="row">
+          <a class="cbtn ghost" id="loc-map-open" target="_blank" rel="noopener">🗺 Open in Google Maps</a>
+          <button type="button" class="cbtn ghost" id="loc-map-close">Close map</button>
+        </div>
+      </div>
       <div class="feed" id="loc-list"><div class="ev">Loading…</div></div>
       <p class="hint" style="margin-top:var(--space-12)">Locations update whenever Parwah is open on the phone. Area only shows the neighbourhood, never the house.</p>
     </div>
@@ -6946,6 +6966,23 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // sharing; stopping deletes the position on the server (api/_locationapi.mjs).
   // The arithmetic mirrors api/_geo.mjs, which the gate unit-tests.
   var locMe = { sharing: false, precision: 'exact' }, locShares = [], locWatch = null, locLast = null, locPrec = 'exact', locHere = null;
+  // How long to share, chosen before sharing starts: an hour, until tonight
+  // (11:59 pm on this phone's clock), or until the person stops.
+  var locFor = 'always', locEndTimer = null, locMapFor = null;
+  function locUntil(){
+    if (locFor === 'hour') return new Date(Date.now() + 3600000).toISOString();
+    if (locFor === 'tonight') {
+      var d = new Date(); d.setHours(23, 59, 0, 0);
+      if (d.getTime() - Date.now() < 30 * 60000) d.setDate(d.getDate() + 1);   // nearly midnight: tomorrow night
+      return d.toISOString();
+    }
+    return null;
+  }
+  function locClock(iso){
+    try { return new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; }
+  }
+  function locEmbed(x){ return 'https://maps.google.com/maps?q=' + encodeURIComponent(x.lat + ',' + x.lng) + '&z=' + (x.precision === 'area' ? 13 : 16) + '&output=embed'; }
+  function locRoute(x){ return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(x.lat + ',' + x.lng); }
   // Bumped by Stop: any reply still on its way from an earlier tap is
   // ignored, so nothing started before Stop can read the location after it.
   var locGen = 0;
@@ -6988,6 +7025,17 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       if (!j.ok) { $('loc-list').innerHTML = '<div class="ev">Could not load locations - try again in a moment.</div>'; return; }
       locMe = j.me; locShares = j.shares || []; locPrec = locMe.precision || 'exact';
       renderLoc();
+      // Sharing for a set time: look again the moment it ends, so this screen
+      // never says "sharing" after the time is up.
+      if (locEndTimer) { clearTimeout(locEndTimer); locEndTimer = null; }
+      var ends = locShares.concat(locMe.until ? [{ until: locMe.until }] : []).map(function(x){ return Date.parse(x.until); })
+        .filter(function(t){ return Number.isFinite(t) && t > Date.now(); });
+      if (ends.length) locEndTimer = setTimeout(refreshLoc, Math.min.apply(null, ends) - Date.now() + 1500);
+      // The open map follows the person, and closes when they stop sharing.
+      if (locMapFor) {
+        var still = locShares.filter(function(s){ return s.memberId === locMapFor; })[0];
+        if (still) locShowMap(still); else locHideMap();
+      }
       if (locMe.sharing) locStartWatch(); else locStopWatch();
       locHereIfAllowed();
     }).catch(function(){ $('loc-list').innerHTML = '<div class="ev">No connection - locations will show when you are back online.</div>'; });
@@ -6998,11 +7046,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var on = !!locMe.sharing;
     $('loc-status').className = 'locstatus' + (on ? ' on' : '');
     $('loc-status').textContent = on
-      ? 'You are sharing ' + (locMe.precision === 'area' ? 'your area' : 'your exact location') + ' with ' + (state.circleName || 'your family') + (locMe.updatedAt ? ' · updated ' + locAgo(locMe.updatedAt) : '')
+      ? 'You are sharing ' + (locMe.precision === 'area' ? 'your area' : 'your exact location') + ' with ' + (state.circleName || 'your family')
+        + (locMe.until ? ' until ' + locClock(locMe.until) : '') + (locMe.updatedAt ? ' · updated ' + locAgo(locMe.updatedAt) : '')
         + (locIsHeld() ? '. This phone has stopped sending; tap Stop again to delete it.' : '')
       : 'You are not sharing your location.';
     $('loc-share').hidden = on;
+    $('loc-forpick').hidden = on;
     $('loc-stop').hidden = !on;
+    $('loc-for').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-for') === locFor); });
     $('loc-prec').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-prec') === locPrec); });
     var mine = null; locShares.forEach(function(x){ if (x.mine) mine = x; });
     var from = locLast || locHere || (mine ? { lat: mine.lat, lng: mine.lng } : null);
@@ -7012,9 +7063,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       if (!x.mine) bits.push(relLabel(xm || { relation: x.relation }));
       bits.push(x.precision === 'area' ? 'area only' : (x.accuracy ? 'within ' + (x.accuracy < 1000 ? x.accuracy + ' m' : (Math.round(x.accuracy / 100) / 10) + ' km') : 'exact'));
       bits.push((x.stale ? 'last seen ' : 'updated ') + locAgo(x.updatedAt));
+      if (x.until) bits.push('until ' + locClock(x.until));
       if (from && !x.mine) bits.push(locDistText(locDist(from, x)));
+      var who = x.mine ? 'your' : x.name + "'s";
       return '<div class="crow' + (x.stale ? ' late' : '') + '"><span class="txt"><b>' + esc(x.mine ? 'You' : x.name) + '</b><small>' + esc(bits.join(' · ')) + '</small></span>' +
-             '<a class="cbtn ghost" href="' + esc(locMaps(x.lat, x.lng)) + '" target="_blank" rel="noopener" aria-label="Open ' + esc(x.mine ? 'your' : x.name + "'s") + ' location in Maps">🗺 Open in Maps</a></div>';
+             '<span class="locacts"><button type="button" class="cbtn ghost" data-locmap="' + esc(x.memberId) + '" aria-label="Show ' + esc(who) + ' location on a map">🗺 Map</button>' +
+             (x.mine ? '' : '<a class="cbtn ghost" href="' + esc(locRoute(x)) + '" target="_blank" rel="noopener" aria-label="Directions to ' + esc(x.name) + '">🧭 Directions</a>') +
+             '</span></div>';
     }).join('') : '<div class="ev">Nobody here is sharing yet. When someone turns it on, they appear here.</div>';
   }
   // How far away someone is, without sharing yourself: if this phone has
@@ -7042,6 +7097,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (action === 'update' && locIsHeld()) { locStopWatch(); return Promise.resolve({ ok: false, held: true }); }
     var body = { code: state.code, memberId: state.memberId, action: action, lat: pos.coords.latitude, lng: pos.coords.longitude,
                  accuracy: pos.coords.accuracy, precision: locPrec };
+    if (action === 'share') { var u = locUntil(); if (u) body.until = u; }
     locLast = { lat: body.lat, lng: body.lng, at: Date.now() };
     return post(locUrl(), body);
   }
@@ -7094,6 +7150,31 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       toast('No connection. This phone has stopped sending; tap Stop again to delete it.'); refreshLoc();
     });
   });
+  $('loc-for').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-for]'); if (!b) return;
+    locFor = b.getAttribute('data-for');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
+  });
+  // One person on a map, opened only when asked: loading Google's map sends
+  // that point to Google, so it never happens on its own.
+  function locShowMap(x){
+    locMapFor = x.memberId;
+    var who = x.mine ? 'You' : x.name;
+    $('loc-map-frame').title = 'Map showing where ' + (x.mine ? 'you are' : x.name + ' is');
+    var src = locEmbed(x);
+    if ($('loc-map-frame').getAttribute('src') !== src) $('loc-map-frame').setAttribute('src', src);
+    $('loc-map-open').href = locMaps(x.lat, x.lng);
+    $('loc-map-cap').textContent = who + (x.precision === 'area' ? ' · area only, shown zoomed out' : '') +
+      ' · updated ' + locAgo(x.updatedAt) + '. Map by Google: opening it sends this point to Google.';
+    $('loc-map').hidden = false;
+  }
+  function locHideMap(){ locMapFor = null; $('loc-map').hidden = true; $('loc-map-frame').removeAttribute('src'); }
+  $('loc-list').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-locmap]'); if (!b) return;
+    var x = locShares.filter(function(s){ return s.memberId === b.getAttribute('data-locmap'); })[0];
+    if (x) { locShowMap(x); $('loc-map').scrollIntoView({ block: 'nearest' }); }
+  });
+  $('loc-map-close').addEventListener('click', locHideMap);
   $('loc-prec').addEventListener('click', function(e){
     var b = e.target.closest('button[data-prec]'); if (!b) return;
     locPrec = b.getAttribute('data-prec');
