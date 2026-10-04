@@ -347,8 +347,8 @@ for _p in PAGES:
     for _h in re.findall(r'href="([^"]*)"', markup_only(_p.read_text(encoding="utf-8"))):
         if re.search(r"(^|/)app/", _h): _stale.append(f"{_p.relative_to(ROOT)}: {_h}")
 check("routing: no page links to the old /app/ address", not _stale, "; ".join(_stale[:4]))
-check("routing: invite links share the root, not /app/",
-      "anchit-tandon.com/?join=" in _apph and "anchit-tandon.com/app/" not in _apph)
+check("routing: invite links share the root of wherever Parwah is open, not /app/",
+      "location.origin + '/?join='" in _apph and "/app/?join=" not in _apph)
 check("routing: a reminder tapped on the phone opens the root",
       "payload.url || '/'" in (REPO / "api/_push.mjs").read_text(encoding="utf-8"))
 
@@ -1664,8 +1664,8 @@ _docnames = re.findall(r"^\| \d+ \| ([^|]+?) \|", _today_doc, re.M)
 check("today: the widgets are in the order of docs/design/TODAY.md (utility first, the vault at the core)",
       _wnames == _docnames and _wnames[:2] == ["Vault", "Health"], " > ".join(_wnames))
 _home = _appt[_appt.index('<section id="pane-home">'):_appt.index('<div class="homerail">')]
-_pos = [_home.index(m) for m in ('class="homehero"', 'id="seniorui"', 'id="widgets"', 'id="btn-ecard"', 'id="more"')]
-check("today: family card, a parent's big buttons, the four tiles, the emergency card, then More",
+_pos = [_home.index(m) for m in ('id="seniorui"', 'class="homehero"', 'id="frslot"', 'id="widgets"', 'id="btn-ecard"', 'id="more"')]
+check("today: an elder's SOS and big buttons first, then the family's name and status, a new family's checklist, the four tiles, the emergency card, then More",
       _pos == sorted(_pos), str(_pos))
 _above_more = _home[:_home.index('id="more"')]
 check("today: five things and no more - four tiles and the emergency card (the family review: track 5, not 50)",
@@ -1720,6 +1720,28 @@ check("memory: an emergency contact can be recorded; privacy is never a box an e
       '<option value="emergency">' in _appt and "$('b-private-l').hidden = true" in _appt and "local: 'Someone near them'" in _appt)
 check("payments: ask first has an answer, and the monthly limit holds",
       "body.action === 'approve' || body.action === 'decline'" in _vapi and "limit for this month" in _vapi and "data-vpyes" in _appt)
+_auth = (API_DIR / "auth.mjs").read_text(encoding="utf-8")
+check("sign-in: typing a number never reveals whose it is before the PIN",
+      "needPin: true, name:" not in _auth and "setPin: true, name:" not in _auth and "'. Type your PIN or password.'" not in _appt)
+check("joining: an invite opened while signed in opens the join card; signed out, the entry says you were invited",
+      "function joinInvite()" in _appt and 'id="ob-invite"' in _appt and "pendCode" in _appt)
+check("onboarding: every step is a place Back returns to, and the pitch is on the sign-in screen only",
+      "history.pushState({ ob: sub }" in _appt and 'id="c-back"' in _appt and "var pitch = which === 'auth';" in _appt)
+check("elders: big text is a display setting anyone can switch on; being looked after brings the three buttons",
+      "function applyBig()" in _appt and 'id="ap-big"' in _appt and "I am an elder the family looks after" in _appt
+      and "html:has(body.senior){font-size:112.5%}" in _appt)
+check("elders: medicines and check-ins earn no coins; Medicines taken keeps its time for the day",
+      "if (type === 'checkin' || type === 'pill') await award" not in (API_DIR / "events.mjs").read_text(encoding="utf-8")
+      and "function pillKey()" in _appt and "Well done!" not in _appt)
+check("confirmations: SOS, sign out and leave ask in Parwah's own sheet with big answers",
+      'id="asksheet"' in _appt and "askSheet('Send SOS to the whole family?'" in _appt and "askSheet('Sign out on this phone?'" in _appt)
+check("profile: You first with Edit under it; AI keys under Advanced; leaving and signing out last; nothing coming soon",
+      _appt.index('<h3>You</h3>') < _appt.index('id="plancard"') and "details class=\"card advanced\"" in _appt
+      and "Hindi toggle coming soon" not in _appt and "Parwah Plus (coming soon)" not in _appt)
+check("bell: only what needs you, never your own actions or chat, rows as buttons, no log lines",
+      "function notifWanted(e)" in _appt and "'Type: ' + e.type" not in _appt and '<button type="button" class="nrow' in _appt)
+check("names: one name per place on tiles, tabs and menu, and family not circle in the copy",
+      '<b>To do</b>' in _appt and 'Health &amp; contacts' in _appt and "Create the circle" not in _appt and "Your circle's helper" not in _appt)
 check("create: joint or nuclear is asked first, with no answer chosen for them",
       "var newFamilyType = null;" in _appt and _appt.index('id="c-ftype"') < _appt.index('id="c-circle"') < _appt.index('id="c-name"'))
 check("roles: a new group asks for your role in the group, and starts on Friend",

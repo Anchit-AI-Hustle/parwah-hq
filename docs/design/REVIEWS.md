@@ -206,3 +206,22 @@ three, and from his profile it could not be done at all.
 | 62 | 2 Real-world match | "Record", "allowed ₹3000", an "Ask first" that could never be answered, and a monthly cap never enforced | 2 | Fixed: "Note a payment", sentences in the activity, Yes / Not this time for the owner, and the monthly limit holds |
 | 63 | 7 Flexibility | Phone photos are 3-5 MB, over the 2 MB limit, and the file picker had no camera | 2 | Fixed: "Take a photo" and "Choose a file"; photos are made smaller on the phone |
 | 64 | 5 Error prevention | The offline emergency copy stayed on the phone after sign-out | 2 | Fixed: signing out or leaving removes it; offline it says how old it is |
+
+### Review 6, signing in, a first Today, the shell and Profile
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 65 | 1 Visibility | An invite link opened while signed in landed on the old family and the invite vanished; signed out, nothing said you had been invited | 3 | Fixed: the join card with the code filled in; "You have been invited" on the sign-in screen; the code leaves the address once used |
+| 66 | 5 Error prevention | "Check again" let you "in" whenever you were in any other family | 3 | Fixed: only when the family you asked says yes |
+| 67 | 3 User control | Back left the app from every onboarding step; the create card had no Back; "Join with a code" opened the create chooser | 3 | Fixed: each step is a place Back returns to; Back on the create card; the join card opens |
+| 68 | 2 Real-world match | "Senior mode" made a son a parent; big text barely grew; grandparents had to find the box | 3 | Fixed: "I am an elder the family looks after" (on for grandparents, and parents in a joint family) is separate from "Big text and buttons", which anyone can turn on and which really enlarges |
+| 69 | 1 Visibility | An elder's SOS was below the fold, under an organiser's hero and an alerts card | 3 | Fixed: their three buttons come first, SOS on top; alerts wait below the emergency card |
+| 70 | 8 Minimalist | Today's first screen was the circle code, Invite and Family call, with a status that pushed chat; four first-run layers stacked | 3 | Fixed: the hero is the family name and a status from the five things; the code and Invite live on People; Family call under More; the checklist under the hero with alerts as step one; no coach marks |
+| 71 | 7 Flexibility | Profile opened on pricing, coins and an API-key console; Edit opened in another card; the settings line went stale | 3 | Fixed: You first with Edit under it, How Parwah looks, Alerts, Privacy, then Plan and coins; AI keys under Advanced; Leave and Sign out last |
+| 72 | Privacy | Typing any number showed "Welcome back, Rohan" before a PIN | 3 | Fixed: no name until the PIN is right |
+| 73 | 8 Minimalist | The bell repeated the activity feed, with "Type: checkin" and old names | 3 | Fixed: only what needs you, never your own actions or chat; rows are buttons; destinations named as the app names them |
+| 74 | 4 Consistency | One place had two or three names (Health / Memory / Family memory; Things to do / Care; Family / People) and "circle" was mixed with family | 3 | Fixed: Vault, Health & contacts, To do, Family on tiles, tabs and menu, the rest under More; "family" in the copy |
+| 75 | 4 Consistency | Medicines taken said "Well done!", forgot itself on reload, and earned coins | 2 | Fixed: "Medicines taken ✔ · 8:10 am", kept for the day; no coins for medicines or check-ins |
+| 76 | 3 User control | SOS, sign out and leave used the browser's small dialog | 2 | Fixed: Parwah's own sheet, two big answers |
+| 77 | 7 Flexibility | The drawer ignored Escape and kept focus behind it; the install icon showed inside the installed app; the profile tile opened a one-item menu, even signed out | 2 | Fixed |
+| 78 | 8 Minimalist | The floating chat button covered the five things on phones | 2 | Fixed: on a phone it shows on the chat list; everywhere on a wide screen |

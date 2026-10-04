@@ -195,7 +195,8 @@ ok('Papa\'s page opens on the emergency card and what to complete', await P.isVi
 ok('the hero subtitle is readable in light mode', await P.$eval('#pp-sub', el => getComputedStyle(el).color) !== 'rgb(94, 75, 94)');
 ok('Back says where it goes', /People/.test(await P.textContent('#pp-back')));
 if (process.env.VAULT_SHOT_DIR) { await P.screenshot({ path: process.env.VAULT_SHOT_DIR + '/person-papa-390-light.png' }); await P.emulateMedia({ colorScheme: 'dark' }); await P.screenshot({ path: process.env.VAULT_SHOT_DIR + '/person-papa-390-dark.png' }); await P.emulateMedia({ colorScheme: 'light' }); }
-await P.click('#pp-todo [data-pptodo="doctor"]'); await P.waitForTimeout(500);
+await P.click('#pp-todo [data-pptodo="doctor"]');
+await P.waitForFunction((pid) => document.getElementById('b-cat').value === 'doctor' && document.getElementById('b-about').value === pid, U.Papa.memberId, { timeout: 5000 }).catch(() => {});
 ok('a gap opens the form already set to fill it: a doctor, for Papa', await P.isVisible('#pane-memory') && await P.$eval('#b-cat', s => s.value) === 'doctor' && await P.$eval('#b-about', s => s.value) === U.Papa.memberId);
 ok('an emergency contact can be recorded', await P.$$eval('#b-cat option', os => os.some(o => o.value === 'emergency')));
 

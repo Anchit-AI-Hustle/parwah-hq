@@ -100,6 +100,13 @@ async function sheetOpen(page){ await page.click('#chat-fab'); await page.waitFo
 
 for (const [label, viewport] of [['phone', { width:390, height:844 }], ['wide screen', { width:1280, height:860 }]]) {
   const page = await open(viewport);
+  // On a phone the button lives on the chat list only (families talk on
+  // WhatsApp; on Today it covered the five things). On a wide screen it is
+  // everywhere.
+  if (label === 'phone') {
+    ok(!(await vis(page, '#chat-fab')), 'phone: on Today there is no floating chat button over the five things');
+    await page.evaluate(() => { location.hash = '#chat'; }); await page.waitForTimeout(300);
+  }
   ok(await vis(page, '#chat-fab'), `${label}: the New chat button is there once signed in`);
   ok(await vis(page, '#ekta-fab'), `${label}: next to the Ekta button`);
   const a = await box(page, '#chat-fab'), b = await box(page, '#ekta-fab');
@@ -109,7 +116,7 @@ for (const [label, viewport] of [['phone', { width:390, height:844 }], ['wide sc
   ok(label !== 'phone' || (tabs && a.y + a.height <= tabs.y), `${label}: clear of the tab bar`);
 
   // Scrolled to the very end, the last card still clears both buttons.
-  const clear = await page.evaluate(() => {
+  const clear = label === 'phone' ? true : await page.evaluate(() => {
     window.scrollTo(0, document.documentElement.scrollHeight);
     const cards = [...document.querySelectorAll('#pane-home > *')].filter(e => e.offsetParent && e.getBoundingClientRect().height > 0);
     const last = cards[cards.length - 1].getBoundingClientRect();
@@ -148,7 +155,7 @@ for (const [label, viewport] of [['phone', { width:390, height:844 }], ['wide sc
 
   // An existing one-to-one chat.
   await page.click('[data-tab="home"]').catch(() => {});
-  await page.evaluate(() => { location.hash = '#home'; });
+  await page.evaluate((l) => { location.hash = l === 'phone' ? '#chat' : '#home'; }, label);
   await page.waitForTimeout(300);
   await sheetOpen(page); await page.click(`#nc-list [data-dm="${PAPA}"]`); await page.waitForTimeout(500);
   ok(await vis(page, '#chatview') && (await page.textContent('#cv-name')) === 'Papa', `${label}: tapping Papa opens the chat with Papa`);
@@ -176,6 +183,7 @@ for (const [label, viewport] of [['phone', { width:390, height:844 }], ['wide sc
 // the controls they float over. With their words they hid "Start duel".
 {
   const page = await open({ width:320, height:682 });
+  await page.evaluate(() => { location.hash = '#chat'; }); await page.waitForTimeout(300);
   const fab = await box(page, '#chat-fab'), ek = await box(page, '#ekta-fab');
   ok(fab && fab.width <= 60 && Math.abs(fab.width - fab.height) < 2, 'small phone: New chat is a round icon (' + (fab && Math.round(fab.width)) + 'px)');
   ok(ek && ek.width <= 60, 'small phone: so is Ekta');
@@ -192,6 +200,7 @@ for (const [label, viewport] of [['phone', { width:390, height:844 }], ['wide sc
 // Alone in the circle: no dead end, a way to invite.
 {
   const page = await open({ width:390, height:844 }, [eventsJson.members[0]]);
+  await page.evaluate(() => { location.hash = '#chat'; }); await page.waitForTimeout(300);
   await sheetOpen(page);
   ok(await page.locator('#nc-list [data-dm]').count() === 0, 'alone in the circle: nobody to pick');
   ok(await vis(page, '#nc-invite'), 'and an Invite family button instead of an empty list');

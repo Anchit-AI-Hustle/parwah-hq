@@ -21,7 +21,7 @@ is at stake when it is needed × whether WhatsApp already does it
 |---|---|---|---|---|---|---|
 | 1 | Vault | 2 | 5 | 3 | 30 | Aadhaar, PAN, licence, policies, reports. Rarely needed, but when a claim, a bank or a hospital asks, it is everything, and WhatsApp loses them in the scroll. |
 | 2 | Health | 3 | 5 | 2 | 30 | The elders' medicines and what each is for, blood groups, allergies, doctors. This is what Parwah will mostly be used for. Ties with the Vault; the Vault comes first because it is Parwah's clearest reason to exist. |
-| 3 | Things to do | 4 | 4 | 1 | 16 | Refills, bills, appointments, with who is doing it and when it is done. A WhatsApp group can ask, but it cannot track who took it. |
+| 3 | To do | 4 | 4 | 1 | 16 | Refills, bills, appointments, with who is doing it and when it is done. A WhatsApp group can ask, but it cannot track who took it. |
 | 4 | Family | 3 | 3 | 1 | 9 | Who is who, who checked in today, where everyone is if they share it. |
 
 The fifth is the **emergency card**, the wide button under the tiles. It
@@ -54,9 +54,10 @@ family coins.
 
 ## Navigation follows the same order
 
-- **Phone tab bar:** Today, Vault, Care, People.
-- **Sidebar and menu:** Today, Vault, Memory, Care, People, Chat,
-  Notifications, Ekta, Together, The day, Profile.
+- **Phone tab bar:** Today, Vault, To do, Family.
+- **Sidebar and menu:** Today, Vault, Health & contacts, To do, Family,
+  then under More: Chat, Notifications, Ekta, Together, The day, Profile.
+  One name per place, the same on the tiles, the tab bar and the menu.
 - **Chat** is still one tap away, from the floating chat button and the
   menu.
 
