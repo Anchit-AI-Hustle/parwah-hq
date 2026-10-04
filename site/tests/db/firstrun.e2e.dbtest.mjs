@@ -151,6 +151,37 @@ ok('and only then is the invite used up', await J.evaluate(() => sessionStorage.
   await ctxK.close();
 }
 
+// ---- a request the family turns down: the waiting screen does not come back
+{
+  const kap = await call('circle', { action: 'create', kind: 'family', familyType: 'nuclear', memberName: 'Meera', circleName: 'Kapoor Family', userId: U.Meera.userId, relation: 'mother' }, {}, 'POST', U.Meera.token);
+  await admin.query(`update circles set join_policy = 'approve' where code = $1`, [kap.code]);
+  const ctxD = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  await ctxD.addInitScript(([w]) => {
+    if (localStorage.getItem('parwah-user')) return;
+    localStorage.setItem('parwah-user', JSON.stringify({ id: w.userId, name: w.name, phone: w.phone, toured: true }));
+    localStorage.setItem('parwah-token', w.token);
+    localStorage.setItem('parwah', JSON.stringify({ code: w.code, memberId: w.memberId, name: w.name, role: 'family', circleName: 'Tandon Family' }));
+    localStorage.setItem('parwah-circles', JSON.stringify([{ code: w.code, circleName: 'Tandon Family', memberId: w.memberId, memberName: w.name, role: 'family' }]));
+  }, [{ ...U.Anchit, code }]);
+  const D = await ctxD.newPage(); D.on('pageerror', e => errors.push('D: ' + e.message));
+  await D.goto(BASE + '/?join=' + kap.code); await D.waitForTimeout(1300);
+  await D.click('#j-go'); await D.waitForTimeout(1300);
+  ok('asked to join a family that approves first: waiting', await D.isVisible('#pending-step'));
+  // The family is told, in the bell, that someone is at the door.
+  const M = await phone({ ...U.Meera, code: kap.code, memberId: kap.memberId, circleName: 'Kapoor Family' }, { hash: '#notifs' });
+  await M.waitForTimeout(800);
+  ok('the bell shows someone asking to join', /asked to join/.test(await M.textContent('#nlist')), await M.textContent('#nlist'));
+  await M.context().close();
+  const rq = (await admin.query(`select id from join_requests where circle_id = (select id from circles where code = $1) and status = 'pending'`, [kap.code])).rows[0];
+  await call('circle', { action: 'decline_join', code: kap.code, memberId: kap.memberId, requestId: rq && rq.id }, {}, 'POST', U.Meera.token);
+  await D.click('#pend-check'); await D.waitForTimeout(1500);
+  ok('after a no, Check again says so instead of "not yet"', !(await D.isVisible('#pending-step')) && /did not take up your request/.test(await D.textContent('#ob-err')), await D.textContent('#ob-err'));
+  ok('and the invite is put away', await D.evaluate(() => sessionStorage.getItem('parwah-join') === null && sessionStorage.getItem('parwah-join-wait') === null));
+  await D.reload(); await D.waitForTimeout(1300);
+  ok('a reload does not bring the waiting screen back', !(await D.isVisible('#pending-step')));
+  await ctxD.close();
+}
+
 // ---- signed out: the invite is said, and the PIN screen never names anyone
 const ctxO = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
 const O = await ctxO.newPage(); O.on('pageerror', e => errors.push('O: ' + e.message));
