@@ -681,8 +681,9 @@ async function payApi(req, res, sql, circle, me) {
     const act = body.action === 'approve' ? 'approved' : 'declined';
     const changed = await sql`update pay_log set action = ${act} where id = ${r[0].id} and action = 'asked' returning id`;
     if (!changed[0]) return res.status(404).json({ ok: false, error: 'That ask was already answered' });
+    // Given back to the month it was asked in, not to this one.
     if (act === 'declined') await sql`update pay_month set spent = greatest(0, spent - ${r[0].amount})
-                                       where method_id = (select method_id from pay_log where id = ${r[0].id}) and month = date_trunc('month', now())::date`;
+                                       where (method_id, month) = (select method_id, date_trunc('month', at)::date from pay_log where id = ${r[0].id})`;
     if (r[0].member_id) {
       await pushCircle(sql, circle.id, {
         title: act === 'approved' ? '💳 ' + me.name + ' said yes' : '💳 ' + me.name + ' said not this time',

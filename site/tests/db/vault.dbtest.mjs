@@ -181,6 +181,17 @@ const both = await Promise.all([pay(M.Papa, { action: 'use', id: cardId, amount:
 const spentNow = (await admin.query(`select coalesce(sum(amount),0)::int as n from pay_log where method_id = $1 and action = 'used'`, [cardId])).rows[0].n;
 ok('two payments at once: only one fits under 6,000', both.map(b => b.status).sort().join() === '200,400' && spentNow === 3500, both.map(b => b.status).join() + ' / ' + spentNow);
 ok('nobody not on Parwah can be allowed to pay', (await pay(M.Papa, { action: 'allow', id: cardId, targetId: dadi.memberId })).status === 400);
+// A declined ask from last month is given back to last month, not this one.
+const lastAsk = await pay(M.Rahul, { action: 'use', id: cardId, amount: 1000, note: 'last month' });
+const lastLog = (await admin.query(`select id from pay_log where method_id = $1 and action = 'asked' order by at desc limit 1`, [cardId])).rows[0];
+await admin.query(`update pay_log set at = date_trunc('month', now()) - interval '3 days' where id = $1`, [lastLog.id]);
+await admin.query(`insert into pay_month (method_id, month, spent) values ($1, (date_trunc('month', now()) - interval '3 days')::date, 1000)
+                   on conflict (method_id, month) do update set spent = 1000`, [cardId]);
+await admin.query(`update pay_month set month = date_trunc('month', month)::date where method_id = $1`, [cardId]).catch(() => {});
+const before = (await admin.query(`select spent from pay_month where method_id = $1 and month = date_trunc('month', now())::date`, [cardId])).rows[0].spent;
+await pay(M.Papa, { action: 'decline', logId: lastLog.id });
+const after = (await admin.query(`select spent from pay_month where method_id = $1 and month = date_trunc('month', now())::date`, [cardId])).rows[0].spent;
+ok('declining last month\'s ask leaves this month\'s total alone', lastAsk.status === 200 && before === after, before + ' -> ' + after);
 const pl = await call(bookApi, { method: 'GET', token: M.Papa.token, query: { area: 'pay', circle: code, member: M.Papa.id } });
 ok('the activity carries each line\'s id and who', (pl.log || []).every(l => l.id && 'member_id' in l));
 
