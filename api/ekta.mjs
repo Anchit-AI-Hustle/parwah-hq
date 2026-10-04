@@ -22,7 +22,7 @@ import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
 import { LOCAL_MODEL, isDeadKey, isBillingFailure, isAuthFailure, classify, whoIsAsked,
          renderSummary, renderMemory, renderCircle, offlineNote, cannotAnswer,
          renderScam, renderCannotDo, renderEmergency, renderCrisis, renderHealth,
-         kinIsAsked, ABOUT_ME, renderWhoIsIt } from './_ektalocal.mjs';
+         kinIsAsked, ABOUT_ME, renderWhoIsIt, renderWhoIsVisit } from './_ektalocal.mjs';
 import { spend, EARN } from './_coins.mjs';
 
 const ASSISTANT_NAME = 'Ekta'; // one-line swap if the persona name changes
@@ -381,7 +381,9 @@ export async function localTurn(sql, circle, me, history, reason) {
   // saved with that relation.
   const kin = kinIsAsked(text, members);
   const who = whoIsAsked(text, names) || (kin && kin.name) || null;
-  const say = (body) => ({ reply: body + '\n\n' + offlineNote(reason), actions: [], model: LOCAL_MODEL, escalate: false, offline: true });
+  // records: true only when the answer really was read from the family's
+  // rows; the screen says so only then.
+  const say = (body) => ({ reply: body + '\n\n' + offlineNote(reason), actions: [], model: LOCAL_MODEL, escalate: false, offline: true, records: true });
   // These three are not read from the records, so they do not carry the
   // "exactly what is saved" footer: each says what it is in its own words.
   const plain = (body) => ({ reply: body, actions: [], model: LOCAL_MODEL, escalate: false, offline: true });
@@ -398,12 +400,16 @@ export async function localTurn(sql, circle, me, history, reason) {
       if (!subject) return plain(renderWhoIsIt(names));
       const mine = JSON.parse(await runTool(sql, circle, me, 'get_family_memory', { about_name: subject }));
       const all = JSON.parse(await runTool(sql, circle, me, 'get_family_memory', {}));
-      const doctor = ((all && all.entries) || []).filter(e => e.kind === 'contact' && /\b(doctor|dr\.?)\b/i.test((e.name || '') + ' ' + (e.forwhat || '') + ' ' + (e.category || '')))
+      // Their own doctor, or a doctor saved for the whole family - never
+      // another relative's.
+      const doctor = ((all && all.entries) || []).filter(e => e.kind === 'contact' && (e.about === subject || !e.about)
+          && /\b(doctor|dr\.?)\b/i.test((e.name || '') + ' ' + (e.forwhat || '') + ' ' + (e.category || '')))
         .sort((a, b) => (b.about === subject) - (a.about === subject))[0] || null;
       if (!mine.error) return say(renderHealth(mine, subject, doctor));
     }
     if (intent === 'summary') {
-      const target = who || (names.find(n => n !== me.name) || me.name);
+      if (!who) return plain(renderWhoIsVisit(names.filter(n => n !== me.name)));
+      const target = who;
       const raw = await runTool(sql, circle, me, 'prepare_summary', { member_name: target });
       const payload = JSON.parse(raw);
       if (!payload.error) {
@@ -512,16 +518,6 @@ export default async function handler(req, res) {
   const meRow = [_g.me];
   const me = meRow[0];
 
-  // Which keys THIS family has. Asked after the circle is known, because a
-  // key now belongs to a circle rather than to the whole deployment.
-  let noBrain = false;
-  try {
-    const { keys } = await providerKeys(sql, circle.id);
-    // No key at all is still not a dead screen: Ekta answers from the
-    // family's own records and says plainly why the rest is missing.
-    noBrain = !MODEL_PROVIDERS.some(k => keys[k]);
-  } catch (e) { /* fall through: the cascade reports the real failure */ }
-
   const history = Array.isArray(messages) ? messages
     .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
     .slice(-12)
@@ -538,27 +534,42 @@ export default async function handler(req, res) {
       actions: [], model: LOCAL_MODEL, emergency: true });
   }
 
-  // The scam check and anything about the family's own records - including
-  // a medicine question, which is answered from the records and sent to the
-  // doctor - are free, whichever way they are answered.
-  const free = ['scam', 'memory', 'summary', 'health'].includes(asked);
+  // The scam check and anything about the family's own records - a record,
+  // a doctor visit, a medicine question - are answered here, from the rows,
+  // with no model: exactly what is saved, the same every time, and free.
+  if (['scam', 'memory', 'summary', 'health'].includes(asked)) {
+    const out = await localTurn(sql, circle, me, history, 'records');
+    if (!out.unanswered) {
+      return res.status(200).json({ ok: true, reply: out.reply, actions: [], model: out.model,
+        records: out.records || undefined, reason: out.records ? 'records' : undefined });
+    }
+  }
 
-  // Everything else runs on the family's coins. They are earned by looking
+  // Which keys THIS family has. Asked after the circle is known, because a
+  // key now belongs to a circle rather than to the whole deployment.
+  let noBrain = false;
+  try {
+    const { keys } = await providerKeys(sql, circle.id);
+    noBrain = !MODEL_PROVIDERS.some(k => keys[k]);
+  } catch (e) { /* fall through: the cascade reports the real failure */ }
+
+  // No key at all: Ekta answers from the family's own records and says
+  // plainly why the rest is missing. No model runs, so nothing is charged.
+  if (noBrain) {
+    const out = await localTurn(sql, circle, me, history, 'none');
+    return res.status(200).json({ ok: true, reply: out.reply, actions: [], model: out.model,
+      records: out.records || undefined, reason: 'none' });
+  }
+
+  // A conversation runs on the family's coins. They are earned by looking
   // after each other - keeping the memory current, filling the vault - so
   // the assistant is paid for by the very habits it exists to support.
-  const paid = free ? { ok: true, cost: 0, balance: null } : await spend(sql, circle.id, me.id, 'ekta');
+  const paid = await spend(sql, circle.id, me.id, 'ekta');
   if (!paid.ok) {
-    // Out of coins is not out of help: the scam check and anything read
-    // from the family's own records were always free, so they still answer.
-    const free = await localTurn(sql, circle, me, history, 'coins');
-    if (!free.unanswered) {
-      return res.status(200).json({ ok: true, reply: free.reply, actions: [], model: free.model,
-        offline: free.offline || undefined, reason: 'coins', coins: paid.balance });
-    }
     return res.status(402).json({ ok: false, needCoins: true, balance: paid.balance, cost: paid.cost,
       error: ASSISTANT_NAME + ' is out of coins for a conversation (each question uses ' + paid.cost + '). The family earns more by adding to the family memory (+' +
              EARN.memory_add.n + '), checking something is still current (+' + EARN.memory_ok.n + ') or putting a paper in the vault (+' +
-             EARN.vault_add.n + '). Reading back your records and the scam check stay free.' });
+             EARN.vault_add.n + '). Reading back your records, the scam check and anything urgent stay free.' });
   }
 
   const refund = async () => {
@@ -566,18 +577,14 @@ export default async function handler(req, res) {
     try { await sql`insert into coins (circle_id, member_id, delta, reason) values (${circle.id}, ${me.id}, ${paid.cost}, 'refund')`; } catch (_) {}
   };
   try {
-    // With no key at all there is nothing to cascade through, so go
-    // straight to the records rather than spending a round trip failing.
-    const out = noBrain
-      ? await localTurn(sql, circle, me, history, 'none')
-      : await ektaTurn(sql, circle, me, history);
+    const out = await ektaTurn(sql, circle, me, history);
     // An answer read out of the family's own rows is not the assistant they
     // are paying for, so it is free. Charging for a degraded turn is how a
     // family learns to distrust the coin.
-    let coins = free ? undefined : paid.balance;
-    if (out.offline && !free) { await refund(); coins = paid.balance + paid.cost; }
+    let coins = paid.balance;
+    if (out.offline) { await refund(); coins = paid.balance + paid.cost; }
     return res.status(200).json({ ok: true, reply: out.reply, actions: out.actions,
-      model: out.model, offline: out.offline || undefined, reason: out.reason || undefined, coins });
+      model: out.model, records: out.records || undefined, reason: out.reason || undefined, coins });
   } catch (e) {
     // A turn that never reached a brain is never charged for.
     await refund();

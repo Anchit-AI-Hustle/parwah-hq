@@ -4411,6 +4411,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         // request must not keep coming back as "waiting" on every reload.
         var code = pendCode;
         return post(API.circle, { action: 'join_status', code: code }).then(function(st){
+          // In, under the family's current code (it may have changed since the
+          // invite was sent).
+          if (st && st.ok && st.status === 'in' && st.code) {
+            inviteDone();
+            var c = { code: st.code, circleName: st.circleName, memberId: st.memberId, role: st.role, memberName: authUser.name };
+            upsertGroup(c); enterCircle(c);
+            return;
+          }
           if (st && st.ok && st.status === 'declined') {
             inviteDone();
             showStep('setup');
@@ -5607,6 +5615,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     auth: 'Her AI key is not working right now, so she is reading back exactly what is saved. This answer is free.',
     none: 'No AI key is set up yet, so she is reading back exactly what is saved. This answer is free.',
     coins: 'The family is out of coins, so she is reading back exactly what is saved. That is always free.',
+    records: 'She is reading back exactly what is saved. That is always free.',
     unreachable: 'Her AI could not be reached, so she is reading back exactly what is saved. This answer is free.'
   };
   function ektaOffline(reason){
@@ -5654,7 +5663,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           // An answer read out of the family's own records is a real answer,
           // not a failure - but the family is told exactly what they are
           // getting, and that it cost them no coins.
-          ektaOffline(j.offline ? (j.reason || 'unreachable') : null);
+          // Only an answer really read from the family's records says so.
+          ektaOffline(j.records ? (j.reason || 'unreachable') : null);
           if (j.actions && j.actions.length) refresh();
           if (typeof j.coins === 'number') refreshCoins();
         } else if (j.needCoins) {
@@ -8672,7 +8682,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // field the person typed into that still holds text. Saving clears the
   // field, so it no longer counts; sign-in fields stop counting once the
   // sign-in screen has gone.
-  var TEXTY = /^(text|search|tel|email|number|url|date|time|datetime-local|)$/;
+  var TEXTY = /^(text|search|tel|email|number|url|date|time|datetime-local|password|)$/;
   document.addEventListener('input', function(e){
     var t = e.target;
     if (t && (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && TEXTY.test(t.type || '')))) t.__typed = true;
@@ -8681,8 +8691,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var a = document.activeElement;
     if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.value) return true;
     var f = document.querySelectorAll('input, textarea');
+    // A field still on the screen: a form that was saved and closed, or a
+    // screen left behind, no longer holds the update back.
     for (var i = 0; i < f.length; i++) {
-      if (f[i].__typed && f[i].value && !($('onboard').hidden && f[i].closest('#onboard'))) return true;
+      if (f[i].__typed && f[i].value && f[i].getClientRects().length) return true;
     }
     return false;
   }

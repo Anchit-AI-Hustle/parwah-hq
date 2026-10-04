@@ -892,7 +892,7 @@ check("ekta: with no key at all she still answers from the records",
 check("ekta: the offline answer is retrieval, through the same tools",
       "prepare_summary" in ekta and "get_family_memory" in ekta and "get_circle" in ekta)
 check("ekta: a degraded turn is refunded, not charged for",
-      "if (out.offline && !free) { await refund(); " in ekta)
+      "if (out.offline) { await refund(); " in ekta)
 check("ekta: the reason is named, not hidden behind 'something went wrong'",
       "failureReason" in ekta and "offlineNote" in elocal)
 check("ekta: the offline answer still refuses to diagnose",
@@ -1767,9 +1767,12 @@ check("ekta: anyone in danger is answered first, in fixed words, free - before c
       -1 < _ekt.find("asked === 'emergency' || asked === 'crisis'") < _ekt.find("await spend(sql, circle.id, me.id, 'ekta')")
       and "function ektaUrgent(said)" in _appt and 'href="tel:112"' in _appt and "if (j.emergency) ektaUrgent(v);" in _appt)
 check("ekta: the scam check, records and medicine questions are never charged; a family word finds the one person saved with it",
-      "const free = ['scam', 'memory', 'summary', 'health'].includes(asked);" in _ekt and "kinIsAsked(text, members)" in _ekt and "renderWhoIsIt(names)" in _ekt)
+      "if (['scam', 'memory', 'summary', 'health'].includes(asked)) {" in _ekt and "localTurn(sql, circle, me, history, 'records')" in _ekt
+      and _ekt.find("localTurn(sql, circle, me, history, 'records')") < _ekt.find("await spend(sql, circle.id, me.id, 'ekta')")
+      and "kinIsAsked(text, members)" in _ekt and "renderWhoIsIt(names)" in _ekt and "renderWhoIsVisit(" in _ekt and "(e.about === subject || !e.about)" in _ekt)
 check("ekta: out of coins still answers what was always free, and says how anyone can earn more",
-      "const free = await localTurn(sql, circle, me, history, 'coins');" in _ekt and "EARN.checkin" not in _ekt)
+      "Reading back your records, the scam check and anything urgent stay free." in _ekt and "EARN.checkin" not in _ekt
+      and _ekt.find("asked === 'emergency' || asked === 'crisis'") < _ekt.rfind("await providerKeys(sql, circle.id)") and "ektaOffline(j.records ?" in _appt)
 check("ekta: the screen says what she does, that she gives no medical advice and what a question costs; chips point at real things",
       "I never give medical advice. A question uses 2 coins" in _appt and "Daily check-in reminder" not in _appt and 'id="evoice" aria-pressed="true" aria-label="Read replies aloud"' in _appt)
 check("muhurat: no health advice in a Rog window, and care never waits for a muhurat",

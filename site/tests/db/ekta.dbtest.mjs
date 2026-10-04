@@ -95,6 +95,7 @@ ok('the family starts this with no coins', await pot() === 0);
 {
   const r = await ask(rohan, 'I got a message asking for an OTP for a payment. Is it a scam?');
   ok('out of coins, the scam check still answers', r.status === 200 && r.ok && /1930/.test(r.reply), JSON.stringify(r).slice(0, 200));
+  ok('and the screen is not told it was read from the records (it is standard advice)', !r.records, JSON.stringify(r).slice(0, 120));
 }
 {
   const r = await ask(rohan, 'Can Papa take a Crocin with his BP tablet?');
@@ -103,7 +104,7 @@ ok('the family starts this with no coins', await pot() === 0);
   ok('medicine question: never advises, names the doctor', /cannot advise on medicines/.test(r.reply) && /Dr Mehra/.test(r.reply), r.reply);
   // A medicine question is free, so the pot does not come into it: the
   // reason given is the true one, that no AI key is set up.
-  ok('medicine question: says why it is reading records, truthfully', /no AI key is set up/.test(r.reply) && !/out of coins/.test(r.reply), r.reply);
+  ok('medicine question: says it read the records, truthfully, and the screen says so', /read that straight from your family records/.test(r.reply) && !/out of coins/.test(r.reply) && r.records === true, r.reply);
 }
 {
   const r = await ask(rohan, 'Can Dadi take a Crocin?');
@@ -118,10 +119,27 @@ ok('the family starts this with no coins', await pot() === 0);
   ok('the example Ekta suggests really is answered', r.ok && /Amlodipine 5mg/.test(r.reply), JSON.stringify(r).slice(0, 200));
 }
 {
+  const v = await ask(rohan, 'Prepare a summary for a doctor visit.');
+  ok('a doctor visit with nobody named: asks who it is for, reads out nobody\'s records', v.ok && /Who is the doctor visit for/.test(v.reply) && !/Amlodipine|Thyronorm/.test(v.reply), v.reply);
+  const n = await ask(rohan, 'Can Raj take a Crocin with his BP tablet?');
+  ok('"Can Raj take..." by his saved name is a medicine question too', n.ok && /Amlodipine/.test(n.reply) && /cannot advise on medicines/.test(n.reply), n.reply);
+  const mum = await ask(rohan, 'Can Mummy take a Crocin?');
+  ok('Mummy has no doctor saved: Papa\'s doctor is never named as hers', mum.ok && /Thyronorm/.test(mum.reply) && !/Dr Mehra/.test(mum.reply) && /pharmacist/.test(mum.reply), mum.reply);
+  const u = await ask(rohan, 'He had an accident last week and today he is breathless');
+  ok('something old, and something happening today: urgent', u.ok && u.emergency === true);
+}
+{
+  // With no AI key there is no model to pay for: a chat that cannot be had
+  // is answered as such, whatever the pot holds.
+  const r0 = await ask(rohan, 'write me a poem about the moon');
+  ok('no key: a conversation is not refused for coins, it says it cannot chat and why', r0.ok && /no AI key is set up/.test(r0.reply) && await pot() === 0, JSON.stringify(r0).slice(0, 160));
+  // With a key, a conversation is the model's, and needs coins.
+  process.env.ANTHROPIC_API_KEY = 'sk-test-not-a-real-key';
   const r = await ask(rohan, 'write me a poem about the moon');
+  delete process.env.ANTHROPIC_API_KEY;
   ok('a conversation needs coins: refused with 402', r.status === 402 && r.needCoins === true);
   ok('and how to earn more is something any member can do (not check in)', /family memory/.test(r.error) && /vault/.test(r.error) && !/check(ing)? in/i.test(r.error), r.error);
-  ok('and it says what stays free', /scam check stay free/.test(r.error));
+  ok('and it says what stays free', /scam check and anything urgent stay free/.test(r.error), r.error);
   ok('nothing was spent', await pot() === 0);
 }
 

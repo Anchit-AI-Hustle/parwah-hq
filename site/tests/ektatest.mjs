@@ -108,7 +108,8 @@ for (const t of ['Papa had a stroke in 2019, what medicines is he on?', 'He had 
 for (const t of ['Papa passed out yesterday, what medicines is he on?', 'Mummy fell last year and broke her wrist', 'he had a seizure 3 years ago',
                  'Papa collapsed in 2021, what do we have for him'])
   ok('in the past, so not alarmed: ' + t, classify(t) !== 'emergency');
-for (const t of ['Papa fell yesterday and still can\'t get up', 'Dadi passed out last night and is not responding now'])
+for (const t of ['Papa fell yesterday and still can\'t get up', 'Dadi passed out last night and is not responding now',
+                 'He had an accident last week and today he is breathless', 'He passed out yesterday and today he has chest pain'])
   ok('in the past but happening now, so urgent: ' + t, classify(t) === 'emergency');
 ok('words about ending a life reach a person', classify('I want to die') === 'crisis' && classify('main jeena nahi chahta') === 'crisis');
 const em = renderEmergency();
@@ -121,6 +122,9 @@ ok('urgent answers have no em dash', !em.includes('\u2014') && !renderCrisis().i
 ok('can she take X is a health question', classify('Can Papa take a Crocin with his BP tablet?') === 'health');
 ok('should we stop is a health question', classify('Is Papa diabetic? Should we stop his sugar tablets?') === 'health');
 ok('a dose question is a health question', classify('what dose of metformin is right') === 'health');
+ok('a saved name, or "my father", asking about a medicine is a health question',
+   classify('Can Raj take Crocin?') === 'health' && classify('Can my father take his BP tablet with Crocin?') === 'health');
+ok('"can I take a day off" is not a medicine question', classify('Can I take a day off tomorrow?') !== 'health');
 const hp = renderHealth({ entries: [{ kind: 'med', name: 'Amlodipine 5mg', forwhat: 'BP', last_verified_at: new Date().toISOString() },
                                      { kind: 'contact', name: 'Dr Mehra' }] }, 'Papa', { name: 'Dr Mehra', phone: '+91 98111 11111' });
 ok('health: reads back what is recorded', /Amlodipine 5mg/.test(hp) && /Papa/.test(hp));

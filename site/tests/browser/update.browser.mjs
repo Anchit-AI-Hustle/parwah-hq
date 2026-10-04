@@ -141,6 +141,24 @@ for (const from of ['parwah-app-v40', 'parwah-app-v41']) {
   ok(await P.evaluate(() => window.__oldCopy === true) && await P.isVisible('#updbar'), 'typed, then focus moved away: no reload, the bar says a new version is ready');
   await ctx.close();
 }
+// A PIN or password typed and left counts too; a form saved and closed (its
+// fields no longer on screen) does not hold the update back for ever.
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  const P = await ctx.newPage(); P.on('pageerror', e => errors.push('dirty2: ' + e.message));
+  await P.goto(BASE + '/'); await P.waitForTimeout(800);
+  await P.evaluate(() => { const d = document.createElement('div'); d.id = 'tform'; d.innerHTML = '<input type="password" id="tpw">'; document.body.appendChild(d); });
+  await P.evaluate(() => { window.__oldCopy = true; });
+  await P.fill('#tpw', 'secret12'); await P.evaluate(() => document.activeElement.blur());
+  version = 'E';
+  await P.evaluate(() => window.dispatchEvent(new Event('focus'))); await P.waitForTimeout(1000);
+  ok(await P.evaluate(() => window.__oldCopy === true) && await P.isVisible('#updbar'), 'a password typed and left also holds the reload back');
+  await P.evaluate(() => { document.getElementById('tform').hidden = true; document.getElementById('updbar').hidden = true; });
+  version = 'F';
+  await P.evaluate(() => window.dispatchEvent(new Event('focus'))); await P.waitForTimeout(1200);
+  ok(await P.evaluate(() => window.__oldCopy !== true), 'once that form is closed, the next new version loads by itself');
+  await ctx.close();
+}
 
 // The first check is still out when the connection returns; a later check
 // answers first. The version running is still unknown, so it moves.

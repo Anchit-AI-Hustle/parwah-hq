@@ -151,13 +151,23 @@ export default async function handler(req, res) {
     if (action === 'join_status') {
       const su = await sessionUser(sql, tokenOf(req));
       if (!su) return res.status(401).json({ ok: false, signin: true, error: 'Please sign in again' });
-      const circle = await circleByCode(sql, code);
-      if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
-      const m = await sql`select id from members where circle_id = ${circle.id} and user_id = ${su.user_id}`;
-      if (m[0]) return res.status(200).json({ ok: true, status: 'in' });
-      const q = await sql`select status from join_requests where circle_id = ${circle.id} and user_id = ${su.user_id}
+      // A family can change its invite code while someone waits: the request
+      // is found by the person, and the family's current code is returned.
+      let circleId = null;
+      const byCode = code ? await circleByCode(sql, code) : null;
+      if (byCode) circleId = byCode.id;
+      else {
+        const last = await sql`select circle_id from join_requests where user_id = ${su.user_id} order by created_at desc limit 1`;
+        if (last[0]) circleId = last[0].circle_id;
+      }
+      if (!circleId) return res.status(200).json({ ok: true, status: 'none' });
+      const cur = await sql`select code, name from circles where id = ${circleId}`;
+      const now = cur[0] ? { code: cur[0].code, circleName: cur[0].name } : {};
+      const m = await sql`select id, role from members where circle_id = ${circleId} and user_id = ${su.user_id}`;
+      if (m[0]) return res.status(200).json({ ok: true, status: 'in', ...now, memberId: m[0].id, role: m[0].role });
+      const q = await sql`select status from join_requests where circle_id = ${circleId} and user_id = ${su.user_id}
                           order by created_at desc limit 1`;
-      return res.status(200).json({ ok: true, status: q[0] ? q[0].status : 'none' });
+      return res.status(200).json({ ok: true, status: q[0] ? q[0].status : 'none', ...now });
     }
 
     if (action === 'approve_join' || action === 'decline_join') {
