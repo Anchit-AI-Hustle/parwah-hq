@@ -112,6 +112,8 @@ for (const t of ['Has Papa had chest pain in the last week?', 'Does Papa have a 
   ok('a question about the past, even with "has", so not alarmed: ' + t, classify(t) !== 'emergency');
 ok('something else getting worse does not make an old collapse urgent', classify('Papa collapsed in 2021, but his knee pain is getting worse. What medicines is he on?') !== 'emergency');
 ok('nor something that "was getting worse" back then', classify('Papa collapsed in 2021 while his knee pain was getting worse; what medicines is he on?') !== 'emergency');
+ok('nor something that "was rapidly getting worse" back then', classify('Papa collapsed in 2021 while he was rapidly getting worse; what medicines is he on?') !== 'emergency');
+ok('"Has Papa had a seizure since...?" asks about the past', classify('Has Papa had a seizure since his fall last year?') !== 'emergency');
 ok('nor "worsening knee pain"', classify('Papa collapsed in 2021; worsening knee pain means he needs his medicines reviewed') !== 'emergency');
 ok('nor when that part starts with "he"', classify('Papa collapsed in 2021, but he says his knee pain is getting worse. What medicines is he on?') !== 'emergency');
 ok('"since" in a question about a past stretch is not an alarm', classify('Did Papa have a seizure at any time since his fall last year?') !== 'emergency');
@@ -132,7 +134,8 @@ for (const t of ['Papa fell yesterday and still can\'t get up', 'Dadi passed out
                  'Has Papa been unconscious since last night, and has this ever happened before?', 'Papa collapsed last week and he is getting worse',
                  'Papa has been unconscious ever since last night.', 'Papa collapsed last week and is getting worse',
                  'His chest pain started last week; worsening today', 'Papa collapsed last week. Is he getting worse?',
-                 'Papa collapsed last night and has not woken up since'])
+                 'Papa collapsed last night and has not woken up since',
+                 'Papa collapsed last week and he is rapidly getting worse', 'Papa collapsed last week. Is he rapidly getting worse?'])
   ok('in the past but happening now, so urgent: ' + t, classify(t) === 'emergency');
 ok('words about ending a life reach a person', classify('I want to die') === 'crisis' && classify('main jeena nahi chahta') === 'crisis');
 const em = renderEmergency();
