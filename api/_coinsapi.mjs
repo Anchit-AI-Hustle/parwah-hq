@@ -6,7 +6,7 @@
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
-import { ensureCoinSchema, balance, EARN, SPEND } from './_coins.mjs';
+import { ensureCoinSchema, balance, EARN, SPEND, PAST_LABELS } from './_coins.mjs';
 
 export default async function handler(req, res) {
   let sql;
@@ -34,12 +34,16 @@ export default async function handler(req, res) {
       from coins c left join members m on m.id = c.member_id
       where c.circle_id = ${circle.id}
       order by c.created_at desc limit 40`;
-    const top = await sql`
-      select m.name, sum(c.delta)::int as n
+    // Who has been looking after things this month - thanked, not ranked:
+    // names only, in alphabetical order, and no totals to compare.
+    const thanks = await sql`
+      select distinct m.name
       from coins c join members m on m.id = c.member_id
-      where c.circle_id = ${circle.id} and c.delta > 0
-      group by m.name order by n desc limit 5`;
-    return res.status(200).json({ ok: true, balance: bal, mine: mine[0].n, ledger, top, earn: EARN, spend: SPEND });
+      where c.circle_id = ${circle.id} and c.delta > 0 and c.reason <> 'welcome'
+        and c.created_at > now() - interval '30 days'
+      order by m.name limit 12`;
+    return res.status(200).json({ ok: true, balance: bal, mine: mine[0].n, ledger, thanks: thanks.map(r => r.name),
+      earn: EARN, past: PAST_LABELS, spend: SPEND });
   } catch (e) {
     return fail(res, e);
   }

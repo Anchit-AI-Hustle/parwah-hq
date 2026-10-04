@@ -26,7 +26,7 @@ const bot = (st, i) => !!(st.players[i] && (st.players[i].bot || st.players[i].a
 // Opponents for playing alone: players like any other, marked `bot`.
 export function botSeats(n) {
   const out = [];
-  for (let i = 0; i < n; i++) out.push({ id: i ? 'bot' + (i + 1) : 'bot', name: i ? 'Parwah ' + (i + 1) : 'Parwah', bot: true });
+  for (let i = 0; i < n; i++) out.push({ id: i ? 'bot' + (i + 1) : 'bot', name: i ? 'Computer ' + (i + 1) : 'Computer', bot: true });
   return out;
 }
 

@@ -1441,8 +1441,18 @@ check("day: the detail is in tabs, and the day opens on the overview",
       and "if (t === 'day' && curTab !== 'day') showMuTab('overview');" in appday)
 check("day: no city is told apart from an unknown one",
       "unset: true" in plc and "j.place.unset" in appday and 'id="mu-addcity"' in appday)
-check("day: all twelve rashis are behind a disclosure too, yours is not",
-      "See all twelve rashis" in appday and 'id="ho-mine"' in appday)
+_coins_src = (API_DIR / "_coins.mjs").read_text(encoding="utf-8")
+_earn = _coins_src[_coins_src.index("export const EARN = {"):_coins_src.index("};", _coins_src.index("export const EARN = {"))]
+check("coins: no rule is listed that is never paid (check-ins and medicines earn nothing)",
+      "checkin:" not in _earn and "pill:" not in _earn and "game:" in _earn
+      and "award(sql, circleId, p.id, 'game'" in (API_DIR / "games.mjs").read_text(encoding="utf-8"))
+check("coins: the cost of a question is stated, and nobody is ranked",
+      'id="coin-cost"' in appday and "each question to Ekta uses" in appday
+      and "Who is keeping things going" not in appday and "Thank you, this month" in appday)
+check("day: all twelve signs are behind a disclosure too, yours is not",
+      "See all twelve signs" in appday and 'id="ho-mine"' in appday)
+check("day: the sign is labelled as a sun sign, plainly, not as a rashi",
+      "Your sun sign today" in appday and "Not your Vedic rashi." in appday and "Your sign today" not in appday)
 # Good/avoid is a STATUS, and status must never be carried by colour alone.
 check("day: the day band never means anything by colour alone",
       "tlkey" in appday and "Better to wait</span>" in appday

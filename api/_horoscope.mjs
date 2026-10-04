@@ -71,18 +71,42 @@ export async function ensureHoroscopeSchema(sql) {
 
 export const ENDPOINT = 'https://horoscope-app-api.vercel.app/api/v1/get-horoscope/daily';
 
-// One sign, one day. Returns the text or null - never a fabrication.
+// Someone else writes these, so they are read before a family sees them.
+// A reading that strays into health, medicines or money is not shown at all:
+// Parwah never gives that advice, and a horoscope does not get to either.
+const ADVISES = /\b(health|medic\w*|doctor|diagnos\w*|illness|disease|surgery|hospital|cure[sd]?|heal(s|ed|ing)?|therap\w*|remed(y|ies)|diet|pills?|dose|invest\w*|stocks?|shares|lottery|loans?|gambl\w*|betting|speculat\w*|windfall|financial gains?|wealth|profits?)\b/i;
+// The long dashes, by code point, so this file holds none itself.
+const LONG_DASH = new RegExp('[' + String.fromCharCode(0x2013, 0x2014) + ']', 'g');
+export function cleanReading(text) {
+  let s = String(text || '').replace(LONG_DASH, ' - ').replace(/\s+/g, ' ').trim();
+  if (s.length <= 20 || ADVISES.test(s)) return null;
+  if (s.length > 900) {
+    // Cut at the last full sentence, never mid-word.
+    const cut = s.slice(0, 900), end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+    s = end > 200 ? cut.slice(0, end + 1) : cut.slice(0, 897).replace(/\s+\S*$/, '') + '...';
+  }
+  return s;
+}
+
+// One sign, one day. Returns the text or null - never a fabrication. The
+// source answers for its own "today"; a reading dated any other day than the
+// India date it is stored under is refused rather than shown as today's.
 export async function fetchSign(signKey, day) {
   try {
     const r = await fetch(`${ENDPOINT}?sign=${encodeURIComponent(signKey)}&day=TODAY`,
       { signal: AbortSignal.timeout(7000) });
     if (!r.ok) return null;
     const j = await r.json();
+    const said = j && j.data && j.data.date;
+    if (day && /^\d{4}-\d{2}-\d{2}$/.test(String(said || '')) && said !== day) return null;
     const t = j && j.data && (j.data.horoscope_data || j.data.horoscope);
-    const s = String(t || '').trim();
-    return s.length > 20 ? s.slice(0, 900) : null;
+    return cleanReading(t);
   } catch (e) { return null; }
 }
+
+// "21 Mar - 19 Apr", the way the dates are read here.
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export const signDates = s => s.from[1] + ' ' + MON[s.from[0] - 1] + ' - ' + s.to[1] + ' ' + MON[s.to[0] - 1];
 
 // Today's twelve, from the database, filling only what is missing. A failed
 // fetch leaves that sign absent rather than storing something invented.
@@ -106,7 +130,7 @@ export async function horoscopeToday(sql, day) {
   }
   const signs = SIGNS.map(s => ({
     key: s.k, name: s.en, hi: s.hi,
-    dates: s.from.join('/') + ' - ' + s.to.join('/'),
+    dates: signDates(s),
     text: bySign[s.k] ? bySign[s.k].text : null,
     source: bySign[s.k] ? bySign[s.k].source : null
   }));

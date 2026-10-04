@@ -463,11 +463,14 @@ body.inapp #sosbar{padding-left:var(--space-16)}
   pointer-events:none;transform:translateX(-1px)}
 .nowmark::before{content:"now";position:absolute;top:-15px;left:50%;transform:translateX(-50%);
   font-size:var(--fs-12);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
-.tl button{flex:1 1 auto;border:0;padding:0;cursor:pointer;position:relative;
-  background:var(--ok);min-width:4px}
-.tl button[data-good="0"]{background:var(--alert)}
-.tl button[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:-2px}
-.tl button.now{box-shadow:inset 0 0 0 2px var(--ink)}
+/* The parts are drawn, not buttons: some are 4px wide, far below a finger.
+   A tap anywhere on the band says which part it is, and the hour-by-hour and
+   coming-up lists below are the real tap targets. */
+.tl{cursor:pointer}
+.tl [data-tl]{display:block;flex:1 1 auto;position:relative;background:var(--ok);min-width:4px}
+.tl [data-tl][data-good="0"]{background:var(--alert)}
+.tl [data-tl][data-on="1"]{outline:2px solid var(--ink);outline-offset:-2px}
+.tl [data-tl].now{box-shadow:inset 0 0 0 2px var(--ink)}
 .tlax{display:flex;justify-content:space-between;gap:var(--space-8);font-size:var(--fs-12);color:var(--ink-soft);
   font-variant-numeric:tabular-nums;margin-top:var(--space-8)}
 .tlkey{display:flex;gap:var(--space-16);flex-wrap:wrap;font-size:var(--fs-12);color:var(--ink-soft);margin-top:var(--space-12)}
@@ -1316,7 +1319,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     </div>
 
     <details class="todaymore" id="more">
-      <summary>More<small>Chats, calls, contacts, plans, Ekta, muhurat, payments, games</small></summary>
+      <summary>More<small>Chats, calls, contacts, plans, Ekta, muhurat &amp; rashifal, payments, games &amp; drawing</small></summary>
       <div class="widgets" id="morewidgets">
       <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b>Chats</b><small id="w-chat">Family + personal</small></button>
       <button class="widget callgo" id="callnow"><span class="wic" aria-hidden="true">📹</span><b>Family call</b><small>Everyone joins with one tap</small></button>
@@ -1326,7 +1329,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check - just ask</small></button>
       <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true">🕉</span><b>Muhurat</b><small id="w-day">Choghadiya for your city</small></button>
       <button class="widget" data-goto="vault" data-sec="pay"><span class="wic" aria-hidden="true">💳</span><b>Payments</b><small id="w-pay">Who may use which way of paying</small></button>
-      <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Saanp Seedhi - play together</small></button>
+      <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Seven games, play together</small></button>
       </div>
       <button class="card coincard" id="coincard" hidden style="margin-bottom:var(--space-16);width:100%;text-align:left">
       <h3>🪙 <span id="coin-bal">-</span> family coins</h3>
@@ -1903,13 +1906,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <!-- Nobody reads twelve horoscopes. Yours, then your family's, then the
            other eleven only if you ask for them. -->
       <div class="card" id="ho-mine" hidden>
-        <p class="eyebrow" style="margin-top:0">Your sign today</p>
+        <p class="eyebrow" style="margin-top:0">Your sun sign today</p>
         <h3 id="ho-myname" style="font-size:var(--fs-20)"></h3>
         <p id="ho-mytext" style="margin:var(--space-8) 0 0;font-size:var(--fs-16)"></p>
+        <p class="hint" style="margin:var(--space-8) 0 0">Sun sign, from your birthday. Not your Vedic rashi.</p>
       </div>
       <div class="card" id="ho-nodob" hidden>
         <h3>Add your date of birth</h3>
-        <p class="hint" style="margin:var(--space-2) 0 var(--space-12)">Your rashi comes from your birthday. Add it once and it stays.</p>
+        <p class="hint" style="margin:var(--space-2) 0 var(--space-12)">Your sun sign comes from your birthday. Add it once and it stays.</p>
         <button class="cbtn" id="ho-adddob">Add it in your profile</button>
       </div>
       <div class="card" style="margin-top:var(--space-16)">
@@ -1917,7 +1921,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <div class="feed" id="ho-people" style="margin-top:var(--space-12)"></div>
       </div>
       <details class="more">
-        <summary>See all twelve rashis</summary>
+        <summary>See all twelve signs</summary>
         <div class="feed" id="ho-all" style="margin-top:var(--space-16)"></div>
       </details>
       <details class="more" id="ho-how">
@@ -2025,7 +2029,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="ektahead"><span style="font-size:var(--fs-24)" aria-hidden="true">🎉</span><span><b>Together</b><small>Calls, plans and games - distance is just a number</small></span></div>
 
     <div class="seg pageseg" id="fun-seg" role="tablist" aria-label="Together sections">
-      <button data-sec="plans" class="sel">🗓 Plans & calls</button>
+      <button data-sec="plans" class="sel">🗓 Plans</button>
       <button data-sec="games">🎲 Games</button>
       <button data-sec="board">🎨 Board</button>
     </div>
@@ -2092,7 +2096,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <button class="go" id="g-start">🎲 Start with them</button>
           <button class="cbtn ghost" id="g-solo">🙋 On my own</button>
         </div>
-        <p class="hint" style="margin-top:var(--space-8)">Only the people you tick are asked to play. If someone has not played for 12 hours, anyone in the game can let Parwah play their turn.</p>
+        <p class="hint" style="margin-top:var(--space-8)">Only the people you tick are asked to play. If someone has not played for 12 hours, anyone in the game can let the computer play their turn.</p>
       </div>
       <div class="card">
         <h3>Antakshari 🎤</h3>
@@ -2126,7 +2130,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <button class="go" data-bstart="ludo">🎯 Start Ludo</button>
           <button class="cbtn ghost" data-bsolo="ludo">🙋 Play alone</button>
         </div>
-        <p class="hint" style="margin-top:var(--space-8)">Empty seats are filled by Parwah, so a game always has at least two players.</p>
+        <p class="hint" style="margin-top:var(--space-8)">Empty seats are filled by the computer, so a game always has at least two players.</p>
       </div>
       <div class="card" data-bgame="bhabhi">
         <h3>Bhabhi 🃏 <small class="hint">card party</small></h3>
@@ -2304,7 +2308,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <input type="text" id="e-place" maxlength="80" placeholder="e.g. Pune">
         <label for="e-dob">Date of birth</label>
         <input type="date" id="e-dob">
-        <p class="hint" style="margin-top:var(--space-4)">Used for your rashi, and so the family never forgets a birthday.</p>
+        <p class="hint" style="margin-top:var(--space-4)">Used for your sun sign, and so the family never forgets a birthday.</p>
         <label for="e-country">Country</label>
         <select id="e-country">
           <option value="">Choose…</option>
@@ -2395,7 +2399,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <h3>🪙 Family coins</h3>
       <p style="margin:var(--space-2) 0 var(--space-4)"><b id="coin-bal2" style="font-size:var(--fs-24)">-</b> <span class="hint">in the family pot</span></p>
       <p class="hint" id="coin-mine" style="margin:0 0 var(--space-12)"></p>
-      <p class="hint">One pot for the whole family. Everything you do to look after each other earns coins, and Ekta - and any other AI help - spends them. Nothing is for sale.</p>
+      <p class="hint">One pot for the whole family. Keeping the family's records current earns coins, and Ekta spends them: <b id="coin-cost">each question to Ekta uses 2 coins</b>. Reading back your records, the scam check and anything urgent are free. Nothing is for sale.</p>
       <div id="coin-top" style="margin-top:var(--space-12)"></div>
       <p class="eyebrow" style="margin-top:var(--space-16)">How coins are earned</p>
       <div class="feed" id="coin-earn"></div>
@@ -4881,20 +4885,23 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('coincard').hidden = false;
     $('coin-bal').textContent = j.balance;
     $('coin-bal2').textContent = j.balance;
+    // Advice anyone in the family can follow, not only one role.
     $('coin-sub').textContent = j.balance < 10
-      ? 'Running low - check in or keep the family memory current to earn more'
+      ? 'Running low - add to the family memory or put a paper in the vault to earn more'
       : 'Earned by looking after each other - spent on Ekta';
+    var cost = (j.spend && j.spend.ekta) || 2;
+    $('coin-cost').textContent = 'each question to Ekta uses ' + cost + ' coin' + (cost === 1 ? '' : 's');
     $('coin-mine').textContent = j.mine ? 'You have earned ' + j.mine + ' of them.' : 'You have not earned any yet.';
-    $('coin-top').innerHTML = (j.top || []).length
-      ? '<p class="eyebrow">Who is keeping things going</p>' + j.top.map(function(t){
-          return '<div class="kv"><b>' + esc(t.name) + '</b><span>' + t.n + ' 🪙</span></div>'; }).join('')
+    // Thanked, not ranked: names only, and no totals to compare.
+    $('coin-top').innerHTML = (j.thanks || []).length
+      ? '<p class="eyebrow">Thank you, this month</p><p class="hint" style="margin:0">' + j.thanks.map(esc).join(', ') + '</p>'
       : '';
     var earn = j.earn || {};
     $('coin-earn').innerHTML = Object.keys(earn).filter(function(k){ return k !== 'welcome'; }).map(function(k){
       return '<div class="ev">' + esc(earn[k].label) + '<small>+' + earn[k].n + ' 🪙</small></div>';
     }).join('');
     $('coin-log').innerHTML = (j.ledger || []).length ? j.ledger.map(function(l){
-      var lbl = (earn[l.reason] && earn[l.reason].label) || (l.reason === 'ekta' ? 'Asked Ekta' : l.reason === 'refund' ? 'Refunded - Ekta could not answer' : l.reason);
+      var lbl = (earn[l.reason] && earn[l.reason].label) || (j.past && j.past[l.reason]) || (l.reason === 'ekta' ? 'Asked Ekta' : l.reason === 'refund' ? 'Refunded - Ekta could not answer' : l.reason);
       return '<div class="ev">' + (l.delta > 0 ? '＋' : '−') + Math.abs(l.delta) + ' 🪙 · ' + esc(lbl) +
              '<small>' + esc(l.name || 'The family') + ' · ' + fmtTime(l.created_at) + '</small></div>';
     }).join('') : '<div class="ev">Nothing yet.</div>';
@@ -6267,9 +6274,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('g-hand').hidden = !stuck;
     $('g-away').hidden = !stuck;
     if (stuck) {
-      $('g-hand').textContent = '🤖 Let Parwah play for ' + cur.name;
+      $('g-hand').textContent = '🤖 Let the computer play for ' + cur.name;
       $('g-hand').setAttribute('data-target', cur.id);
-      $('g-away').textContent = cur.name + ' has not played for over 12 hours. Parwah can play their turns so the game goes on.';
+      $('g-away').textContent = cur.name + ' has not played for over 12 hours. The computer can play their turns so the game goes on.';
     }
     // Leaving matters only when other people are playing on.
     $('g-leave').hidden = over || !meSeat || meSeat.away || humans.length < 2;
@@ -6335,7 +6342,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var tw = $('g-twist');
     if (st.last && st.last.challenge) {
       tw.className = 'twist dare';
-      tw.innerHTML = '<b>' + (st.last.challenge.type === 'truth' ? '🎤 Truth for ' : '🎭 Dare for ') + esc(st.last.by) + '</b>' + esc(st.last.challenge.text) + ' <span class="hint">(do it in the family chat!)</span>';
+      tw.innerHTML = '<b>' + (st.last.challenge.type === 'truth' ? '🎤 Truth for ' : '🎭 Dare for ') + esc(st.last.by) + '</b>' + esc(st.last.challenge.text) + ' <span class="hint">(in the family chat - or pass, nobody minds)</span>';
       tw.hidden = false;
     } else if (st.last && st.last.reward) {
       tw.className = 'twist reward';
@@ -6401,7 +6408,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     gamePost({ action: 'away', who: 'them', targetId: who });
   });
   $('g-leave').addEventListener('click', function(){
-    askSheet('Leave this game?', 'Parwah will play your turns, so the game goes on for everyone else.', 'Yes, leave', 'Stay', true).then(function(yes){
+    askSheet('Leave this game?', 'The computer will play your turns, so the game goes on for everyone else.', 'Yes, leave', 'Stay', true).then(function(yes){
       if (!yes) return;
       gamePost({ action: 'away', who: 'me' }, function(j){ if (j.ended) { showGameList(); refreshFun(); } });
     });
@@ -8148,12 +8155,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var t0 = segs[0].from, t1 = segs[segs.length - 1].to, span = t1 - t0;
     $('mu-tl').innerHTML = segs.map(function(s, i){
       var w = (s.to - s.from) / span * 100;
-      return '<button type="button" data-tl="' + i + '" data-good="' + (s.good ? 1 : 0) + '"' +
-        (i === at ? ' class="now"' : '') + ' aria-pressed="false"' +
+      return '<span data-tl="' + i + '" data-good="' + (s.good ? 1 : 0) + '"' +
+        (i === at ? ' class="now"' : '') + ' data-on="0"' +
         ' style="flex:0 0 ' + w.toFixed(3) + '%"' +
         ' title="' + esc(s.label + ' · ' + dRange(iso(s.from), iso(s.to), tz)) + '">' +
         '<span class="sr">' + esc(s.label + ', ' + dRange(iso(s.from), iso(s.to), tz) +
-          (s.good ? ', a good time' : ', better to wait')) + '</span></button>';
+          (s.good ? ', a good time' : ', better to wait')) + '</span></span>';
     }).join('');
     $('mu-tlax').innerHTML = '<span>' + esc(dTime(p.sunrise, tz)) + ' sunrise</span>' +
       '<span>' + esc(dTime(p.sunset, tz)) + ' sunset</span>' +
@@ -8261,9 +8268,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   // Tapping the band answers "what is that bit?" without opening anything.
   $('mu-tl').addEventListener('click', function(e){
-    var b = e.target.closest('button[data-tl]'); if (!b || !dayData) return;
+    var b = e.target.closest('[data-tl]'); if (!b || !dayData) return;
     var s = muSegs[+b.getAttribute('data-tl')]; if (!s) return;
-    this.querySelectorAll('button').forEach(function(o){ o.setAttribute('aria-pressed', o === b ? 'true' : 'false'); });
+    this.querySelectorAll('[data-tl]').forEach(function(o){ o.setAttribute('data-on', o === b ? '1' : '0'); });
     $('mu-tlpick').textContent = (s.good ? '✓ ' : '✕ ') + s.label + ', ' +
       dRange(iso(s.from), iso(s.to), dayData.tz) + '. ' + segWhy(s);
   });
@@ -8368,7 +8375,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('ho-nodob').hidden = !!j.mySign;
     $('ho-mine').hidden = !j.mySign;
     if (j.mySign) {
-      $('ho-myname').textContent = j.mySign.name + ' · ' + j.mySign.hi;
+      $('ho-myname').textContent = j.mySign.name + ' (' + j.mySign.hi + ')';
       $('ho-mytext').textContent = (mine && mine.text) ||
         'Today’s reading hasn’t come through yet. We’d rather leave it blank than make one up.';
     }
@@ -8376,7 +8383,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('ho-all').innerHTML = signs.map(function(s){
       var isMine = j.mySign && s.key === j.mySign.key;
       return '<div class="ev' + (isMine ? ' good' : '') + '">' +
-        '<b>' + esc(s.name) + ' · ' + esc(s.hi) + '</b>' + (isMine ? ' <small style="display:inline;color:var(--sindoor)">· yours</small>' : '') +
+        '<b>' + esc(s.name) + ' (' + esc(s.hi) + ')</b>' + (isMine ? ' <small style="display:inline;color:var(--sindoor)">· yours</small>' : '') +
         '<br>' + esc(s.text || 'Not available today.') +
         '<small>' + esc(s.dates || '') + '</small></div>';
     }).join('') || '<div class="ev">Nothing to show.</div>';

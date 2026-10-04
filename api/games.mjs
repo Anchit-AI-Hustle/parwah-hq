@@ -10,6 +10,16 @@ import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat , requireMembe
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
+import { award } from './_coins.mjs';
+
+// A game finished together earns the family coins, once per person per game
+// (the coin ledger's unique index makes the game id pay once). Played alone
+// with Parwah, or left before the end, it earns nothing.
+async function payPlayed(sql, circleId, gameId, st) {
+  const people = (st.players || []).filter(p => p && !p.bot && isUuid(p.id));
+  if (people.length < 2) return;
+  for (const p of people) if (!p.away) await award(sql, circleId, p.id, 'game', String(gameId));
+}
 // How games are named, numbered and listed. Its own dependency-free module so
 // the deploy gate can unit-test it on a fresh clone, before npm install.
 import { MAX_ACTIVE, gameName, numberAfter, gameSummary, isBot, isParwah, teamList, currentPlayer } from './_gamelist.mjs';
@@ -27,13 +37,13 @@ const DARES = [
   'Sing two lines of your favourite old song in the family chat (voice note or text!)',
   'Share your funniest childhood photo in the family chat',
   'Say three genuinely nice things about the player just ahead of you, in chat',
-  'Send your next 5 chat messages using only emojis',
-  'Call the eldest member of the circle right now and say "I love you"',
+  'Send a voice note of a lullaby or bhajan someone sang to you as a child',
+  'Call the eldest member of the family right now and say "I love you"',
   'Share a photo of the last thing you ate, with a chef-style description',
   'Tell your absolute worst joke in the family chat - no apologies',
   'Share one memory from a family trip that still makes you laugh',
   'Write a two-line shayari about this family in the chat',
-  'Do 5 jumping jacks and get another member to vouch for you in chat'
+  'Tell the family about a teacher who changed something for you'
 ];
 const TRUTHS = [
   'What was your childhood nickname, and who gave it to you?',
@@ -43,10 +53,10 @@ const TRUTHS = [
   'When did you last cry happy tears?',
   'What was your first salary, and what did you do with it?',
   'What is your favourite festival memory with this family?',
-  'Name one thing you secretly admire about each person in this circle'
+  'Name one thing you secretly admire about each person in this family'
 ];
 const REWARDS = [
-  'Everyone in the circle must send you a 🧡 in the family chat',
+  'Everyone in the family must send you a 🧡 in the family chat',
   'You may assign one mini-dare to any player of your choice',
   'Each family member must post one word that describes you best',
   'You earn the title "Sitara of the Day ⭐" - everyone must address you as Sitara till tomorrow',
@@ -229,7 +239,9 @@ export function tttMove(st, memberId, cell) {
 // Some evenings there is nobody free, and a game you cannot start alone is a
 // game nobody opens twice. The opponent is a player like any other, marked
 // `bot`, so every rule - turns, snakes, winning - stays exactly the same.
-export const BOT = { id: 'bot', name: 'Parwah', bot: true };
+// The computer opponent. Not called "Parwah": the brand should never be the
+// one that "wins" against a family member.
+export const BOT = { id: 'bot', name: 'Computer', bot: true };
 export function soloPlayers(me) { return [{ id: me.id, name: me.name }, { ...BOT }]; }
 
 // A competent, beatable opponent: win if it can, block if it must, then take
@@ -304,7 +316,7 @@ export function playTurn(st, memberId, rng) {
     const truth = R() < 0.4;
     challenge = { type: truth ? 'truth' : 'dare', text: pick(truth ? TRUTHS : DARES) };
     announce = '🐍 Saanp! ' + me.name + ' slid down to ' + to + '. ' +
-      (truth ? '🎤 Truth for ' : '🎭 Dare for ') + me.name + ': ' + challenge.text;
+      (truth ? '🎤 Truth for ' : '🎭 Dare for ') + me.name + ': ' + challenge.text + ' (Or pass - nobody minds.)';
   }
   else if (LADDERS[to]) {
     event = 'ladder! up to ' + LADDERS[to]; to = LADDERS[to];
@@ -445,7 +457,7 @@ export default async function handler(req, res) {
       } else {
         if (!isUuid(body.vsId) || body.vsId === me.id) return res.status(400).json({ ok: false, error: 'Pick who to challenge' });
         const vs = await sql`select id, name from members where id = ${body.vsId} and circle_id = ${circle.id}`;
-        if (!vs[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+        if (!vs[0]) return res.status(404).json({ ok: false, error: 'That person is not in this family' });
         state = tttStart(me, vs[0]); vsName = vs[0].name;
       }
       state.n = await nextNumber(sql, circle.id, 'ttt'); state.by = me.name; state.byId = me.id; state.turnAt = Date.now();
@@ -475,6 +487,7 @@ export default async function handler(req, res) {
       st.turnAt = Date.now();
       await sql`update games set status = ${done ? 'done' : 'active'}, state = ${JSON.stringify(st)}::jsonb,
                 ended_at = case when ${done}::boolean then now() else null end where id = ${g.id}`;
+      if (done) await payPlayed(sql, circle.id, g.id, st);
       const lines = [out.announce].concat(botLines).filter(Boolean);
       // A game played alone is not announced to the family.
       if (lines.length && !solo) {
@@ -554,7 +567,7 @@ export default async function handler(req, res) {
         if (ids.length + 1 > max) return res.status(400).json({ ok: false, error: 'At most ' + max + ' players in this game' });
         if (ids.length) {
           const rows = await sql`select id, name from members where circle_id = ${circle.id} and id = any(${ids})`;
-          if (rows.length !== ids.length) return res.status(404).json({ ok: false, error: 'Someone picked is not in this circle' });
+          if (rows.length !== ids.length) return res.status(404).json({ ok: false, error: 'Someone picked is not in this family' });
           people = people.concat(ids.map(id => rows.find(r => r.id === id)));
         }
         // Not enough people free: Parwah fills the empty seats.
@@ -593,6 +606,7 @@ export default async function handler(req, res) {
                               ended_at = case when ${done}::boolean then now() else null end
                               where id = ${g.id} and coalesce((state->>'v')::int, 0) = ${v0} returning id`;
       if (!saved[0]) return res.status(409).json({ ok: false, error: 'Someone moved a moment ago - here is the board now', stale: true });
+      if (done) await payPlayed(sql, circle.id, g.id, st);
       const solo = st.players.filter(p => !isParwah(p)).length < 2;
       const lines = [out.announce].concat(botLines).filter(Boolean);
       if (lines.length && !solo) { for (const t of lines) await announce(t); }
@@ -674,6 +688,7 @@ export default async function handler(req, res) {
       st.turnAt = Date.now();
       if (over) {
         await sql`update games set status = 'done', state = ${JSON.stringify(st)}::jsonb, ended_at = now() where id = ${g.id}`;
+        await payPlayed(sql, circle.id, g.id, st);
         if (!solo) await feed(sql, circle.id, me.id, `${st.winner} won Saanp Seedhi! 🎉🐍🪜`);
       } else {
         await sql`update games set state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
@@ -717,8 +732,8 @@ export default async function handler(req, res) {
       let seat, line;
       if (body.who === 'me') {
         seat = mine;
-        if (isBot(st.players[seat])) return res.status(409).json({ ok: false, error: 'Parwah is already playing for you' });
-        line = me.name + ' left ' + gameName(st.kind, st.n) + ' - Parwah plays for them now';
+        if (isBot(st.players[seat])) return res.status(409).json({ ok: false, error: 'The computer is already playing for you' });
+        line = me.name + ' left ' + gameName(st.kind, st.n) + ' - the computer plays for them now';
       } else {
         seat = st.turn;
         const p = st.players[seat];
@@ -730,8 +745,8 @@ export default async function handler(req, res) {
           const t = await sql`update games set state = ${JSON.stringify(st)}::jsonb where id = ${g.id} and state = ${before}::jsonb returning id`;
           if (!t[0]) return stale();
         }
-        if (Date.now() - Number(st.turnAt) < AWAY_AFTER_MS) return res.status(409).json({ ok: false, error: 'Give them a little longer - after 12 hours you can let Parwah play' });
-        line = me.name + ' let Parwah play for ' + p.name + ' in ' + gameName(st.kind, st.n);
+        if (Date.now() - Number(st.turnAt) < AWAY_AFTER_MS) return res.status(409).json({ ok: false, error: 'Give them a little longer - after 12 hours you can let the computer play' });
+        line = me.name + ' let the computer play for ' + p.name + ' in ' + gameName(st.kind, st.n);
       }
       const theirTurn = seat === st.turn;
       st.players[seat] = { ...st.players[seat], away: true };
@@ -751,6 +766,7 @@ export default async function handler(req, res) {
       const saved = await sql`update games set status = ${done ? 'done' : 'active'}, state = ${JSON.stringify(st)}::jsonb,
                 ended_at = case when ${done}::boolean then now() else null end where id = ${g.id} and state = ${before}::jsonb returning id`;
       if (!saved[0]) return stale();
+      if (done) await payPlayed(sql, circle.id, g.id, st);
       if (st.players.filter(p => !isParwah(p)).length > 1) await feed(sql, circle.id, me.id, line);
       return res.status(200).json({ ok: true, game: publicState({ id: g.id, kind: st.kind, status: done ? 'done' : 'active', state: st }, me.id) });
     }
