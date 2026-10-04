@@ -377,6 +377,35 @@ const tomorrow = localDay(Date.now() + 86400000);
   ok('a task written down after its time does not ring', !(await M.isVisible('#alarmsheet')));
 }
 
+// ---- 10. Notes and lists, shared
+{
+  // Rohan's own reminder from above would ring on his phone: it is done.
+  await admin.query(`update requests set status = 'done', completed_at = now() where title = 'Rohan only'`);
+  const toNotes = async (page) => { await page.goto(BASE + '/#care'); await page.waitForTimeout(600);
+    await page.click('#care-seg [data-sec="notes"]'); await page.waitForTimeout(900); };
+  await toNotes(M);
+  ok('To do has Notes & lists', await M.isVisible('#n-title') && /No notes yet/.test(await M.textContent('#notelist')));
+  await M.click('#n-add'); await M.waitForTimeout(200);
+  ok('a note without a title is refused beside the box', /Give it a title/.test(await M.textContent('#n-title-err')));
+  await M.fill('#n-title', 'Groceries');
+  await M.fill('#n-items', 'Atta 5 kg\nMilk\n\nHaldi');
+  await M.click('#n-add'); await M.waitForTimeout(1000);
+  ok('a list is saved, one tick box per line', (await M.$$eval('#notelist .noteitem', ls => ls.length)) === 3);
+  await M.fill('#n-title', 'Surprise for Rohan');
+  await M.click('#n-kind [data-nkind="note"]');
+  await M.fill('#n-items', 'A watch');
+  await M.check('#n-private');
+  await M.click('#n-add'); await M.waitForTimeout(1000);
+  await toNotes(R);
+  ok('Rohan sees the family list', /Groceries/.test(await R.textContent('#notelist')));
+  ok('but not Meera\'s private note', !/Surprise for Rohan/.test(await R.textContent('#notelist')));
+  await R.locator('#notelist .noteitem', { hasText: 'Milk' }).locator('input').check(); await R.waitForTimeout(800);
+  await R.fill('#notelist [data-nadd]', 'Eggs'); await R.press('#notelist [data-nadd]', 'Enter'); await R.waitForTimeout(1000);
+  await toNotes(M);
+  ok('Meera sees Rohan ticked Milk, and added Eggs', /1 of 4 done/.test(await M.textContent('#notelist')) && /Milk · Rohan/.test(await M.textContent('#notelist')) && /Eggs/.test(await M.textContent('#notelist')),
+     await M.textContent('#notelist'));
+}
+
 if (process.env.SHOTS) {
   await reload(R); await R.screenshot({ path: process.env.SHOTS + '/care-list.png', fullPage: true });
   await rowOf(R, 'Pay the electricity bill').locator('.tlink').click(); await R.waitForTimeout(700);

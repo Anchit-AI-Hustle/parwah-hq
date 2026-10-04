@@ -242,6 +242,18 @@ label + select{width:100%}
 .ss-note{font-size:var(--fs-14)!important;opacity:.95}
 @media(prefers-reduced-motion:no-preference){.sosalert h2{animation:sospulse 1s ease-in-out infinite alternate}}
 @keyframes sospulse{from{opacity:1}to{opacity:.72}}
+.note{display:flex;flex-direction:column;gap:var(--space-8)}
+.notehead{display:flex;flex-direction:column;gap:var(--space-2)}
+.notehead b{font-size:var(--fs-16)}
+.notehead small{font-size:var(--fs-12);color:var(--ink-soft)}
+.notebody{margin:0;white-space:pre-wrap;font-size:var(--fs-14);line-height:1.5}
+.noteitem{display:flex;align-items:center;gap:var(--space-12);min-height:var(--tap-min);border-bottom:1px solid var(--bone-2);font-size:var(--fs-16)}
+.noteitem input{width:22px;height:22px;flex:none;accent-color:var(--marigold-d)}
+.noteitem span{flex:1}
+.noteitem.done span{text-decoration:line-through;color:var(--ink-soft)}
+.noteitem small{font-size:var(--fs-12)}
+.noteadd{display:flex;gap:var(--space-8)}
+.noteadd input{flex:1;min-width:0}
 /* A box that is wrong says so beside itself, not in a toast that vanishes. */
 .fielderr{font-size:var(--fs-14);font-weight:600;color:var(--sindoor);margin:var(--space-4) 0 var(--space-8)}
 [aria-invalid="true"]{border-color:var(--sindoor)!important;box-shadow:0 0 0 2px var(--sindoor)}
@@ -1408,6 +1420,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="seg pageseg" id="care-seg" role="tablist" aria-label="Care sections">
       <button data-sec="rem" class="sel">✅ Things to do</button>
       <button data-sec="req">💡 Suggested<i class="dot" id="sugg-dot" hidden></i></button>
+      <button data-sec="notes">📝 Notes &amp; lists</button>
     </div>
     <div class="subsec" data-sec="rem">
     <p class="hint" style="margin:0 0 var(--space-12)">What needs doing, who is handling it, and when it is done - the whole family sees the same list.</p>
@@ -1443,6 +1456,24 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <p class="hint" id="r-hint">Nobody is given it yet - the first person to tap "I'm on it" takes it.</p>
       <p class="hint">No medical details needed here - "Papa's 9 pm tablets" is enough.</p>
     </div>
+    </div>
+
+    <div class="subsec" data-sec="notes" hidden>
+    <p class="hint" style="margin:0 0 var(--space-12)">Lists and notes the family shares - groceries, packing for a trip, what to ask the doctor. Tick things off together. "Only me" keeps a note to yourself.</p>
+    <div class="card">
+      <h3>New note or list</h3>
+      <label for="n-title">Title</label>
+      <input type="text" id="n-title" maxlength="80" placeholder="e.g. Groceries · Packing for Goa · Ask the doctor">
+      <label for="n-items">Items or notes</label>
+      <textarea id="n-items" rows="3" maxlength="2000" placeholder="One item per line becomes a tick box. Or write a note."></textarea>
+      <div class="seg" id="n-kind" role="group" aria-label="List or note" style="margin-top:var(--space-12)">
+        <button type="button" data-nkind="list" class="sel">☑ A list</button>
+        <button type="button" data-nkind="note">📝 A note</button>
+      </div>
+      <label class="gchk" style="margin-top:var(--space-12);width:fit-content"><input type="checkbox" id="n-private"> Only me</label>
+      <button class="go" id="n-add" style="margin-top:var(--space-12)">Save</button>
+    </div>
+    <div class="feed" id="notelist" style="margin-top:var(--space-16)"><div class="ev">Loading…</div></div>
     </div>
 
     <div class="subsec" data-sec="req" hidden>
@@ -2538,6 +2569,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="subnav side-only" data-parent="care">
       <button data-tab="care" data-sec="rem">Tasks</button>
       <button data-tab="care" data-sec="req">Suggested</button>
+      <button data-tab="care" data-sec="notes">Notes &amp; lists</button>
     </div>
     <button data-tab="people" id="tab-people"><span class="ic" aria-hidden="true">👨‍👩‍👧</span><span id="tab-people-l">Family</span></button>
     <p class="side-more side-only">More</p>
@@ -2615,6 +2647,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <div class="dsub">
         <button class="ditem sub" data-tab="care" data-sec="rem">Tasks</button>
         <button class="ditem sub" data-tab="care" data-sec="req">Suggested</button>
+        <button class="ditem sub" data-tab="care" data-sec="notes">Notes &amp; lists</button>
       </div>
     </div>
     <button class="ditem" data-tab="people">👨‍👩‍👧 Family</button>
@@ -2792,7 +2825,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var API = { circle: '/api/circle', events: '/api/events', care: '/api/care', ekta: '/api/ekta', chats: '/api/chats', games: '/api/games', plans: '/api/plans', auth: '/api/auth', book: '/api/book', vault: '/api/book?area=vault', pay: '/api/book?area=pay', push: '/api/settings?area=push', keys: '/api/settings?area=keys', coins: '/api/settings?area=coins', plan: '/api/settings?area=plan', day: '/api/settings?area=day', pin: '/api/settings?area=pin', location: '/api/settings?area=location' };
+  var API = { notes: '/api/book?area=notes', circle: '/api/circle', events: '/api/events', care: '/api/care', ekta: '/api/ekta', chats: '/api/chats', games: '/api/games', plans: '/api/plans', auth: '/api/auth', book: '/api/book', vault: '/api/book?area=vault', pay: '/api/book?area=pay', push: '/api/settings?area=push', keys: '/api/settings?area=keys', coins: '/api/settings?area=coins', plan: '/api/settings?area=plan', day: '/api/settings?area=day', pin: '/api/settings?area=pin', location: '/api/settings?area=location' };
   var TABS = ['home','people','person','memory','vault','care','day','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
@@ -3032,6 +3065,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       b.classList.toggle('sel', b.getAttribute('data-sec') === sec);
     });
     if (pane === 'fun') fabRoom();
+    if (pane === 'care' && sec === 'notes') refreshNotes();
   }
   ['care', 'fun', 'vault', 'day'].forEach(function(pane){
     $(pane + '-seg').addEventListener('click', function(e){
@@ -3566,6 +3600,84 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         toast('Added to things to do ✅');
         refresh();
       }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+
+  // ---------- notes and lists ----------
+  // Groceries, packing, what to ask the doctor. A family note is everyone's
+  // to tick and change; "Only me" is yours alone, kept so by the server.
+  var notesCache = [], noteKind = 'list', noteTimer = null;
+  function notesUrl(){ return API.notes + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId); }
+  function refreshNotes(){
+    if (!state) return;
+    clearInterval(noteTimer);
+    noteTimer = setInterval(function(){ if (!document.hidden && curTab === 'care' && !$('pane-care').querySelector('.subsec[data-sec="notes"]').hidden) loadNotes(); }, 10000);
+    loadNotes();
+  }
+  function loadNotes(){
+    apiGet(notesUrl()).then(function(j){
+      if (!j.ok) { $('notelist').innerHTML = '<div class="ev">Could not load notes - try again in a moment.</div>'; return; }
+      notesCache = j.notes || []; renderNotes();
+    }).catch(function(){ $('notelist').innerHTML = '<div class="ev">No connection - notes will show when you are back online.</div>'; });
+  }
+  function renderNotes(){
+    // Keep what someone is typing into an "add item" box through a refresh.
+    var typing = document.activeElement && document.activeElement.getAttribute('data-nadd');
+    var typed = typing ? document.activeElement.value : '';
+    $('notelist').innerHTML = notesCache.length ? notesCache.map(function(n){
+      var items = n.items || [], done = items.filter(function(i){ return i.done; }).length;
+      var head = '<div class="notehead"><b>' + (n.pinned ? '📌 ' : '') + (n['private'] ? '🔒 ' : '') + esc(n.title) + '</b>' +
+        '<small>' + (items.length ? done + ' of ' + items.length + ' done · ' : '') + 'by ' + esc(n.by_member === state.memberId ? 'you' : (n.by_name || 'someone')) +
+        (n.updated_name && n.updated_name !== n.by_name ? ', changed by ' + esc(n.updated_name) : '') + ' · ' + esc(fmtTime(n.updated_at)) + '</small></div>';
+      var body = n.body ? '<p class="notebody">' + esc(n.body) + '</p>' : '';
+      var list = items.map(function(i){
+        return '<label class="noteitem' + (i.done ? ' done' : '') + '"><input type="checkbox" data-nitem="' + esc(i.id) + '" data-note="' + esc(n.id) + '"' + (i.done ? ' checked' : '') + '>' +
+               '<span>' + esc(i.t) + (i.done && i.by ? ' <small>· ' + esc(i.by) + '</small>' : '') + '</span>' +
+               '<button type="button" class="linkbtn" data-nrm="' + esc(i.id) + '" data-note="' + esc(n.id) + '" aria-label="Remove ' + esc(i.t) + '">✕</button></label>';
+      }).join('');
+      var add = '<form class="noteadd" data-note="' + esc(n.id) + '"><input type="text" maxlength="120" data-nadd="' + esc(n.id) + '" placeholder="Add an item" aria-label="Add an item to ' + esc(n.title) + '"><button type="submit" class="cbtn">Add</button></form>';
+      var acts = '<div class="row"><button type="button" class="cbtn ghost" data-npin="' + esc(n.id) + '">' + (n.pinned ? 'Unpin' : '📌 Pin') + '</button>' +
+                 '<button type="button" class="cbtn no" data-ndel="' + esc(n.id) + '">Remove</button></div>';
+      return '<div class="card note">' + head + body + list + add + acts + '</div>';
+    }).join('') : '<div class="ev">No notes yet. Start with the grocery list - everyone can add to it and tick it off.</div>';
+    if (typing) { var box = $('notelist').querySelector('[data-nadd="' + typing + '"]'); if (box) { box.value = typed; box.focus(); } }
+  }
+  function notePost(body, after){
+    body.code = state.code; body.memberId = state.memberId; body.area = 'notes';
+    post(API.notes, body).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not save that'); loadNotes(); return; }
+      if (after) after(j); loadNotes();
+    }).catch(function(){ toast('No connection - try again'); });
+  }
+  $('n-kind').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-nkind]'); if (!b) return;
+    noteKind = b.getAttribute('data-nkind');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
+    $('n-items').placeholder = noteKind === 'list' ? 'One item per line becomes a tick box' : 'Write the note';
+  });
+  $('n-add').addEventListener('click', function(){
+    var t = $('n-title').value.trim(), txt = $('n-items').value;
+    if (!t) { fieldErr('n-title', 'Give it a title, like Groceries.'); return; }
+    var body = { action: 'add', title: t, 'private': $('n-private').checked };
+    if (noteKind === 'list') body.items = txt.split('\n').map(function(x){ return x.trim(); }).filter(Boolean);
+    else body.body = txt;
+    notePost(body, function(){ $('n-title').value = ''; $('n-items').value = ''; $('n-private').checked = false; toast('Saved 📝'); });
+  });
+  $('notelist').addEventListener('change', function(e){
+    var c = e.target.closest('input[data-nitem]'); if (!c) return;
+    notePost({ action: 'item_toggle', id: c.getAttribute('data-note'), itemId: c.getAttribute('data-nitem'), done: c.checked });
+  });
+  $('notelist').addEventListener('submit', function(e){
+    var f = e.target.closest('form.noteadd'); if (!f) return;
+    e.preventDefault();
+    var inp = f.querySelector('input'), v = inp.value.trim(); if (!v) return;
+    inp.value = '';
+    notePost({ action: 'item_add', id: f.getAttribute('data-note'), text: v }, function(){ setTimeout(function(){ var b = $('notelist').querySelector('[data-nadd="' + f.getAttribute('data-note') + '"]'); if (b) b.focus(); }, 300); });
+  });
+  $('notelist').addEventListener('click', function(e){
+    var rm = e.target.closest('button[data-nrm]'), pin = e.target.closest('button[data-npin]'), del = e.target.closest('button[data-ndel]');
+    if (rm) { e.preventDefault(); notePost({ action: 'item_remove', id: rm.getAttribute('data-note'), itemId: rm.getAttribute('data-nrm') }); }
+    if (pin) { var n = notesCache.filter(function(x){ return x.id === pin.getAttribute('data-npin'); })[0]; notePost({ action: 'pin', id: pin.getAttribute('data-npin'), pinned: !(n && n.pinned) }); }
+    if (del) askSheet('Remove this note?', 'It goes for everyone who can see it.', 'Remove', 'Keep it', true).then(function(yes){ if (yes) notePost({ action: 'remove', id: del.getAttribute('data-ndel') }, function(){ toast('Removed'); }); });
   });
 
   // ---------- family tasks ----------
