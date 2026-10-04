@@ -22,7 +22,7 @@ import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
 import { LOCAL_MODEL, isDeadKey, isBillingFailure, isAuthFailure, classify, whoIsAsked,
          renderSummary, renderMemory, renderCircle, offlineNote, cannotAnswer,
          renderScam, renderCannotDo, renderEmergency, renderCrisis, renderHealth,
-         kinIsAsked, ABOUT_ME, renderWhoIsIt, renderWhoIsVisit, askedText } from './_ektalocal.mjs';
+         kinIsAsked, ABOUT_ME, renderWhoIsIt, renderWhoIsVisit, askedText, mentionsUrgent, URGENT_TOO } from './_ektalocal.mjs';
 import { spend, EARN } from './_coins.mjs';
 
 const ASSISTANT_NAME = 'Ekta'; // one-line swap if the persona name changes
@@ -532,6 +532,11 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, reply: asked === 'crisis' ? renderCrisis() : renderEmergency(),
       actions: [], model: LOCAL_MODEL, emergency: true });
   }
+  // Read as the past, but it names an emergency: the answer comes with the
+  // way to 112 all the same, and the screen shows the Call 112 and SOS buttons.
+  const urgentToo = mentionsUrgent(history[history.length - 1].content);
+  const answer = (body) => res.status(200).json(urgentToo
+    ? { ...body, reply: body.reply + '\n\n' + URGENT_TOO, urgentToo: true } : body);
 
   // The scam check and anything about the family's own records - a record,
   // a doctor visit, a medicine question - are answered here, from the rows,
@@ -539,7 +544,7 @@ export default async function handler(req, res) {
   if (['scam', 'memory', 'summary', 'health'].includes(asked)) {
     const out = await localTurn(sql, circle, me, history, 'records');
     if (!out.unanswered) {
-      return res.status(200).json({ ok: true, reply: out.reply, actions: [], model: out.model,
+      return answer({ ok: true, reply: out.reply, actions: [], model: out.model,
         records: out.records || undefined, reason: out.records ? 'records' : undefined });
     }
   }
@@ -556,7 +561,7 @@ export default async function handler(req, res) {
   // plainly why the rest is missing. No model runs, so nothing is charged.
   if (noBrain) {
     const out = await localTurn(sql, circle, me, history, 'none');
-    return res.status(200).json({ ok: true, reply: out.reply, actions: [], model: out.model,
+    return answer({ ok: true, reply: out.reply, actions: [], model: out.model,
       records: out.records || undefined, reason: 'none' });
   }
 
@@ -582,7 +587,7 @@ export default async function handler(req, res) {
     // family learns to distrust the coin.
     let coins = paid.balance;
     if (out.offline) { await refund(); coins = paid.balance + paid.cost; }
-    return res.status(200).json({ ok: true, reply: out.reply, actions: out.actions,
+    return answer({ ok: true, reply: out.reply, actions: out.actions,
       model: out.model, records: out.records || undefined, reason: out.reason || undefined, coins });
   } catch (e) {
     // A turn that never reached a brain is never charged for.

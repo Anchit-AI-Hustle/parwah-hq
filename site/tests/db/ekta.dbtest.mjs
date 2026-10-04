@@ -113,6 +113,9 @@ ok('the family starts this with no coins', await pot() === 0);
 {
   const r = await ask(rohan, 'Papa passed out yesterday, what medicines is he on?');
   ok('something that happened yesterday is not a call for 112', r.ok && !r.emergency && /Amlodipine/.test(r.reply), JSON.stringify(r).slice(0, 200));
+  ok('but it names an emergency, so the answer still ends with the way to 112, and the buttons show', r.urgentToo === true && /call 112/.test(r.reply) && r.reply.indexOf('Amlodipine') < r.reply.indexOf('call 112'), JSON.stringify(r).slice(0, 300));
+  const plainQ = await ask(rohan, 'what do we have for Papa');
+  ok('a question with no emergency in it carries no 112 line', plainQ.ok && !plainQ.urgentToo && !/call 112/.test(plainQ.reply));
 }
 {
   const r = await ask(rohan, 'what do we have for Papa');
