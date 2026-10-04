@@ -6,7 +6,7 @@ import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 import { award, today } from './_coins.mjs';
-import { ensureTaskSchema, taskList, taskHistory, taskAction, sweepOverdue } from './_tasks.mjs';
+import { ensureTaskSchema, taskList, taskHistory, taskAction, sweepOverdue, GAPS, gapTitle } from './_tasks.mjs';
 
 async function feed(sql, circleId, memberId, text) {
   await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'care', ${text})`;
@@ -76,17 +76,12 @@ export async function careSuggestions(sql, circleId, memberId) {
     // The gaps that matter at a hospital counter.
     const members = await sql`select id, name from members where circle_id = ${circleId} order by created_at limit 12`;
     const facts = await sql`select about_member, kind, category from family_book where circle_id = ${circleId}`;
-    const NEED = [
-      { cat: 'blood',     kind: 'fact',    label: 'blood group' },
-      { cat: 'allergy',   kind: 'fact',    label: 'allergies' },
-      { cat: 'doctor',    kind: 'contact', label: "doctor's number" },
-      { cat: 'emergency', kind: 'contact', label: 'emergency contact' }
-    ];
+    const NEED = GAPS;
     members.forEach(m => {
       NEED.forEach(n => {
         const has = facts.some(f => f.about_member === m.id && f.kind === n.kind && f.category === n.cat);
         if (!has) add({ key: 'gap:' + m.id + ':' + n.cat, kind: 'request',
-          title: 'Record ' + m.name + "'s " + n.label,
+          title: gapTitle(m.name, n.label),
           why: 'Not written down anywhere yet',
           urgent: n.cat === 'blood' || n.cat === 'emergency',
           forMemberId: m.id, forName: m.name });

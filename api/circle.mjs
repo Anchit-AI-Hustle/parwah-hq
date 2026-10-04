@@ -1,6 +1,7 @@
 // POST /api/circle - create a care circle or join one with its code.
 import { db, ensureSchema, makeCode, circleByCode, spaceWord, isUuid, normPhone, phoneError, rateLimit, clientIp, sessionUser } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
+import { cleanName, nameError, dobError } from './_valid.mjs';
 import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
 import { pushCircle } from './_push.mjs';
@@ -36,7 +37,12 @@ export default async function handler(req, res) {
     });
   }
   const uid = isUuid(userId) ? userId : null;
-  const name = String(memberName || '').trim().slice(0, 60);
+  const name = cleanName(memberName).slice(0, 60);
+  // A name that is only symbols, a phone number or an email in the wrong box
+  // is refused here, for every action that takes one.
+  if (name && nameError(name)) return res.status(400).json({ ok: false, error: nameError(name) });
+  if (action === 'create' && cleanName(circleName) && nameError(circleName, 'family name'))
+    return res.status(400).json({ ok: false, error: nameError(circleName, 'family name') });
   const r = role === 'parent' ? 'parent' : 'family';
   // Optional phone - country code kept separate, local number validated
   // against that country's rules. Invalid input is REJECTED, never silently
@@ -310,8 +316,9 @@ export default async function handler(req, res) {
       if (action === 'add_person') {
         const kindRow = await sql`select kind from circles where id = ${circle.id}`;
         if (kindRow[0] && kindRow[0].kind === 'group') return res.status(400).json({ ok: false, error: 'A group of friends has no family tree' });
-        const pn = String(req.body.personName || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+        const pn = cleanName(req.body.personName).slice(0, 60);
         if (!pn) return res.status(400).json({ ok: false, error: 'Write their name' });
+        if (nameError(pn)) return res.status(400).json({ ok: false, error: nameError(pn) });
         if (!GENDERS.includes(req.body.gender)) return res.status(400).json({ ok: false, error: 'Choose he or she, so Parwah can say son or daughter' });
         const dup = await sql`select id from members where circle_id = ${circle.id} and lower(name) = lower(${pn})`;
         if (dup[0]) return res.status(409).json({ ok: false, error: 'Someone in this family is already called ' + pn + ' - add a surname or initial' });
@@ -458,7 +465,11 @@ export default async function handler(req, res) {
       let newDob = cur.dob;
       if (req.body.dob !== undefined) {
         const d = String(req.body.dob || '').trim();
-        newDob = /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(new Date(d + 'T00:00:00Z')) ? d : null;
+        // Today where the family is, a day ahead of UTC at most: a birthday
+        // typed just after midnight in India is not "in the future".
+        const derr = dobError(d, new Date(Date.now() + 14 * 3600000).toISOString().slice(0, 10));
+        if (derr) return res.status(400).json({ ok: false, error: derr });
+        newDob = d || null;
       }
       const npm = newPhone ? normPhone(newPhone) : null;
       await sql`update members set name = ${newName}, role = ${newRole}, phone = ${newPhone}, phone_cc = ${npm ? npm.cc : null}, phone_local = ${npm ? npm.local : null}, place = ${newPlace}, country = ${newCountry}, relation = ${newRelation}, dob = ${newDob}, gift_info = ${newGift ? JSON.stringify(newGift) : null}::jsonb where id = ${cur.id}`;

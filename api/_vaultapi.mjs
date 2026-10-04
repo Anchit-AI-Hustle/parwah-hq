@@ -21,6 +21,7 @@
 //     digits are the most we will hold.
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
+import { amountError, amountOf } from './_valid.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 import { award } from './_coins.mjs';
@@ -572,8 +573,12 @@ async function payApi(req, res, sql, circle, me) {
       if (risk) return res.status(400).json({ ok: false, error: risk });
     }
     const bank = clean(body.bank, 60);
-    const perTxn = body.perTxnCap ? Math.max(0, Math.min(10000000, parseInt(body.perTxnCap, 10) || 0)) : null;
-    const monthly = body.monthlyCap ? Math.max(0, Math.min(100000000, parseInt(body.monthlyCap, 10) || 0)) : null;
+    // A cap of minus five, or "5k", capped nothing and said nothing.
+    const capErr = amountError(body.perTxnCap, { max: 10000000 }) || amountError(body.monthlyCap, { max: 100000000 });
+    if (capErr) return res.status(400).json({ ok: false, error: capErr });
+    const perTxn = amountOf(body.perTxnCap);
+    const monthly = amountOf(body.monthlyCap);
+    if (perTxn && monthly && monthly < perTxn) return res.status(400).json({ ok: false, error: 'The monthly limit cannot be less than the limit for one payment.' });
     if (body.action === 'add') {
       const r = await sql`insert into pay_methods (circle_id, owner_member, kind, label, bank, handle, per_txn_cap, monthly_cap, note)
                           values (${circle.id}, ${me.id}, ${kind}, ${label}, ${bank}, ${handle}, ${perTxn}, ${monthly}, ${note})
@@ -607,7 +612,9 @@ async function payApi(req, res, sql, circle, me) {
       await pushCircle(sql, circle.id, { title: '💳 Payment access changed', body: me.name + ' has taken back use of ' + own.m.label }, { only: tRow[0].id });
       return res.status(200).json({ ok: true });
     }
-    const cap = body.perTxnCap ? Math.max(0, Math.min(10000000, parseInt(body.perTxnCap, 10) || 0)) : null;
+    const capE = amountError(body.perTxnCap, { max: 10000000 });
+    if (capE) return res.status(400).json({ ok: false, error: capE });
+    const cap = amountOf(body.perTxnCap);
     const needsOk = !!body.needsOk;
     await sql`insert into pay_perms (method_id, member_id, per_txn_cap, needs_ok, granted_by)
               values (${own.m.id}, ${tRow[0].id}, ${cap}, ${needsOk}, ${me.id})

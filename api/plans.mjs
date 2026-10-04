@@ -5,6 +5,7 @@
 // POST /api/plans {code, memberId, action:'create'|'rsvp'|'cancel', ...}
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
+import { countError } from './_valid.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 
@@ -77,6 +78,8 @@ export default async function handler(req, res) {
       }
       const place = String(body.place || '').trim().slice(0, 120) || null;
       const room = (kind === 'call' || kind === 'party') ? roomUrl(circle.code) : null;
+      const cntErr = countError(body.expected, 50);
+      if (cntErr) return res.status(400).json({ ok: false, error: cntErr });
       let expected = parseInt(body.expected, 10);
       expected = (expected >= 2 && expected <= 50) ? expected : null;
       const p = await sql`insert into plans (circle_id, by_member, title, kind, at, place, room, going, expected)

@@ -2,9 +2,11 @@
 // schema, the real SQL, on a throwaway PostgreSQL.
 //
 // What it proves, beyond what the unit tests can:
-//   - a 4-number PIN and a password both sign up and sign in;
-//   - an old 6-digit PIN signs in once, then no session is issued until a
-//     new PIN or password is chosen, and after that only the new one works;
+//   - only a PIN of exactly 4 numbers signs up: a longer PIN and a password
+//     are refused;
+//   - an old 6-digit PIN, or a password chosen while those were allowed,
+//     signs in once, then no session is issued until a 4-number PIN is
+//     chosen, and after that only the new PIN works;
 //   - an already signed-in device learns it must choose, and only with its
 //     session token;
 //   - 5 wrong tries lock that mobile number for 15 minutes, a right answer
@@ -53,7 +55,7 @@ const row = async phone => (await admin.query('select * from users where phone =
 // ---- a new person, with a 4-number PIN
 {
   let r = await enter('9810000001', { name: 'Asha', pin: '12' });
-  ok('a 2-number PIN is refused at sign-up', r.needPin && /4 to 6 numbers/.test(r.error || ''), JSON.stringify(r));
+  ok('a 2-number PIN is refused at sign-up', r.needPin && /exactly 4 numbers/.test(r.error || ''), JSON.stringify(r));
   r = await enter('9810000001', { name: 'Asha', pin: '1234' });
   ok('an obvious 4-number PIN is refused', r.needPin && /pick another/.test(r.error || ''));
   r = await enter('9810000001', { name: 'Asha', pin: '4819' });
@@ -61,20 +63,40 @@ const row = async phone => (await admin.query('select * from users where phone =
   const u = await row('9810000001');
   ok('it is marked as chosen under the new rules', u && u.secret_v === SECRET_V);
   ok('and stored hashed, never as typed', u && u.pin_hash && u.pin_hash !== '4819' && u.pin_hash.length === 64);
+  r = await enter('9810000001');
+  ok('a PIN chosen under this rule is asked for as a 4-number PIN', r.needPin && r.older === false, JSON.stringify(r));
   r = await enter('9810000001', { pin: '4819' });
   ok('the 4-number PIN signs in', r.ok && !!r.token && !r.changeSecret);
 }
 
-// ---- a new person, with a password
+// ---- a new person cannot choose a password or a longer PIN
 {
-  let r = await enter('9810000002', { name: 'Vikram', pin: 'familyfirst' });
-  ok('a password of only letters is refused', r.needPin && /Mix letters/.test(r.error || ''));
-  r = await enter('9810000002', { name: 'Vikram', pin: 'Ghar@Sukh7' });
-  ok('a password signs up', r.ok && !!r.token);
-  r = await enter('9810000002', { pin: 'Ghar@Sukh7' });
-  ok('and signs in', r.ok && !!r.token);
-  r = await enter('9810000002', { pin: 'ghar@Sukh7' });
+  let r = await enter('9810000002', { name: 'Vikram', pin: 'Ghar@Sukh7' });
+  ok('a password is refused at sign-up', r.needPin && /numbers only/.test(r.error || '') && !r.token, JSON.stringify(r));
+  r = await enter('9810000002', { name: 'Vikram', pin: '481920' });
+  ok('a 6-number PIN is refused at sign-up', r.needPin && /exactly 4 numbers/.test(r.error || '') && !r.token);
+  ok('and no account was made by either', !(await row('9810000002')));
+}
+
+// ---- a password chosen while passwords were allowed: once, then a PIN
+{
+  const h = hashPin('Ghar@Sukh7');
+  await admin.query(`insert into users (phone, phone_cc, phone_local, name, pin_hash, pin_salt, pin_set_at, secret_v)
+                     values ('+919810000012', '+91', '9810000012', 'Vikram', $1, $2, now(), 2)`, [h.hash, h.salt]);
+  let r = await enter('9810000012');
+  ok('the app is told the box must take the older secret once', r.needPin && r.older === true && !r.token, JSON.stringify(r));
+  r = await enter('9810000012', { pin: 'ghar@Sukh7' });
   ok('a password is exact: one wrong letter is a wrong try', r.status === 401 && r.wrongPin);
+  r = await enter('9810000012', { pin: 'Ghar@Sukh7' });
+  ok('the right password is accepted once, with no session', r.ok && r.changeSecret && !r.token);
+  r = await enter('9810000012', { pin: 'Ghar@Sukh7', newPin: 'Ghar@Sukh8' });
+  ok('a new password is not accepted as the replacement', r.changeSecret && /numbers only/.test(r.error || '') && !r.token);
+  r = await enter('9810000012', { pin: 'Ghar@Sukh7', newPin: '7392' });
+  ok('a 4-number PIN replaces it, and they are in', r.ok && !!r.token && !r.changeSecret, JSON.stringify(r));
+  r = await enter('9810000012', { pin: 'Ghar@Sukh7' });
+  ok('the password no longer works', r.status === 401);
+  r = await enter('9810000012', { pin: '7392' });
+  ok('the PIN does', r.ok && !!r.token && !r.changeSecret);
 }
 
 // ---- an old account with a 6-digit PIN
@@ -91,7 +113,9 @@ const row = async phone => (await admin.query('select * from users where phone =
   ok('the right old 6-digit PIN is accepted once', r.ok && r.changeSecret);
   ok('but no session is issued until a new one is chosen', !r.token);
   r = await enter('9810000003', { pin: '481920', newPin: '12' });
-  ok('the new choice must follow the new rules', r.changeSecret && /4 to 6 numbers/.test(r.error || '') && !r.token);
+  ok('the new choice must follow the new rules', r.changeSecret && /exactly 4 numbers/.test(r.error || '') && !r.token);
+  r = await enter('9810000003', { pin: '481920', newPin: '551907' });
+  ok('a 6-number PIN is not a valid replacement', r.changeSecret && /exactly 4 numbers/.test(r.error || '') && !r.token);
   r = await enter('9810000003', { pin: '481999', newPin: '4829' });
   ok('the change cannot be made without the old PIN', r.status === 401 && !r.token);
   r = await enter('9810000003', { pin: '481920', newPin: '4829' });
@@ -122,7 +146,11 @@ const row = async phone => (await admin.query('select * from users where phone =
   ok('nor with someone else’s made-up token', !r.user && !r.circles);
   r = await enter('9810000002', { refresh: true }, { token: tok });
   ok('nor with a real token for a different number', !r.user && !r.circles);
-  r = await enter('9810000001', { refresh: true }, { token: (await enter('9810000001', { pin: '4819' })).token });
+  await admin.query(`update users set secret_v = 2 where phone = '+919810000001'`);
+  const t1 = (await enter('9810000001', { pin: '4819' })).changeSecret;
+  ok('a 4-number PIN chosen under the rule before is also asked to confirm once', t1 === true);
+  await enter('9810000001', { pin: '4819', newPin: '4813' });
+  r = await enter('9810000001', { refresh: true }, { token: (await enter('9810000001', { pin: '4813' })).token });
   ok('an account already under the new rules is not asked', r.ok && r.user && r.changeSecret === false);
 }
 
@@ -143,7 +171,7 @@ const row = async phone => (await admin.query('select * from users where phone =
   ok('for 15 minutes', LOCK_MINUTES === 15 && mins > 14 && mins <= 15.1, mins.toFixed(2));
   r = await enter('9810000005', { pin: '7391' });
   ok('while locked, even the right PIN does not get in', r.status === 429 && !r.token);
-  r = await enter('9810000001', { pin: '4819' });
+  r = await enter('9810000001', { pin: '4813' });
   ok('another mobile number is not affected', r.ok && !!r.token);
   await admin.query(`update users set locked_until = now() - interval '1 second' where phone = '+919810000005'`);
   r = await enter('9810000005', { pin: '7391' });
@@ -166,7 +194,7 @@ const row = async phone => (await admin.query('select * from users where phone =
 
 // ---- nothing stored as typed, anywhere
 {
-  const typed = ['4819', 'Ghar@Sukh7', '481920', '4829', '551907', '7391', '2851'];
+  const typed = ['4819', '4813', 'Ghar@Sukh7', '481920', '4829', '551907', '7391', '2851', '7392'];
   const all = (await admin.query('select pin_hash, pin_salt from users')).rows;
   const leak = all.filter(u => typed.some(t => (u.pin_hash || '').includes(t) && (u.pin_hash || '').length < 64));
   ok('every stored secret is a 64-character hash with its own salt',

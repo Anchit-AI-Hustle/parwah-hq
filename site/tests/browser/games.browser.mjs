@@ -38,7 +38,7 @@ const now = new Date().toISOString();
 
 const seat = (id, name, extra) => Object.assign({ id, name, pos: 0 }, extra || {});
 // Four games at once, two of them the same kind. This is the fixture the
-// whole feature exists for: one Saanp Seedhi waiting on me, a second Saanp
+// whole feature exists for: one Snakes & Ladders waiting on me, a second Saanp
 // Seedhi waiting on Papa, a duel I am not in, and an open lobby.
 const GAMES = {
   'aaaaaaaa-0000-4000-8000-000000000001': { kind:'snakes', n:1, by:'Rohan', players:[seat(ME,'Rohan'), seat(PAPA,'Papa'), seat(BETA,'Beta')], turn:0, last:null, winner:null },
@@ -137,12 +137,12 @@ ok(await rows.count() === 4, 'every game on the go is listed (4)');
 ok(await pg.locator('#game-on').isHidden(), 'no game is opened for you');
 
 const names = (await rows.locator('.txt b').allTextContents()).map(t => t.trim());
-ok(names.filter(n => n.indexOf('Saanp Seedhi') === 0).length === 2, 'two Saanp Seedhi games are both listed');
-ok(names.some(n => /Saanp Seedhi .* 2$/.test(n)), 'the second one is numbered so they can be told apart');
+ok(names.filter(n => n.indexOf('Snakes & Ladders') === 0).length === 2, 'two Snakes & Ladders games are both listed');
+ok(names.some(n => /Snakes & Ladders .* 2$/.test(n)), 'the second one is numbered so they can be told apart');
 ok(new Set(names).size === names.length, 'no two rows carry the same name');
 
 const first = rows.first();
-ok((await first.locator('.txt b').textContent()).indexOf('Saanp Seedhi') === 0, 'the game waiting on you is first');
+ok((await first.locator('.txt b').textContent()).indexOf('Snakes & Ladders') === 0, 'the game waiting on you is first');
 ok(await first.locator('.gturn').textContent() === 'Your turn', 'and it says it is your turn');
 ok(await first.evaluate(el => el.className.indexOf('needsyou') >= 0), 'and it is marked for the eye, not by colour alone');
 const box = await first.boundingBox();
@@ -158,7 +158,7 @@ await first.click();
 await pg.waitForTimeout(500);
 ok(await pg.locator('#game-on').isVisible(), 'tapping a row opens that game');
 ok(await pg.locator('#game-list').isHidden() && await pg.locator('#game-none').isHidden(), 'the list and the menu step aside');
-ok((await pg.locator('#gm-name').textContent()).indexOf('Saanp Seedhi') === 0, 'the open game says which game it is');
+ok((await pg.locator('#gm-name').textContent()).indexOf('Snakes & Ladders') === 0, 'the open game says which game it is');
 ok(await pg.locator('#g-snakes').isVisible(), 'the board is the right board');
 
 // and get back out
@@ -167,12 +167,12 @@ await pg.waitForTimeout(500);
 ok(await pg.locator('#game-list').isVisible() && await pg.locator('#game-on').isHidden(), 'there is a way back to the list');
 ok(await pg.locator('#game-none').isVisible(), 'and the way to start another is there too');
 
-// open the SECOND Saanp Seedhi and confirm it is a different game
-const second = pg.locator('#glist button[data-gopen]').filter({ hasText:'Saanp Seedhi' }).nth(1);
+// open the SECOND Snakes & Ladders and confirm it is a different game
+const second = pg.locator('#glist button[data-gopen]').filter({ hasText:'Snakes & Ladders' }).nth(1);
 const secondName = (await second.locator('.txt b').textContent()).trim();
 await second.click();
 await pg.waitForTimeout(500);
-ok((await pg.locator('#gm-name').textContent()).trim() === secondName, 'the second Saanp Seedhi opens as itself, not the first');
+ok((await pg.locator('#gm-name').textContent()).trim() === secondName, 'the second Snakes & Ladders opens as itself, not the first');
 // An open game stays open through the tab's refreshes (every 3s). It used to
 // close itself a moment after opening: the refresh went out without the
 // sign-in token, and its failure was read as "the game is gone".

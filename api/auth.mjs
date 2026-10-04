@@ -14,6 +14,7 @@ import { pinError, hashPin, verifyPin, newToken, tokenHash, looksLikeToken,
          MAX_TRIES, LOCK_MINUTES, lockMessage, SESSION_DAYS, SECRET_V } from './_auth.mjs';
 import { tokenOf } from './_token.mjs';
 import { joinError, joinRow, joinedMessage } from './_waitlist.mjs';
+import { cleanName, nameError } from './_valid.mjs';
 
 // Every circle this number belongs to, each carrying what is waiting in it.
 // A person in three families should be able to see, before opening any of
@@ -114,7 +115,8 @@ export default async function handler(req, res) {
       if (!isUuid(body.userId)) return res.status(403).json({ ok: false, error: 'Sign in first' });
       const u = await sql`select id, name, phone from users where id = ${body.userId}`;
       if (!u[0]) return res.status(404).json({ ok: false, error: 'Profile not found' });
-      const newName = String(body.name || '').trim().slice(0, 60) || u[0].name;
+      const newName = cleanName(body.name).slice(0, 60) || u[0].name;
+      if (cleanName(body.name) && nameError(newName)) return res.status(400).json({ ok: false, error: nameError(newName) });
       let newPhone = u[0].phone, newCc = null, newLocal = null;
       if (body.phone) {
         const np = normPhone(body.phone, body.cc);
@@ -206,8 +208,10 @@ export default async function handler(req, res) {
                          from users where phone = ${phone}`;
     const isNew = !rows[0];
     if (isNew) {
-      const name = String(body.name || '').trim().slice(0, 60);
+      const name = cleanName(body.name).slice(0, 60);
       if (!name) return res.status(200).json({ ok: true, exists: false });
+      const nerr = nameError(name, 'name');
+      if (nerr) return res.status(200).json({ ok: true, exists: false, badName: true, error: nerr });
       // A new person chooses a PIN in the same breath as their name. Making
       // it a later, skippable step is how an account ends up with none.
       const perr = pinError(body.pin);
@@ -236,7 +240,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true, exists: true,
           user: { id: user.id, name: user.name, phone: user.phone },
           toured: !!user.toured_at, circles,
-          // An old 6-digit PIN: the app asks for a new PIN or password.
+          // An older PIN or a password: the app asks for a 4-number PIN.
           changeSecret: !user.pin_hash || user.secret_v !== SECRET_V });
       }
     }
@@ -255,7 +259,11 @@ export default async function handler(req, res) {
         if (user.locked_until && new Date(user.locked_until) > new Date()) {
           return res.status(429).json({ ok: false, locked: true, error: lockMessage(user.locked_until) });
         }
-        if (!body.pin) return res.status(200).json({ ok: true, exists: true, needPin: true });
+        // A secret chosen before PINs were exactly 4 numbers may be longer, or
+        // a password. The box has to take it once, so the app is told; it
+        // says nothing about whose number this is.
+        if (!body.pin) return res.status(200).json({ ok: true, exists: true, needPin: true,
+          older: user.secret_v !== SECRET_V });
         // Each try is claimed in the database BEFORE it is checked, and only
         // while the number is not locked. Read-check-then-write let a burst
         // of guesses sent at once all be checked before the lock landed.
@@ -279,12 +287,12 @@ export default async function handler(req, res) {
         if (!verifyPin(body.pin, user.pin_salt, user.pin_hash)) {
           if (tries >= MAX_TRIES) return lockNow();
           return res.status(401).json({ ok: false, wrongPin: true, left: MAX_TRIES - tries,
-            error: 'That PIN or password is not right. ' + (MAX_TRIES - tries) + ' ' + (MAX_TRIES - tries === 1 ? 'try' : 'tries') + ' left.' });
+            error: 'That PIN is not right. ' + (MAX_TRIES - tries) + ' ' + (MAX_TRIES - tries === 1 ? 'try' : 'tries') + ' left.' });
         }
         await sql`update users set pin_tries = 0, locked_until = null where id = ${user.id}`;
-        // An old 6-digit PIN has just proved who this is, once. Before any
-        // session is issued, they choose a PIN or password under the new
-        // rules; the old PIN has to come with it, so this cannot be skipped.
+        // An older PIN or password has just proved who this is, once. Before
+        // any session is issued, they choose a 4-number PIN; the old secret
+        // has to come with it, so this cannot be skipped.
         if (user.secret_v !== SECRET_V) {
           if (body.newPin == null || body.newPin === '') {
             return res.status(200).json({ ok: true, exists: true, changeSecret: true, name: user.name });

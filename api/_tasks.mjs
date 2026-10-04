@@ -18,10 +18,21 @@
 // (overdue_alerted_for = due_at), so any number of phones checking at once
 // send each alert exactly once per occurrence.
 import { randomUUID } from 'node:crypto';
-import { isUuid } from './_db.mjs';
+import { isUuid, rateLimit } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import { REPEATS, validTz, fromWall, nextDue, localDate } from './_recur.mjs';
 export { REPEATS, nextDue };
+
+// The gaps that matter at a hospital counter. Suggested as "Record Papa's
+// blood group"; recording it in Health & contacts finishes that task, so the
+// family is never asked twice for something already written down.
+export const GAPS = [
+  { cat: 'blood',     kind: 'fact',    label: 'blood group' },
+  { cat: 'allergy',   kind: 'fact',    label: 'allergies' },
+  { cat: 'doctor',    kind: 'contact', label: "doctor's number" },
+  { cat: 'emergency', kind: 'contact', label: 'emergency contact' }
+];
+export function gapTitle(name, label) { return 'Record ' + name + "'s " + label; }
 
 export const ESCALATE = ['people', 'everyone'];
 const OPEN = ['open', 'assigned', 'claimed'];
@@ -245,6 +256,21 @@ export async function taskAction(sql, circle, me, body) {
     await feed(sql, circle.id, me.id, `${me.name} is on it: ${t.title}`);
     await tell(sql, circle.id, [t.by_member], { title: '🙌 ' + me.name + ' is on it', body: t.title, url: '/#care' }, me.id);
     return ok(200, { status: 'claimed' });
+  }
+
+  // A REMINDER to whoever has it (or, if nobody does yet, to everyone who
+  // could take it), from anyone in the family. Once an hour per task, so it
+  // stays a reminder and never becomes a nag.
+  if (action === 'task_nudge') {
+    if (!OPEN.includes(t.status)) return no(409, 'This one is not waiting on anyone');
+    if (t.claimed_by === me.id) return no(409, 'You have this one yourself');
+    if (!(await rateLimit(sql, 'tasknudge', t.id, 1, 3600))) return no(429, 'A reminder went out for this in the last hour - give it a little time');
+    const holder = t.claimed_by ? await memberIn(sql, circle.id, t.claimed_by) : null;
+    const msg = { title: '🔔 ' + me.name + ' is reminding you', body: t.title + (t.due_at ? ' - due ' + new Date(t.due_at).toLocaleString('en-IN', { timeZone: t.tz || 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : ''), url: '/#care' };
+    if (holder) await pushCircle(sql, circle.id, msg, { only: holder.id });
+    else await pushCircle(sql, circle.id, { ...msg, title: '🔔 Can someone take this?' }, { except: me.id });
+    await log(sql, t, me, 'nudged', holder ? holder.name : 'everyone');
+    return ok(200, { nudged: holder ? holder.name : 'everyone' });
   }
 
   // Hand it back: the owner lets go, and it is open to anyone again.

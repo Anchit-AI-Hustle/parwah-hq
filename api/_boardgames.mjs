@@ -159,7 +159,7 @@ export function ludoBotToken(st) {
 // suit led picks up every card played in it, and leads next. If everyone
 // follows suit, the cards are set aside and the highest card leads next.
 // A hand emptied is a player escaped. The last one holding cards is the
-// Bhabhi.
+// one who loses.
 // Cards are strings: suit letter then rank, 2..14 (J 11, Q 12, K 13, A 14).
 // =====================================================================
 export const SUITS = ['S', 'H', 'D', 'C'];
@@ -169,7 +169,7 @@ export const rankOf = (c) => Number(c.slice(1));
 const sortHand = (h) => h.slice().sort((a, b) => SUITS.indexOf(suitOf(a)) - SUITS.indexOf(suitOf(b)) || rankOf(a) - rankOf(b));
 
 export function bhabhiStart(people, R) {
-  if (people.length < 3 || people.length > 6) return { error: 'Bhabhi is for 3 to 6 players' };
+  if (people.length < 3 || people.length > 6) return { error: 'Get Away is for 3 to 6 players' };
   const cards = shuffle(deck(), R);
   const hands = people.map(() => []);
   cards.forEach((c, i) => hands[i % people.length].push(c));
@@ -252,7 +252,7 @@ function endRound(st, leader) {
   if (left.length <= 1) {
     st.loser = left.length ? st.players[left[0]].name : null;
     st.winner = st.order[0] || null;
-    announce = '🃏 Bhabhi is over! ' + (st.order[0] ? st.order[0] + ' got away first' : '') + (st.loser ? (st.order[0] ? '; ' : '') + st.loser + ' holds the last cards.' : '.');
+    announce = '🃏 Get Away is over! ' + (st.order[0] ? st.order[0] + ' got away first' : '') + (st.loser ? (st.order[0] ? '; ' : '') + st.loser + ' holds the last cards.' : '.');
     return { announce, escaped };
   }
   // The one who leads next may have just escaped: the lead passes on.
@@ -337,7 +337,7 @@ export const VY_CARDS = [
 ];
 
 export function vyStart(people, R, opts = {}) {
-  if (people.length < 2 || people.length > 6) return { error: 'Vyapar is for 2 to 6 players' };
+  if (people.length < 2 || people.length > 6) return { error: 'Business is for 2 to 6 players' };
   return {
     kind: 'vyapar', v: 0,
     players: people.map(p => ({ ...seat(p), money: VY_START_MONEY, pos: 0, out: false, skip: false })),
@@ -507,7 +507,7 @@ export function vyBuild(st, memberId, sq) {
 }
 function vyWinLine(st) {
   if (!st.winner) return null;
-  return '🏠 ' + st.winner + ' won Vyapar' + (st.byWorth ? ' - richest when the game ran its course' : ' - last business standing') + '!';
+  return '🏠 ' + st.winner + ' won Business' + (st.byWorth ? ' - richest when the game ran its course' : ' - last business standing') + '!';
 }
 export function vyEnd(st) {
   const live = alive(st);
