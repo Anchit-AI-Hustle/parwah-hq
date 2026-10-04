@@ -739,8 +739,8 @@ check("guide: an answer can quietly say a call would be nice",
       "call: true" in pulse and "could do with a call" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
 check("guide: everyone in a circle sees the same question on the same day",
       "derived from the date" in pulse or "same style for everyone" in pulse)
-check("guide: the plan is named and bundled as the guide names it",
-      "Parwah Family Plan" in plan and "'Family Readiness'" in plan and "'Family Pulse'" in plan)
+check("plan: named as the guide names it, and never sells the removed mood question (Family Pulse)",
+      "Parwah Family Plan" in plan and "'Family Readiness'" in plan and "Pulse" not in plan)
 
 # 10p. THE GUIDE'S REMAINING SCREENS - 1, 2 and 4.
 ekta_src = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
@@ -892,7 +892,7 @@ check("ekta: with no key at all she still answers from the records",
 check("ekta: the offline answer is retrieval, through the same tools",
       "prepare_summary" in ekta and "get_family_memory" in ekta and "get_circle" in ekta)
 check("ekta: a degraded turn is refunded, not charged for",
-      "if (out.offline) { await refund(); " in ekta)
+      "if (out.offline && !free) { await refund(); " in ekta)
 check("ekta: the reason is named, not hidden behind 'something went wrong'",
       "failureReason" in ekta and "offlineNote" in elocal)
 check("ekta: the offline answer still refuses to diagnose",
@@ -1494,7 +1494,7 @@ check("entry: an interview can open straight onto the concept",
       "demoWanted()" in appob and "get('demo') === '1'" in appob)
 _demo = appob[appob.index("var DEMO = ["):appob.index("var demoAt = 0;")]
 check("guide demo: the five screens the guide specifies, then the price",
-      all(k in _demo for k in ("'promise'", "'memory'", "'ekta'", "'pulse'", "'ready'", "'plan'")))
+      all(k in _demo for k in ("'promise'", "'memory'", "'ekta'", "'todo'", "'ready'", "'plan'")) and "'pulse'" not in _demo and "pulse" not in _demo.lower())
 check("guide demo: screen 1 is the promise and four people, nothing else",
       "nobody should have to scramble" in _demo and "You decide who can see what" in _demo)
 check("guide demo: screen 2 carries the guide's own five sections",
@@ -1504,8 +1504,8 @@ check("guide demo: screen 3 is the readiness number with named gaps",
       "78% ready" in _demo and "insurance card missing" in _demo)
 check("guide demo: Ekta retrieves and never diagnoses",
       "Prepare summary" in _demo and "does not diagnose" in _demo)
-check("guide demo: the pulse can quietly ask for a call",
-      "a call would be nice" in _demo)
+check("guide demo: things to do shows who has what (and what nobody has yet), with the offline emergency card",
+      "Nobody has it yet" in _demo and "It works with no internet." in _demo)
 check("guide demo: the price comes last, per family, in both currencies",
       "2,499" in _demo and "per family, per year" in _demo and "29.99" in _demo)
 # "Do NOT show chat, games, gifting, calls or a feature menu here."
@@ -1762,6 +1762,19 @@ check("people: the profile is a dialog with Call first and only the family word 
 check("staying current: an open or installed Parwah moves to a new version when it comes back to the screen, and the page is never served from the browser cache",
       "function checkUpdate()" in _appt and 'id="updbar"' in _appt
       and "fetch(url.href, { cache: 'no-store'" in (REPO / "site" / "public" / "sw.js").read_text(encoding="utf-8"))
+_ekt = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
+check("ekta: anyone in danger is answered first, in fixed words, free - before coins, keys or a model",
+      -1 < _ekt.find("asked === 'emergency' || asked === 'crisis'") < _ekt.find("await spend(sql, circle.id, me.id, 'ekta')")
+      and "function ektaUrgent(said)" in _appt and 'href="tel:112"' in _appt and "if (j.emergency) ektaUrgent(v);" in _appt)
+check("ekta: the scam check, records and medicine questions are never charged; a family word finds the one person saved with it",
+      "const free = ['scam', 'memory', 'summary', 'health'].includes(asked);" in _ekt and "kinIsAsked(text, members)" in _ekt and "renderWhoIsIt(names)" in _ekt)
+check("ekta: out of coins still answers what was always free, and says how anyone can earn more",
+      "const free = await localTurn(sql, circle, me, history, 'coins');" in _ekt and "EARN.checkin" not in _ekt)
+check("ekta: the screen says what she does, that she gives no medical advice and what a question costs; chips point at real things",
+      "I never give medical advice. A question uses 2 coins" in _appt and "Daily check-in reminder" not in _appt and 'id="evoice" aria-pressed="true" aria-label="Read replies aloud"' in _appt)
+check("muhurat: no health advice in a Rog window, and care never waits for a muhurat",
+      "health matters" not in _appt and "Medicines, doctor visits and emergencies never wait for a muhurat." in _appt
+      and "health matters" not in (API_DIR / "_panchang.mjs").read_text(encoding="utf-8"))
 _swsrc = (REPO / "site" / "public" / "sw.js").read_text(encoding="utf-8")
 check("staying current: a window on a copy from before v41 is moved by the new service worker (started, not awaited), and one opened offline moves once back online",
       "c.navigate(c.url)" in _swsrc and "return Promise.all(list.map(function (c) { return 'navigate' in c ? c.navigate" not in _swsrc
