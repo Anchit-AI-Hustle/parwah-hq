@@ -171,6 +171,14 @@ export async function ensureSchema(sql) {
   // Joining is by approval by default: an invite code alone must not be
   // enough to walk into a family that keeps its Aadhaar and passports here.
   await sql`alter table circles add column if not exists join_policy text not null default 'approve'`;
+  // The family tree (api/_kin.mjs): each person may point to a parent and a
+  // husband or wife in the same family; everything else - daughter-in-law,
+  // grandson, Mama, Bua - is worked out from those two links.
+  await sql`alter table members add column if not exists parent_id uuid references members(id) on delete set null`;
+  await sql`alter table members add column if not exists spouse_id uuid references members(id) on delete set null`;
+  await sql`alter table members add column if not exists gender text`;
+  // Asked first when a family starts: a joint family or a nuclear one.
+  await sql`alter table circles add column if not exists family_type text`;
   await sql`create table if not exists join_requests (
     id uuid primary key default gen_random_uuid(),
     circle_id uuid not null references circles(id) on delete cascade,

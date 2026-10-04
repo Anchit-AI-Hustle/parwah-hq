@@ -8,6 +8,7 @@ import { pushCircle } from './_push.mjs';
 import { ensureTaskSchema, sweepOverdue } from './_tasks.mjs';
 import { award, today } from './_coins.mjs';
 
+import { index as kinIndex, kinLabel, generations } from './_kin.mjs';
 import { pulseToday, ensurePulseSchema, optionOf, styleFor, today as pulseDay } from './_pulse.mjs';
 
 const SOS_ESCALATE_MIN = 5;   // nobody answered in this long → shout louder
@@ -68,7 +69,18 @@ async function escalateStaleSos(sql, circleId) {
       const g = await requireMember(sql, q.circle, q.member, tokenOf(req));
       if (g.err) return res.status(g.status).json({ ok: false, error: g.err });
       const circle = g.circle;
-      const members = await sql`select id, name, role, phone, place, country, relation, dob, gift_info, created_at from members where circle_id = ${circle.id} order by created_at`;
+      const members = await sql`select id, name, role, phone, place, country, relation, dob, gift_info, created_at,
+                                       parent_id, spouse_id, gender
+                                from members where circle_id = ${circle.id} order by created_at`;
+      // The family tree, read from where the person looking stands: Papa is
+      // "Father" to Rohan and "Father-in-law" to Priya. null = not placed yet.
+      const by = kinIndex(members.map(m => ({ id: m.id, gender: m.gender, parentId: m.parent_id, spouseId: m.spouse_id })));
+      const gens = generations(by);
+      for (const m of members) {
+        m.kin = kinLabel(by, g.me.id, m.id);
+        m.gen = (m.parent_id || m.spouse_id || members.some(x => x.parent_id === m.id)) ? gens.get(m.id) : null;
+      }
+      const ck = await sql`select kind, family_type from circles where id = ${circle.id}`;
       // member_id is returned so the client can tell YOUR events from
       // everyone else's; without it your own check-in came back to you as an
       // unread notification and bumped your own badge.
@@ -108,7 +120,8 @@ async function escalateStaleSos(sql, circleId) {
                              where ns.member_id = ${member} and m.circle_id = ${circle.id}`;
         seenAt = sr[0] ? sr[0].seen_at : null;
       }
-      return res.status(200).json({ ok: true, circleName: circle.name, code: circle.code, members, events, seenAt, calls,
+      return res.status(200).json({ ok: true, circleName: circle.name, code: circle.code,
+        kind: ck[0] ? ck[0].kind : 'family', familyType: ck[0] ? ck[0].family_type : null, members, events, seenAt, calls,
         joinRequests: joinReqs, joinPolicy: (pol[0] && pol[0].join_policy) || 'approve',
         sos: sosOpen, sosEscalateMin: SOS_ESCALATE_MIN, pulse });
     }

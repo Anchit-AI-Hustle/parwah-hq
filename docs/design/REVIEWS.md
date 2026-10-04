@@ -136,13 +136,15 @@ mixed daily tools (Things to do) with rare ones (Payments, Muhurat).
 
 **Approved.**
 
-## Review 5: five things, not fifty (Anshul's review, 3 October 2026)
+## Review 5: five things, not fifty (a family's review, 3 October 2026)
 
-A first real family tried Parwah and said it was too much. His points:
+A first real family tried Parwah and said it was too much. The points:
 families talk on WhatsApp, so Parwah should do what WhatsApp cannot. The
-vault is the core: he downloaded his brother's Aadhaar, PAN and licence
+vault is the core: a brother's Aadhaar, PAN and licence were downloaded
 for a car claim instead of asking for photos. It will be used mostly for
 elders' health. And the daily food question made the app feel complicated.
+Before choosing a role, a family should say whether it is joint or nuclear,
+and the tree should reach four generations.
 
 | # | Heuristic | Finding | Sev | Status |
 |---|---|---|---|---|
@@ -153,3 +155,12 @@ elders' health. And the daily food question made the app feel complicated.
 
 **Approved.** The scoring is in `TODAY.md`. Joint or nuclear family and the
 four-generation family tree, from the same review, are the next change.
+
+### Follow-up in the same review: joint or nuclear, and the family tree
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 41 | 2 Real-world match | Roles were one word each (Son, Brother), with no daughter-in-law, son-in-law or grandchildren, and no way to say whose son | 3 | Fixed: a new family says joint or nuclear first; each person is placed relative to someone ("son of Papa", "wife of Rohan"), and Parwah works out daughter-in-law, grandson, Chacha, Bua, Mama, Mausi and their spouses |
+| 42 | 6 Recognition | Everyone saw the same word for a person, whoever was looking | 2 | Fixed: Papa is "Father" to his son and "Father-in-law" to his daughter-in-law; the label is worked out for whoever is looking |
+| 43 | 1 Visibility | No picture of who belongs where | 2 | Fixed: the family tree at the top of People, couples side by side and children below, four generations and more |
+
