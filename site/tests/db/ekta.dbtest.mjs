@@ -55,7 +55,11 @@ async function person(circleId, name, role = 'family') {
 }
 const fam = (await admin.query(`insert into circles (code, name) values ('EKTA01', 'Sharma Family') returning id`)).rows[0].id;
 const rohan = await person(fam, 'Rohan');
-const papa = await person(fam, 'Papa', 'parent');
+// Papa is saved by his name, Raj, with the relation "father"; Mummy too.
+const papa = await person(fam, 'Raj', 'parent');
+const mummy = await person(fam, 'Sunita', 'parent');
+await admin.query(`update members set relation = 'father' where id = $1`, [papa.id]);
+await admin.query(`update members set relation = 'mother' where id = $1`, [mummy.id]);
 
 async function call(handler, who, body) {
   const req = { method: 'POST', headers: { 'x-parwah-token': who.token, 'x-forwarded-for': '10.2.2.2' },
@@ -71,6 +75,7 @@ const pot = async () => (await admin.query(`select coalesce(sum(delta),0)::int a
 // What the family has recorded about Papa: a medicine, and his doctor.
 await call(book, rohan, { action: 'add', kind: 'med', name: 'Amlodipine 5mg', forwhat: 'BP', aboutId: papa.id });
 await call(book, rohan, { action: 'add', kind: 'contact', category: 'doctor', name: 'Dr Mehra', phone: '9811111111', forwhat: 'Papa\'s doctor', aboutId: papa.id });
+await call(book, rohan, { action: 'add', kind: 'med', name: 'Thyronorm 50', forwhat: 'thyroid', aboutId: mummy.id });
 
 // ---- an empty pot: nothing at all to spend
 await admin.query(`delete from coins where circle_id = $1`, [fam]);
@@ -94,8 +99,19 @@ ok('the family starts this with no coins', await pot() === 0);
 {
   const r = await ask(rohan, 'Can Papa take a Crocin with his BP tablet?');
   ok('medicine question: answered from the records, free', r.status === 200 && r.ok && /Amlodipine 5mg/.test(r.reply), JSON.stringify(r).slice(0, 300));
+  ok('"Papa" is Raj, saved as father: only his medicines, never Mummy\'s', /Raj/.test(r.reply) && !/Thyronorm/.test(r.reply), r.reply);
   ok('medicine question: never advises, names the doctor', /cannot advise on medicines/.test(r.reply) && /Dr Mehra/.test(r.reply), r.reply);
-  ok('medicine question: says why it is reading records, truthfully', r.reason === 'coins' && /out of coins/.test(r.reply));
+  // A medicine question is free, so the pot does not come into it: the
+  // reason given is the true one, that no AI key is set up.
+  ok('medicine question: says why it is reading records, truthfully', /no AI key is set up/.test(r.reply) && !/out of coins/.test(r.reply), r.reply);
+}
+{
+  const r = await ask(rohan, 'Can Dadi take a Crocin?');
+  ok('a family word nobody is saved as: asks who, never mixes records', r.ok && /Who is this about/.test(r.reply) && !/Amlodipine|Thyronorm/.test(r.reply), r.reply);
+}
+{
+  const r = await ask(rohan, 'Papa passed out yesterday, what medicines is he on?');
+  ok('something that happened yesterday is not a call for 112', r.ok && !r.emergency && /Amlodipine/.test(r.reply), JSON.stringify(r).slice(0, 200));
 }
 {
   const r = await ask(rohan, 'what do we have for Papa');
@@ -115,7 +131,13 @@ await admin.query(`insert into coins (circle_id, member_id, delta, reason) value
   const r = await ask(rohan, 'Dadi behosh ho gayi');
   ok('with coins too, urgent costs nothing', r.ok && r.emergency === true && await pot() === 10);
   const m = await ask(rohan, 'what do we have for Papa');
-  ok('a records answer is refunded, so free', m.ok && await pot() === 10, String(await pot()));
+  ok('a records answer costs nothing', m.ok && await pot() === 10, String(await pot()));
+  const s2 = await ask(rohan, 'Is this OTP message a scam?');
+  const h2 = await ask(rohan, 'Can Papa take a Crocin with his BP tablet?');
+  ok('the scam check and a medicine question cost nothing either', s2.ok && h2.ok && await pot() === 10);
+  // Free means never charged, not charged and handed back: with a working
+  // key those answers would never reach the refund.
+  ok('nothing free was ever charged, even for a moment', (await admin.query(`select count(*)::int as n from coins where circle_id = $1 and reason in ('ekta', 'refund')`, [fam])).rows[0].n === 0);
 }
 
 await admin.end();

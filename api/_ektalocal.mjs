@@ -44,7 +44,7 @@ const RE = {
   // Someone may be in danger right now. Checked before anything else, and
   // answered in fixed words that never cost a coin: a model, a records
   // lookup or a coin balance must never stand between a family and 112.
-  emergency: /\b(chest ?pain|pain in (his|her|my|the) chest|(having|is having|just had|has just had) a heart attack|heart attack (now|right now|just now)|can'?t breathe|cannot breathe|not breathing|breathless|struggling to breathe|trouble breathing|breathing (problem|difficulty)|saans (nahi|nahin|nhi)|unconscious|not responding|unresponsive|fainted|passed out|collapsed|behosh|(has|have|just|she|he) (fallen|had a fall)|fell (down|over|off|in the)|had a fall|(having|is having|just had) a stroke|stroke (now|right now|just now)|signs of (a )?stroke|face (is )?droop|slurred|paralys|bleeding (a lot|heavily|badly|won'?t stop)|heavy bleeding|khoon (beh|nikal)|seizure|convulsion|mirgi|choking|swallowed (poison|something)|poison|overdose|took too many (tablets|pills)|badly burn(ed|t)|(had|been in|met with) an? accident\b|accident (now|just now|right now))/i,
+  emergency: /\b(chest ?pain|pain in (his|her|my|the) chest|(having|is having|just had|has just had) a heart attack|heart attack (now|right now|just now)|can'?t breathe|cannot breathe|not breathing|breathless|struggling to breathe|trouble breathing|breathing (problem|difficulty)|saans (nahi|nahin|nhi)|unconscious|not responding|can'?t get up|cannot get up|unresponsive|fainted|passed out|collapsed|behosh|(has|have|just|she|he) (fallen|had a fall)|fell (down|over|off|in the)|had a fall|(having|is having|just had) a stroke|stroke (now|right now|just now)|signs of (a )?stroke|face (is )?droop|slurred|paralys|bleeding (a lot|heavily|badly|won'?t stop)|heavy bleeding|khoon (beh|nikal)|seizure|convulsion|mirgi|choking|swallowed (poison|something)|poison|overdose|took too many (tablets|pills)|badly burn(ed|t)|(had|been in|met with) an? accident\b|accident (now|just now|right now))/i,
   // Words about ending one's life get a person to talk to, at once.
   crisis: /\b(kill (my|him|her)self|suicid|end (my|his|her) life|want to die|don'?t want to live|jeena nahi|marna chahta|marna chahti)/i,
   // A question about what to do with a medicine is the doctor's to answer.
@@ -64,6 +64,35 @@ const RE = {
   remind:  /^\s*(please\s+)?(set|add|create|make|put|schedule)\b[^?]*\breminder\b|\bremind me\b/i,
   help:    /\b(ask (the )?(circle|family|everyone|someone)|ask for help)\b/i
 };
+// Something that already happened ("passed out yesterday", "fell last
+// year") is a question about the past, not a call for 112 - unless the
+// message also says it is happening now.
+const PAST = /\b(yesterday|last (night|week|month|year)|(\d+|a|an|one|two|three|few) (hours?|days?|weeks?|months?|years?) ago|in (19|20)\d\d|kal raat|pichhle|pichle|history of|used to|years back)\b/i;
+const NOW = /\b(now|right now|just now|abhi|still|is (not breathing|unconscious|bleeding|having|choking)|can'?t get up|please help|help me)\b/i;
+
+// The family's words for a person, and the relation saved for them, so
+// "can Papa take..." finds the one member saved as father.
+const KIN = [
+  [/\b(papa|pappa|dad|daddy|father|pitaji|pita ji|abba|abbu)\b/i, 'father'],
+  [/\b(mummy|mumma|mom|mum|maa|mother|mataji|mata ji|ammi|amma)\b/i, 'mother'],
+  [/\b(dadi|dadima|nani|nanima|grandmother|grandma)\b/i, 'grandmother'],
+  [/\b(dada|dadaji|nana|nanaji|grandfather|grandpa)\b/i, 'grandfather'],
+  [/\b(bhaiya|bhai|brother)\b/i, 'brother'],
+  [/\b(didi|sister)\b/i, 'sister']
+];
+// { name } when the word and exactly one saved relation agree; { word }
+// when a family word was used but could not be matched to one person.
+export function kinIsAsked(text, members) {
+  const t = String(text || '');
+  for (const [re, rel] of KIN) {
+    if (!re.test(t)) continue;
+    const hits = (members || []).filter(m => m && m.relation === rel);
+    return hits.length === 1 ? { name: hits[0].name } : { word: t.match(re)[0] };
+  }
+  return null;
+}
+export const ABOUT_ME = /\b(i|me|my|myself|mujhe|main)\b/i;
+
 // A named person, so "what do we have for Papa" answers about Papa.
 export function whoIsAsked(text, memberNames) {
   const t = String(text || '').toLowerCase();
@@ -82,7 +111,7 @@ export function classify(text) {
   // Safety first, and before the greeting: "Hi, is this OTP message a scam?"
   // is a scam question that happens to start politely.
   if (RE.crisis.test(t))    return 'crisis';
-  if (RE.emergency.test(t)) return 'emergency';
+  if (RE.emergency.test(t) && !(PAST.test(t) && !NOW.test(t))) return 'emergency';
   if (RE.scam.test(t))   return 'scam';
   if (RE.health.test(t)) return 'health';
   if (RE.greet.test(t))  return 'greet';
@@ -267,6 +296,13 @@ export function renderCrisis() {
       'If anyone is in danger right now, call 112.',
       'Tell one person in your family you trust. Press SOS below if you want them all to know now.'
     ])].join(NL);
+}
+
+// Not sure whose records: ask, rather than mix several people's medicines.
+export function renderWhoIsIt(names) {
+  return ['Who is this about? Please use their name as it is saved in the family'
+    + ((names || []).length ? ': ' + names.join(', ') : '') + '.', '',
+    'Either way, I cannot advise on medicines. Whether to take, stop or change anything is for the doctor to say.'].join(NL);
 }
 
 // A medicine question: what is recorded, then the doctor. Never advice.

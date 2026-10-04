@@ -9,7 +9,7 @@
 // retrieval question that needs no model at all.
 import { LOCAL_MODEL, isBillingFailure, isAuthFailure, isDeadKey, classify, whoIsAsked,
          renderSummary, renderMemory, renderCircle, offlineNote, cannotAnswer, stalePhrase,
-         renderEmergency, renderCrisis, renderHealth }
+         renderEmergency, renderCrisis, renderHealth, kinIsAsked, ABOUT_ME, renderWhoIsIt }
   from '../../api/_ektalocal.mjs';
 
 let pass = 0; const fails = [];
@@ -105,6 +105,11 @@ for (const t of ['Papa has chest pain and is sweating, what do I do?', 'Mummy ha
 for (const t of ['Papa had a stroke in 2019, what medicines is he on?', 'He had a heart attack in 2019', 'I accidentally deleted a photo',
                  'Book a cardiac checkup for Papa', 'I fell asleep early'])
   ok('not urgent, so not alarmed: ' + t, classify(t) !== 'emergency');
+for (const t of ['Papa passed out yesterday, what medicines is he on?', 'Mummy fell last year and broke her wrist', 'he had a seizure 3 years ago',
+                 'Papa collapsed in 2021, what do we have for him'])
+  ok('in the past, so not alarmed: ' + t, classify(t) !== 'emergency');
+for (const t of ['Papa fell yesterday and still can\'t get up', 'Dadi passed out last night and is not responding now'])
+  ok('in the past but happening now, so urgent: ' + t, classify(t) === 'emergency');
 ok('words about ending a life reach a person', classify('I want to die') === 'crisis' && classify('main jeena nahi chahta') === 'crisis');
 const em = renderEmergency();
 ok('urgent: call 112, ambulance 108, press SOS', /112/.test(em) && /108/.test(em) && /SOS/.test(em));
@@ -120,6 +125,13 @@ const hp = renderHealth({ entries: [{ kind: 'med', name: 'Amlodipine 5mg', forwh
                                      { kind: 'contact', name: 'Dr Mehra' }] }, 'Papa', { name: 'Dr Mehra', phone: '+91 98111 11111' });
 ok('health: reads back what is recorded', /Amlodipine 5mg/.test(hp) && /Papa/.test(hp));
 ok('health: never advises, sends to the doctor by name', /cannot advise on medicines/.test(hp) && /Dr Mehra/.test(hp) && /98111/.test(hp));
+const fam = [{ name: 'Raj', relation: 'father' }, { name: 'Sunita', relation: 'mother' }, { name: 'Rohan', relation: 'son' }];
+ok('"Papa" finds the one member saved as father', kinIsAsked('Can Papa take a Crocin?', fam).name === 'Raj');
+ok('"Mummy" finds the one saved as mother', kinIsAsked('should mummy stop her BP tablet', fam).name === 'Sunita');
+ok('a family word nobody is saved as is not guessed', kinIsAsked('can Dadi take this', fam).name === undefined && kinIsAsked('can Dadi take this', fam).word === 'Dadi');
+ok('two fathers is not one', kinIsAsked('Can Papa take it', [...fam, { name: 'Vijay', relation: 'father' }]).name === undefined);
+ok('"can I take" is about the asker', ABOUT_ME.test('Can I take a Crocin with my BP tablet?'));
+ok('not sure who: asks, lists the names, and still sends to the doctor', /Who is this about/.test(renderWhoIsIt(['Raj', 'Sunita'])) && /Raj, Sunita/.test(renderWhoIsIt(['Raj', 'Sunita'])) && /doctor/.test(renderWhoIsIt([])));
 ok('health: with no doctor recorded, says ask the doctor or a pharmacist', /pharmacist/.test(renderHealth({ entries: [] }, 'Papa', null)));
 
 ok('the offline model is named so the client can tell', LOCAL_MODEL === 'parwah-local');

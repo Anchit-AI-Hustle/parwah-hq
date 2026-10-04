@@ -21,7 +21,8 @@ import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
 // dependency-free module so the gate can unit-test it before npm install.
 import { LOCAL_MODEL, isDeadKey, isBillingFailure, isAuthFailure, classify, whoIsAsked,
          renderSummary, renderMemory, renderCircle, offlineNote, cannotAnswer,
-         renderScam, renderCannotDo, renderEmergency, renderCrisis, renderHealth } from './_ektalocal.mjs';
+         renderScam, renderCannotDo, renderEmergency, renderCrisis, renderHealth,
+         kinIsAsked, ABOUT_ME, renderWhoIsIt } from './_ektalocal.mjs';
 import { spend, EARN } from './_coins.mjs';
 
 const ASSISTANT_NAME = 'Ekta'; // one-line swap if the persona name changes
@@ -371,12 +372,15 @@ export async function localTurn(sql, circle, me, history, reason) {
   const lastUser = (history || []).filter(m => m && m.role === 'user').slice(-1)[0];
   const text = lastUser ? String(lastUser.content || '') : '';
   const intent = classify(text);
-  let names = [];
+  let names = [], members = [];
   try {
-    const rows = await sql`select name from members where circle_id = ${circle.id}`;
-    names = rows.map(r => r.name);
+    members = await sql`select name, relation from members where circle_id = ${circle.id}`;
+    names = members.map(r => r.name);
   } catch (e) { /* the answer degrades, it does not fail */ }
-  const who = whoIsAsked(text, names);
+  // A name first, then a family word ("Papa") matched to the one member
+  // saved with that relation.
+  const kin = kinIsAsked(text, members);
+  const who = whoIsAsked(text, names) || (kin && kin.name) || null;
   const say = (body) => ({ reply: body + '\n\n' + offlineNote(reason), actions: [], model: LOCAL_MODEL, escalate: false, offline: true });
   // These three are not read from the records, so they do not carry the
   // "exactly what is saved" footer: each says what it is in its own words.
@@ -388,11 +392,15 @@ export async function localTurn(sql, circle, me, history, reason) {
 
   try {
     if (intent === 'health') {
-      const mine = JSON.parse(await runTool(sql, circle, me, 'get_family_memory', who ? { about_name: who } : {}));
-      const all = who ? JSON.parse(await runTool(sql, circle, me, 'get_family_memory', {})) : mine;
+      // Whose medicines: named, or a family word matched to one person, or
+      // the asker ("can I take..."). Otherwise ask - never a mix of people.
+      const subject = who || (!kin && ABOUT_ME.test(text) ? me.name : null);
+      if (!subject) return plain(renderWhoIsIt(names));
+      const mine = JSON.parse(await runTool(sql, circle, me, 'get_family_memory', { about_name: subject }));
+      const all = JSON.parse(await runTool(sql, circle, me, 'get_family_memory', {}));
       const doctor = ((all && all.entries) || []).filter(e => e.kind === 'contact' && /\b(doctor|dr\.?)\b/i.test((e.name || '') + ' ' + (e.forwhat || '') + ' ' + (e.category || '')))
-        .sort((a, b) => (b.about === who) - (a.about === who))[0] || null;
-      if (!mine.error) return say(renderHealth(mine, who, doctor));
+        .sort((a, b) => (b.about === subject) - (a.about === subject))[0] || null;
+      if (!mine.error) return say(renderHealth(mine, subject, doctor));
     }
     if (intent === 'summary') {
       const target = who || (names.find(n => n !== me.name) || me.name);
@@ -530,10 +538,15 @@ export default async function handler(req, res) {
       actions: [], model: LOCAL_MODEL, emergency: true });
   }
 
-  // Ekta runs on the family's coins. They are earned by looking after each
-  // other - keeping the memory current, filling the vault - so the assistant
-  // is paid for by the very habits it exists to support.
-  const paid = await spend(sql, circle.id, me.id, 'ekta');
+  // The scam check and anything about the family's own records - including
+  // a medicine question, which is answered from the records and sent to the
+  // doctor - are free, whichever way they are answered.
+  const free = ['scam', 'memory', 'summary', 'health'].includes(asked);
+
+  // Everything else runs on the family's coins. They are earned by looking
+  // after each other - keeping the memory current, filling the vault - so
+  // the assistant is paid for by the very habits it exists to support.
+  const paid = free ? { ok: true, cost: 0, balance: null } : await spend(sql, circle.id, me.id, 'ekta');
   if (!paid.ok) {
     // Out of coins is not out of help: the scam check and anything read
     // from the family's own records were always free, so they still answer.
@@ -549,6 +562,7 @@ export default async function handler(req, res) {
   }
 
   const refund = async () => {
+    if (!paid.cost) return;
     try { await sql`insert into coins (circle_id, member_id, delta, reason) values (${circle.id}, ${me.id}, ${paid.cost}, 'refund')`; } catch (_) {}
   };
   try {
@@ -560,8 +574,8 @@ export default async function handler(req, res) {
     // An answer read out of the family's own rows is not the assistant they
     // are paying for, so it is free. Charging for a degraded turn is how a
     // family learns to distrust the coin.
-    let coins = paid.balance;
-    if (out.offline) { await refund(); coins = paid.balance + paid.cost; }
+    let coins = free ? undefined : paid.balance;
+    if (out.offline && !free) { await refund(); coins = paid.balance + paid.cost; }
     return res.status(200).json({ ok: true, reply: out.reply, actions: out.actions,
       model: out.model, offline: out.offline || undefined, reason: out.reason || undefined, coins });
   } catch (e) {

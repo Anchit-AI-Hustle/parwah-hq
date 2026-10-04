@@ -892,7 +892,7 @@ check("ekta: with no key at all she still answers from the records",
 check("ekta: the offline answer is retrieval, through the same tools",
       "prepare_summary" in ekta and "get_family_memory" in ekta and "get_circle" in ekta)
 check("ekta: a degraded turn is refunded, not charged for",
-      "if (out.offline) { await refund(); " in ekta)
+      "if (out.offline && !free) { await refund(); " in ekta)
 check("ekta: the reason is named, not hidden behind 'something went wrong'",
       "failureReason" in ekta and "offlineNote" in elocal)
 check("ekta: the offline answer still refuses to diagnose",
@@ -1764,8 +1764,10 @@ check("staying current: an open or installed Parwah moves to a new version when 
       and "fetch(url.href, { cache: 'no-store'" in (REPO / "site" / "public" / "sw.js").read_text(encoding="utf-8"))
 _ekt = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
 check("ekta: anyone in danger is answered first, in fixed words, free - before coins, keys or a model",
-      _ekt.index("asked === 'emergency' || asked === 'crisis'") < _ekt.index("const paid = await spend(")
+      -1 < _ekt.find("asked === 'emergency' || asked === 'crisis'") < _ekt.find("await spend(sql, circle.id, me.id, 'ekta')")
       and "function ektaUrgent(said)" in _appt and 'href="tel:112"' in _appt and "if (j.emergency) ektaUrgent(v);" in _appt)
+check("ekta: the scam check, records and medicine questions are never charged; a family word finds the one person saved with it",
+      "const free = ['scam', 'memory', 'summary', 'health'].includes(asked);" in _ekt and "kinIsAsked(text, members)" in _ekt and "renderWhoIsIt(names)" in _ekt)
 check("ekta: out of coins still answers what was always free, and says how anyone can earn more",
       "const free = await localTurn(sql, circle, me, history, 'coins');" in _ekt and "EARN.checkin" not in _ekt)
 check("ekta: the screen says what she does, that she gives no medical advice and what a question costs; chips point at real things",
