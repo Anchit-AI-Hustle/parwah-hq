@@ -332,6 +332,7 @@ const tomorrow = localDay(Date.now() + 86400000);
   await M.goto(BASE + '/#care'); await M.waitForTimeout(300);
   await reload(M);
   ok('a task with nowhere to go has no "go" button', await rowOf(M, 'Water the tulsi').locator('[data-tgo]').count() === 0);
+  ok('a gas refill is not mistaken for medicines', await rowOf(M, 'Book the gas refill').locator('[data-tgo]').count() === 0);
 }
 
 if (process.env.SHOTS) {

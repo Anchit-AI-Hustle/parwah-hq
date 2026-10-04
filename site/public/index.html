@@ -3497,7 +3497,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       return { go: 'fill:' + (m ? m.id : '') + ':' + GAP_KEY[gap[2].toLowerCase().replace('’', "'")], label: 'Do it now →' };
     }
     if (/^check .+ is still right$/i.test(t)) { m = taskMember(q); return { go: 'book:' + (m ? m.id : '') + ':all', label: 'Check it now →' }; }
-    if (/\b(medicines?|tablets?|pills?|refill|prescriptions?|meds)\b/i.test(t)) { m = taskMember(q); return { go: 'book:' + (m ? m.id : '') + ':med', label: 'Open medicines →' }; }
+    if (/\b(medicines?|tablets?|pills?|prescriptions?|meds)\b/i.test(t)) { m = taskMember(q); return { go: 'book:' + (m ? m.id : '') + ':med', label: 'Open medicines →' }; }
     if (/\b(doctor|appointment|check-?up|hospital|clinic|dentist|lab test|blood test|scan)\b/i.test(t)) { m = taskMember(q); return { go: 'book:' + (m ? m.id : '') + ':contact', label: 'Open doctors & contacts →' }; }
     if (/\b(aadhaar|pan card|passport|insurance|policy|documents?|papers|licen[cs]e|certificate|will)\b/i.test(t)) return { go: 'tab:vault:docs', label: 'Open documents →' };
     if (/\b(pay|bills?|electricity|rent|recharge|emi|premium|fees)\b/i.test(t)) return { go: 'tab:vault:pay', label: 'Open payments →' };
