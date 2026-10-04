@@ -21,7 +21,7 @@ function shuffle(arr, R) {
   return a;
 }
 const seat = (p) => (p.bot ? { id: p.id, name: p.name, bot: true } : { id: p.id, name: p.name });
-const bot = (st, i) => !!(st.players[i] && st.players[i].bot);
+const bot = (st, i) => !!(st.players[i] && (st.players[i].bot || st.players[i].away));
 
 // Opponents for playing alone: players like any other, marked `bot`.
 export function botSeats(n) {
@@ -252,7 +252,7 @@ function endRound(st, leader) {
   if (left.length <= 1) {
     st.loser = left.length ? st.players[left[0]].name : null;
     st.winner = st.order[0] || null;
-    announce = '🃏 Bhabhi is over! ' + (st.order[0] ? st.order[0] + ' got away first. ' : '') + (st.loser ? st.loser + ' is the Bhabhi 😄' : '');
+    announce = '🃏 Bhabhi is over! ' + (st.order[0] ? st.order[0] + ' got away first' : '') + (st.loser ? (st.order[0] ? '; ' : '') + st.loser + ' holds the last cards.' : '.');
     return { announce, escaped };
   }
   // The one who leads next may have just escaped: the lead passes on.

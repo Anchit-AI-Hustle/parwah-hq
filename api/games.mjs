@@ -12,7 +12,7 @@ import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 // How games are named, numbered and listed. Its own dependency-free module so
 // the deploy gate can unit-test it on a fresh clone, before npm install.
-import { MAX_ACTIVE, gameName, numberAfter, gameSummary, isBot, teamList, currentPlayer } from './_gamelist.mjs';
+import { MAX_ACTIVE, gameName, numberAfter, gameSummary, isBot, isParwah, teamList, currentPlayer } from './_gamelist.mjs';
 export { MAX_ACTIVE, GAME_LABEL, gameName, numberAfter, gameSummary, isBot, currentPlayer } from './_gamelist.mjs';
 // Ludo, Bhabhi and Vyapar: the rules live in their own dependency-free module.
 import { boardStart, boardMove, runBoardBots, botSeats, bhabhiView, BOARD_SEATS, isOver as boardOver, vyEnd } from './_boardgames.mjs';
@@ -345,11 +345,25 @@ async function feed(sql, circleId, memberId, text) {
 
 // Several games at once. The cap is a guard rail, not a feature: it stops a
 // stuck client filling the family's list with abandoned lobbies.
+// Games on the go, and games that finished in the last day: a result stays
+// readable (and can be played again) instead of vanishing with the last move.
 async function activeGames(sql, circleId) {
   return await sql`select id, kind, status, state, created_at from games
-                   where circle_id = ${circleId} and status = 'active'
+                   where circle_id = ${circleId}
+                     and (status = 'active' or (status = 'done' and ended_at > now() - interval '1 day'))
                    order by created_at desc limit ${MAX_ACTIVE * 3}`;
 }
+// When a game ended with a result. A game someone ended early has none, and
+// leaves the list at once.
+let endedReady = false;
+async function ensureEnded(sql) {
+  if (endedReady) return;
+  await sql`alter table games add column if not exists ended_at timestamptz`;
+  endedReady = true;
+}
+// How long a turn may wait before anyone can let Parwah play it.
+export const AWAY_AFTER_MS = 12 * 3600 * 1000;
+const TURN_KINDS = ['ttt', 'snakes', 'ludo', 'bhabhi', 'vyapar'];
 async function atCap(sql, circleId) {
   const rows = await sql`select count(*)::int as n from games
                          where circle_id = ${circleId} and status = 'active'`;
@@ -364,7 +378,7 @@ async function nextNumber(sql, circleId, kind) {
 
 export default async function handler(req, res) {
   let sql;
-  try { sql = db(); await ensureSchema(sql); }
+  try { sql = db(); await ensureSchema(sql); await ensureEnded(sql); }
   catch (e) { return failDb(res, e); }
 
   try {
@@ -389,14 +403,14 @@ export default async function handler(req, res) {
         // state shape the app can no longer play - retire it so the family
         // starts a fresh lobby instead of hitting a broken game.
         if ((g.state.kind === 'antakshari' || g.state.kind === 'charades') && !Array.isArray(g.state.admins)) {
-          await sql`update games set status = 'done' where id = ${g.id}`;
+          if (g.status === 'active') await sql`update games set status = 'done' where id = ${g.id}`;
           continue;
         }
         live.push(g);
       }
       // Ordered by what each game is asking of you, not by when it started:
       // waiting on your move, then games you are in, then everyone else's.
-      const rank = (g) => { const s = gameSummary(g, me.id); return s.myTurn ? 0 : s.mine ? 1 : 2; };
+      const rank = (g) => { const s = gameSummary(g, me.id); return s.over ? 3 : s.myTurn ? 0 : s.mine ? 1 : 2; };
       live.sort((a, b) => rank(a) - rank(b) || (a.created_at < b.created_at ? 1 : -1));
       const games = live.map(g => gameSummary(g, me.id));
       const full = (g) => publicState(g ? { ...g, kind: g.state.kind || g.kind } : null, me.id);
@@ -434,7 +448,7 @@ export default async function handler(req, res) {
         if (!vs[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
         state = tttStart(me, vs[0]); vsName = vs[0].name;
       }
-      state.n = await nextNumber(sql, circle.id, 'ttt'); state.by = me.name; state.byId = me.id;
+      state.n = await nextNumber(sql, circle.id, 'ttt'); state.by = me.name; state.byId = me.id; state.turnAt = Date.now();
       const nm = gameName('ttt', state.n);
       const g = await sql`insert into games (circle_id, kind, status, state)
                           values (${circle.id}, 'ttt', 'active', ${JSON.stringify(state)}::jsonb)
@@ -457,8 +471,10 @@ export default async function handler(req, res) {
       // The opponent answers in the same request, so a solo game never waits.
       const botLines = runBots(st);
       const done = !!(st.winner || st.draw);
-      const solo = (st.players || []).some(isBot);
-      await sql`update games set status = ${done ? 'done' : 'active'}, state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
+      const solo = (st.players || []).some(isParwah);
+      st.turnAt = Date.now();
+      await sql`update games set status = ${done ? 'done' : 'active'}, state = ${JSON.stringify(st)}::jsonb,
+                ended_at = case when ${done}::boolean then now() else null end where id = ${g.id}`;
       const lines = [out.announce].concat(botLines).filter(Boolean);
       // A game played alone is not announced to the family.
       if (lines.length && !solo) {
@@ -505,16 +521,22 @@ export default async function handler(req, res) {
       if (solo) {
         players = soloPlayers(me).map(p => ({ ...p, pos: 0 }));
       } else {
-        const members = await sql`select id, name from members where circle_id = ${circle.id} order by created_at`;
-        players = members.map(m => ({ id: m.id, name: m.name, pos: 0 }));
+        // Only the people picked are asked to play: seating everyone made
+        // one person who never opens Games block the board for good.
+        const ids = Array.isArray(body.playerIds) ? [...new Set(body.playerIds.filter(x => isUuid(x) && x !== me.id))] : [];
+        if (!ids.length) return res.status(400).json({ ok: false, error: 'Pick who is playing with you' });
+        if (ids.length + 1 > 8) return res.status(400).json({ ok: false, error: 'At most 8 players in this game' });
+        const rows = await sql`select id, name from members where circle_id = ${circle.id} and id = any(${ids}) and user_id is not null`;
+        if (rows.length !== ids.length) return res.status(404).json({ ok: false, error: 'Someone picked is not in this family on Parwah' });
+        players = [{ id: me.id, name: me.name, pos: 0 }].concat(ids.map(id => { const r = rows.find(x => x.id === id); return { id: r.id, name: r.name, pos: 0 }; }));
       }
       const n = await nextNumber(sql, circle.id, 'snakes');
-      const state = { kind: 'snakes', n, by: me.name, byId: me.id, players, turn: 0, last: null, winner: null, solo: solo || undefined };
+      const state = { kind: 'snakes', n, by: me.name, byId: me.id, players, turn: 0, last: null, winner: null, solo: solo || undefined, turnAt: Date.now() };
       const g = await sql`insert into games (circle_id, kind, status, state)
                           values (${circle.id}, 'snakes', 'active', ${JSON.stringify(state)}::jsonb)
                           returning id, kind, status, state, created_at`;
       // A game you started alone is not announced to the family.
-      if (!solo) await feed(sql, circle.id, me.id, `${me.name} started ${gameName('snakes', n)} 🎲 - everyone's in, come play!`);
+      if (!solo) await feed(sql, circle.id, me.id, `${me.name} started ${gameName('snakes', n)} 🎲 with ${players.slice(1).map(p => p.name).join(', ')}`);
       return res.status(201).json({ ok: true, game: g[0] });
     }
 
@@ -540,7 +562,7 @@ export default async function handler(req, res) {
       }
       const state = boardStart(kind, people);
       if (state.error) return res.status(400).json({ ok: false, error: state.error });
-      state.n = await nextNumber(sql, circle.id, kind); state.by = me.name; state.byId = me.id;
+      state.n = await nextNumber(sql, circle.id, kind); state.by = me.name; state.byId = me.id; state.turnAt = Date.now();
       runBoardBots(state);                       // if Parwah goes first, it plays now
       const g = await sql`insert into games (circle_id, kind, status, state)
                           values (${circle.id}, ${kind}, 'active', ${JSON.stringify(state)}::jsonb)
@@ -565,12 +587,13 @@ export default async function handler(req, res) {
       if (out.error) return res.status(409).json({ ok: false, error: out.error });
       const botLines = runBoardBots(st);
       const done = boardOver(st);
-      st.v = v0 + 1;
+      st.v = v0 + 1; st.turnAt = Date.now();
       // Saved only if nobody else moved first: two taps at once cannot both land.
-      const saved = await sql`update games set status = ${done ? 'done' : 'active'}, state = ${JSON.stringify(st)}::jsonb
+      const saved = await sql`update games set status = ${done ? 'done' : 'active'}, state = ${JSON.stringify(st)}::jsonb,
+                              ended_at = case when ${done}::boolean then now() else null end
                               where id = ${g.id} and coalesce((state->>'v')::int, 0) = ${v0} returning id`;
       if (!saved[0]) return res.status(409).json({ ok: false, error: 'Someone moved a moment ago - here is the board now', stale: true });
-      const solo = st.players.filter(p => !isBot(p)).length < 2;
+      const solo = st.players.filter(p => !isParwah(p)).length < 2;
       const lines = [out.announce].concat(botLines).filter(Boolean);
       if (lines.length && !solo) { for (const t of lines) await announce(t); }
       if (done && !solo) await feed(sql, circle.id, me.id, lines[lines.length - 1] || (gameName(st.kind, st.n) + ' is over'));
@@ -628,8 +651,10 @@ export default async function handler(req, res) {
           endLine = vyEnd(st);
           await sql`update games set state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
         }
-        await sql`update games set status = 'done' where id = ${g.id}`;
-        if (endLine && st.players.filter(p => !isBot(p)).length > 1) await announce(endLine);
+        // Vyapar ended early still has a result (the richest wins), so it
+        // stays readable; any other game ended early simply goes.
+        await sql`update games set status = 'done', ended_at = case when ${!!endLine}::boolean then now() else null end where id = ${g.id}`;
+        if (endLine && st.players.filter(p => !isParwah(p)).length > 1) await announce(endLine);
         try {
           if (st.kind === 'antakshari' || st.kind === 'charades') {
             const chatId = await ensureCircleChat(sql, circle.id);
@@ -644,10 +669,11 @@ export default async function handler(req, res) {
       const out = playTurn(st, me.id);
       if (out.error) return res.status(409).json({ ok: false, error: out.error });
       const botLines = runBots(st);
-      const solo = (st.players || []).some(isBot);
+      const solo = (st.players || []).some(isParwah);
       const over = !!st.winner;
+      st.turnAt = Date.now();
       if (over) {
-        await sql`update games set status = 'done', state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
+        await sql`update games set status = 'done', state = ${JSON.stringify(st)}::jsonb, ended_at = now() where id = ${g.id}`;
         if (!solo) await feed(sql, circle.id, me.id, `${st.winner} won Saanp Seedhi! 🎉🐍🪜`);
       } else {
         await sql`update games set state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
@@ -669,6 +695,47 @@ export default async function handler(req, res) {
         }
       }
       return res.status(200).json({ ok: true, game: { id: g.id, kind: 'snakes', status: over ? 'done' : 'active', state: st } });
+    }
+
+    // Nobody is held hostage by a game: you can leave one (Parwah plays your
+    // seat), and when someone has not played for 12 hours anyone else in the
+    // game can let Parwah play for them.
+    if (body.action === 'away') {
+      if (!isUuid(body.gameId)) return res.status(400).json({ ok: false, error: 'Bad game id' });
+      const rows = await sql`select id, kind, status, state from games where id = ${body.gameId} and circle_id = ${circle.id}`;
+      const g = rows[0];
+      if (!g || g.status !== 'active') return res.status(404).json({ ok: false, error: 'That game is over or was ended' });
+      const st = g.state;
+      if (!TURN_KINDS.includes(st.kind)) return res.status(400).json({ ok: false, error: 'This game has no turns to hand over' });
+      const mine = st.players.findIndex(p => p && p.id === me.id);
+      if (mine < 0) return res.status(403).json({ ok: false, error: 'You are not in this game' });
+      let seat, line;
+      if (body.who === 'me') {
+        seat = mine;
+        if (isBot(st.players[seat])) return res.status(409).json({ ok: false, error: 'Parwah is already playing for you' });
+        line = me.name + ' left ' + gameName(st.kind, st.n) + ' - Parwah plays for them now';
+      } else {
+        seat = st.turn;
+        const p = st.players[seat];
+        if (!p || isBot(p) || p.id !== body.targetId) return res.status(409).json({ ok: false, error: 'It is not their turn any more' });
+        if (Date.now() - Number(st.turnAt || 0) < AWAY_AFTER_MS) return res.status(409).json({ ok: false, error: 'Give them a little longer - after 12 hours you can let Parwah play' });
+        line = me.name + ' let Parwah play for ' + p.name + ' in ' + gameName(st.kind, st.n);
+      }
+      st.players[seat] = { ...st.players[seat], away: true };
+      // Nobody left to play: the game simply ends, with no result.
+      if (!st.players.some(p => p && !isBot(p))) {
+        await sql`update games set status = 'done', state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
+        return res.status(200).json({ ok: true, ended: true });
+      }
+      const board = ['ludo', 'bhabhi', 'vyapar'].includes(st.kind);
+      if (board) runBoardBots(st); else runBots(st);
+      const done = board ? boardOver(st) : !!(st.winner || st.draw);
+      if (board) st.v = Number(st.v || 0) + 1;
+      st.turnAt = Date.now();
+      await sql`update games set status = ${done ? 'done' : 'active'}, state = ${JSON.stringify(st)}::jsonb,
+                ended_at = case when ${done}::boolean then now() else null end where id = ${g.id}`;
+      if (st.players.filter(p => !isParwah(p)).length > 1) await feed(sql, circle.id, me.id, line);
+      return res.status(200).json({ ok: true, game: publicState({ id: g.id, kind: st.kind, status: done ? 'done' : 'active', state: st }, me.id) });
     }
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });

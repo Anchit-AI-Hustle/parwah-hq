@@ -24,7 +24,11 @@ export function numberAfter(states) {
   return max + 1;
 }
 
-export function isBot(p) { return !!(p && p.bot); }
+// Who Parwah plays for: its own seats, and anyone who left a game or whose
+// turn the family handed to Parwah after a long wait (away).
+export function isBot(p) { return !!(p && (p.bot || p.away)); }
+// Parwah's own seats only: a game against Parwah is a game played alone.
+export function isParwah(p) { return !!(p && p.bot); }
 export function teamList(st, t) { return st.players.filter(p => p.team === t); }
 export function currentPlayer(st) {
   let t = st.teamTurn;
@@ -47,7 +51,7 @@ export function gameSummary(g, memberId) {
   return {
     id: g.id, kind, n: Number(st.n) || 1, name: gameName(kind, st.n),
     status: g.status, lobby: lobby || undefined,
-    solo: seats.some(isBot) || undefined,
+    solo: seats.some(isParwah) || undefined,
     by: st.by || null,
     players: seats.map(p => p && p.name).filter(Boolean),
     mine: seats.some(p => p && p.id === memberId),
