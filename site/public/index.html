@@ -1422,6 +1422,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <label class="pick"><span>Time</span><input type="time" id="r-time" aria-label="Time"></label>
         <label class="pick"><span>Who does it</span><select id="r-for" aria-label="Who does it"></select></label>
         <label class="pick"><span>For whom</span><select id="r-about" aria-label="Who it is for"><option value="">The whole family</option></select></label>
+        <label class="pick"><span>Remind</span><select id="r-remind" aria-label="When to remind"><option value="0">At the time</option><option value="10">10 minutes before</option><option value="30">30 minutes before</option><option value="60">1 hour before</option><option value="1440">1 day before</option><option value="none">No reminder</option></select></label>
       </div>
       <div class="pick" style="margin-top:var(--space-12)"><span>Repeat</span>
         <div class="seg" id="r-seg" role="group" aria-label="Repeat">
@@ -2669,6 +2670,17 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   </div>
 </div>
 
+<div class="msheet" id="alarmsheet" hidden role="alertdialog" aria-modal="true" aria-labelledby="al-title" aria-describedby="al-sub">
+  <div class="mp" style="max-width:420px">
+    <h3 id="al-title" tabindex="-1" style="margin:0 0 var(--space-8)"></h3>
+    <p class="hint" id="al-sub" style="margin:0 0 var(--space-16)"></p>
+    <div class="prow2" style="flex-direction:column">
+      <button type="button" class="go" id="al-done" style="margin-top:0">Done ✔</button>
+      <button type="button" class="cbtn" id="al-snooze">Snooze 10 minutes</button>
+      <button type="button" class="cbtn ghost" id="al-close">Close</button>
+    </div>
+  </div>
+</div>
 <div class="sosalert" id="sosalert" hidden role="alertdialog" aria-modal="true" aria-labelledby="sa-title" aria-describedby="sa-sub">
   <div class="ss-in">
     <h2 id="sa-title" tabindex="-1">🆘 Someone needs help</h2>
@@ -2708,6 +2720,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <label class="pick"><span>Time</span><input type="time" id="ts-e-time"></label>
         <label class="pick"><span>Repeat</span><select id="ts-e-rep"><option value="once">Once</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></label>
         <label class="pick"><span>For whom</span><select id="ts-e-about" aria-label="For whom"></select></label>
+        <label class="pick"><span>Remind</span><select id="ts-e-remind"><option value="0">At the time</option><option value="10">10 minutes before</option><option value="30">30 minutes before</option><option value="60">1 hour before</option><option value="1440">1 day before</option><option value="none">No reminder</option></select></label>
         <label class="pick"><span>If late, tell</span><select id="ts-e-esc"><option value="people">Whoever has it, and me</option><option value="everyone">Everyone in the family</option></select></label>
       </div>
       <label for="ts-e-done" style="margin-top:var(--space-12)">Done when</label>
@@ -3558,6 +3571,79 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // ---------- family tasks ----------
   var taskCache = [], tsId = null;
   var REP_WORD = { daily:'every day', weekly:'every week', monthly:'every month' };
+  function REM_WORD(m){ m = +m; return !m ? 'at the time' : m === 1440 ? '1 day before' : m === 60 ? '1 hour before' : m + ' min before'; }
+
+  // THE ALARM, when Parwah is open: at a task's reminder time it takes the
+  // screen with a chime, for whoever has it (or anyone, when nobody does).
+  // Done, Snooze 10 minutes, or Close. With Parwah closed, the reminder
+  // arrives as a notification instead (api/_tasks.mjs sweepReminders).
+  var alarmTask = null, alarmBeep = null;
+  // Per occurrence, on this phone: rung once, or snoozed until a time.
+  function remKey(q){ return 'parwah-rem:' + q.id + ':' + q.due_at; }
+  function remState(q){ try { return localStorage.getItem(remKey(q)) || ''; } catch (e) { return ''; } }
+  function remSet(q, v){ try { localStorage.setItem(remKey(q), v); } catch (e) {} }
+  function alarmCheck(){
+    if (!state || alarmTask || !$('sosalert').hidden || !$('sosscreen').hidden) return;
+    var now = Date.now(), due = null;
+    (taskCache || []).forEach(function(q){
+      if (due || !taskOpen(q) || !q.due_at || q.remind_before === null || q.remind_before === undefined) return;
+      if (q.claimed_by && q.claimed_by !== state.memberId) return;
+      var ring = Date.parse(q.due_at) - (+q.remind_before) * 60000;
+      if (ring > now || ring < now - 30 * 60000) return;
+      // Written down after its own reminder time: not news, so no alarm -
+      // the same rule the server keeps for notifications.
+      if (q.created_at && Date.parse(q.created_at) > ring) return;
+      var st = remState(q);                       // '' never rung, 'rung', or a snooze-until time
+      if (st === 'rung' || (st && +st > now)) return;
+      due = q;
+    });
+    if (due) alarmShow(due);
+  }
+  function alarmShow(q){
+    alarmTask = q;
+    remSet(q, 'rung');
+    $('al-title').textContent = '⏰ ' + (+q.remind_before ? REM_WORD(q.remind_before).replace(' before', ' to go') + ': ' : 'It is time: ') + q.title;
+    $('al-sub').textContent = taskDue(q) + (q.about_name ? ' · for ' + q.about_name : '');
+    $('al-done').hidden = !(q.claimed_by === state.memberId || q.status === 'open');
+    $('alarmsheet').hidden = false;
+    try { $('al-title').focus(); } catch (e) {}
+    alarmChime();
+  }
+  function alarmChime(){
+    alarmQuiet();
+    var n = 0;
+    var ring = function(){
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) {
+          sirenCtx = sirenCtx || new AC();
+          if (sirenCtx.state === 'suspended') sirenCtx.resume().catch(function(){});
+          [0, 0.35, 0.7].forEach(function(t, i){
+            var o = sirenCtx.createOscillator(), g = sirenCtx.createGain();
+            o.type = 'sine'; o.frequency.value = i === 2 ? 1320 : 880; g.gain.value = 0.2;
+            o.connect(g); g.connect(sirenCtx.destination);
+            o.start(sirenCtx.currentTime + t); o.stop(sirenCtx.currentTime + t + 0.25);
+          });
+        }
+      } catch (e) {}
+      sosBuzz([300, 150, 300]);
+      if (++n >= 20) alarmQuiet();                // a minute of chiming at most
+    };
+    ring(); alarmBeep = setInterval(ring, 3000);
+  }
+  function alarmQuiet(){ clearInterval(alarmBeep); alarmBeep = null; }
+  function remClose(){ alarmQuiet(); $('alarmsheet').hidden = true; alarmTask = null; }
+  $('al-close').addEventListener('click', remClose);
+  $('al-snooze').addEventListener('click', function(){
+    if (alarmTask) remSet(alarmTask, String(Date.now() + 10 * 60000));
+    remClose(); toast('Snoozed - it will ring again in 10 minutes on this phone');
+  });
+  $('al-done').addEventListener('click', function(){
+    var q = alarmTask; remClose(); if (!q) return;
+    carePost({ action: 'task_done', taskId: q.id }, function(){ toast('Done ✔'); });
+  });
+  $('alarmsheet').addEventListener('keydown', function(e){ if (e.key === 'Escape') remClose(); });
+  setInterval(alarmCheck, 20000);
   function localDay(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function clockOf(d){ return dtf([], { hour:'numeric', minute:'2-digit' }).format(d); }
   function taskOpen(q){ return q.status === 'open' || q.status === 'assigned' || q.status === 'claimed'; }
@@ -3634,6 +3720,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (q.about_name) bits.push('for ' + (q.about_member === me ? 'you' : q.about_name));
     var due = taskDue(q); if (due) bits.push(due);
     if (REP_WORD[q.recurrence]) bits.push(REP_WORD[q.recurrence]);
+    if (taskOpen(q) && q.remind_before !== null && q.remind_before !== undefined) bits.push('🔔 ' + REM_WORD(q.remind_before));
     bits.push(taskWho(q));
     var right = '';
     if (q.status === 'open') right = '<button class="cbtn" data-tack="' + q.id + '">I’m on it</button>';
@@ -3765,6 +3852,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       $('ts-e-time').value = d && !q.all_day ? String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') : '';
       $('ts-e-rep').value = q.recurrence || 'once';
       $('ts-e-esc').value = q.escalate || 'people';
+      $('ts-e-remind').value = q.remind_before === null || q.remind_before === undefined ? 'none' : String(q.remind_before);
       $('ts-e-about').innerHTML = '<option value="">The whole family</option>' + (membersCache || []).map(function(m){ return '<option value="' + m.id + '">' + esc(m.id === state.memberId ? 'Me' : m.name) + '</option>'; }).join('');
       $('ts-e-about').value = q.about_member || '';
       $('ts-e-done').value = q.done_when || '';
@@ -3793,7 +3881,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var due = dueFrom($('ts-e-date').value, $('ts-e-time').value), rep = $('ts-e-rep').value;
     if (rep !== 'once' && !due.dueAt && !due.dueDate) { toast('A repeating task needs a date or a time'); return; }
     tsPost({ action:'task_edit', title:t, dueAt: due.dueAt || '', dueDate: due.dueDate || '', recurrence: rep,
-             escalate: $('ts-e-esc').value, doneWhen: $('ts-e-done').value, aboutMemberId: $('ts-e-about').value, tz: homeTz() }, 'Saved');
+             escalate: $('ts-e-esc').value, doneWhen: $('ts-e-done').value, aboutMemberId: $('ts-e-about').value, tz: homeTz(),
+             remindBefore: $('ts-e-remind').value }, 'Saved');
     $('ts-edit').hidden = true;
   });
   function homeTz(){ try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } }
@@ -3854,6 +3943,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('rlist').innerHTML = rh || '<div class="ev">Nothing to do right now 🧡 Add the next thing the family should not forget.</div>';
     $('qlist').hidden = true;
     if (tsId && !$('tsheet').hidden) tsRender();
+    alarmCheck();
     window._careCounts = { need: need.length, today: now.length, soon: soon.length, waiting: waiting };
 
     // What Parwah noticed, offered rather than imposed.
@@ -5434,13 +5524,15 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
                  doneWhen: $('r-donewhen').value.trim() || undefined,
                  escalate: $('r-esc').value };
     if (due.dueAt) body.dueAt = due.dueAt; else if (due.dueDate) body.dueDate = due.dueDate;
+    // A reminder needs a time to ring at; with a date alone there is none.
+    if (due.dueAt) body.remindBefore = $('r-remind').value;
     carePost(body, function(j){
       $('r-title').value = ''; $('r-time').value = ''; $('r-date').value = ''; $('r-donewhen').value = '';
       // Back to the defaults, so the next thing is not silently "Daily,
       // given to Papa, about Papa".
       repeatMode = 'once';
       $('r-seg').querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x.getAttribute('data-rep') === 'once'); });
-      $('r-for').value = 'any'; $('r-about').value = ''; $('r-esc').value = 'people'; $('r-more').open = false; todoHint();
+      $('r-for').value = 'any'; $('r-about').value = ''; $('r-esc').value = 'people'; $('r-remind').value = '0'; $('r-more').open = false; todoHint();
       var when = due.tomorrow ? ' - for tomorrow, as that time has passed today' : '';
       toast((j.status === 'assigned' ? 'Sent - they will be asked to say yes'
         : j.status === 'claimed' ? 'Added - it is yours 🧡' : 'Asked the whole family 🧡') + when);

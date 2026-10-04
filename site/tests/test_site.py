@@ -782,6 +782,7 @@ CIRCLE_WIDE_OK = {
     ("events.mjs", "could do with a call"): "the point of the pulse",
     ("care.mjs",   "needs a hand"):       "a job anyone can pick up",
     ("_tasks.mjs", "payload, {})"):       "late, and nobody has it - or the family chose to tell everyone",
+    ("_tasks.mjs", "Nobody has it yet - first to tap"): "its time has come and nobody has it: anyone may take it",
     ("plans.mjs",  ""):                   "a plan invites the whole circle",
     ("games.mjs",  "lobby is open"):      "an open lobby invites everyone",
 }

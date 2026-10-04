@@ -208,7 +208,9 @@ const tomorrow = localDay(Date.now() + 86400000);
   // Written down after its time: it shows as late, but nobody is woken.
   ok('a task written down after its time wakes nobody', (await admin.query(`select count(*)::int as n from events where text like 'Running late%electricity%'`)).rows[0].n === 0);
   // It runs late after it was set (as if set yesterday morning for the evening).
-  await admin.query(`update requests set overdue_alerted_for = null, due_at = now() - interval '2 minutes' where title = 'Pay the electricity bill'`);
+  // It has a reminder (the form's default), so the family is told it is
+  // running late 30 minutes after its time, not the minute it passes.
+  await admin.query(`update requests set overdue_alerted_for = null, due_at = now() - interval '40 minutes' where title = 'Pay the electricity bill'`);
   await Promise.all([reload(R), reload(M)]);
   ok('a task past its time is under Needs attention', (await groupOf(M, 'Pay the electricity bill')) === 'g-need');
   ok('marked as running late', /running late/.test(await rowOf(M, 'Pay the electricity bill').textContent()));
@@ -333,6 +335,46 @@ const tomorrow = localDay(Date.now() + 86400000);
   await reload(M);
   ok('a task with nowhere to go has no "go" button', await rowOf(M, 'Water the tulsi').locator('[data-tgo]').count() === 0);
   ok('a gas refill is not mistaken for medicines', await rowOf(M, 'Book the gas refill').locator('[data-tgo]').count() === 0);
+}
+
+// ---- 9. Reminders: chosen on the form, and an alarm that rings on time
+{
+  await reload(R);
+  ok('the add form offers when to remind, at the time by default', await R.inputValue('#r-remind') === '0'
+     && (await R.$$eval('#r-remind option', os => os.map(o => o.value))).join() === '0,10,30,60,1440,none');
+  const mk = (title, mins) => M.evaluate(async ([t, at]) => {
+    const r = await fetch('/api/care', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': localStorage.getItem('parwah-token') },
+      body: JSON.stringify({ action: 'task_create', code: 'SHARMA', memberId: JSON.parse(localStorage.getItem('parwah')).memberId, title: t, ownerId: 'me', dueAt: at, remindBefore: 0, tz: 'Asia/Kolkata' }) });
+    return r.json();
+  }, [title, new Date(Date.now() + mins * 60000).toISOString()]);
+  const w0 = await mk('Wake up for the airport', 2);
+  await admin.query(`update requests set due_at = now() - interval '30 seconds', reminded_for = null, created_at = now() - interval '1 hour' where id = $1`, [w0.id]);
+  await M.goto(BASE + '/#care'); await reload(M);
+  ok('at its time, the alarm takes the screen', await M.isVisible('#alarmsheet') && /It is time: Wake up for the airport/.test(await M.textContent('#al-title')),
+     await M.textContent('#al-title').catch(() => ''));
+  ok('the task shows its reminder', /🔔 at the time/.test(await M.textContent('#rlist')));
+  await M.click('#al-snooze'); await M.waitForTimeout(300);
+  ok('Snooze closes it', !(await M.isVisible('#alarmsheet')));
+  await reload(M);
+  ok('and it does not ring again straight away', !(await M.isVisible('#alarmsheet')));
+  await M.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('parwah-rem:')) localStorage.setItem(k, String(Date.now() - 1000)); });
+  await reload(M);
+  ok('it rings again when the snooze is up', await M.isVisible('#alarmsheet'));
+  await M.click('#al-done'); await M.waitForTimeout(900);
+  const w = await task('Wake up for the airport');
+  ok('Done from the alarm finishes the task', w.status === 'done' && w.completed_by === meera.id, w.status);
+  // Someone else's task does not ring on this phone.
+  await R.evaluate(async (pid) => {
+    await fetch('/api/care', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': localStorage.getItem('parwah-token') },
+      body: JSON.stringify({ action: 'task_create', code: 'SHARMA', memberId: JSON.parse(localStorage.getItem('parwah')).memberId, title: 'Rohan only', ownerId: 'me', dueAt: new Date(Date.now() + 120000).toISOString(), remindBefore: 0, tz: 'Asia/Kolkata' }) });
+  });
+  await admin.query(`update requests set due_at = now() - interval '20 seconds', created_at = now() - interval '1 hour' where title = 'Rohan only'`);
+  await reload(M);
+  ok('a task someone else has does not ring on your phone', !(await M.isVisible('#alarmsheet')));
+  // Written down already late: shown as late, but no alarm.
+  await mk('Already late when written', -5);
+  await reload(M);
+  ok('a task written down after its time does not ring', !(await M.isVisible('#alarmsheet')));
 }
 
 if (process.env.SHOTS) {
