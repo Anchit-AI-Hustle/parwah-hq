@@ -177,6 +177,16 @@ if (process.env.PC_SHOT_DIR) { await R.screenshot({ path: process.env.PC_SHOT_DI
 ok('the waiting person says what they say they are', /says they are: grandson/.test(await R.textContent('#joinreqs')), await R.textContent('#joinreqs'));
 const prep = await R.$$eval('#preplist .crow', rs => rs.map(r => r.textContent));
 ok('how ready: one line for Papa, the elder, with what is missing', prep.length === 1 && /Papa/.test(prep[0]) && /to complete/.test(prep[0]), prep.join(' / '));
+{
+  // On a slow connection the papers can arrive before the family list: the
+  // card is drawn again once it is known whom the family looks after.
+  const slow = await phone(as('Rohan'), { hash: '#people' });
+  await slow.route('**/api/events*', async r => { await new Promise(x => setTimeout(x, 2500)); r.continue(); });
+  await slow.reload(); await slow.waitForTimeout(4500);
+  const p2 = await slow.$$eval('#preplist .crow', rs => rs.map(r => r.textContent));
+  ok('even when the papers arrive before the family list, only Papa is listed', p2.length === 1 && /Papa/.test(p2[0]), p2.join(' / '));
+  await slow.context().close();
+}
 await R.click('#joinreqs [data-jok]'); await R.waitForTimeout(2500);
 const kabirId = (await admin.query(`select id from members where name = 'Kabir'`)).rows[0].id;
 ok('after letting him in, the tree form is ready to place him', await R.$eval('#tr-who', s => s.value) === kabirId);

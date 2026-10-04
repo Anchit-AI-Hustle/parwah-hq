@@ -3294,6 +3294,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   function renderForSelect(members){
     membersCache = members;
+    // "How ready" lists the elders the family looks after, which it can only
+    // tell once the family is known: drawn again if the papers came first.
+    if (prepCache && prepCache.length) renderPrep();
     // Opening the app straight on #vault - a bookmark, or a tap on a push -
     // used to build the vault's "whose document" list before anyone was known,
     // leaving it empty and every save refused with "Say whose document this
