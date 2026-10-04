@@ -87,10 +87,29 @@ const nu = await user('Nisha');
 const N = await phone(nu);
 await N.click('#pickkind [data-kind="family"]'); await N.waitForTimeout(300);
 ok('a new family is asked joint or nuclear first', await N.isVisible('#c-ftype') && (await N.textContent('#c-ftype')).includes('Joint family') && (await N.textContent('#c-ftype')).includes('Nuclear family'));
-ok('joint is chosen to start with, and offers daughter-in-law', await N.$eval('#c-ftype .sel', b => b.dataset.ft) === 'joint' && await N.isVisible('#c-role [data-role="daughter-in-law"]'));
+ok('nothing is chosen for them', !(await N.$('#c-ftype .sel')) && await N.$$eval('#c-ftype button', bs => bs.every(b => b.getAttribute('aria-pressed') === 'false')));
+await N.fill('#c-circle', 'Nisha Family'); await N.click('#c-go'); await N.waitForTimeout(400);
+ok('and the family is not started until they choose', /Choose joint family or nuclear family first/.test(await N.textContent('#ob-err')) &&
+   (await admin.query(`select count(*)::int as n from circles where name = 'Nisha Family'`)).rows[0].n === 0);
+ok('it comes before the family name and your name', await N.evaluate(() => {
+  const at = id => document.getElementById(id).getBoundingClientRect().top;
+  return at('c-ftype') < at('c-circle') && at('c-circle') < at('c-name');
+}));
+await N.click('#c-ftype [data-ft="joint"]'); await N.waitForTimeout(200);
+ok('joint offers daughter-in-law and grandparents', await N.isVisible('#c-role [data-role="daughter-in-law"]') && await N.isVisible('#c-role [data-role="grandmother"]') &&
+   await N.$eval('#c-ftype [data-ft="joint"]', b => b.getAttribute('aria-pressed')) === 'true');
+await N.setViewportSize({ width: 320, height: 800 });
+ok('at 320 each choice reads as a title over its description, inside its pill', await N.$$eval('#c-ftype button', bs => bs.every(b => {
+  const s = b.querySelector('small').getBoundingClientRect(), r = b.getBoundingClientRect();
+  return getComputedStyle(b).flexDirection === 'column' && s.left >= r.left - 1 && s.right <= r.right + 1 && b.scrollWidth <= b.clientWidth + 1;
+})));
+if (process.env.TREE_SHOT_DIR) {
+  await N.locator('#createcard').screenshot({ path: process.env.TREE_SHOT_DIR + '/create-joint-320-light.png' });
+  await N.emulateMedia({ colorScheme: 'dark' }); await N.locator('#createcard').screenshot({ path: process.env.TREE_SHOT_DIR + '/create-joint-320-dark.png' }); await N.emulateMedia({ colorScheme: 'light' });
+}
 await N.click('#c-ftype [data-ft="nuclear"]'); await N.waitForTimeout(200);
-ok('a nuclear family does not offer daughter-in-law or grandchildren', !(await N.isVisible('#c-role [data-role="daughter-in-law"]')) && !(await N.isVisible('#c-role [data-role="grandson"]')) && await N.isVisible('#c-role [data-role="son"]'));
-await N.fill('#c-circle', 'Nisha Family'); await N.click('#c-go'); await N.waitForTimeout(1500);
+ok('a nuclear family does not offer daughter-in-law, grandparents or grandchildren', !(await N.isVisible('#c-role [data-role="daughter-in-law"]')) && !(await N.isVisible('#c-role [data-role="grandson"]')) && !(await N.isVisible('#c-role [data-role="grandfather"]')) && await N.isVisible('#c-role [data-role="son"]'));
+await N.click('#c-go'); await N.waitForTimeout(1500);
 ok('and it is kept as nuclear', (await admin.query(`select family_type from circles where name = 'Nisha Family'`)).rows[0].family_type === 'nuclear');
 const gr = await user('Gita');
 const G = await phone(gr);
@@ -101,6 +120,7 @@ ok('a group of friends is not asked joint or nuclear', !(await G.isVisible('#c-f
 const papaU = await user('Papa');
 const P1 = await phone(papaU);
 await P1.click('#pickkind [data-kind="family"]'); await P1.waitForTimeout(300);
+await P1.click('#c-ftype [data-ft="joint"]');
 await P1.fill('#c-circle', 'Sachdeva Family');
 await P1.click('#c-role [data-role="father"]');
 await P1.click('#c-go'); await P1.waitForTimeout(1500);
@@ -126,13 +146,27 @@ ok('People leads with the family tree', await P1.isVisible('#treecard') && /Join
 ok('before anyone is placed, it explains how to start', /Start the tree/.test(await P1.textContent('#tree-sub')));
 const idOf = async (name) => (await admin.query(`select id from members where circle_id = $1 and name = $2`, [fam.id, name])).rows[0].id;
 async function place(page, who, where, of, g) {
-  await page.selectOption('#tr-who', await idOf(who));
+  await page.selectOption('#tr-who', who === 'new' ? 'new' : await idOf(who));
+  await page.click('#tr-gender [data-g="' + g + '"]');
   await page.selectOption('#tr-place', where);
   await page.selectOption('#tr-of', await idOf(of));
-  await page.click('#tr-gender [data-g="' + g + '"]');
   await page.click('#tr-go'); await page.waitForTimeout(1300);
 }
-await place(P1, 'Mumma', 'spouse', 'Papa', 'f');
+ok('the form starts on nothing chosen, so one tap cannot save a wrong sentence',
+   await P1.$eval('#tr-place', x => x.value) === '' && await P1.$eval('#tr-of', x => x.value) === '' && (await P1.textContent('#tr-say')).trim() === '');
+await P1.click('#tr-go'); await P1.waitForTimeout(300);
+ok('and Add asks for what is missing', /Choose (he or she|son, daughter)/.test(await P1.textContent('#tr-err')), await P1.textContent('#tr-err'));
+// He or she, chosen and then left alone for a while, survives the refresh.
+await P1.selectOption('#tr-who', await idOf('Mumma'));
+await P1.click('#tr-gender [data-g="f"]');
+await P1.selectOption('#tr-place', 'spouse');
+await P1.waitForTimeout(13000);   // the screen refreshes every 12 seconds
+ok('a refresh does not undo He or she, or the place, mid-way', await P1.$eval('#tr-gender [data-g="f"]', b => b.classList.contains('sel') && b.getAttribute('aria-pressed') === 'true') && await P1.$eval('#tr-place', x => x.value) === 'spouse');
+ok('the words follow He or she', /wife/.test(await P1.textContent('#tr-place')) && !/husband or wife/.test(await P1.textContent('#tr-place')));
+await P1.selectOption('#tr-of', papaId);
+ok('it says the sentence back before saving', (await P1.textContent('#tr-say')).trim() === "Mumma is your wife.", await P1.textContent('#tr-say'));
+await P1.click('#tr-go'); await P1.waitForTimeout(1300);
+ok('after adding, it moves on to the next person not in the tree', (await P1.$eval('#tr-who', x => x.value)) !== await idOf('Mumma') && await P1.$eval('#tr-place', x => x.value) === '');
 await place(P1, 'Rohan', 'child', 'Papa', 'm');
 await place(P1, 'Amit', 'child', 'Papa', 'm');
 await place(P1, 'Priya', 'spouse', 'Rohan', 'f');
@@ -172,19 +206,62 @@ const priyaSheet = P2.locator('.tperson', { hasText: 'Papa' });
 await priyaSheet.click(); await P2.waitForTimeout(500);
 ok('tapping someone opens their profile, with the same word for them', await P2.isVisible('#msheet') && /Father-in-law/.test(await P2.textContent('#mp-role')), await P2.textContent('#mp-role'));
 
-// ---- a mistake is undone: take someone out, and they can be placed again
+// ---- a mistake is undone one link at a time; nobody else moves
 await P1.selectOption('#tr-who', await idOf('Vihaan'));
-ok('someone in the tree can be taken out', await P1.isVisible('#tr-out') && /Take Vihaan out of the tree/.test(await P1.textContent('#tr-out')), await P1.textContent('#tr-out'));
+ok('someone in the tree shows their links, each removable', /Remove: Vihaan is Aarav's son/.test(await P1.textContent('#tr-links')), await P1.textContent('#tr-links'));
 let asked = '';
 P1.once('dialog', d => { asked = d.message(); d.accept(); });
-await P1.click('#tr-out'); await P1.waitForTimeout(1300);
-ok('it asks first, and says what goes', /Take Vihaan out of the family tree/.test(asked) && /placed again/.test(asked), asked);
-ok('the links go', (await admin.query(`select parent_id from members where id = $1`, [await idOf('Vihaan')])).rows[0].parent_id === null);
+await P1.click('#tr-links [data-unlink="parent"]'); await P1.waitForTimeout(1300);
+ok('it asks first, and says nobody else moves', /Vihaan is Aarav's son/.test(asked) && /children too, stays/.test(asked), asked);
+ok('the link goes', (await admin.query(`select parent_id from members where id = $1`, [await idOf('Vihaan')])).rows[0].parent_id === null);
 ok('and the tree says so: three generations, Vihaan not in it yet', /3 generations/.test(await P1.textContent('#tree-sub')) && /not in the tree yet: Vihaan/.test(await P1.textContent('#tree-sub')), await P1.textContent('#tree-sub'));
-await P1.selectOption('#tr-who', await idOf('Vihaan'));
-ok('someone not in the tree has nothing to take out', !(await P1.isVisible('#tr-out')));
 await place(P1, 'Vihaan', 'child', 'Aarav', 'm');
 ok('and they can be placed again', /4 generations/.test(await P1.textContent('#tree-sub')));
+await P1.selectOption('#tr-who', await idOf('Rohan'));
+P1.once('dialog', d => d.accept());
+await P1.click('#tr-links [data-unlink="spouse"]'); await P1.waitForTimeout(1300);
+const afterSp = Object.fromEntries((await admin.query(`select name, parent_id, spouse_id from members where circle_id = $1`, [fam.id])).rows.map(r => [r.name, r]));
+ok('removing a wrong wife keeps the children where they are', afterSp.Rohan.spouse_id === null && afterSp.Priya.spouse_id === null && afterSp.Aarav.parent_id === await idOf('Rohan') && afterSp.Rohan.parent_id === papaId);
+await place(P1, 'Priya', 'spouse', 'Rohan', 'f');
+
+// ---- people who are not on Parwah: Dadi, then Papa's sister
+await place(P1, 'new', 'parent', 'Papa', 'f');
+ok('a person not on Parwah needs a name first', /Write their name/.test(await P1.textContent('#tr-err')));
+await P1.fill('#tr-name', 'Dadi');
+ok('and the sentence uses it', (await P1.textContent('#tr-say')).trim() === "Dadi is your mother.", await P1.textContent('#tr-say'));
+await P1.click('#tr-go'); await P1.waitForTimeout(1300);
+const dadi = (await admin.query(`select id, user_id, gender from members where circle_id = $1 and name = 'Dadi'`, [fam.id])).rows[0];
+ok('Dadi is added, not on Parwah, as Papa\'s mother', dadi && dadi.user_id === null && dadi.gender === 'f' &&
+   (await admin.query(`select parent_id from members where id = $1`, [papaId])).rows[0].parent_id === dadi.id);
+ok('five generations now, with a quiet note on Dadi', /5 generations/.test(await P1.textContent('#tree-sub')) && /Dadi.*not on Parwah/.test(await P1.textContent('#tree')), await P1.textContent('#tree-sub'));
+await place(P1, 'new', 'sibling', 'Papa', 'f');
+await P1.fill('#tr-name', 'Usha'); await P1.click('#tr-go'); await P1.waitForTimeout(1300);
+const aaravP = await phone({ ...people.Aarav, code: fam.code, circleName: 'Sachdeva Family', memberId: people.Aarav.memberId }, { hash: '#people' });
+ok('with Dadi in, Papa\'s sister can be added: his Sister, Aarav\'s Grand-aunt', /UshaSister/.test(await P1.textContent('#tree')) && /UshaGrand-aunt/.test(await aaravP.textContent('#tree')), await aaravP.textContent('#tree'));
+ok('nobody can give Dadi a task or start a chat with her', !(await P1.$$eval('#r-for option', os => os.map(o => o.textContent))).includes('Dadi') &&
+   !(await P1.evaluate(async () => { document.getElementById('chat-fab').click(); await new Promise(r => setTimeout(r, 300)); return document.getElementById('ncsheet').textContent; })).includes('Dadi'));
+await P1.evaluate(() => { document.getElementById('ncsheet').hidden = true; });
+ok('but her health and papers can be about her', (await P1.$$eval('#r-about option', os => os.map(o => o.textContent))).includes('Dadi'));
+// A slip is removable while nothing is kept about them.
+await place(P1, 'new', 'child', 'Usha', 'm');
+await P1.fill('#tr-name', 'Typo Name'); await P1.click('#tr-go'); await P1.waitForTimeout(1300);
+await P1.selectOption('#tr-who', await idOf('Typo Name'));
+ok('someone added by name can be removed again', /Remove Typo Name from the family/.test(await P1.textContent('#tr-links')));
+P1.once('dialog', d => d.accept());
+await P1.click('#tr-links [data-unlink="person"]'); await P1.waitForTimeout(1300);
+ok('and is gone', (await admin.query(`select count(*)::int as n from members where circle_id = $1 and name = 'Typo Name'`, [fam.id])).rows[0].n === 0);
+await P1.selectOption('#tr-who', await idOf('Rohan'));
+ok('someone on Parwah cannot be removed from here', !/from the family/.test(await P1.textContent('#tr-links')));
+
+if (process.env.TREE_SHOT_DIR) {
+  await P1.setViewportSize({ width: 320, height: 900 });
+  await P1.selectOption('#tr-who', await idOf('Rohan')); await P1.click('#tr-gender [data-g="m"]'); await P1.selectOption('#tr-place', 'child'); await P1.selectOption('#tr-of', papaId);
+  await P1.locator('#treecard').screenshot({ path: process.env.TREE_SHOT_DIR + '/tree-papa-320-light.png' });
+  await P1.emulateMedia({ colorScheme: 'dark' }); await P1.locator('#treecard').screenshot({ path: process.env.TREE_SHOT_DIR + '/tree-papa-320-dark.png' }); await P1.emulateMedia({ colorScheme: 'light' });
+  await P1.setViewportSize({ width: 390, height: 844 });
+}
+// ---- the same words everywhere
+ok('your own row says You, not the word you joined with', /Papa · you/.test(await P1.textContent('#members')), await P1.textContent('#members'));
 
 ok('no script errors', errors.length === 0, errors.join(' | '));
 await browser.close();

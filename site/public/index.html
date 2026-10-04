@@ -279,7 +279,7 @@ label + select{width:100%}
 .pick input,.pick select{width:100%;min-width:0;border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-12);font-family:var(--body);font-size:var(--fs-16);background:var(--day);color:var(--ink)}
 .seg{display:flex;flex-wrap:wrap;background:var(--bone);border-radius:var(--radius-12);padding:var(--space-4)}
 .seg button{flex:1 1 auto;min-width:64px;border:0;background:none;border-radius:var(--radius-12);padding:var(--space-8);font-family:var(--body);font-weight:700;font-size:var(--fs-14);cursor:pointer;color:var(--ink-soft)}
-.seg button.sel{background:var(--surface);color:var(--ink);box-shadow:var(--sh-sm)}
+.seg button.sel{background:var(--surface);color:var(--ink);box-shadow:var(--sh-sm),inset 0 0 0 2px var(--marigold)}
 .pageseg{margin:0 0 var(--space-16)}
 .pageseg button{padding:var(--space-12) var(--space-8);font-size:var(--fs-14)}
 .bigletter{font-family:var(--disp);font-size:var(--fs-36);font-weight:700;color:var(--sindoor);text-align:center;background:var(--surface);border:2px dashed var(--marigold);border-radius:var(--radius-16);padding:var(--space-12);margin:var(--space-12) 0;letter-spacing:.1em}
@@ -554,12 +554,18 @@ details.more[open]>summary::before{content:"▾ "}
 .tand{color:var(--sindoor);font-size:var(--fs-14)}
 .tpair{display:flex;align-items:center;gap:var(--space-8)}
 .treeadd{margin-top:var(--space-16);padding-top:var(--space-16);border-top:1px solid var(--bone-2)}
-.treeform{display:grid;grid-template-columns:1fr;gap:var(--space-8)}
-@media (min-width:600px){.treeform{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.treeform{display:grid;grid-template-columns:1fr;gap:var(--space-8);margin-top:var(--space-12)}
+@media (min-width:600px){.treeform{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.trlbl{margin:var(--space-12) 0 var(--space-4);font-size:var(--fs-12);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.trsay{margin:var(--space-12) 0 0;font-size:var(--fs-16);font-weight:700;color:var(--ink);min-height:1.4em}
+.trlinks{margin-top:var(--space-16);padding-top:var(--space-12);border-top:1px solid var(--bone-2)}
+.trlinks .linkbtn{display:flex;margin-top:0;text-align:left}
+.tperson .off{font-style:normal;font-size:var(--fs-12);color:var(--ink-soft)}
 #createcard.nuclear .jointonly{display:none}
 #c-ftype{flex-wrap:wrap}
 #c-ftype button{flex:1 1 0;min-width:0;text-align:left}
 #c-ftype button small{display:block;font-weight:400;font-size:var(--fs-12);color:var(--ink-soft)}
+#c-ftype button{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:var(--space-4)}
 /* Today: the five things, then everything else under More */
 .todaymore{margin:var(--space-16) 0}
 .todaymore>summary{position:relative;display:flex;flex-direction:column;justify-content:center;min-height:var(--tap-min);padding:var(--space-12) var(--space-40) var(--space-12) var(--space-16);cursor:pointer;
@@ -596,7 +602,8 @@ details.more[open]>summary::before{content:"▾ "}
 .chatrow.needsyou .txt small:first-of-type{color:var(--sindoor)}
 
 .toast{position:fixed;left:50%;bottom:calc(var(--tabs-h) + 14px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(160px);background:var(--pine);color:var(--cream);padding:var(--space-12) var(--space-20);border-radius:var(--radius-pill);font-size:var(--fs-14);transition:var(--motion-base);box-shadow:0 10px 30px rgba(0,0,0,.35);z-index:var(--z-toast);max-width:92vw;text-align:center}
-.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.show{transform:translateX(-50%) translateY(0);visibility:visible}
+.toast:not(.show){visibility:hidden}
 /* home widgets */
 .widgets{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-12);margin:var(--space-16) 0 var(--space-4)}
 .widget{border:1px solid var(--bone-2);background:var(--surface);border-radius:var(--radius-16);padding:var(--space-16);text-align:left;cursor:pointer;font-family:var(--body);display:flex;flex-direction:column;gap:var(--space-2);box-shadow:var(--sh-1)}
@@ -1141,23 +1148,24 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   </div>
   <div class="card" id="createcard" hidden>
     <h3 id="c-head">Start a new family</h3>
-    <label for="c-name">Your name</label>
-    <input type="text" id="c-name" maxlength="60" placeholder="e.g. Rohan">
-    <label for="c-circle">Circle name</label>
-    <input type="text" id="c-circle" maxlength="60" placeholder="e.g. Sharma Family">
     <div id="c-ftype-wrap">
-      <label>What kind of family?</label>
-      <div class="seg" id="c-ftype" role="group" aria-label="What kind of family">
-        <button type="button" data-ft="joint" class="sel">🏡 Joint family<small>Grandparents, sons, their wives and children</small></button>
-        <button type="button" data-ft="nuclear">🏠 Nuclear family<small>Parents and their children</small></button>
+      <label id="c-ftype-label">Joint family or nuclear family?</label>
+      <div class="seg" id="c-ftype" role="group" aria-labelledby="c-ftype-label">
+        <button type="button" data-ft="joint" aria-pressed="false">🏡 Joint family<small>Grandparents, their sons and daughters, their husbands and wives, and grandchildren</small></button>
+        <button type="button" data-ft="nuclear" aria-pressed="false">🏠 Nuclear family<small>Parents and their children</small></button>
       </div>
     </div>
-    <label id="c-role-label">Your role in the family (everyone is an equal admin)</label>
+    <label for="c-circle" id="c-circle-label">Family name</label>
+    <input type="text" id="c-circle" maxlength="60" placeholder="e.g. Sharma Family">
+    <label for="c-name">Your name</label>
+    <input type="text" id="c-name" maxlength="60" placeholder="e.g. Rohan">
+    <label id="c-role-label">Who are you in this family?</label>
+    <p class="hint" id="c-role-hint" style="margin:0 0 var(--space-8)">Everyone in it can add and change things.</p>
     <div class="rolepick relpick" id="c-role">
       <button type="button" data-role="father">👨 Father</button>
       <button type="button" data-role="mother">👩 Mother</button>
-      <button type="button" data-role="grandfather">👴 Grandfather</button>
-      <button type="button" data-role="grandmother">👵 Grandmother</button>
+      <button type="button" data-role="grandfather" class="jointonly">👴 Grandfather</button>
+      <button type="button" data-role="grandmother" class="jointonly">👵 Grandmother</button>
       <button type="button" data-role="son">👦 Son</button>
       <button type="button" data-role="daughter">👧 Daughter</button>
       <button type="button" data-role="brother">🙋 Brother</button>
@@ -1367,19 +1375,23 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <div id="tree" class="tree"></div>
       <div id="tree-add" class="treeadd">
         <p class="eyebrow" id="tree-add-head">Add someone to the tree</p>
+        <label class="pick"><span>Who</span><select id="tr-who" aria-label="Who to place"></select></label>
+        <div id="tr-new" hidden>
+          <label class="pick" style="margin-top:var(--space-8)"><span>Their name</span><input type="text" id="tr-name" maxlength="60" placeholder="e.g. Dadi or Kamla Devi" autocomplete="off"></label>
+          <p class="hint" style="margin:var(--space-4) 0 0">For family who are not on Parwah: an elder without a phone, someone who has passed away, a young child.</p>
+        </div>
+        <p class="trlbl" id="tr-g-label">He or she?</p>
+        <div class="seg" id="tr-gender" role="group" aria-labelledby="tr-g-label">
+          <button type="button" data-g="m" aria-pressed="false">He</button><button type="button" data-g="f" aria-pressed="false">She</button>
+        </div>
         <div class="treeform">
-          <label class="pick"><span>Who</span><select id="tr-who" aria-label="Who to place"></select></label>
-          <label class="pick"><span>is the</span><select id="tr-place" aria-label="Their place">
-            <option value="child">child</option><option value="spouse">husband or wife</option>
-            <option value="parent">mother or father</option><option value="sibling">brother or sister</option></select></label>
+          <label class="pick"><span>is the</span><select id="tr-place" aria-label="Their place"></select></label>
           <label class="pick"><span>of</span><select id="tr-of" aria-label="Of whom"></select></label>
         </div>
-        <div class="seg" id="tr-gender" role="group" aria-label="He or she" style="margin-top:var(--space-12)">
-          <button type="button" data-g="m">He</button><button type="button" data-g="f">She</button>
-        </div>
+        <p class="trsay" id="tr-say" aria-live="polite"></p>
         <p class="hint" id="tr-err" role="alert" hidden></p>
         <button class="go" id="tr-go" style="margin-top:var(--space-12)">Add to the tree</button>
-        <button class="linkbtn" id="tr-out" type="button" hidden style="margin-top:var(--space-12)"></button>
+        <div id="tr-links" class="trlinks" hidden></div>
       </div>
     </div>
     <div class="card" id="loc-card">
@@ -2657,12 +2669,15 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       .then(function(r){ return r.json().then(function(j){ checkSignedOut(j); return j; }); });
   }
 
+  // Chips and segments say which one is chosen to a screen reader too.
+  function pressSync(box){ box.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', x.classList.contains('sel') ? 'true' : 'false'); }); }
   function rolePicker(id){
     var box = $(id);
+    pressSync(box);
     box.addEventListener('click', function(e){
       var b = e.target.closest('button'); if(!b) return;
       box.querySelectorAll('button').forEach(function(x){ x.classList.remove('sel'); });
-      b.classList.add('sel');
+      b.classList.add('sel'); pressSync(box);
     });
     return function(){ return box.querySelector('.sel').getAttribute('data-role'); };
   }
@@ -2752,9 +2767,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     navPop = false;
   });
   function chatShort(c){ return c ? (c.kind === 'circle' ? 'everyone' : c.name) : ''; }
+  // Someone added to the tree by name never signs in: they can be written
+  // about, never given a task, a chat or a share.
+  function onApp(m){ return !!m && m.on_app !== false; }
   function relLabel(m){
+    if (m && state && m.id === state.memberId) return 'You';
     // The tree knows best: "Father-in-law" to Priya, "Father" to Rohan.
     if (m && m.kin && m.kin !== 'You') return m.kin;
+    // The word chosen when joining describes them to whoever invited them,
+    // not to you; once the family has a tree, it is not used.
+    if (famKind === 'family' && treeMembers.some(function(x){ return x.gen; })) return m && m.on_app === false ? 'Not on Parwah' : 'Not in the tree yet';
     var r = (m && m.relation) || '';
     if (r) return r.charAt(0).toUpperCase() + r.slice(1);
     return m && m.role === 'parent' ? 'Parent' : 'Family';
@@ -3167,7 +3189,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var dm = $('dm-pick'), dh = '<option value="">Personal chat with…</option>';
     var gm = '';
     members.forEach(function(m){
-      if (m.id !== state.memberId) {
+      if (m.id !== state.memberId && onApp(m)) {
         h += '<option value="' + m.id + '">' + esc(m.name) + '</option>';
         dh += '<option value="' + m.id + '">' + esc(m.name) + '</option>';
         gm += '<label class="gchk"><input type="checkbox" value="' + m.id + '"> ' + esc(m.name) + '</label>';
@@ -3360,7 +3382,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (k === 'reopen') tsPost({ action:'task_reopen' }, 'Reopened');
     if (k === 'give') {
       var h = '<option value="">Anyone - whoever is free</option>';
-      (membersCache || []).forEach(function(m){ h += '<option value="' + m.id + '">' + (m.id === state.memberId ? 'Me' : esc(m.name)) + '</option>'; });
+      (membersCache || []).filter(onApp).forEach(function(m){ h += '<option value="' + m.id + '">' + (m.id === state.memberId ? 'Me' : esc(m.name)) + '</option>'; });
       $('ts-give-to').innerHTML = h; $('ts-give-to').value = q.claimed_by || '';
       $('ts-give').hidden = false; $('ts-edit').hidden = true; $('ts-give-to').focus();
     }
@@ -3699,9 +3721,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('joincard').hidden = true;
     $('createcard').hidden = false;
     $('c-head').textContent = newKind === 'group' ? 'Start a new group' : 'Start a new family';
+    $('c-circle-label').textContent = newKind === 'group' ? 'Group name' : 'Family name';
     $('c-circle').placeholder = newKind === 'group' ? 'e.g. The Cousins' : 'e.g. Sharma Family';
     $('c-go').textContent = newKind === 'group' ? 'Create the group' : 'Create the family';
-    $('c-role-label').textContent = 'Your role in the ' + newKind + ' (everyone is an equal admin)';
+    $('c-role-label').textContent = 'Who are you in this ' + newKind + '?';
     // Joint or nuclear is asked first, for a family only; a nuclear family
     // is not offered daughter-in-law or grandchildren as roles.
     $('c-ftype-wrap').hidden = newKind !== 'family';
@@ -3709,19 +3732,25 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // In a group of friends "Friend" is the likely answer; in a family, "Family".
     var defRole = newKind === 'group' ? 'friend' : 'family';
     $('c-role').querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x.getAttribute('data-role') === defRole); });
+    pressSync($('c-role'));
     if (authUser && !$('c-name').value) $('c-name').value = authUser.name;
     showStep('setup');
-    try { $('c-circle').focus(); } catch (e) {}
+    try { (newKind === 'family' ? $('c-ftype').querySelector('button') : $('c-circle')).focus(); } catch (e) {}
   }
-  var newFamilyType = 'joint';
+  // Asked first, with no answer chosen for them: the family decides.
+  var newFamilyType = null;
   function setFamilyType(t){
     if (t) newFamilyType = t;
-    $('c-ftype').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-ft') === newFamilyType); });
+    $('c-ftype').querySelectorAll('button').forEach(function(b){
+      var on = b.getAttribute('data-ft') === newFamilyType;
+      b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
     $('createcard').classList.toggle('nuclear', t === 'nuclear');
     var cur = $('c-role').querySelector('.sel');
     if (t === 'nuclear' && cur && cur.classList.contains('jointonly')) {
       cur.classList.remove('sel'); $('c-role').querySelector('[data-role="family"]').classList.add('sel');
     }
+    pressSync($('c-role'));
   }
   $('c-ftype').addEventListener('click', function(e){ var b = e.target.closest('[data-ft]'); if (b) setFamilyType(b.getAttribute('data-ft')); });
   function startJoin(){
@@ -4031,6 +4060,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   $('c-go').addEventListener('click', function(){
     var name = $('c-name').value.trim();
+    if (newKind === 'family' && !newFamilyType) { $('ob-err').textContent = 'Choose joint family or nuclear family first.'; try { $('c-ftype').querySelector('button').focus(); } catch (e) {} return; }
     if (!name) { $('ob-err').textContent = 'Please enter your name.'; return; }
     this.disabled = true; $('ob-err').textContent = '';
     post(API.circle, { action:'create', kind:newKind, familyType: newKind === 'family' ? newFamilyType : null, memberName:name, circleName:$('c-circle').value.trim(), userId: authUser && authUser.id, role: $('c-senior').checked ? 'parent' : 'family', relation: cRole() })
@@ -4763,7 +4793,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       }).join('') : '<div class="ev">Nobody else. Only you.</div>';
       var opts = '<option value="">Choose a family member</option>';
       (membersCache || []).forEach(function(m){
-        if (m.id !== state.memberId) opts += '<option value="' + m.id + '">' + esc(m.name) + '</option>';
+        if (m.id !== state.memberId && onApp(m)) opts += '<option value="' + m.id + '">' + esc(m.name) + '</option>';
       });
       $('bd-share-who').innerHTML = opts;
     }
@@ -6044,7 +6074,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var m = upto.match(/@([A-Za-z\u0900-\u097F]*)$/);
     if (!m) { mb.hidden = true; return; }
     var q = m[1].toLowerCase();
-    var pool = (curChatMembers.length ? curChatMembers : membersCache).filter(function(x){ return x.id !== state.memberId; });
+    var pool = (curChatMembers.length ? curChatMembers : membersCache).filter(function(x){ return x.id !== state.memberId && onApp(x); });
     var opts = pool.filter(function(x){ return x.name.toLowerCase().indexOf(q) === 0; });
     if ('ekta'.indexOf(q) === 0) opts = [{ id: 'ekta', name: 'Ekta' }].concat(opts);
     if (!opts.length) { mb.hidden = true; return; }
@@ -6065,7 +6095,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (!box.hidden) { box.hidden = true; return; }
     var inChat = {};
     curChatMembers.forEach(function(m){ inChat[m.id] = true; });
-    var outside = membersCache.filter(function(m){ return !inChat[m.id]; });
+    var outside = membersCache.filter(function(m){ return !inChat[m.id] && onApp(m); });
     box.innerHTML = outside.length
       ? outside.map(function(m){ return '<button type="button" data-chadd="' + m.id + '">➕ ' + esc(m.name) + '</button>'; }).join('')
       : '<span class="hint">Everyone in the circle is already here 🧡</span>';
@@ -6095,7 +6125,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function ncOpen(){
     var h = '';
     (membersCache || []).forEach(function(m){
-      if (m.id === state.memberId) return;
+      if (m.id === state.memberId || !onApp(m)) return;
       h += '<button class="chatrow" data-dm="' + esc(m.id) + '"><span class="cic" aria-hidden="true">👤</span><span class="txt"><b>' +
            esc(m.name) + '</b><small>' + esc(relLabel(m)) + '</small></span></button>';
     });
@@ -6168,7 +6198,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function treePerson(m){
     var me = state && m.id === state.memberId;
     return '<button type="button" class="tperson" data-mprof="' + m.id + '"><b>' + esc(m.name) + '</b><small>' +
-           esc(me ? 'You' : (m.kin || relLabel(m))) + '</small></button>';
+           esc(me ? 'You' : (m.kin || relLabel(m))) + (m.on_app === false ? ' · not on Parwah' : '') + '</small></button>';
   }
   function renderTree(j){
     famKind = j.kind || 'family'; famType = j.familyType || null;
@@ -6204,61 +6234,107 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         (unplaced.length ? ' · not in the tree yet: ' + unplaced.map(function(m){ return m.name; }).join(', ') : '') +
         '. Tap anyone to open their profile.'
       : 'Start the tree: say how two people are related - "Mumma is the wife of Papa", "Rohan is the son of Papa". Parwah works out the rest: daughter-in-law, grandson, Chacha, Bua.';
-    // The form: whoever is not in the tree comes first, starting with you.
+    // The form: whoever is not in the tree comes first, starting with you;
+    // last, someone who is not on Parwah at all.
     var me = byId[state.memberId];
     var order = unplaced.slice().sort(function(a, b){ return (b.id === state.memberId) - (a.id === state.memberId); }).concat(placed);
-    var whoSel = $('tr-who').value;
+    var whoSel = trNext ? '' : $('tr-who').value;
     $('tr-who').innerHTML = order.map(function(m){
       return '<option value="' + m.id + '">' + esc(m.id === state.memberId ? 'Me (' + m.name + ')' : m.name) + (m.gen ? '' : ' - not in the tree yet') + '</option>';
-    }).join('');
-    if (whoSel && byId[whoSel]) $('tr-who').value = whoSel;
+    }).join('') + '<option value="new">+ Someone not on Parwah</option>';
+    if (whoSel && (byId[whoSel] || whoSel === 'new')) $('tr-who').value = whoSel;
+    else $('tr-who').value = unplaced.length ? order[0].id : 'new';
+    if (trNext) { trNext = false; trShown = null; $('tr-name').value = ''; $('tr-place').value = ''; $('tr-of').value = ''; }
     $('tree-add-head').textContent = me && !me.gen ? 'Where are you in the family?' : 'Add someone to the tree';
     fillTreeOf();
   }
+  // What a place is called once he or she is known.
+  var TR_WORDS = { child: ['son', 'daughter', 'son or daughter'], spouse: ['husband', 'wife', 'husband or wife'],
+                   parent: ['father', 'mother', 'father or mother'], sibling: ['brother', 'sister', 'brother or sister'] };
+  function trWord(place, g){ var w = TR_WORDS[place]; return w ? w[g === 'm' ? 0 : g === 'f' ? 1 : 2] : ''; }
+  function trGender(){ var b = $('tr-gender').querySelector('.sel'); return b ? b.getAttribute('data-g') : null; }
+  function trSetGender(g){
+    $('tr-gender').querySelectorAll('button').forEach(function(b){ var on = b.getAttribute('data-g') === g; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  }
+  function trName(id){ var m = treeMembers.filter(function(x){ return x.id === id; })[0]; return m ? m.name : ''; }
+  // trShown: the person the form was last filled for. The 12-second refresh
+  // re-draws the tree but never undoes what someone is in the middle of
+  // choosing; only choosing another person resets He or she.
+  var trShown = null, trNext = false;
   function fillTreeOf(){
-    var who = $('tr-who').value, ofSel = $('tr-of').value;
+    var who = $('tr-who').value, isNew = who === 'new', ofSel = $('tr-of').value, plSel = $('tr-place').value;
+    var w = isNew ? null : treeMembers.filter(function(m){ return m.id === who; })[0];
+    if (who !== trShown) { trShown = who; trSetGender(w ? w.gender : null); $('tr-err').hidden = true; }
+    $('tr-new').hidden = !isNew;
+    var g = trGender();
+    $('tr-place').innerHTML = '<option value="">Choose…</option>' + ['child', 'spouse', 'parent', 'sibling'].map(function(k){
+      return '<option value="' + k + '">' + trWord(k, g) + '</option>';
+    }).join('');
+    $('tr-place').value = plSel;
     var others = treeMembers.filter(function(m){ return m.id !== who; })
       .sort(function(a, b){ return (a.gen ? 0 : 1) - (b.gen ? 0 : 1); });
-    $('tr-of').innerHTML = others.map(function(m){ return '<option value="' + m.id + '">' + esc(m.id === state.memberId ? 'me' : m.name) + '</option>'; }).join('');
+    $('tr-of').innerHTML = '<option value="">Choose…</option>' + others.map(function(m){ return '<option value="' + m.id + '">' + esc(m.id === state.memberId ? 'me' : m.name) + '</option>'; }).join('');
     if (ofSel && others.some(function(m){ return m.id === ofSel; })) $('tr-of').value = ofSel;
-    var w = treeMembers.filter(function(m){ return m.id === who; })[0];
-    $('tr-gender').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', !!w && b.getAttribute('data-g') === w.gender); });
     $('tr-go').disabled = !others.length;
-    // A mistake is undone by taking the person out and placing them again.
-    var out = $('tr-out');
-    out.hidden = !(w && w.gen);
-    out.textContent = w ? 'Take ' + (w.id === state.memberId ? 'me' : w.name) + ' out of the tree' : '';
+    // The sentence it will save, in plain words, before it is saved.
+    var nm = isNew ? ($('tr-name').value.trim() || 'They') : (who === state.memberId ? 'You' : (w ? w.name : ''));
+    var of = $('tr-of').value, pl = $('tr-place').value;
+    $('tr-say').textContent = of && pl
+      ? nm + (nm === 'You' || nm === 'They' ? ' are ' : ' is ') + (of === state.memberId ? 'your ' : trName(of) + "'s ") + trWord(pl, g) + '.'
+      : '';
+    // Undo, one link at a time: their husband or wife, and whose child they are.
+    var links = [];
+    if (w && w.spouse_id && trName(w.spouse_id)) links.push('<button type="button" class="linkbtn" data-unlink="spouse">Remove: ' + esc(w.name) + ' is ' + esc(trName(w.spouse_id)) + "'s " + trWord('spouse', w.gender) + '</button>');
+    if (w && w.parent_id && trName(w.parent_id)) links.push('<button type="button" class="linkbtn" data-unlink="parent">Remove: ' + esc(w.name) + ' is ' + esc(trName(w.parent_id)) + "'s " + trWord('child', w.gender) + '</button>');
+    if (w && w.on_app === false) links.push('<button type="button" class="linkbtn" data-unlink="person" style="color:var(--alert)">Remove ' + esc(w.name) + ' from the family</button>');
+    $('tr-links').innerHTML = links.length ? '<p class="trlbl" style="margin-top:0">Something wrong? Change it</p>' + links.join('') : '';
+    $('tr-links').hidden = !links.length;
   }
   $('tr-who').addEventListener('change', fillTreeOf);
+  $('tr-place').addEventListener('change', fillTreeOf);
+  $('tr-of').addEventListener('change', fillTreeOf);
+  $('tr-name').addEventListener('input', fillTreeOf);
   $('tr-gender').addEventListener('click', function(e){
     var b = e.target.closest('[data-g]'); if (!b) return;
-    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
+    trSetGender(b.getAttribute('data-g')); fillTreeOf();
   });
   $('tr-go').addEventListener('click', function(){
-    var g = $('tr-gender').querySelector('.sel'), btn = this, err = $('tr-err');
+    var g = trGender(), btn = this, err = $('tr-err'), who = $('tr-who').value, isNew = who === 'new';
+    var say = function(t){ err.textContent = t; err.hidden = false; };
     err.hidden = true;
-    if (!g) { err.textContent = 'Choose he or she, so Parwah can say son or daughter.'; err.hidden = false; return; }
+    if (isNew && !$('tr-name').value.trim()) { say('Write their name.'); try { $('tr-name').focus(); } catch (e) {} return; }
+    if (!g) { say('Choose he or she, so Parwah can say son or daughter.'); return; }
+    if (!$('tr-place').value) { say('Choose son, daughter, husband, wife and so on.'); return; }
+    if (!$('tr-of').value) { say('Choose who they are related to.'); return; }
     btn.disabled = true;
-    post(API.circle, { action: 'place', code: state.code, memberId: state.memberId, targetId: $('tr-who').value,
-                       place: $('tr-place').value, ofId: $('tr-of').value, gender: g.getAttribute('data-g') })
+    var body = { action: isNew ? 'add_person' : 'place', code: state.code, memberId: state.memberId,
+                 place: $('tr-place').value, ofId: $('tr-of').value, gender: g };
+    if (isNew) body.personName = $('tr-name').value.trim(); else body.targetId = who;
+    post(API.circle, body)
       .then(function(j){
         btn.disabled = false;
-        if (!j.ok) { err.textContent = j.error || 'Could not add that'; err.hidden = false; return; }
+        if (!j.ok) { say(j.error || 'Could not add that'); return; }
+        // On to the next person not yet in the tree.
+        trNext = true;
         toast('Added to the family tree 🌳'); refresh();
       }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
   });
-
-  $('tr-out').addEventListener('click', function(){
-    var who = $('tr-who').value, w = treeMembers.filter(function(m){ return m.id === who; })[0], btn = this;
+  $('tr-links').addEventListener('click', function(e){
+    var b = e.target.closest('[data-unlink]'); if (!b) return;
+    var who = $('tr-who').value, w = treeMembers.filter(function(m){ return m.id === who; })[0], k = b.getAttribute('data-unlink');
     if (!w) return;
-    if (!confirm('Take ' + w.name + ' out of the family tree?\n\nTheir links to a husband or wife, parents and children go. Nothing else changes, and they can be placed again.')) return;
-    btn.disabled = true;
-    post(API.circle, { action: 'unplace', code: state.code, memberId: state.memberId, targetId: who })
-      .then(function(j){
-        btn.disabled = false;
-        if (!j.ok) { $('tr-err').textContent = j.error || 'Could not take them out'; $('tr-err').hidden = false; return; }
-        toast('Taken out of the family tree'); refresh();
-      }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
+    var ask = k === 'person'
+      ? 'Remove ' + w.name + ' from the family?\n\nThey were added by name and are not on Parwah. Anyone they were linked to stays in the tree.'
+      : b.textContent.replace(/^Remove: /, 'Remove the link "') + '"?\n\nEveryone else, their children too, stays where they are. You can place them again.';
+    if (!confirm(ask)) return;
+    b.disabled = true;
+    var body = k === 'person' ? { action: 'remove_person', code: state.code, memberId: state.memberId, targetId: who }
+                              : { action: 'unplace', link: k, code: state.code, memberId: state.memberId, targetId: who };
+    post(API.circle, body).then(function(j){
+      b.disabled = false;
+      if (!j.ok) { $('tr-err').textContent = j.error || 'Could not change that'; $('tr-err').hidden = false; return; }
+      toast(k === 'person' ? 'Removed from the family' : 'Link removed'); refresh();
+    }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
   });
 
   // ---------- location sharing (consent first) ----------
@@ -6328,7 +6404,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var from = locLast || locHere || (mine ? { lat: mine.lat, lng: mine.lng } : null);
     $('loc-list').innerHTML = locShares.length ? locShares.map(function(x){
       var bits = [];
-      if (!x.mine && x.relation) bits.push(x.relation.charAt(0).toUpperCase() + x.relation.slice(1));
+      var xm = (membersCache || []).filter(function(m){ return m.id === x.memberId; })[0];
+      if (!x.mine) bits.push(relLabel(xm || { relation: x.relation }));
       bits.push(x.precision === 'area' ? 'area only' : (x.accuracy ? 'within ' + (x.accuracy < 1000 ? x.accuracy + ' m' : (Math.round(x.accuracy / 100) / 10) + ' km') : 'exact'));
       bits.push((x.stale ? 'last seen ' : 'updated ') + locAgo(x.updatedAt));
       if (from && !x.mine) bits.push(locDistText(locDist(from, x)));
@@ -6732,12 +6809,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (!document.getElementById('vd-about')) return;
     vMembersInto($('vd-about'), '');
     vMembersInto($('vd-who'), "Everyone's documents");
-    vMembersInto($('vdd-share-who'), 'Choose a family member');
+    vMembersInto($('vdd-share-who'), 'Choose a family member', true);
     if (!vEditId && !$('vd-about').value && state) $('vd-about').value = state.memberId;
   }
-  function vMembersInto(sel, firstLabel){
+  function vMembersInto(sel, firstLabel, appOnly){
     var h = firstLabel ? '<option value="">' + esc(firstLabel) + '</option>' : '';
-    (membersCache || []).forEach(function(m){
+    (membersCache || []).filter(function(m){ return !appOnly || onApp(m); }).forEach(function(m){
       h += '<option value="' + m.id + '">' + esc(m.name) + (m.id === state.memberId ? ' (you)' : '') + '</option>';
     });
     var cur = sel.value; sel.innerHTML = h; if (cur) sel.value = cur;
@@ -6768,7 +6845,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       if (!$('vd-kind').options.length) { vFillSelect($('vd-kind'), vKinds); vApplyShape(); }
       vMembersInto($('vd-about'), '');
       vMembersInto($('vd-who'), "Everyone's documents");
-      vMembersInto($('vdd-share-who'), 'Choose a family member');
+      vMembersInto($('vdd-share-who'), 'Choose a family member', true);
       if (!vEditId && !$('vd-about').value) $('vd-about').value = state.memberId;
       renderDocs();
       if (vOpenId) openDoc(vOpenId, true);
@@ -6989,7 +7066,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('vplist').innerHTML = h || '<div class="ev">No payment methods saved yet. Add your own below - you decide who else may use it.</div>';
     vPay.forEach(function(p){
       var sel = document.querySelector('[data-vpwho="' + p.id + '"]');
-      if (sel) vMembersInto(sel, 'Choose a family member');
+      if (sel) vMembersInto(sel, 'Choose a family member', true);
     });
     $('vp-log-card').hidden = !vPayLog.length;
     $('vplog').innerHTML = vPayLog.map(function(l){
