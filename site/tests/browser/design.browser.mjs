@@ -201,6 +201,23 @@ ok(C === 0, 'all text passes WCAG AA contrast in light and dark (' + C + ' below
     ok(errs.length === 0, theme + ': no script errors' + (errs.length ? ' - ' + errs[0] : ''));
     await page.close();
   }
+  // Read as the past, but naming an emergency: the records answer comes
+  // with the same two buttons.
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+    await page.addInitScript(([me]) => {
+      localStorage.setItem('parwah', JSON.stringify({ code: 'ABCDEF', memberId: me, name: 'Rohan', role: 'family', circleName: 'Sharma Family' }));
+      localStorage.setItem('parwah-user', JSON.stringify({ id: 'u1', name: 'Rohan', phone: '+919800000001', toured: true }));
+      localStorage.setItem('parwah-token', 't'); localStorage.setItem('parwah-voice', 'off');
+    }, [ME]);
+    await page.route('**/api/**', r => r.fulfill({ json: { ok: false, error: 'stub' } }));
+    await page.route('**/api/events*', r => r.fulfill({ json: EV }));
+    await page.route('**/api/ekta*', r => r.fulfill({ json: { ok: true, reply: 'Papa takes Amlodipine 5mg.\n\nIf any of this is happening now: call 112 (ambulance 108), or send SOS to the family.', actions: [], model: 'parwah-local', records: true, urgentToo: true } }));
+    await page.goto(BASE + '/#ekta'); await page.waitForTimeout(900);
+    await page.fill('#msg', 'Papa passed out yesterday, what medicines is he on?'); await page.click('#send'); await page.waitForTimeout(600);
+    ok(await page.isVisible('.eurgent a[href="tel:112"]') && await page.isVisible('.eurgent [data-esos]'), 'an answer about the past that names an emergency still shows Call 112 and SOS');
+    await page.close();
+  }
 }
 
 await browser.close(); server.close();

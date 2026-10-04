@@ -7,7 +7,7 @@
 // crash where an answer was possible, and the validation guide's fourth
 // screen - "taking Mum to a new doctor tomorrow, what do we have?" - is a
 // retrieval question that needs no model at all.
-import { askedText, LOCAL_MODEL, isBillingFailure, isAuthFailure, isDeadKey, classify, whoIsAsked,
+import { askedText, mentionsUrgent, URGENT_TOO, LOCAL_MODEL, isBillingFailure, isAuthFailure, isDeadKey, classify, whoIsAsked,
          renderSummary, renderMemory, renderCircle, offlineNote, cannotAnswer, stalePhrase,
          renderEmergency, renderCrisis, renderHealth, kinIsAsked, ABOUT_ME, renderWhoIsIt }
   from '../../api/_ektalocal.mjs';
@@ -110,6 +110,8 @@ for (const t of ['Papa passed out yesterday, what medicines is he on?', 'Mummy f
   ok('in the past, so not alarmed: ' + t, classify(t) !== 'emergency');
 for (const t of ['Has Papa had chest pain in the last week?', 'Does Papa have a history of chest pain?', 'Papa has a history of seizures'])
   ok('a question about the past, even with "has", so not alarmed: ' + t, classify(t) !== 'emergency');
+ok('"since" in a question about a past stretch is not an alarm', classify('Did Papa have a seizure at any time since his fall last year?') !== 'emergency');
+ok('but it still names an emergency, so the answer carries the way to 112', mentionsUrgent('Did Papa have a seizure at any time since his fall last year?') && /112/.test(URGENT_TOO) && /SOS/.test(URGENT_TOO));
 ok('a medicine question about someone with a three-word name is a medicine question', classify('Can Raj Kumar Singh take Crocin?') === 'health');
 {
   const h = [{ role: 'user', content: 'Prepare a summary for a doctor visit.' }, { role: 'assistant', content: 'Who is the doctor visit for? Say their name as it is saved in the family: Raj.' }, { role: 'user', content: 'Raj' }];
@@ -121,7 +123,8 @@ for (const t of ['Papa fell yesterday and still can\'t get up', 'Dadi passed out
                  'He had a cold last week and has chest pain', 'Papa had a fever yesterday, now he is not breathing properly',
                  'Mummy fell last year but she has fainted', 'Papa fell down yesterday, please help',
                  'He has been having chest pain since yesterday', 'Papa has been unconscious since last night',
-                 'Dadi has had trouble breathing since last night', 'Mummy has been breathless for two days'])
+                 'Dadi has had trouble breathing since last night', 'Mummy has been breathless for two days',
+                 'His chest pain started last week and it is worse today'])
   ok('in the past but happening now, so urgent: ' + t, classify(t) === 'emergency');
 ok('words about ending a life reach a person', classify('I want to die') === 'crisis' && classify('main jeena nahi chahta') === 'crisis');
 const em = renderEmergency();

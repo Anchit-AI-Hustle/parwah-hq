@@ -1771,7 +1771,7 @@ check("staying current: an open or installed Parwah moves to a new version when 
 _ekt = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
 check("ekta: anyone in danger is answered first, in fixed words, free - before coins, keys or a model",
       -1 < _ekt.find("asked === 'emergency' || asked === 'crisis'") < _ekt.find("await spend(sql, circle.id, me.id, 'ekta')")
-      and "function ektaUrgent(said)" in _appt and 'href="tel:112"' in _appt and "if (j.emergency) ektaUrgent(v);" in _appt)
+      and "function ektaUrgent(said)" in _appt and 'href="tel:112"' in _appt and "if (j.emergency || j.urgentToo) ektaUrgent(v);" in _appt)
 check("ekta: the scam check, records and medicine questions are never charged; a family word finds the one person saved with it",
       "if (['scam', 'memory', 'summary', 'health'].includes(asked)) {" in _ekt and "localTurn(sql, circle, me, history, 'records')" in _ekt
       and _ekt.find("localTurn(sql, circle, me, history, 'records')") < _ekt.find("await spend(sql, circle.id, me.id, 'ekta')")
