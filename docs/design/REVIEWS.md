@@ -183,3 +183,26 @@ row. The family tree's findings are fixed first, because it shipped last.
 | 48 | 4 Consistency | The location list and member list used the word someone joined with, so Priya saw Papa as "Father" | 3 | Fixed: the tree's word everywhere; "You" for yourself; "Not in the tree yet" until placed |
 | 49 | 2 Real-world match | A new family was asked its name before joint or nuclear, with joint already chosen | 2 | Fixed: joint or nuclear first, nothing chosen for them; grandparents are joint-family roles |
 | 50 | 1 Visibility | At 320 the joint and nuclear choices spilled out of their pills, and the chosen one was invisible in dark | 2 | Fixed: title over description; a marigold ring marks the chosen segment in both themes; chips and segments say which is chosen to a screen reader |
+
+### Review 6, the vault, health and the emergency card
+
+The family's own example decides this part: a car claim needed a brother's
+Aadhaar, PAN and licence. It worked only if he had already shared all
+three, and from his profile it could not be done at all.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 51 | 1 Visibility | The emergency card was centred in a fixed overlay with no scroll: at 320x568 the name, Close and the blood group were off screen | 4 | Fixed: the sheet scrolls and opens at the top; the member sheet with gifts too |
+| 52 | 3 User control | A paper shared as "can see it exists", or not shared, was a dead end; the only way forward was WhatsApp | 4 | Fixed: ask for that paper, or for a kind of paper ("Rahul's PAN") without learning what is in anyone's vault; the owner answers with one tap, or adds it |
+| 53 | 7 Flexibility | A person's profile and page could not reach their documents | 4 | Fixed: "Their documents" on the profile and the page; each paper on their page opens it to download or to ask |
+| 54 | 2 Real-world match | Open was a pop-up after a network call (blocked on phones), with no file name | 3 | Fixed: a real download named for whose paper it is ("Rahul - Rahul's PAN.png"), and Send it to share the file straight to an insurer |
+| 55 | 5 Error prevention | Whoever uploaded a paper about someone else kept full access the owner could not see or take back; anyone who could open it could also rewrite it | 3 | Fixed: the uploader is listed under "Who can see this" with "take access back"; only the owner or the uploader changes or removes it, and the owner is told |
+| 56 | 5 Error prevention | Editing a paper's name or notes wiped its last 4 digits | 3 | Fixed: a blank number keeps them; the form says "Ending 234F - type the full number only to change it" |
+| 57 | 2 Real-world match | No "Emergency contact" category, so readiness could never reach 100% | 3 | Fixed: first in the list; each gap on a person's page opens the form already set to fill it |
+| 58 | 5 Error prevention | Ticking "Keep this private" while editing did nothing, and said "Entry updated" | 3 | Fixed: privacy is changed on the entry ("Who can see this"); the line under Save always says who will see it |
+| 59 | 4 Consistency | Preparedness showed "undefined" | 3 | Fixed: "Someone near them" is named |
+| 60 | 8 Minimalist | A person's page was long, repeated itself in "Freshness", and never said what was missing | 3 | Fixed: emergency card and documents first, then "2 things to complete" as tappable rows; re-checks marked where they are |
+| 61 | 1 Visibility | The emergency card was 14px grey, with no home address, no neighbour and no ambulance number | 3 | Fixed: blood group and allergies large, values in ink, the home address, the neighbour, a Call button for the first contact and the ambulance number where they live; a switcher between the family's cards |
+| 62 | 2 Real-world match | "Record", "allowed ₹3000", an "Ask first" that could never be answered, and a monthly cap never enforced | 2 | Fixed: "Note a payment", sentences in the activity, Yes / Not this time for the owner, and the monthly limit holds |
+| 63 | 7 Flexibility | Phone photos are 3-5 MB, over the 2 MB limit, and the file picker had no camera | 2 | Fixed: "Take a photo" and "Choose a file"; photos are made smaller on the phone |
+| 64 | 5 Error prevention | The offline emergency copy stayed on the phone after sign-out | 2 | Fixed: signing out or leaving removes it; offline it says how old it is |

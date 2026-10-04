@@ -22,7 +22,8 @@ import { tokenOf } from './_token.mjs';
 import { feedName } from './_sec.mjs';
 import { pushCircle } from './_push.mjs';
 import boardApi from './_boardapi.mjs';
-import vaultApi from './_vaultapi.mjs';
+import vaultApi, { ensureVaultSchema } from './_vaultapi.mjs';
+let vaultReady = false;
 import { award } from './_coins.mjs';
 
 const KINDS = ['contact', 'address', 'med', 'fact', 'insurance'];
@@ -166,13 +167,16 @@ export default async function handler(req, res) {
       // the documents themselves, which stay behind the vault's permissions.
       let records = [];
       try {
+        if (!vaultReady) { await ensureVaultSchema(sql); vaultReady = true; }
         records = await sql`
-          select d.about_member, d.kind, d.label, d.expires_on, d.status,
-                 (d.file_name is not null) as has_file
+          select d.id, d.about_member, d.kind, d.label, d.expires_on, d.status,
+                 (d.file_name is not null) as has_file,
+                 case when d.about_member = ${memberId} or (d.by_member = ${memberId} and d.uploader_access)
+                      then 'full' else coalesce(va.level, '') end as my_level
           from vault_docs d
           left join vault_access va on va.doc_id = d.id and va.member_id = ${memberId}
           where d.circle_id = ${circle.id}
-            and (d.about_member = ${memberId} or d.by_member = ${memberId} or va.member_id is not null)
+            and (d.about_member = ${memberId} or (d.by_member = ${memberId} and d.uploader_access) or va.member_id is not null)
           order by d.kind limit 200`;
       } catch (e) { records = []; }
 
@@ -360,6 +364,10 @@ export default async function handler(req, res) {
       await sql`delete from family_book where id = ${ex[0].id}`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${me.id}, 'care', ${me.name + ' removed ' + feedName(ex[0].visibility, ex[0].name) + ' from the family memory'})`;
+      // Papa's medicines are Papa's business first: he hears when one goes.
+      if (ex[0].about_member && ex[0].about_member !== me.id) {
+        await pushCircle(sql, circle.id, { title: '📒 ' + me.name + ' removed something about you', body: ex[0].name + ' is no longer in Family memory' }, { only: ex[0].about_member });
+      }
       return res.status(200).json({ ok: true });
     }
 
