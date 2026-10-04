@@ -48,7 +48,7 @@ const RE = {
   // Words about ending one's life get a person to talk to, at once.
   crisis: /\b(kill (my|him|her)self|suicid|end (my|his|her) life|want to die|don'?t want to live|jeena nahi|marna chahta|marna chahti)/i,
   // A question about what to do with a medicine is the doctor's to answer.
-  health: /\b((should|can|could|may) (he|she|i|papa|mummy|mumma|mom|mum|dad|dadi|dada|nani|nana|maa|they|we) (take|have|stop|skip|double|increase|reduce|start)|stop (his|her|the|my) (medicine|tablet|dawa|dose)|dose|dosage|side ?effects?|is (he|she|papa|mummy|maa|dad) (diabetic|hypertensive)|mix (with|it with)|along with (his|her) (bp|sugar|medicine|tablet))\b/i,
+  health: /\b((should|can|could|may) (\S+ ){1,2}(take|have|stop|skip|double|increase|reduce|start)\b[^.?!]{0,40}\b(tablet|tablets|medicine|medicines|dawa|dawai|pill|pills|dose|crocin|paracetamol|dolo|insulin|syrup|capsule|injection|bp|sugar|mg|antibiotic)|stop (his|her|the|my) (medicine|tablet|dawa|dose)|dose|dosage|side ?effects?|is (he|she|papa|mummy|maa|dad) (diabetic|hypertensive)|mix (with|it with)|along with (his|her) (bp|sugar|medicine|tablet))\b/i,
   summary: /\b(doctor|hospital|appointment|clinic|check ?up|checkup|visit|emergency|casualty|admit|surgery|prepare|summary|taking (him|her|them|mum|mom|papa|dad|maa|amma))\b/i,
   memory:  /\b(what do we (have|know)|what('s| is) (recorded|saved)|medicine|medicines|dawa|dawai|tablet|blood ?group|allerg|insurance|policy|doctor'?s? number|contact|address|plumber|electrician|maid|records?|recorded|papers?|documents?)\b/i,
   circle:  /\b(check ?in|checked in|today|kaisa|kaise|how (is|are)|everything ok|all ok|what'?s happening|kya ho raha|reminder|reminders|request|requests|due|pending|task|todo|to do|family|circle|who)\b/i,
@@ -68,7 +68,7 @@ const RE = {
 // year") is a question about the past, not a call for 112 - unless the
 // message also says it is happening now.
 const PAST = /\b(yesterday|last (night|week|month|year)|(\d+|a|an|one|two|three|few) (hours?|days?|weeks?|months?|years?) ago|in (19|20)\d\d|kal raat|pichhle|pichle|history of|used to|years back)\b/i;
-const NOW = /\b(now|right now|just now|abhi|still|is (not breathing|unconscious|bleeding|having|choking)|can'?t get up|please help|help me)\b/i;
+const NOW = /\b(now|right now|just now|abhi|still|is (not breathing|unconscious|bleeding|having|choking)|can'?t get up|please help|help me)\b|\b(today|tonight|this (morning|afternoon|evening)|is|are|has|have|he'?s|she'?s|keeps?)\b[^.?!]{0,30}\b(breath|chest|pain|bleed|unconscious|unresponsive|not responding|faint|collaps|behosh|seizure|chok|fallen|fell)/i;
 
 // The family's words for a person, and the relation saved for them, so
 // "can Papa take..." finds the one member saved as father.
@@ -260,6 +260,7 @@ export function renderCannotDo(kind, reason) {
 
 // Only for an answer that really was read from the records.
 export function offlineNote(reason) {
+  if (reason === 'records') return 'I read that straight from your family records. Everything above is exactly what is saved, and reading it back costs no coins.';
   return 'I answered that straight from your family records, because ' + offlineWhy(reason)
     + '. Everything above is exactly what is saved, and reading it back costs no coins.'
     + (reason === 'coins' ? '' : ' For a proper conversation, add a working key under Profile, Ekta\'s brain.');
@@ -298,6 +299,12 @@ export function renderCrisis() {
     ])].join(NL);
 }
 
+// Whose doctor visit: asked, never guessed. The first relative on the list
+// is not the person being taken to the doctor.
+export function renderWhoIsVisit(names) {
+  return 'Who is the doctor visit for? Say their name as it is saved in the family'
+    + ((names || []).length ? ': ' + names.join(', ') : '') + '. For example: "taking ' + ((names || [])[0] || 'Papa') + ' to the doctor tomorrow".';
+}
 // Not sure whose records: ask, rather than mix several people's medicines.
 export function renderWhoIsIt(names) {
   return ['Who is this about? Please use their name as it is saved in the family'
