@@ -3102,7 +3102,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (e.type === 'join') return '🙋';
     var t = (e.text || '');
     if (/reminder/i.test(t)) return '🔔';
-    if (/asked the circle|is on it|finished/i.test(t)) return '🤝';
+    if (/asked the (circle|family|group)|is on it|finished/i.test(t)) return '🤝';
     if (/Saanp|Antakshari|Charades|Tic-Tac|game/i.test(t)) return '🎲';
     if (/planned|cancelled|is in for/i.test(t)) return '🗓';
     if (/board/i.test(t)) return '🎨';
@@ -3115,7 +3115,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (/family memory|medicine/i.test(t)) return { tab: 'memory', label: 'Open Health & contacts' };
     if (/family tree/i.test(t)) return { tab: 'people', label: 'See the family tree' };
     if (/reminder|task|to do/i.test(t)) return { tab: 'care', sec: 'rem', label: 'Open Things to do' };
-    if (/asked the circle|is on it|finished/i.test(t)) return { tab: 'care', sec: 'req', label: 'Open Suggested' };
+    if (/asked the (circle|family|group)|is on it|finished/i.test(t)) return { tab: 'care', sec: 'req', label: 'Open Suggested' };
     if (/Saanp|Antakshari|Charades|Tic-Tac|game/i.test(t)) return { tab: 'fun', sec: 'games', label: 'Open Games' };
     if (/planned|cancelled|is in for/i.test(t)) return { tab: 'fun', sec: 'plans', label: 'Open Plans' };
     if (/board/i.test(t)) return { tab: 'fun', sec: 'board', label: 'Open the Board' };
@@ -3282,7 +3282,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('chatview').hidden = false;
     $('cv-name').textContent = chatTitle(c);
     $('cv-sub').textContent = c.kind === 'dm' ? 'Personal chat - mention Ekta to bring her in'
-      : 'Whole ' + (c.kind === 'circle' ? 'circle' : 'group') + ' - mention Ekta and she joins in';
+      : 'Whole ' + (c.kind === 'circle' ? spaceWord() : 'group') + ' - mention Ekta and she joins in';
     var call = $('cv-call');
     if (c.kind === 'dm' && c.otherPhone) { call.href = 'tel:' + encodeURIComponent(c.otherPhone); call.hidden = false; }
     else call.hidden = true;
@@ -3730,6 +3730,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // "My Groups" - every circle this signed-in person belongs to, switchable.
   // What is waiting in a circle, in the order a family would care about it.
   function circleIcon(c){ return c.kind === 'group' ? '👥' : '👨‍👩‍👧‍👦'; }
+  // The word a person reads for the open space: "circle" stays in the code.
+  function spaceWord(){
+    var c = state && loadGroups().filter(function(x){ return x.code === state.code; })[0];
+    return c && c.kind === 'group' ? 'group' : 'family';
+  }
   function circleSignals(c){
     var out = [];
     if (c.live)         out.push({ cls:'bad',  text:'📞 call on now' });

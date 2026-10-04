@@ -14,7 +14,7 @@
 //   doctor / meds / allergies / blood group / emergency contact / insurance
 //   are recorded, missing, or due a re-check.
 // POST /api/book {code, memberId, action:'add'|'update'|'remove'|'verify'}
-import { db, ensureSchema, circleByCode, isUuid, normPhone, phoneError , requireMember} from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, normPhone, phoneError , requireMember, spaceWord} from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 // A private entry's NAME is as private as the entry: adding, verifying or
@@ -233,7 +233,7 @@ export default async function handler(req, res) {
       await sql`update family_book set visibility = ${vis}, updated_at = now() where id = ${found.e.id}`;
       await sql`insert into book_consent (entry_id, circle_id, member_id, action)
                 values (${found.e.id}, ${circle.id}, ${me.id}, ${vis === 'private'
-                  ? 'made it private' : 'shared it with the whole circle'})`;
+                  ? 'made it private' : 'shared it with the whole ' + spaceWord(circle)})`;
       return res.status(200).json({ ok: true, visibility: vis });
     }
 
@@ -246,7 +246,7 @@ export default async function handler(req, res) {
       const targetId = body.targetId || body.memberId;
       if (!isUuid(targetId)) return res.status(400).json({ ok: false, error: 'Pick a family member' });
       const t = await sql`select id, name, user_id from members where id = ${targetId} and circle_id = ${circle.id}`;
-      if (!t[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+      if (!t[0]) return res.status(404).json({ ok: false, error: 'That person is not in this family' });
       if (!t[0].user_id && body.action === 'share') return res.status(400).json({ ok: false, error: t[0].name + ' is not on Parwah, so cannot be shared with' });
       if (t[0].id === me.id) return res.status(400).json({ ok: false, error: 'It is already yours' });
       if (body.action === 'unshare') {
@@ -307,7 +307,7 @@ export default async function handler(req, res) {
       if (body.aboutId !== undefined && body.aboutId !== '' && body.aboutId !== null) {
         if (!isUuid(body.aboutId)) return res.status(400).json({ ok: false, error: 'Bad person' });
         const aRow = await sql`select id from members where id = ${body.aboutId} and circle_id = ${circle.id}`;
-        if (!aRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+        if (!aRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this family' });
         about = aRow[0].id;
       }
       let phone = clean(body.phone, 20);

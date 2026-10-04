@@ -202,8 +202,9 @@ export function renderMemory(payload, who) {
 export function renderCircle(payload) {
   const p = payload || {};
   const lines = [];
+  const space = p.kind === 'group' ? 'the group' : 'the family';
   const members = (p.members || []).map(m => m.name).filter(Boolean);
-  if (members.length) lines.push('In ' + (p.circleName || 'the circle') + ': ' + members.join(', ') + '.');
+  if (members.length) lines.push('In ' + (p.circleName || space) + ': ' + members.join(', ') + '.');
   const ev = (p.recentEvents || []).slice(0, 6);
   if (ev.length) {
     lines.push('Lately:' + NL + bullets(ev.map(e => {
@@ -212,7 +213,7 @@ export function renderCircle(payload) {
         : e.type === 'pill' ? 'marked medicines taken' : e.type === 'message' ? 'wrote' : e.type;
       return (e.member_name || 'Someone') + ' ' + what + (e.text ? ': ' + e.text : '') + (when ? ' (' + when + ')' : '');
     })));
-  } else lines.push('Nothing has been recorded in the circle yet today.');
+  } else lines.push('Nothing has been recorded in ' + space + ' yet today.');
   const rem = (p.reminders || []).filter(Boolean);
   if (rem.length) lines.push('Reminders set: ' + rem.slice(0, 6).map(r => r.title || r.text || 'one').join('; ') + '.');
   const req = (p.requests || p.openRequests || []).filter(Boolean);
@@ -244,7 +245,7 @@ export function renderScam(text, reason) {
       'An OTP is only for you to type into an app or website you opened yourself. The one code you do hand over is a delivery code, to the person at your door.',
       'Do not tap links in the message, and do not call back a number it gives you.',
       'If money has already gone, call 1930 straight away. It is the national cyber-crime helpline. You can also report at cybercrime.gov.in, and tell your bank.',
-      'Tell someone in your circle. A second pair of eyes stops most of these.'
+      'Tell someone in your family. A second pair of eyes stops most of these.'
     ]), '',
     'This is the standard advice, the same for every family, not something from your records. I am giving it without a conversation because ' + offlineWhy(reason) + '.'
   ].join(NL);
@@ -255,11 +256,11 @@ export function renderScam(text, reason) {
 // circle summary in reply to "set a reminder" was the useless one.
 export function renderCannotDo(kind, reason) {
   const where = kind === 'help'
-    ? ['I cannot post that to the circle while ' + offlineWhy(reason) + ', and I will not pretend I did.', '',
+    ? ['I cannot post that to the family while ' + offlineWhy(reason) + ', and I will not pretend I did.', '',
        'You can ask them yourself in a few seconds:',
        bullets(['Open Care, then Things to do.',
                 'Under "Add something to do", write what you need.',
-                'Leave "For" as Anyone. It goes to the whole circle, and the first person to tap "I\'m on it" takes it.'])]
+                'Leave "For" as Anyone. It goes to the whole family, and the first person to tap "I\'m on it" takes it.'])]
     : ['I cannot set reminders while ' + offlineWhy(reason) + ', and I will not pretend I did.', '',
        'You can add it yourself in a few seconds:',
        bullets(['Open Care, then Things to do.',

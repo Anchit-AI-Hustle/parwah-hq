@@ -332,11 +332,11 @@ export async function sessionUser(sql, token) {
 
 export async function requireMember(sql, code, memberId, token) {
   const circle = await circleByCode(sql, code);
-  if (!circle) return { err: 'No circle found with that code', status: 404 };
-  if (!isUuid(memberId)) return { err: 'Not a member of this circle', status: 403 };
+  if (!circle) return { err: 'No family found with that code', status: 404 };
+  if (!isUuid(memberId)) return { err: 'Not a member of this family', status: 403 };
   const rows = await sql`select id, name, role, user_id from members
                          where id = ${memberId} and circle_id = ${circle.id}`;
-  if (!rows[0]) return { err: 'Not a member of this circle', status: 403 };
+  if (!rows[0]) return { err: 'Not a member of this family', status: 403 };
   // The membership must belong to whoever holds the token. Without this a
   // member could act as any other member in the circle simply by sending
   // their UUID, which every screen already shows them.
@@ -360,8 +360,14 @@ export async function circleByCode(sql, code) {
   // Generated codes are 6 chars from the look-alike-free alphabet; custom
   // codes a family sets can be any 4-12 letters/digits.
   if (!/^[A-Z0-9]{4,12}$/.test(clean)) return null;
-  const rows = await sql`select id, code, name from circles where code = ${clean}`;
+  const rows = await sql`select id, code, name, kind from circles where code = ${clean}`;
   return rows[0] || null;
+}
+
+// The word a person reads for the space: "circle" is the data model's word
+// and stays in code. A group reads "group"; everything else is a family.
+export function spaceWord(circle) {
+  return circle && circle.kind === 'group' ? 'group' : 'family';
 }
 
 export { PHONE_CC, normPhone, phoneError } from './_phone.mjs';

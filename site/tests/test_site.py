@@ -462,7 +462,7 @@ check("join: approval is the default for every circle",
 check("join: a code alone creates a request, not a membership",
       "insert into join_requests" in circ and "pending: true" in circ)
 check("join: any member can decide, there is no owner",
-      "approve_join" in circ and "decline_join" in circ and "Not a member of this circle" in circ)
+      "approve_join" in circ and "decline_join" in circ and "Not a member of this family" in circ)
 check("rate limit: join attempts are capped", "rateLimit(sql, 'join'" in circ)
 check("rate limit: sign-in attempts are capped", "rateLimit(sql, 'auth'" in auth)
 check("rate limit: counted in the database, not per instance",
@@ -1753,6 +1753,15 @@ check("tree: the he or she for the other person is asked before Add is disabled,
       -1 < _appt.find("if (!$('tr-ofg-wrap').hidden && !ofg) { say(") < _appt.find("btn.disabled = true;\n    var body = { action: isNew ? 'add_person'") and "if (of !== trOfShown) {" in _appt)
 check("names: one name per place on tiles, tabs and menu, and family not circle in the copy",
       '<b>To do</b>' in _appt and 'Health &amp; contacts' in _appt and "Create the circle" not in _appt and "Your circle's helper" not in _appt)
+# "Circle" is the data model's word (table circles, kind family or group).
+# A person reads "family", or "group" when the space is one. Tags go
+# whole, so ids, classes and the SVG <circle> are not copy.
+_seen = re.sub(r"<[^>]*>", " ", re.sub(r"<!--.*?-->", " ", markup_only(_appt), flags=re.S))
+check("words: the app's visible markup says family or group, never circle",
+      not re.search(r"\bcircle\b", _seen, re.I),
+      ", ".join(sorted(set(" ".join(m.group(0).split()) for m in re.finditer(r"\S*\s*\S*\s*\bcircle\b\s*\S*\s*\S*", _seen, re.I))))[:200])
+check("words: feed rows that say 'asked the circle' and the newer 'asked the family' or 'group' all open To do",
+      _appt.count("/asked the (circle|family|group)|is on it|finished/i") == 2 and "asked the circle|" not in _appt)
 _tsk = (API_DIR / "_tasks.mjs").read_text(encoding="utf-8")
 check("to do: a time already gone means tomorrow at that clock time (not 24 hours on), and a task written down after its time wakes nobody",
       "nx.setDate(nx.getDate() + 1); at = new Date(localDay(nx) + 'T' + t)" in _appt and "at.getTime() + 86400000" not in _appt and "${dueAt && dueAt.getTime() < Date.now() ? dueAt : null}" in _tsk)
