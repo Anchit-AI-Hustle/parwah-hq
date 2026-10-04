@@ -361,6 +361,9 @@ export default async function handler(req, res) {
       const t = plan.set.find(w => w.id === targetId) || {};
       const o = plan.set.find(w => w.id !== targetId) || null;
       const g = GENDERS.includes(req.body.gender) ? req.body.gender : null;
+      // He or she for the other person too, when the family did not know.
+      const ofG = !of.gender && GENDERS.includes(req.body.ofGender) ? req.body.ofGender : null;
+      const oIsOf = !!o && o.id === ofId;
       const tP = 'parentId' in t, tS = 'spouseId' in t, oP = !!o && 'parentId' in o, oS = !!o && 'spouseId' in o;
       if (added) {
         await sql`
@@ -368,8 +371,11 @@ export default async function handler(req, res) {
                        values (${added.id}::uuid, ${circle.id}, ${added.name}, 'family', ${added.gender},
                                ${tP ? t.parentId : null}::uuid, ${tS ? t.spouseId : null}::uuid) returning id),
                up as (update members set parent_id = case when ${oP} then ${oP ? o.parentId : null}::uuid else parent_id end,
-                                         spouse_id = case when ${oS} then ${oS ? o.spouseId : null}::uuid else spouse_id end
-                      where id = ${o ? o.id : null}::uuid and circle_id = ${circle.id} returning id)
+                                         spouse_id = case when ${oS} then ${oS ? o.spouseId : null}::uuid else spouse_id end,
+                                         gender = case when ${oIsOf} then coalesce(gender, ${ofG}) else gender end
+                      where id = ${o ? o.id : null}::uuid and circle_id = ${circle.id} returning id),
+               og as (update members set gender = coalesce(gender, ${ofG})
+                      where id = ${ofId} and circle_id = ${circle.id} and ${!oIsOf} and ${!!ofG} returning id)
           insert into events (circle_id, member_id, type, text)
           select ${circle.id}, ${mRow[0].id}, 'care', ${note} from ins`;
       } else {
@@ -379,8 +385,11 @@ export default async function handler(req, res) {
                                         gender = coalesce(${g}, gender)
                      where id = ${targetId} and circle_id = ${circle.id} returning id),
                b as (update members set parent_id = case when ${oP} then ${oP ? o.parentId : null}::uuid else parent_id end,
-                                        spouse_id = case when ${oS} then ${oS ? o.spouseId : null}::uuid else spouse_id end
-                     where id = ${o ? o.id : null}::uuid and circle_id = ${circle.id} returning id)
+                                        spouse_id = case when ${oS} then ${oS ? o.spouseId : null}::uuid else spouse_id end,
+                                        gender = case when ${oIsOf} then coalesce(gender, ${ofG}) else gender end
+                     where id = ${o ? o.id : null}::uuid and circle_id = ${circle.id} returning id),
+               og as (update members set gender = coalesce(gender, ${ofG})
+                      where id = ${ofId} and circle_id = ${circle.id} and ${!oIsOf} and ${!!ofG} returning id)
           insert into events (circle_id, member_id, type, text)
           select ${circle.id}, ${mRow[0].id}, 'care', ${note} from a`;
       }

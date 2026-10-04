@@ -261,7 +261,8 @@ if (process.env.TREE_SHOT_DIR) {
   await P1.setViewportSize({ width: 390, height: 844 });
 }
 // ---- the same words everywhere
-ok('your own row says You, not the word you joined with', /Papa · you/.test(await P1.textContent('#members')), await P1.textContent('#members'));
+ok('you are You in the tree, not the word you joined with', /PapaYou/.test(await P1.textContent('#tree')), await P1.textContent('#tree'));
+ok('and the family list names only who is not in the tree, so nobody is listed twice', /Everyone is in the tree above/.test(await P1.textContent('#members')), await P1.textContent('#members'));
 
 ok('no script errors', errors.length === 0, errors.join(' | '));
 await browser.close();

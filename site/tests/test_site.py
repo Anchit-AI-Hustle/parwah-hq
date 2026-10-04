@@ -1742,6 +1742,18 @@ check("bell: only what needs you, never your own actions or chat, rows as button
       "function notifWanted(e)" in _appt and "'Type: ' + e.type" not in _appt and '<button type="button" class="nrow' in _appt)
 check("names: one name per place on tiles, tabs and menu, and family not circle in the copy",
       '<b>To do</b>' in _appt and 'Health &amp; contacts' in _appt and "Create the circle" not in _appt and "Your circle's helper" not in _appt)
+_tsk = (API_DIR / "_tasks.mjs").read_text(encoding="utf-8")
+check("to do: a time already gone means tomorrow, and a task written down after its time wakes nobody",
+      "at = new Date(at.getTime() + 86400000)" in _appt and "${dueAt && dueAt.getTime() < Date.now() ? dueAt : null}" in _tsk)
+check("to do: asked but not yet agreed shows one decision; late shows Set a new time and a call",
+      "var waitingYes = q.status === 'assigned' && owner;" in _appt and "'Set a new time', 'go'" in _appt and "about_member = ${aboutId}" in _tsk)
+check("suggested: a gap is filled now, and any suggestion can be waved away",
+      "data-sfill=" in _appt and "data-snot=" in _appt)
+check("people: who is waiting, the tree, how ready (one line per person looked after), the family, then where",
+      _appt.index('id="joinreq-card"') < _appt.index('id="treecard"') < _appt.index('id="prepcard"') < _appt.index('id="loc-card"')
+      and "var looked = prepCache.filter(" in _appt)
+check("people: the profile is a dialog with Call first and only the family word for a person",
+      'id="msheet" hidden role="dialog"' in _appt and "' · senior mode'" not in _appt and "function mpClose()" in _appt)
 check("create: joint or nuclear is asked first, with no answer chosen for them",
       "var newFamilyType = null;" in _appt and _appt.index('id="c-ftype"') < _appt.index('id="c-circle"') < _appt.index('id="c-name"'))
 check("roles: a new group asks for your role in the group, and starts on Friend",

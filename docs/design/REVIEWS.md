@@ -225,3 +225,16 @@ three, and from his profile it could not be done at all.
 | 76 | 3 User control | SOS, sign out and leave used the browser's small dialog | 2 | Fixed: Parwah's own sheet, two big answers |
 | 77 | 7 Flexibility | The drawer ignored Escape and kept focus behind it; the install icon showed inside the installed app; the profile tile opened a one-item menu, even signed out | 2 | Fixed |
 | 78 | 8 Minimalist | The floating chat button covered the five things on phones | 2 | Fixed: on a phone it shows on the chat list; everywhere on a wide screen |
+
+### Review 6, To do and People
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 79 | 5 Error prevention | "9 am tablets" written at 3 pm was already late and woke the whole family | 3 | Fixed: a time already gone means tomorrow; a task written down after its time shows as late but wakes nobody |
+| 80 | 8 Minimalist | People was a card of chips per person, with who was waiting four screens down and everyone listed twice | 3 | Fixed: who is waiting, the tree, one line per person the family looks after, the family (only those not in the tree), then where |
+| 81 | 4 Consistency | The add form kept last time's Daily-for-Papa; the escalation copy said the opposite of what happens with nobody given it | 2 | Fixed |
+| 82 | 8 Minimalist | Someone asked, not yet agreed, saw six buttons; a late task advised "set a new time" with no such button | 2 | Fixed: Yes, I can't, Talk; late shows Set a new time and Call |
+| 83 | 3 User control | Suggested could not be waved away, and "Add it" made a task out of a ten-second gap | 2 | Fixed: Fill it now, Not needed |
+| 84 | 2 Real-world match | The profile sheet said "Father · senior mode · admin", gifting outranked Call, and it was not a dialog | 2 | Fixed: the family word only, Call first, gifts last; Escape and focus |
+| 85 | 2 Real-world match | Someone who joined as "family" stayed genderless, so the tree said Parent instead of Father; a new joiner was never placed; "Grandmother (by marriage)" | 2 | Fixed: the tree asks he or she for them once; after a yes, the tree form is ready for the joiner; "Grandmother-in-law" |
+| 86 | 1 Visibility | "Suggested1"; options in lower case; For whom could not be changed | 1 | Fixed |

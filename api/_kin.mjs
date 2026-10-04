@@ -106,7 +106,8 @@ export function kinLabel(by, fromId, toId) {
   if (down === 0) {
     const base = LABELS[up + ',0']; if (!base) return 'Elder of the family';
     if (fromIn && up === 1) return pick(L('Father-in-law', 'Mother-in-law', 'Parent-in-law'), g);
-    if (fromIn) return pick(base, g) + ' (by marriage)';
+    // Seen by someone who married in: Grandmother-in-law, as a family says it.
+    if (fromIn) return pick(base, g) + '-in-law';
     return pick(base, g);
   }
   // Straight down: children, grandchildren. Their spouses are in-laws.
