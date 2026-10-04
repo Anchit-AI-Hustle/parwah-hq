@@ -113,6 +113,9 @@ ok('the family starts this with no coins', await pot() === 0);
 {
   const r = await ask(rohan, 'Papa passed out yesterday, what medicines is he on?');
   ok('something that happened yesterday is not a call for 112', r.ok && !r.emergency && /Amlodipine/.test(r.reply), JSON.stringify(r).slice(0, 200));
+  ok('but it names an emergency, so the answer still ends with the way to 112, and the buttons show', r.urgentToo === true && /call 112/.test(r.reply) && r.reply.indexOf('Amlodipine') < r.reply.indexOf('call 112'), JSON.stringify(r).slice(0, 300));
+  const plainQ = await ask(rohan, 'what do we have for Papa');
+  ok('a question with no emergency in it carries no 112 line', plainQ.ok && !plainQ.urgentToo && !/call 112/.test(plainQ.reply));
 }
 {
   const r = await ask(rohan, 'what do we have for Papa');
@@ -144,6 +147,11 @@ ok('the family starts this with no coins', await pot() === 0);
   ok('and how to earn more is something any member can do (not check in)', /family memory/.test(r.error) && /vault/.test(r.error) && !/check(ing)? in/i.test(r.error), r.error);
   ok('and it says what stays free', /scam check and anything urgent stay free/.test(r.error), r.error);
   ok('nothing was spent', await pot() === 0);
+  // Out of coins, but the message names an emergency: never a bare refusal.
+  process.env.ANTHROPIC_API_KEY = 'sk-test-not-a-real-key';
+  const u = await ask(rohan, 'Papa passed out yesterday, tell me what to do next');
+  delete process.env.ANTHROPIC_API_KEY;
+  ok('out of coins, a message naming an emergency is answered with the way to 112, free', u.status === 200 && u.ok && u.urgentToo === true && /call 112/.test(u.reply) && !u.needCoins && await pot() === 0, JSON.stringify(u).slice(0, 300));
 }
 
 // ---- with coins: a records answer is still free, an emergency still costs nothing

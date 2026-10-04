@@ -5695,7 +5695,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         if (j.ok) {
           ektaMsgs.push({ role:'assistant', content:j.reply });
           ektaAppend('assistant', j.reply);
-          if (j.emergency) ektaUrgent(v);
+          if (j.emergency || j.urgentToo) ektaUrgent(v);
           speak(j.reply);
           // An answer read out of the family's own records is a real answer,
           // not a failure - but the family is told exactly what they are
