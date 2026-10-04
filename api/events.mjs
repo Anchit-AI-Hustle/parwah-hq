@@ -1,6 +1,8 @@
 // GET  /api/events?circle=CODE          - circle state: members + last 50 events
 // POST /api/events {code, memberId, type, text} - record a check-in, SOS, pill or message
-import { db, ensureSchema, circleByCode, requireMember, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, requireMember, isUuid, ensureCircleChat } from './_db.mjs';
+import { ensureSosSchema, sosText, parsePos, sosContacts, othersOnApp, mapLink, SOS_AUDIO_MAX, SOS_AUDIO_TYPES } from './_sos.mjs';
+import { lockForSos, unlockSos, ensureLocationSchema } from './_locationapi.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
@@ -33,6 +35,7 @@ export default async function handler(req, res) {
       created_at timestamptz not null default now()
     )`;
     await sql`create index if not exists sos_circle_open on sos (circle_id, status, created_at desc)`;
+    await ensureSosSchema(sql);
   } catch (e) { return failDb(res, e); }
 
 // There is no scheduler on this platform, so escalation rides on the polling
@@ -54,7 +57,8 @@ async function escalateStaleSos(sql, circleId) {
                 values (${circleId}, ${s.member_id}, 'care', ${'🆘 Nobody has answered ' + s.name + "'s SOS yet - please call them now"})`;
       await pushCircle(sql, circleId, {
         title: '🆘 STILL NOBODY - ' + s.name + ' needs help',
-        body: 'No one has picked this up in ' + SOS_ESCALATE_MIN + ' minutes. Call ' + (s.phone || 'them') + ' now.'
+        body: 'No one has picked this up in ' + SOS_ESCALATE_MIN + ' minutes. Call ' + (s.phone || 'them') + ' now.',
+        url: '/#home', urgent: true
       }, {});
     }
   } catch (e) { /* escalation must never break a read */ }
@@ -69,6 +73,14 @@ async function escalateStaleSos(sql, circleId) {
       const g = await requireMember(sql, q.circle, q.member, tokenOf(req));
       if (g.err) return res.status(g.status).json({ ok: false, error: g.err });
       const circle = g.circle;
+      // The recording made when someone pressed SOS: for the family only.
+      if (q.sosAudio) {
+        if (!isUuid(q.sosAudio)) return res.status(400).json({ ok: false, error: 'Bad recording id' });
+        const a = await sql`select m.mime, m.data, m.seconds from sos_media m join sos s on s.id = m.sos_id
+                            where m.id = ${q.sosAudio} and s.circle_id = ${circle.id}`;
+        if (!a[0]) return res.status(404).json({ ok: false, error: 'That recording is not here' });
+        return res.status(200).json({ ok: true, mime: a[0].mime, data: a[0].data, seconds: a[0].seconds });
+      }
       const members = await sql`select id, name, role, phone, place, country, relation, dob, gift_info, created_at,
                                        parent_id, spouse_id, gender, user_id is not null as on_app
                                 from members where circle_id = ${circle.id} order by created_at`;
@@ -107,8 +119,10 @@ async function escalateStaleSos(sql, circleId) {
       try { await ensureTaskSchema(sql); await sweepOverdue(sql, circle.id); } catch (e) { /* never break a read */ }
       const pulse = await pulseToday(sql, circle.id);
       const sosOpen = await sql`
-        select s.id, s.member_id, s.status, s.escalated, s.created_at, s.acked_at,
-               m.name, m.phone, a.name as acked_name
+        select s.id, s.member_id, s.status, s.escalated, s.created_at, s.acked_at, s.safe_at,
+               s.lat, s.lng, s.accuracy,
+               m.name, m.phone, a.name as acked_name,
+               (select md.id from sos_media md where md.sos_id = s.id order by md.created_at desc limit 1) as audio_id
         from sos s join members m on m.id = s.member_id
         left join members a on a.id = s.acked_by
         where s.circle_id = ${circle.id} and s.status <> 'resolved'
@@ -123,7 +137,8 @@ async function escalateStaleSos(sql, circleId) {
       return res.status(200).json({ ok: true, circleName: circle.name, code: circle.code,
         kind: ck[0] ? ck[0].kind : 'family', familyType: ck[0] ? ck[0].family_type : null, members, events, seenAt, calls,
         joinRequests: joinReqs, joinPolicy: (pol[0] && pol[0].join_policy) || 'approve',
-        sos: sosOpen, sosEscalateMin: SOS_ESCALATE_MIN, pulse });
+        sos: sosOpen.map(x => ({ ...x, map: mapLink(x.lat === null ? null : { lat: x.lat, lng: x.lng }) })),
+        sosEscalateMin: SOS_ESCALATE_MIN, pulse });
     }
 
     if (req.method === 'POST') {
@@ -186,12 +201,64 @@ async function escalateStaleSos(sql, circleId) {
             body: 'They are helping ' + row[0].name + ' - you do not need to call as well' }, { except: memberId });
           return res.status(200).json({ ok: true });
         }
-        await sql`update sos set status = 'resolved', resolved_at = now() where id = ${row[0].id}`;
+        // Marking someone safe is the family's word, not the person's own:
+        // that is what keeps their location on through the emergency. Alone
+        // in a family there is nobody else, so they may.
+        if (row[0].member_id === memberId && (await othersOnApp(sql, circle.id, memberId)) > 0) {
+          return res.status(403).json({ ok: false, error: 'Someone else in the family marks you safe. Tap "I am safe now" and they will be asked to confirm.' });
+        }
+        if (row[0].status === 'resolved') return res.status(200).json({ ok: true, already: true });
+        await sql`update sos set status = 'resolved', resolved_at = now(), resolved_by = ${memberId} where id = ${row[0].id}`;
+        await unlockSos(sql, circle.id, row[0].member_id);
         await sql`insert into events (circle_id, member_id, type, text)
                   values (${circle.id}, ${memberId}, 'care', ${am[0].name + ' marked ' + row[0].name + "'s SOS as sorted ✅"})`;
+        if (row[0].member_id !== memberId) {
+          await pushCircle(sql, circle.id, { title: '✅ ' + am[0].name + ' marked you safe',
+            body: 'Your location sharing is yours again - stop it whenever you like', url: '/#people' }, { only: row[0].member_id });
+        }
         await pushCircle(sql, circle.id, { title: '✅ ' + row[0].name + ' is alright',
           body: am[0].name + ' marked the SOS as sorted' }, { except: memberId });
         return res.status(200).json({ ok: true });
+      }
+
+      // The person who pressed SOS says they are alright. The family is told,
+      // and asked to confirm; until someone does, the SOS stays open.
+      if (type === 'sos_safe' || type === 'sos_audio') {
+        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
+        const sm = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
+        if (!sm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
+        if (!isUuid(req.body.sosId)) return res.status(400).json({ ok: false, error: 'Bad SOS id' });
+        const r = await sql`select id, member_id, status from sos where id = ${req.body.sosId} and circle_id = ${circle.id}`;
+        if (!r[0] || r[0].status === 'resolved') return res.status(404).json({ ok: false, error: 'That SOS is not open' });
+        if (r[0].member_id !== memberId) return res.status(403).json({ ok: false, error: 'Only the person who sent the SOS can do that' });
+        if (type === 'sos_safe') {
+          const alone = (await othersOnApp(sql, circle.id, memberId)) === 0;
+          if (alone) {
+            await sql`update sos set status = 'resolved', resolved_at = now(), resolved_by = ${memberId}, safe_at = now() where id = ${r[0].id}`;
+            await unlockSos(sql, circle.id, memberId);
+            return res.status(200).json({ ok: true, resolved: true });
+          }
+          await sql`update sos set safe_at = now() where id = ${r[0].id}`;
+          await sql`insert into events (circle_id, member_id, type, text)
+                    values (${circle.id}, ${memberId}, 'care', ${sm[0].name + ' says they are safe now - please check and mark it sorted'})`;
+          await pushCircle(sql, circle.id, { title: '🧡 ' + sm[0].name + ' says they are safe',
+            body: 'Check on them, then tap Sorted so the SOS can close', url: '/#home' }, { except: memberId });
+          return res.status(200).json({ ok: true, resolved: false });
+        }
+        // A short recording from the phone that pressed SOS, so the family can
+        // hear what was happening. Kept with the SOS, read only by the family.
+        const mime = String(req.body.mime || '').split(';')[0].trim().toLowerCase();
+        if (!SOS_AUDIO_TYPES.includes(mime)) return res.status(400).json({ ok: false, error: 'That recording type is not supported' });
+        const data = String(req.body.data || '');
+        if (!data || data.length > SOS_AUDIO_MAX || !/^[A-Za-z0-9+/=]+$/.test(data)) {
+          return res.status(400).json({ ok: false, error: 'That recording is too long or could not be read' });
+        }
+        const secs = Math.max(0, Math.min(600, parseInt(req.body.seconds, 10) || 0)) || null;
+        const ins = await sql`insert into sos_media (sos_id, member_id, mime, data, seconds)
+                              values (${r[0].id}, ${memberId}, ${mime}, ${data}, ${secs}) returning id`;
+        await pushCircle(sql, circle.id, { title: '🎙 A recording from ' + sm[0].name + "'s SOS",
+          body: 'Open Parwah to listen', url: '/#home', urgent: true }, { except: memberId });
+        return res.status(201).json({ ok: true, audioId: ins[0].id });
       }
 
       if (type === 'call_start' || type === 'call_end') {
@@ -217,13 +284,10 @@ async function escalateStaleSos(sql, circleId) {
       if (!member[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
       const t = String(text || '').trim().slice(0, type === 'message' ? 300 : 120);
       if (type === 'message' && !t) return res.status(400).json({ ok: false, error: 'Empty message' });
+      if (type === 'sos') return raiseSos(sql, res, circle, member[0], t, req.body);
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${memberId}, ${type}, ${t || null})`;
       // An adult's medicines and check-ins are not a game: no coins for them.
-      if (type === 'sos') {
-        await sql`insert into sos (circle_id, member_id) values (${circle.id}, ${memberId})`;
-        await pushCircle(sql, circle.id, { title: '🆘 SOS from ' + member[0].name, body: 'They pressed the SOS button - call them right now' }, { except: memberId });
-      }
       return res.status(201).json({ ok: true });
     }
 
@@ -232,4 +296,40 @@ async function escalateStaleSos(sql, circleId) {
   } catch (e) {
     return fail(res, e);
   }
+}
+
+// ONE PRESS OF SOS (see api/_sos.mjs for what it does and why).
+async function raiseSos(sql, res, circle, me, said, body) {
+  const pos = parsePos(body);
+  // Already open: a second press is a fresh position and a fresh alert, not
+  // a second emergency.
+  const open = await sql`select id from sos where circle_id = ${circle.id} and member_id = ${me.id} and status <> 'resolved'
+                         order by created_at desc limit 1`;
+  let sosId, again = false;
+  if (open[0]) {
+    sosId = open[0].id; again = true;
+    if (pos) await sql`update sos set lat = ${pos.lat}, lng = ${pos.lng}, accuracy = ${pos.accuracy} where id = ${sosId}`;
+  } else {
+    const r = await sql`insert into sos (circle_id, member_id, lat, lng, accuracy)
+                        values (${circle.id}, ${me.id}, ${pos ? pos.lat : null}, ${pos ? pos.lng : null}, ${pos ? pos.accuracy : null})
+                        returning id, created_at`;
+    sosId = r[0].id;
+    await sql`insert into events (circle_id, member_id, type, text) values (${circle.id}, ${me.id}, 'sos', ${said || null})`;
+  }
+  // Location on, exact, held on until the family marks them safe.
+  await ensureLocationSchema(sql);
+  await lockForSos(sql, circle.id, me.id, sosId, pos);
+  const text = sosText(me.name, pos, Date.now()) + (said ? ' "' + said + '"' : '');
+  // In the family chat, where everyone looks, with the map link.
+  try {
+    const chatId = await ensureCircleChat(sql, circle.id);
+    await sql`insert into messages (chat_id, member_id, text) values (${chatId}, ${me.id}, ${text})`;
+  } catch (e) { /* the alert below still goes */ }
+  await pushCircle(sql, circle.id, {
+    title: '🆘 SOS from ' + me.name + (again ? ' (again)' : ''),
+    body: (pos ? 'Tap to see where they are and call them now' : 'Call them right now'),
+    url: '/#home', urgent: true
+  }, { except: me.id });
+  const contacts = await sosContacts(sql, circle.id, me.id);
+  return res.status(201).json({ ok: true, sosId, again, text, map: mapLink(pos), located: !!pos, contacts });
 }

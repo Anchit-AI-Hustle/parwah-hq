@@ -1759,7 +1759,9 @@ check("elders: medicines and check-ins earn no coins; Medicines taken keeps its 
       "if (type === 'checkin' || type === 'pill') await award" not in (API_DIR / "events.mjs").read_text(encoding="utf-8")
       and "function pillKey()" in _appt and "Well done!" not in _appt)
 check("confirmations: SOS, sign out and leave ask in Parwah's own sheet with big answers",
-      'id="asksheet"' in _appt and "askSheet('Send SOS to the whole family?'" in _appt and "askSheet('Sign out on this phone?'" in _appt)
+      'id="asksheet"' in _appt and "askSheet('Sign out on this phone?'" in _appt
+      # SOS asks with its own 5-second countdown and a big Cancel instead.
+      and 'id="ss-cancel"' in _appt and "SOS_COUNT = 5" in _appt)
 check("profile: You first with Edit under it; AI keys under Advanced; leaving and signing out last; nothing coming soon",
       _appt.index('<h3>You</h3>') < _appt.index('id="plancard"') and "details class=\"card advanced\"" in _appt
       and "Hindi toggle coming soon" not in _appt and "Parwah Plus (coming soon)" not in _appt)
@@ -2173,6 +2175,39 @@ check("valid: and the app checks the same, beside the box that is wrong",
       all(x in _app_src for x in ("fieldErr('c-name'", "fieldErr('j-name'", "fieldErr('e-name'", "fieldErr('e-dob'",
                                     "fieldErr('vp-cap'", "fieldErr('vd-expires'", "fieldErr('p-count'", "fieldErr('call-link'"))
       and "nameCheck($('au-name').value" in _app_src and ".fielderr{" in _app_src)
+
+# ---------- SOS (owner, 2026-10-04) ----------
+# A red button on every screen; a 5-second countdown with Cancel; then the
+# alert to every phone as an emergency, the message in the family chat,
+# location on and exact until SOMEONE ELSE marks the person safe, a short
+# recording, and one-tap calls and messages. Proved end to end by
+# site/tests/db/sos.e2e.dbtest.mjs.
+_sosmod = (API_DIR / "_sos.mjs").read_text(encoding="utf-8")
+_evt = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_locapi = (API_DIR / "_locationapi.mjs").read_text(encoding="utf-8")
+check("sos: the red button is on every screen, never hidden by a game or a sheet rule",
+      'id="sos-fab"' in _app_src and "$('sos-fab').hidden = !inApp;" in _app_src and ".sosfab{" in _app_src
+      and "body.nofab #sos-fab" not in _app_src)
+check("sos: a countdown with Cancel stands in for the question, and every SOS button uses it",
+      "SOS_COUNT = 5" in _app_src and "$('btn-sos').addEventListener('click', function(){ sosStart(''); });" in _app_src
+      and "sosStart(said)" in _app_src)
+check("sos: sent as an emergency push (high urgency, stays on screen, long buzz)",
+      "urgency: 'high'" in (API_DIR / "_push.mjs").read_text(encoding="utf-8")
+      and "requireInteraction: urgent" in (REPO / "site/public/sw.js").read_text(encoding="utf-8"))
+check("sos: the message goes in the family chat with a map link",
+      "ensureCircleChat(sql, circle.id)" in _evt and "maps.google.com/?q=" in _sosmod)
+check("sos: location is held on until someone else marks the person safe",
+      "lockForSos(sql, circle.id, me.id, sosId, pos)" in _evt and "unlockSos(sql, circle.id, row[0].member_id)" in _evt
+      and "status(423)" in _locapi and "s.sos_lock is null" in _locapi
+      and "othersOnApp(sql, circle.id, memberId)) > 0" in _evt)
+check("sos: a short recording, heard only by the family",
+      "sos_media" in _sosmod and "SOS_AUDIO_MAX" in _evt and "and s.circle_id = ${circle.id}" in _evt.split("if (q.sosAudio)")[1][:700])
+check("sos: other phones take the whole screen with a siren until someone answers",
+      'id="sosalert"' in _app_src and "function sirenStart()" in _app_src and "sosSync(data.sos || [])" in _app_src)
+check("sos: one tap to 112, the family, WhatsApp, SMS and email",
+      'href="tel:112"' in _app_src and "wa.me/?text=" in _app_src and "'sms:' + nums.join(',')" in _app_src and "mailto:?subject=" in _app_src)
+check("sos: the end-to-end suite runs with the database suites",
+      "sos.e2e.dbtest.mjs" in (REPO / "package.json").read_text(encoding="utf-8"))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

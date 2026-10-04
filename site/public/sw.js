@@ -39,11 +39,20 @@ self.addEventListener('activate', function (e) {
 self.addEventListener('push', function (e) {
   var d = {};
   try { d = e.data.json(); } catch (err) {}
+  // An SOS stays on the screen until someone deals with it, buzzes in the
+  // long pattern a phone uses for an emergency, and replaces (rather than
+  // stacks under) an earlier SOS alert.
+  var urgent = !!d.urgent;
   e.waitUntil(self.registration.showNotification(d.title || 'Parwah', {
     body: d.body || '',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    data: { url: d.url || '/' }
+    data: { url: d.url || '/' },
+    tag: urgent ? 'parwah-sos' : undefined,
+    renotify: urgent,
+    requireInteraction: urgent,
+    silent: false,
+    vibrate: urgent ? [800, 300, 800, 300, 800, 300, 1500, 500, 800, 300, 800, 300, 800] : [200]
   }));
 });
 

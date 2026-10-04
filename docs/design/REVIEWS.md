@@ -252,3 +252,15 @@ three, and from his profile it could not be done at all.
 | 93 | 1 Visibility | "Waiting for Amit" in a game, and a task someone else holds, gave no way to ask | 2 | Fixed: Nudge (games, once every two minutes) and Remind (tasks, once an hour), to that person's phone only |
 
 New pattern: the field error (`.fielderr` under the box, `aria-invalid` on it, focus moved there, cleared on the next keystroke). Use it instead of a toast whenever a form is refused.
+
+### Review 8, SOS (owner, 2026-10-04)
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 94 | 1 Visibility | SOS lived only on Today, and only in big form on an elder's phone | 4 | Fixed: a red SOS button on every screen, bottom left, 64px, for everyone |
+| 95 | 5 Error prevention | SOS asked "Are you sure?" in a sheet: slow in an emergency, easy to dismiss by mistake | 3 | Fixed: a 5-second countdown with a big Cancel (pockets press buttons) and Send now |
+| 96 | 7 Flexibility | After SOS the person had nothing to do next | 4 | Fixed: one screen with Call 112 and the family, WhatsApp, SMS and email filled in, what happened (alerted, location, recording, who answered), and I am safe now |
+| 97 | 1 Visibility | On a family phone with Parwah open, an SOS was a bar at the top | 4 | Fixed: the whole screen, a siren and the buzz, with Call, I am on it, See where they are, Listen, and Silence |
+| 98 | 3 User control | Location during an SOS could be switched off by the person mid-emergency | 3 | Changed at the owner's direction: held on, exact, until someone else in the family marks them safe; then it is theirs again. Alone in a family, the person may close it |
+
+New patterns: the SOS button (`.sosfab`), the SOS and alarm screens (`.sosscreen`, `.sosalert`, `.ss-btn`). Emergency red (`--sos`) is used for these and nothing else.
