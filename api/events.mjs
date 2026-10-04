@@ -155,7 +155,7 @@ async function escalateStaleSos(sql, circleId) {
                   do update set style = excluded.style, value = excluded.value, note = excluded.note, at = now()`;
         await sql`insert into events (circle_id, member_id, type, text)
                   values (${circle.id}, ${pm[0].id}, 'checkin', ${pm[0].name + ' is ' + opt.e + ' ' + opt.t})`;
-        await award(sql, circle.id, pm[0].id, 'checkin', day);
+        // No coins for saying how you are: an adult's check-in is not a game.
         // "A call would be nice" is the reason this feature exists - it lets
         // someone say they are not fine without having to say it.
         if (opt.call) {

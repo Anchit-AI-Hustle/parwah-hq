@@ -130,6 +130,8 @@ const ctxO = await browser.newContext({ viewport: { width: 390, height: 844 }, s
 const O = await ctxO.newPage(); O.on('pageerror', e => errors.push('O: ' + e.message));
 await O.goto(BASE + '/?join=' + code); await O.waitForTimeout(800);
 ok('signed out, the entry says you have been invited, with the code', await O.isVisible('#ob-invite') && (await O.textContent('#ob-invite-sub')).includes(code));
+await O.reload(); await O.waitForTimeout(800);
+ok('a reload before joining keeps the invite', await O.isVisible('#ob-invite') && (await O.textContent('#ob-invite-sub')).includes(code));
 ok('the pitch is the five things, and the hint is true', /papers, health, things to do and an emergency card/i.test(await O.textContent('#onboard > .lede')) && /choose a PIN or password next/.test(await O.textContent('#auth-step')));
 await O.fill('#au-phone', U.Papa.phone.slice(3)); await O.click('#au-go'); await O.waitForTimeout(900);
 ok('a known number is asked for its PIN without saying whose it is', await O.isVisible('#au-pinwrap') && !/Papa/.test(await O.textContent('#auth-step')), await O.textContent('#au-pinnote'));
@@ -198,7 +200,11 @@ ok('and Stay signed in stays', !(await A.isVisible('#asksheet')) && await A.isVi
 // ---- notifications: what needs you, as buttons, no log lines
 await call('events', { code, memberId: U.Anchit.memberId, type: 'message', text: 'chai?' }, {}, 'POST', U.Anchit.token);
 await A.evaluate(() => { location.hash = '#notifs'; }); await A.waitForTimeout(1200);
+await call('events', { code, memberId: U.Papa.memberId, type: 'pill', text: '' }, {}, 'POST', U.Papa.token);
+await admin.query(`insert into events (circle_id, member_id, type, text) values ((select id from circles where code = $1), null, 'care', 'Running late and nobody has it yet: Pay the bill')`, [code]);
+await A.reload(); await A.waitForTimeout(1200); await A.evaluate(() => { location.hash = '#notifs'; }); await A.waitForTimeout(800);
 const nl = await A.textContent('#nlist');
+ok('routine activity (Papa took his medicines) is not in the bell; something running late is', !/pills|medicines/i.test(nl) && /Running late/.test(nl), nl.slice(0, 200));
 ok('my own actions and chat messages are not in the bell', !/chai\?/.test(nl) && !/Anchit created/.test(nl), nl.slice(0, 200));
 ok('each row is a button', await A.$$eval('#nlist .nrow', rs => rs.every(r => r.tagName === 'BUTTON')));
 if (await A.$('#nlist .nrow')) { await A.click('#nlist .nrow'); await A.waitForTimeout(200); ok('the detail has no "Type:" log line', !/Type:/.test(await A.textContent('#ndetail'))); }

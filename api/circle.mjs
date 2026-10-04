@@ -331,7 +331,9 @@ export default async function handler(req, res) {
         // A family that never opened the vault has no vault table yet; that,
         // and only that, counts as nothing kept. Any other error stops the
         // removal rather than risk deleting what this guard protects.
-        const keptIn = async (run) => { try { const r = await run(); return r[0] ? r[0].n : 0; } catch (e) { if (e && e.code === '42P01') return 0; throw e; } };
+        // A table or column not created yet (To do never opened: 42P01 or
+        // 42703) means nothing can be kept there.
+        const keptIn = async (run) => { try { const r = await run(); return r[0] ? r[0].n : 0; } catch (e) { if (e && (e.code === '42P01' || e.code === '42703')) return 0; throw e; } };
         const kept = await keptIn(() => sql`select count(*)::int as n from vault_docs where circle_id = ${circle.id} and about_member = ${targetId}`)
                    + await keptIn(() => sql`select count(*)::int as n from family_book where circle_id = ${circle.id} and about_member = ${targetId}`)
                    + await keptIn(() => sql`select count(*)::int as n from requests where circle_id = ${circle.id} and about_member = ${targetId}`);

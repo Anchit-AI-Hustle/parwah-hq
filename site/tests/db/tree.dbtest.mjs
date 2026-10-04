@@ -186,6 +186,7 @@ ok('a task can be about Dadi', aboutDadi.status === 201 || aboutDadi.status === 
 ok('but not given to her, by the API either', (await care({ action: 'task_create', title: 'Fetch milk', ownerId: dadiRow.id })).status === 400);
 ok('nor messaged', (await call(chatsApi, { token: papa.token, body: { code, memberId: papa.id, action: 'open_dm', otherId: dadiRow.id } })).status === 400);
 const grpChat = await call(chatsApi, { token: papa.token, body: { code, memberId: papa.id, action: 'create_group', name: 'Elders', memberIds: [dadiRow.id, M.Rohan.id] } });
+ok('nor added to a group chat later', grpChat.chatId && (await call(chatsApi, { token: papa.token, body: { code, memberId: papa.id, action: 'add_member', chatId: grpChat.chatId, addId: dadiRow.id } })).status === 400);
 ok('nor put in a group chat', grpChat.chatId && (await admin.query('select count(*)::int as n from chat_members where chat_id = $1 and member_id = $2', [grpChat.chatId, dadiRow.id])).rows[0].n === 0);
 const keptTask = await rm(dadiRow.id);
 ok('while a task is about her, she is not removed', keptTask.status === 409 && /things to do/.test(keptTask.error) && !!(await row(dadiRow.id)), JSON.stringify(keptTask));

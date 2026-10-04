@@ -3094,8 +3094,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // never your own actions, never chat (that has its own place), never games.
   function notifWanted(e){
     if (state && e.member_id === state.memberId) return false;
-    if (e.type === 'message') return false;
-    return !/Saanp|Antakshari|Charades|Tic-Tac|Ludo|Bhabhi|Vyapar|game|board/i.test(e.text || '');
+    // An SOS and someone asking to join always need you.
+    if (e.type === 'sos' || e.type === 'join') return true;
+    var t = e.text || '', me = state && state.name ? String(state.name).split(' ')[0] : '';
+    // Something running late, or waiting for someone to take it.
+    if (/running late|needs someone|nobody has it/i.test(t)) return true;
+    // Something given to you, asked of you, or about you by name.
+    if (me && new RegExp('\\b(to|for|asked|about) ' + me.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(t)) return true;
+    return false;
   }
   function renderNotifs(){
     var unread = 0, h = '';
@@ -3791,7 +3797,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         // person has seen the number. Saying "you will stop seeing chats"
         // while deleting their documents is not a warning, it is a surprise.
         if (!j.ok && j.needsConfirm) {
-          if (confirm(j.error + '\n\nLeave anyway?')) doLeave(true);
+          askSheet('This deletes things kept about you', j.error, 'Leave and delete them', 'Stay', true).then(function(y){ if (y) doLeave(true); });
           return;
         }
         if (!j.ok) { toast(j.error || 'Could not leave'); return; }
@@ -4323,6 +4329,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       .then(function(j){
         $('j-go').disabled = false;
         if (!j.ok) { $('ob-err').textContent = j.error || 'Could not join.'; return; }
+        try { sessionStorage.removeItem('parwah-join'); } catch (e) {}
         if (j.pending) {
           // The code opened the door; the family still has to say come in.
           $('pend-msg').textContent = j.message || ('Your request has gone to ' + j.circleName + '.');
@@ -8581,8 +8588,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var jc = new URLSearchParams(location.search).get('join');
     if (jc) {
       pendingJoin = jc.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
-      // Used once: a reload must not ask again.
+      // Out of the address so it is not shared on, but kept for this tab
+      // until the join goes through: a reload or a restored tab keeps it.
+      try { sessionStorage.setItem('parwah-join', pendingJoin); } catch (e) {}
       history.replaceState(history.state, '', location.pathname + location.hash);
+    } else {
+      try { pendingJoin = sessionStorage.getItem('parwah-join') || null; } catch (e) {}
     }
   } catch (e) {}
   var inviteFor = pendingJoin && loadGroups().filter(function(c){ return String(c.code).toUpperCase() === pendingJoin; })[0];
