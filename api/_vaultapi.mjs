@@ -276,7 +276,7 @@ async function docsApi(req, res, sql, circle, me) {
     if (!label) return res.status(400).json({ ok: false, error: 'Give the document a name, e.g. "Papa\'s passport"' });
     if (!isUuid(body.aboutId)) return res.status(400).json({ ok: false, error: 'Say whose document this is' });
     const aRow = await sql`select id, name from members where id = ${body.aboutId} and circle_id = ${circle.id}`;
-    if (!aRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+    if (!aRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this family' });
     const chk = checkNumber(kind, body.number);
     if (!chk.ok) return res.status(400).json({ ok: false, error: chk.why });
     const last4 = chk.last4;
@@ -402,7 +402,7 @@ async function docsApi(req, res, sql, circle, me) {
     if (!decides(r[0]))
       return res.status(403).json({ ok: false, error: 'Only the person this document belongs to can decide who sees it' });
     const tRow = await sql`select id, name, user_id from members where id = ${targetId} and circle_id = ${circle.id}`;
-    if (!tRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+    if (!tRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this family' });
     if (tRow[0].id === me.id) return res.status(400).json({ ok: false, error: 'It is already yours' });
     if (!tRow[0].user_id) return res.status(400).json({ ok: false, error: tRow[0].name + ' is not on Parwah, so cannot open documents' });
     if (body.action === 'revoke') {
@@ -461,7 +461,7 @@ async function docsApi(req, res, sql, circle, me) {
     }
     if (!isUuid(toId)) return res.status(400).json({ ok: false, error: 'Say whose paper you need' });
     const tRow = await sql`select id, name, user_id from members where id = ${toId} and circle_id = ${circle.id}`;
-    if (!tRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+    if (!tRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this family' });
     if (tRow[0].id === me.id) return res.status(400).json({ ok: false, error: 'That is your own' });
     if (!tRow[0].user_id) return res.status(400).json({ ok: false, error: tRow[0].name + ' is not on Parwah. Ask whoever keeps their papers.' });
     const open = await sql`select id from vault_requests where circle_id = ${circle.id} and from_member = ${me.id} and to_member = ${tRow[0].id}
@@ -598,7 +598,7 @@ async function payApi(req, res, sql, circle, me) {
     const targetId = body.targetId || body.memberId;
     if (!isUuid(targetId)) return res.status(400).json({ ok: false, error: 'Pick a family member' });
     const tRow = await sql`select id, name, user_id from members where id = ${targetId} and circle_id = ${circle.id}`;
-    if (!tRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+    if (!tRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this family' });
     if (tRow[0].id === me.id) return res.status(400).json({ ok: false, error: 'It is already yours to use' });
     if (!tRow[0].user_id && body.action === 'allow') return res.status(400).json({ ok: false, error: tRow[0].name + ' is not on Parwah, so cannot be allowed to pay' });
     if (body.action === 'disallow') {

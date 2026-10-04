@@ -1,7 +1,7 @@
 // The care protocol: reminders and requests, consent-first.
 // GET  /api/care?circle=CODE - reminders + open/claimed requests for the circle
 // POST /api/care {code, memberId, action, ...} - see ACTIONS below
-import { db, ensureSchema, circleByCode, requireMember, isUuid } from './_db.mjs';
+import { db, ensureSchema, circleByCode, requireMember, isUuid, spaceWord } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
@@ -110,7 +110,7 @@ export async function createReminder(sql, circle, me, { forMemberId, title, time
   if (!t) return { error: 'The reminder needs a title' };
   const target = isUuid(forMemberId) ? forMemberId : me.id;
   const forRow = await sql`select id, name from members where id = ${target} and circle_id = ${circle.id}`;
-  if (!forRow[0]) return { error: 'That person is not in this circle' };
+  if (!forRow[0]) return { error: 'That person is not in this family' };
   const self = target === me.id;
   const rec = recurrence === 'daily' ? 'daily' : 'once';
   // Time arrives from a standard time input (HH:MM or HH:MM:SS, 24h);
@@ -145,7 +145,7 @@ export async function createRequest(sql, circle, me, { title, dueDate, aboutMemb
   }
   const r = await sql`insert into requests (circle_id, by_member, title, due_date, about_member)
                       values (${circle.id}, ${me.id}, ${t}, ${due}, ${about}) returning id`;
-  await feed(sql, circle.id, me.id, `${me.name} asked the circle: ${t}`);
+  await feed(sql, circle.id, me.id, `${me.name} asked the ${spaceWord(circle)}: ${t}`);
   await pushCircle(sql, circle.id, { title: '🤝 ' + me.name + ' needs a hand', body: t + (due ? ' · by ' + due : '') + ' - first to tap "I\'m on it" takes it' }, { except: me.id });
   return { ok: true, id: r[0].id };
 }

@@ -177,10 +177,10 @@ const boxes = await tabs.evaluateAll(bs => bs.map(b => b.getBoundingClientRect()
 ok(boxes.every(r => r <= 390), 'on a phone all five tabs fit on screen, none hidden off the edge');
 
 // ---- the band, from the same answer ----
-const segs = page.locator('#mu-tl button');
+const segs = page.locator('#mu-tl [data-tl]');
 const n = await segs.count();
 ok(n >= 8, 'the whole day is one band (' + n + ' parts)');
-const shares = await page.locator('#mu-tl').evaluate(el => [...el.querySelectorAll('button')].map(b => parseFloat(b.style.flexBasis)));
+const shares = await page.locator('#mu-tl').evaluate(el => [...el.querySelectorAll('[data-tl]')].map(b => parseFloat(b.style.flexBasis)));
 ok(Math.abs(shares.reduce((a, b) => a + b, 0) - 100) < 0.01, 'the parts add up to the whole day and night');
 const t0 = +new Date(SEQ[0].from), span = +new Date(SEQ[SEQ.length - 1].to) - t0;
 const titles = await segs.evaluateAll(bs => bs.map(b => [b.title, b.dataset.good]));
@@ -192,16 +192,17 @@ for (let i = 0; i < n; i++) {
   acc += shares[i] / 100 * span;
 }
 ok(agree === n, `every part of the band is the rule's answer for that time (${agree}/${n})`);
-ok(await page.locator('#mu-tl button.now').count() === 1, 'exactly one part is marked as now');
-ok((await page.locator('#mu-tl button.now').getAttribute('title')).startsWith(NOW.label), 'and it is the same one the verdict names');
+ok(await page.locator('#mu-tl [data-tl].now').count() === 1, 'exactly one part is marked as now');
+ok((await page.locator('#mu-tl [data-tl].now').getAttribute('title')).startsWith(NOW.label), 'and it is the same one the verdict names');
 const key = await page.locator('.tlkey').textContent();
 ok(/Good time/.test(key) && /Better to wait/.test(key) && /Now/.test(key), 'a key names every state the band uses');
-ok((await page.locator('#mu-tl button .sr').first().textContent()).length > 20,
+ok((await page.locator('#mu-tl [data-tl] .sr').first().textContent()).length > 20,
    'and every part carries its own words for a screen reader');
 await segs.nth(Math.min(5, n - 1)).click(); await page.waitForTimeout(150);
 const picked = await page.locator('#mu-tlpick').textContent();
 ok(/^[✓✕] /.test(picked) && picked.length > 25, 'tapping a part of the day says what it is → ' + picked);
-ok(await segs.nth(Math.min(5, n - 1)).getAttribute('aria-pressed') === 'true', 'and the tapped part says it is selected');
+ok(await segs.nth(Math.min(5, n - 1)).getAttribute('data-on') === '1', 'and the tapped part is marked');
+ok(await page.locator('#mu-tl button').count() === 0, 'the band has no thin buttons: its parts are drawn, and the lists below are the tap targets');
 
 // ---- coming up never contradicts the band ----
 const soon = await page.locator('#mu-soon .murow').evaluateAll(rs => rs.map(r => ({

@@ -16,17 +16,20 @@
 // twice in a month pays once, checking in twice in a day pays once. That is
 // enforced by a unique index, not by remembering to check.
 
+// Only what is really paid is listed: a rule shown on screen that never pays
+// teaches the family the coins are not to be trusted. Check-ins and
+// medicines earn nothing on purpose - an adult's health is not a score.
 export const EARN = {
   welcome:    { n: 120, label: 'Welcome to Parwah' },
-  checkin:    { n: 5,   label: 'Checked in' },
-  pill:       { n: 3,   label: 'Took the medicines' },
   reminder:   { n: 3,   label: 'Finished a reminder' },
   memory_add: { n: 5,   label: 'Added to the family memory' },
   memory_ok:  { n: 2,   label: 'Checked something is still current' },
   vault_add:  { n: 10,  label: 'Put a document in the vault' },
   welcomed:   { n: 5,   label: 'Welcomed someone into the family' },
-  game:       { n: 3,   label: 'Played together' }
+  game:       { n: 3,   label: 'Finished a game together' }
 };
+// Rows from before those rules were dropped still read sensibly.
+export const PAST_LABELS = { checkin: 'Checked in', pill: 'Took the medicines', game: 'Played together' };
 
 // What the AI costs the family, per turn.
 export const SPEND = { ekta: 2 };

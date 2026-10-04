@@ -129,11 +129,11 @@ async function escalateStaleSos(sql, circleId) {
     if (req.method === 'POST') {
       const { code, memberId, type, text } = req.body || {};
       const circle = await circleByCode(sql, code);
-      if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
+      if (!circle) return res.status(404).json({ ok: false, error: 'No family found with that code' });
       if (type === 'seen') {
-        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
         const mm = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id`);
-        if (!mm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        if (!mm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
         await sql`insert into notif_seen (member_id, seen_at) values (${memberId}, now())
                   on conflict (member_id) do update set seen_at = now()`;
         return res.status(200).json({ ok: true });
@@ -141,9 +141,9 @@ async function escalateStaleSos(sql, circleId) {
       // How you actually are, in today's vocabulary. One answer per person per
       // day, replaceable - a day can turn.
       if (type === 'pulse') {
-        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
         const pm = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
-        if (!pm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        if (!pm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
         await ensurePulseSchema(sql);
         const day = pulseDay(), styleKey = styleFor(day);
         const opt = optionOf(styleKey, String(req.body.value || ''));
@@ -168,9 +168,9 @@ async function escalateStaleSos(sql, circleId) {
       // Somebody is on it - everyone else stops worrying, and the person who
       // pressed the button finds out that help is coming.
       if (type === 'sos_ack' || type === 'sos_resolve') {
-        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
         const am = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
-        if (!am[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        if (!am[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
         if (!isUuid(req.body.sosId)) return res.status(400).json({ ok: false, error: 'Bad SOS id' });
         const row = await sql`select s.id, s.member_id, s.status, m.name
                               from sos s join members m on m.id = s.member_id
@@ -195,9 +195,9 @@ async function escalateStaleSos(sql, circleId) {
       }
 
       if (type === 'call_start' || type === 'call_end') {
-        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
         const cm = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
-        if (!cm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+        if (!cm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
         if (type === 'call_start') {
           const room = String(req.body.room || '');
           if (room.indexOf('https://meet.jit.si/') !== 0 || room.length > 300) return res.status(400).json({ ok: false, error: 'Bad room' });
@@ -212,9 +212,9 @@ async function escalateStaleSos(sql, circleId) {
         return res.status(200).json({ ok: true });
       }
       if (!TYPES.includes(type)) return res.status(400).json({ ok: false, error: 'Unknown event type' });
-      if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+      if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
       const member = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
-      if (!member[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+      if (!member[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
       const t = String(text || '').trim().slice(0, type === 'message' ? 300 : 120);
       if (type === 'message' && !t) return res.status(400).json({ ok: false, error: 'Empty message' });
       await sql`insert into events (circle_id, member_id, type, text)

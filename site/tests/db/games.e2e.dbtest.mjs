@@ -305,21 +305,21 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
   // Three handovers sent at once: one lands, nothing is written over it.
   { const s13 = JSON.parse(JSON.stringify(g.state)); s13.turnAt = Date.now() - 13 * 3600 * 1000;
     await admin.query('update games set state = $1::jsonb where id = $2', [JSON.stringify(s13), g.id]);
-    const e0 = (await admin.query(`select count(*)::int as n from events where text like 'Rohan let Parwah play for Meera%'`)).rows[0].n;
+    const e0 = (await admin.query(`select count(*)::int as n from events where text like 'Rohan let the computer play for Meera%'`)).rows[0].n;
     const three = await Promise.all([away('them', meera.id), away('them', meera.id), away('them', meera.id)]);
-    const e1 = (await admin.query(`select count(*)::int as n from events where text like 'Rohan let Parwah play for Meera%'`)).rows[0].n;
+    const e1 = (await admin.query(`select count(*)::int as n from events where text like 'Rohan let the computer play for Meera%'`)).rows[0].n;
     ok('snakes: three handovers sent at once: exactly one lands, and the family is told once',
        three.filter(x => x === 200).length === 1 && e1 - e0 === 1, three.join() + ' told ' + (e1 - e0));
-    await admin.query(`delete from events where text like 'Rohan let Parwah play for Meera%'`); }
+    await admin.query(`delete from events where text like 'Rohan let the computer play for Meera%'`); }
   const st = g.state; st.turnAt = Date.now() - 13 * 3600 * 1000;
   await admin.query('update games set state = $1::jsonb where id = $2', [JSON.stringify(st), g.id]);
   await R.waitForTimeout(3800);
-  ok('snakes: after 12 hours, Rohan is offered "Let Parwah play for Meera"', await vis(R, '#g-hand') && /Let Parwah play for Meera/.test(await R.textContent('#g-hand')), await R.textContent('#g-hand').catch(() => ''));
+  ok('snakes: after 12 hours, Rohan is offered "Let the computer play for Meera"', await vis(R, '#g-hand') && /Let the computer play for Meera/.test(await R.textContent('#g-hand')), await R.textContent('#g-hand').catch(() => ''));
   await R.click('#g-hand'); await R.waitForTimeout(800);
   g = await lastGame('snakes');
   const mSeat = g.state.players.find(p => p.id === meera.id);
   ok('snakes: Parwah now plays Meera\'s seat, and the game goes on to Rohan', mSeat.away === true && (g.state.turn === 0 || !!g.state.winner), JSON.stringify({ t: g.state.turn, away: mSeat.away }));
-  ok('snakes: the family is told who let Parwah play for whom', (await admin.query(`select count(*)::int as n from events where text like 'Rohan let Parwah play for Meera%'`)).rows[0].n === 1);
+  ok('snakes: the family is told who let the computer play for whom', (await admin.query(`select count(*)::int as n from events where text like 'Rohan let the computer play for Meera%'`)).rows[0].n === 1);
   // Rohan leaves too: nobody is left, so the game ends with no result.
   ok('snakes: Rohan can leave the game', await vis(R, '#g-leave'));
   await R.click('#g-leave'); await R.waitForTimeout(300);
@@ -355,6 +355,27 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
 }
 
 ok('no script errors', errors.length === 0, errors.join(' | '));
+// ---------------- A game finished together earns the family coins ----------------
+{
+  const api = (who, body) => fetch(BASE + '/api/games', { method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': who.token },
+    body: JSON.stringify({ code: 'SHARMA', memberId: who.id, ...body }) }).then(r => r.json());
+  // No coins table yet simply means nothing has been paid.
+  const coinsFor = async (gid) => { try { return (await admin.query(`select member_id from coins where reason = 'game' and ref = $1`, [String(gid)])).rows.map(r => r.member_id).sort(); } catch (e) { return []; } };
+  await admin.query(`update games set status = 'done' where status = 'active'`);   // room under the cap
+  const s = await api(rohan, { action: 'start_ttt', vsId: meera.id });
+  const gid = s.game && s.game.id;
+  // Rohan takes the top row while Meera plays the middle row: Rohan wins.
+  for (const [who, cell] of [[rohan, 0], [meera, 3], [rohan, 1], [meera, 4], [rohan, 2]]) await api(who, { action: 'move', gameId: gid, cell });
+  const paid = await coinsFor(gid);
+  ok('a game two people finished pays each of them once', paid.length === 2 && paid.includes(rohan.id) && paid.includes(meera.id), JSON.stringify(paid));
+  await api(rohan, { action: 'move', gameId: gid, cell: 5 });
+  ok('and never twice for the same game', (await coinsFor(gid)).length === 2);
+  const solo = await api(rohan, { action: 'start_ttt', vsId: 'bot' });
+  for (const cell of [0, 1, 2, 3, 4, 5, 6, 7, 8]) await api(rohan, { action: 'move', gameId: solo.game.id, cell });
+  ok('a game against the computer earns nothing', (await coinsFor(solo.game.id)).length === 0);
+}
+
 await browser.close();
 server.close();
 await admin.end();

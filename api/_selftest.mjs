@@ -318,12 +318,12 @@ export default async function handler(req, res) {
     // COINS - one pot for the family, earned by caring, spent on the AI.
     await ensureCoinSchema(sql);
     const start = await balance(sql, circleId);
-    const paid1 = await award(sql, circleId, papa[0].id, 'checkin', '2026-01-01');
-    const paid2 = await award(sql, circleId, papa[0].id, 'checkin', '2026-01-01');  // same day again
-    const paid3 = await award(sql, circleId, beta[0].id, 'checkin', '2026-01-01');  // different person
+    const paid1 = await award(sql, circleId, papa[0].id, 'memory_ok', 'selftest:2026-01');
+    const paid2 = await award(sql, circleId, papa[0].id, 'memory_ok', 'selftest:2026-01');  // same thing again
+    const paid3 = await award(sql, circleId, beta[0].id, 'memory_ok', 'selftest:2026-01');  // different person
     const afterEarn = await balance(sql, circleId);
-    steps.coins_earn_once = paid1 === EARN.checkin.n && paid2 === 0 && paid3 === EARN.checkin.n
-      && afterEarn === start + EARN.checkin.n * 2;
+    steps.coins_earn_once = paid1 === EARN.memory_ok.n && paid2 === 0 && paid3 === EARN.memory_ok.n
+      && afterEarn === start + EARN.memory_ok.n * 2;
 
     const sp = await spend(sql, circleId, beta[0].id, 'ekta');
     const afterSpend = await balance(sql, circleId);

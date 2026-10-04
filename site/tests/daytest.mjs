@@ -192,7 +192,18 @@ ok(await fetchSign('leo', '2026-08-31') === null, 'an unexpected shape yields no
 stub(() => { throw new Error('network down'); });
 ok(await fetchSign('leo', '2026-08-31') === null, 'a dead network is caught, not thrown at the family');
 stub(() => body({ data: { horoscope_data: 'x'.repeat(5000) } }));
-ok((await fetchSign('leo', '2026-08-31')).length === 900, 'an enormous reading is trimmed rather than shipped whole');
+{ const long = await fetchSign('leo', '2026-08-31'); ok(long.length <= 900 && long.length > 200, 'an enormous reading is trimmed rather than shipped whole'); }
+// Read before a family sees it.
+stub(() => body({ data: { date: '2026-08-31', horoscope_data: 'A calm day. Avoid medicines without advice and see a doctor if the pain returns.' } }));
+ok(await fetchSign('leo', '2026-08-31') === null, 'a reading that strays into health or medicines is not shown');
+stub(() => body({ data: { date: '2026-08-31', horoscope_data: 'Expect a windfall today; a good time to invest in shares and lottery tickets.' } }));
+ok(await fetchSign('leo', '2026-08-31') === null, 'nor one that promises money');
+stub(() => body({ data: { date: '2026-08-30', horoscope_data: READING } }));
+ok(await fetchSign('leo', '2026-08-31') === null, 'a reading dated another day is not shown as today\'s');
+stub(() => body({ data: { date: '2026-08-31', horoscope_data: 'Talk to family \u2014 they listen. A good evening for old songs and long calls with cousins.' } }));
+ok(await fetchSign('leo', '2026-08-31') === 'Talk to family - they listen. A good evening for old songs and long calls with cousins.', 'dashes become a plain hyphen');
+stub(() => body({ data: { horoscope_data: ('A long and pleasant day with the family around you. ').repeat(30) } }));
+{ const cut = await fetchSign('leo', '2026-08-31'); ok(cut.length <= 900 && /\.$/.test(cut), 'a long reading ends at a full sentence, not mid-word'); }
 globalThis.fetch = realFetch;
 
 console.log(pass + ' passed, ' + fail + ' failed');

@@ -9,7 +9,7 @@
 //   send         {chatId, text}
 //   create_group {name, memberIds[]}
 //   open_dm      {otherId}   (returns the existing 1:1 chat if there is one)
-import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat , requireMember} from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat , requireMember, spaceWord} from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { safeImageUri } from './_sec.mjs';
@@ -76,7 +76,7 @@ async function maybeEktaReply(sql, circle, me, chat, text) {
     const transcript = recent.reverse().map(r => r.name + ': ' + r.text).join('\n');
     const history = [{
       role: 'user',
-      content: 'You are a participant in the chat "' + (chat.name || 'family chat') + '" of this circle. Recent messages:\n' +
+      content: 'You are a participant in the chat "' + (chat.name || 'family chat') + '" of this ' + spaceWord(circle) + '. Recent messages:\n' +
         transcript + '\n\nThe latest message mentions you. Reply to it directly as yourself, for the whole chat to read. Do not prefix your name.'
     }];
     const out = await ektaTurn(sql, circle, me, history);
@@ -215,7 +215,7 @@ export default async function handler(req, res) {
       const other = body.otherId;
       if (!isUuid(other) || other === me.id) return res.status(400).json({ ok: false, error: 'Pick a person to message' });
       const oRow = await sql`select id, name, user_id from members where id = ${other} and circle_id = ${circle.id}`;
-      if (!oRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+      if (!oRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this family' });
       if (!oRow[0].user_id) return res.status(400).json({ ok: false, error: oRow[0].name + ' is not on Parwah, so cannot be messaged here' });
       const existing = await sql`
         select c.id from chats c
@@ -232,11 +232,11 @@ export default async function handler(req, res) {
     if (action === 'add_member') {
       const chat = await chatForMember(sql, circle, body.chatId, me.id);
       if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
-      if (chat.kind !== 'group') return res.status(400).json({ ok: false, error: chat.kind === 'circle' ? 'Everyone is already in the circle chat' : 'Personal chats stay 1:1 - make a group instead' });
+      if (chat.kind !== 'group') return res.status(400).json({ ok: false, error: chat.kind === 'circle' ? 'Everyone is already in the ' + spaceWord(circle) + ' chat' : 'Personal chats stay 1:1 - make a group instead' });
       const addId = body.addId;
       if (!isUuid(addId)) return res.status(400).json({ ok: false, error: 'Pick a person to add' });
       const aRow = await sql`select id, name, user_id from members where id = ${addId} and circle_id = ${circle.id}`;
-      if (!aRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+      if (!aRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this family' });
       if (!aRow[0].user_id) return res.status(400).json({ ok: false, error: aRow[0].name + ' is not on Parwah, so cannot be in a chat' });
       await sql`insert into chat_members (chat_id, member_id) values (${chat.id}, ${addId}) on conflict do nothing`;
       await sql`insert into messages (chat_id, member_id, text) values (${chat.id}, ${me.id}, ${'➕ Added ' + aRow[0].name + ' to the group'})`;
