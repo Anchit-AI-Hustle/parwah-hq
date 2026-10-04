@@ -574,8 +574,8 @@ check("games: in Bhabhi each player is sent only their own hand",
       "bhabhiView(game.state, memberId)" in _gm and "v.hands = st.hands.map((h, i) => (i === me ? h : []))" in _bg)
 _bare = [l.strip() for l in appsrc.splitlines()
          if "fetch(" in l and "authHeaders" not in l and "function apiGet" not in l
-         and "fetch(API.push)" not in l and not l.strip().startswith("//")]
-check("auth: every API call carries the sign-in token (apiGet/post; only the public push key is fetched bare)",
+         and "fetch(API.push)" not in l and "fetch('/', { method: 'HEAD'" not in l and not l.strip().startswith("//")]
+check("auth: every API call carries the sign-in token (apiGet/post; only the public push key, and the page's own version, are fetched bare)",
       not _bare, "; ".join(_bare[:3]))
 check("todo: reminders and tasks are one list, in three parts: Needs attention, Today, Coming up",
       all(k in appsrc for k in ("'g-need', 'Needs attention'", "'g-today', 'Today'", "'g-soon', 'Coming up'"))
@@ -1759,6 +1759,9 @@ check("people: who is waiting, the tree, how ready (one line per person looked a
       and "var looked = prepCache.filter(" in _appt)
 check("people: the profile is a dialog with Call first and only the family word for a person",
       'id="msheet" hidden role="dialog"' in _appt and "' · senior mode'" not in _appt and "function mpClose()" in _appt)
+check("staying current: an open or installed Parwah moves to a new version when it comes back to the screen, and the page is never served from the browser cache",
+      "function checkUpdate()" in _appt and 'id="updbar"' in _appt
+      and "fetch(url.href, { cache: 'no-store'" in (REPO / "site" / "public" / "sw.js").read_text(encoding="utf-8"))
 check("create: joint or nuclear is asked first, with no answer chosen for them",
       "var newFamilyType = null;" in _appt and _appt.index('id="c-ftype"') < _appt.index('id="c-circle"') < _appt.index('id="c-name"'))
 check("roles: a new group asks for your role in the group, and starts on Friend",

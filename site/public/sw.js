@@ -1,6 +1,6 @@
 // Parwah app service worker - makes the app installable and keeps the shell
 // available offline. API calls always go to the network.
-var CACHE = 'parwah-app-v40';
+var CACHE = 'parwah-app-v41';
 var SHELL = ['/', '/manifest.webmanifest', '/icon-192.png'];
 
 self.addEventListener('install', function (e) {
@@ -35,8 +35,11 @@ self.addEventListener('notificationclick', function (e) {
 self.addEventListener('fetch', function (e) {
   var url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.pathname.indexOf('/api/') === 0) return; // network only
+  // The page itself always comes from Parwah, never from the browser's own
+  // cache: a phone must not keep showing last week's app.
+  var req = e.request.mode === 'navigate' ? fetch(url.href, { cache: 'no-store', credentials: 'same-origin' }) : fetch(e.request);
   e.respondWith(
-    fetch(e.request).then(function (res) {
+    req.then(function (res) {
       if (res.ok && url.origin === location.origin) {
         var copy = res.clone();
         caches.open(CACHE).then(function (c) { c.put(e.request, copy); });

@@ -727,6 +727,8 @@ details.more[open]>summary::before{content:"▾ "}
 .prepitems{display:flex;flex-wrap:wrap;gap:var(--space-8)}
 .prepitem{font-size:var(--fs-12);background:var(--day);border:1px solid var(--bone-2);border-radius:var(--radius-pill);padding:var(--space-4) var(--space-8)}
 .pageseg .dot{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;margin-left:var(--space-4);border-radius:var(--radius-pill);background:var(--sindoor);color:var(--on-accent);font-size:var(--fs-12);font-weight:700;font-style:normal;padding:0 var(--space-4)}
+#updbar{position:sticky;top:0;z-index:var(--z-sheet);display:block;width:100%;min-height:var(--tap-min);border:0;background:var(--dusk);color:var(--cream);font-family:var(--body);font-weight:700;font-size:var(--fs-14);cursor:pointer}
+#updbar[hidden]{display:none}
 #bell .dot,#side-nb .dot{position:absolute;top:-2px;right:-2px;min-width:15px;height:15px;border-radius:var(--radius-pill);background:var(--sindoor);color:var(--on-accent);font-size:var(--fs-12);font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 var(--space-4);font-style:normal}
 .nrow{background:var(--surface);border:1px solid var(--bone-2);border-left:3px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-12) var(--space-16);font-size:var(--fs-14);display:flex;gap:var(--space-12);align-items:flex-start;cursor:pointer;box-shadow:0 1px 2px rgba(36,31,23,.03);width:100%;text-align:left;font-family:var(--body);color:var(--ink);margin-bottom:var(--space-8)}
 .nrow.unread{border-left-color:var(--sindoor);background:var(--surface-2)}
@@ -1065,6 +1067,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   </div>
 </div>
 
+<button type="button" id="updbar" hidden>✨ A newer Parwah is ready - tap to update</button>
 <div id="sosbar" hidden>
   <span class="pulse" aria-hidden="true"></span>
   <span id="sos-txt" style="flex:1"></span>
@@ -8614,6 +8617,37 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     });
   } catch (e) {}
   applyTheme(themePref());
+
+  // ---------- staying current ----------
+  // An installed app, or a tab left open for days, keeps running the copy it
+  // first loaded - a family once saw a Today screen two versions old. When
+  // Parwah comes back to the screen (and every half hour) it asks whether
+  // a newer version is out, and moves to it - at once if nothing is being
+  // typed, otherwise with a bar that says so.
+  var appTag = null;
+  function appVersion(){
+    return fetch('/', { method: 'HEAD', cache: 'no-store' })
+      .then(function(r){ return r.ok ? (r.headers.get('etag') || r.headers.get('last-modified') || null) : null; })
+      .catch(function(){ return null; });
+  }
+  function typing(){
+    var a = document.activeElement;
+    return !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.value);
+  }
+  function checkUpdate(){
+    appVersion().then(function(t){
+      if (!t) return;
+      if (!appTag) { appTag = t; return; }
+      if (t === appTag) return;
+      if (typing() || !$('asksheet').hidden || !$('tsheet').hidden) { $('updbar').hidden = false; return; }
+      location.reload();
+    });
+  }
+  appVersion().then(function(t){ if (t && !appTag) appTag = t; });
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) checkUpdate(); });
+  window.addEventListener('focus', checkUpdate);
+  setInterval(checkUpdate, 30 * 60000);
+  $('updbar').addEventListener('click', function(){ location.reload(); });
 
   // ---------- boot ----------
   if ('serviceWorker' in navigator) {
