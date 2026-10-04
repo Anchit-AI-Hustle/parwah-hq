@@ -88,10 +88,16 @@ const ASKS_IF = /^\s*(did|was|were)\b|\b(any time|at any point|ever)\b/i;
 // that refers back to it ("...and it is worse today") - not for something
 // else in the same message ("his knee pain is getting worse").
 const WORSE = /\b((is|it'?s|getting) worse|worsening|badh (raha|rahi)|zyada ho)/i;
-const REFERS_BACK = /^\s*(it|this|that|he|she|they|woh?|ye[h]?)\b/i;
-const saysNow = t => NOW.test(t) || (ONGOING.test(t) && !ASKS_IF.test(t))
-  || t.split(PARTS).some(c => c && ((RE.emergency.test(c) && !PAST.test(c) && !NOT_NOW.test(c))
-                                   || (WORSE.test(c) && (RE.emergency.test(c) || REFERS_BACK.test(c)))));
+// Refers back only when the pronoun is what is getting worse ("it is worse
+// today", "he is getting worse"), not "he says his knee pain is worse".
+const REFERS_BACK = /^\s*(it|this|that|he|she|they|woh?|ye[h]?)\s+((is|'s|has been|keeps)\s+)?((getting|becoming)\s+)?(worse|worsening|badh (raha|rahi)|zyada)/i;
+// Every signal is read in its own part of the message, so a separate
+// question ("...and has this ever happened before?") does not cancel a
+// current emergency in another part.
+const saysNow = t => NOW.test(t)
+  || t.split(PARTS).some(c => c && (
+       (RE.emergency.test(c) && ((!PAST.test(c) && !NOT_NOW.test(c)) || (ONGOING.test(c) && !ASKS_IF.test(c))))
+    || (WORSE.test(c) && (RE.emergency.test(c) || REFERS_BACK.test(c)))));
 // Words alone cannot always tell whether it is happening now. So a message
 // that names an emergency is never answered without the way to 112, even
 // when it reads as the past and gets its records answer first.
