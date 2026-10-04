@@ -103,8 +103,12 @@ async function tell(sql, circleId, ids, payload, notMe) {
 }
 async function memberIn(sql, circleId, id) {
   if (!isUuid(id)) return null;
-  const r = await sql`select id, name, role from members where id = ${id} and circle_id = ${circleId}`;
+  const r = await sql`select id, name, role, user_id is not null as on_app from members where id = ${id} and circle_id = ${circleId}`;
   return r[0] || null;
+}
+// Someone added to the family tree by name never signs in: a task can be
+// ABOUT them, never given TO them.
+function offApp(m) { return m && m.on_app === false ? m.name + ' is not on Parwah, so cannot take a task. Give it to someone who is.' : null;
 }
 const clip = (s, n) => { const t = String(s == null ? '' : s).trim().slice(0, n); return t || null; };
 
@@ -185,6 +189,7 @@ export async function createTask(sql, circle, me, body) {
   let owner = null;
   if (body.ownerId === 'me') owner = me;
   else if (body.ownerId) { owner = await memberIn(sql, circle.id, body.ownerId); if (!owner) return no(404, 'That person is not in this circle'); }
+  if (offApp(owner)) return no(400, offApp(owner));
   const status = !owner ? 'open' : owner.id === me.id ? 'claimed' : 'assigned';
   const dueAt = due.at ? new Date(due.at) : null;
   const r = await sql`
@@ -257,6 +262,7 @@ export async function taskAction(sql, circle, me, body) {
     if (!isMine(t, me)) return no(403, 'Only the person who asked or the person who has it can hand it over');
     let to = null;
     if (body.ownerId) { to = await memberIn(sql, circle.id, body.ownerId); if (!to) return no(404, 'That person is not in this circle'); }
+    if (offApp(to)) return no(400, offApp(to));
     const status = !to ? 'open' : to.id === me.id ? 'claimed' : 'assigned';
     await sql`update requests set status = ${status}, claimed_by = ${to ? to.id : null},
                 acknowledged_at = ${status === 'claimed' ? new Date() : null}

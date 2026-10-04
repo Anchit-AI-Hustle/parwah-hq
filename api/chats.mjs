@@ -197,7 +197,8 @@ export default async function handler(req, res) {
       const name = String(body.name || '').trim().slice(0, 60);
       if (!name) return res.status(400).json({ ok: false, error: 'The group needs a name' });
       const wanted = Array.isArray(body.memberIds) ? body.memberIds.filter(isUuid) : [];
-      const valid = await sql`select id from members where circle_id = ${circle.id} and id = any(${wanted})`;
+      // Someone added to the tree by name never signs in: never in a chat.
+      const valid = await sql`select id from members where circle_id = ${circle.id} and id = any(${wanted}) and user_id is not null`;
       const ids = valid.map(v => v.id);
       if (ids.indexOf(me.id) < 0) ids.push(me.id);
       const c = await sql`insert into chats (circle_id, kind, name) values (${circle.id}, 'group', ${name}) returning id`;
@@ -213,8 +214,9 @@ export default async function handler(req, res) {
     if (action === 'open_dm') {
       const other = body.otherId;
       if (!isUuid(other) || other === me.id) return res.status(400).json({ ok: false, error: 'Pick a person to message' });
-      const oRow = await sql`select id from members where id = ${other} and circle_id = ${circle.id}`;
+      const oRow = await sql`select id, name, user_id from members where id = ${other} and circle_id = ${circle.id}`;
       if (!oRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+      if (!oRow[0].user_id) return res.status(400).json({ ok: false, error: oRow[0].name + ' is not on Parwah, so cannot be messaged here' });
       const existing = await sql`
         select c.id from chats c
         where c.circle_id = ${circle.id} and c.kind = 'dm'

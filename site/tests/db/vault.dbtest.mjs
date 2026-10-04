@@ -139,6 +139,21 @@ ok('asking Dadi herself is refused, kindly', /not on Parwah/.test((await vault(M
 const askD = await vault(M.Rahul, { action: 'request', docId: (await vault(M.Anchit, { action: 'grant', id: dadiDoc.id, targetId: M.Rahul.id, level: 'view' }), dadiDoc.id) });
 ok('asking for Dadi\'s paper goes to whoever keeps it', askD.status === 201 && (await admin.query(`select to_member from vault_requests where id = $1`, [askD.id])).rows[0].to_member === M.Anchit.id);
 
+// Codex, on #30: whoever keeps Dadi's papers sees who opened them.
+await vault(M.Anchit, { action: 'grant', id: dadiDoc.id, targetId: M.Sunita.id, level: 'full' });
+await vault(M.Sunita, { action: 'open', id: dadiDoc.id });
+const keeper = await look(M.Anchit);
+ok('the keeper of Dadi\'s papers sees Sunita opened her Aadhaar', keeper.log.some(l => l.doc_id === dadiDoc.id && l.action === 'opened' && l.name === 'Sunita'));
+// Two answers at once (two taps, two phones): the result is consistent.
+const race = await vault(M.Sunita, { action: 'request', toId: M.Rahul.id, kind: 'dl' });
+const [yesA, noA] = await Promise.all([
+  vault(M.Rahul, { action: 'answer', requestId: race.id, allow: true, docId: dl.id }),
+  vault(M.Rahul, { action: 'answer', requestId: race.id, allow: false })
+]);
+const st = (await admin.query('select status from vault_requests where id = $1', [race.id])).rows[0].status;
+const hasAccess = (await admin.query('select count(*)::int as n from vault_access where doc_id = $1 and member_id = $2', [dl.id, M.Sunita.id])).rows[0].n === 1;
+ok('two answers at once: exactly one wins, and access matches what it says', [yesA.status, noA.status].sort().join() === '200,409' && (st === 'allowed') === hasAccess, [yesA.status, noA.status, st, hasAccess].join());
+
 // ---- the person page reads which papers can be opened
 const book = await call(bookApi, { method: 'GET', token: M.Anchit.token, query: { circle: code, member: M.Anchit.id } });
 const rec = (book.records || []).find(x => x.id === pan.id);
@@ -160,6 +175,12 @@ ok('an answered ask cannot be answered again', (await pay(M.Papa, { action: 'dec
 const over = await pay(M.Papa, { action: 'use', id: cardId, amount: 3500 });
 ok('the monthly limit holds: 3,000 + 3,500 is over 6,000', over.status === 400 && /limit for this month/.test(over.error), JSON.stringify(over));
 ok('within it is fine', (await pay(M.Papa, { action: 'use', id: cardId, amount: 2500 })).status === 200);
+// Two payments at the same moment cannot both slip under the limit.
+await admin.query(`delete from pay_log where method_id = $1`, [cardId]); await admin.query(`delete from pay_month where method_id = $1`, [cardId]);
+const both = await Promise.all([pay(M.Papa, { action: 'use', id: cardId, amount: 3500 }), pay(M.Papa, { action: 'use', id: cardId, amount: 3500 })]);
+const spentNow = (await admin.query(`select coalesce(sum(amount),0)::int as n from pay_log where method_id = $1 and action = 'used'`, [cardId])).rows[0].n;
+ok('two payments at once: only one fits under 6,000', both.map(b => b.status).sort().join() === '200,400' && spentNow === 3500, both.map(b => b.status).join() + ' / ' + spentNow);
+ok('nobody not on Parwah can be allowed to pay', (await pay(M.Papa, { action: 'allow', id: cardId, targetId: dadi.memberId })).status === 400);
 const pl = await call(bookApi, { method: 'GET', token: M.Papa.token, query: { area: 'pay', circle: code, member: M.Papa.id } });
 ok('the activity carries each line\'s id and who', (pl.log || []).every(l => l.id && 'member_id' in l));
 

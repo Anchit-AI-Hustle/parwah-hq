@@ -245,8 +245,9 @@ export default async function handler(req, res) {
       // caller, so sharing checked the target's own permission and failed.
       const targetId = body.targetId || body.memberId;
       if (!isUuid(targetId)) return res.status(400).json({ ok: false, error: 'Pick a family member' });
-      const t = await sql`select id, name from members where id = ${targetId} and circle_id = ${circle.id}`;
+      const t = await sql`select id, name, user_id from members where id = ${targetId} and circle_id = ${circle.id}`;
       if (!t[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+      if (!t[0].user_id && body.action === 'share') return res.status(400).json({ ok: false, error: t[0].name + ' is not on Parwah, so cannot be shared with' });
       if (t[0].id === me.id) return res.status(400).json({ ok: false, error: 'It is already yours' });
       if (body.action === 'unshare') {
         await sql`delete from book_access where entry_id = ${found.e.id} and member_id = ${t[0].id}`;
