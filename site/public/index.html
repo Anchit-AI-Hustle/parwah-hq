@@ -3812,7 +3812,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (/^check .+ is still right$/i.test(t)) { m = taskMember(q); return { go: 'book:' + (m ? m.id : '') + ':all', label: 'Check it now →' }; }
     if (/\b(medicines?|tablets?|pills?|prescriptions?|meds)\b/i.test(t)) { m = taskMember(q); return { go: 'book:' + (m ? m.id : '') + ':med', label: 'Open medicines →' }; }
     if (/\b(doctor|appointment|check-?up|hospital|clinic|dentist|lab test|blood test|scan)\b/i.test(t)) { m = taskMember(q); return { go: 'book:' + (m ? m.id : '') + ':contact', label: 'Open doctors & contacts →' }; }
-    if (/\b(aadhaar|pan card|passport|insurance|policy|documents?|papers|licen[cs]e|certificate|will)\b/i.test(t)) return { go: 'tab:vault:docs', label: 'Open documents →' };
+    // A legal will, not the future tense: "Will call Papa" is a call.
+    if (/\b(aadhaar|pan card|passport|insurance|policy|documents?|papers|licen[cs]e|certificate|testament)\b|\b(a|the|my|his|her|their)\s+will\b|['’]s will\b/i.test(t)) return { go: 'tab:vault:docs', label: 'Open documents →' };
     if (/\b(pay|bills?|electricity|rent|recharge|emi|premium|fees)\b/i.test(t)) return { go: 'tab:vault:pay', label: 'Open payments →' };
     if (/\b(call|phone|ring)\b/i.test(t)) { m = taskMember(q); if (m && m.phone && m.id !== state.memberId) return { go: 'tel:' + m.phone, label: '📞 Call ' + String(m.name).split(' ')[0] }; }
     if (/\b(trip|puja|party|plan|birthday|anniversary|get-?together)\b/i.test(t)) return { go: 'tab:fun:plans', label: 'Open plans →' };
@@ -3822,7 +3823,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function taskGoButton(q, cls){
     var g = taskOpen(q) && taskGo(q); if (!g) return '';
     return g.go.indexOf('tel:') === 0
-      ? '<a class="' + cls + '" href="tel:' + encodeURIComponent(g.go.slice(4)) + '">' + esc(g.label) + '</a>'
+      ? '<a class="' + cls + '" href="tel:' + encodeURIComponent(g.go.slice(4)) + '" data-tgo="' + q.id + '">' + esc(g.label) + '</a>'
       : '<button class="' + cls + '" data-tgo="' + q.id + '">' + esc(g.label) + '</button>';
   }
   function taskGoRun(id){
@@ -3832,6 +3833,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // starts the same thing.
     if (q.status === 'open') carePost({ action: 'task_ack', taskId: q.id });
     tsClose();
+    // A call: the link itself opens the dialer; taking the task is all
+    // there is to do here.
+    if (g.go.indexOf('tel:') === 0) return;
     var p = g.go.split(':');
     if (p[0] === 'fill') { personId = p[1] || ''; ppAddFor(p[2]); return; }
     if (p[0] === 'book') {

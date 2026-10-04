@@ -335,6 +335,22 @@ const tomorrow = localDay(Date.now() + 86400000);
   await reload(M);
   ok('a task with nowhere to go has no "go" button', await rowOf(M, 'Water the tulsi').locator('[data-tgo]').count() === 0);
   ok('a gas refill is not mistaken for medicines', await rowOf(M, 'Book the gas refill').locator('[data-tgo]').count() === 0);
+  // A call task: the dialer opens, and the task is taken, like every other "Do it now".
+  await admin.query(`update members set phone = '+919820000099' where id = $1`, [papa.id]);
+  for (const t of ['Call Papa about the pension', 'Will call Papa tomorrow', "Find Dadaji's will"]) {
+    await R.evaluate(async ([ttl, pid]) => {
+      await fetch('/api/care', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': localStorage.getItem('parwah-token') },
+        body: JSON.stringify({ action: 'task_create', code: 'SHARMA', memberId: JSON.parse(localStorage.getItem('parwah')).memberId, title: ttl, aboutMemberId: pid }) });
+    }, [t, papa.id]);
+  }
+  await M.goto(BASE + '/#care'); await M.waitForTimeout(300); await reload(M);
+  await M.evaluate(() => document.addEventListener('click', e => { if (e.target.closest('a[href^="tel:"]')) e.preventDefault(); }, true));
+  const callGo = rowOf(M, 'Call Papa about the pension').locator('[data-tgo]');
+  ok('a call task offers the call', /Call Papa/.test(await callGo.textContent()) && /^tel:/.test(await callGo.getAttribute('href')));
+  await callGo.click(); await M.waitForTimeout(900);
+  ok('and calling takes the task, so nobody else calls at the same time', (await task('Call Papa about the pension')).claimed_by === meera.id);
+  ok('"Will call Papa" is a call, not a legal will', /Call Papa/.test(await rowOf(M, 'Will call Papa tomorrow').locator('[data-tgo]').textContent()));
+  ok('a will is still a document', /Open documents/.test(await rowOf(M, "Find Dadaji's will").locator('[data-tgo]').textContent()));
 }
 
 // ---- 9. Reminders: chosen on the form, and an alarm that rings on time
