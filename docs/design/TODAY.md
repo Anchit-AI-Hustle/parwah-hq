@@ -1,14 +1,14 @@
 # What comes first on Today
 
-Today is the screen a family opens most. After Anshul's review (3 October
+Today is the screen a family opens most. After a family's review of the app (3 October
 2026), the rule is: **track five things, not fifty.** Families already talk
 on WhatsApp, so Parwah does not compete with chat. It holds what WhatsApp
 cannot: the papers, the medicines, who is doing what, who is who, and the
 card for an emergency.
 
-His example: a car was in his brother's name, and the claim needed his
+A real example from that review: a car was in a brother's name, and the claim needed the
 brother's Aadhaar, PAN and licence. Instead of calling and waiting for
-photos on WhatsApp, he downloaded them from his brother's profile in
+photos on WhatsApp, they were downloaded from the brother's profile in
 Parwah. That is the product.
 
 Each candidate is scored on **utility**: how often a family needs it × what

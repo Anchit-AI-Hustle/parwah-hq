@@ -542,6 +542,24 @@ details.more[open]>summary::before{content:"▾ "}
 .trdots i{width:7px;height:7px;border-radius:var(--radius-pill);background:var(--bone-2)}
 .trdots i.on{background:var(--marigold);width:20px}
 .kindpick{margin-bottom:var(--space-12)}
+/* the family tree: couples side by side, their children indented below */
+.tree{display:flex;flex-direction:column;gap:var(--space-8)}
+.tnode{display:flex;flex-direction:column;gap:var(--space-8)}
+.tunit{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-8)}
+.tkids{display:flex;flex-direction:column;gap:var(--space-8);margin-left:var(--space-12);padding-left:var(--space-12);border-left:2px solid var(--bone-2)}
+.tperson{display:flex;flex-direction:column;align-items:flex-start;min-height:var(--tap-min);padding:var(--space-8) var(--space-12);
+  border:1px solid var(--bone-2);border-radius:var(--radius-12);background:var(--surface);color:var(--ink);font:inherit;cursor:pointer;text-align:left}
+.tperson b{font-size:var(--fs-14)}
+.tperson small{font-size:var(--fs-12);color:var(--ink-soft)}
+.tand{color:var(--sindoor);font-size:var(--fs-14)}
+.tpair{display:flex;align-items:center;gap:var(--space-8)}
+.treeadd{margin-top:var(--space-16);padding-top:var(--space-16);border-top:1px solid var(--bone-2)}
+.treeform{display:grid;grid-template-columns:1fr;gap:var(--space-8)}
+@media (min-width:600px){.treeform{grid-template-columns:repeat(3,minmax(0,1fr))}}
+#createcard.nuclear .jointonly{display:none}
+#c-ftype{flex-wrap:wrap}
+#c-ftype button{flex:1 1 0;min-width:0;text-align:left}
+#c-ftype button small{display:block;font-weight:400;font-size:var(--fs-12);color:var(--ink-soft)}
 /* Today: the five things, then everything else under More */
 .todaymore{margin:var(--space-16) 0}
 .todaymore>summary{position:relative;display:flex;flex-direction:column;justify-content:center;min-height:var(--tap-min);padding:var(--space-12) var(--space-40) var(--space-12) var(--space-16);cursor:pointer;
@@ -1127,6 +1145,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <input type="text" id="c-name" maxlength="60" placeholder="e.g. Rohan">
     <label for="c-circle">Circle name</label>
     <input type="text" id="c-circle" maxlength="60" placeholder="e.g. Sharma Family">
+    <div id="c-ftype-wrap">
+      <label>What kind of family?</label>
+      <div class="seg" id="c-ftype" role="group" aria-label="What kind of family">
+        <button type="button" data-ft="joint" class="sel">🏡 Joint family<small>Grandparents, sons, their wives and children</small></button>
+        <button type="button" data-ft="nuclear">🏠 Nuclear family<small>Parents and their children</small></button>
+      </div>
+    </div>
     <label id="c-role-label">Your role in the family (everyone is an equal admin)</label>
     <div class="rolepick relpick" id="c-role">
       <button type="button" data-role="father">👨 Father</button>
@@ -1137,6 +1162,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button type="button" data-role="daughter">👧 Daughter</button>
       <button type="button" data-role="brother">🙋 Brother</button>
       <button type="button" data-role="sister">🙋‍♀️ Sister</button>
+      <button type="button" data-role="daughter-in-law" class="jointonly">👰 Daughter-in-law</button>
+      <button type="button" data-role="son-in-law" class="jointonly">🤵 Son-in-law</button>
+      <button type="button" data-role="grandson" class="jointonly">🧒 Grandson</button>
+      <button type="button" data-role="granddaughter" class="jointonly">👧 Granddaughter</button>
       <button type="button" data-role="friend">🤝 Friend</button>
       <button type="button" data-role="family" class="sel">🧡 Family</button>
     </div>
@@ -1160,6 +1189,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button type="button" data-role="daughter">👧 Daughter</button>
       <button type="button" data-role="brother">🙋 Brother</button>
       <button type="button" data-role="sister">🙋‍♀️ Sister</button>
+      <button type="button" data-role="daughter-in-law" class="jointonly">👰 Daughter-in-law</button>
+      <button type="button" data-role="son-in-law" class="jointonly">🤵 Son-in-law</button>
+      <button type="button" data-role="grandson" class="jointonly">🧒 Grandson</button>
+      <button type="button" data-role="granddaughter" class="jointonly">👧 Granddaughter</button>
       <button type="button" data-role="friend">🤝 Friend</button>
       <button type="button" data-role="family" class="sel">🧡 Family</button>
     </div>
@@ -1328,6 +1361,26 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <!-- PEOPLE - the product is organised around the people you care about -->
   <section id="pane-people" hidden>
     <div class="ektahead"><span style="font-size:var(--fs-24)" aria-hidden="true">👨‍👩‍👧</span><span><b>People</b><small>Everyone you care about - and how prepared the family is for each</small></span></div>
+    <div class="card" id="treecard">
+      <h3 id="tree-title">🌳 Family tree</h3>
+      <p class="hint" id="tree-sub" style="margin:var(--space-4) 0 var(--space-12)"></p>
+      <div id="tree" class="tree"></div>
+      <div id="tree-add" class="treeadd">
+        <p class="eyebrow" id="tree-add-head">Add someone to the tree</p>
+        <div class="treeform">
+          <label class="pick"><span>Who</span><select id="tr-who" aria-label="Who to place"></select></label>
+          <label class="pick"><span>is the</span><select id="tr-place" aria-label="Their place">
+            <option value="child">child</option><option value="spouse">husband or wife</option>
+            <option value="parent">mother or father</option><option value="sibling">brother or sister</option></select></label>
+          <label class="pick"><span>of</span><select id="tr-of" aria-label="Of whom"></select></label>
+        </div>
+        <div class="seg" id="tr-gender" role="group" aria-label="He or she" style="margin-top:var(--space-12)">
+          <button type="button" data-g="m">He</button><button type="button" data-g="f">She</button>
+        </div>
+        <p class="hint" id="tr-err" role="alert" hidden></p>
+        <button class="go" id="tr-go" style="margin-top:var(--space-12)">Add to the tree</button>
+      </div>
+    </div>
     <div class="card" id="loc-card">
       <h3>📍 Where everyone is</h3>
       <p class="hint" id="loc-why" style="margin:var(--space-4) 0 var(--space-12)"></p>
@@ -2211,6 +2264,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button type="button" data-role="daughter">👧 Daughter</button>
       <button type="button" data-role="brother">🙋 Brother</button>
       <button type="button" data-role="sister">🙋‍♀️ Sister</button>
+      <button type="button" data-role="daughter-in-law" class="jointonly">👰 Daughter-in-law</button>
+      <button type="button" data-role="son-in-law" class="jointonly">🤵 Son-in-law</button>
+      <button type="button" data-role="grandson" class="jointonly">🧒 Grandson</button>
+      <button type="button" data-role="granddaughter" class="jointonly">👧 Granddaughter</button>
       <button type="button" data-role="friend">🤝 Friend</button>
       <button type="button" data-role="family">🧡 Family</button>
         </div>
@@ -2695,6 +2752,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   });
   function chatShort(c){ return c ? (c.kind === 'circle' ? 'everyone' : c.name) : ''; }
   function relLabel(m){
+    // The tree knows best: "Father-in-law" to Priya, "Father" to Rohan.
+    if (m && m.kin && m.kin !== 'You') return m.kin;
     var r = (m && m.relation) || '';
     if (r) return r.charAt(0).toUpperCase() + r.slice(1);
     return m && m.role === 'parent' ? 'Parent' : 'Family';
@@ -2974,7 +3033,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     homeOffline(false);
     apiGet(API.events + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){
-        if (j.ok) { homeOffline(false); seenAt = j.seenAt || seenAt; joinReqs = j.joinRequests || []; joinPolicy = j.joinPolicy || 'approve'; render(j); renderForSelect(j.members); renderJoinReqs(); return; }
+        if (j.ok) { homeOffline(false); seenAt = j.seenAt || seenAt; joinReqs = j.joinRequests || []; joinPolicy = j.joinPolicy || 'approve'; render(j); renderForSelect(j.members); renderTree(j); renderJoinReqs(); return; }
         // Not ok, and not a code change we can heal from below: say so.
         homeOffline(true);
         // Circle code changed by another member? Re-map by membership and recover.
@@ -3642,6 +3701,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('c-circle').placeholder = newKind === 'group' ? 'e.g. The Cousins' : 'e.g. Sharma Family';
     $('c-go').textContent = newKind === 'group' ? 'Create the group' : 'Create the family';
     $('c-role-label').textContent = 'Your role in the ' + newKind + ' (everyone is an equal admin)';
+    // Joint or nuclear is asked first, for a family only; a nuclear family
+    // is not offered daughter-in-law or grandchildren as roles.
+    $('c-ftype-wrap').hidden = newKind !== 'family';
+    setFamilyType(newKind === 'family' ? newFamilyType : null);
     // In a group of friends "Friend" is the likely answer; in a family, "Family".
     var defRole = newKind === 'group' ? 'friend' : 'family';
     $('c-role').querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x.getAttribute('data-role') === defRole); });
@@ -3649,6 +3712,17 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     showStep('setup');
     try { $('c-circle').focus(); } catch (e) {}
   }
+  var newFamilyType = 'joint';
+  function setFamilyType(t){
+    if (t) newFamilyType = t;
+    $('c-ftype').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-ft') === newFamilyType); });
+    $('createcard').classList.toggle('nuclear', t === 'nuclear');
+    var cur = $('c-role').querySelector('.sel');
+    if (t === 'nuclear' && cur && cur.classList.contains('jointonly')) {
+      cur.classList.remove('sel'); $('c-role').querySelector('[data-role="family"]').classList.add('sel');
+    }
+  }
+  $('c-ftype').addEventListener('click', function(e){ var b = e.target.closest('[data-ft]'); if (b) setFamilyType(b.getAttribute('data-ft')); });
   function startJoin(){
     $('pickkind').hidden = true;
     $('createcard').hidden = true;
@@ -3958,7 +4032,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var name = $('c-name').value.trim();
     if (!name) { $('ob-err').textContent = 'Please enter your name.'; return; }
     this.disabled = true; $('ob-err').textContent = '';
-    post(API.circle, { action:'create', kind:newKind, memberName:name, circleName:$('c-circle').value.trim(), userId: authUser && authUser.id, role: $('c-senior').checked ? 'parent' : 'family', relation: cRole() })
+    post(API.circle, { action:'create', kind:newKind, familyType: newKind === 'family' ? newFamilyType : null, memberName:name, circleName:$('c-circle').value.trim(), userId: authUser && authUser.id, role: $('c-senior').checked ? 'parent' : 'family', relation: cRole() })
       .then(function(j){
         $('c-go').disabled = false;
         if (!j.ok) { $('ob-err').textContent = j.error || 'Could not create the circle.'; return; }
@@ -6083,6 +6157,90 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         refreshChats(function(){ openChat(j.chatId); });
       })
       .catch(function(){ toast('No connection - try again'); });
+  });
+
+  // ---------- the family tree ----------
+  // Each person points to a parent and a husband or wife (api/_kin.mjs); the
+  // server says how each person is related to whoever is looking (m.kin) and
+  // which generation they are (m.gen, the eldest being 1).
+  var famKind = 'family', famType = null, treeMembers = [];
+  function treePerson(m){
+    var me = state && m.id === state.memberId;
+    return '<button type="button" class="tperson" data-mprof="' + m.id + '"><b>' + esc(m.name) + '</b><small>' +
+           esc(me ? 'You' : (m.kin || relLabel(m))) + '</small></button>';
+  }
+  function renderTree(j){
+    famKind = j.kind || 'family'; famType = j.familyType || null;
+    var card = $('treecard');
+    // A group of friends has no family tree to draw.
+    if (famKind === 'group') { card.hidden = true; return; }
+    card.hidden = false;
+    var ms = treeMembers = j.members || [], byId = {};
+    ms.forEach(function(m){ byId[m.id] = m; });
+    var placed = ms.filter(function(m){ return m.gen; }), unplaced = ms.filter(function(m){ return !m.gen; });
+    var done = {};
+    function unit(m){
+      var sp = m.spouse_id && byId[m.spouse_id], ids = [m.id];
+      done[m.id] = 1; if (sp) { done[sp.id] = 1; ids.push(sp.id); }
+      var kids = ms.filter(function(c){ return c.parent_id && ids.indexOf(c.parent_id) >= 0 && !done[c.id]; });
+      return '<div class="tnode"><div class="tunit">' + treePerson(m) +
+             (sp ? '<span class="tpair"><span class="tand" aria-label="married to">♥</span>' + treePerson(sp) + '</span>' : '') + '</div>' +
+             (kids.length ? '<div class="tkids">' + kids.map(unit).join('') + '</div>' : '') + '</div>';
+    }
+    // The eldest couples start the tree; someone who married in is drawn
+    // beside their husband or wife, never as a root of their own.
+    var roots = placed.filter(function(m){
+      var sp = m.spouse_id && byId[m.spouse_id];
+      return !m.parent_id && !(sp && sp.parent_id);
+    }).sort(function(a, b){ return (a.gen || 9) - (b.gen || 9) || (a.gender === 'm' ? -1 : 1); });
+    var html = '';
+    roots.forEach(function(r){ if (!done[r.id]) html += unit(r); });
+    $('tree').innerHTML = html;
+    var depth = placed.reduce(function(d, m){ return Math.max(d, m.gen || 0); }, 0);
+    $('tree-title').textContent = '🌳 ' + (famType === 'joint' ? 'Joint family tree' : 'Family tree');
+    $('tree-sub').textContent = placed.length
+      ? depth + (depth === 1 ? ' generation' : ' generations') +
+        (unplaced.length ? ' · not in the tree yet: ' + unplaced.map(function(m){ return m.name; }).join(', ') : '') +
+        '. Tap anyone to open their profile.'
+      : 'Start the tree: say how two people are related - "Mumma is the wife of Papa", "Rohan is the son of Papa". Parwah works out the rest: daughter-in-law, grandson, Chacha, Bua.';
+    // The form: whoever is not in the tree comes first, starting with you.
+    var me = byId[state.memberId];
+    var order = unplaced.slice().sort(function(a, b){ return (b.id === state.memberId) - (a.id === state.memberId); }).concat(placed);
+    var whoSel = $('tr-who').value;
+    $('tr-who').innerHTML = order.map(function(m){
+      return '<option value="' + m.id + '">' + esc(m.id === state.memberId ? 'Me (' + m.name + ')' : m.name) + (m.gen ? '' : ' - not in the tree yet') + '</option>';
+    }).join('');
+    if (whoSel && byId[whoSel]) $('tr-who').value = whoSel;
+    $('tree-add-head').textContent = me && !me.gen ? 'Where are you in the family?' : 'Add someone to the tree';
+    fillTreeOf();
+  }
+  function fillTreeOf(){
+    var who = $('tr-who').value, ofSel = $('tr-of').value;
+    var others = treeMembers.filter(function(m){ return m.id !== who; })
+      .sort(function(a, b){ return (a.gen ? 0 : 1) - (b.gen ? 0 : 1); });
+    $('tr-of').innerHTML = others.map(function(m){ return '<option value="' + m.id + '">' + esc(m.id === state.memberId ? 'me' : m.name) + '</option>'; }).join('');
+    if (ofSel && others.some(function(m){ return m.id === ofSel; })) $('tr-of').value = ofSel;
+    var w = treeMembers.filter(function(m){ return m.id === who; })[0];
+    $('tr-gender').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', !!w && b.getAttribute('data-g') === w.gender); });
+    $('tr-go').disabled = !others.length;
+  }
+  $('tr-who').addEventListener('change', fillTreeOf);
+  $('tr-gender').addEventListener('click', function(e){
+    var b = e.target.closest('[data-g]'); if (!b) return;
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
+  });
+  $('tr-go').addEventListener('click', function(){
+    var g = $('tr-gender').querySelector('.sel'), btn = this, err = $('tr-err');
+    err.hidden = true;
+    if (!g) { err.textContent = 'Choose he or she, so Parwah can say son or daughter.'; err.hidden = false; return; }
+    btn.disabled = true;
+    post(API.circle, { action: 'place', code: state.code, memberId: state.memberId, targetId: $('tr-who').value,
+                       place: $('tr-place').value, ofId: $('tr-of').value, gender: g.getAttribute('data-g') })
+      .then(function(j){
+        btn.disabled = false;
+        if (!j.ok) { err.textContent = j.error || 'Could not add that'; err.hidden = false; return; }
+        toast('Added to the family tree 🌳'); refresh();
+      }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
   });
 
   // ---------- location sharing (consent first) ----------

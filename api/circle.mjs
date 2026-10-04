@@ -5,6 +5,7 @@ import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
 import { pushCircle } from './_push.mjs';
 import { award } from './_coins.mjs';
+import { index as kinIndex, placement, PLACES, GENDERS, FAMILY_TYPES, genderFromRelation } from './_kin.mjs';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -17,8 +18,12 @@ export default async function handler(req, res) {
 
   const { action, circleName, code, memberName, role, phone, userId } = req.body || {};
   // Family role labels - purely descriptive; every member is an equal admin.
-  const RELATIONS = ['father', 'mother', 'grandfather', 'grandmother', 'son', 'daughter', 'brother', 'sister', 'friend', 'family'];
+  const RELATIONS = ['father', 'mother', 'grandfather', 'grandmother', 'son', 'daughter', 'brother', 'sister',
+                     'daughter-in-law', 'son-in-law', 'grandson', 'granddaughter', 'friend', 'family'];
   const relation = RELATIONS.includes(req.body.relation) ? req.body.relation : null;
+  // He or she, so the tree can say son or daughter. Asked when placing someone;
+  // until then, read from the one-word role where it says.
+  const gender = GENDERS.includes(req.body.gender) ? req.body.gender : genderFromRelation(relation);
   // Gifting details - sizes and tastes so anyone in the family can gift
   // confidently. Whitelisted keys, each a short free-text field.
   const GIFT_KEYS = ['clothes', 'shoe', 'ring', 'color', 'likes', 'wishlist'];
@@ -49,7 +54,7 @@ export default async function handler(req, res) {
     if (!allowed) return res.status(429).json({ ok: false, error: 'Too many join attempts from this device - please wait a few minutes and try again' });
   }
 
-  const NAMELESS = ['update_member', 'leave', 'set_code', 'approve_join', 'decline_join', 'set_join_policy'];
+  const NAMELESS = ['update_member', 'leave', 'set_code', 'approve_join', 'decline_join', 'set_join_policy', 'place', 'unplace'];
   if (!name && !NAMELESS.includes(action)) return res.status(400).json({ ok: false, error: 'Please tell us your name' });
 
   try {
@@ -64,23 +69,25 @@ export default async function handler(req, res) {
     const memberCc = mp ? mp.cc : null, memberLocal = mp ? mp.local : null;
     if (action === 'create') {
       const kind = req.body.kind === 'group' ? 'group' : 'family';
+      // Joint or nuclear is a family's question; a group of friends is neither.
+      const familyType = kind === 'family' && FAMILY_TYPES.includes(req.body.familyType) ? req.body.familyType : null;
       const cname = String(circleName || '').trim().slice(0, 60) || (name + (kind === 'group' ? "'s group" : "'s family"));
       let circle = null;
       for (let i = 0; i < 5 && !circle; i++) {
         const c = makeCode();
         try {
-          const rows = await sql`insert into circles (code, name, kind) values (${c}, ${cname}, ${kind}) returning id, code, name, kind`;
+          const rows = await sql`insert into circles (code, name, kind, family_type) values (${c}, ${cname}, ${kind}, ${familyType}) returning id, code, name, kind, family_type`;
           circle = rows[0];
         } catch (e) { /* code collision - retry with a new code */ }
       }
       if (!circle) return res.status(500).json({ ok: false, error: 'Could not create the circle, please try again' });
-      const m = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation) values (${circle.id}, ${name}, ${r}, ${memberPhone}, ${memberCc}, ${memberLocal}, ${user ? user.id : null}, ${relation}) returning id`;
+      const m = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation, gender) values (${circle.id}, ${name}, ${r}, ${memberPhone}, ${memberCc}, ${memberLocal}, ${user ? user.id : null}, ${relation}, ${gender}) returning id`;
       await sql`insert into events (circle_id, member_id, type, text)
-                values (${circle.id}, ${m[0].id}, 'join', ${name + ' created the ' + kind})`;
+                values (${circle.id}, ${m[0].id}, 'join', ${name + ' created the ' + (familyType ? familyType + ' family' : kind)})`;
       // Ekta works from the first minute - a new family is not asked to earn
       // its way to a working assistant.
       await award(sql, circle.id, m[0].id, 'welcome', 'circle');
-      return res.status(201).json({ ok: true, code: circle.code, circleName: circle.name, kind: circle.kind, memberId: m[0].id, role: r });
+      return res.status(201).json({ ok: true, code: circle.code, circleName: circle.name, kind: circle.kind, familyType: circle.family_type, memberId: m[0].id, role: r });
     }
 
     if (action === 'join') {
@@ -131,7 +138,7 @@ export default async function handler(req, res) {
           message: 'Your request has gone to ' + circle.name + '. Anyone in the family can let you in.' });
       }
 
-      const m = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation) values (${circle.id}, ${name}, ${r}, ${memberPhone}, ${memberCc}, ${memberLocal}, ${user ? user.id : null}, ${relation}) returning id`;
+      const m = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation, gender) values (${circle.id}, ${name}, ${r}, ${memberPhone}, ${memberCc}, ${memberLocal}, ${user ? user.id : null}, ${relation}, ${gender}) returning id`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${m[0].id}, 'join', ${name + ' joined the circle'})`;
       await pushCircle(sql, circle.id, { title: '🧡 ' + name + ' joined ' + circle.name, body: 'Say hello in the family chat' }, { except: m[0].id });
@@ -163,8 +170,8 @@ export default async function handler(req, res) {
         await sql`update join_requests set status = 'declined', decided_by = ${mRow[0].id}, decided_at = now() where id = ${q.id}`;
         return res.status(409).json({ ok: false, error: 'Someone in this circle is already called ' + q.name });
       }
-      const nm = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation)
-                           values (${circle.id}, ${q.name}, ${q.role}, ${q.phone}, ${q.phone_cc}, ${q.phone_local}, ${q.user_id}, ${q.relation})
+      const nm = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation, gender)
+                           values (${circle.id}, ${q.name}, ${q.role}, ${q.phone}, ${q.phone_cc}, ${q.phone_local}, ${q.user_id}, ${q.relation}, ${genderFromRelation(q.relation)})
                            returning id`;
       await sql`update join_requests set status = 'approved', decided_by = ${mRow[0].id}, decided_at = now() where id = ${q.id}`;
       await sql`insert into events (circle_id, member_id, type, text)
@@ -250,6 +257,46 @@ export default async function handler(req, res) {
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, null, 'care', ${mRow[0].name + ' left the circle 👋'})`;
       return res.status(200).json({ ok: true, deleted: counts });
+    }
+
+    // THE FAMILY TREE. Anyone in the family may place anyone - every member
+    // is an equal admin - and the arithmetic in _kin.mjs refuses only what
+    // cannot be true (two husbands, someone their own grandfather).
+    if (action === 'place' || action === 'unplace') {
+      const circle = await circleByCode(sql, code);
+      if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
+      const memberId = req.body.memberId;
+      if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+      const mRow = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
+      if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this circle' });
+      const targetId = req.body.targetId || memberId;
+      if (!isUuid(targetId)) return res.status(400).json({ ok: false, error: 'Choose someone in this family' });
+      const all = await sql`select id, name, gender, parent_id, spouse_id from members where circle_id = ${circle.id}`;
+      const target = all.find(x => x.id === targetId);
+      if (!target) return res.status(404).json({ ok: false, error: 'Choose someone in this family' });
+      if (action === 'unplace') {
+        await sql`update members set spouse_id = null where circle_id = ${circle.id} and spouse_id = ${targetId}`;
+        await sql`update members set parent_id = null, spouse_id = null where id = ${targetId}`;
+        return res.status(200).json({ ok: true });
+      }
+      const ofId = req.body.ofId;
+      if (!isUuid(ofId)) return res.status(400).json({ ok: false, error: 'Choose someone in this family' });
+      const of = all.find(x => x.id === ofId);
+      if (!of) return res.status(404).json({ ok: false, error: 'Choose someone in this family' });
+      const place = PLACES.includes(req.body.place) ? req.body.place : null;
+      if (!place) return res.status(400).json({ ok: false, error: 'Choose child, husband or wife, parent, or brother or sister' });
+      const by = kinIndex(all.map(x => ({ id: x.id, gender: x.gender, parentId: x.parent_id, spouseId: x.spouse_id })));
+      const plan = placement(by, targetId, place, ofId);
+      if (plan.error) return res.status(409).json({ ok: false, error: plan.error });
+      for (const w of plan.set) {
+        if ('parentId' in w) await sql`update members set parent_id = ${w.parentId} where id = ${w.id} and circle_id = ${circle.id}`;
+        if ('spouseId' in w) await sql`update members set spouse_id = ${w.spouseId} where id = ${w.id} and circle_id = ${circle.id}`;
+      }
+      if (GENDERS.includes(req.body.gender)) await sql`update members set gender = ${req.body.gender} where id = ${targetId}`;
+      const word = { child: 'a child of', spouse: 'the husband or wife of', parent: 'a parent of', sibling: 'a brother or sister of' }[place];
+      await sql`insert into events (circle_id, member_id, type, text)
+                values (${circle.id}, ${mRow[0].id}, 'care', ${mRow[0].name + ' added ' + target.name + ' to the family tree as ' + word + ' ' + of.name})`;
+      return res.status(200).json({ ok: true });
     }
 
     if (action === 'update_member') {

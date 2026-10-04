@@ -1668,19 +1668,31 @@ _pos = [_home.index(m) for m in ('class="homehero"', 'id="seniorui"', 'id="widge
 check("today: family card, a parent's big buttons, the four tiles, the emergency card, then More",
       _pos == sorted(_pos), str(_pos))
 _above_more = _home[:_home.index('id="more"')]
-check("today: five things and no more - four tiles and the emergency card (Anshul: track 5, not 50)",
+check("today: five things and no more - four tiles and the emergency card (the family review: track 5, not 50)",
       len(_wnames) == 4 and _above_more.count('class="widget"') == 4 and 'id="btn-ecard"' in _above_more)
 check("today: everything else is kept, one tap away under More",
       all(x in _home[_home.index('id="more"'):] for x in ('data-goto="chat"', 'data-sec="plans"', 'data-goto="ekta"', 'data-sec="muhurat"', 'data-sec="pay"', 'data-sec="games"', 'id="coincard"')))
 check("today: no daily food or mood question (families already chat about that on WhatsApp)",
       'id="pulsecard"' not in _appt and "renderPulse" not in _appt and 'id="pu-pick"' not in _appt)
 _circ = (API_DIR / "circle.mjs").read_text(encoding="utf-8")
-_rels = re.findall(r"'([a-z]+)'", re.search(r"const RELATIONS = \[([^\]]*)\]", _circ).group(1))
+_rels = re.findall(r"'([a-z-]+)'", re.search(r"const RELATIONS = \[([^\]]*)\]", _circ).group(1))
 for _pick in ("c-role", "j-role", "e-role"):
     _box = re.search(r'id="' + _pick + r'">(.*?)</div>', _appt, re.S).group(1)
-    _roles = re.findall(r'data-role="([a-z]+)"', _box)
+    _roles = re.findall(r'data-role="([a-z-]+)"', _box)
     check("roles: every choice in " + _pick + " is one the server keeps, Friend included",
           "friend" in _roles and set(_roles) <= set(_rels) and set(_rels) <= set(_roles), ",".join(_roles))
+check("roles: the in-laws and grandchildren are roles too, and a nuclear family is not offered them",
+      all(r in _rels for r in ("daughter-in-law", "son-in-law", "grandson", "granddaughter"))
+      and "#createcard.nuclear .jointonly{display:none}" in _appt
+      and all('data-role="' + r + '" class="jointonly"' in _appt for r in ("daughter-in-law", "son-in-law", "grandson", "granddaughter")))
+check("tree: a new family is asked joint or nuclear first, and the server keeps the answer",
+      'id="c-ftype"' in _appt and "familyType: newKind === 'family' ? newFamilyType : null" in _appt
+      and "FAMILY_TYPES.includes(req.body.familyType)" in _circ)
+check("tree: anyone in the family can place anyone; the server checks they are in this family and refuses what cannot be true",
+      "action === 'place'" in _circ and "ownedMember(sql, circle.id, memberId, tokenOf(req)" in _circ and "placement(by, targetId, place, ofId)" in _circ
+      and "plan.error" in _circ)
+check("tree: each person's label is worked out for whoever is looking",
+      "kinLabel(by, g.me.id, m.id)" in (API_DIR / "events.mjs").read_text(encoding="utf-8") and "if (m && m.kin && m.kin !== 'You') return m.kin;" in _appt)
 check("roles: a new group asks for your role in the group, and starts on Friend",
       "'Your role in the ' + newKind" in _appt and "newKind === 'group' ? 'friend' : 'family'" in _appt)
 _loc = (API_DIR / "_locationapi.mjs").read_text(encoding="utf-8")
