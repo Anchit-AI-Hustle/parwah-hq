@@ -25,7 +25,7 @@ await admin.connect();
 await admin.query('drop schema public cascade; create schema public;');
 
 const HANDLERS = {};
-for (const n of ['games', 'events', 'chats', 'auth', 'care']) HANDLERS[n] = (await import(`../../../api/${n}.mjs`)).default;
+for (const n of ['games', 'events', 'chats', 'auth', 'care', 'book']) HANDLERS[n] = (await import(`../../../api/${n}.mjs`)).default;
 const { db, ensureSchema } = await import('../../../api/_db.mjs');
 const { newToken, tokenHash, hashPin, SECRET_V } = await import('../../../api/_auth.mjs');
 await ensureSchema(db());
@@ -107,7 +107,10 @@ ok('each game card lets you pick family to play with', (await R.locator('.bpick[
 // check and the tap (the other player moves, buttons bounce), so a button seen
 // enabled can be disabled a moment later: tap at once, give up after 3s, and
 // the loop looks again. True only if the tap landed.
-const tap = (loc) => loc.click({ force: true, timeout: 3000 }).then(() => true, () => false);
+// A finger scrolls what it wants to tap into the middle of the screen first:
+// a token under the sticky top bar is not tapped through the bar.
+const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).catch(() => {})
+  .then(() => loc.click({ force: true, timeout: 3000 })).then(() => true, () => false);
 
 // ---------------- Ludo, alone, to the end ----------------
 {
@@ -132,6 +135,25 @@ const tap = (loc) => loc.click({ force: true, timeout: 3000 }).then(() => true, 
   ok('ludo: it ends with a winner', !!g.state.winner && g.status === 'done', g.state.winner);
   ok('ludo: the screen says who won', /won/.test(await R.textContent('#l-status')));
   ok('ludo: a solo game is not announced to the family', (await admin.query(`select count(*)::int as n from events where text like '%Ludo%'`)).rows[0].n === 0);
+  // The result stays: the next 3-second look used to drop the player back
+  // to "No game on right now" before they had read it.
+  await R.waitForTimeout(4000);
+  ok('ludo: four seconds on, the result is still on the screen', await vis(R, '#g-ludo') && await vis(R, '#g-result') && /won/.test(await R.textContent('#g-result')), await R.textContent('#g-result').catch(() => ''));
+  ok('ludo: a finished game offers Play again, and no longer "End game"', await vis(R, '#g-again') && !(await vis(R, '#l-end')));
+  await R.click('#g-rules summary');
+  ok('ludo: How to play says the rules the game uses', /Roll a 6 to bring a token out/.test(await R.textContent('#g-rules-list')) && /star squares/.test(await R.textContent('#g-rules-list')));
+  ok('ludo: the floating buttons step aside while a game is open', !(await vis(R, '#ekta-fab')) && !(await vis(R, '#chat-fab')));
+  const before = g.id;
+  await R.click('#g-again'); await R.waitForTimeout(900);
+  const again = await lastGame('ludo');
+  ok('ludo: Play again starts a new game, alone again', again.id !== before && again.status === 'active' && again.state.players.some(p => p.bot) && await vis(R, '#g-ludo'));
+  await admin.query(`update games set status = 'done' where id = $1`, [again.id]);   // put away, with no result
+  await R.click('#g-back'); await R.waitForTimeout(600);
+  const rows = await R.$$eval('#glist button[data-gopen]', bs => bs.map(b => b.getAttribute('data-gopen') + '|' + b.textContent));
+  ok('ludo: the list keeps the finished game, marked Done', rows.some(r => r.startsWith(before + '|') && /Done/.test(r)), rows.join(' / '));
+  ok('ludo: a game put away without a result leaves the list', !rows.some(r => r.startsWith(again.id + '|')));
+  await R.click(`#glist button[data-gopen="${before}"]`); await R.waitForTimeout(700);
+  ok('ludo: a finished game opens from the list, result and all', await vis(R, '#g-result'));
   await backToList();
 }
 
@@ -160,7 +182,8 @@ const tap = (loc) => loc.click({ force: true, timeout: 3000 }).then(() => true, 
   const g = await lastGame('bhabhi');
   ok('bhabhi: played by tapping cards (' + plays + ' plays)', plays > 3);
   ok('bhabhi: it ends with a Bhabhi', !!g.state.loser && g.status === 'done', g.state.loser);
-  ok('bhabhi: the screen names the Bhabhi', /Bhabhi/.test(await R.textContent('#b-status')));
+  // Named without a family title: "holds the last cards" (review D-19).
+  ok('bhabhi: the screen says who got away and who holds the last cards', /got away first/.test(await R.textContent('#b-status')) && /holds the last cards/.test(await R.textContent('#b-status')) && !/is the Bhabhi/.test(await R.textContent('#b-status')), await R.textContent('#b-status'));
   // A card you may not play cannot be tapped.
   ok('bhabhi: only playable cards were ever enabled', refused === 0);
   await backToList();
@@ -228,6 +251,72 @@ const tap = (loc) => loc.click({ force: true, timeout: 3000 }).then(() => true, 
   const v2 = (await lastGame('ludo')).state.v;
   ok('two players: three rolls sent at once: exactly one lands', both.filter(x => x === 200).length === 1 && v2 === st0.v + 1, both.join() + ' v' + st0.v + '->' + v2);
   await M.close();
+}
+
+// ---------------- Saanp Seedhi: only who you pick; nobody holds it up ----------------
+{
+  const M = await phone(meera);
+  await R.goto(BASE + '/#fun'); await R.waitForTimeout(600);
+  await R.click('#fun-seg [data-sec="games"]'); await R.waitForTimeout(300);
+  const n0 = (await admin.query(`select count(*)::int as n from games where kind = 'snakes'`)).rows[0].n;
+  await R.click('#g-start'); await R.waitForTimeout(500);
+  ok('snakes: with nobody ticked, no game is started for the whole family', (await admin.query(`select count(*)::int as n from games where kind = 'snakes'`)).rows[0].n === n0);
+  await R.check(`.bpick[data-for="snakes"] input[value="${meera.id}"]`);
+  await R.click('#g-start'); await R.waitForTimeout(800);
+  let g = await lastGame('snakes');
+  ok('snakes: only the people picked are seated', g.state.players.length === 2 && g.state.players.map(p => p.name).join() === 'Rohan,Meera');
+  // Rohan rolls; then it is Meera's turn, and she does not come.
+  await R.click('#g-roll'); await R.waitForTimeout(700);
+  g = await lastGame('snakes');
+  ok('snakes: after Rohan rolls it is Meera\'s turn', g.state.turn === 1 || !!g.state.winner, String(g.state.turn));
+  const early = await R.evaluate(async ([gid, tok, me, them]) => {
+    const r = await fetch('/api/games', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': tok },
+      body: JSON.stringify({ code: 'SHARMA', memberId: me, action: 'away', who: 'them', targetId: them, gameId: gid }) });
+    return r.status;
+  }, [g.id, rohan.token, rohan.id, meera.id]);
+  ok('snakes: an hour later, nobody can take Meera\'s turn yet', early === 409, early);
+  ok('snakes: and the screen does not offer it', !(await vis(R, '#g-hand')));
+  const st = g.state; st.turnAt = Date.now() - 13 * 3600 * 1000;
+  await admin.query('update games set state = $1::jsonb where id = $2', [JSON.stringify(st), g.id]);
+  await R.waitForTimeout(3800);
+  ok('snakes: after 12 hours, Rohan is offered "Let Parwah play for Meera"', await vis(R, '#g-hand') && /Let Parwah play for Meera/.test(await R.textContent('#g-hand')), await R.textContent('#g-hand').catch(() => ''));
+  await R.click('#g-hand'); await R.waitForTimeout(800);
+  g = await lastGame('snakes');
+  const mSeat = g.state.players.find(p => p.id === meera.id);
+  ok('snakes: Parwah now plays Meera\'s seat, and the game goes on to Rohan', mSeat.away === true && (g.state.turn === 0 || !!g.state.winner), JSON.stringify({ t: g.state.turn, away: mSeat.away }));
+  ok('snakes: the family is told who let Parwah play for whom', (await admin.query(`select count(*)::int as n from events where text like 'Rohan let Parwah play for Meera%'`)).rows[0].n === 1);
+  // Rohan leaves too: nobody is left, so the game ends with no result.
+  ok('snakes: Rohan can leave the game', await vis(R, '#g-leave'));
+  await R.click('#g-leave'); await R.waitForTimeout(300);
+  await R.click('#as-yes'); await R.waitForTimeout(900);
+  g = await lastGame('snakes');
+  ok('snakes: with nobody left playing, the game ends and leaves the list', g.status === 'done' && !g.ended_at && !(await vis(R, '#g-snakes')), g.status + ' ' + g.ended_at);
+  await M.close();
+}
+
+// ---------------- The drawing board ----------------
+{
+  await R.goto(BASE + '/#fun'); await R.waitForTimeout(600);
+  await R.click('#fun-seg [data-sec="board"]'); await R.waitForTimeout(700);
+  ok('board: the floating buttons step aside', !(await vis(R, '#ekta-fab')) && !(await vis(R, '#chat-fab')));
+  const sizes = await R.$$eval('#dtools .dcol', bs => bs.map(b => Math.min(b.getBoundingClientRect().width, b.getBoundingClientRect().height)));
+  ok('board: every colour is a 44px target', sizes.length >= 6 && sizes.every(x => x >= 44), sizes.join());
+  await R.emulateMedia({ colorScheme: 'dark' }); await R.waitForTimeout(200);
+  const bg = await R.$eval('#dboard', c => getComputedStyle(c).backgroundColor);
+  ok('board: the paper stays paper-white in dark mode, so ink shows', bg === 'rgb(255, 253, 248)', bg);
+  await R.emulateMedia({ colorScheme: 'light' });
+  const box = await R.$eval('#dboard', c => { const r = c.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+  const line = async (y) => { await R.mouse.move(box.x + 30, box.y + y); await R.mouse.down(); await R.mouse.move(box.x + 120, box.y + y, { steps: 6 }); await R.mouse.up(); await R.waitForTimeout(500); };
+  await line(40);
+  await R.click('#dtools [data-dc="erase"]'); await line(40);
+  const rowsB = (await admin.query(`select stroke from doodles where member_id = $1 order by created_at`, [rohan.id])).rows;
+  ok('board: a line and an eraser stroke are saved; the eraser as an eraser, not white ink', rowsB.length === 2 && !rowsB[0].stroke.e && rowsB[1].stroke.e === true, JSON.stringify(rowsB.map(r => r.stroke.e || r.stroke.c)));
+  await R.click('#d-undo'); await R.waitForTimeout(800);
+  ok('board: Undo takes back only my last line', (await admin.query(`select count(*)::int as n from doodles where member_id = $1`, [rohan.id])).rows[0].n === 1);
+  await R.click('#d-clear'); await R.waitForTimeout(300);
+  ok('board: wiping asks first, and says it removes everyone\'s drawings', await vis(R, '#asksheet') && /other people/.test(await R.textContent('#asksheet')));
+  await R.click('#as-no'); await R.waitForTimeout(300);
+  ok('board: saying no keeps the drawings', (await admin.query(`select count(*)::int as n from doodles`)).rows[0].n === 1);
 }
 
 ok('no script errors', errors.length === 0, errors.join(' | '));

@@ -182,6 +182,28 @@ ok('and only then is the invite used up', await J.evaluate(() => sessionStorage.
   await ctxD.close();
 }
 
+// ---- the family changes its invite code while someone waits: still found
+{
+  const fam = await call('circle', { action: 'create', kind: 'family', familyType: 'nuclear', memberName: 'Meera', circleName: 'Sood Family', userId: U.Meera.userId, relation: 'mother' }, {}, 'POST', U.Meera.token);
+  await admin.query(`update circles set join_policy = 'approve' where code = $1`, [fam.code]);
+  const ctxE = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  await ctxE.addInitScript(([w]) => {
+    if (localStorage.getItem('parwah-user')) return;
+    localStorage.setItem('parwah-user', JSON.stringify({ id: w.userId, name: w.name, phone: w.phone, toured: true }));
+    localStorage.setItem('parwah-token', w.token);
+    localStorage.setItem('parwah', JSON.stringify({ code: w.code, memberId: w.memberId, name: w.name, role: 'family', circleName: 'Tandon Family' }));
+  }, [{ ...U.Anchit, code }]);
+  const E = await ctxE.newPage(); E.on('pageerror', e => errors.push('E: ' + e.message));
+  await E.goto(BASE + '/?join=' + fam.code); await E.waitForTimeout(1300);
+  await E.click('#j-go'); await E.waitForTimeout(1300);
+  await admin.query(`update circles set code = 'NEWC0D' where code = $1`, [fam.code]);
+  const rq = (await admin.query(`select id from join_requests where circle_id = (select id from circles where code = 'NEWC0D') and status = 'pending'`)).rows[0];
+  await call('circle', { action: 'approve_join', code: 'NEWC0D', memberId: fam.memberId, requestId: rq && rq.id }, {}, 'POST', U.Meera.token);
+  await E.click('#pend-check'); await E.waitForTimeout(1600);
+  ok('the code changed while waiting: once they say yes, Check again still takes you in', await E.isVisible('#main') && /Sood Family/.test(await E.textContent('#m-title')), await E.textContent('#m-title').catch(() => ''));
+  await ctxE.close();
+}
+
 // ---- signed out: the invite is said, and the PIN screen never names anyone
 const ctxO = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
 const O = await ctxO.newPage(); O.on('pageerror', e => errors.push('O: ' + e.message));
