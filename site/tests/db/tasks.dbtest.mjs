@@ -344,7 +344,7 @@ let given;
     { status(x) { st = x; return this; }, json(j) { js = j; return this; }, setHeader() {} }); return { st, ...js }; };
   const a = await tick();
   ok('the timer needs no sign-in, and sends what is due', a.st === 200 && a.ok && a.reminded === 1 && (await row(t.id)).reminded_for !== null, JSON.stringify(a));
-  ok('it says only counts, nothing about any family', Object.keys(a).sort().join() === 'circles,late,ok,reminded,st');
+  ok('it says only counts, nothing about any family', Object.keys(a).sort().join() === 'circles,events,late,ok,reminded,st', Object.keys(a).sort().join());
   const b = await tick();
   ok('called again within the minute, it does nothing', b.ok && b.skipped === true);
 }

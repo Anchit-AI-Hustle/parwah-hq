@@ -8,6 +8,7 @@ import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
 import { pushCircle } from './_push.mjs';
 import { ensureTaskSchema, sweepOverdue, sweepReminders } from './_tasks.mjs';
+import { sweepPlanReminders } from './_plansweep.mjs';
 import { award, today } from './_coins.mjs';
 
 import { index as kinIndex, kinLabel, generations } from './_kin.mjs';
@@ -77,16 +78,20 @@ async function escalateStaleSos(sql, circleId) {
                                 where status in ('open','assigned','claimed') and due_at is not null
                                   and due_at between now() - interval '2 days' and now() + interval '2 days'
                                 union select distinct circle_id from sos where status = 'open'
-                                limit 500`;
-      let reminded = 0, late = 0;
+                                union select distinct circle_id from plans where at between now() and now() + interval '2 hours'
+                                limit 500`.catch(async () => sql`select distinct circle_id from requests
+                                where status in ('open','assigned','claimed') and due_at is not null
+                                  and due_at between now() - interval '2 days' and now() + interval '2 days' limit 500`);
+      let reminded = 0, late = 0, events = 0;
       for (const c of circles) {
         try {
           reminded += await sweepReminders(sql, c.circle_id);
           late += await sweepOverdue(sql, c.circle_id);
+          events += await sweepPlanReminders(sql, c.circle_id);
           await escalateStaleSos(sql, c.circle_id);
         } catch (e) { /* one family's trouble never stops the others */ }
       }
-      return res.status(200).json({ ok: true, circles: circles.length, reminded, late });
+      return res.status(200).json({ ok: true, circles: circles.length, reminded, late, events });
     }
     if (req.method === 'GET') {
       // An invite code alone used to read this: every member's phone, date of
@@ -139,7 +144,7 @@ async function escalateStaleSos(sql, circleId) {
       await escalateStaleSos(sql, circle.id);
       // Every open phone looks, so a late task is announced within a poll;
       // the sweep claims each alert, so it is still announced only once.
-      try { await ensureTaskSchema(sql); await sweepReminders(sql, circle.id); await sweepOverdue(sql, circle.id); } catch (e) { /* never break a read */ }
+      try { await ensureTaskSchema(sql); await sweepReminders(sql, circle.id); await sweepOverdue(sql, circle.id); await sweepPlanReminders(sql, circle.id); } catch (e) { /* never break a read */ }
       const pulse = await pulseToday(sql, circle.id);
       const sosOpen = await sql`
         select s.id, s.member_id, s.status, s.escalated, s.created_at, s.acked_at, s.safe_at,

@@ -254,6 +254,12 @@ label + select{width:100%}
 .noteitem small{font-size:var(--fs-12)}
 .noteadd{display:flex;gap:var(--space-8)}
 .noteadd input{flex:1;min-width:0}
+.day .bday{position:absolute;top:1px;right:2px;font-size:var(--fs-12);font-style:normal;line-height:1}
+.bdayrow{border-left:3px solid var(--marigold)}
+.quickadd{display:flex;gap:var(--space-8);overflow-x:auto;padding:var(--space-4) 0 var(--space-12);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.quickadd::-webkit-scrollbar{display:none}
+.quickadd button{flex:none;min-height:var(--tap-min);border:1px solid var(--bone-2);background:var(--surface);color:var(--ink);border-radius:var(--radius-pill);padding:var(--space-8) var(--space-16);font-family:var(--body);font-weight:700;font-size:var(--fs-14);cursor:pointer;white-space:nowrap}
+.quickadd button:hover{border-color:var(--marigold)}
 /* A box that is wrong says so beside itself, not in a toast that vanishes. */
 .fielderr{font-size:var(--fs-14);font-weight:600;color:var(--sindoor);margin:var(--space-4) 0 var(--space-8)}
 [aria-invalid="true"]{border-color:var(--sindoor)!important;box-shadow:0 0 0 2px var(--sindoor)}
@@ -760,7 +766,7 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
 .calhead button{border:0;background:var(--bone);border-radius:var(--radius-8);font-size:var(--fs-16);padding:var(--space-2) var(--space-16);cursor:pointer;color:var(--ink);line-height:1.4}
 .calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--space-4);text-align:center}
 .calgrid .dow{font-size:var(--fs-12);color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;padding:var(--space-2) 0}
-.calgrid .day{border:1px solid transparent;border-radius:var(--radius-12);padding:var(--space-8) 0 var(--space-4);font-size:var(--fs-14);cursor:pointer;min-height:34px}
+.calgrid .day{position:relative;border:1px solid transparent;border-radius:var(--radius-12);padding:var(--space-8) 0 var(--space-4);font-size:var(--fs-14);cursor:pointer;min-height:34px}
 .calgrid .day:hover{background:var(--bone)}
 .calgrid .day.blank{cursor:default;background:none}
 .calgrid .day.today{border-color:var(--marigold);font-weight:700}
@@ -843,8 +849,8 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
 .plan b{display:block;font-size:var(--fs-16)}
 .plan small{color:var(--ink-soft);font-size:var(--fs-12);display:block;margin-top:var(--space-2)}
 .plan .prow{display:flex;gap:var(--space-8);margin-top:var(--space-12);flex-wrap:wrap}
-.pkind{display:flex;gap:var(--space-8);margin-top:var(--space-8)}
-.pkind button{flex:1;border:1.5px solid var(--bone-2);background:var(--surface);border-radius:var(--radius-12);padding:var(--space-8) var(--space-4);font-family:var(--body);font-weight:600;font-size:var(--fs-12);cursor:pointer;color:var(--ink)}
+.pkind{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-8)}
+.pkind button{flex:1 1 30%;min-width:0;min-height:var(--tap-min);border:1.5px solid var(--bone-2);background:var(--surface);border-radius:var(--radius-12);padding:var(--space-8) var(--space-4);font-family:var(--body);font-weight:600;font-size:var(--fs-12);cursor:pointer;color:var(--ink)}
 .pkind button.sel{border-color:var(--marigold);background:var(--tint-warm)}
 .callbtn{text-decoration:none;margin-left:var(--space-2)}
 .hero2{display:flex;gap:var(--space-12)}
@@ -1341,6 +1347,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="homehero">
       <h1 id="m-title"></h1>
       <p class="herostatus" id="hero-status">…</p>
+    </div>
+    <!-- ONE PLACE TO ADD ANYTHING. With this many features, the basic "add a
+         reminder / an event / a list" must not depend on knowing which tab
+         holds it. Each goes straight to its form, ready to type. -->
+    <div class="quickadd" role="group" aria-label="Add something">
+      <button type="button" data-qadd="task">⏰ Reminder or task</button>
+      <button type="button" data-qadd="event">🗓 Event or plan</button>
+      <button type="button" data-qadd="note">📝 List or note</button>
+      <button type="button" data-qadd="contact">☎️ Contact or health</button>
+      <button type="button" data-qadd="doc">📄 Document</button>
     </div>
     <div id="frslot"></div>
     <!-- THE FIVE THINGS. Families talk on WhatsApp; Parwah holds what WhatsApp
@@ -2152,18 +2168,21 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="card">
       <div class="calhead"><button id="cal-prev" aria-label="Previous month">‹</button><b id="cal-title"></b><button id="cal-next" aria-label="Next month">›</button></div>
       <div class="calgrid" id="pcal"></div>
-      <p class="hint" style="margin-top:var(--space-8)">Tap a date to see that day's plans - and to start a new plan on it. Dots mark days with plans.</p>
+      <p class="hint" style="margin-top:var(--space-8)">Tap a date to see that day - and to add something on it. Dots mark plans and events; 🎂 marks birthdays, from each person's date of birth.</p>
     </div>
 
-    <p class="eyebrow">Plans</p>
+    <p class="eyebrow">Plans, events and birthdays</p>
     <div class="feed" id="plist"><div class="ev">Loading…</div></div>
     <div class="card" style="margin-top:var(--space-16)">
-      <h3>Plan something 🎈</h3>
+      <h3>Add a plan or event 🎈</h3>
       <input type="text" id="p-title" maxlength="100" placeholder="What's the plan? e.g. Sunday video call, Diwali dinner" aria-label="Plan title">
       <div class="pkind" id="p-kind">
         <button type="button" data-kind="call" class="sel">📹 Call</button>
         <button type="button" data-kind="party">🎶 Watch/listen party</button>
         <button type="button" data-kind="meet">🤗 Meet up</button>
+        <button type="button" data-kind="appointment">🩺 Appointment</button>
+        <button type="button" data-kind="function">🪔 Function</button>
+        <button type="button" data-kind="trip">✈️ Trip</button>
       </div>
       <div class="pickrow">
         <label class="pick"><span>Date</span><input type="date" id="p-date" aria-label="Plan date"></label>
@@ -2174,7 +2193,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <label class="pick"><span>Place (meet-ups)</span><input type="text" id="p-place" maxlength="120" placeholder="optional" aria-label="Plan place"></label>
       </div>
       <button class="go" id="p-add" style="margin-top:var(--space-16)">Set the plan</button>
-      <p class="hint">Everyone sees it in their own timezone - perfect when family is abroad. Add it to Google Calendar in one tap.</p>
+      <p class="hint">Everyone sees it in their own time zone, and whoever is going is reminded an hour before. Add it to Google Calendar in one tap.</p>
     </div>
     </div>
 
@@ -3505,6 +3524,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // Who can be asked to share their location depends on who is in the
     // family, which can arrive after the locations did.
     if (curTab === 'people' && locMe && locMe.precision !== undefined) { try { renderLoc(); } catch (e) {} }
+    // Birthdays come from the family list, which can arrive after the plans.
+    if (curTab === 'fun' && plansCache) { try { renderPlans(plansCache); } catch (e) {} }
     // "How ready" lists the elders the family looks after, which it can only
     // tell once the family is known: drawn again if the papers came first.
     if (prepCache && prepCache.length) renderPrep();
@@ -6514,8 +6535,38 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   calMonth.setDate(1);
   function pad2(n){ return ('0' + n).slice(-2); }
   function pDay(at){ var d = new Date(at); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  // BIRTHDAYS, from each person's date of birth: on the calendar and at the
+  // top of the list when one is within a month. Nobody has to add them.
+  function bdaysIn(y, mo){
+    var out = {};
+    (membersCache || []).forEach(function(m){
+      if (!m.dob) return;
+      var d = String(m.dob).slice(0, 10).split('-');
+      if (+d[1] - 1 !== mo) return;
+      var k = y + '-' + pad2(mo + 1) + '-' + pad2(+d[2]);
+      (out[k] = out[k] || []).push({ name: m.name, turns: y - (+d[0]), mine: m.id === state.memberId });
+    });
+    return out;
+  }
+  function bdaysSoon(days){
+    var now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(), out = [];
+    (membersCache || []).forEach(function(m){
+      if (!m.dob) return;
+      var d = String(m.dob).slice(0, 10).split('-');
+      var next = new Date(now.getFullYear(), +d[1] - 1, +d[2]);
+      if (next.getTime() < t0) next = new Date(now.getFullYear() + 1, +d[1] - 1, +d[2]);
+      var inDays = Math.round((next.getTime() - t0) / 86400000);
+      if (inDays <= days) out.push({ name: m.name, mine: m.id === state.memberId, inDays: inDays, turns: next.getFullYear() - (+d[0]), key: pDay(next) });
+    });
+    return out.sort(function(a, b){ return a.inDays - b.inDays; });
+  }
+  function bdayLine(b){
+    var when = b.inDays === 0 ? 'today' : b.inDays === 1 ? 'tomorrow' : 'on ' + fmtDue(b.key);
+    return '🎂 ' + (b.mine ? 'Your birthday' : b.name + "'s birthday") + ' ' + when + (b.turns > 0 && b.turns < 120 ? ' - ' + (b.mine ? 'you turn ' : 'turns ') + b.turns : '');
+  }
   function renderCal(){
     var y = calMonth.getFullYear(), mo = calMonth.getMonth();
+    var bd = bdaysIn(y, mo);
     $('cal-title').textContent = calMonth.toLocaleDateString([], { month: 'long', year: 'numeric' });
     var counts = {};
     plansCache.forEach(function(p){ var k = pDay(p.at); counts[k] = (counts[k] || 0) + 1; });
@@ -6526,7 +6577,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var days = new Date(y, mo + 1, 0).getDate(), todayK = pDay(new Date());
     for (var d = 1; d <= days; d++) {
       var k = y + '-' + pad2(mo + 1) + '-' + pad2(d);
-      h += '<span class="day' + (k === todayK ? ' today' : '') + (k === calSel ? ' sel' : '') + '" data-cday="' + k + '" role="button" tabindex="0">' + d + (counts[k] ? '<i class="pdot"></i>' : '') + '</span>';
+      h += '<span class="day' + (k === todayK ? ' today' : '') + (k === calSel ? ' sel' : '') + '" data-cday="' + k + '" role="button" tabindex="0"' +
+           (bd[k] ? ' aria-label="' + d + ', ' + esc(bd[k].map(function(b){ return b.name; }).join(' and ')) + ' birthday"' : '') + '>' + d +
+           (bd[k] ? '<i class="bday" aria-hidden="true">🎂</i>' : '') + (counts[k] ? '<i class="pdot"></i>' : '') + '</span>';
     }
     $('pcal').innerHTML = h;
   }
@@ -6546,11 +6599,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     renderCal();
     var list = calSel ? plans.filter(function(p){ return pDay(p.at) === calSel; }) : plans;
     var h = '';
+    var bds = calSel ? bdaysSoon(366).filter(function(b){ return b.key === calSel; }) : bdaysSoon(31);
+    bds.forEach(function(b){
+      h += '<div class="plan bdayrow"><b>' + esc(bdayLine(b)) + '</b>' +
+           (b.mine ? '' : '<div class="prow"><button class="cbtn" data-bdwish="' + esc(b.name) + '">💬 Wish them</button></div>') + '</div>';
+    });
     list.forEach(function(p){
       var when = new Date(p.at);
       var whenTxt = fmtDue(when.toISOString().slice(0, 10)) + ', ' + when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       var mine = (p.going || []).indexOf(state.memberId) >= 0;
-      var icon = p.kind === 'call' ? '📹' : p.kind === 'party' ? '🎶' : p.kind === 'meet' ? '🤗' : '🗓';
+      var icon = { call: '📹', party: '🎶', meet: '🤗', appointment: '🩺', 'function': '🪔', trip: '✈️' }[p.kind] || '🗓';
       h += '<div class="plan"><b>' + icon + ' ' + esc(p.title) + '</b>' +
         '<small>' + esc(whenTxt) + ' (your time) · by ' + esc(p.by_name || 'family') +
         (p.place ? ' · ' + esc(p.place) : '') + (p.expected ? ' · ~' + p.expected + ' people' : '') +
@@ -6567,6 +6625,21 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       : '<div class="ev">Nothing planned yet - make the first plan below 🎈</div>');
     $('w-plan').textContent = plans.length ? plans.length + ' coming up - next: ' + plans[0].title : 'Calls, parties, get-togethers';
   }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-bdwish]'); if (!b || !state) return;
+    var fam = null; chatsCache.forEach(function(x){ if (x.kind === 'circle') fam = x; });
+    switchTab('chat');
+    if (fam) { openChat(fam.id); $('msg').value = 'Happy birthday, ' + b.getAttribute('data-bdwish') + '! 🎂🧡 '; try { $('msg').focus(); } catch (x) {} }
+  });
+  // Quick add on Today: straight to the right form, cursor in the first box.
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-qadd]'); if (!b || !state) return;
+    var k = b.getAttribute('data-qadd');
+    var go = { task: ['care', 'rem', 'r-title'], event: ['fun', 'plans', 'p-title'], note: ['care', 'notes', 'n-title'],
+               contact: ['memory', null, 'b-name'], doc: ['vault', 'docs', 'vd-label'] }[k];
+    switchTab(go[0]); if (go[1]) setSec(go[0], go[1]);
+    setTimeout(function(){ var f = $(go[2]); if (f) { try { f.scrollIntoView({ block: 'center' }); f.focus(); } catch (x) {} } }, 250);
+  });
   $('p-add').addEventListener('click', function(){
     var t = $('p-title').value.trim();
     if (!t) { toast('Give the plan a name'); return; }
@@ -6576,7 +6649,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (at < new Date(Date.now() - 5 * 60000)) { fieldErr('p-date', 'That time has already gone - pick a time from now on.'); return; }
     var pc = $('p-count').value;
     if (pc && (!/^\d+$/.test(pc) || +pc < 1 || +pc > 50)) { fieldErr('p-count', 'Write how many people as a number from 1 to 50.'); return; }
-    post(API.plans, { code: state.code, memberId: state.memberId, action: 'create', title: t, kind: planKind, at: at.toISOString(), place: $('p-place').value.trim(), expected: $('p-count').value })
+    post(API.plans, { code: state.code, memberId: state.memberId, action: 'create', title: t, kind: planKind, at: at.toISOString(), place: $('p-place').value.trim(), expected: $('p-count').value, tz: homeTz() })
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not set the plan'); return; }
         $('p-title').value = ''; $('p-place').value = '';
