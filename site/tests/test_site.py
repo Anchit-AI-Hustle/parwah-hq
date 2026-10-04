@@ -733,8 +733,8 @@ check("guide: the number is backed by named gaps and a complete-N call to action
       "gapCount" in book and "rd-gaps" in appsrc and "Complete " in appsrc)
 check("guide: someone near a person living away is a first-class contact",
       "'local'" in book and "someone near them to call" in book)
-check("guide: the pulse asks how people are, in a style that rotates daily",
-      "How are my people today" in appsrc and "styleFor" in pulse and len(re.findall(r"^\s{2}\w+: \{ name:", pulse, re.M)) == 5)
+check("guide: the pulse question still rotates daily on the server (the app no longer asks it on Today)",
+      "styleFor" in pulse and len(re.findall(r"^\s{2}\w+: \{ name:", pulse, re.M)) == 5)
 check("guide: an answer can quietly say a call would be nice",
       "call: true" in pulse and "could do with a call" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
 check("guide: everyone in a circle sees the same question on the same day",
@@ -744,9 +744,8 @@ check("guide: the plan is named and bundled as the guide names it",
 
 # 10p. THE GUIDE'S REMAINING SCREENS - 1, 2 and 4.
 ekta_src = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
-check("guide screen 1: the home leads with people carrying a short status line",
-      'id="fam-cards"' in appsrc and "Important information up to date" in appsrc
-      and "View family" in appsrc and "You decide who can see what" in appsrc)
+check("guide screen 1: the home leads with the family and a short status line, then the five things",
+      'id="hero-status"' in appsrc and 'id="w-fam"' in appsrc and 'id="w-health"' in appsrc)
 check("guide screen 2: one person, in the five sections the guide names",
       all(x in appsrc for x in (">🩺 Health<", ">📄 Records<", ">📞 People to call<",
                                 ">💡 Useful to know<", ">🕒 Freshness<")))
@@ -1662,12 +1661,19 @@ _today_doc = (REPO / "docs" / "design" / "TODAY.md").read_text(encoding="utf-8")
 _wgrid = re.search(r'<div class="widgets" id="widgets">(.*?)</div>', _appt, re.S).group(1)
 _wnames = re.findall(r'<b>([^<]+)</b>', _wgrid)
 _docnames = re.findall(r"^\| \d+ \| ([^|]+?) \|", _today_doc, re.M)
-check("today: the widgets are in the order of docs/design/TODAY.md (most used and most at stake first)",
-      _wnames == _docnames and _wnames[:3] == ["Things to do", "People", "Chats"], " > ".join(_wnames))
+check("today: the widgets are in the order of docs/design/TODAY.md (utility first, the vault at the core)",
+      _wnames == _docnames and _wnames[:2] == ["Vault", "Health"], " > ".join(_wnames))
 _home = _appt[_appt.index('<section id="pane-home">'):_appt.index('<div class="homerail">')]
-_pos = [_home.index(m) for m in ('class="homehero"', 'id="seniorui"', 'id="pulsecard"', 'id="widgets"', 'id="btn-ecard"', 'id="famcard"')]
-check("today: family card, then a parent's big buttons, the daily check, the widgets, the emergency card, then the rest",
+_pos = [_home.index(m) for m in ('class="homehero"', 'id="seniorui"', 'id="widgets"', 'id="btn-ecard"', 'id="more"')]
+check("today: family card, a parent's big buttons, the four tiles, the emergency card, then More",
       _pos == sorted(_pos), str(_pos))
+_above_more = _home[:_home.index('id="more"')]
+check("today: five things and no more - four tiles and the emergency card (Anshul: track 5, not 50)",
+      len(_wnames) == 4 and _above_more.count('class="widget"') == 4 and 'id="btn-ecard"' in _above_more)
+check("today: everything else is kept, one tap away under More",
+      all(x in _home[_home.index('id="more"'):] for x in ('data-goto="chat"', 'data-sec="plans"', 'data-goto="ekta"', 'data-sec="muhurat"', 'data-sec="pay"', 'data-sec="games"', 'id="coincard"')))
+check("today: no daily food or mood question (families already chat about that on WhatsApp)",
+      'id="pulsecard"' not in _appt and "renderPulse" not in _appt and 'id="pu-pick"' not in _appt)
 _circ = (API_DIR / "circle.mjs").read_text(encoding="utf-8")
 _rels = re.findall(r"'([a-z]+)'", re.search(r"const RELATIONS = \[([^\]]*)\]", _circ).group(1))
 for _pick in ("c-role", "j-role", "e-role"):
@@ -1742,7 +1748,7 @@ check("theme: nothing puts white text on the amber", not _amber, "; ".join(_ambe
 # --dim is muted text on the DARK panels. On a light card it measured 1.6:1
 # (Codex review, PR #7), so muted text on light cards wears --dim-day. No
 # colour reads 4.5:1 on white and on jamun at once, which is why it is two tokens.
-_ondim = [sel for sel in (".purow small{", ".rdgap em{", ".frstep small{", ".ec-row.none span{")
+_ondim = [sel for sel in (".rdgap em{", ".frstep small{", ".ec-row.none span{")
           if "var(--dim)" in _css[_css.index(sel):_css.index("}", _css.index(sel))]]
 _ondim += ["inline family label"] * _appt.count('<em style="font-style:normal;color:var(--dim)">')
 check("theme: muted text on light cards uses --dim-day, not the dark-panel --dim",
@@ -1776,11 +1782,11 @@ check("theme: a status button keeps its status colour under the Mela gradient",
 # docs/design/TODAY.md and guarded by the "today:" checks.
 _navseg = _appt[_appt.index('<nav class="tabs" id="tabs"'):_appt.index('id="side-groups-head"')]
 _nav = re.findall(r'<button data-tab="(\w+)"(?! data-sec)([^>]*)>', _navseg)
-_want_nav = ["home", "chat", "care", "people", "notifs", "ekta", "memory", "vault", "fun", "day", "profile"]
+_want_nav = ["home", "vault", "memory", "care", "people", "chat", "notifs", "ekta", "fun", "day", "profile"]
 check("order: the sidebar runs by real-life use",
       [t for t, _ in _nav] == _want_nav, " > ".join(t for t, _ in _nav))
-check("order: the phone tab bar is Today, Chat, Care, People",
-      [t for t, a in _nav if "deskonly" not in a] == ["home", "chat", "care", "people"],
+check("order: the phone tab bar is Today, Vault, Care, People (families chat on WhatsApp; the vault is what it cannot do)",
+      [t for t, a in _nav if "deskonly" not in a] == ["home", "vault", "care", "people"],
       " > ".join(t for t, a in _nav if "deskonly" not in a))
 _drw = _appt[_appt.index('<div class="dhead">'):_appt.index('id="d-groups-wrap"')]
 _drw_top = re.findall(r'class="ditem(?: dparent)?" data-(?:tab|grp)="(\w+)"', _drw)

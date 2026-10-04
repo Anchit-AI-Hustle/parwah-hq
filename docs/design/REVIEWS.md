@@ -135,3 +135,21 @@ mixed daily tools (Things to do) with rare ones (Payments, Muhurat).
 | 13 | 8 Minimalist | (Review 1) Today ranks nothing by what needs you | 2 | Partly fixed: a fixed, scored order. Live counts on the widgets ("1 needs attention") show what needs you, without moving buttons under a finger |
 
 **Approved.**
+
+## Review 5: five things, not fifty (Anshul's review, 3 October 2026)
+
+A first real family tried Parwah and said it was too much. His points:
+families talk on WhatsApp, so Parwah should do what WhatsApp cannot. The
+vault is the core: he downloaded his brother's Aadhaar, PAN and licence
+for a car claim instead of asking for photos. It will be used mostly for
+elders' health. And the daily food question made the app feel complicated.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 37 | 8 Minimalist | Today offered 11 tiles and five cards; a real user called it complicated | 4 | Fixed: four tiles and the emergency card; everything else under More, nothing deleted |
+| 38 | 2 Real-world match | A daily food or mood question that families already have on WhatsApp | 3 | Fixed: removed from Today; a parent's All is well and Pills taken stay |
+| 39 | 7 Flexibility | Chat held a tab-bar slot that the vault, Parwah's reason to exist, did not | 2 | Fixed: the tab bar is Today, Vault, Care, People; Chat is one tap away from the floating button and the menu |
+| 40 | 6 Recognition | Medicines and health facts sat in "Family memory" among contacts | 2 | Fixed: a Health tile opens medicines and health facts together |
+
+**Approved.** The scoring is in `TODAY.md`. Joint or nuclear family and the
+four-generation family tree, from the same review, are the next change.
