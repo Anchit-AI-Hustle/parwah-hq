@@ -83,7 +83,7 @@ const PARTS = /[,;.!?]+|\b(?:and|but|then|aur|lekin|par)\b/i;
 // asks whether something happened at some point since then ("Did Papa have
 // a seizure at any time since his fall last year?").
 const ONGOING = /\b(since|ab tak|abhi tak)\b/i;
-const ASKS_IF = /^\s*(did|was|were)\b|\b(any time|at any point|ever)\b/i;
+const ASKS_IF = /^\s*(did|was|were)\b|\b(any time|at any point|ever(?! since))\b/i;
 // "Getting worse" counts for the part that names the emergency, or a part
 // that refers back to it ("...and it is worse today") - not for something
 // else in the same message ("his knee pain is getting worse").

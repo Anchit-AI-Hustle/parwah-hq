@@ -599,7 +599,10 @@ export default async function handler(req, res) {
   } catch (e) {
     // A turn that never reached a brain is never charged for.
     await refund();
-    if (urgentToo) return answer({ ok: true, reply: 'Ekta could not reach her brain right now.', actions: [], model: LOCAL_MODEL });
+    // Something may already have been done before the failure (a reminder
+    // saved): the screen refreshes, and says to look before asking again.
+    if (urgentToo) return answer({ ok: true, reply: 'Ekta could not finish that just now. If she had already saved something, it is on your screen now - please check before asking again.',
+      actions: [{ tool: 'refresh' }], model: LOCAL_MODEL, partial: true });
     return res.status(502).json({ ok: false, error: 'Ekta could not reach her brain right now - try again in a moment.', detail: String(e && e.message || e).slice(0, 200) });
   }
 }
