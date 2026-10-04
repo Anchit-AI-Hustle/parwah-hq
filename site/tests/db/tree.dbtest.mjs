@@ -175,6 +175,26 @@ const kept = await rm(dadiRow.id);
 ok('nor someone with records kept about them', kept.status === 409 && /Remove those first/.test(kept.error) && !!(await row(dadiRow.id)), JSON.stringify(kept));
 await admin.query(`delete from family_book where about_member = $1`, [dadiRow.id]);
 ok('nor by someone outside the family', (await rm(dadiRow.id, { id: M.Rohan.id, token: U.Outsider.token })).status === 403);
+// Codex, on #29: a task about Dadi is kept about her too; a new person's
+// husband or wife link lands with them in one step; nobody gives her a task
+// or a chat through the API either.
+const { default: careApi } = await import('../../../api/care.mjs');
+const { default: chatsApi } = await import('../../../api/chats.mjs');
+const care = (body) => call(careApi, { token: papa.token, body: { code, memberId: papa.id, ...body } });
+const aboutDadi = await care({ action: 'task_create', title: "Dadi's eye check", aboutMemberId: dadiRow.id });
+ok('a task can be about Dadi', aboutDadi.status === 201 || aboutDadi.status === 200, JSON.stringify(aboutDadi));
+ok('but not given to her, by the API either', (await care({ action: 'task_create', title: 'Fetch milk', ownerId: dadiRow.id })).status === 400);
+ok('nor messaged', (await call(chatsApi, { token: papa.token, body: { code, memberId: papa.id, action: 'open_dm', otherId: dadiRow.id } })).status === 400);
+const grpChat = await call(chatsApi, { token: papa.token, body: { code, memberId: papa.id, action: 'create_group', name: 'Elders', memberIds: [dadiRow.id, M.Rohan.id] } });
+ok('nor put in a group chat', grpChat.chatId && (await admin.query('select count(*)::int as n from chat_members where chat_id = $1 and member_id = $2', [grpChat.chatId, dadiRow.id])).rows[0].n === 0);
+const keptTask = await rm(dadiRow.id);
+ok('while a task is about her, she is not removed', keptTask.status === 409 && /things to do/.test(keptTask.error) && !!(await row(dadiRow.id)), JSON.stringify(keptTask));
+await admin.query('delete from requests where about_member = $1', [dadiRow.id]);
+const dada = await add({ personName: 'Dada', gender: 'm', place: 'parent', ofId: papa.id });
+const dadaRow = (await admin.query('select id, spouse_id from members where name = $1 and circle_id = $2', ['Dada', circleId])).rows[0];
+ok('a new person who is the other parent lands married, both ways, in one step', dada.status === 200 && dadaRow && dadaRow.spouse_id === dadiRow.id && (await row(dadiRow.id)).spouse_id === dadaRow.id, JSON.stringify(dada));
+await call(circleApi, { token: papa.token, body: { action: 'unplace', link: 'spouse', code, memberId: papa.id, targetId: dadaRow.id } });
+await rm(dadaRow.id);
 const gone = await rm(dadiRow.id);
 ok('otherwise they are removed, and Papa simply has no mother in the tree', gone.status === 200 && !(await row(dadiRow.id)) && (await row(papa.id)).parent_id === null);
 

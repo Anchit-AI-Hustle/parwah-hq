@@ -179,6 +179,14 @@ export async function ensurePaySchema(sql) {
     at timestamptz not null default now()
   )`;
   await sql`create index if not exists pay_log_method on pay_log (method_id, at desc)`;
+  // What each way of paying has spent this month, kept beside the log so
+  // the monthly limit is checked and raised in one atomic step.
+  await sql`create table if not exists pay_month (
+    method_id uuid not null references pay_methods(id) on delete cascade,
+    month date not null,
+    spent integer not null default 0,
+    primary key (method_id, month)
+  )`;
 }
 
 // ---------------------------------------------------------------- documents
@@ -234,7 +242,9 @@ async function docsApi(req, res, sql, circle, me) {
                   where g.doc_id = any(${ids}::uuid[])`
       : [];
     // The access log is the owner's to read - it is what makes the promise real.
-    const mine = docs.filter(d => d.about_member === me.id).map(d => d.id);
+    // The history is for whoever decides: the person it is about, or, for
+    // someone not on Parwah, whoever keeps their papers.
+    const mine = docs.filter(d => d.about_member === me.id || (d.about_off_app && d.by_member === me.id)).map(d => d.id);
     const log = mine.length
       ? await sql`select l.doc_id, l.action, l.at, m.name
                   from vault_log l left join members m on m.id = l.member_id
@@ -344,12 +354,14 @@ async function docsApi(req, res, sql, circle, me) {
     const f = await sql`select encode(bytes, 'base64') as b64 from vault_files where doc_id = ${found.doc.id}`;
     if (!f[0]) return res.status(404).json({ ok: false, error: 'No file was uploaded for this document' });
     await sql`insert into vault_log (doc_id, member_id, action) values (${found.doc.id}, ${me.id}, 'opened')`;
-    // Nobody reads a family member's papers quietly.
-    if (found.doc.about_member !== me.id) {
+    // Nobody reads a family member's papers quietly - and for someone not on
+    // Parwah, whoever keeps their papers is the one told.
+    const tellId = found.doc.about_off_app ? found.doc.by_member : found.doc.about_member;
+    if (tellId && tellId !== me.id) {
       await pushCircle(sql, circle.id, {
         title: '🔐 ' + me.name + ' opened your ' + (DOC_KINDS[found.doc.kind] || DOC_KINDS.other).label,
         body: found.doc.label + ' - every open is recorded in your vault'
-      }, { only: found.doc.about_member });
+      }, { only: tellId });
     }
     return res.status(200).json({ ok: true, file: f[0].b64, mime: found.doc.file_mime, name: found.doc.file_name });
   }
@@ -470,7 +482,10 @@ async function docsApi(req, res, sql, circle, me) {
     if (!rq || rq.to_member !== me.id) return res.status(404).json({ ok: false, error: 'That request is not for you' });
     if (rq.status !== 'open') return res.status(409).json({ ok: false, error: 'That was already answered' });
     if (!body.allow) {
-      await sql`update vault_requests set status = 'declined', answered_at = now() where id = ${rq.id}`;
+      // Only an open request can be answered, once: two taps (or two phones)
+      // never leave it saying "not now" while access was given.
+      const dec = await sql`update vault_requests set status = 'declined', answered_at = now() where id = ${rq.id} and status = 'open' returning id`;
+      if (!dec[0]) return res.status(409).json({ ok: false, error: 'That was already answered' });
       await pushCircle(sql, circle.id, { title: '🔐 ' + me.name + ' said not now', body: 'You can ask again, or talk to them' }, { only: rq.from_member });
       return res.status(200).json({ ok: true });
     }
@@ -481,9 +496,16 @@ async function docsApi(req, res, sql, circle, me) {
                                           where d.id = ${docId} and d.circle_id = ${circle.id}`)[0] : null;
     if (!d) return res.status(400).json({ ok: false, error: rq.doc_id ? 'That document is no longer in the vault' : 'Choose which document to let them open' });
     if (!decides(d)) return res.status(403).json({ ok: false, error: 'Only the person this document belongs to can decide who sees it' });
-    await sql`insert into vault_access (doc_id, member_id, level, granted_by) values (${d.id}, ${rq.from_member}, 'full', ${me.id})
-              on conflict (doc_id, member_id) do update set level = 'full', granted_by = excluded.granted_by, granted_at = now()`;
-    await sql`update vault_requests set status = 'allowed', doc_id = ${d.id}, answered_at = now() where id = ${rq.id}`;
+    // Claim the request and grant access in one statement: either both
+    // happen or neither does.
+    const got = await sql`
+      with claim as (update vault_requests set status = 'allowed', doc_id = ${d.id}, answered_at = now()
+                     where id = ${rq.id} and status = 'open' returning from_member)
+      insert into vault_access (doc_id, member_id, level, granted_by)
+      select ${d.id}, from_member, 'full', ${me.id} from claim
+      on conflict (doc_id, member_id) do update set level = 'full', granted_by = excluded.granted_by, granted_at = now()
+      returning member_id`;
+    if (!got[0]) return res.status(409).json({ ok: false, error: 'That was already answered' });
     await sql`insert into vault_log (doc_id, member_id, action) values (${d.id}, ${me.id}, ${'let ' + rq.from_name + ' open it'})`;
     await pushCircle(sql, circle.id, { title: '✅ ' + me.name + ' let you open ' + d.label, body: 'It is in the family vault now' }, { only: rq.from_member });
     return res.status(200).json({ ok: true });
@@ -575,9 +597,10 @@ async function payApi(req, res, sql, circle, me) {
     // person doing the permitting.
     const targetId = body.targetId || body.memberId;
     if (!isUuid(targetId)) return res.status(400).json({ ok: false, error: 'Pick a family member' });
-    const tRow = await sql`select id, name from members where id = ${targetId} and circle_id = ${circle.id}`;
+    const tRow = await sql`select id, name, user_id from members where id = ${targetId} and circle_id = ${circle.id}`;
     if (!tRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
     if (tRow[0].id === me.id) return res.status(400).json({ ok: false, error: 'It is already yours to use' });
+    if (!tRow[0].user_id && body.action === 'allow') return res.status(400).json({ ok: false, error: tRow[0].name + ' is not on Parwah, so cannot be allowed to pay' });
     if (body.action === 'disallow') {
       await sql`delete from pay_perms where method_id = ${own.m.id} and member_id = ${tRow[0].id}`;
       await sql`insert into pay_log (method_id, member_id, action, note) values (${own.m.id}, ${me.id}, 'disallowed', ${tRow[0].name})`;
@@ -615,16 +638,31 @@ async function payApi(req, res, sql, circle, me) {
     const note = clean(body.note, 160);
     const risk = credentialRisk(note);
     if (risk) return res.status(400).json({ ok: false, error: risk });
-    // The monthly limit the owner set is a limit, not a note.
-    if (m.monthly_cap) {
-      const spent = await sql`select coalesce(sum(amount), 0)::int as n from pay_log
-                              where method_id = ${m.id} and action in ('used', 'approved', 'asked')
-                                and at >= date_trunc('month', now())`;
-      if (spent[0].n + amount > m.monthly_cap)
-        return res.status(400).json({ ok: false, error: 'That would take ' + m.label + ' over its ₹' + m.monthly_cap.toLocaleString('en-IN') + ' limit for this month (₹' + spent[0].n.toLocaleString('en-IN') + ' so far)' });
-    }
     const act = (!isOwner && m.needs_ok) ? 'asked' : 'used';
-    await sql`insert into pay_log (method_id, member_id, action, amount, note) values (${m.id}, ${me.id}, ${act}, ${amount}, ${note})`;
+    // The monthly limit the owner set is a limit, not a note: the month's
+    // total is raised and the payment written in one statement, so two
+    // payments at the same moment cannot both slip under it.
+    if (m.monthly_cap) {
+      const wrote = await sql`
+        with bump as (
+          insert into pay_month (method_id, month, spent)
+          select ${m.id}, date_trunc('month', now())::date,
+                 (select coalesce(sum(amount), 0)::int from pay_log where method_id = ${m.id} and action in ('used', 'approved', 'asked')
+                    and at >= date_trunc('month', now())) + ${amount}
+          where (select coalesce(sum(amount), 0)::int from pay_log where method_id = ${m.id} and action in ('used', 'approved', 'asked')
+                   and at >= date_trunc('month', now())) + ${amount} <= ${m.monthly_cap}
+          on conflict (method_id, month) do update set spent = pay_month.spent + ${amount}
+            where pay_month.spent + ${amount} <= ${m.monthly_cap}
+          returning spent)
+        insert into pay_log (method_id, member_id, action, amount, note)
+        select ${m.id}, ${me.id}, ${act}, ${amount}, ${note} from bump returning id`;
+      if (!wrote[0]) {
+        const so = await sql`select spent from pay_month where method_id = ${m.id} and month = date_trunc('month', now())::date`;
+        return res.status(400).json({ ok: false, error: 'That would take ' + m.label + ' over its ₹' + m.monthly_cap.toLocaleString('en-IN') + ' limit for this month (₹' + ((so[0] && so[0].spent) || 0).toLocaleString('en-IN') + ' so far)' });
+      }
+    } else {
+      await sql`insert into pay_log (method_id, member_id, action, amount, note) values (${m.id}, ${me.id}, ${act}, ${amount}, ${note})`;
+    }
     if (!isOwner) {
       await pushCircle(sql, circle.id, {
         title: act === 'asked' ? '💳 ' + me.name + ' is asking to use ' + m.label : '💳 ' + me.name + ' used ' + m.label,
@@ -641,7 +679,10 @@ async function payApi(req, res, sql, circle, me) {
     if (!r[0]) return res.status(404).json({ ok: false, error: 'That ask was already answered' });
     if (r[0].owner_member !== me.id) return res.status(403).json({ ok: false, error: 'Only the owner answers' });
     const act = body.action === 'approve' ? 'approved' : 'declined';
-    await sql`update pay_log set action = ${act} where id = ${r[0].id}`;
+    const changed = await sql`update pay_log set action = ${act} where id = ${r[0].id} and action = 'asked' returning id`;
+    if (!changed[0]) return res.status(404).json({ ok: false, error: 'That ask was already answered' });
+    if (act === 'declined') await sql`update pay_month set spent = greatest(0, spent - ${r[0].amount})
+                                       where method_id = (select method_id from pay_log where id = ${r[0].id}) and month = date_trunc('month', now())::date`;
     if (r[0].member_id) {
       await pushCircle(sql, circle.id, {
         title: act === 'approved' ? '💳 ' + me.name + ' said yes' : '💳 ' + me.name + ' said not this time',

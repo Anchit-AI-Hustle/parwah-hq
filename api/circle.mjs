@@ -284,12 +284,15 @@ export default async function handler(req, res) {
         if (dup[0]) return res.status(409).json({ ok: false, error: 'Someone in this family is already called ' + pn + ' - add a surname or initial' });
         const cnt = await sql`select count(*)::int as n from members where circle_id = ${circle.id}`;
         if (cnt[0].n >= 80) return res.status(409).json({ ok: false, error: 'This family already has 80 people' });
-        added = (await sql`insert into members (circle_id, name, role, gender) values (${circle.id}, ${pn}, 'family', ${req.body.gender}) returning id`)[0].id;
-        req.body.targetId = added;
+        // Not written yet: they are written together with their place and
+        // the family's note, in one statement, or not at all.
+        added = { id: globalThis.crypto.randomUUID(), name: pn, gender: req.body.gender };
+        req.body.targetId = added.id;
       }
       const targetId = req.body.targetId || memberId;
       if (!isUuid(targetId)) return res.status(400).json({ ok: false, error: 'Choose someone in this family' });
       const all = await sql`select id, name, gender, parent_id, spouse_id, user_id from members where circle_id = ${circle.id}`;
+      if (added) all.push({ id: added.id, name: added.name, gender: added.gender, parent_id: null, spouse_id: null, user_id: null });
       const target = all.find(x => x.id === targetId);
       if (!target) return res.status(404).json({ ok: false, error: 'Choose someone in this family' });
       // Undo one link at a time, so fixing a wrong wife never cuts off the
@@ -325,11 +328,14 @@ export default async function handler(req, res) {
       // is kept about them, so a slip never deletes a document or a record.
       if (action === 'remove_person') {
         if (target.user_id) return res.status(409).json({ ok: false, error: target.name + ' is on Parwah; only they can leave the family' });
-        // A family that never opened the vault has no vault table yet.
-        const keptIn = async (run) => { try { const r = await run(); return r[0] ? r[0].n : 0; } catch (e) { return 0; } };
+        // A family that never opened the vault has no vault table yet; that,
+        // and only that, counts as nothing kept. Any other error stops the
+        // removal rather than risk deleting what this guard protects.
+        const keptIn = async (run) => { try { const r = await run(); return r[0] ? r[0].n : 0; } catch (e) { if (e && e.code === '42P01') return 0; throw e; } };
         const kept = await keptIn(() => sql`select count(*)::int as n from vault_docs where circle_id = ${circle.id} and about_member = ${targetId}`)
-                   + await keptIn(() => sql`select count(*)::int as n from family_book where circle_id = ${circle.id} and about_member = ${targetId}`);
-        if (kept > 0) return res.status(409).json({ ok: false, error: 'Documents or records are kept about ' + target.name + '. Remove those first, or keep them in the family.' });
+                   + await keptIn(() => sql`select count(*)::int as n from family_book where circle_id = ${circle.id} and about_member = ${targetId}`)
+                   + await keptIn(() => sql`select count(*)::int as n from requests where circle_id = ${circle.id} and about_member = ${targetId}`);
+        if (kept > 0) return res.status(409).json({ ok: false, error: 'Documents, records or things to do are kept about ' + target.name + '. Remove those first, or keep them in the family.' });
         const other = target.spouse_id && all.find(x => x.id === target.spouse_id && x.spouse_id === targetId);
         if (other) await sql`update members set parent_id = ${other.id} where circle_id = ${circle.id} and parent_id = ${targetId}`;
         await sql`delete from members where id = ${targetId} and circle_id = ${circle.id} and user_id is null`;
@@ -338,10 +344,7 @@ export default async function handler(req, res) {
       }
       // A new person is added and placed in one step; if the place cannot
       // be true, they are not added either.
-      const undo = async (status, error) => {
-        if (added) await sql`delete from members where id = ${added}`;
-        return res.status(status).json({ ok: false, error });
-      };
+      const undo = (status, error) => res.status(status).json({ ok: false, error });
       const ofId = req.body.ofId;
       if (!isUuid(ofId)) return undo(400, 'Choose who they are related to');
       const of = all.find(x => x.id === ofId);
@@ -351,13 +354,36 @@ export default async function handler(req, res) {
       const by = kinIndex(all.map(x => ({ id: x.id, gender: x.gender, parentId: x.parent_id, spouseId: x.spouse_id })));
       const plan = placement(by, targetId, place, ofId);
       if (plan.error) return undo(409, plan.error);
-      for (const w of plan.set) {
-        if ('parentId' in w) await sql`update members set parent_id = ${w.parentId} where id = ${w.id} and circle_id = ${circle.id}`;
-        if ('spouseId' in w) await sql`update members set spouse_id = ${w.spouseId} where id = ${w.id} and circle_id = ${circle.id}`;
-      }
-      if (GENDERS.includes(req.body.gender)) await sql`update members set gender = ${req.body.gender} where id = ${targetId}`;
       const word = { child: 'a child of', spouse: 'the husband or wife of', parent: 'a parent of', sibling: 'a brother or sister of' }[place];
-      await told(mRow[0].name + ' added ' + target.name + ' to the family tree as ' + word + ' ' + of.name + (added ? ' (not on Parwah)' : ''));
+      const note = mRow[0].name + ' added ' + target.name + ' to the family tree as ' + word + ' ' + of.name + (added ? ' (not on Parwah)' : '');
+      // The links (at most the person and one other), the person themselves
+      // when new, and the family's note: one statement, all or nothing.
+      const t = plan.set.find(w => w.id === targetId) || {};
+      const o = plan.set.find(w => w.id !== targetId) || null;
+      const g = GENDERS.includes(req.body.gender) ? req.body.gender : null;
+      const tP = 'parentId' in t, tS = 'spouseId' in t, oP = !!o && 'parentId' in o, oS = !!o && 'spouseId' in o;
+      if (added) {
+        await sql`
+          with ins as (insert into members (id, circle_id, name, role, gender, parent_id, spouse_id)
+                       values (${added.id}::uuid, ${circle.id}, ${added.name}, 'family', ${added.gender},
+                               ${tP ? t.parentId : null}::uuid, ${tS ? t.spouseId : null}::uuid) returning id),
+               up as (update members set parent_id = case when ${oP} then ${oP ? o.parentId : null}::uuid else parent_id end,
+                                         spouse_id = case when ${oS} then ${oS ? o.spouseId : null}::uuid else spouse_id end
+                      where id = ${o ? o.id : null}::uuid and circle_id = ${circle.id} returning id)
+          insert into events (circle_id, member_id, type, text)
+          select ${circle.id}, ${mRow[0].id}, 'care', ${note} from ins`;
+      } else {
+        await sql`
+          with a as (update members set parent_id = case when ${tP} then ${tP ? t.parentId : null}::uuid else parent_id end,
+                                        spouse_id = case when ${tS} then ${tS ? t.spouseId : null}::uuid else spouse_id end,
+                                        gender = coalesce(${g}, gender)
+                     where id = ${targetId} and circle_id = ${circle.id} returning id),
+               b as (update members set parent_id = case when ${oP} then ${oP ? o.parentId : null}::uuid else parent_id end,
+                                        spouse_id = case when ${oS} then ${oS ? o.spouseId : null}::uuid else spouse_id end
+                     where id = ${o ? o.id : null}::uuid and circle_id = ${circle.id} returning id)
+          insert into events (circle_id, member_id, type, text)
+          select ${circle.id}, ${mRow[0].id}, 'care', ${note} from a`;
+      }
       return res.status(200).json({ ok: true, memberId: targetId });
     }
 
