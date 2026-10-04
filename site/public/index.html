@@ -8624,7 +8624,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // Parwah comes back to the screen (and every half hour) it asks whether
   // a newer version is out, and moves to it - at once if nothing is being
   // typed, otherwise with a bar that says so.
-  var appTag = null;
+  // appLost: the first check failed (opened offline, from the saved copy),
+  // so which version is running is not known - the first answer that does
+  // come is treated as newer.
+  var appTag = null, appLost = false;
   function appVersion(){
     return fetch('/', { method: 'HEAD', cache: 'no-store' })
       .then(function(r){ return r.ok ? (r.headers.get('etag') || r.headers.get('last-modified') || null) : null; })
@@ -8634,16 +8637,19 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var a = document.activeElement;
     return !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.value);
   }
+  function moveToNew(){
+    if (typing() || !$('asksheet').hidden || !$('tsheet').hidden) { $('updbar').hidden = false; return; }
+    location.reload();
+  }
   function checkUpdate(){
     appVersion().then(function(t){
       if (!t) return;
-      if (!appTag) { appTag = t; return; }
+      if (!appTag) { appTag = t; if (appLost) { appLost = false; moveToNew(); } return; }
       if (t === appTag) return;
-      if (typing() || !$('asksheet').hidden || !$('tsheet').hidden) { $('updbar').hidden = false; return; }
-      location.reload();
+      moveToNew();
     });
   }
-  appVersion().then(function(t){ if (t && !appTag) appTag = t; });
+  appVersion().then(function(t){ if (!t) appLost = true; else if (!appTag) appTag = t; });
   document.addEventListener('visibilitychange', function(){ if (!document.hidden) checkUpdate(); });
   window.addEventListener('focus', checkUpdate);
   setInterval(checkUpdate, 30 * 60000);
