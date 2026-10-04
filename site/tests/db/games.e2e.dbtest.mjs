@@ -276,6 +276,37 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
   }, [g.id, rohan.token, rohan.id, meera.id]);
   ok('snakes: an hour later, nobody can take Meera\'s turn yet', early === 409, early);
   ok('snakes: and the screen does not offer it', !(await vis(R, '#g-hand')));
+  const away = (who, target) => R.evaluate(async ([gid, tok, me, w, them]) => {
+    const r = await fetch('/api/games', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': tok },
+      body: JSON.stringify({ code: 'SHARMA', memberId: me, action: 'away', who: w, targetId: them, gameId: gid }) });
+    return r.status;
+  }, [g.id, rohan.token, rohan.id, who, target]);
+  const stateNow = async () => (await admin.query('select state from games where id = $1', [g.id])).rows[0].state;
+  // A game from before turns were timed has no clock: it starts now, and
+  // does not count as having waited since 1970.
+  { const old = JSON.parse(JSON.stringify(g.state)); delete old.turnAt;
+    await admin.query('update games set state = $1::jsonb where id = $2', [JSON.stringify(old), g.id]); }
+  const legacy = await away('them', meera.id);
+  const lst = await stateNow();
+  ok('snakes: a game with no turn clock is not handed over at once; its clock starts now',
+     legacy === 409 && Math.abs(Date.now() - Number(lst.turnAt)) < 60000 && !lst.players[1].away, legacy + ' ' + lst.turnAt);
+  // Someone else leaving does not give the person whose turn it is another 12 hours.
+  { const s11 = JSON.parse(JSON.stringify(g.state)); s11.turnAt = Date.now() - 11 * 3600 * 1000;
+    await admin.query('update games set state = $1::jsonb where id = $2', [JSON.stringify(s11), g.id]);
+    const left = await away('me');
+    const after = await stateNow();
+    ok('snakes: when another player leaves, Meera\'s 11 hours keep counting',
+       left === 200 && after.players[0].away === true && after.turn === 1 && Date.now() - Number(after.turnAt) > 10.9 * 3600 * 1000,
+       left + ' ' + JSON.stringify({ t: after.turn, at: after.turnAt })); }
+  // Three handovers sent at once: one lands, nothing is written over it.
+  { const s13 = JSON.parse(JSON.stringify(g.state)); s13.turnAt = Date.now() - 13 * 3600 * 1000;
+    await admin.query('update games set state = $1::jsonb where id = $2', [JSON.stringify(s13), g.id]);
+    const e0 = (await admin.query(`select count(*)::int as n from events where text like 'Rohan let Parwah play for Meera%'`)).rows[0].n;
+    const three = await Promise.all([away('them', meera.id), away('them', meera.id), away('them', meera.id)]);
+    const e1 = (await admin.query(`select count(*)::int as n from events where text like 'Rohan let Parwah play for Meera%'`)).rows[0].n;
+    ok('snakes: three handovers sent at once: exactly one lands, and the family is told once',
+       three.filter(x => x === 200).length === 1 && e1 - e0 === 1, three.join() + ' told ' + (e1 - e0));
+    await admin.query(`delete from events where text like 'Rohan let Parwah play for Meera%'`); }
   const st = g.state; st.turnAt = Date.now() - 13 * 3600 * 1000;
   await admin.query('update games set state = $1::jsonb where id = $2', [JSON.stringify(st), g.id]);
   await R.waitForTimeout(3800);

@@ -121,6 +121,9 @@ ok('the family starts this with no coins', await pot() === 0);
 {
   const v = await ask(rohan, 'Prepare a summary for a doctor visit.');
   ok('a doctor visit with nobody named: asks who it is for, reads out nobody\'s records', v.ok && /Who is the doctor visit for/.test(v.reply) && !/Amlodipine|Thyronorm/.test(v.reply), v.reply);
+  const c0 = await pot();
+  const f = await call(ekta, rohan, { messages: [{ role: 'user', content: 'Prepare a summary for a doctor visit.' }, { role: 'assistant', content: v.reply }, { role: 'user', content: 'Raj' }] });
+  ok('answering "Raj" to "whose visit": Raj\'s summary, read from the records, free', f.ok && /Amlodipine/.test(f.reply) && !/Thyronorm/.test(f.reply) && f.records === true && await pot() === c0, JSON.stringify(f).slice(0, 200));
   const n = await ask(rohan, 'Can Raj take a Crocin with his BP tablet?');
   ok('"Can Raj take..." by his saved name is a medicine question too', n.ok && /Amlodipine/.test(n.reply) && /cannot advise on medicines/.test(n.reply), n.reply);
   const mum = await ask(rohan, 'Can Mummy take a Crocin?');
