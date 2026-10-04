@@ -67,8 +67,9 @@ const errors = [];
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
 
 
-async function phone(who, { scheme = 'light', width = 390, hash = '' } = {}) {
-  const ctx = await browser.newContext({ viewport: { width, height: 844 }, serviceWorkers: 'block', colorScheme: scheme });
+async function phone(who, { scheme = 'light', width = 390, hash = '', tz, fixedTime } = {}) {
+  const ctx = await browser.newContext({ viewport: { width, height: 844 }, serviceWorkers: 'block', colorScheme: scheme, ...(tz ? { timezoneId: tz } : {}) });
+  if (fixedTime) await ctx.clock.setFixedTime(new Date(fixedTime));
   await ctx.addInitScript(([w]) => {
     localStorage.setItem('parwah-user', JSON.stringify({ id: w.userId, name: w.name, phone: w.phone, toured: true }));
     localStorage.setItem('parwah-token', w.token);
@@ -117,6 +118,17 @@ ok('so nobody is told it is running late', (await admin.query(`select count(*)::
 ok('the form goes back to Once, anyone, the whole family', await R.$eval('#r-seg .sel', b => b.dataset.rep) === 'once' && await R.$eval('#r-for', s => s.value) === 'any' && await R.$eval('#r-about', s => s.value) === '');
 ok('options read as sentences', (await R.textContent('#r-for')).includes('Anyone in the family'));
 ok('with nobody given it, a late task tells everyone, and says so', /Everyone \(nobody has it yet\)/.test(await R.textContent('#r-esc')));
+{
+  // Where clocks go back overnight, "9:00" written in the afternoon is 9:00
+  // on tomorrow's clock, not 24 hours on (which would read 8:00).
+  const NY = await phone(as('Rohan'), { hash: '#care', tz: 'America/New_York', fixedTime: '2026-10-31T19:00:00Z' });
+  await NY.fill('#r-title', 'Water the plants'); await NY.fill('#r-time', '09:00'); await NY.click('#r-add');
+  await NY.waitForFunction(() => document.querySelector('#r-title').value === '', null, { timeout: 10000 }).catch(() => {});
+  const wp = (await admin.query(`select due_at from requests where title = 'Water the plants'`)).rows[0];
+  ok('across a clock change, tomorrow 9:00 stays 9:00', wp && new Date(wp.due_at).toISOString() === '2026-11-01T14:00:00.000Z', wp && new Date(wp.due_at).toISOString());
+  await admin.query(`delete from requests where title = 'Water the plants'`);
+  await NY.context().close();
+}
 
 // ---- a task given to Priya: before she says yes, one decision
 await call('care', { action: 'task_create', code, memberId: U.Rohan.memberId, title: 'Book the gas', ownerId: U.Priya.memberId }, {}, 'POST', U.Rohan.token);
@@ -173,6 +185,11 @@ await R.click('#tr-gender [data-g="m"]'); await R.selectOption('#tr-place', 'chi
 ok('the tree asks whether Papa is he or she, since nobody said', await R.isVisible('#tr-ofg-wrap'));
 await R.click('#tr-go'); await R.waitForTimeout(400);
 ok('and will not guess', /Papa he or she/.test(await R.textContent('#tr-err')));
+ok('and Add still works once it is answered', !(await R.$eval('#tr-go', b => b.disabled)));
+// An answer about Papa is not kept for someone else.
+await R.click('#tr-ofg [data-g="f"]');
+await R.selectOption('#tr-of', U.Priya.memberId); await R.selectOption('#tr-of', U.Papa.memberId);
+ok('choosing another person clears the he or she said about the last one', (await R.$$eval('#tr-ofg .sel', x => x.length)) === 0);
 await R.click('#tr-ofg [data-g="m"]'); await R.click('#tr-go'); await R.waitForTimeout(1500);
 ok('his answer is kept', (await admin.query('select gender from members where id = $1', [U.Papa.memberId])).rows[0].gender === 'm');
 

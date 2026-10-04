@@ -128,7 +128,10 @@ const tomorrow = localDay(Date.now() + 86400000);
   await R.fill('#r-donewhen', 'Delivery date confirmed by the agency');
   ok('the hint says she will be asked', /asked to say yes/.test(await R.textContent('#r-hint')));
   await R.click('#r-add');
-  await R.waitForTimeout(900);
+  // Wait for what the person waits for - the form clearing once the family
+  // has it, then the row - not a fixed time a slower machine can miss.
+  await R.waitForFunction(() => document.querySelector('#r-title').value === '', null, { timeout: 10000 }).catch(() => {});
+  await R.waitForFunction(t => [...document.querySelectorAll('#rlist .crow')].some(r => r.textContent.includes(t)), 'Book the gas refill', { timeout: 10000 }).catch(() => {});
   const t = await task('Book the gas refill');
   const [y, m, d] = tomorrow.split('-').map(Number);
   ok('the task is saved, given to Meera and waiting for her yes', t && t.status === 'assigned' && t.claimed_by === meera.id);
@@ -200,7 +203,7 @@ const tomorrow = localDay(Date.now() + 86400000);
   await R.fill('#r-date', early);
   await R.fill('#r-time', '18:00');
   await R.click('#r-add');
-  await R.waitForTimeout(900);
+  await R.waitForFunction(() => document.querySelector('#r-title').value === '', null, { timeout: 10000 }).catch(() => {});
   await Promise.all([reload(R), reload(M)]);
   // Written down after its time: it shows as late, but nobody is woken.
   ok('a task written down after its time wakes nobody', (await admin.query(`select count(*)::int as n from events where text like 'Running late%electricity%'`)).rows[0].n === 0);

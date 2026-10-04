@@ -1740,11 +1740,16 @@ check("profile: You first with Edit under it; AI keys under Advanced; leaving an
       and "Hindi toggle coming soon" not in _appt and "Parwah Plus (coming soon)" not in _appt)
 check("bell: only what needs you, never your own actions or chat, rows as buttons, no log lines",
       "function notifWanted(e)" in _appt and "'Type: ' + e.type" not in _appt and '<button type="button" class="nrow' in _appt)
+check("invites: the code is kept until the person is in that family, and a reload while waiting comes back to waiting",
+      "function inviteDone()" in _appt and "sessionStorage.setItem('parwah-join-wait', code)" in _appt and "if (pendingJoin && inviteMember(circles)) return;" in _appt
+      and "try { sessionStorage.removeItem('parwah-join'); } catch (e) {}\n        if (j.pending)" not in _appt)
+check("tree: the he or she for the other person is asked before Add is disabled, and cleared when that person changes",
+      -1 < _appt.find("if (!$('tr-ofg-wrap').hidden && !ofg) { say(") < _appt.find("btn.disabled = true;\n    var body = { action: isNew ? 'add_person'") and "if (of !== trOfShown) {" in _appt)
 check("names: one name per place on tiles, tabs and menu, and family not circle in the copy",
       '<b>To do</b>' in _appt and 'Health &amp; contacts' in _appt and "Create the circle" not in _appt and "Your circle's helper" not in _appt)
 _tsk = (API_DIR / "_tasks.mjs").read_text(encoding="utf-8")
-check("to do: a time already gone means tomorrow, and a task written down after its time wakes nobody",
-      "at = new Date(at.getTime() + 86400000)" in _appt and "${dueAt && dueAt.getTime() < Date.now() ? dueAt : null}" in _tsk)
+check("to do: a time already gone means tomorrow at that clock time (not 24 hours on), and a task written down after its time wakes nobody",
+      "nx.setDate(nx.getDate() + 1); at = new Date(localDay(nx) + 'T' + t)" in _appt and "at.getTime() + 86400000" not in _appt and "${dueAt && dueAt.getTime() < Date.now() ? dueAt : null}" in _tsk)
 check("to do: asked but not yet agreed shows one decision; late shows Set a new time and a call",
       "var waitingYes = q.status === 'assigned' && owner;" in _appt and "'Set a new time', 'go'" in _appt and "about_member = ${aboutId}" in _tsk)
 check("suggested: a gap is filled now, and any suggestion can be waved away",

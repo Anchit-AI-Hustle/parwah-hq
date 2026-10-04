@@ -120,10 +120,36 @@ await J.click('#j-go'); await J.waitForTimeout(1300);
 ok('the family asks first: waiting', await J.isVisible('#pending-step'));
 await J.click('#pend-check'); await J.waitForTimeout(1300);
 ok('Check again does not pretend you got in because you are in another family', await J.isVisible('#pending-step') && !(await J.isVisible('#circle-step')));
+await J.reload(); await J.waitForTimeout(1300);
+ok('a reload while waiting comes back to the waiting screen, not the old family', await J.isVisible('#pending-step') && !(await J.isVisible('#main')));
 const reqId = (await admin.query(`select id from join_requests where circle_id = (select id from circles where code = $1) and status = 'pending'`, [other.code])).rows[0]?.id;
 if (reqId) await call('circle', { action: 'approve_join', code: other.code, memberId: other.memberId, requestId: reqId }, {}, 'POST', U.Meera.token);
 await J.click('#pend-check'); await J.waitForTimeout(1600);
 ok('once they say yes, Check again takes you in', reqId && await J.isVisible('#main') && /Verma Family/.test(await J.textContent('#m-title')), String(reqId));
+ok('and only then is the invite used up', await J.evaluate(() => sessionStorage.getItem('parwah-join') === null && sessionStorage.getItem('parwah-join-wait') === null));
+
+// ---- an invite to a family you are already in: you go there, and it is used
+{
+  const vm = (await admin.query(`select m.id from members m join circles c on c.id = m.circle_id where c.code = $1 and m.user_id = $2`, [other.code, U.Anchit.userId])).rows[0];
+  const ctxK = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  await ctxK.addInitScript(([w]) => {
+    if (localStorage.getItem('parwah-user')) return;
+    localStorage.setItem('parwah-user', JSON.stringify({ id: w.userId, name: w.name, phone: w.phone, toured: true }));
+    localStorage.setItem('parwah-token', w.token);
+    localStorage.setItem('parwah', JSON.stringify({ code: w.code, memberId: w.memberId, name: w.name, role: 'family', circleName: 'Tandon Family' }));
+    localStorage.setItem('parwah-circles', JSON.stringify([{ code: w.code, circleName: 'Tandon Family', memberId: w.memberId, memberName: w.name, role: 'family' },
+                                                           { code: w.other, circleName: 'Verma Family', memberId: w.vm, memberName: w.name, role: 'family' }]));
+  }, [{ ...U.Anchit, code, other: other.code, vm: vm && vm.id }]);
+  const K = await ctxK.newPage(); K.on('pageerror', e => errors.push('K: ' + e.message));
+  await K.goto(BASE + '/?join=' + other.code); await K.waitForTimeout(1300);
+  ok('already in that family, the invite opens it', await K.isVisible('#main') && /Verma Family/.test(await K.textContent('#m-title')));
+  ok('and the invite is used up', await K.evaluate(() => sessionStorage.getItem('parwah-join') === null));
+  // Switching to the other family reloads: it must not be pulled back.
+  await K.evaluate(([w]) => localStorage.setItem('parwah', JSON.stringify({ code: w.code, memberId: w.memberId, name: w.name, role: 'family', circleName: 'Tandon Family' })), [{ ...U.Anchit, code }]);
+  await K.reload(); await K.waitForTimeout(1300);
+  ok('switching to another family afterwards stays there', await K.isVisible('#main') && /Tandon Family/.test(await K.textContent('#m-title')), await K.textContent('#m-title'));
+  await ctxK.close();
+}
 
 // ---- signed out: the invite is said, and the PIN screen never names anyone
 const ctxO = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });

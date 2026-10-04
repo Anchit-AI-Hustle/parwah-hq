@@ -3580,7 +3580,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // tablets" written at 3 pm is for tomorrow morning, not already late.
     if (t) {
       var at = new Date(localDay(new Date()) + 'T' + t);
-      if (at.getTime() < Date.now() - 60000) at = new Date(at.getTime() + 86400000);
+      // Tomorrow's date with the same clock time: not 24 hours on, which is
+      // an hour off across a daylight-saving change.
+      if (at.getTime() < Date.now() - 60000) { var nx = new Date(); nx.setDate(nx.getDate() + 1); at = new Date(localDay(nx) + 'T' + t); }
       return { dueAt: at.toISOString(), tomorrow: localDay(at) !== localDay(new Date()) };
     }
     return {};
@@ -4021,6 +4023,31 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     enterMain();
     toast('Signed in - welcome back, ' + state.name + ' 🧡');
   }
+  // The invite code lives in this tab (sessionStorage 'parwah-join') until
+  // the person is actually in that family - not when the request is sent,
+  // since a family that approves first leaves them waiting, and a reload
+  // while waiting must bring the waiting screen back.
+  function inviteDone(){
+    pendingJoin = null; pendCode = null;
+    try { sessionStorage.removeItem('parwah-join'); sessionStorage.removeItem('parwah-join-wait'); } catch (e) {}
+  }
+  function inviteWaiting(){
+    try { return !!pendingJoin && sessionStorage.getItem('parwah-join-wait') === pendingJoin; } catch (e) { return false; }
+  }
+  function showWaiting(msg){
+    $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
+    $('ekta-fab').hidden = true; $('chat-fab').hidden = true;
+    try { drawerOpen(false); } catch (e) {}
+    pendCode = pendingJoin;
+    $('pend-msg').textContent = msg || 'Your request to join with code ' + pendingJoin + ' is with the family.';
+    showStep('pending');
+  }
+  // Already in the family the invite is for: go there, and the invite is used.
+  function inviteMember(circles){
+    var got = pendingJoin && (circles || []).filter(function(c){ return String(c.code).toUpperCase() === String(pendingJoin).toUpperCase(); })[0];
+    if (got) { inviteDone(); enterCircle(got); }
+    return !!got;
+  }
   // An invite link opened by someone already signed in: the join card,
   // with the code filled in - never their old Today with the invite lost.
   function joinInvite(){
@@ -4038,6 +4065,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('ob-err').textContent = '';
     saveGroups(circles || []);
     window._authCircles = circles || [];
+    if (pendingJoin && inviteMember(circles)) return;
+    if (pendingJoin && inviteWaiting()) { showWaiting(); return; }
     if (pendingJoin) {
       startJoin();
       $('j-code').value = pendingJoin;
@@ -4329,14 +4358,15 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       .then(function(j){
         $('j-go').disabled = false;
         if (!j.ok) { $('ob-err').textContent = j.error || 'Could not join.'; return; }
-        try { sessionStorage.removeItem('parwah-join'); } catch (e) {}
         if (j.pending) {
           // The code opened the door; the family still has to say come in.
-          $('pend-msg').textContent = j.message || ('Your request has gone to ' + j.circleName + '.');
-          pendCode = code;
-          showStep('pending');
+          // Kept, with "waiting", so a reload comes back to this screen.
+          pendingJoin = code;
+          try { sessionStorage.setItem('parwah-join', code); sessionStorage.setItem('parwah-join-wait', code); } catch (e) {}
+          showWaiting(j.message || ('Your request has gone to ' + j.circleName + '.'));
           return;
         }
+        inviteDone();
         state = { code:j.code, circleName:j.circleName, memberId:j.memberId, name:name, role:j.role };
         saveState(state);
         upsertGroup({ code:j.code, circleName:j.circleName, kind:j.kind || newKind, memberId:j.memberId, role:j.role, memberName:name });
@@ -4346,7 +4376,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       .catch(function(){ $('j-go').disabled = false; $('ob-err').textContent = 'No connection - try again.'; });
   });
 
-  $('pend-back').addEventListener('click', function(){ showStep('setup'); });
+  // A different code: this invite is set aside (the request stays with the
+  // family, and the family appears in the list once they say yes).
+  $('pend-back').addEventListener('click', function(){ inviteDone(); showStep('setup'); });
   $('pend-check').addEventListener('click', function(){
     // Approved? The circle now appears in this number's list of families.
     if (!authUser || !authUser.phone) { showStep('auth'); return; }
@@ -4360,7 +4392,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           // In only when THAT family has said yes - being in another one is
           // not an answer.
           var got = (j.circles || []).filter(function(c){ return String(c.code).toUpperCase() === String(pendCode || '').toUpperCase(); })[0];
-          if (got) { pendingJoin = null; pendCode = null; window._authCircles = j.circles; enterCircle(got); return; }
+          if (got) { inviteDone(); window._authCircles = j.circles; enterCircle(got); return; }
         }
         toast('Not yet - the family has not answered');
       })
@@ -6618,7 +6650,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // trShown: the person the form was last filled for. The 12-second refresh
   // re-draws the tree but never undoes what someone is in the middle of
   // choosing; only choosing another person resets He or she.
-  var trShown = null, trNext = false, trWant = null;
+  var trShown = null, trNext = false, trWant = null, trOfShown = null;
   function fillTreeOf(){
     var who = $('tr-who').value, isNew = who === 'new', ofSel = $('tr-of').value, plSel = $('tr-place').value;
     var w = isNew ? null : treeMembers.filter(function(m){ return m.id === who; })[0];
@@ -6640,6 +6672,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // Papa joined as "family", so the tree cannot say Father until it knows:
     // asked once, here, for the person the sentence is about.
     var ofm = of && treeMembers.filter(function(m){ return m.id === of; })[0];
+    // He or she was said about one person: choosing another asks again.
+    if (of !== trOfShown) {
+      trOfShown = of;
+      $('tr-ofg').querySelectorAll('button').forEach(function(x){ x.classList.remove('sel'); x.setAttribute('aria-pressed', 'false'); });
+    }
     $('tr-ofg-wrap').hidden = !(ofm && !ofm.gender);
     if (ofm && !ofm.gender) $('tr-ofg-label').textContent = 'Is ' + (ofm.id === state.memberId ? 'it you - he or she?' : ofm.name + ' he or she?');
     $('tr-say').textContent = of && pl
@@ -6675,9 +6712,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (!g) { say('Choose he or she, so Parwah can say son or daughter.'); return; }
     if (!$('tr-place').value) { say('Choose son, daughter, husband, wife and so on.'); return; }
     if (!$('tr-of').value) { say('Choose who they are related to.'); return; }
-    btn.disabled = true;
     var ofg = !$('tr-ofg-wrap').hidden && $('tr-ofg').querySelector('.sel');
     if (!$('tr-ofg-wrap').hidden && !ofg) { say($('tr-ofg-label').textContent); return; }
+    btn.disabled = true;
     var body = { action: isNew ? 'add_person' : 'place', code: state.code, memberId: state.memberId,
                  place: $('tr-place').value, ofId: $('tr-of').value, gender: g, ofGender: ofg ? ofg.getAttribute('data-g') : undefined };
     if (isNew) body.personName = $('tr-name').value.trim(); else body.targetId = who;
@@ -8602,7 +8639,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   var inviteFor = pendingJoin && loadGroups().filter(function(c){ return String(c.code).toUpperCase() === pendingJoin; })[0];
   if (state && state.code && state.memberId && pendingJoin && authUser) {
     // Already in that family: go there. Otherwise, the join card.
-    if (inviteFor) { pendingJoin = null; enterCircle(inviteFor); } else joinInvite();
+    if (inviteFor) { inviteDone(); enterCircle(inviteFor); } else if (inviteWaiting()) showWaiting(); else joinInvite();
   }
   else if (state && state.code && state.memberId) enterMain();
   else if (authUser && authUser.phone) {
