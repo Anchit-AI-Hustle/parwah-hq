@@ -135,7 +135,8 @@ for (const t of ['Papa fell yesterday and still can\'t get up', 'Dadi passed out
                  'Papa has been unconscious ever since last night.', 'Papa collapsed last week and is getting worse',
                  'His chest pain started last week; worsening today', 'Papa collapsed last week. Is he getting worse?',
                  'Papa collapsed last night and has not woken up since',
-                 'Papa collapsed last week and he is rapidly getting worse', 'Papa collapsed last week. Is he rapidly getting worse?'])
+                 'Papa collapsed last week and he is rapidly getting worse', 'Papa collapsed last week. Is he rapidly getting worse?',
+                 'Has Papa had trouble breathing since last night?'])
   ok('in the past but happening now, so urgent: ' + t, classify(t) === 'emergency');
 ok('words about ending a life reach a person', classify('I want to die') === 'crisis' && classify('main jeena nahi chahta') === 'crisis');
 const em = renderEmergency();
