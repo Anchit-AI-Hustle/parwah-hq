@@ -48,7 +48,7 @@ const RE = {
   // Words about ending one's life get a person to talk to, at once.
   crisis: /\b(kill (my|him|her)self|suicid|end (my|his|her) life|want to die|don'?t want to live|jeena nahi|marna chahta|marna chahti)/i,
   // A question about what to do with a medicine is the doctor's to answer.
-  health: /\b((should|can|could|may) (\S+ ){1,2}(take|have|stop|skip|double|increase|reduce|start)\b[^.?!]{0,40}\b(tablet|tablets|medicine|medicines|dawa|dawai|pill|pills|dose|crocin|paracetamol|dolo|insulin|syrup|capsule|injection|bp|sugar|mg|antibiotic)|stop (his|her|the|my) (medicine|tablet|dawa|dose)|dose|dosage|side ?effects?|is (he|she|papa|mummy|maa|dad) (diabetic|hypertensive)|mix (with|it with)|along with (his|her) (bp|sugar|medicine|tablet))\b/i,
+  health: /\b((should|can|could|may) (\S+ ){1,4}(take|have|stop|skip|double|increase|reduce|start)\b[^.?!]{0,40}\b(tablet|tablets|medicine|medicines|dawa|dawai|pill|pills|dose|crocin|paracetamol|dolo|insulin|syrup|capsule|injection|bp|sugar|mg|antibiotic)|stop (his|her|the|my) (medicine|tablet|dawa|dose)|dose|dosage|side ?effects?|is (he|she|papa|mummy|maa|dad) (diabetic|hypertensive)|mix (with|it with)|along with (his|her) (bp|sugar|medicine|tablet))\b/i,
   summary: /\b(doctor|hospital|appointment|clinic|check ?up|checkup|visit|emergency|casualty|admit|surgery|prepare|summary|taking (him|her|them|mum|mom|papa|dad|maa|amma))\b/i,
   memory:  /\b(what do we (have|know)|what('s| is) (recorded|saved)|medicine|medicines|dawa|dawai|tablet|blood ?group|allerg|insurance|policy|doctor'?s? number|contact|address|plumber|electrician|maid|records?|recorded|papers?|documents?)\b/i,
   circle:  /\b(check ?in|checked in|today|kaisa|kaise|how (is|are)|everything ok|all ok|what'?s happening|kya ho raha|reminder|reminders|request|requests|due|pending|task|todo|to do|family|circle|who)\b/i,
@@ -68,7 +68,17 @@ const RE = {
 // year") is a question about the past, not a call for 112 - unless the
 // message also says it is happening now.
 const PAST = /\b(yesterday|last (night|week|month|year)|(\d+|a|an|one|two|three|few) (hours?|days?|weeks?|months?|years?) ago|in (19|20)\d\d|kal raat|pichhle|pichle|history of|used to|years back)\b/i;
-const NOW = /\b(now|right now|just now|abhi|still|is (not breathing|unconscious|bleeding|having|choking)|can'?t get up|please help|help me)\b|\b(today|tonight|this (morning|afternoon|evening)|is|are|has|have|he'?s|she'?s|keeps?)\b[^.?!]{0,30}\b(breath|chest|pain|bleed|unconscious|unresponsive|not responding|faint|collaps|behosh|seizure|chok|fallen|fell)/i;
+// Said to be happening now, in so many words - including something that
+// began earlier and has not stopped ("has been unconscious since last night").
+const NOW = /\b(now|right now|just now|abhi|abhi tak|ab tak|still|since|ongoing|(has|have) been having|keeps? having|is (not breathing|unconscious|bleeding|having|choking)|can'?t get up|please help|help me)\b|\b(today|tonight|this (morning|afternoon|evening)|keeps?)\b[^.?!]{0,30}\b(breath|chest|pain|bleed|unconscious|unresponsive|not responding|faint|collaps|behosh|seizure|chok|fallen|fell)/i;
+// When something past is mentioned, each part of the message is judged on
+// its own: "had a cold last week and has chest pain" is urgent, because the
+// past words belong to the cold. A part that names a symptom is happening
+// now unless that same part says it is past ("had", "a history of", "ever",
+// or a time gone by). When in doubt, it is urgent.
+const NOT_NOW = /\b(had|history|ever)\b/i;
+const PARTS = /[,;.!?]+|\b(?:and|but|then|aur|lekin|par)\b/i;
+const saysNow = t => NOW.test(t) || t.split(PARTS).some(c => c && RE.emergency.test(c) && !PAST.test(c) && !NOT_NOW.test(c));
 
 // The family's words for a person, and the relation saved for them, so
 // "can Papa take..." finds the one member saved as father.
@@ -111,7 +121,7 @@ export function classify(text) {
   // Safety first, and before the greeting: "Hi, is this OTP message a scam?"
   // is a scam question that happens to start politely.
   if (RE.crisis.test(t))    return 'crisis';
-  if (RE.emergency.test(t) && !(PAST.test(t) && !NOW.test(t))) return 'emergency';
+  if (RE.emergency.test(t) && !(PAST.test(t) && !saysNow(t))) return 'emergency';
   if (RE.scam.test(t))   return 'scam';
   if (RE.health.test(t)) return 'health';
   if (RE.greet.test(t))  return 'greet';
@@ -301,6 +311,22 @@ export function renderCrisis() {
 
 // Whose doctor visit: asked, never guessed. The first relative on the list
 // is not the person being taken to the doctor.
+// Ekta asked whose visit or whose medicines; a reply that is only a name
+// is read together with the question it answers, so "Raj" after "Who is
+// the doctor visit for?" is the doctor visit for Raj.
+const ASKED_WHO = /^(Who is the doctor visit for\?|Who is this about\?)/;
+export function askedText(history) {
+  const h = history || [];
+  const last = h[h.length - 1];
+  if (!last || last.role !== 'user') return '';
+  const t = String(last.content || '');
+  const prevA = h[h.length - 2], prevU = h[h.length - 3];
+  if (prevA && prevA.role === 'assistant' && ASKED_WHO.test(String(prevA.content || '').trim())
+      && prevU && prevU.role === 'user' && classify(t) === 'unknown') {
+    return String(prevU.content || '') + '\n' + t;
+  }
+  return t;
+}
 export function renderWhoIsVisit(names) {
   return 'Who is the doctor visit for? Say their name as it is saved in the family'
     + ((names || []).length ? ': ' + names.join(', ') : '') + '. For example: "taking ' + ((names || [])[0] || 'Papa') + ' to the doctor tomorrow".';

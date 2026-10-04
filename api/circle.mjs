@@ -124,9 +124,11 @@ export default async function handler(req, res) {
         const already = user
           ? await sql`select id from join_requests where circle_id = ${circle.id} and user_id = ${user.id} and status = 'pending'`
           : await sql`select id from join_requests where circle_id = ${circle.id} and status = 'pending' and lower(name) = lower(${name})`;
+        let requestId = already[0] ? already[0].id : null;
         if (!already[0]) {
-          await sql`insert into join_requests (circle_id, user_id, name, phone, phone_cc, phone_local, relation, role)
-                    values (${circle.id}, ${user ? user.id : null}, ${name}, ${memberPhone}, ${memberCc}, ${memberLocal}, ${relation}, ${r})`;
+          const made = await sql`insert into join_requests (circle_id, user_id, name, phone, phone_cc, phone_local, relation, role)
+                    values (${circle.id}, ${user ? user.id : null}, ${name}, ${memberPhone}, ${memberCc}, ${memberLocal}, ${relation}, ${r}) returning id`;
+          requestId = made[0].id;
           await sql`insert into events (circle_id, member_id, type, text)
                     values (${circle.id}, null, 'care', ${name + ' has asked to join - any member can let them in'})`;
           await pushCircle(sql, circle.id, {
@@ -134,7 +136,7 @@ export default async function handler(req, res) {
             body: 'Open Parwah to let them in - or say no if you do not know them'
           }, {});
         }
-        return res.status(202).json({ ok: true, pending: true, circleName: circle.name, code: circle.code,
+        return res.status(202).json({ ok: true, pending: true, circleName: circle.name, code: circle.code, requestId,
           message: 'Your request has gone to ' + circle.name + '. Anyone in the family can let you in.' });
       }
 
@@ -152,20 +154,27 @@ export default async function handler(req, res) {
       const su = await sessionUser(sql, tokenOf(req));
       if (!su) return res.status(401).json({ ok: false, signin: true, error: 'Please sign in again' });
       // A family can change its invite code while someone waits: the request
-      // is found by the person, and the family's current code is returned.
-      let circleId = null;
-      const byCode = code ? await circleByCode(sql, code) : null;
+      // this screen made is found by its own id (never another family's
+      // request), and the family's current code is returned.
+      let circleId = null, reqRow = null;
+      if (isUuid(req.body.requestId)) {
+        const r0 = await sql`select circle_id, status from join_requests where id = ${req.body.requestId} and user_id = ${su.user_id}`;
+        if (r0[0]) { reqRow = r0[0]; circleId = r0[0].circle_id; }
+      }
+      const byCode = !circleId && code ? await circleByCode(sql, code) : null;
       if (byCode) circleId = byCode.id;
-      else {
-        const last = await sql`select circle_id from join_requests where user_id = ${su.user_id} order by created_at desc limit 1`;
-        if (last[0]) circleId = last[0].circle_id;
+      else if (!circleId) {
+        // A waiting screen from before requests had ids: only when this person
+        // has asked one family is it clear which request it means.
+        const fams = await sql`select distinct circle_id from join_requests where user_id = ${su.user_id}`;
+        if (fams.length === 1) circleId = fams[0].circle_id;
       }
       if (!circleId) return res.status(200).json({ ok: true, status: 'none' });
       const cur = await sql`select code, name from circles where id = ${circleId}`;
       const now = cur[0] ? { code: cur[0].code, circleName: cur[0].name } : {};
       const m = await sql`select id, role from members where circle_id = ${circleId} and user_id = ${su.user_id}`;
       if (m[0]) return res.status(200).json({ ok: true, status: 'in', ...now, memberId: m[0].id, role: m[0].role });
-      const q = await sql`select status from join_requests where circle_id = ${circleId} and user_id = ${su.user_id}
+      const q = reqRow ? [reqRow] : await sql`select status from join_requests where circle_id = ${circleId} and user_id = ${su.user_id}
                           order by created_at desc limit 1`;
       return res.status(200).json({ ok: true, status: q[0] ? q[0].status : 'none', ...now });
     }

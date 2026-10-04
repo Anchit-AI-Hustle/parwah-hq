@@ -204,6 +204,28 @@ ok('and only then is the invite used up', await J.evaluate(() => sessionStorage.
   await ctxE.close();
 }
 
+// ---- waiting on two families whose codes both change: each screen asks
+// about its own request, never the other family's
+{
+  const fams = [];
+  for (const nm of ['Rao Family', 'Iyer Family']) {
+    const f = await call('circle', { action: 'create', kind: 'family', familyType: 'nuclear', memberName: 'Meera', circleName: nm, userId: U.Meera.userId, relation: 'mother' }, {}, 'POST', U.Meera.token);
+    await admin.query(`update circles set join_policy = 'approve' where code = $1`, [f.code]);
+    const j = await call('circle', { action: 'join', code: f.code, memberName: 'Anchit', userId: U.Anchit.userId, relation: 'son' }, {}, 'POST', U.Anchit.token);
+    fams.push({ ...f, requestId: j.requestId, oldCode: f.code });
+  }
+  ok('asking to join hands back the request\'s own id', fams.every(f => /^[0-9a-f-]{36}$/.test(String(f.requestId))), fams.map(f => f.requestId).join());
+  await admin.query(`update circles set code = 'RAONEW' where code = $1`, [fams[0].code]);
+  await admin.query(`update circles set code = 'IYERNW' where code = $1`, [fams[1].code]);
+  await call('circle', { action: 'approve_join', code: 'IYERNW', memberId: fams[1].memberId, requestId: fams[1].requestId }, {}, 'POST', U.Meera.token);
+  const a1 = await call('circle', { action: 'join_status', code: fams[0].oldCode, requestId: fams[0].requestId }, {}, 'POST', U.Anchit.token);
+  ok('both codes changed and the Iyers said yes: the Rao screen still says Rao, still waiting', a1.status === 'pending' && a1.circleName === 'Rao Family' && a1.code === 'RAONEW', JSON.stringify(a1));
+  const a2 = await call('circle', { action: 'join_status', code: fams[1].oldCode, requestId: fams[1].requestId }, {}, 'POST', U.Anchit.token);
+  ok('and the Iyer screen takes them into the Iyers', a2.status === 'in' && a2.circleName === 'Iyer Family', JSON.stringify(a2));
+  const a3 = await call('circle', { action: 'join_status', code: fams[0].oldCode }, {}, 'POST', U.Anchit.token);
+  ok('a screen with no request id and a dead code is not guessed into another family', a3.status === 'none' && !a3.circleName, JSON.stringify(a3));
+}
+
 // ---- signed out: the invite is said, and the PIN screen never names anyone
 const ctxO = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
 const O = await ctxO.newPage(); O.on('pageerror', e => errors.push('O: ' + e.message));

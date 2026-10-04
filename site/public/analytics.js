@@ -60,6 +60,15 @@
   // Resolved, not pattern-matched on the text: every page links to it with a
   // different relative path ("../", "../../"), and a text match on "app/"
   // silently stopped counting the day the app moved.
+  // The walk-through is the app opened with ?demo=1: a demo open, not an
+  // app open, whichever path reaches it.
+  function opensDemo(href) {
+    try {
+      var u = new URL(href, location.href);
+      if (u.origin !== location.origin) return false;
+      return /^\/demo\/?$/.test(u.pathname) || (u.pathname === '/' && u.searchParams.get('demo') === '1');
+    } catch (e) { return false; }
+  }
   function opensApp(href) {
     try {
       var u = new URL(href, location.href);
@@ -75,10 +84,10 @@
       track('join_waitlist', { method: 'whatsapp', page: location.pathname });
     } else if (href.indexOf('mailto:') === 0) {
       track('join_waitlist', { method: 'email', page: location.pathname });
+    } else if (opensDemo(href)) {
+      track('open_demo', { page: location.pathname });
     } else if (opensApp(href)) {
       track('open_app', { page: location.pathname });
-    } else if (/(^|\/)demo\/?($|[?#])/.test(href)) {
-      track('open_demo', { page: location.pathname });
     } else if (/(^|\/)get\/?($|[?#])/.test(href)) {
       track('open_install', { page: location.pathname });
     }

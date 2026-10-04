@@ -148,7 +148,11 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
   const again = await lastGame('ludo');
   ok('ludo: Play again starts a new game, alone again', again.id !== before && again.status === 'active' && again.state.players.some(p => p.bot) && await vis(R, '#g-ludo'));
   await admin.query(`update games set status = 'done' where id = $1`, [again.id]);   // put away, with no result
-  await R.click('#g-back'); await R.waitForTimeout(600);
+  // Back to the list: by the button, or by the app itself - its next look
+  // sees the game was put away and leaves it, which can happen first.
+  if (await vis(R, '#g-back')) await tap(R.locator('#g-back'));
+  await R.waitForFunction(() => { const l = document.querySelector('#glist'); return !!(l && l.getClientRects().length); }, null, { timeout: 8000 });
+  await R.waitForTimeout(600);
   const rows = await R.$$eval('#glist button[data-gopen]', bs => bs.map(b => b.getAttribute('data-gopen') + '|' + b.textContent));
   ok('ludo: the list keeps the finished game, marked Done', rows.some(r => r.startsWith(before + '|') && /Done/.test(r)), rows.join(' / '));
   ok('ludo: a game put away without a result leaves the list', !rows.some(r => r.startsWith(again.id + '|')));
@@ -276,6 +280,37 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
   }, [g.id, rohan.token, rohan.id, meera.id]);
   ok('snakes: an hour later, nobody can take Meera\'s turn yet', early === 409, early);
   ok('snakes: and the screen does not offer it', !(await vis(R, '#g-hand')));
+  const away = (who, target) => R.evaluate(async ([gid, tok, me, w, them]) => {
+    const r = await fetch('/api/games', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': tok },
+      body: JSON.stringify({ code: 'SHARMA', memberId: me, action: 'away', who: w, targetId: them, gameId: gid }) });
+    return r.status;
+  }, [g.id, rohan.token, rohan.id, who, target]);
+  const stateNow = async () => (await admin.query('select state from games where id = $1', [g.id])).rows[0].state;
+  // A game from before turns were timed has no clock: it starts now, and
+  // does not count as having waited since 1970.
+  { const old = JSON.parse(JSON.stringify(g.state)); delete old.turnAt;
+    await admin.query('update games set state = $1::jsonb where id = $2', [JSON.stringify(old), g.id]); }
+  const legacy = await away('them', meera.id);
+  const lst = await stateNow();
+  ok('snakes: a game with no turn clock is not handed over at once; its clock starts now',
+     legacy === 409 && Math.abs(Date.now() - Number(lst.turnAt)) < 60000 && !lst.players[1].away, legacy + ' ' + lst.turnAt);
+  // Someone else leaving does not give the person whose turn it is another 12 hours.
+  { const s11 = JSON.parse(JSON.stringify(g.state)); s11.turnAt = Date.now() - 11 * 3600 * 1000;
+    await admin.query('update games set state = $1::jsonb where id = $2', [JSON.stringify(s11), g.id]);
+    const left = await away('me');
+    const after = await stateNow();
+    ok('snakes: when another player leaves, Meera\'s 11 hours keep counting',
+       left === 200 && after.players[0].away === true && after.turn === 1 && Date.now() - Number(after.turnAt) > 10.9 * 3600 * 1000,
+       left + ' ' + JSON.stringify({ t: after.turn, at: after.turnAt })); }
+  // Three handovers sent at once: one lands, nothing is written over it.
+  { const s13 = JSON.parse(JSON.stringify(g.state)); s13.turnAt = Date.now() - 13 * 3600 * 1000;
+    await admin.query('update games set state = $1::jsonb where id = $2', [JSON.stringify(s13), g.id]);
+    const e0 = (await admin.query(`select count(*)::int as n from events where text like 'Rohan let Parwah play for Meera%'`)).rows[0].n;
+    const three = await Promise.all([away('them', meera.id), away('them', meera.id), away('them', meera.id)]);
+    const e1 = (await admin.query(`select count(*)::int as n from events where text like 'Rohan let Parwah play for Meera%'`)).rows[0].n;
+    ok('snakes: three handovers sent at once: exactly one lands, and the family is told once',
+       three.filter(x => x === 200).length === 1 && e1 - e0 === 1, three.join() + ' told ' + (e1 - e0));
+    await admin.query(`delete from events where text like 'Rohan let Parwah play for Meera%'`); }
   const st = g.state; st.turnAt = Date.now() - 13 * 3600 * 1000;
   await admin.query('update games set state = $1::jsonb where id = $2', [JSON.stringify(st), g.id]);
   await R.waitForTimeout(3800);

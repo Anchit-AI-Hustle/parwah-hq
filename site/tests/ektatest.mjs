@@ -7,7 +7,7 @@
 // crash where an answer was possible, and the validation guide's fourth
 // screen - "taking Mum to a new doctor tomorrow, what do we have?" - is a
 // retrieval question that needs no model at all.
-import { LOCAL_MODEL, isBillingFailure, isAuthFailure, isDeadKey, classify, whoIsAsked,
+import { askedText, LOCAL_MODEL, isBillingFailure, isAuthFailure, isDeadKey, classify, whoIsAsked,
          renderSummary, renderMemory, renderCircle, offlineNote, cannotAnswer, stalePhrase,
          renderEmergency, renderCrisis, renderHealth, kinIsAsked, ABOUT_ME, renderWhoIsIt }
   from '../../api/_ektalocal.mjs';
@@ -108,8 +108,20 @@ for (const t of ['Papa had a stroke in 2019, what medicines is he on?', 'He had 
 for (const t of ['Papa passed out yesterday, what medicines is he on?', 'Mummy fell last year and broke her wrist', 'he had a seizure 3 years ago',
                  'Papa collapsed in 2021, what do we have for him'])
   ok('in the past, so not alarmed: ' + t, classify(t) !== 'emergency');
+for (const t of ['Has Papa had chest pain in the last week?', 'Does Papa have a history of chest pain?', 'Papa has a history of seizures'])
+  ok('a question about the past, even with "has", so not alarmed: ' + t, classify(t) !== 'emergency');
+ok('a medicine question about someone with a three-word name is a medicine question', classify('Can Raj Kumar Singh take Crocin?') === 'health');
+{
+  const h = [{ role: 'user', content: 'Prepare a summary for a doctor visit.' }, { role: 'assistant', content: 'Who is the doctor visit for? Say their name as it is saved in the family: Raj.' }, { role: 'user', content: 'Raj' }];
+  ok('a name given in answer to "whose visit" is read with the question', classify(askedText(h)) === 'summary' && /Raj$/.test(askedText(h)));
+  ok('a new question after it is read on its own', askedText(h.slice(0, 2).concat([{ role: 'user', content: 'What is the OTP scam?' }])) === 'What is the OTP scam?');
+}
 for (const t of ['Papa fell yesterday and still can\'t get up', 'Dadi passed out last night and is not responding now',
-                 'He had an accident last week and today he is breathless', 'He passed out yesterday and today he has chest pain'])
+                 'He had an accident last week and today he is breathless', 'He passed out yesterday and today he has chest pain',
+                 'He had a cold last week and has chest pain', 'Papa had a fever yesterday, now he is not breathing properly',
+                 'Mummy fell last year but she has fainted', 'Papa fell down yesterday, please help',
+                 'He has been having chest pain since yesterday', 'Papa has been unconscious since last night',
+                 'Dadi has had trouble breathing since last night', 'Mummy has been breathless for two days'])
   ok('in the past but happening now, so urgent: ' + t, classify(t) === 'emergency');
 ok('words about ending a life reach a person', classify('I want to die') === 'crisis' && classify('main jeena nahi chahta') === 'crisis');
 const em = renderEmergency();

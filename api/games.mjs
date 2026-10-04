@@ -706,6 +706,11 @@ export default async function handler(req, res) {
       const g = rows[0];
       if (!g || g.status !== 'active') return res.status(404).json({ ok: false, error: 'That game is over or was ended' });
       const st = g.state;
+      // Saved only over the exact state read here, so a move made at the same
+      // moment is never overwritten by this handover (every game kind, with
+      // or without a version number).
+      const before = JSON.stringify(g.state);
+      const stale = () => res.status(409).json({ ok: false, error: 'Someone moved a moment ago - here is the game now', stale: true });
       if (!TURN_KINDS.includes(st.kind)) return res.status(400).json({ ok: false, error: 'This game has no turns to hand over' });
       const mine = st.players.findIndex(p => p && p.id === me.id);
       if (mine < 0) return res.status(403).json({ ok: false, error: 'You are not in this game' });
@@ -718,22 +723,34 @@ export default async function handler(req, res) {
         seat = st.turn;
         const p = st.players[seat];
         if (!p || isBot(p) || p.id !== body.targetId) return res.status(409).json({ ok: false, error: 'It is not their turn any more' });
-        if (Date.now() - Number(st.turnAt || 0) < AWAY_AFTER_MS) return res.status(409).json({ ok: false, error: 'Give them a little longer - after 12 hours you can let Parwah play' });
+        // A game from before turns were timed starts its clock now, rather
+        // than counting as having waited since 1970.
+        if (!st.turnAt) {
+          st.turnAt = Date.now();
+          const t = await sql`update games set state = ${JSON.stringify(st)}::jsonb where id = ${g.id} and state = ${before}::jsonb returning id`;
+          if (!t[0]) return stale();
+        }
+        if (Date.now() - Number(st.turnAt) < AWAY_AFTER_MS) return res.status(409).json({ ok: false, error: 'Give them a little longer - after 12 hours you can let Parwah play' });
         line = me.name + ' let Parwah play for ' + p.name + ' in ' + gameName(st.kind, st.n);
       }
+      const theirTurn = seat === st.turn;
       st.players[seat] = { ...st.players[seat], away: true };
       // Nobody left to play: the game simply ends, with no result.
       if (!st.players.some(p => p && !isBot(p))) {
-        await sql`update games set status = 'done', state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
+        const e = await sql`update games set status = 'done', state = ${JSON.stringify(st)}::jsonb where id = ${g.id} and state = ${before}::jsonb returning id`;
+        if (!e[0]) return stale();
         return res.status(200).json({ ok: true, ended: true });
       }
       const board = ['ludo', 'bhabhi', 'vyapar'].includes(st.kind);
       if (board) runBoardBots(st); else runBots(st);
       const done = board ? boardOver(st) : !!(st.winner || st.draw);
       if (board) st.v = Number(st.v || 0) + 1;
-      st.turnAt = Date.now();
-      await sql`update games set status = ${done ? 'done' : 'active'}, state = ${JSON.stringify(st)}::jsonb,
-                ended_at = case when ${done}::boolean then now() else null end where id = ${g.id}`;
+      // The clock restarts only when the turn changed hands. Someone else
+      // leaving does not give the person whose turn it is another 12 hours.
+      if (theirTurn) st.turnAt = Date.now();
+      const saved = await sql`update games set status = ${done ? 'done' : 'active'}, state = ${JSON.stringify(st)}::jsonb,
+                ended_at = case when ${done}::boolean then now() else null end where id = ${g.id} and state = ${before}::jsonb returning id`;
+      if (!saved[0]) return stale();
       if (st.players.filter(p => !isParwah(p)).length > 1) await feed(sql, circle.id, me.id, line);
       return res.status(200).json({ ok: true, game: publicState({ id: g.id, kind: st.kind, status: done ? 'done' : 'active', state: st }, me.id) });
     }

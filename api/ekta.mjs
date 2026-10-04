@@ -22,7 +22,7 @@ import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
 import { LOCAL_MODEL, isDeadKey, isBillingFailure, isAuthFailure, classify, whoIsAsked,
          renderSummary, renderMemory, renderCircle, offlineNote, cannotAnswer,
          renderScam, renderCannotDo, renderEmergency, renderCrisis, renderHealth,
-         kinIsAsked, ABOUT_ME, renderWhoIsIt, renderWhoIsVisit } from './_ektalocal.mjs';
+         kinIsAsked, ABOUT_ME, renderWhoIsIt, renderWhoIsVisit, askedText } from './_ektalocal.mjs';
 import { spend, EARN } from './_coins.mjs';
 
 const ASSISTANT_NAME = 'Ekta'; // one-line swap if the persona name changes
@@ -369,8 +369,7 @@ function textBackups(vault) {
 // guide is a retrieval question, so it stays demonstrable with no credit at
 // all - and a blood group read straight from the row cannot be paraphrased.
 export async function localTurn(sql, circle, me, history, reason) {
-  const lastUser = (history || []).filter(m => m && m.role === 'user').slice(-1)[0];
-  const text = lastUser ? String(lastUser.content || '') : '';
+  const text = askedText(history);
   const intent = classify(text);
   let names = [], members = [];
   try {
@@ -528,7 +527,7 @@ export default async function handler(req, res) {
 
   // Someone may be in danger: fixed words, at once, before a coin, a key or
   // a model is even looked at.
-  const asked = classify(history[history.length - 1].content);
+  const asked = classify(askedText(history));
   if (asked === 'emergency' || asked === 'crisis') {
     return res.status(200).json({ ok: true, reply: asked === 'crisis' ? renderCrisis() : renderEmergency(),
       actions: [], model: LOCAL_MODEL, emergency: true });
