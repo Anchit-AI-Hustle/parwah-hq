@@ -31,7 +31,7 @@ export const PLANS = {
     id: 'care', name: 'Parwah Family Plan', inr: 2499,
     tagline: 'One plan for the whole family, wherever each of you lives.',
     includes: ['Family Memory', 'Health & Emergency Information', 'Trusted Contacts',
-               'Family Readiness', 'Ekta', 'Family Pulse']
+               'Family Readiness', 'Ekta']
   }
 };
 

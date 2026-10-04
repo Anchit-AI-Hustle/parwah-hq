@@ -649,6 +649,10 @@ details.more[open]>summary::before{content:"▾ "}
 .grules summary{font-weight:700;cursor:pointer}
 .grules ul{margin:var(--space-8) 0 0;padding-left:var(--space-20);display:grid;gap:var(--space-4)}
 body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
+#evoice[aria-pressed="false"]{opacity:.7}
+.eurgent{display:flex;flex-wrap:wrap;gap:var(--space-8);align-self:flex-start}
+.cbtn.urgent{min-height:var(--tap-min);background:var(--alert);color:var(--on-accent);text-decoration:none}
+#evoice{white-space:nowrap}
 
 /* notifications */
 #bell{position:relative;border:0;background:none;color:var(--cream);font-size:var(--fs-18);cursor:pointer;padding:var(--space-2) var(--space-8)}
@@ -993,7 +997,7 @@ body.senior{background:
 h1,h2,h3,.appname{letter-spacing:-.02em}
 .card{border-radius:var(--radius-20);box-shadow:var(--sh-1)}
 /* Status keeps its own colour: the Emergency card button stays alert red. */
-.go,.big.ok:not(.done),.em.u,.inputbar button,.cbtn:not(.ghost):not(.no):not(.ecard-btn){background:var(--grad);color:var(--on-bright)}
+.go,.big.ok:not(.done),.em.u,.inputbar button,.cbtn:not(.ghost):not(.no):not(.ecard-btn):not(.urgent){background:var(--grad);color:var(--on-bright)}
 .go,.big.ok:not(.done){box-shadow:0 10px 26px rgba(255,120,30,.30)}
 .go{transition:transform var(--motion-base) cubic-bezier(.34,1.56,.64,1)}
 .go:not(:disabled):hover{transform:translateY(-2px)}
@@ -1779,6 +1783,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <p class="vmean" id="mu-mean"></p>
         <p class="vnext" id="mu-next"></p>
         <div class="mufacts" id="mu-facts"></div>
+        <p class="hint" style="margin:var(--space-8) 0 0">Medicines, doctor visits and emergencies never wait for a muhurat.</p>
       </div>
       <div class="card" id="mu-guesscard" hidden style="border-left:4px solid var(--marigold)">
         <p class="hint" id="mu-guess" style="margin:0"></p>
@@ -1845,7 +1850,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <div class="mtab" id="mp-avoid" data-mt="avoid" role="tabpanel" aria-labelledby="mt-avoid" hidden>
         <div class="card">
           <h3>Times to avoid today</h3>
-          <p class="hint" style="margin:var(--space-2) 0 var(--space-12)">By custom nothing new is begun in these. Work already under way carries on.</p>
+          <p class="hint" style="margin:var(--space-2) 0 var(--space-12)">By custom nothing new is begun in these. Work already under way carries on. Medicines, doctor visits and emergencies never wait for a muhurat.</p>
           <div class="mulist" id="mu-avoid"></div>
         </div>
         <div class="card">
@@ -1886,8 +1891,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <p>Sunrise and sunset are computed from your city's latitude and longitude using the
             standard NOAA solar-position method, with the usual allowance for refraction and the
             width of the sun's disc - the same allowance almanacs use. Nothing is fetched from
-            anywhere; it is arithmetic, and it should agree with any printed panchang for your city
-            to within a minute or two.</p>
+            anywhere; it is arithmetic, and it is usually within a few minutes of a printed panchang
+            for your city.</p>
         </div>
         </div>
       </div>
@@ -1978,18 +1983,18 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <section id="pane-ekta" hidden>
     <div class="ektahead">
       <span class="dev" aria-hidden="true">एकता</span>
-      <span><b>Ekta</b><small>Your family's helper - type or talk, Hindi ya English</small></span>
-      <button class="cbtn ghost" id="evoice" aria-label="Toggle spoken replies">🔊 Voice on</button>
+      <span><b>Ekta</b><small>Your family's helper · Hindi ya English</small></span>
+      <button class="cbtn ghost" id="evoice" aria-pressed="true" aria-label="Read replies aloud">🔊 Read aloud</button>
     </div>
     <div class="crow" id="ekta-offline" hidden style="margin-bottom:var(--space-12);border-left:3px solid var(--marigold)">
       <span class="txt"><b>Answering from your family records</b><small id="ekta-offline-why"></small></span>
     </div>
     <div class="emsgs" id="emsgs">
-      <div class="em a">Namaste! 🙏 Main Ekta hoon. I can answer about your family, set reminders (for others they'll be asked first), or raise a help request. What can I do for you?</div>
+      <div class="em a">Namaste! 🙏 Main Ekta hoon. Ask me about anything your family has saved: medicines, papers, doctors. I can set reminders and ask the family for help. I never give medical advice. A question uses 2 coins; reading back your records, the scam check and anything urgent are free.</div>
     </div>
     <div class="chips" id="echips">
-      <button data-chip="Kya sab theek hai? Give me a quick update on my family.">💛 Family update</button>
-      <button data-chip="Set a daily reminder for me to check in every morning at 9 am.">🔔 Daily check-in reminder</button>
+      <button data-chip="What do we have recorded for the family?">📋 What we have saved</button>
+      <button data-chip="Prepare a summary for a doctor visit.">🩺 Prepare a doctor visit</button>
       <button data-chip="I got a message asking for an OTP for a payment. Is it a scam?">🛡 Scam check</button>
       <button data-chip="Please ask the family for help with something I need.">🤝 Ask for help</button>
     </div>
@@ -2905,7 +2910,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('composer').hidden = !(ekta || chat);
     $('emic').hidden = !(ekta && typeof rec !== 'undefined' && rec);
     $('ecam').hidden = !chat;
-    $('msg').placeholder = ekta ? 'Ask Ekta - type or tap the mic' : (chat ? 'Message ' + chatShort(curChat) + '…' : 'Message…');
+    $('msg').placeholder = ekta ? 'Ask Ekta…' : (chat ? 'Message ' + chatShort(curChat) + '…' : 'Message…');
   }
   $('tabs').addEventListener('click', function(e){
     var b = e.target.closest('button'); if (!b) return;
@@ -5574,7 +5579,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // ---------- Ekta: voice (JARVIS mode on the web platform) ----------
   var voiceOn = true;
   try { voiceOn = localStorage.getItem('parwah-voice') !== 'off'; } catch (e) {}
-  function voiceLabel(){ $('evoice').textContent = voiceOn ? '🔊 Voice on' : '🔇 Voice off'; }
+  // One label, and the pressed state says whether it is on.
+  function voiceLabel(){ $('evoice').textContent = voiceOn ? '🔊 Read aloud' : '🔇 Read aloud'; $('evoice').setAttribute('aria-pressed', voiceOn ? 'true' : 'false'); }
   $('evoice').addEventListener('click', function(){
     voiceOn = !voiceOn;
     try { localStorage.setItem('parwah-voice', voiceOn ? 'on' : 'off'); } catch (e) {}
@@ -5627,6 +5633,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     billing: 'Her AI has no credit right now, so she is reading back exactly what is saved. This answer is free.',
     auth: 'Her AI key is not working right now, so she is reading back exactly what is saved. This answer is free.',
     none: 'No AI key is set up yet, so she is reading back exactly what is saved. This answer is free.',
+    coins: 'The family is out of coins, so she is reading back exactly what is saved. That is always free.',
     unreachable: 'Her AI could not be reached, so she is reading back exactly what is saved. This answer is free.'
   };
   function ektaOffline(reason){
@@ -5643,6 +5650,20 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('emsgs').scrollTop = $('emsgs').scrollHeight;
     return d;
   }
+  // Under an urgent answer: the two things to do, as buttons.
+  function ektaUrgent(said){
+    var d = document.createElement('div');
+    d.className = 'eurgent';
+    d.innerHTML = '<a class="cbtn urgent" href="tel:112">📞 Call 112</a><button type="button" class="cbtn urgent" data-esos>🆘 Send SOS to the family</button>';
+    d.querySelector('[data-esos]').addEventListener('click', function(){
+      askSheet('Send SOS to the whole family?', 'Everyone is told at once, with your name.', 'Yes, send SOS', 'No, go back', true).then(function(yes){
+        if (!yes) return;
+        sendEvent('sos', String(said || '').slice(0, 120), function(){ toast('SOS sent - the family has been told'); });
+      });
+    });
+    $('emsgs').appendChild(d);
+    $('emsgs').scrollTop = $('emsgs').scrollHeight;
+  }
   function ektaSend(){
     var v = $('msg').value.trim(); if (!v) return;
     $('msg').value = '';
@@ -5655,6 +5676,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         if (j.ok) {
           ektaMsgs.push({ role:'assistant', content:j.reply });
           ektaAppend('assistant', j.reply);
+          if (j.emergency) ektaUrgent(v);
           speak(j.reply);
           // An answer read out of the family's own records is a real answer,
           // not a failure - but the family is told exactly what they are
@@ -7972,7 +7994,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     Labh:  'Good for money matters and paperwork.',
     Chal:  'Fine for travel and errands.',
     Udveg: 'Routine work only - nothing new.',
-    Rog:   'Leave health matters and arguments alone.',
+    Rog:   'By custom, a time to avoid new starts and disputes.',
     Kaal:  'Don\u2019t start anything you care about.'
   };
   function muShort(p){ return (p && MU_SHORT[p.name]) || (p && p.en) || ''; }
@@ -8102,7 +8124,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('mu-facts').innerHTML =
       (best ? fact('ok', 'Best time ahead:', best.name, dRange(iso(best.from), iso(best.to), tz) + (now >= best.from ? ', now' : ''))
             : fact('ok', 'Best time ahead:', 'tomorrow', 'today’s good windows have passed')) +
-      (avoidNext ? fact('no', 'Next to avoid:', avoidNext.name, dRange(avoidNext.per.from, avoidNext.per.to, tz) + (dRunning(avoidNext.per) ? ', now' : ''))
+      // Running now is "Avoid now", not "next": the one after it is next.
+      (avoidNext ? fact('no', dRunning(avoidNext.per) ? 'Avoid now:' : 'Next to avoid:', avoidNext.name, dRange(avoidNext.per.from, avoidNext.per.to, tz))
                  : fact('ok', 'Next to avoid:', 'nothing big', 'Rahu Kaal and the rest are done for today')) +
       fact('', 'Sun:', 'rises ' + dTime(p.sunrise, tz) + ', sets ' + dTime(p.sunset, tz), '');
 
@@ -8419,20 +8442,20 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         '</div>' +
         '<p class="hint" style="margin-top:var(--space-12)">Ekta retrieves and organises what your family has stored and allowed her to see. She says where an answer came from and when it was last checked. She does not diagnose and does not make medical decisions.</p>' },
 
-    { k: 'pulse', title: 'How are my people today?',
+    { k: 'todo', title: 'Things to do, and an emergency card',
       body:
         '<div class="feed" style="margin-top:var(--space-12)">' +
-        dpulse('Mum', '☀', 'Sunny', false) +
-        dpulse('Dad', '🐢', 'Taking it slow', false) +
-        dpulse('Rohan', '🔋', '75%', false) +
-        dpulse('Anya', '🌧', 'Rainy - a call would be nice', true) +
+        dtodo('Book Dad’s eye check-up', 'Rohan has it · by Friday') +
+        dtodo('Renew Mum’s health insurance', 'Nobody has it yet · due 30 September', true) +
+        dtodo('Collect Mum’s blood test report', 'Done by Anya · this morning') +
         '</div>' +
-        '<p class="hint" style="margin-top:var(--space-12)">A few seconds to tell your family how you are doing. The style changes each day - weather, battery, animals, roads, food - but the purpose stays the same.</p>' },
+        '<p class="hint" style="margin-top:var(--space-12)">Everyone sees who has what, so nothing is forgotten and no one person carries it all.</p>' +
+        '<div class="ev" style="margin-top:var(--space-12)"><b>🚨 The emergency card</b><small>Blood group, allergies, medicines and who to call, on one screen. It works with no internet.</small></div>' },
 
     { k: 'plan', title: 'What it costs',
       body:
         '<p class="hint" style="margin:var(--space-2) 0 var(--space-12)">One plan, for the whole family. Not per person.</p>' +
-        '<div class="ev"><b>Parwah Family Plan</b><small>The family memory · Health &amp; emergency information · Trusted contacts · Family readiness · Ekta · The family pulse</small></div>' +
+        '<div class="ev"><b>Parwah Family Plan</b><small>The family memory · Health &amp; emergency information · Trusted contacts · Family readiness · Ekta</small></div>' +
         '<p style="margin:var(--space-12) 0 var(--space-2);font-size:var(--fs-24);font-family:var(--disp);font-weight:600">₹2,499 <span style="font-size:var(--fs-16);font-weight:400;color:var(--ink-soft)">per family, per year</span></p>' +
         '<p class="hint" style="margin:var(--space-2) 0 0">About $29.99 at ₹85 to the dollar. Nothing is charged here - Parwah is not taking payments yet.</p>' +
         '<p class="hint" style="margin-top:var(--space-16)">Ready to start? Signing in takes your mobile number and a PIN or password you choose, so nobody who knows the number can open your family. Nothing is posted anywhere.</p>' }
@@ -8458,9 +8481,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     return '<div class="ev"><b>You:</b> ' + q + '<small style="margin-top:var(--space-8)"><b>Ekta:</b> ' + a +
       ' <span style="color:var(--sindoor);font-weight:600">[' + act + ']</span></small></div>';
   }
-  function dpulse(name, emoji, text, call){
-    return '<div class="ev' + (call ? ' inaus' : '') + '"><b>' + emoji + '  ' + name + '</b>' +
-      '<small>' + text + '</small></div>';
+  function dtodo(what, who, open){
+    return '<div class="ev' + (open ? ' inaus' : '') + '"><b>' + what + '</b><small>' + who + '</small></div>';
   }
 
   var demoAt = 0;

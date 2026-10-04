@@ -86,7 +86,7 @@ const NATURE = {
   Amrit:  { good: true,  en: 'Nectar - the most auspicious; best for anything important' },
   Kaal:   { good: false, en: 'Loss - avoid starting anything you care about' },
   Shubh:  { good: true,  en: 'Auspicious - good for ceremonies, meetings, new beginnings' },
-  Rog:    { good: false, en: 'Illness - avoid health matters and confrontation' }
+  Rog:    { good: false, en: 'By custom, a time to avoid new starts and disputes' }
 };
 // Day sequences, Sunday first (JS getDay(): 0 = Sunday).
 const DAY_SEQ = [
