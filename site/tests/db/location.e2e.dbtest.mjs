@@ -341,6 +341,7 @@ await R.context().setGeolocation(PUNE);
   }, [DELHI.latitude, DELHI.longitude]);
   ok('leaving Home is in the family feed', (await admin.query(`select count(*)::int as n from events where text = '📍 Rohan left Home'`)).rows[0].n === 1);
   await M.reload(); await M.waitForTimeout(1500);
+  if (process.env.SHOTS) { await M.evaluate(() => document.getElementById('loc-card').scrollIntoView()); await M.screenshot({ path: process.env.SHOTS + '/findmy.png', fullPage: true }); }
   ok('and the battery shows beside him', /charging, 42%/.test(await M.textContent('#loc-list')), await M.textContent('#loc-list'));
   // Removing the place.
   await M.click('#loc-places [data-placerm]'); await M.waitForTimeout(300);

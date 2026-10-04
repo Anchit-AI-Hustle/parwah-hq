@@ -128,6 +128,10 @@ ok('tapping that day shows it', /Papa's birthday/.test(await R.textContent('#pli
 await R.click('[data-bdwish="Papa"]'); await R.waitForTimeout(1500);
 ok('Wish them opens the family chat with the wish written', await R.isVisible('#chatview') && /Happy birthday, Papa/.test(await R.inputValue('#msg')), await R.inputValue('#msg').catch(() => ''));
 
+if (process.env.SHOTS) {
+  await R.evaluate(() => { location.hash = '#home'; }); await R.waitForTimeout(600); await R.screenshot({ path: process.env.SHOTS + '/today-quickadd.png' });
+  await R.evaluate(() => { location.hash = '#fun'; }); await R.waitForTimeout(900); await R.screenshot({ path: process.env.SHOTS + '/plans.png', fullPage: true });
+}
 // ---- 4. An hour before, everyone going is reminded, once
 {
   const { sweepPlanReminders } = await import('../../../api/_plansweep.mjs');

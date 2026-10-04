@@ -256,9 +256,8 @@ label + select{width:100%}
 .noteadd input{flex:1;min-width:0}
 .day .bday{position:absolute;top:1px;right:2px;font-size:var(--fs-12);font-style:normal;line-height:1}
 .bdayrow{border-left:3px solid var(--marigold)}
-.quickadd{display:flex;gap:var(--space-8);overflow-x:auto;padding:var(--space-4) 0 var(--space-12);scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.quickadd::-webkit-scrollbar{display:none}
-.quickadd button{flex:none;min-height:var(--tap-min);border:1px solid var(--bone-2);background:var(--surface);color:var(--ink);border-radius:var(--radius-pill);padding:var(--space-8) var(--space-16);font-family:var(--body);font-weight:700;font-size:var(--fs-14);cursor:pointer;white-space:nowrap}
+.quickadd{display:flex;flex-wrap:wrap;gap:var(--space-8);padding:var(--space-4) 0 var(--space-12)}
+.quickadd button{flex:1 1 auto;min-height:var(--tap-min);border:1px solid var(--bone-2);background:var(--surface);color:var(--ink);border-radius:var(--radius-pill);padding:var(--space-8) var(--space-16);font-family:var(--body);font-weight:700;font-size:var(--fs-14);cursor:pointer;white-space:nowrap}
 .quickadd button:hover{border-color:var(--marigold)}
 /* A box that is wrong says so beside itself, not in a toast that vanishes. */
 .fielderr{font-size:var(--fs-14);font-weight:600;color:var(--sindoor);margin:var(--space-4) 0 var(--space-8)}

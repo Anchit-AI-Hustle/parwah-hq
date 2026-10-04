@@ -402,6 +402,7 @@ const tomorrow = localDay(Date.now() + 86400000);
   await R.locator('#notelist .noteitem', { hasText: 'Milk' }).locator('input').check(); await R.waitForTimeout(800);
   await R.fill('#notelist [data-nadd]', 'Eggs'); await R.press('#notelist [data-nadd]', 'Enter'); await R.waitForTimeout(1000);
   await toNotes(M);
+  if (process.env.SHOTS) await M.screenshot({ path: process.env.SHOTS + '/notes.png', fullPage: true });
   ok('Meera sees Rohan ticked Milk, and added Eggs', /1 of 4 done/.test(await M.textContent('#notelist')) && /Milk · Rohan/.test(await M.textContent('#notelist')) && /Eggs/.test(await M.textContent('#notelist')),
      await M.textContent('#notelist'));
 }
