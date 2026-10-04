@@ -219,8 +219,7 @@ async function escalateStaleSos(sql, circleId) {
       if (type === 'message' && !t) return res.status(400).json({ ok: false, error: 'Empty message' });
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${memberId}, ${type}, ${t || null})`;
-      // Looking after each other is what earns the family its AI credit.
-      if (type === 'checkin' || type === 'pill') await award(sql, circle.id, memberId, type, today());
+      // An adult's medicines and check-ins are not a game: no coins for them.
       if (type === 'sos') {
         await sql`insert into sos (circle_id, member_id) values (${circle.id}, ${memberId})`;
         await pushCircle(sql, circle.id, { title: '🆘 SOS from ' + member[0].name, body: 'They pressed the SOS button - call them right now' }, { except: memberId });

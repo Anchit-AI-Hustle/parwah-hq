@@ -109,10 +109,10 @@ ok('a never-checked fact says so', /never checked/.test(stalePhrase(null, false)
   ok('the app offers suggestion chips', chips.length >= 4);
   for (const c of chips) ok('chip has an offline answer, not a refusal: ' + c.slice(0, 40), classify(c) !== 'unknown');
   const byText = t => chips.find(c => c.includes(t)) || '';
-  ok('the circle-update chip reads the circle', classify(byText('update on my circle')) === 'circle');
+  ok('the circle-update chip reads the circle', classify(byText('update on my family')) === 'circle');
   ok('the reminder chip is a reminder, not a circle summary', classify(byText('daily reminder')) === 'remind');
   ok('the scam chip is a scam check', classify(byText('OTP')) === 'scam');
-  ok('the help chip asks the circle, not a summary', classify(byText('ask the circle')) === 'help');
+  ok('the help chip asks the circle, not a summary', classify(byText('ask the family')) === 'help');
 }
 // ---- AND NOTHING THAT WAS RIGHT BEFORE MOVED ----
 ok('a question about a reminder is still a circle question', classify('Is there a reminder for Papa\'s pills?') === 'circle');

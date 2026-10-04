@@ -246,7 +246,8 @@ export default async function handler(req, res) {
       // back in. Set one now; there is nothing to check it against yet.
       if (!user.pin_hash) {
         const perr = pinError(body.pin);
-        if (perr) return res.status(200).json({ ok: true, exists: true, setPin: true, name: user.name, error: body.pin ? perr : null });
+        // Never a name before the secret: anyone can type any number.
+        if (perr) return res.status(200).json({ ok: true, exists: true, setPin: true, error: body.pin ? perr : null });
         const h = hashPin(body.pin);
         await sql`update users set pin_hash = ${h.hash}, pin_salt = ${h.salt}, pin_set_at = now(),
                   pin_tries = 0, locked_until = null, secret_v = ${SECRET_V} where id = ${user.id}`;
@@ -254,7 +255,7 @@ export default async function handler(req, res) {
         if (user.locked_until && new Date(user.locked_until) > new Date()) {
           return res.status(429).json({ ok: false, locked: true, error: lockMessage(user.locked_until) });
         }
-        if (!body.pin) return res.status(200).json({ ok: true, exists: true, needPin: true, name: user.name });
+        if (!body.pin) return res.status(200).json({ ok: true, exists: true, needPin: true });
         // Each try is claimed in the database BEFORE it is checked, and only
         // while the number is not locked. Read-check-then-write let a burst
         // of guesses sent at once all be checked before the lock landed.

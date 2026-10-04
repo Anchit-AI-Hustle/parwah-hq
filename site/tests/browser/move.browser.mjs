@@ -100,8 +100,10 @@ ok(await pg.evaluate(() => typeof window.parent !== 'undefined' && !!document.ge
 // Invite links carry their code across.
 await pg.goto(BASE + '/app/?join=ABC123');
 await pg.waitForTimeout(300);
-ok(new URL(pg.url()).pathname === '/' && new URL(pg.url()).search === '?join=ABC123',
-   'an old invite link keeps its code');
+// The code is read once and taken out of the address (a reload must not
+// ask again); what matters is that it arrived and the person is told.
+ok(new URL(pg.url()).pathname === '/' && await pg.isVisible('#ob-invite') && /ABC123/.test(await pg.textContent('#ob-invite-sub')),
+   'an old invite link keeps its code, and says you have been invited');
 
 // The old worker removes itself; the root one takes over.
 let s = [];

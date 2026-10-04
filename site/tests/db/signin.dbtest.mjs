@@ -84,6 +84,7 @@ const row = async phone => (await admin.query('select * from users where phone =
                      values ('+919810000003', '+91', '9810000003', 'Papa', $1, $2, now())`, [h.hash, h.salt]);
   let r = await enter('9810000003');
   ok('an old account is asked for its PIN', r.ok && r.needPin && !r.token);
+  ok('and is never told whose number it is before the PIN', !('name' in r) && !JSON.stringify(r).includes('"user"'), JSON.stringify(r));
   r = await enter('9810000003', { pin: '481921' });
   ok('a wrong old PIN is a wrong try, as always', r.status === 401 && r.wrongPin);
   r = await enter('9810000003', { pin: '481920' });
