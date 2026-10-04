@@ -721,10 +721,12 @@ details.more[open]>summary::before{content:"▾ "}
 .prepcard{margin-bottom:var(--space-12)}
 .prephead{display:flex;align-items:baseline;justify-content:space-between}
 .preppct{font-size:var(--fs-14);font-weight:700;color:var(--ink)}
+.rowbtn{flex:1;border:0;background:none;text-align:left;font-family:var(--body);color:var(--ink);cursor:pointer;padding:0;min-height:var(--tap-min);display:flex;flex-direction:column;justify-content:center}
 .pbar{height:8px;background:var(--bone);border-radius:var(--radius-pill);margin-top:var(--space-8);overflow:hidden}
 .pbar i{display:block;height:100%;background:linear-gradient(90deg,var(--marigold),var(--pine));border-radius:var(--radius-pill);transition:width var(--motion-slow)}
 .prepitems{display:flex;flex-wrap:wrap;gap:var(--space-8)}
 .prepitem{font-size:var(--fs-12);background:var(--day);border:1px solid var(--bone-2);border-radius:var(--radius-pill);padding:var(--space-4) var(--space-8)}
+.pageseg .dot{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;margin-left:var(--space-4);border-radius:var(--radius-pill);background:var(--sindoor);color:var(--on-accent);font-size:var(--fs-12);font-weight:700;font-style:normal;padding:0 var(--space-4)}
 #updbar{position:sticky;top:0;z-index:var(--z-sheet);display:block;width:100%;min-height:var(--tap-min);border:0;background:var(--dusk);color:var(--cream);font-family:var(--body);font-weight:700;font-size:var(--fs-14);cursor:pointer}
 #updbar[hidden]{display:none}
 #bell .dot,#side-nb .dot{position:absolute;top:-2px;right:-2px;min-width:15px;height:15px;border-radius:var(--radius-pill);background:var(--sindoor);color:var(--on-accent);font-size:var(--fs-12);font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 var(--space-4);font-style:normal}
@@ -1387,7 +1389,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <label class="pick" style="display:block;margin-top:var(--space-12)"><span>Done when</span>
           <input type="text" id="r-donewhen" maxlength="200" placeholder="e.g. cylinder delivered, receipt in the vault"></label>
         <label class="pick" style="display:block;margin-top:var(--space-12)"><span>If it runs late, tell</span>
-          <select id="r-esc"><option value="people">The person doing it, and me</option><option value="everyone">Everyone in the family</option></select></label>
+          <select id="r-esc"><option value="people">Whoever has it, and me</option><option value="everyone">Everyone in the family</option></select></label>
       </details>
       <button class="go" id="r-add" style="margin-top:var(--space-16)">Add it</button>
       <p class="hint" id="r-hint">Nobody is given it yet - the first person to tap "I'm on it" takes it.</p>
@@ -1407,6 +1409,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <!-- PEOPLE - the product is organised around the people you care about -->
   <section id="pane-people" hidden>
     <div class="ektahead"><span style="font-size:var(--fs-24)" aria-hidden="true">👨‍👩‍👧</span><span><b>Family</b><small>Who is who, and how ready the family is for each person</small></span></div>
+    <div class="card" id="joinreq-card" hidden>
+      <h3>🙋 Waiting to join</h3>
+      <p class="hint" id="jr-count" style="margin:var(--space-2) 0 var(--space-12)"></p>
+      <div class="feed" id="joinreqs"></div>
+      <p class="hint" style="margin-top:var(--space-12)">Anyone already in the family can decide - let in only people you recognise.</p>
+    </div>
     <div class="card" id="treecard">
       <h3 id="tree-title">🌳 Family tree</h3>
       <p class="hint" id="tree-sub" style="margin:var(--space-4) 0 var(--space-12)"></p>
@@ -1426,11 +1434,37 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <label class="pick"><span>is the</span><select id="tr-place" aria-label="Their place"></select></label>
           <label class="pick"><span>of</span><select id="tr-of" aria-label="Of whom"></select></label>
         </div>
+        <div id="tr-ofg-wrap" hidden>
+          <p class="trlbl" id="tr-ofg-label"></p>
+          <div class="seg" id="tr-ofg" role="group" aria-labelledby="tr-ofg-label">
+            <button type="button" data-g="m" aria-pressed="false">He</button><button type="button" data-g="f" aria-pressed="false">She</button>
+          </div>
+        </div>
         <p class="trsay" id="tr-say" aria-live="polite"></p>
         <p class="hint" id="tr-err" role="alert" hidden></p>
         <button class="go" id="tr-go" style="margin-top:var(--space-12)">Add to the tree</button>
         <div id="tr-links" class="trlinks" hidden></div>
       </div>
+    </div>
+    <div class="card" id="prepcard">
+      <h3>How ready the family is</h3>
+      <p class="hint" style="margin:var(--space-2) 0 var(--space-12)">For the people the family looks after: what is recorded and current. Not a health score.</p>
+      <div class="feed" id="preplist"><div class="ev">Loading…</div></div>
+    </div>
+    <div class="card">
+      <h3>Your family</h3>
+      <p style="margin-bottom:var(--space-12)">Code: <span class="codechip" id="p-code"></span>
+        <button class="linkbtn" id="code-edit" style="margin-left:var(--space-12)">✏️ Set your own code</button></p>
+      <div id="codeform" hidden style="margin-bottom:var(--space-12)">
+        <input type="text" id="cc-code" maxlength="12" placeholder="e.g. SHARMAS" style="text-transform:uppercase" aria-label="New invite code">
+        <button class="go" id="cc-save" style="margin-top:var(--space-8)">Save invite code</button>
+        <p class="hint" style="margin-top:var(--space-8)">4-12 letters and numbers, unique across Parwah. Your family joins with this code - old invite links stop working.</p>
+      </div>
+      <div class="members" id="members"></div>
+      <button class="go invitebtn" style="margin-top:var(--space-16)">🧡 Invite family</button>
+      <p class="hint" style="margin:var(--space-16) 0 var(--space-8)"><b>How people join:</b> <span id="jp-state"></span></p>
+      <button class="cbtn ghost" id="jp-toggle"></button>
+      <p class="hint" style="margin-top:var(--space-12)">Tap any member to see their profile - call, message privately or set a reminder for them.</p>
     </div>
     <div class="card" id="loc-card">
       <h3>📍 Where everyone is</h3>
@@ -1449,31 +1483,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <div class="feed" id="loc-list"><div class="ev">Loading…</div></div>
       <p class="hint" style="margin-top:var(--space-12)">Locations update whenever Parwah is open on the phone. Area only shows the neighbourhood, never the house.</p>
     </div>
-    <p class="eyebrow">Preparedness</p>
-    <p class="hint" style="margin:var(--space-2) 0 var(--space-12)">Not a health score - a simple check that the family has the important information recorded and current for each person.</p>
-    <div id="preplist"><div class="ev">Loading…</div></div>
-    <div class="card" id="joinreq-card" hidden>
-      <h3>🙋 Waiting to join</h3>
-      <p class="hint" id="jr-count" style="margin:var(--space-2) 0 var(--space-12)"></p>
-      <div class="feed" id="joinreqs"></div>
-      <p class="hint" style="margin-top:var(--space-12)">Anyone already in the family can decide - let in only people you recognise.</p>
-    </div>
-    <div class="card">
-      <h3>Your family</h3>
-      <p style="margin-bottom:var(--space-12)">Code: <span class="codechip" id="p-code"></span>
-        <button class="linkbtn" id="code-edit" style="margin-left:var(--space-12)">✏️ Set your own code</button></p>
-      <div id="codeform" hidden style="margin-bottom:var(--space-12)">
-        <input type="text" id="cc-code" maxlength="12" placeholder="e.g. SHARMAS" style="text-transform:uppercase" aria-label="New invite code">
-        <button class="go" id="cc-save" style="margin-top:var(--space-8)">Save invite code</button>
-        <p class="hint" style="margin-top:var(--space-8)">4-12 letters and numbers, unique across Parwah. Your family joins with this code - old invite links stop working.</p>
-      </div>
-      <div class="members" id="members"></div>
-      <button class="go invitebtn" style="margin-top:var(--space-16)">🧡 Invite family</button>
-      <p class="hint" style="margin:var(--space-16) 0 var(--space-8)"><b>How people join:</b> <span id="jp-state"></span></p>
-      <button class="cbtn ghost" id="jp-toggle"></button>
-      <p class="hint" style="margin-top:var(--space-12)">Tap any member to see their profile - call, message privately or set a reminder for them.</p>
-    </div>
-  </section>
+</section>
 
   <!-- FAMILY MEMORY - where the family knows -->
   <section id="pane-memory" hidden>
@@ -2440,7 +2450,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   </div>
 </nav>
 
-<div class="msheet" id="msheet" hidden>
+<div class="msheet" id="msheet" hidden role="dialog" aria-modal="true" aria-labelledby="mp-name">
   <div class="mp">
     <button class="x" id="mp-x" aria-label="Close">✕</button>
     <div class="avatar" id="mp-av"></div>
@@ -2454,12 +2464,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="kv"><b>In the family since</b><span id="mp-since">-</span></div>
     <div class="prow2">
       <a class="cbtn" id="mp-call" hidden>📞 Call</a>
-      <button class="cbtn" id="mp-dm">💬 Message privately</button>
-      <button class="cbtn ghost" id="mp-remind">🔔 Set a reminder</button>
-      <button class="cbtn" id="mp-gift">🎁 Send a gift</button>
       <button class="cbtn ecard-btn" id="mp-ecard">🚨 Emergency card</button>
       <button class="cbtn ghost" id="mp-docs">📄 Their documents</button>
       <button class="cbtn ghost" id="mp-page">👤 Their page</button>
+      <button class="cbtn ghost" id="mp-remind">✅ Something to do for them</button>
+      <button class="cbtn ghost" id="mp-dm">💬 Message privately</button>
+      <button class="cbtn ghost" id="mp-gift">🎁 Send a gift</button>
     </div>
     <div id="giftbox" hidden>
       <p class="hint" id="gift-sizes" hidden style="margin-top:var(--space-12);background:#FDF4E3;border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-8) var(--space-12)"></p>
@@ -2550,7 +2560,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <label class="pick"><span>Date</span><input type="date" id="ts-e-date"></label>
         <label class="pick"><span>Time</span><input type="time" id="ts-e-time"></label>
         <label class="pick"><span>Repeat</span><select id="ts-e-rep"><option value="once">Once</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></label>
-        <label class="pick"><span>If late, tell</span><select id="ts-e-esc"><option value="people">Doer and asker</option><option value="everyone">Everyone</option></select></label>
+        <label class="pick"><span>For whom</span><select id="ts-e-about" aria-label="For whom"></select></label>
+        <label class="pick"><span>If late, tell</span><select id="ts-e-esc"><option value="people">Whoever has it, and me</option><option value="everyone">Everyone in the family</option></select></label>
       </div>
       <label for="ts-e-done" style="margin-top:var(--space-12)">Done when</label>
       <input type="text" id="ts-e-done" maxlength="200">
@@ -3000,7 +3011,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }
 
     var mh = '';
+    // The tree already shows everyone placed in it; the list below it names
+    // only who is not in the tree yet, so nobody is listed twice.
+    var hasTree = data.kind !== 'group' && data.members.some(function(m){ return m.gen; });
     data.members.forEach(function(m){
+      if (hasTree && m.gen && m.id !== state.memberId) return;
+      if (hasTree && m.gen) { if (m.phone) $('p-phone').textContent = m.phone; $('p-city').textContent = placeLine(m) || '-'; $('p-role').textContent = m.relation ? m.relation.charAt(0).toUpperCase() + m.relation.slice(1) : 'Family'; return; }
       mh += '<span class="member" data-mprof="' + m.id + '" role="button" tabindex="0">' + esc(m.name) + ' <em>· ' + esc(relLabel(m).toLowerCase()) + '</em>' +
             (m.phone ? ' <a class="callbtn" href="tel:' + encodeURIComponent(m.phone) + '" aria-label="Call ' + esc(m.name) + '">📞</a>' : '') + '</span>';
       // My own member row is the source of truth for the number and place
@@ -3011,7 +3027,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         $('p-role').textContent = m.relation ? m.relation.charAt(0).toUpperCase() + m.relation.slice(1) : 'Family';
       }
     });
-    $('members').innerHTML = mh;
+    $('members').innerHTML = hasTree ? (mh ? '<p class="hint" style="margin:0 0 var(--space-8)">Not in the tree yet:</p>' + mh : '<p class="hint" style="margin:0">Everyone is in the tree above. Tap anyone there for their profile.</p>') : mh;
     $('w-fam').textContent = data.members.length + ' in the family - ' +
       data.members.map(function(m){ return m.name.split(' ')[0]; }).slice(0, 4).join(', ') +
       (data.members.length > 4 ? '…' : '');
@@ -3081,8 +3097,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // never your own actions, never chat (that has its own place), never games.
   function notifWanted(e){
     if (state && e.member_id === state.memberId) return false;
-    if (e.type === 'message') return false;
-    return !/Saanp|Antakshari|Charades|Tic-Tac|Ludo|Bhabhi|Vyapar|game|board/i.test(e.text || '');
+    // An SOS and someone asking to join always need you.
+    if (e.type === 'sos' || e.type === 'join') return true;
+    var t = e.text || '', me = state && state.name ? String(state.name).split(' ')[0] : '';
+    // Something running late, or waiting for someone to take it.
+    if (/running late|needs someone|nobody has it/i.test(t)) return true;
+    // Something given to you, asked of you, or about you by name.
+    if (me && new RegExp('\\b(to|for|asked|about) ' + me.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(t)) return true;
+    return false;
   }
   function renderNotifs(){
     var unread = 0, h = '';
@@ -3275,12 +3297,15 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   function renderForSelect(members){
     membersCache = members;
+    // "How ready" lists the elders the family looks after, which it can only
+    // tell once the family is known: drawn again if the papers came first.
+    if (prepCache && prepCache.length) renderPrep();
     // Opening the app straight on #vault - a bookmark, or a tap on a push -
     // used to build the vault's "whose document" list before anyone was known,
     // leaving it empty and every save refused with "Say whose document this
     // is". The family list is filled in again the moment it exists.
     vRefillMembers();
-    var sel = $('r-for'), cur = sel.value, h = '<option value="any">anyone in the family</option><option value="">myself</option>';
+    var sel = $('r-for'), cur = sel.value, h = '<option value="any">Anyone in the family</option><option value="">Myself</option>';
     var dm = $('dm-pick'), dh = '<option value="">Personal chat with…</option>';
     var gm = '';
     members.forEach(function(m){
@@ -3336,6 +3361,21 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
 
   var suggCache = [];
+  function suggHidden(){ try { return JSON.parse(localStorage.getItem('parwah-sugg-not:' + (state && state.code)) || '[]'); } catch (e) { return []; } }
+  document.addEventListener('click', function(e){
+    var n = e.target.closest('[data-snot]'), f = e.target.closest('[data-sfill]');
+    if (n) {
+      var h = suggHidden(); h.push(n.getAttribute('data-snot'));
+      try { localStorage.setItem('parwah-sugg-not:' + state.code, JSON.stringify(h.slice(-200))); } catch (x) {}
+      var row = n.closest('.crow'); if (row) row.remove();
+      toast('Not suggested again on this phone');
+    }
+    if (f) {
+      var parts = f.getAttribute('data-sfill').split(':');   // gap:<member>:<category>
+      personId = parts[1];
+      ppAddFor({ blood: 'blood', allergy: 'allergies', doctor: 'doctor', emergency: 'emergency' }[parts[2]] || 'doctor');
+    }
+  });
   // A suggestion is a proposal. Accepting it creates the real thing, and the
   // suggestion stops being offered because the job now exists.
   document.addEventListener('click', function(e){
@@ -3449,14 +3489,31 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     facts.push(['Asked by', creator ? 'You' : (q.by_name || 'Someone')]);
     $('ts-facts').innerHTML = facts.map(function(f){ return '<div class="crow"><span class="txt"><small>' + esc(f[0]) + '</small>' + esc(f[1]) + '</span></div>'; }).join('');
     var a = [];
+    var waitingYes = q.status === 'assigned' && owner;
+    var holder = q.claimed_by && (membersCache || []).filter(function(m){ return m.id === q.claimed_by; })[0];
     if (q.status === 'open') a.push(['tack', 'I’m on it', 'go']);
-    if (q.status === 'assigned' && owner) a.push(['tack', 'Yes, I’ll do it', 'go']);
-    if (open && (!q.claimed_by || owner || creator) && !(q.status === 'assigned' && owner)) a.push(['done', 'Mark it done', q.status === 'claimed' && owner ? 'go' : 'cbtn ghost']);
-    if (open && owner) a.push(['decline', 'Hand it back', 'cbtn ghost']);
-    if (open && (creator || owner)) { a.push(['give', 'Give to someone', 'cbtn ghost']); a.push(['edit', 'Change it', 'cbtn ghost']); a.push(['archive', 'Put it away', 'cbtn ghost']); }
+    if (waitingYes) {
+      // Asked, not yet agreed: one decision, three answers. The rest comes
+      // after a yes.
+      a.push(['tack', 'Yes, I’ll do it', 'go']);
+      a.push(['decline', 'I can’t - hand it back', 'cbtn ghost']);
+    } else {
+      // Late, for the person who asked: the advice and the button agree.
+      if (late && creator && !owner) {
+        a.push(['edit', 'Set a new time', 'go']);
+        if (holder && holder.phone) a.push(['call:' + holder.phone, '📞 Call ' + String(holder.name).split(' ')[0], 'cbtn']);
+      }
+      if (open && (!q.claimed_by || owner || creator)) a.push(['done', 'Mark it done', q.status === 'claimed' && owner ? 'go' : 'cbtn ghost']);
+      if (open && owner) a.push(['decline', 'Hand it back', 'cbtn ghost']);
+      if (open && (creator || owner)) { a.push(['give', 'Give to someone', 'cbtn ghost']); if (!(late && creator && !owner)) a.push(['edit', 'Change it', 'cbtn ghost']); a.push(['archive', 'Put it away', 'cbtn ghost']); }
+    }
     if (q.status === 'done' && (creator || owner || q.completed_by === me)) a.push(['reopen', 'Reopen', 'cbtn']);
     a.push(['talk', '💬 Talk about it', 'cbtn ghost']);
-    $('ts-actions').innerHTML = a.map(function(x){ return '<button class="' + x[2] + '" data-ts="' + x[0] + '">' + x[1] + '</button>'; }).join('');
+    $('ts-actions').innerHTML = a.map(function(x){
+      return x[0].indexOf('call:') === 0
+        ? '<a class="' + x[2] + '" href="tel:' + encodeURIComponent(x[0].slice(5)) + '">' + esc(x[1]) + '</a>'
+        : '<button class="' + x[2] + '" data-ts="' + x[0] + '">' + x[1] + '</button>';
+    }).join('');
     $('ts-done').hidden = mode !== 'done' || !open;
     $('ts-give').hidden = true; $('ts-edit').hidden = true;
   }
@@ -3488,6 +3545,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       $('ts-e-time').value = d && !q.all_day ? String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') : '';
       $('ts-e-rep').value = q.recurrence || 'once';
       $('ts-e-esc').value = q.escalate || 'people';
+      $('ts-e-about').innerHTML = '<option value="">The whole family</option>' + (membersCache || []).map(function(m){ return '<option value="' + m.id + '">' + esc(m.id === state.memberId ? 'Me' : m.name) + '</option>'; }).join('');
+      $('ts-e-about').value = q.about_member || '';
       $('ts-e-done').value = q.done_when || '';
       $('ts-edit').hidden = false; $('ts-give').hidden = true; $('ts-e-title').focus();
     }
@@ -3514,7 +3573,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var due = dueFrom($('ts-e-date').value, $('ts-e-time').value), rep = $('ts-e-rep').value;
     if (rep !== 'once' && !due.dueAt && !due.dueDate) { toast('A repeating task needs a date or a time'); return; }
     tsPost({ action:'task_edit', title:t, dueAt: due.dueAt || '', dueDate: due.dueDate || '', recurrence: rep,
-             escalate: $('ts-e-esc').value, doneWhen: $('ts-e-done').value, tz: homeTz() }, 'Saved');
+             escalate: $('ts-e-esc').value, doneWhen: $('ts-e-done').value, aboutMemberId: $('ts-e-about').value, tz: homeTz() }, 'Saved');
     $('ts-edit').hidden = true;
   });
   function homeTz(){ try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } }
@@ -3523,7 +3582,15 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function dueFrom(d, t){
     if (d && t) return { dueAt: new Date(d + 'T' + t).toISOString() };
     if (d) return { dueDate: d };
-    if (t) return { dueAt: new Date(localDay(new Date()) + 'T' + t).toISOString() };
+    // A time alone that has already gone by today means tomorrow: "9 am
+    // tablets" written at 3 pm is for tomorrow morning, not already late.
+    if (t) {
+      var at = new Date(localDay(new Date()) + 'T' + t);
+      // Tomorrow's date with the same clock time: not 24 hours on, which is
+      // an hour off across a daylight-saving change.
+      if (at.getTime() < Date.now() - 60000) { var nx = new Date(); nx.setDate(nx.getDate() + 1); at = new Date(localDay(nx) + 'T' + t); }
+      return { dueAt: at.toISOString(), tomorrow: localDay(at) !== localDay(new Date()) };
+    }
     return {};
   }
 
@@ -3570,12 +3637,19 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     window._careCounts = { need: need.length, today: now.length, soon: soon.length, waiting: waiting };
 
     // What Parwah noticed, offered rather than imposed.
-    var sg = data.suggestions || [];
+    // A gap that takes ten seconds to fill is filled, not turned into a
+    // task; anything else is added to To do; and any of them can be waved
+    // away on this phone.
+    var hidden = suggHidden();
+    var sg = (data.suggestions || []).filter(function(x){ return hidden.indexOf(x.key) < 0; });
     $('sugglist').innerHTML = sg.length ? sg.map(function(x){
+      var gap = /^gap:/.test(x.key);
       return '<div class="crow' + (x.urgent ? ' urgent' : '') + '"><span class="txt">' +
              (x.urgent ? '⚠️ ' : '💡 ') + esc(x.title) +
              '<small>' + esc(x.why) + (x.forName ? ' · ' + esc(x.forName) : '') + '</small></span>' +
-             '<button class="cbtn" data-sadd="' + esc(x.key) + '">Add it</button></div>';
+             (gap ? '<button class="cbtn" data-sfill="' + esc(x.key) + '">Fill it now</button>'
+                  : '<button class="cbtn" data-sadd="' + esc(x.key) + '">Add to To do</button>') +
+             '<button class="linkbtn" data-snot="' + esc(x.key) + '">Not needed</button></div>';
     }).join('') : '<div class="ev">Nothing to suggest - the family is in good shape 🧡</div>';
     suggCache = sg;
     var sdot = $('sugg-dot'), urg = sg.filter(function(x){ return x.urgent; }).length;
@@ -3731,7 +3805,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         // person has seen the number. Saying "you will stop seeing chats"
         // while deleting their documents is not a warning, it is a surprise.
         if (!j.ok && j.needsConfirm) {
-          if (confirm(j.error + '\n\nLeave anyway?')) doLeave(true);
+          askSheet('This deletes things kept about you', j.error, 'Leave and delete them', 'Stay', true).then(function(y){ if (y) doLeave(true); });
           return;
         }
         if (!j.ok) { toast(j.error || 'Could not leave'); return; }
@@ -3955,6 +4029,31 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     enterMain();
     toast('Signed in - welcome back, ' + state.name + ' 🧡');
   }
+  // The invite code lives in this tab (sessionStorage 'parwah-join') until
+  // the person is actually in that family - not when the request is sent,
+  // since a family that approves first leaves them waiting, and a reload
+  // while waiting must bring the waiting screen back.
+  function inviteDone(){
+    pendingJoin = null; pendCode = null;
+    try { sessionStorage.removeItem('parwah-join'); sessionStorage.removeItem('parwah-join-wait'); } catch (e) {}
+  }
+  function inviteWaiting(){
+    try { return !!pendingJoin && sessionStorage.getItem('parwah-join-wait') === pendingJoin; } catch (e) { return false; }
+  }
+  function showWaiting(msg){
+    $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
+    $('ekta-fab').hidden = true; $('chat-fab').hidden = true;
+    try { drawerOpen(false); } catch (e) {}
+    pendCode = pendingJoin;
+    $('pend-msg').textContent = msg || 'Your request to join with code ' + pendingJoin + ' is with the family.';
+    showStep('pending');
+  }
+  // Already in the family the invite is for: go there, and the invite is used.
+  function inviteMember(circles){
+    var got = pendingJoin && (circles || []).filter(function(c){ return String(c.code).toUpperCase() === String(pendingJoin).toUpperCase(); })[0];
+    if (got) { inviteDone(); enterCircle(got); }
+    return !!got;
+  }
   // An invite link opened by someone already signed in: the join card,
   // with the code filled in - never their old Today with the invite lost.
   function joinInvite(){
@@ -3972,6 +4071,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('ob-err').textContent = '';
     saveGroups(circles || []);
     window._authCircles = circles || [];
+    if (pendingJoin && inviteMember(circles)) return;
+    if (pendingJoin && inviteWaiting()) { showWaiting(); return; }
     if (pendingJoin) {
       startJoin();
       $('j-code').value = pendingJoin;
@@ -4265,11 +4366,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         if (!j.ok) { $('ob-err').textContent = j.error || 'Could not join.'; return; }
         if (j.pending) {
           // The code opened the door; the family still has to say come in.
-          $('pend-msg').textContent = j.message || ('Your request has gone to ' + j.circleName + '.');
-          pendCode = code;
-          showStep('pending');
+          // Kept, with "waiting", so a reload comes back to this screen.
+          pendingJoin = code;
+          try { sessionStorage.setItem('parwah-join', code); sessionStorage.setItem('parwah-join-wait', code); } catch (e) {}
+          showWaiting(j.message || ('Your request has gone to ' + j.circleName + '.'));
           return;
         }
+        inviteDone();
         state = { code:j.code, circleName:j.circleName, memberId:j.memberId, name:name, role:j.role };
         saveState(state);
         upsertGroup({ code:j.code, circleName:j.circleName, kind:j.kind || newKind, memberId:j.memberId, role:j.role, memberName:name });
@@ -4279,7 +4382,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       .catch(function(){ $('j-go').disabled = false; $('ob-err').textContent = 'No connection - try again.'; });
   });
 
-  $('pend-back').addEventListener('click', function(){ showStep('setup'); });
+  // A different code: this invite is set aside (the request stays with the
+  // family, and the family appears in the list once they say yes).
+  $('pend-back').addEventListener('click', function(){ inviteDone(); showStep('setup'); });
   $('pend-check').addEventListener('click', function(){
     // Approved? The circle now appears in this number's list of families.
     if (!authUser || !authUser.phone) { showStep('auth'); return; }
@@ -4293,7 +4398,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           // In only when THAT family has said yes - being in another one is
           // not an answer.
           var got = (j.circles || []).filter(function(c){ return String(c.code).toUpperCase() === String(pendCode || '').toUpperCase(); })[0];
-          if (got) { pendingJoin = null; pendCode = null; window._authCircles = j.circles; enterCircle(got); return; }
+          if (got) { inviteDone(); window._authCircles = j.circles; enterCircle(got); return; }
         }
         toast('Not yet - the family has not answered');
       })
@@ -4306,7 +4411,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var h = '';
     joinReqs.forEach(function(q){
       h += '<div class="ev"><b>🙋 ' + esc(q.name) + '</b>' +
-           '<small>' + (q.relation ? esc(q.relation) + ' · ' : '') + (q.phone ? esc(q.phone) + ' · ' : '') + fmtTime(q.created_at) + '</small>' +
+           '<small>' + (q.relation ? 'says they are: ' + esc(q.relation) + ' · ' : '') + (q.phone ? esc(q.phone) + ' · ' : '') + fmtTime(q.created_at) + '</small>' +
            '<div class="prow2" style="margin-top:var(--space-8)">' +
            '<button class="cbtn" data-jok="' + q.id + '">🧡 Let them in</button>' +
            '<button class="cbtn no" data-jno="' + q.id + '">Say no</button></div></div>';
@@ -4319,17 +4424,26 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       : 'Someone already in the family has to say yes.';
     $('jp-toggle').textContent = joinPolicy === 'open' ? '🔒 Require approval' : '🔓 Let the code be enough';
   }
-  function joinAct(body, okMsg){
+  function joinAct(body, okMsg, then){
     post(API.circle, Object.assign({ code: state.code, memberId: state.memberId }, body))
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
         toast(okMsg); refresh();
+        if (then) then(j);
       }).catch(function(){ toast('No connection - try again'); });
   }
   $('joinreqs').addEventListener('click', function(e){
     var b = e.target.closest('button'); if (!b) return;
     var id;
-    if ((id = b.getAttribute('data-jok'))) { joinAct({ action:'approve_join', requestId:id }, 'They are in 🧡'); return; }
+    if ((id = b.getAttribute('data-jok'))) {
+      // In - now say where they are in the family.
+      joinAct({ action:'approve_join', requestId:id }, 'They are in 🧡 Now place them in the tree', function(j){
+        if (!j.memberId || famKind === 'group') return;
+        trWant = j.memberId;
+        setTimeout(function(){ try { $('tree-add').scrollIntoView({ block: 'center' }); } catch (x) {} }, 900);
+      });
+      return;
+    }
     if ((id = b.getAttribute('data-jno'))) {
       if (!confirm('Say no to this request?')) return;
       joinAct({ action:'decline_join', requestId:id }, 'Request declined');
@@ -4419,6 +4533,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     switchTab('memory');
     setTimeout(function(){
       try {
+        // The person must be in "About whom" before it is set: on a slow
+        // phone the memory screen has not filled it yet.
+        rebuildAboutSelects();
         clearBookForm(); setBKind(fx[0]);
         if (fx[0] === 'contact' && fx[1]) $('b-cat').value = fx[1];
         if (fx[0] === 'fact' && fx[1]) $('b-factcat').value = fx[1];
@@ -4443,7 +4560,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('pp-ecard').addEventListener('click', function(){ if (personId) openEcard(personId); });
   $('pp-add').addEventListener('click', function(){
     switchTab('memory');
-    setTimeout(function(){ try { clearBookForm(); setBKind('med'); $('b-about').value = personId; $('b-name').scrollIntoView({ block: 'center' }); $('b-name').focus(); } catch (e) {} }, 120);
+    setTimeout(function(){ try { rebuildAboutSelects(); clearBookForm(); setBKind('med'); $('b-about').value = personId; $('b-name').scrollIntoView({ block: 'center' }); $('b-name').focus(); } catch (e) {} }, 120);
   });
   document.addEventListener('click', function(e){
     var b = e.target.closest('[data-person]'); if (b) openPerson(b.getAttribute('data-person'));
@@ -4804,18 +4921,28 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (due.dueAt) body.dueAt = due.dueAt; else if (due.dueDate) body.dueDate = due.dueDate;
     carePost(body, function(j){
       $('r-title').value = ''; $('r-time').value = ''; $('r-date').value = ''; $('r-donewhen').value = '';
-      toast(j.status === 'assigned' ? 'Sent - they will be asked to say yes'
-        : j.status === 'claimed' ? 'Added - it is yours 🧡' : 'Asked the whole family 🧡');
+      // Back to the defaults, so the next thing is not silently "Daily,
+      // given to Papa, about Papa".
+      repeatMode = 'once';
+      $('r-seg').querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x.getAttribute('data-rep') === 'once'); });
+      $('r-for').value = 'any'; $('r-about').value = ''; $('r-esc').value = 'people'; $('r-more').open = false; todoHint();
+      var when = due.tomorrow ? ' - for tomorrow, as that time has passed today' : '';
+      toast((j.status === 'assigned' ? 'Sent - they will be asked to say yes'
+        : j.status === 'claimed' ? 'Added - it is yours 🧡' : 'Asked the whole family 🧡') + when);
     });
   });
   // The hint has to say what is about to happen.
   function todoHint(){
     var who = $('r-for').value;
+    // With nobody given it, a late task tells everyone: say so.
+    var pe = $('r-esc').querySelector('option[value="people"]');
+    if (pe) pe.textContent = who === 'any' ? 'Everyone (nobody has it yet)' : 'Whoever has it, and me';
     $('r-hint').textContent = who === 'any'
       ? 'Nobody is given it yet - the first person to tap "I’m on it" takes it.'
       : (who ? 'They will be asked to say yes, and you will see when they do.' : 'It is yours - the family can see it and when it is done.');
   }
   $('r-for').addEventListener('change', todoHint);
+  todoHint();
 
   // ---------- Family book: contacts, addresses, meds-map ----------
   // Shortcuts that open more than one section at once.
@@ -4845,27 +4972,23 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     a.innerHTML = '<option value="">The whole family</option>' + opts;
     a.value = curA;
   }
+  // One line per person the family looks after - "Papa: 2 things to
+  // complete" - not a card of chips for everyone. Elders first; when
+  // nobody is marked as one, everyone.
   function renderPrep(){
-    var h = '';
-    prepCache.forEach(function(pp){
-      var rows = Object.keys(pp.items).map(function(k){
-        var st = pp.items[k];
-        var ic = st === 'ok' ? '✅' : st === 'verify' ? '🟡' : '❌';
-        return '<span class="prepitem">' + ic + ' ' + PREP_LABEL[k] + (st === 'verify' ? ' (check)' : st === 'missing' ? ' (missing)' : '') + '</span>';
-      }).join('');
-      h += '<div class="card prepcard">' +
-        '<div class="prephead"><b>' + esc(pp.name) + '</b><span class="preppct">' + pp.pct + '% prepared</span></div>' +
-        '<div class="pbar"><i style="width:' + pp.pct + '%"></i></div>' +
-        '<p class="hint" style="margin:var(--space-8) 0 var(--space-8)">' + (pp.attention ? pp.attention + ' thing' + (pp.attention > 1 ? 's' : '') + ' need' + (pp.attention > 1 ? '' : 's') + ' attention' : 'All the important information is recorded 🧡') + '</p>' +
-        '<div class="prepitems">' + rows + '</div>' +
-        '<div class="prow2" style="margin-top:var(--space-12)">' +
-        '<button class="cbtn ecard-btn" data-ecard="' + pp.memberId + '">🚨 Emergency card</button>' +
-        '<button class="cbtn ghost" data-person="' + pp.memberId + '">📄 Their page</button>' +
-        '<button class="cbtn ghost" data-pmem="' + pp.memberId + '">📒 Memory</button>' +
-        '<button class="cbtn ghost" data-mprof="' + pp.memberId + '">👤 Profile</button>' +
-        '</div></div>';
-    });
-    $('preplist').innerHTML = h || '<div class="ev">Loading…</div>';
+    var mem = {}; (membersCache || []).forEach(function(m){ mem[m.id] = m; });
+    var looked = prepCache.filter(function(pp){ var m = mem[pp.memberId]; return m && (m.role === 'parent' || m.on_app === false); });
+    var list = looked.length ? looked : prepCache;
+    var h = list.map(function(pp){
+      var missing = Object.keys(pp.items).filter(function(k){ return pp.items[k] !== 'ok' && PREP_LABEL[k]; });
+      return '<div class="crow"><button type="button" class="txt rowbtn" data-person="' + pp.memberId + '">' +
+             '<b>' + esc(pp.name) + '</b><small>' + (missing.length
+               ? missing.length + (missing.length === 1 ? ' thing' : ' things') + ' to complete: ' + missing.map(function(k){ return PREP_LABEL[k].toLowerCase(); }).slice(0, 3).join(', ') + (missing.length > 3 ? '…' : '')
+               : 'Everything important is recorded 🧡') + '</small></button>' +
+             '<span class="preppct">' + pp.pct + '%</span>' +
+             '<button class="cbtn ecard-btn" data-ecard="' + pp.memberId + '" aria-label="Emergency card for ' + esc(pp.name) + '">🚨</button></div>';
+    }).join('');
+    $('preplist').innerHTML = h || '<div class="ev">Add someone to the family to see how ready things are for them.</div>';
   }
   document.addEventListener('click', function(e){
     var b = e.target.closest('[data-pmem]');
@@ -6514,6 +6637,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('tr-who').innerHTML = order.map(function(m){
       return '<option value="' + m.id + '">' + esc(m.id === state.memberId ? 'Me (' + m.name + ')' : m.name) + (m.gen ? '' : ' - not in the tree yet') + '</option>';
     }).join('') + '<option value="new">+ Someone not on Parwah</option>';
+    if (trWant && byId[trWant]) { whoSel = trWant; trWant = null; }
     if (whoSel && (byId[whoSel] || whoSel === 'new')) $('tr-who').value = whoSel;
     else $('tr-who').value = unplaced.length ? order[0].id : 'new';
     if (trNext) { trNext = false; trShown = null; $('tr-name').value = ''; $('tr-place').value = ''; $('tr-of').value = ''; }
@@ -6532,7 +6656,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // trShown: the person the form was last filled for. The 12-second refresh
   // re-draws the tree but never undoes what someone is in the middle of
   // choosing; only choosing another person resets He or she.
-  var trShown = null, trNext = false;
+  var trShown = null, trNext = false, trWant = null, trOfShown = null;
   function fillTreeOf(){
     var who = $('tr-who').value, isNew = who === 'new', ofSel = $('tr-of').value, plSel = $('tr-place').value;
     var w = isNew ? null : treeMembers.filter(function(m){ return m.id === who; })[0];
@@ -6551,6 +6675,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // The sentence it will save, in plain words, before it is saved.
     var nm = isNew ? ($('tr-name').value.trim() || 'They') : (who === state.memberId ? 'You' : (w ? w.name : ''));
     var of = $('tr-of').value, pl = $('tr-place').value;
+    // Papa joined as "family", so the tree cannot say Father until it knows:
+    // asked once, here, for the person the sentence is about.
+    var ofm = of && treeMembers.filter(function(m){ return m.id === of; })[0];
+    // He or she was said about one person: choosing another asks again.
+    if (of !== trOfShown) {
+      trOfShown = of;
+      $('tr-ofg').querySelectorAll('button').forEach(function(x){ x.classList.remove('sel'); x.setAttribute('aria-pressed', 'false'); });
+    }
+    $('tr-ofg-wrap').hidden = !(ofm && !ofm.gender);
+    if (ofm && !ofm.gender) $('tr-ofg-label').textContent = 'Is ' + (ofm.id === state.memberId ? 'it you - he or she?' : ofm.name + ' he or she?');
     $('tr-say').textContent = of && pl
       ? nm + (nm === 'You' || nm === 'They' ? ' are ' : ' is ') + (of === state.memberId ? 'your ' : trName(of) + "'s ") + trWord(pl, g) + '.'
       : '';
@@ -6562,13 +6696,19 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('tr-links').innerHTML = links.length ? '<p class="trlbl" style="margin-top:0">Something wrong? Change it</p>' + links.join('') : '';
     $('tr-links').hidden = !links.length;
   }
-  $('tr-who').addEventListener('change', fillTreeOf);
-  $('tr-place').addEventListener('change', fillTreeOf);
-  $('tr-of').addEventListener('change', fillTreeOf);
+  // Any change means any old error no longer applies.
+  function trChanged(){ $('tr-err').hidden = true; fillTreeOf(); }
+  $('tr-who').addEventListener('change', trChanged);
+  $('tr-place').addEventListener('change', trChanged);
+  $('tr-of').addEventListener('change', trChanged);
+  $('tr-ofg').addEventListener('click', function(e){
+    var b = e.target.closest('[data-g]'); if (!b) return;
+    this.querySelectorAll('button').forEach(function(x){ var on = x === b; x.classList.toggle('sel', on); x.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  });
   $('tr-name').addEventListener('input', fillTreeOf);
   $('tr-gender').addEventListener('click', function(e){
     var b = e.target.closest('[data-g]'); if (!b) return;
-    trSetGender(b.getAttribute('data-g')); fillTreeOf();
+    trSetGender(b.getAttribute('data-g')); $('tr-err').hidden = true; fillTreeOf();
   });
   $('tr-go').addEventListener('click', function(){
     var g = trGender(), btn = this, err = $('tr-err'), who = $('tr-who').value, isNew = who === 'new';
@@ -6578,9 +6718,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (!g) { say('Choose he or she, so Parwah can say son or daughter.'); return; }
     if (!$('tr-place').value) { say('Choose son, daughter, husband, wife and so on.'); return; }
     if (!$('tr-of').value) { say('Choose who they are related to.'); return; }
+    var ofg = !$('tr-ofg-wrap').hidden && $('tr-ofg').querySelector('.sel');
+    if (!$('tr-ofg-wrap').hidden && !ofg) { say($('tr-ofg-label').textContent); return; }
     btn.disabled = true;
     var body = { action: isNew ? 'add_person' : 'place', code: state.code, memberId: state.memberId,
-                 place: $('tr-place').value, ofId: $('tr-of').value, gender: g };
+                 place: $('tr-place').value, ofId: $('tr-of').value, gender: g, ofGender: ofg ? ofg.getAttribute('data-g') : undefined };
     if (isNew) body.personName = $('tr-name').value.trim(); else body.targetId = who;
     post(API.circle, body)
       .then(function(j){
@@ -6795,7 +6937,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (!m) return;
     $('mp-av').textContent = (m.name || '?').trim().charAt(0).toUpperCase();
     $('mp-name').textContent = m.name;
-    $('mp-role').textContent = relLabel(m) + (m.role === 'parent' ? ' · senior mode' : '') + (m.on_app === false ? ' · not on Parwah' : '');
+    // Only the family word: "senior mode" and "admin" labelled people.
+    $('mp-role').textContent = relLabel(m) + (m.on_app === false ? ' · not on Parwah' : '');
     $('mp-phone').textContent = m.phone || 'not shared';
     $('mp-since').textContent = m.created_at ? fmtDue(String(m.created_at).slice(0, 10)) : '-';
     $('mp-place').textContent = placeLine(m) || 'not shared';
@@ -6814,13 +6957,19 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('mp-page').textContent = self ? '👤 My page' : '👤 Their page';
     $('giftbox').hidden = true;
     $('msheet').dataset.mid = m.id;
+    mpFrom = document.activeElement;
     $('msheet').hidden = false;
+    try { $('mp-x').focus(); } catch (e) {}
   }
+  // A dialog: Escape closes it, and focus goes back where it came from.
+  var mpFrom = null;
+  function mpClose(){ $('msheet').hidden = true; if (mpFrom && mpFrom.focus) { try { mpFrom.focus(); } catch (e) {} } }
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !$('msheet').hidden) mpClose(); });
   document.addEventListener('click', function(e){
     var c = e.target.closest('[data-mprof]');
     if (c && !e.target.closest('a')) openMemberSheet(c.getAttribute('data-mprof'));
   });
-  $('mp-x').addEventListener('click', function(){ $('msheet').hidden = true; });
+  $('mp-x').addEventListener('click', mpClose);
   $('msheet').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });
   $('mp-dm').addEventListener('click', function(){
     var mid = $('msheet').dataset.mid; $('msheet').hidden = true;
@@ -6858,7 +7007,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('mp-remind').addEventListener('click', function(){
     var mid = $('msheet').dataset.mid; $('msheet').hidden = true;
     switchTab('care'); setSec('care', 'rem');
-    if (mid !== state.memberId) $('r-for').value = mid;
+    // From someone's profile the usual meaning is "about Papa". Who does it
+    // stays open; only someone on Parwah can be given it.
+    var mm = (membersCache || []).filter(function(x){ return x.id === mid; })[0];
+    $('r-about').value = mid !== state.memberId ? mid : '';
+    $('r-for').value = 'any';
+    todoHint();
+    if (mm && mid !== state.memberId) $('r-title').placeholder = 'e.g. ' + String(mm.name).split(' ')[0] + "'s 9 pm tablets";
     try { $('r-title').focus(); } catch (e) {}
   });
 
@@ -8510,14 +8665,18 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var jc = new URLSearchParams(location.search).get('join');
     if (jc) {
       pendingJoin = jc.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
-      // Used once: a reload must not ask again.
+      // Out of the address so it is not shared on, but kept for this tab
+      // until the join goes through: a reload or a restored tab keeps it.
+      try { sessionStorage.setItem('parwah-join', pendingJoin); } catch (e) {}
       history.replaceState(history.state, '', location.pathname + location.hash);
+    } else {
+      try { pendingJoin = sessionStorage.getItem('parwah-join') || null; } catch (e) {}
     }
   } catch (e) {}
   var inviteFor = pendingJoin && loadGroups().filter(function(c){ return String(c.code).toUpperCase() === pendingJoin; })[0];
   if (state && state.code && state.memberId && pendingJoin && authUser) {
     // Already in that family: go there. Otherwise, the join card.
-    if (inviteFor) { pendingJoin = null; enterCircle(inviteFor); } else joinInvite();
+    if (inviteFor) { inviteDone(); enterCircle(inviteFor); } else if (inviteWaiting()) showWaiting(); else joinInvite();
   }
   else if (state && state.code && state.memberId) enterMain();
   else if (authUser && authUser.phone) {

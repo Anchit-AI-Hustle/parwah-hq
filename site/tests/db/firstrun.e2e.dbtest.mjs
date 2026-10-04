@@ -120,16 +120,44 @@ await J.click('#j-go'); await J.waitForTimeout(1300);
 ok('the family asks first: waiting', await J.isVisible('#pending-step'));
 await J.click('#pend-check'); await J.waitForTimeout(1300);
 ok('Check again does not pretend you got in because you are in another family', await J.isVisible('#pending-step') && !(await J.isVisible('#circle-step')));
+await J.reload(); await J.waitForTimeout(1300);
+ok('a reload while waiting comes back to the waiting screen, not the old family', await J.isVisible('#pending-step') && !(await J.isVisible('#main')));
 const reqId = (await admin.query(`select id from join_requests where circle_id = (select id from circles where code = $1) and status = 'pending'`, [other.code])).rows[0]?.id;
 if (reqId) await call('circle', { action: 'approve_join', code: other.code, memberId: other.memberId, requestId: reqId }, {}, 'POST', U.Meera.token);
 await J.click('#pend-check'); await J.waitForTimeout(1600);
 ok('once they say yes, Check again takes you in', reqId && await J.isVisible('#main') && /Verma Family/.test(await J.textContent('#m-title')), String(reqId));
+ok('and only then is the invite used up', await J.evaluate(() => sessionStorage.getItem('parwah-join') === null && sessionStorage.getItem('parwah-join-wait') === null));
+
+// ---- an invite to a family you are already in: you go there, and it is used
+{
+  const vm = (await admin.query(`select m.id from members m join circles c on c.id = m.circle_id where c.code = $1 and m.user_id = $2`, [other.code, U.Anchit.userId])).rows[0];
+  const ctxK = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+  await ctxK.addInitScript(([w]) => {
+    if (localStorage.getItem('parwah-user')) return;
+    localStorage.setItem('parwah-user', JSON.stringify({ id: w.userId, name: w.name, phone: w.phone, toured: true }));
+    localStorage.setItem('parwah-token', w.token);
+    localStorage.setItem('parwah', JSON.stringify({ code: w.code, memberId: w.memberId, name: w.name, role: 'family', circleName: 'Tandon Family' }));
+    localStorage.setItem('parwah-circles', JSON.stringify([{ code: w.code, circleName: 'Tandon Family', memberId: w.memberId, memberName: w.name, role: 'family' },
+                                                           { code: w.other, circleName: 'Verma Family', memberId: w.vm, memberName: w.name, role: 'family' }]));
+  }, [{ ...U.Anchit, code, other: other.code, vm: vm && vm.id }]);
+  const K = await ctxK.newPage(); K.on('pageerror', e => errors.push('K: ' + e.message));
+  await K.goto(BASE + '/?join=' + other.code); await K.waitForTimeout(1300);
+  ok('already in that family, the invite opens it', await K.isVisible('#main') && /Verma Family/.test(await K.textContent('#m-title')));
+  ok('and the invite is used up', await K.evaluate(() => sessionStorage.getItem('parwah-join') === null));
+  // Switching to the other family reloads: it must not be pulled back.
+  await K.evaluate(([w]) => localStorage.setItem('parwah', JSON.stringify({ code: w.code, memberId: w.memberId, name: w.name, role: 'family', circleName: 'Tandon Family' })), [{ ...U.Anchit, code }]);
+  await K.reload(); await K.waitForTimeout(1300);
+  ok('switching to another family afterwards stays there', await K.isVisible('#main') && /Tandon Family/.test(await K.textContent('#m-title')), await K.textContent('#m-title'));
+  await ctxK.close();
+}
 
 // ---- signed out: the invite is said, and the PIN screen never names anyone
 const ctxO = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
 const O = await ctxO.newPage(); O.on('pageerror', e => errors.push('O: ' + e.message));
 await O.goto(BASE + '/?join=' + code); await O.waitForTimeout(800);
 ok('signed out, the entry says you have been invited, with the code', await O.isVisible('#ob-invite') && (await O.textContent('#ob-invite-sub')).includes(code));
+await O.reload(); await O.waitForTimeout(800);
+ok('a reload before joining keeps the invite', await O.isVisible('#ob-invite') && (await O.textContent('#ob-invite-sub')).includes(code));
 ok('the pitch is the five things, and the hint is true', /papers, health, things to do and an emergency card/i.test(await O.textContent('#onboard > .lede')) && /choose a PIN or password next/.test(await O.textContent('#auth-step')));
 await O.fill('#au-phone', U.Papa.phone.slice(3)); await O.click('#au-go'); await O.waitForTimeout(900);
 ok('a known number is asked for its PIN without saying whose it is', await O.isVisible('#au-pinwrap') && !/Papa/.test(await O.textContent('#auth-step')), await O.textContent('#au-pinnote'));
@@ -198,7 +226,11 @@ ok('and Stay signed in stays', !(await A.isVisible('#asksheet')) && await A.isVi
 // ---- notifications: what needs you, as buttons, no log lines
 await call('events', { code, memberId: U.Anchit.memberId, type: 'message', text: 'chai?' }, {}, 'POST', U.Anchit.token);
 await A.evaluate(() => { location.hash = '#notifs'; }); await A.waitForTimeout(1200);
+await call('events', { code, memberId: U.Papa.memberId, type: 'pill', text: '' }, {}, 'POST', U.Papa.token);
+await admin.query(`insert into events (circle_id, member_id, type, text) values ((select id from circles where code = $1), null, 'care', 'Running late and nobody has it yet: Pay the bill')`, [code]);
+await A.reload(); await A.waitForTimeout(1200); await A.evaluate(() => { location.hash = '#notifs'; }); await A.waitForTimeout(800);
 const nl = await A.textContent('#nlist');
+ok('routine activity (Papa took his medicines) is not in the bell; something running late is', !/pills|medicines/i.test(nl) && /Running late/.test(nl), nl.slice(0, 200));
 ok('my own actions and chat messages are not in the bell', !/chai\?/.test(nl) && !/Anchit created/.test(nl), nl.slice(0, 200));
 ok('each row is a button', await A.$$eval('#nlist .nrow', rs => rs.every(r => r.tagName === 'BUTTON')));
 if (await A.$('#nlist .nrow')) { await A.click('#nlist .nrow'); await A.waitForTimeout(200); ok('the detail has no "Type:" log line', !/Type:/.test(await A.textContent('#ndetail'))); }
