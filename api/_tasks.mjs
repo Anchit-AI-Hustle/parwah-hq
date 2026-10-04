@@ -185,10 +185,10 @@ export async function createTask(sql, circle, me, body) {
   if (rec !== 'once' && !due.at) return no(400, 'A repeating task needs a first date and time');
   const esc = ESCALATE.includes(body.escalate) ? body.escalate : 'people';
   const about = body.aboutMemberId ? await memberIn(sql, circle.id, body.aboutMemberId) : null;
-  if (body.aboutMemberId && !about) return no(404, 'That person is not in this circle');
+  if (body.aboutMemberId && !about) return no(404, 'That person is not in this family');
   let owner = null;
   if (body.ownerId === 'me') owner = me;
-  else if (body.ownerId) { owner = await memberIn(sql, circle.id, body.ownerId); if (!owner) return no(404, 'That person is not in this circle'); }
+  else if (body.ownerId) { owner = await memberIn(sql, circle.id, body.ownerId); if (!owner) return no(404, 'That person is not in this family'); }
   if (offApp(owner)) return no(400, offApp(owner));
   const status = !owner ? 'open' : owner.id === me.id ? 'claimed' : 'assigned';
   const dueAt = due.at ? new Date(due.at) : null;
@@ -264,7 +264,7 @@ export async function taskAction(sql, circle, me, body) {
     if (!OPEN.includes(t.status)) return no(409, 'Only a task that is still to do can be handed over');
     if (!isMine(t, me)) return no(403, 'Only the person who asked or the person who has it can hand it over');
     let to = null;
-    if (body.ownerId) { to = await memberIn(sql, circle.id, body.ownerId); if (!to) return no(404, 'That person is not in this circle'); }
+    if (body.ownerId) { to = await memberIn(sql, circle.id, body.ownerId); if (!to) return no(404, 'That person is not in this family'); }
     if (offApp(to)) return no(400, offApp(to));
     const status = !to ? 'open' : to.id === me.id ? 'claimed' : 'assigned';
     await sql`update requests set status = ${status}, claimed_by = ${to ? to.id : null},
@@ -300,7 +300,7 @@ export async function taskAction(sql, circle, me, body) {
     let aboutId = t.about_member;
     if (body.aboutMemberId !== undefined) {
       if (!body.aboutMemberId) aboutId = null;
-      else { const a = await memberIn(sql, circle.id, body.aboutMemberId); if (!a) return no(404, 'That person is not in this circle'); aboutId = a.id; }
+      else { const a = await memberIn(sql, circle.id, body.aboutMemberId); if (!a) return no(404, 'That person is not in this family'); aboutId = a.id; }
     }
     const series = rec === 'once' ? null : (t.series_id || randomUUID());
     await sql`update requests set title = ${title}, due_at = ${dueAt}, all_day = ${allDay}, due_date = ${dueDate},
