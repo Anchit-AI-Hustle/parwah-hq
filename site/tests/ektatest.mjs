@@ -117,7 +117,9 @@ ok('a medicine question about someone with a three-word name is a medicine quest
   ok('a new question after it is read on its own', askedText(h.slice(0, 2).concat([{ role: 'user', content: 'What is the OTP scam?' }])) === 'What is the OTP scam?');
 }
 for (const t of ['Papa fell yesterday and still can\'t get up', 'Dadi passed out last night and is not responding now',
-                 'He had an accident last week and today he is breathless', 'He passed out yesterday and today he has chest pain'])
+                 'He had an accident last week and today he is breathless', 'He passed out yesterday and today he has chest pain',
+                 'He had a cold last week and has chest pain', 'Papa had a fever yesterday, now he is not breathing properly',
+                 'Mummy fell last year but she has fainted', 'Papa fell down yesterday, please help'])
   ok('in the past but happening now, so urgent: ' + t, classify(t) === 'emergency');
 ok('words about ending a life reach a person', classify('I want to die') === 'crisis' && classify('main jeena nahi chahta') === 'crisis');
 const em = renderEmergency();

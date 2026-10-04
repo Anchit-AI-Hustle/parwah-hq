@@ -70,11 +70,14 @@ const RE = {
 const PAST = /\b(yesterday|last (night|week|month|year)|(\d+|a|an|one|two|three|few) (hours?|days?|weeks?|months?|years?) ago|in (19|20)\d\d|kal raat|pichhle|pichle|history of|used to|years back)\b/i;
 // Said to be happening now, in so many words.
 const NOW = /\b(now|right now|just now|abhi|still|is (not breathing|unconscious|bleeding|having|choking)|can'?t get up|please help|help me)\b|\b(today|tonight|this (morning|afternoon|evening)|keeps?)\b[^.?!]{0,30}\b(breath|chest|pain|bleed|unconscious|unresponsive|not responding|faint|collaps|behosh|seizure|chok|fallen|fell)/i;
-// "has chest pain" is present too - but not "has had", "a history of",
-// "has ever", "has been": those ask about the past.
-const NOW_PLAIN = /\b(is|are|has|have|he'?s|she'?s)\b[^.?!]{0,30}\b(breath|chest|pain|bleed|unconscious|unresponsive|not responding|faint|collaps|behosh|seizure|chok|fallen|fell)/i;
+// When something past is mentioned, each part of the message is judged on
+// its own: "had a cold last week and has chest pain" is urgent, because the
+// past words belong to the cold. A part that names a symptom is happening
+// now unless that same part says it is past ("had", "a history of", "ever",
+// "been", or a time gone by). When in doubt, it is urgent.
 const NOT_NOW = /\b(had|history|ever|been)\b/i;
-const saysNow = t => NOW.test(t) || (NOW_PLAIN.test(t) && !NOT_NOW.test(t));
+const PARTS = /[,;.!?]+|\b(?:and|but|then|aur|lekin|par)\b/i;
+const saysNow = t => NOW.test(t) || t.split(PARTS).some(c => c && RE.emergency.test(c) && !PAST.test(c) && !NOT_NOW.test(c));
 
 // The family's words for a person, and the relation saved for them, so
 // "can Papa take..." finds the one member saved as father.
