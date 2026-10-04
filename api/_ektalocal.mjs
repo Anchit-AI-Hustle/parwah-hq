@@ -87,7 +87,8 @@ const ASKS_IF = /^\s*(did|was|were)\b|\b(any time|at any point|ever(?! since))\b
 // "Getting worse" counts for the part that names the emergency, or a part
 // that refers back to it ("...and it is worse today") - not for something
 // else in the same message ("his knee pain is getting worse").
-const WORSE = /\b((is|it'?s|getting) worse|worsening|badh (raha|rahi)|zyada ho)/i;
+// "was getting worse" is part of the past, not now.
+const WORSE = /(?<!\b(was|were|had been|had|used to be)\s+)\b((is|it'?s|getting) worse|worsening|badh (raha|rahi)|zyada ho)/i;
 // Refers back when what is getting worse is the pronoun, or nothing at all
 // ("it is worse today", "he is getting worse", "...and is getting worse",
 // "; worsening today", "Is he getting worse?"), not "he says his knee pain

@@ -111,6 +111,7 @@ for (const t of ['Papa passed out yesterday, what medicines is he on?', 'Mummy f
 for (const t of ['Has Papa had chest pain in the last week?', 'Does Papa have a history of chest pain?', 'Papa has a history of seizures'])
   ok('a question about the past, even with "has", so not alarmed: ' + t, classify(t) !== 'emergency');
 ok('something else getting worse does not make an old collapse urgent', classify('Papa collapsed in 2021, but his knee pain is getting worse. What medicines is he on?') !== 'emergency');
+ok('nor something that "was getting worse" back then', classify('Papa collapsed in 2021 while his knee pain was getting worse; what medicines is he on?') !== 'emergency');
 ok('nor "worsening knee pain"', classify('Papa collapsed in 2021; worsening knee pain means he needs his medicines reviewed') !== 'emergency');
 ok('nor when that part starts with "he"', classify('Papa collapsed in 2021, but he says his knee pain is getting worse. What medicines is he on?') !== 'emergency');
 ok('"since" in a question about a past stretch is not an alarm', classify('Did Papa have a seizure at any time since his fall last year?') !== 'emergency');
