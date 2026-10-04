@@ -70,7 +70,7 @@ const RE = {
 const PAST = /\b(yesterday|last (night|week|month|year)|(\d+|a|an|one|two|three|few) (hours?|days?|weeks?|months?|years?) ago|in (19|20)\d\d|kal raat|pichhle|pichle|history of|used to|years back)\b/i;
 // Said to be happening now, in so many words - including something that
 // began earlier and has not stopped ("has been unconscious since last night").
-const NOW = /\b(now|right now|just now|abhi|still|ongoing|(has|have) been having|keeps? having|(is|it'?s|getting) worse|worsening|badh (raha|rahi)|zyada ho|is (not breathing|unconscious|bleeding|having|choking)|can'?t get up|please help|help me)\b|\b(today|tonight|this (morning|afternoon|evening)|keeps?)\b[^.?!]{0,30}\b(breath|chest|pain|bleed|unconscious|unresponsive|not responding|faint|collaps|behosh|seizure|chok|fallen|fell)/i;
+const NOW = /\b(now|right now|just now|abhi|still|ongoing|(has|have) been having|keeps? having|is (not breathing|unconscious|bleeding|having|choking)|can'?t get up|please help|help me)\b|\b(today|tonight|this (morning|afternoon|evening)|keeps?)\b[^.?!]{0,30}\b(breath|chest|pain|bleed|unconscious|unresponsive|not responding|faint|collaps|behosh|seizure|chok|fallen|fell)/i;
 // When something past is mentioned, each part of the message is judged on
 // its own: "had a cold last week and has chest pain" is urgent, because the
 // past words belong to the cold. A part that names a symptom is happening
@@ -84,8 +84,14 @@ const PARTS = /[,;.!?]+|\b(?:and|but|then|aur|lekin|par)\b/i;
 // a seizure at any time since his fall last year?").
 const ONGOING = /\b(since|ab tak|abhi tak)\b/i;
 const ASKS_IF = /^\s*(did|was|were)\b|\b(any time|at any point|ever)\b/i;
+// "Getting worse" counts for the part that names the emergency, or a part
+// that refers back to it ("...and it is worse today") - not for something
+// else in the same message ("his knee pain is getting worse").
+const WORSE = /\b((is|it'?s|getting) worse|worsening|badh (raha|rahi)|zyada ho)/i;
+const REFERS_BACK = /^\s*(it|this|that|he|she|they|woh?|ye[h]?)\b/i;
 const saysNow = t => NOW.test(t) || (ONGOING.test(t) && !ASKS_IF.test(t))
-  || t.split(PARTS).some(c => c && RE.emergency.test(c) && !PAST.test(c) && !NOT_NOW.test(c));
+  || t.split(PARTS).some(c => c && ((RE.emergency.test(c) && !PAST.test(c) && !NOT_NOW.test(c))
+                                   || (WORSE.test(c) && (RE.emergency.test(c) || REFERS_BACK.test(c)))));
 // Words alone cannot always tell whether it is happening now. So a message
 // that names an emergency is never answered without the way to 112, even
 // when it reads as the past and gets its records answer first.

@@ -110,6 +110,7 @@ for (const t of ['Papa passed out yesterday, what medicines is he on?', 'Mummy f
   ok('in the past, so not alarmed: ' + t, classify(t) !== 'emergency');
 for (const t of ['Has Papa had chest pain in the last week?', 'Does Papa have a history of chest pain?', 'Papa has a history of seizures'])
   ok('a question about the past, even with "has", so not alarmed: ' + t, classify(t) !== 'emergency');
+ok('something else getting worse does not make an old collapse urgent', classify('Papa collapsed in 2021, but his knee pain is getting worse. What medicines is he on?') !== 'emergency');
 ok('"since" in a question about a past stretch is not an alarm', classify('Did Papa have a seizure at any time since his fall last year?') !== 'emergency');
 ok('but it still names an emergency, so the answer carries the way to 112', mentionsUrgent('Did Papa have a seizure at any time since his fall last year?') && /112/.test(URGENT_TOO) && /SOS/.test(URGENT_TOO));
 ok('a medicine question about someone with a three-word name is a medicine question', classify('Can Raj Kumar Singh take Crocin?') === 'health');
