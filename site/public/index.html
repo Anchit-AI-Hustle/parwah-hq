@@ -644,6 +644,11 @@ details.more[open]>summary::before{content:"▾ "}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
 @media(prefers-reduced-motion:reduce){#emic.rec{animation:none}}
 #evoice{margin-left:auto}
+.gresult{font-family:var(--disp);font-size:var(--fs-20);font-weight:700;margin:0 0 var(--space-8)}
+.grules{margin-top:var(--space-12)}
+.grules summary{font-weight:700;cursor:pointer}
+.grules ul{margin:var(--space-8) 0 0;padding-left:var(--space-20);display:grid;gap:var(--space-4)}
+body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
 
 /* notifications */
 #bell{position:relative;border:0;background:none;color:var(--cream);font-size:var(--fs-18);cursor:pointer;padding:var(--space-2) var(--space-8)}
@@ -736,11 +741,12 @@ details.more[open]>summary::before{content:"▾ "}
 .nrow small{display:block;color:var(--ink-soft);font-size:var(--fs-12);margin-top:var(--space-2)}
 
 /* drawing board */
-#dboard{width:100%;aspect-ratio:4/3;background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-16);touch-action:none;display:block;box-shadow:0 1px 2px rgba(36,31,23,.03),0 8px 22px rgba(36,31,23,.05)}
+#dboard{width:100%;aspect-ratio:4/3;background:var(--card-face);border:1px solid var(--bone-2);border-radius:var(--radius-16);touch-action:none;display:block;box-shadow:0 1px 2px rgba(36,31,23,.03),0 8px 22px rgba(36,31,23,.05)}
 .dtools{display:flex;gap:var(--space-8);align-items:center;flex-wrap:wrap;margin:var(--space-12) 0}
-.dcol{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer}
+.dcol{width:var(--tap-min);height:var(--tap-min);border-radius:50%;border:2px solid var(--bone-2);cursor:pointer;flex:none}
+.dcol.erase{background:var(--surface);color:var(--ink);font-size:var(--fs-20);display:inline-flex;align-items:center;justify-content:center}
 .dcol.sel{border-color:var(--ink);transform:scale(1.12)}
-.dsize{border:1px solid var(--bone-2);background:var(--surface);border-radius:var(--radius-pill);padding:var(--space-4) var(--space-12);font-family:var(--body);font-size:var(--fs-12);font-weight:700;cursor:pointer}
+.dsize{border:1px solid var(--bone-2);background:var(--surface);color:var(--ink);border-radius:var(--radius-pill);min-height:var(--tap-min);padding:var(--space-4) var(--space-16);font-family:var(--body);font-size:var(--fs-14);font-weight:700;cursor:pointer}
 .dsize.sel{background:var(--dusk);color:var(--marigold)}
 
 /* read receipts */
@@ -2073,12 +2079,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <p class="eyebrow">Whole family · 2 to 12 players</p>
       <div class="card">
         <h3>Saanp Seedhi 🐍🪜</h3>
-        <p>Snakes & Ladders with a twist - snakes cost you a truth-or-dare, ladders earn rewards. Turns work across any timezone.</p>
+        <p>Snakes & Ladders with a twist - snakes cost you a truth-or-dare, ladders earn rewards. 2 to 8 players.</p>
+        <p class="pickhead">Who's playing with you?</p>
+        <div class="members bpick" data-for="snakes"></div>
         <div class="prow2">
-          <button class="go" id="g-start">🎲 With the family</button>
+          <button class="go" id="g-start">🎲 Start with them</button>
           <button class="cbtn ghost" id="g-solo">🙋 On my own</button>
         </div>
-        <p class="hint" style="margin-top:var(--space-8)">Nobody free? Play against Parwah - same board, same snakes.</p>
+        <p class="hint" style="margin-top:var(--space-8)">Only the people you tick are asked to play. If someone has not played for 12 hours, anyone in the game can let Parwah play their turn.</p>
       </div>
       <div class="card">
         <h3>Antakshari 🎤</h3>
@@ -2219,6 +2227,22 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <p class="hint" id="g-last"></p>
         <div class="twist" id="g-twist" hidden></div>
       </div>
+      <!-- Every turn game: the result and Play again when it is over; the
+           way past someone who is not playing; how to play. -->
+      <div class="card" id="g-foot" hidden>
+        <p class="gresult" id="g-result" hidden aria-live="polite"></p>
+        <p class="hint" id="g-away" hidden></p>
+        <div class="prow2" id="g-acts" style="flex-wrap:wrap">
+          <button class="go" id="g-again" hidden>🔁 Play again</button>
+          <button class="cbtn" id="g-hand" hidden></button>
+          <button class="cbtn ghost" id="g-done" hidden>← All games</button>
+          <button class="cbtn no" id="g-leave" hidden>Leave this game</button>
+        </div>
+        <details class="grules" id="g-rules">
+          <summary>How to play</summary>
+          <ul id="g-rules-list"></ul>
+        </details>
+      </div>
     </div>
     </div>
 
@@ -2233,13 +2257,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <button class="dcol" data-dc="#E8A23D" style="background:#E8A23D" aria-label="Marigold"></button>
         <button class="dcol" data-dc="#24463C" style="background:#24463C" aria-label="Pine"></button>
         <button class="dcol" data-dc="#3B6FB5" style="background:#3B6FB5" aria-label="Blue"></button>
-        <button class="dcol" data-dc="#FFFFFF" style="background:#fff;border-color:var(--bone-2)" aria-label="Eraser"></button>
+        <button class="dcol erase" data-dc="erase" aria-label="Eraser">🧽</button>
         <button class="dsize sel" data-ds="4">Fine</button>
         <button class="dsize" data-ds="10">Bold</button>
         <button class="dsize" data-ds="20">Big</button>
       </div>
       <div style="display:flex;gap:var(--space-8);flex-wrap:wrap">
         <button class="cbtn" id="d-share">📤 Share to family chat</button>
+        <button class="cbtn ghost" id="d-undo">↩ Undo my last line</button>
         <button class="cbtn no" id="d-clear">Wipe the board</button>
       </div>
     </div>
@@ -2799,6 +2824,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // phone it shows only on the chat list: families talk on WhatsApp, and
     // elsewhere it covered the five things.
     $('chat-fab').hidden = $('ekta-fab').hidden || (!wideScreen() && t !== 'chat');
+    fabRoom();
     $('ncsheet').hidden = true;
     $('tsheet').hidden = true;
     if (t !== 'ekta' && window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (e) {} }
@@ -2866,6 +2892,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     document.querySelectorAll('#tabs .subnav[data-parent="' + pane + '"] button').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-sec') === sec);
     });
+    if (pane === 'fun') fabRoom();
   }
   ['care', 'fun', 'vault', 'day'].forEach(function(pane){
     $(pane + '-seg').addEventListener('click', function(e){
@@ -6122,6 +6149,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('game-on').hidden = true;
     $('game-list').hidden = false;
     $('game-none').hidden = false;
+    fabRoom();
   }
   function openGame(id){
     if (!state) return;
@@ -6147,6 +6175,81 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }
   }
   function renderGameInner(g){
+    renderGameBody(g);
+    renderFoot(g);
+    fabRoom();
+  }
+  // How to play, in a few plain lines, read from the rules the game uses.
+  var GRULES = {
+    snakes: ['Take turns to roll the dice and move that many squares.',
+             'A ladder takes you up; a snake takes you down.',
+             'A snake gives you a truth or a dare, and a ladder a reward. In a game with the family these are posted in the family chat.',
+             'You need the exact number to land on 100. First to 100 wins.'],
+    ttt: ['Two players take turns: one is ✕, the other ◯.',
+          'Put your mark in any empty square.',
+          'Three in a row, across, down or corner to corner, wins. A full board with no line is a draw.'],
+    ludo: ['Roll a 6 to bring a token out of your base.',
+           'Move a token as many squares as you roll. If more than one can move, tap the one you want.',
+           'A 6, sending someone back to base, or getting a token home gives you another roll. Three 6s in a row pass your turn.',
+           'Land on someone and they go back to base, except on the star squares, which are safe.',
+           'Get all four tokens home first to win.'],
+    bhabhi: ['All the cards are dealt. Whoever has the Ace of Spades starts.',
+             'Play a card of the suit that was led if you have one.',
+             'If you cannot, play any card. The round stops, and whoever played the highest card of the suit led picks up every card in it and leads next.',
+             'If everyone follows suit, the cards are set aside and the highest card leads next.',
+             'Empty your hand to get away. The last one still holding cards loses.'],
+    vyapar: ['Roll two dice and move. Buy a city or a train when you land on it, or pass.',
+             'Others pay you rent when they land on what you own. Own every city of one colour and the rent doubles.',
+             'With a full colour set you can build up to 3 houses on a city, on your turn before you roll. Each house raises the rent.',
+             'Doubles give you another roll. Three doubles, or the Traffic jam square, cost you a turn.',
+             'Passing Start pays 200. Run out of money and you are out. The game ends after ' + '30 rounds each, or when one business is left, and the richest wins. Play money only.']
+  };
+  var GAWAY_MS = 12 * 3600 * 1000;
+  function gameOver(st){ return !!(st && (st.winner || st.draw || st.loser)); }
+  function resultLine(st, kind){
+    if (kind === 'ttt') return st.draw ? '🤝 A draw.' : '🏆 ' + st.winner + ' won.';
+    if (kind === 'bhabhi') return '🃏 ' + (st.order && st.order[0] ? st.order[0] + ' got away first' : 'Game over') + (st.loser ? '; ' + st.loser + ' holds the last cards.' : '.');
+    if (kind === 'vyapar') return '🏠 ' + (st.winner ? st.winner + ' won' + (st.byWorth ? ', the richest business.' : ', the last business standing.') : 'Game over.');
+    return '🏆 ' + (st.winner ? st.winner + ' won.' : 'Game over.');
+  }
+  function renderFoot(g){
+    var foot = $('g-foot');
+    var st = g && g.state, kind = st && (st.kind || g.kind);
+    if (!g || !GRULES[kind]) { foot.hidden = true; return; }
+    foot.hidden = false;
+    var over = gameOver(st) || g.status === 'done';
+    var meSeat = st.players.filter(function(p){ return p && p.id === state.memberId; })[0];
+    var humans = st.players.filter(function(p){ return p && !p.bot; });
+    $('g-result').hidden = !over;
+    if (over) $('g-result').textContent = resultLine(st, kind);
+    $('g-again').hidden = !(over && meSeat);
+    $('g-done').hidden = !over;
+    // Ended: the result and what next, not "End the game for everyone?".
+    ['t-end', 'l-end', 'b-end', 'v-end', 'g-quit'].forEach(function(id){ if ($(id)) $(id).hidden = over; });
+    var cur = !over && st.players[st.turn];
+    var waited = Date.now() - Number(st.turnAt || 0);
+    var stuck = cur && !cur.bot && !cur.away && cur.id !== state.memberId && meSeat && waited >= GAWAY_MS;
+    $('g-hand').hidden = !stuck;
+    $('g-away').hidden = !stuck;
+    if (stuck) {
+      $('g-hand').textContent = '🤖 Let Parwah play for ' + cur.name;
+      $('g-hand').setAttribute('data-target', cur.id);
+      $('g-away').textContent = cur.name + ' has not played for over 12 hours. Parwah can play their turns so the game goes on.';
+    }
+    // Leaving matters only when other people are playing on.
+    $('g-leave').hidden = over || !meSeat || meSeat.away || humans.length < 2;
+    $('g-rules-list').innerHTML = GRULES[kind].map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('');
+    // No action to offer: no empty row above How to play.
+    $('g-acts').hidden = [].every.call($('g-acts').children, function(b){ return b.hidden; });
+  }
+  // The floating buttons step aside wherever they would cover a game or the
+  // drawing board.
+  function fabRoom(){
+    var fun = curTab === 'fun';
+    var board = document.querySelector('#pane-fun .subsec[data-sec="board"]');
+    document.body.classList.toggle('nofab', fun && ((!$('game-on').hidden && !!curGame) || (board && !board.hidden)));
+  }
+  function renderGameBody(g){
     curGame = g;
     $('game-list').hidden = !!g;
     $('game-none').hidden = !!g;
@@ -6242,7 +6345,32 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (b) openGame(b.getAttribute('data-gopen'));
   });
   $('g-back').addEventListener('click', function(){ showGameList(); refreshFun(); });
-  $('g-start').addEventListener('click', function(){ gamePost({ action: 'start' }); });
+  $('g-start').addEventListener('click', function(){
+    var ids = []; document.querySelectorAll('.bpick[data-for="snakes"] input:checked').forEach(function(i){ ids.push(i.value); });
+    if (!ids.length) { toast('Tick who is playing with you, or play on your own'); return; }
+    gamePost({ action: 'start', playerIds: ids });
+  });
+  // Play again: the same game, the same people (Parwah keeps its seats).
+  $('g-again').addEventListener('click', function(){
+    var g = curGame; if (!g) return;
+    var st = g.state, kind = st.kind || g.kind;
+    var others = st.players.filter(function(p){ return p && !p.bot && p.id !== state.memberId; }).map(function(p){ return p.id; });
+    var alone = !others.length;
+    if (kind === 'ttt') gamePost(alone ? { action: 'start_ttt', vsId: 'bot', solo: true } : { action: 'start_ttt', vsId: others[0] });
+    else if (kind === 'snakes') gamePost(alone ? { action: 'start', solo: true } : { action: 'start', playerIds: others });
+    else gamePost(alone ? { action: 'start_board', game: kind, solo: true } : { action: 'start_board', game: kind, playerIds: others });
+  });
+  $('g-done').addEventListener('click', function(){ showGameList(); refreshFun(); });
+  $('g-hand').addEventListener('click', function(){
+    var who = this.getAttribute('data-target');
+    gamePost({ action: 'away', who: 'them', targetId: who });
+  });
+  $('g-leave').addEventListener('click', function(){
+    askSheet('Leave this game?', 'Parwah will play your turns, so the game goes on for everyone else.', 'Yes, leave', 'Stay', true).then(function(yes){
+      if (!yes) return;
+      gamePost({ action: 'away', who: 'me' }, function(j){ if (j.ended) { showGameList(); refreshFun(); } });
+    });
+  });
   // Playing alone is a first-class way to play: nothing is announced to the
   // family, and nobody is notified about a game they are not in.
   $('g-solo').addEventListener('click', function(){ gamePost({ action: 'start', solo: true }); });
@@ -6362,7 +6490,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function renderBhabhi(st){
     $('g-bhabhi').hidden = false;
     var me = st.me, over = !!st.loser, myTurn = !over && st.turn === me;
-    $('b-status').textContent = over ? '🃏 ' + (st.loser ? st.loser + ' is the Bhabhi! ' : '') + (st.order && st.order[0] ? st.order[0] + ' got away first.' : '')
+    $('b-status').textContent = over ? '🃏 ' + (st.order && st.order[0] ? st.order[0] + ' got away first. ' : '') + (st.loser ? st.loser + ' holds the last cards.' : '')
       : myTurn ? (st.trick.length ? 'Your turn - follow ' + ({ S: 'spades', H: 'hearts', D: 'diamonds', C: 'clubs' })[st.leadSuit] + ' if you can' : st.first ? 'You have the Ace of Spades - start the game' : 'Your lead - play any card')
       : me < 0 ? 'Watching' : 'Waiting for ' + st.players[st.turn].name;
     $('b-seats').innerHTML = st.players.map(function(p, i){
@@ -7150,11 +7278,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function drawStroke(st){
     var cv = boardCanvas(), ctx = boardCtx(), w = cv.clientWidth, h = cv.clientHeight;
     if (!st || !st.p || st.p.length < 2) return;
-    ctx.strokeStyle = st.c; ctx.lineWidth = st.s; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    // The eraser removes ink (it does not paint the paper colour on top).
+    ctx.globalCompositeOperation = st.e ? 'destination-out' : 'source-over';
+    ctx.strokeStyle = st.e ? '#000' : st.c; ctx.lineWidth = st.s; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     ctx.beginPath();
     ctx.moveTo(st.p[0][0] * w, st.p[0][1] * h);
     for (var i = 1; i < st.p.length; i++) ctx.lineTo(st.p[i][0] * w, st.p[i][1] * h);
     ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
   }
   var dClearedAt = null;
   function boardSync(){
@@ -7166,8 +7297,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     apiGet(url).then(function(j){
       if (!j.ok) return;
       if (j.clearedAt && j.clearedAt !== dClearedAt) {
-        if (dClearedAt !== null) { var cv = boardCanvas(); boardCtx().clearRect(0, 0, cv.clientWidth, cv.clientHeight); dStrokeIds = {}; dLastTs = null; }
+        var first = dClearedAt === null;
         dClearedAt = j.clearedAt;
+        // Wiped, or a line was taken back: start again from every stroke on
+        // the next look, rather than draw this partial batch on a clean page.
+        if (!first) { var cv = boardCanvas(); boardCtx().clearRect(0, 0, cv.clientWidth, cv.clientHeight); dStrokeIds = {}; dLastTs = null; return; }
         if (dLastTs === null && j.strokes && !j.strokes.length) return;
       }
       (j.strokes || []).forEach(function(row){
@@ -7186,7 +7320,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }
     cv.addEventListener('pointerdown', function(e){
       e.preventDefault(); cv.setPointerCapture(e.pointerId);
-      drawing = { p: [pos(e)], c: dColor, s: dSize };
+      drawing = dColor === 'erase' ? { p: [pos(e)], c: '#000000', s: Math.max(dSize, 10) * 2, e: true } : { p: [pos(e)], c: dColor, s: dSize };
     });
     cv.addEventListener('pointermove', function(e){
       if (!drawing) return;
@@ -7194,14 +7328,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       var last = drawing.p[drawing.p.length - 1];
       drawing.p.push(p);
       var ctx = boardCtx(), w = cv.clientWidth, h = cv.clientHeight;
+      ctx.globalCompositeOperation = drawing.e ? 'destination-out' : 'source-over';
       ctx.strokeStyle = drawing.c; ctx.lineWidth = drawing.s; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(last[0] * w, last[1] * h); ctx.lineTo(p[0] * w, p[1] * h); ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
     });
     function up(){
       if (!drawing) return;
       var st = drawing; drawing = null;
       if (st.p.length < 2) return;
-      post(API_BOARD, { code: state.code, memberId: state.memberId, action: 'stroke', points: st.p, color: st.c, size: st.s })
+      post(API_BOARD, { code: state.code, memberId: state.memberId, action: 'stroke', points: st.p, color: st.c, size: st.s, erase: !!st.e })
         .then(function(j){ if (j.ok) { dStrokeIds[j.id] = 1; dLastTs = j.created_at; } })
         .catch(function(){ toast('Stroke not saved - no connection'); });
     }
@@ -7214,12 +7350,25 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var z = e.target.closest('.dsize');
     if (z) { dSize = +z.getAttribute('data-ds'); this.querySelectorAll('.dsize').forEach(function(x){ x.classList.toggle('sel', x === z); }); }
   });
+  function boardRestart(){
+    var cv = boardCanvas(); boardCtx().clearRect(0, 0, cv.clientWidth, cv.clientHeight);
+    dStrokeIds = {}; dLastTs = null; dClearedAt = null; boardSync();
+  }
+  $('d-undo').addEventListener('click', function(){
+    post(API_BOARD, { code: state.code, memberId: state.memberId, action: 'undo' })
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Nothing of yours to undo'); return; }
+        boardRestart();
+      }).catch(function(){ toast('No connection - try again'); });
+  });
   $('d-clear').addEventListener('click', function(){
-    if (!confirm('Wipe the board for everyone?')) return;
+    askSheet('Wipe the whole board?', 'This removes every drawing on it, other people\u2019s too, for the whole family. It cannot be undone.', 'Yes, wipe it', 'Keep it', true).then(function(yes){
+    if (!yes) return;
     post(API_BOARD, { code: state.code, memberId: state.memberId, action: 'clear' })
       .then(function(j){
         if (j.ok) { var cv = boardCanvas(); boardCtx().clearRect(0, 0, cv.clientWidth, cv.clientHeight); dStrokeIds = {}; dLastTs = null; toast('Board wiped 🎨'); }
       }).catch(function(){ toast('No connection - try again'); });
+    });
   });
   $('d-share').addEventListener('click', function(){
     var cv = boardCanvas();

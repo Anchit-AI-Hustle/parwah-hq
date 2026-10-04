@@ -63,10 +63,22 @@ export default async function handler(req, res) {
       const color = /^#[0-9a-fA-F]{6}$/.test(String(body.color || '')) ? body.color : '#241F17';
       const size = Math.max(1, Math.min(24, Number(body.size) || 4));
       const stroke = { p: clean, c: color, s: size };
+      if (body.erase === true) { stroke.e = true; stroke.s = Math.max(1, Math.min(48, Number(body.size) || 20)); }
       const r = await sql`insert into doodles (circle_id, member_id, stroke)
                           values (${circle.id}, ${me.id}, ${JSON.stringify(stroke)}::jsonb)
                           returning id, created_at`;
       return res.status(201).json({ ok: true, id: r[0].id, created_at: r[0].created_at });
+    }
+
+    // Take back my own last line. Everyone's board starts again from the
+    // strokes that remain (the same signal a wipe uses).
+    if (body.action === 'undo') {
+      const gone = await sql`delete from doodles where id = (select id from doodles where circle_id = ${circle.id} and member_id = ${me.id}
+                                                      order by created_at desc limit 1) returning id`;
+      if (!gone[0]) return res.status(404).json({ ok: false, error: 'Nothing of yours to undo' });
+      await sql`insert into board_meta (circle_id, cleared_at) values (${circle.id}, now())
+                on conflict (circle_id) do update set cleared_at = now()`;
+      return res.status(200).json({ ok: true, id: gone[0].id });
     }
 
     if (body.action === 'clear') {
