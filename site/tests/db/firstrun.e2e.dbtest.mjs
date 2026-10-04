@@ -316,7 +316,7 @@ await A.click('#hamb'); await A.waitForTimeout(200);
 if (process.env.FR_SHOT_DIR) { await A.screenshot({ path: process.env.FR_SHOT_DIR + '/drawer-390-light.png' }); await A.emulateMedia({ colorScheme: 'dark' }); await A.waitForTimeout(100); await A.screenshot({ path: process.env.FR_SHOT_DIR + '/drawer-390-dark.png' }); await A.emulateMedia({ colorScheme: 'light' }); }
 ok('the menu takes focus', await A.evaluate(() => document.getElementById('drawer').contains(document.activeElement)));
 const dnames = await A.$$eval('#drawer .ditem:not(.sub)', bs => bs.map(b => b.textContent.replace('▾', '').trim()));
-ok('the menu uses the same names, with the rest under More', dnames.slice(0, 5).join('|') === '🏠 Today|🔐 Vault|🩺 Health & contacts|✅ To do|👨‍👩‍👧 Family' && /More/.test(await A.textContent('#drawer')), dnames.join('|'));
+ok('the menu uses the same names, with the rest under More', dnames.slice(0, 8).join('|') === '🏠 Today|💬 Chat|✨ Ask Ekta|🎉 Together|🔐 Vault|🩺 Health & contacts|✅ To do|👨‍👩‍👧 Family' && /More/.test(await A.textContent('#drawer')), dnames.join('|'));
 await A.keyboard.press('Escape'); await A.waitForTimeout(200);
 ok('Escape closes it and focus returns to the menu button', await A.isHidden('#drawer') && await A.evaluate(() => document.activeElement && document.activeElement.id === 'hamb'));
 

@@ -765,7 +765,6 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
 
 /* member profile sheet */
 .fab.chatfab{bottom:calc(var(--tabs-h) + 84px + env(safe-area-inset-bottom));background:var(--surface);color:var(--ink);border:1px solid var(--bone-2)}
-.fab.chatfab.solo{bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom))}
 /* On a phone the two floating buttons are round icons: with their words
    they covered the controls under them (Start duel, on a 320px screen).
    The names stay for screen readers and as tooltips. */
@@ -773,7 +772,6 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
   .fab{width:56px;height:56px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:var(--fs-24)}
   .fab .flbl{display:none}
   .fab.chatfab{bottom:calc(var(--tabs-h) + 86px + env(safe-area-inset-bottom))}
-  .fab.chatfab.solo{bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom))}
 }
 #nc-list{display:flex;flex-direction:column;gap:var(--space-8);margin-top:var(--space-8);max-height:44vh;overflow-y:auto}
 .msheet{position:fixed;inset:0;background:rgba(24,38,34,.55);z-index:var(--z-sheet);display:flex;align-items:flex-start;justify-content:center;padding:var(--space-20);overflow-y:auto;overscroll-behavior:contain}
@@ -871,7 +869,6 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
   body.inapp .toast{left:calc(50% + var(--side-w)/2);bottom:26px}
   body.inapp .fab{right:28px;bottom:28px}
   body.inapp .fab.chatfab{bottom:94px}
-  body.inapp .fab.chatfab.solo{bottom:28px}
 
   /* Reading and typing want a comfortable measure even when the window is
      wide - only the grids below are allowed to use the full width. */
@@ -2865,9 +2862,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var inApp = document.body.classList.contains('inapp');
     $('ekta-fab').hidden = !inApp || t === 'ekta' || (t === 'chat' && !!curChat);
     $('chat-fab').hidden = !inApp || t === 'chat';
-    // Alone, the chat button takes the bottom slot rather than floating
-    // over an empty one.
-    $('chat-fab').classList.toggle('solo', $('ekta-fab').hidden);
     fabRoom();
     $('ncsheet').hidden = true;
     $('tsheet').hidden = true;

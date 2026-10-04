@@ -175,9 +175,10 @@ for (const [label, viewport] of [['phone', { width:390, height:844 }], ['wide sc
   await page.click('#ekta-fab'); await page.waitForTimeout(300);
   ok(!(await vis(page, '#ekta-fab')), `${label}: on Ekta's screen the Ekta button steps aside`);
   ok(await vis(page, '#chat-fab'), `${label}: and the chat button stays`);
-  const solo = await box(page, '#chat-fab'), tb = await page.locator('#tabs').boundingBox();
-  ok(solo && (label !== 'phone' ? viewport.height - (solo.y + solo.height) < 60 : tb && tb.y - (solo.y + solo.height) < 40),
-     `${label}: alone, it drops to the bottom slot rather than floating over an empty one`);
+  const solo = await box(page, '#chat-fab'), send = await box(page, '#send'), bar = await page.locator('#composer').boundingBox();
+  ok(solo && send && !overlap(solo, send) && bar && solo.y + solo.height <= bar.y,
+     `${label}: on Ekta's screen it keeps its place above the typing bar, never on Send`);
+
   // Every other screen has both.
   for (const t of ['vault', 'care', 'people', 'fun', 'day', 'profile', 'notifs', 'memory']) {
     await page.evaluate(h => { location.hash = '#' + h; }, t); await page.waitForTimeout(250);
