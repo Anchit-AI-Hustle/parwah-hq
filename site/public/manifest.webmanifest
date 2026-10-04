@@ -1,7 +1,7 @@
 {
   "name": "Parwah - the family superapp",
   "short_name": "Parwah",
-  "description": "The family superapp: care tasks, check-ins, SOS, chat, family memory, documents and games in one private circle.",
+  "description": "The family superapp for what matters: papers, health details, things to do, the family tree and an emergency card, for your family only.",
   "id": "/app/",
   "start_url": "/",
   "scope": "/",

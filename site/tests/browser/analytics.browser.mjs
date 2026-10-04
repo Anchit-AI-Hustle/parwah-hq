@@ -126,8 +126,9 @@ for (const url of MARKETING) {
 }
 
 // ---- 7. the conversion this site exists to cause
+// The launch list lives on /launch/; /welcome/ sends people there.
 {
-  const { pg } = await open('/welcome/', { withId: true, storage: 'yes' });
+  const { pg } = await open('/launch/', { withId: true, storage: 'yes' });
   await pg.waitForTimeout(900);
   const sent = [];
   await pg.exposeFunction('__ev', (n, p) => sent.push([n, p]));
