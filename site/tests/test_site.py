@@ -445,7 +445,7 @@ check("vault: uploads are size- and type-limited",
       "MAX_FILE" in vault and "OK_MIME" in vault)
 app_src = (REPO / "site/public/index.html").read_text(encoding="utf-8")
 check("vault: the app never renders more than a masked number",
-      "'•••• •••• '" in app_src and "'••••' + esc(d.last4)" in app_src)
+      "'Ending ' + d.last4" in app_src and "'••••' + esc(d.last4)" in app_src)
 
 # 10g. WAY IN - a short invite code must not be the whole security model.
 dbsrc = (API_DIR / "_db.mjs").read_text(encoding="utf-8")
@@ -524,7 +524,7 @@ check("layout: the desktop content is not capped at a phone width",
 # that was one narrow ribbon with the form scrolled off. The grid spans below
 # must match how many children each list view actually puts in column one -
 # add a filter row and forget the span, and the form detaches from the list.
-_lv = {"book-list-view": 4, "vd-list-view": 2}
+_lv = {"book-list-view": 4, "vd-list-view": 4}
 _spans = []
 for cid, want in _lv.items():
     m = re.search(r'<div id="%s">' % cid, appsrc)
@@ -746,9 +746,9 @@ check("guide: the plan is named and bundled as the guide names it",
 ekta_src = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
 check("guide screen 1: the home leads with the family and a short status line, then the five things",
       'id="hero-status"' in appsrc and 'id="w-fam"' in appsrc and 'id="w-health"' in appsrc)
-check("guide screen 2: one person, in the five sections the guide names",
-      all(x in appsrc for x in (">🩺 Health<", ">📄 Records<", ">📞 People to call<",
-                                ">💡 Useful to know<", ">🕒 Freshness<")))
+check("guide screen 2: one person, in the sections the guide names, with what is due a re-check marked where it is",
+      all(x in appsrc for x in (">🩺 Health<", ">📄 Documents<", ">📞 People to call<",
+                                ">💡 Useful to know<", "due a re-check: nothing here is assumed current")))
 check("guide screen 2: Records shows that a document exists, never the document",
       "has_file" in book and "d.about_member" in book and "encode(bytes" not in book)
 check("guide screen 4: Ekta can prepare a summary for a doctor visit",
@@ -1700,6 +1700,26 @@ check("tree: family who are not on Parwah (Dadi without a phone, someone who has
       and "function onApp(m)" in _appt and "remove_person" in _appt)
 check("tree: the form starts on nothing chosen and says the sentence back before saving",
       "'<option value=\"\">Choose…</option>'" in _appt and "$('tr-say').textContent" in _appt)
+_vapi = (API_DIR / "_vaultapi.mjs").read_text(encoding="utf-8")
+check("vault: a paper can be asked for inside Parwah, by kind so nothing is revealed, and answered with one tap",
+      "body.action === 'request'" in _vapi and "body.action === 'answer'" in _vapi and "create table if not exists vault_requests" in _vapi
+      and 'id="vd-requests"' in _appt and 'data-vaskk' in _appt and 'id="vdd-ask"' in _appt)
+check("vault: Download is a real, named download, not a pop-up blocked on phones",
+      "a.download = f.name" in _appt and "window.open(url, '_blank')" not in _appt)
+check("vault: whoever added a paper about someone else is shown to them and can be taken back",
+      "uploader_access" in _vapi and "set uploader_access = false" in _vapi and "added it, so can open and download it" in _appt)
+check("vault: can-open is reading, not rewriting; a blank number keeps the last 4; nobody verifies their own upload",
+      "Only the person it belongs to, or whoever added it, can change it" in _vapi and "keepNum ? d0.last4 : last4" in _vapi
+      and "if (found.doc.by_member === me.id)\n      return res.status(400)" in _vapi)
+check("people: a profile and a person's page lead to their documents",
+      'id="mp-docs"' in _appt and 'id="pp-docs"' in _appt and "function openVaultFor(mid)" in _appt and "data-vdocgo" in _appt)
+check("emergency card: scrolls when taller than the screen; vital facts large; 112 and the first contact one tap away; cleared on sign-out",
+      ".msheet{position:fixed;inset:0;background:rgba(24,38,34,.55);z-index:var(--z-sheet);display:flex;align-items:flex-start;justify-content:center;padding:var(--space-20);overflow-y:auto" in _appt
+      and 'class="ec-vital"' in _appt and "a.amb" in _appt and "localStorage.removeItem('parwah-ecard')" in _appt)
+check("memory: an emergency contact can be recorded; privacy is never a box an edit ignores; no chip says undefined",
+      '<option value="emergency">' in _appt and "$('b-private-l').hidden = true" in _appt and "local: 'Someone near them'" in _appt)
+check("payments: ask first has an answer, and the monthly limit holds",
+      "body.action === 'approve' || body.action === 'decline'" in _vapi and "limit for this month" in _vapi and "data-vpyes" in _appt)
 check("create: joint or nuclear is asked first, with no answer chosen for them",
       "var newFamilyType = null;" in _appt and _appt.index('id="c-ftype"') < _appt.index('id="c-circle"') < _appt.index('id="c-name"'))
 check("roles: a new group asks for your role in the group, and starts on Friend",

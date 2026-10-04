@@ -125,6 +125,23 @@ export async function ensureVaultSchema(sql) {
     at timestamptz not null default now()
   )`;
   await sql`create index if not exists vault_log_doc on vault_log (doc_id, at desc)`;
+  // Whoever added a document about someone else can open it until the
+  // person it belongs to takes that back - shown to them, never hidden.
+  await sql`alter table vault_docs add column if not exists uploader_access boolean not null default true`;
+  // "Can I open your PAN?" - asked inside Parwah, answered with one tap,
+  // instead of a WhatsApp message and a photo of the card.
+  await sql`create table if not exists vault_requests (
+    id uuid primary key default gen_random_uuid(),
+    circle_id uuid not null references circles(id) on delete cascade,
+    from_member uuid not null references members(id) on delete cascade,
+    to_member uuid not null references members(id) on delete cascade,
+    doc_id uuid references vault_docs(id) on delete cascade,
+    kind text,
+    status text not null default 'open',
+    created_at timestamptz not null default now(),
+    answered_at timestamptz
+  )`;
+  await sql`create index if not exists vault_requests_to on vault_requests (to_member, status)`;
 }
 
 export async function ensurePaySchema(sql) {
@@ -177,7 +194,8 @@ async function docsApi(req, res, sql, circle, me) {
              d.file_name, d.file_mime, d.file_size, d.about_member, d.by_member,
              d.created_at, d.updated_at,
              am.name as about_name, bm.name as by_name, vm.name as verified_name,
-             case when d.about_member = ${me.id} or d.by_member = ${me.id}
+             d.uploader_access, (am.user_id is null) as about_off_app,
+             case when d.about_member = ${me.id} or (d.by_member = ${me.id} and d.uploader_access)
                   then 'full' else coalesce(a.level, '') end as my_level
       from vault_docs d
       join members am on am.id = d.about_member
@@ -185,22 +203,27 @@ async function docsApi(req, res, sql, circle, me) {
       left join members vm on vm.id = d.verified_by
       left join vault_access a on a.doc_id = d.id and a.member_id = ${me.id}
       where d.circle_id = ${circle.id}
-        and (d.about_member = ${me.id} or d.by_member = ${me.id} or a.member_id is not null)
+        and (d.about_member = ${me.id} or (d.by_member = ${me.id} and d.uploader_access) or a.member_id is not null)
       order by am.name, d.kind limit 300`;
   }
   async function docFor(id, need) {
     if (!isUuid(id)) return { err: 'Bad document id' };
     const r = await sql`
-      select d.*, case when d.about_member = ${me.id} or d.by_member = ${me.id}
-                       then 'full' else coalesce(a.level, '') end as my_level
+      select d.*, (am.user_id is null) as about_off_app,
+             case when d.about_member = ${me.id} or (d.by_member = ${me.id} and d.uploader_access)
+                  then 'full' else coalesce(a.level, '') end as my_level
       from vault_docs d
+      join members am on am.id = d.about_member
       left join vault_access a on a.doc_id = d.id and a.member_id = ${me.id}
       where d.id = ${id} and d.circle_id = ${circle.id}`;
     const d = r[0];
     if (!d || !d.my_level) return { err: 'That document is not shared with you' };
-    if (need === 'full' && d.my_level !== 'full') return { err: 'You can see that this exists, but not open it. Ask ' + '' + 'the person it belongs to for access.' };
+    if (need === 'full' && d.my_level !== 'full') return { err: 'You can see that this exists, but not open it. Ask the person it belongs to for access.' };
     return { doc: d };
   }
+  // Who decides who opens a document: the person it is about. For someone
+  // who is not on Parwah (Dadi without a phone), whoever added it decides.
+  const decides = (d) => d.about_off_app ? d.by_member === me.id : d.about_member === me.id;
 
   if (req.method === 'GET') {
     const docs = await visible();
@@ -217,8 +240,18 @@ async function docsApi(req, res, sql, circle, me) {
                   from vault_log l left join members m on m.id = l.member_id
                   where l.doc_id = any(${mine}::uuid[]) order by l.at desc limit 60`
       : [];
-    const members = await sql`select id, name, relation from members where circle_id = ${circle.id} order by created_at`;
-    return res.status(200).json({ ok: true, docs, grants, log, members, kinds: DOC_KINDS, idShapes: idShapesForClient(), panHolders: PAN_HOLDER,
+    const members = await sql`select id, name, relation, user_id is not null as on_app from members where circle_id = ${circle.id} order by created_at`;
+    const requests = await sql`
+      select r.id, r.doc_id, r.kind, r.status, r.created_at, r.answered_at, r.from_member, r.to_member,
+             f.name as from_name, t.name as to_name, d.label as doc_label, d.kind as doc_kind
+      from vault_requests r
+      join members f on f.id = r.from_member
+      join members t on t.id = r.to_member
+      left join vault_docs d on d.id = r.doc_id
+      where r.circle_id = ${circle.id} and (r.to_member = ${me.id} or r.from_member = ${me.id})
+        and (r.status = 'open' or r.answered_at > now() - interval '14 days')
+      order by r.created_at desc limit 50`;
+    return res.status(200).json({ ok: true, docs, grants, log, members, requests, kinds: DOC_KINDS, idShapes: idShapesForClient(), panHolders: PAN_HOLDER,
       maxFile: MAX_FILE });
   }
   if (req.method !== 'POST') {
@@ -279,9 +312,17 @@ async function docsApi(req, res, sql, circle, me) {
 
     const found = await docFor(body.id, 'full');
     if (found.err) return res.status(403).json({ ok: false, error: found.err });
+    // "Can open it" is reading, not rewriting: only the person it belongs to,
+    // or whoever added it, changes it.
+    const d0 = found.doc;
+    if (d0.about_member !== me.id && !(d0.by_member === me.id && d0.uploader_access))
+      return res.status(403).json({ ok: false, error: 'Only the person it belongs to, or whoever added it, can change it. If something is wrong, say so with "Something is wrong".' });
+    // A blank number means "not changing the number": the last 4 stay.
+    const keepNum = !String(body.number || '').trim();
+    const newLast4 = keepNum ? d0.last4 : last4, newFmt = keepNum ? d0.format_ok : fmt;
     // Editing the details resets verification: what was checked is no longer what is stored.
-    await sql`update vault_docs set kind = ${kind}, label = ${label}, last4 = ${last4},
-              issued_on = ${issued}, expires_on = ${expires}, notes = ${notes}, format_ok = ${fmt},
+    await sql`update vault_docs set kind = ${kind}, label = ${label}, last4 = ${newLast4},
+              issued_on = ${issued}, expires_on = ${expires}, notes = ${notes}, format_ok = ${newFmt},
               status = 'unverified', verified_by = null, verified_at = null, verify_note = null,
               updated_at = now() where id = ${found.doc.id}`;
     if (fileB64) {
@@ -291,6 +332,9 @@ async function docsApi(req, res, sql, circle, me) {
                 where id = ${found.doc.id}`;
     }
     await sql`insert into vault_log (doc_id, member_id, action) values (${found.doc.id}, ${me.id}, 'edited')`;
+    if (d0.about_member !== me.id) {
+      await pushCircle(sql, circle.id, { title: '🔐 ' + me.name + ' changed your ' + (DOC_KINDS[kind] || DOC_KINDS.other).label, body: label + ' - see what changed in your vault' }, { only: d0.about_member });
+    }
     return res.status(200).json({ ok: true });
   }
 
@@ -314,7 +358,7 @@ async function docsApi(req, res, sql, circle, me) {
     const found = await docFor(body.id, 'full');
     if (found.err) return res.status(403).json({ ok: false, error: found.err });
     // Verification means a second pair of eyes. Confirming your own upload is not verification.
-    if (found.doc.by_member === me.id && found.doc.about_member !== me.id)
+    if (found.doc.by_member === me.id)
       return res.status(400).json({ ok: false, error: 'You uploaded this one - someone else in the family needs to check it' });
     const status = body.action === 'verify' ? 'verified' : 'rejected';
     const note = clean(body.note, 200);
@@ -339,24 +383,34 @@ async function docsApi(req, res, sql, circle, me) {
     // `memberId` stays the caller and nothing else.
     const targetId = body.targetId || body.memberId;
     if (!isUuid(body.id) || !isUuid(targetId)) return res.status(400).json({ ok: false, error: 'Bad request' });
-    const r = await sql`select id, label, about_member, kind from vault_docs where id = ${body.id} and circle_id = ${circle.id}`;
+    const r = await sql`select d.id, d.label, d.about_member, d.by_member, d.kind, (am.user_id is null) as about_off_app
+                        from vault_docs d join members am on am.id = d.about_member
+                        where d.id = ${body.id} and d.circle_id = ${circle.id}`;
     if (!r[0]) return res.status(404).json({ ok: false, error: 'Document not found' });
-    if (r[0].about_member !== me.id)
+    if (!decides(r[0]))
       return res.status(403).json({ ok: false, error: 'Only the person this document belongs to can decide who sees it' });
-    const tRow = await sql`select id, name from members where id = ${targetId} and circle_id = ${circle.id}`;
+    const tRow = await sql`select id, name, user_id from members where id = ${targetId} and circle_id = ${circle.id}`;
     if (!tRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
     if (tRow[0].id === me.id) return res.status(400).json({ ok: false, error: 'It is already yours' });
+    if (!tRow[0].user_id) return res.status(400).json({ ok: false, error: tRow[0].name + ' is not on Parwah, so cannot open documents' });
     if (body.action === 'revoke') {
       await sql`delete from vault_access where doc_id = ${r[0].id} and member_id = ${tRow[0].id}`;
-      await sql`insert into vault_log (doc_id, member_id, action) values (${r[0].id}, ${me.id}, ${'revoked ' + tRow[0].name})`;
+      // Whoever added it loses their access too when it is taken back.
+      if (tRow[0].id === r[0].by_member) await sql`update vault_docs set uploader_access = false where id = ${r[0].id}`;
+      await sql`insert into vault_log (doc_id, member_id, action) values (${r[0].id}, ${me.id}, ${'took access back from ' + tRow[0].name})`;
       await pushCircle(sql, circle.id, { title: '🔐 Access changed', body: me.name + ' has taken back access to ' + r[0].label }, { only: tRow[0].id });
       return res.status(200).json({ ok: true });
     }
     const level = body.level === 'full' ? 'full' : 'view';
+    if (tRow[0].id === r[0].by_member) await sql`update vault_docs set uploader_access = ${level === 'full'} where id = ${r[0].id}`;
     await sql`insert into vault_access (doc_id, member_id, level, granted_by)
               values (${r[0].id}, ${tRow[0].id}, ${level}, ${me.id})
               on conflict (doc_id, member_id) do update set level = excluded.level, granted_by = excluded.granted_by, granted_at = now()`;
-    await sql`insert into vault_log (doc_id, member_id, action) values (${r[0].id}, ${me.id}, ${'shared with ' + tRow[0].name + ' (' + level + ')'})`;
+    await sql`insert into vault_log (doc_id, member_id, action) values (${r[0].id}, ${me.id}, ${(level === 'full' ? 'let ' + tRow[0].name + ' open it' : 'let ' + tRow[0].name + ' see it exists')})`;
+    // Any open request for it from them is answered by this.
+    await sql`update vault_requests set status = 'allowed', answered_at = now()
+              where circle_id = ${circle.id} and from_member = ${tRow[0].id} and status = 'open' and ${level === 'full'}
+                and (doc_id = ${r[0].id} or (doc_id is null and kind = ${r[0].kind} and to_member = ${me.id}))`;
     await pushCircle(sql, circle.id, {
       title: '🔐 ' + me.name + ' shared a document with you',
       body: (DOC_KINDS[r[0].kind] || DOC_KINDS.other).icon + ' ' + r[0].label + (level === 'full' ? ' - you can open it' : ' - you can see it exists')
@@ -367,11 +421,71 @@ async function docsApi(req, res, sql, circle, me) {
   if (body.action === 'remove') {
     const found = await docFor(body.id, 'full');
     if (found.err) return res.status(403).json({ ok: false, error: found.err });
-    if (found.doc.about_member !== me.id && found.doc.by_member !== me.id)
+    if (found.doc.about_member !== me.id && !(found.doc.by_member === me.id && found.doc.uploader_access))
       return res.status(403).json({ ok: false, error: 'Only the person it belongs to, or whoever added it, can remove it' });
     await sql`delete from vault_docs where id = ${found.doc.id}`;
+    if (found.doc.about_member !== me.id) {
+      await pushCircle(sql, circle.id, { title: '🔐 ' + me.name + ' removed your ' + (DOC_KINDS[found.doc.kind] || DOC_KINDS.other).label, body: found.doc.label + ' is no longer in the family vault' }, { only: found.doc.about_member });
+    }
     await sql`insert into events (circle_id, member_id, type, text)
               values (${circle.id}, ${me.id}, 'care', ${me.name + ' removed ' + found.doc.label + ' from the family vault'})`;
+    return res.status(200).json({ ok: true });
+  }
+
+  // ASKING TO OPEN. For a paper you can see exists ("Can I open Rahul's
+  // licence?") or one you cannot see at all ("Can I have Rahul's PAN?" -
+  // asked by kind, so asking never reveals what is in anyone's vault).
+  if (body.action === 'request') {
+    let doc = null, toId = body.toId, kind = null;
+    if (body.docId) {
+      const found = await docFor(body.docId, 'view');
+      if (found.err) return res.status(403).json({ ok: false, error: found.err });
+      if (found.doc.my_level === 'full') return res.status(400).json({ ok: false, error: 'You can already open it' });
+      doc = found.doc;
+      toId = doc.about_off_app ? doc.by_member : doc.about_member;
+    } else {
+      kind = Object.prototype.hasOwnProperty.call(DOC_KINDS, body.kind) ? body.kind : null;
+      if (!kind) return res.status(400).json({ ok: false, error: 'Say which paper you need' });
+    }
+    if (!isUuid(toId)) return res.status(400).json({ ok: false, error: 'Say whose paper you need' });
+    const tRow = await sql`select id, name, user_id from members where id = ${toId} and circle_id = ${circle.id}`;
+    if (!tRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+    if (tRow[0].id === me.id) return res.status(400).json({ ok: false, error: 'That is your own' });
+    if (!tRow[0].user_id) return res.status(400).json({ ok: false, error: tRow[0].name + ' is not on Parwah. Ask whoever keeps their papers.' });
+    const open = await sql`select id from vault_requests where circle_id = ${circle.id} and from_member = ${me.id} and to_member = ${tRow[0].id}
+                           and status = 'open' and (doc_id = ${doc ? doc.id : null} or (doc_id is null and kind = ${kind}))`;
+    if (open[0]) return res.status(200).json({ ok: true, already: true, id: open[0].id });
+    const r = await sql`insert into vault_requests (circle_id, from_member, to_member, doc_id, kind)
+                        values (${circle.id}, ${me.id}, ${tRow[0].id}, ${doc ? doc.id : null}, ${kind}) returning id`;
+    const what = doc ? doc.label : 'your ' + DOC_KINDS[kind].label;
+    if (doc) await sql`insert into vault_log (doc_id, member_id, action) values (${doc.id}, ${me.id}, 'asked to open it')`;
+    await pushCircle(sql, circle.id, { title: '🔐 ' + me.name + ' asks to open ' + what, body: 'Open Parwah to let them, or say not now' }, { only: tRow[0].id });
+    return res.status(201).json({ ok: true, id: r[0].id });
+  }
+  if (body.action === 'answer') {
+    if (!isUuid(body.requestId)) return res.status(400).json({ ok: false, error: 'Bad request' });
+    const q2 = await sql`select r.*, f.name as from_name from vault_requests r join members f on f.id = r.from_member
+                         where r.id = ${body.requestId} and r.circle_id = ${circle.id}`;
+    const rq = q2[0];
+    if (!rq || rq.to_member !== me.id) return res.status(404).json({ ok: false, error: 'That request is not for you' });
+    if (rq.status !== 'open') return res.status(409).json({ ok: false, error: 'That was already answered' });
+    if (!body.allow) {
+      await sql`update vault_requests set status = 'declined', answered_at = now() where id = ${rq.id}`;
+      await pushCircle(sql, circle.id, { title: '🔐 ' + me.name + ' said not now', body: 'You can ask again, or talk to them' }, { only: rq.from_member });
+      return res.status(200).json({ ok: true });
+    }
+    // Allowing a request by kind means choosing which of your papers.
+    const docId = rq.doc_id || body.docId;
+    const d = isUuid(docId) ? (await sql`select d.id, d.label, d.kind, d.about_member, d.by_member, (am.user_id is null) as about_off_app
+                                          from vault_docs d join members am on am.id = d.about_member
+                                          where d.id = ${docId} and d.circle_id = ${circle.id}`)[0] : null;
+    if (!d) return res.status(400).json({ ok: false, error: rq.doc_id ? 'That document is no longer in the vault' : 'Choose which document to let them open' });
+    if (!decides(d)) return res.status(403).json({ ok: false, error: 'Only the person this document belongs to can decide who sees it' });
+    await sql`insert into vault_access (doc_id, member_id, level, granted_by) values (${d.id}, ${rq.from_member}, 'full', ${me.id})
+              on conflict (doc_id, member_id) do update set level = 'full', granted_by = excluded.granted_by, granted_at = now()`;
+    await sql`update vault_requests set status = 'allowed', doc_id = ${d.id}, answered_at = now() where id = ${rq.id}`;
+    await sql`insert into vault_log (doc_id, member_id, action) values (${d.id}, ${me.id}, ${'let ' + rq.from_name + ' open it'})`;
+    await pushCircle(sql, circle.id, { title: '✅ ' + me.name + ' let you open ' + d.label, body: 'It is in the family vault now' }, { only: rq.from_member });
     return res.status(200).json({ ok: true });
   }
 
@@ -402,7 +516,7 @@ async function payApi(req, res, sql, circle, me) {
                   where pp.method_id = any(${ids}::uuid[])`
       : [];
     const log = ids.length
-      ? await sql`select l.method_id, l.action, l.amount, l.note, l.at, m.name
+      ? await sql`select l.id, l.method_id, l.member_id, l.action, l.amount, l.note, l.at, m.name
                   from pay_log l left join members m on m.id = l.member_id
                   where l.method_id = any(${ids}::uuid[]) order by l.at desc limit 40`
       : [];
@@ -501,6 +615,14 @@ async function payApi(req, res, sql, circle, me) {
     const note = clean(body.note, 160);
     const risk = credentialRisk(note);
     if (risk) return res.status(400).json({ ok: false, error: risk });
+    // The monthly limit the owner set is a limit, not a note.
+    if (m.monthly_cap) {
+      const spent = await sql`select coalesce(sum(amount), 0)::int as n from pay_log
+                              where method_id = ${m.id} and action in ('used', 'approved', 'asked')
+                                and at >= date_trunc('month', now())`;
+      if (spent[0].n + amount > m.monthly_cap)
+        return res.status(400).json({ ok: false, error: 'That would take ' + m.label + ' over its ₹' + m.monthly_cap.toLocaleString('en-IN') + ' limit for this month (₹' + spent[0].n.toLocaleString('en-IN') + ' so far)' });
+    }
     const act = (!isOwner && m.needs_ok) ? 'asked' : 'used';
     await sql`insert into pay_log (method_id, member_id, action, amount, note) values (${m.id}, ${me.id}, ${act}, ${amount}, ${note})`;
     if (!isOwner) {
@@ -508,6 +630,23 @@ async function payApi(req, res, sql, circle, me) {
         title: act === 'asked' ? '💳 ' + me.name + ' is asking to use ' + m.label : '💳 ' + me.name + ' used ' + m.label,
         body: '₹' + amount + (note ? ' - ' + note : '')
       }, { only: m.owner_member });
+    }
+    return res.status(200).json({ ok: true, status: act });
+  }
+  // "Ask first" has an answer: the owner says yes or no to each ask.
+  if (body.action === 'approve' || body.action === 'decline') {
+    if (!isUuid(body.logId)) return res.status(400).json({ ok: false, error: 'Bad request' });
+    const r = await sql`select l.id, l.member_id, l.amount, p.label, p.owner_member from pay_log l join pay_methods p on p.id = l.method_id
+                        where l.id = ${body.logId} and p.circle_id = ${circle.id} and l.action = 'asked'`;
+    if (!r[0]) return res.status(404).json({ ok: false, error: 'That ask was already answered' });
+    if (r[0].owner_member !== me.id) return res.status(403).json({ ok: false, error: 'Only the owner answers' });
+    const act = body.action === 'approve' ? 'approved' : 'declined';
+    await sql`update pay_log set action = ${act} where id = ${r[0].id}`;
+    if (r[0].member_id) {
+      await pushCircle(sql, circle.id, {
+        title: act === 'approved' ? '💳 ' + me.name + ' said yes' : '💳 ' + me.name + ' said not this time',
+        body: '₹' + r[0].amount + ' on ' + r[0].label
+      }, { only: r[0].member_id });
     }
     return res.status(200).json({ ok: true, status: act });
   }
