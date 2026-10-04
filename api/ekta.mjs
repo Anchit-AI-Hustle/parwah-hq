@@ -569,6 +569,13 @@ export default async function handler(req, res) {
   // after each other - keeping the memory current, filling the vault - so
   // the assistant is paid for by the very habits it exists to support.
   const paid = await spend(sql, circle.id, me.id, 'ekta');
+  // Out of coins is never a reason to hold back the way to 112: a message
+  // that names an emergency is answered from the records, free, with it.
+  if (!paid.ok && urgentToo) {
+    const out = await localTurn(sql, circle, me, history, 'coins');
+    return answer({ ok: true, reply: out.reply, actions: [], model: out.model,
+      records: out.records || undefined, reason: out.records ? 'coins' : undefined });
+  }
   if (!paid.ok) {
     return res.status(402).json({ ok: false, needCoins: true, balance: paid.balance, cost: paid.cost,
       error: ASSISTANT_NAME + ' is out of coins for a conversation (each question uses ' + paid.cost + '). The family earns more by adding to the family memory (+' +
@@ -592,6 +599,7 @@ export default async function handler(req, res) {
   } catch (e) {
     // A turn that never reached a brain is never charged for.
     await refund();
+    if (urgentToo) return answer({ ok: true, reply: 'Ekta could not reach her brain right now.', actions: [], model: LOCAL_MODEL });
     return res.status(502).json({ ok: false, error: 'Ekta could not reach her brain right now - try again in a moment.', detail: String(e && e.message || e).slice(0, 200) });
   }
 }

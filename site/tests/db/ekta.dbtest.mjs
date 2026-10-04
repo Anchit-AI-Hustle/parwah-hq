@@ -147,6 +147,11 @@ ok('the family starts this with no coins', await pot() === 0);
   ok('and how to earn more is something any member can do (not check in)', /family memory/.test(r.error) && /vault/.test(r.error) && !/check(ing)? in/i.test(r.error), r.error);
   ok('and it says what stays free', /scam check and anything urgent stay free/.test(r.error), r.error);
   ok('nothing was spent', await pot() === 0);
+  // Out of coins, but the message names an emergency: never a bare refusal.
+  process.env.ANTHROPIC_API_KEY = 'sk-test-not-a-real-key';
+  const u = await ask(rohan, 'Papa passed out yesterday, tell me what to do next');
+  delete process.env.ANTHROPIC_API_KEY;
+  ok('out of coins, a message naming an emergency is answered with the way to 112, free', u.status === 200 && u.ok && u.urgentToo === true && /call 112/.test(u.reply) && !u.needCoins && await pot() === 0, JSON.stringify(u).slice(0, 300));
 }
 
 // ---- with coins: a records answer is still free, an emergency still costs nothing

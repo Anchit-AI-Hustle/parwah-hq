@@ -78,11 +78,12 @@ const NOW = /\b(now|right now|just now|abhi|still|ongoing|(has|have) been having
 // or a time gone by). When in doubt, it is urgent.
 const NOT_NOW = /\b(had|history|ever)\b/i;
 const PARTS = /[,;.!?]+|\b(?:and|but|then|aur|lekin|par)\b/i;
-// "since last night" says it has not stopped - unless the message asks
-// whether something happened since then ("Did Papa have a seizure since
-// his fall last year?").
+// "since last night" says it has not stopped, asked or told ("Has Papa
+// been unconscious since last night?" is still urgent) - unless the message
+// asks whether something happened at some point since then ("Did Papa have
+// a seizure at any time since his fall last year?").
 const ONGOING = /\b(since|ab tak|abhi tak)\b/i;
-const ASKS_IF = /^\s*(did|does|do|has|have|had|was|were|any)\b/i;
+const ASKS_IF = /^\s*(did|was|were)\b|\b(any time|at any point|ever)\b/i;
 const saysNow = t => NOW.test(t) || (ONGOING.test(t) && !ASKS_IF.test(t))
   || t.split(PARTS).some(c => c && RE.emergency.test(c) && !PAST.test(c) && !NOT_NOW.test(c));
 // Words alone cannot always tell whether it is happening now. So a message
