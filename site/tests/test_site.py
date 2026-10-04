@@ -57,7 +57,8 @@ for p in PAGES:
     html = markup_only(p.read_text(encoding="utf-8")); bad = []
     for href in re.findall(r'href="([^"]+)"', html):
         if href.startswith(("http","mailto:","#","tel:","data:")): continue
-        target = (p.parent / href.split("#")[0]).resolve()
+        # A query string selects a state of the page, not another file.
+        target = (p.parent / href.split("#")[0].split("?")[0]).resolve()
         if target.is_dir(): target = target / "index.html"
         if not target.exists(): bad.append(href)
     check(f"internal links: {p.relative_to(ROOT)}", not bad, ", ".join(bad))

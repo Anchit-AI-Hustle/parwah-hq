@@ -30,6 +30,26 @@
   --dev:"Baloo 2","Plus Jakarta Sans",sans-serif;
   --bounce:cubic-bezier(.34,1.56,.64,1);
   --max:1120px;
+  /* Surfaces that sit on the day ground; dark mode swaps them below. */
+  --card:#fff; --glass:rgba(255,255,255,.66); --glass-line:rgba(255,255,255,.8); --ghost-bg:rgba(255,255,255,.7);
+}
+/* Dark mode: the day sections go to a deep jamun one step lighter than the
+   night sections, so the page keeps its rhythm. Only tokens change here. */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --day:#1C0B24; --bone:#26112F; --bone-2:#4A2E52;
+    --ink:#FFF3E6; --ink-soft:#D2BCD9; --sindoor:#FF7AB6; --marigold-d:#FFC24D;
+    --tint-rani:rgba(255,79,154,.18); --tint-marigold:rgba(255,179,26,.16); --dot:rgba(255,190,59,.10);
+    --card:#2A1532; --glass:rgba(255,255,255,.06); --glass-line:rgba(255,255,255,.12); --ghost-bg:rgba(255,255,255,.08);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --day:#1C0B24; --bone:#26112F; --bone-2:#4A2E52;
+  --ink:#FFF3E6; --ink-soft:#D2BCD9; --sindoor:#FF7AB6; --marigold-d:#FFC24D;
+  --tint-rani:rgba(255,79,154,.18); --tint-marigold:rgba(255,179,26,.16); --dot:rgba(255,190,59,.10);
+  --card:#2A1532; --glass:rgba(255,255,255,.06); --glass-line:rgba(255,255,255,.12); --ghost-bg:rgba(255,255,255,.08);
+  color-scheme:dark;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -67,10 +87,11 @@ section{position:relative}
 
 /* ---------- nav ---------- */
 .nav{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 16px;padding:22px 0}
-.mark{display:flex;align-items:baseline;gap:8px;line-height:1;text-decoration:none}
+/* A single wrapping line, centred in a 44px tap target, keeps the two words on one baseline. */
+.mark{display:flex;flex-wrap:wrap;align-content:center;align-items:baseline;min-height:44px;gap:8px;line-height:1;text-decoration:none}
 .mark .dev{font-family:var(--dev);font-weight:800;font-size:1.3rem;background:var(--grad-mela);-webkit-background-clip:text;background-clip:text;color:transparent;padding-top:4px}
 .mark .latin{font-family:var(--disp);font-weight:800;font-size:1.6rem;letter-spacing:-.03em}
-.nav a.link{font-size:.88rem;font-weight:600;text-decoration:none;color:var(--dim-on-dusk);padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.14);transition:background .2s,color .2s}
+.nav a.link{display:inline-flex;align-items:center;min-height:44px;font-size:.88rem;font-weight:600;text-decoration:none;color:var(--dim-on-dusk);padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.14);transition:background .2s,color .2s}
 .nav a.link:hover{color:var(--cream-on-dusk);background:rgba(255,255,255,.08)}
 @media(max-width:480px){.nav a.link{padding:6px 11px;font-size:.8rem}}
 
@@ -97,11 +118,11 @@ header.dusk .nav{padding-top:30px}
 .btn-wa:hover{box-shadow:0 14px 34px rgba(255,120,30,.44)}
 .btn-ghost{border:1.5px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:var(--cream-on-dusk)}
 .btn-ghost:hover{border-color:var(--marigold)}
-.on-day .btn-ghost{border-color:var(--bone-2);background:rgba(255,255,255,.7);color:var(--ink)}
+.on-day .btn-ghost{border-color:var(--bone-2);background:var(--ghost-bg);color:var(--ink)}
 
 /* ---------- section scaffolding ---------- */
 .sec{padding:96px 0}
-.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--sindoor);font-weight:800;background:var(--tint-rani);padding:6px 13px;border-radius:999px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--sindoor);font-weight:800;background:var(--tint-rani);padding:6px 13px;border-radius:999px}
 .eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--grad-mela)}
 .dusk .eyebrow{color:var(--marigold);background:rgba(255,255,255,.10)}
 .sec h2{font-family:var(--disp);font-weight:800;font-size:clamp(1.9rem,4.2vw,2.9rem);line-height:1.06;letter-spacing:-.03em;margin:16px 0 18px;max-width:22ch}
@@ -111,7 +132,7 @@ header.dusk .nav{padding-top:30px}
 /* ---------- worry cards: bento ---------- */
 .worries{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:48px}
 @media(max-width:860px){.worries{grid-template-columns:1fr}}
-.worry{position:relative;overflow:hidden;background:#fff;border:1px solid var(--bone-2);border-radius:24px;padding:28px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--sh-1);transition:transform .25s var(--bounce),box-shadow .25s ease}
+.worry{position:relative;overflow:hidden;background:var(--card);border:1px solid var(--bone-2);border-radius:24px;padding:28px 24px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--sh-1);transition:transform .25s var(--bounce),box-shadow .25s ease}
 .worry:hover{transform:translateY(-4px) rotate(-.4deg);box-shadow:var(--sh-2)}
 .worry::after{content:"";position:absolute;right:-44px;top:-44px;width:130px;height:130px;border-radius:50%;background:rgba(255,179,26,.28);filter:blur(12px);pointer-events:none}
 .worry:nth-child(3n+2)::after{background:rgba(217,20,111,.16)}
@@ -119,7 +140,7 @@ header.dusk .nav{padding-top:30px}
 .worry .w-no{width:50px;height:50px;border-radius:17px;display:grid;place-items:center;background:var(--grad-mela);color:var(--on-bright);font-family:var(--dev);font-weight:800;font-size:1.5rem;line-height:1;transform:rotate(-6deg)}
 .worry h3{font-family:var(--disp);font-weight:700;font-size:1.3rem;line-height:1.2;letter-spacing:-.015em}
 .worry p{font-size:.95rem;color:var(--ink-soft)}
-.worry .coming{margin-top:auto;align-self:flex-start;padding:5px 12px;border-radius:999px;background:var(--tint-rani);color:var(--sindoor);font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.worry .coming{margin-top:auto;align-self:flex-start;padding:5px 12px;border-radius:999px;background:var(--tint-rani);color:var(--sindoor);font-size:.75rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
 
 /* ---------- gifting steps ---------- */
 .gift{background:
@@ -128,7 +149,7 @@ header.dusk .nav{padding-top:30px}
   var(--bone)}
 .steps{counter-reset:s;display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:48px}
 @media(max-width:860px){.steps{grid-template-columns:1fr}}
-.step{position:relative;padding:26px 24px;border-radius:24px;background:rgba(255,255,255,.66);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.8);box-shadow:var(--sh-1)}
+.step{position:relative;padding:26px 24px;border-radius:24px;background:var(--glass);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border:1px solid var(--glass-line);box-shadow:var(--sh-1)}
 .step h3{font-family:var(--disp);font-weight:700;font-size:1.2rem;letter-spacing:-.01em;margin-bottom:8px}
 .step p{font-size:.95rem;color:var(--ink-soft)}
 .step::before{counter-increment:s;content:counter(s);display:grid;place-items:center;width:44px;height:44px;border-radius:50%;margin-bottom:14px;background:var(--grad-mela);color:var(--on-bright);font-family:var(--disp);font-weight:800;font-size:1.2rem;box-shadow:0 10px 24px rgba(217,20,111,.26)}
@@ -172,8 +193,8 @@ header.dusk .nav{padding-top:30px}
 footer{padding:56px 0 40px}
 .f-grid{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;align-items:flex-start}
 .f-grid .mark .latin{font-size:1.3rem}
-.f-links{display:flex;flex-wrap:wrap;gap:14px 22px;font-size:.9rem}
-.f-links a{color:var(--dim-on-dusk);text-decoration:none}
+.f-links{display:flex;flex-wrap:wrap;gap:0 22px;font-size:.9rem}
+.f-links a{display:inline-flex;align-items:center;min-height:44px;color:var(--dim-on-dusk);text-decoration:none}
 .f-links a:hover{color:var(--marigold)}
 .legal{margin-top:34px;padding-top:22px;border-top:1px solid rgba(255,255,255,.12);font-size:.76rem;color:var(--dim-on-dusk);max-width:72ch;line-height:1.7}
 
@@ -186,3 +207,6 @@ footer{padding:56px 0 40px}
   .btn,.worry{transition:none}
   .btn:hover,.worry:hover{transform:none}
 }
+
+/* /welcome/: the actions under How it starts */
+#how .how-ctas{margin-top:28px;display:flex;gap:14px;flex-wrap:wrap}

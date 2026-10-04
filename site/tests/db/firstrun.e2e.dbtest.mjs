@@ -233,7 +233,7 @@ await O.goto(BASE + '/?join=' + code); await O.waitForTimeout(800);
 ok('signed out, the entry says you have been invited, with the code', await O.isVisible('#ob-invite') && (await O.textContent('#ob-invite-sub')).includes(code));
 await O.reload(); await O.waitForTimeout(800);
 ok('a reload before joining keeps the invite', await O.isVisible('#ob-invite') && (await O.textContent('#ob-invite-sub')).includes(code));
-ok('the pitch is the five things, and the hint is true', /papers, health, things to do and an emergency card/i.test(await O.textContent('#onboard > .lede')) && /choose a PIN or password next/.test(await O.textContent('#auth-step')));
+ok('the pitch is the five things, and the hint is true', /papers, health, things to do and an emergency card/i.test(await O.textContent('#onboard > .lede')) && /your number and your PIN or password\. New here\? You will choose one next/.test(await O.textContent('#auth-step')));
 await O.fill('#au-phone', U.Papa.phone.slice(3)); await O.click('#au-go'); await O.waitForTimeout(900);
 ok('a known number is asked for its PIN without saying whose it is', await O.isVisible('#au-pinwrap') && !/Papa/.test(await O.textContent('#auth-step')), await O.textContent('#au-pinnote'));
 
