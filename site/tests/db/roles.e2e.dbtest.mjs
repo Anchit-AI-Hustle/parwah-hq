@@ -88,7 +88,7 @@ const A = await phone(anchit, 'dark');
 ok('a signed-in person with no family or group is offered to start one', await A.isVisible('#pickkind'));
 await A.click('#pickkind [data-kind="group"]');
 await A.waitForTimeout(300);
-ok('the form says it is a group', (await A.textContent('#c-go')) === 'Create the group' && /in the group/.test(await A.textContent('#c-role-label')), await A.textContent('#c-role-label'));
+ok('the form says it is a group', (await A.textContent('#c-go')) === 'Create the group' && /in this group/.test(await A.textContent('#c-role-label')), await A.textContent('#c-role-label'));
 ok('Friend is one of the roles', await A.isVisible('#c-role [data-role="friend"]'));
 ok('and in a group it is already picked', await sel(A, 'c-role') === 'friend');
 await A.fill('#c-circle', 'Hustlers');
@@ -105,8 +105,9 @@ const M = await phone(meera);
 await M.click('#pickkind [data-kind="family"]');
 await M.waitForTimeout(300);
 ok('a family asks for your role in the family and starts on Family',
-   /in the family/.test(await M.textContent('#c-role-label')) && await sel(M, 'c-role') === 'family');
+   /in this family/.test(await M.textContent('#c-role-label')) && await sel(M, 'c-role') === 'family');
 if (process.env.ROLES_SHOT_DIR) { await M.setViewportSize({ width: 320, height: 800 }); await M.locator('#createcard').screenshot({ path: process.env.ROLES_SHOT_DIR + '/roles-family-light-320.png' }); }
+await M.click('#c-ftype [data-ft="joint"]');
 await M.click('#c-role [data-role="friend"]');
 await M.fill('#c-circle', 'Sharma Family');
 await M.click('#c-go');

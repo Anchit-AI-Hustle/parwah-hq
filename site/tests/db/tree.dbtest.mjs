@@ -124,6 +124,59 @@ const un = await call(circleApi, { token: M.Neha.token, body: { action: 'unplace
 const amitRow = (await admin.query('select spouse_id from members where id = $1', [M.Amit.id])).rows[0];
 ok('taking someone out of the tree clears both sides', un.status === 200 && amitRow.spouse_id === null);
 ok('and they are no longer labelled', (await look(M.Priya)).by.Neha.kin === null);
+ok('a father and son cannot be placed as husband and wife', (await place(papa, { targetId: M.Kabir.id, place: 'spouse', ofId: M.Amit.id })).status === 409);
+const un2 = await call(circleApi, { token: papa.token, body: { action: 'unplace', code, memberId: papa.id, targetId: M.Amit.id } });
+const kabirRow = (await admin.query('select parent_id from members where id = $1', [M.Kabir.id])).rows[0];
+ok('taking a parent out clears their children\'s link to them too', un2.status === 200 && kabirRow.parent_id === null, JSON.stringify(kabirRow));
+ok('so the parent is no longer labelled either', (await look(M.Priya)).by.Amit.kin === null);
+ok('and the family is told', (await admin.query(`select count(*)::int as n from events where circle_id = $1 and text = 'Papa took Amit out of the family tree'`, [circleId])).rows[0].n === 1);
+
+// Fixing one link never moves anyone else.
+await place(papa, { targetId: M.Neha.id, place: 'spouse', ofId: M.Amit.id });
+await place(papa, { targetId: M.Amit.id, place: 'child', ofId: papa.id });
+await place(papa, { targetId: M.Kabir.id, place: 'child', ofId: M.Amit.id });
+const unSp = await call(circleApi, { token: papa.token, body: { action: 'unplace', link: 'spouse', code, memberId: papa.id, targetId: M.Rohan.id } });
+const row = async (id) => (await admin.query('select parent_id, spouse_id from members where id = $1', [id])).rows[0];
+ok('removing only the marriage link keeps the children and the parents',
+   unSp.status === 200 && (await row(M.Rohan.id)).spouse_id === null && (await row(M.Priya.id)).spouse_id === null &&
+   (await row(M.Aarav.id)).parent_id === M.Rohan.id && (await row(M.Rohan.id)).parent_id === papa.id);
+const unPa = await call(circleApi, { token: papa.token, body: { action: 'unplace', link: 'parent', code, memberId: papa.id, targetId: M.Rohan.id } });
+ok('removing only the parent link keeps their own children', unPa.status === 200 && (await row(M.Rohan.id)).parent_id === null && (await row(M.Aarav.id)).parent_id === M.Rohan.id);
+ok('a link that is not there says so', (await call(circleApi, { token: papa.token, body: { action: 'unplace', link: 'spouse', code, memberId: papa.id, targetId: M.Rohan.id } })).status === 409);
+await place(papa, { targetId: M.Rohan.id, place: 'child', ofId: papa.id });
+// Taking a father out leaves the children with their mother.
+const unAmit = await call(circleApi, { token: papa.token, body: { action: 'unplace', code, memberId: papa.id, targetId: M.Amit.id } });
+ok('taking a father out leaves the children under their mother', unAmit.status === 200 && (await row(M.Kabir.id)).parent_id === M.Neha.id, JSON.stringify(await row(M.Kabir.id)));
+
+// People who are not on Parwah.
+const add = (body) => call(circleApi, { token: papa.token, body: { action: 'add_person', code, memberId: papa.id, ...body } });
+const dadi = await add({ personName: 'Dadi', gender: 'f', place: 'parent', ofId: papa.id });
+const dadiRow = (await admin.query('select id, user_id, gender, name from members where id = $1', [dadi.memberId])).rows[0];
+ok('someone not on Parwah is added and placed in one step', dadi.status === 200 && dadiRow && dadiRow.user_id === null && (await row(papa.id)).parent_id === dadiRow.id, JSON.stringify(dadi));
+ok('and the family is told who was added', (await admin.query(`select count(*)::int as n from events where circle_id = $1 and text like 'Papa added Dadi to the family tree as a parent of Papa (not on Parwah)'`, [circleId])).rows[0].n === 1);
+const papaNow = await look(papa);
+ok('the read says Dadi is not on Parwah, and Papa is', papaNow.by.Dadi.on_app === false && papaNow.by.Papa.on_app === true && papaNow.by.Dadi.kin === 'Mother');
+ok('a name is needed', (await add({ personName: '  ', gender: 'f', place: 'child', ofId: papa.id })).status === 400);
+ok('and he or she', (await add({ personName: 'Kamla', place: 'child', ofId: papa.id })).status === 400);
+ok('the same name twice is refused', (await add({ personName: 'dadi', gender: 'f', place: 'child', ofId: papa.id })).status === 409);
+const bad = await add({ personName: 'Loop', gender: 'm', place: 'spouse', ofId: papa.id });
+ok('a place that cannot be true does not leave the person behind', bad.status === 409 &&
+   (await admin.query(`select count(*)::int as n from members where circle_id = $1 and name = 'Loop'`, [circleId])).rows[0].n === 0);
+const grp = await call(circleApi, { token: U.papa.token, body: { action: 'create', kind: 'group', memberName: 'Papa', circleName: 'Walkers', userId: U.papa.userId } });
+ok('a group of friends has no tree to add to',
+   (await call(circleApi, { token: U.papa.token, body: { action: 'add_person', code: grp.code, memberId: grp.memberId, personName: 'X', gender: 'm', place: 'child', ofId: grp.memberId } })).status === 400);
+// Removing someone added by name: never someone on Parwah, never with records kept.
+const rm = (targetId, who = papa) => call(circleApi, { token: who.token, body: { action: 'remove_person', code, memberId: who.id, targetId } });
+ok('someone on Parwah cannot be removed this way', (await rm(M.Rohan.id)).status === 409 && !!(await row(M.Rohan.id)));
+const { default: bookApi } = await import('../../../api/book.mjs');
+await call(bookApi, { method: 'GET', token: papa.token, query: { circle: code, member: papa.id } });
+await admin.query(`insert into family_book (circle_id, kind, name, about_member) values ($1, 'med', 'BP tablet', $2)`, [circleId, dadiRow.id]);
+const kept = await rm(dadiRow.id);
+ok('nor someone with records kept about them', kept.status === 409 && /Remove those first/.test(kept.error) && !!(await row(dadiRow.id)), JSON.stringify(kept));
+await admin.query(`delete from family_book where about_member = $1`, [dadiRow.id]);
+ok('nor by someone outside the family', (await rm(dadiRow.id, { id: M.Rohan.id, token: U.Outsider.token })).status === 403);
+const gone = await rm(dadiRow.id);
+ok('otherwise they are removed, and Papa simply has no mother in the tree', gone.status === 200 && !(await row(dadiRow.id)) && (await row(papa.id)).parent_id === null);
 
 await admin.end();
 for (const p of globalThis.__parwahPools || []) await p.end();

@@ -1689,12 +1689,21 @@ check("tree: a new family is asked joint or nuclear first, and the server keeps 
       'id="c-ftype"' in _appt and "familyType: newKind === 'family' ? newFamilyType : null" in _appt
       and "FAMILY_TYPES.includes(req.body.familyType)" in _circ)
 check("tree: anyone in the family can place anyone; the server checks they are in this family and refuses what cannot be true",
-      "action === 'place'" in _circ and "ownedMember(sql, circle.id, memberId, tokenOf(req)" in _circ and "placement(by, targetId, place, ofId)" in _circ
+      "['place', 'unplace', 'add_person', 'remove_person'].includes(action)" in _circ and "ownedMember(sql, circle.id, memberId, tokenOf(req)" in _circ and "placement(by, targetId, place, ofId)" in _circ
       and "plan.error" in _circ)
 check("tree: each person's label is worked out for whoever is looking",
       "kinLabel(by, g.me.id, m.id)" in (API_DIR / "events.mjs").read_text(encoding="utf-8") and "if (m && m.kin && m.kin !== 'You') return m.kin;" in _appt)
+check("tree: a mistake is undone one link at a time, so fixing a wife never cuts off the children",
+      "if (link === 'spouse')" in _circ and "if (link === 'parent')" in _circ and 'data-unlink="spouse"' in _appt and 'data-unlink="parent"' in _appt)
+check("tree: family who are not on Parwah (Dadi without a phone, someone who has passed away) can be added, and are never given a task or a chat",
+      "action === 'add_person'" in _circ and "user_id is not null as on_app" in (API_DIR / "events.mjs").read_text(encoding="utf-8")
+      and "function onApp(m)" in _appt and "remove_person" in _appt)
+check("tree: the form starts on nothing chosen and says the sentence back before saving",
+      "'<option value=\"\">Choose…</option>'" in _appt and "$('tr-say').textContent" in _appt)
+check("create: joint or nuclear is asked first, with no answer chosen for them",
+      "var newFamilyType = null;" in _appt and _appt.index('id="c-ftype"') < _appt.index('id="c-circle"') < _appt.index('id="c-name"'))
 check("roles: a new group asks for your role in the group, and starts on Friend",
-      "'Your role in the ' + newKind" in _appt and "newKind === 'group' ? 'friend' : 'family'" in _appt)
+      "'Who are you in this ' + newKind + '?'" in _appt and "newKind === 'group' ? 'friend' : 'family'" in _appt)
 _loc = (API_DIR / "_locationapi.mjs").read_text(encoding="utf-8")
 check("location: only the person turns it on; there is no action to share for someone else",
       "requireMember(sql, code, memberId, tokenOf(req))" in _loc and "values (${circle.id}, ${me.id}, true" in _loc

@@ -70,7 +70,7 @@ async function escalateStaleSos(sql, circleId) {
       if (g.err) return res.status(g.status).json({ ok: false, error: g.err });
       const circle = g.circle;
       const members = await sql`select id, name, role, phone, place, country, relation, dob, gift_info, created_at,
-                                       parent_id, spouse_id, gender
+                                       parent_id, spouse_id, gender, user_id is not null as on_app
                                 from members where circle_id = ${circle.id} order by created_at`;
       // The family tree, read from where the person looking stands: Papa is
       // "Father" to Rohan and "Father-in-law" to Priya. null = not placed yet.

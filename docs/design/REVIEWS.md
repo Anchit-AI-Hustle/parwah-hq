@@ -164,3 +164,22 @@ four-generation family tree, from the same review, are the next change.
 | 42 | 6 Recognition | Everyone saw the same word for a person, whoever was looking | 2 | Fixed: Papa is "Father" to his son and "Father-in-law" to his daughter-in-law; the label is worked out for whoever is looking |
 | 43 | 1 Visibility | No picture of who belongs where | 2 | Fixed: the family tree at the top of People, couples side by side and children below, four generations and more |
 
+
+## Review 6: the whole app, page by page (4 October 2026)
+
+Four reviewers each took a quarter of the app and used it as a family
+would, in a real browser at 320, 390 and 1280 wide, light and dark:
+sign-in, onboarding, Today and the menus; the vault, health and the
+emergency card; Care, People and the tree; and Together, Ekta, the day
+and the public pages. Each finding is fixed in the change named in its
+row. The family tree's findings are fixed first, because it shipped last.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 44 | 3 User control | A wrong placement in the tree could not be undone; taking someone out would have cut off their children | 4 | Fixed: each link (husband or wife, whose child) is removed on its own, with everyone else, children too, left where they are |
+| 45 | 2 Real-world match | Only people on Parwah could be in the tree, so Dadi without a phone, a grandfather who has passed away or a young child could never be placed, and four generations were out of reach | 4 | Fixed: anyone can be added by name, marked "not on Parwah"; they can have health records and papers but are never given a task, a chat or a share |
+| 46 | 5 Error prevention | The tree form opened on a wrong sentence ("Me is the child of Dadi") that one tap saved | 3 | Fixed: it starts on nothing chosen, the words follow he or she (son, wife, mother), and it says the sentence back before saving |
+| 47 | 3 User control | The 12-second refresh undid He or she while someone was still choosing | 3 | Fixed: only choosing another person resets it |
+| 48 | 4 Consistency | The location list and member list used the word someone joined with, so Priya saw Papa as "Father" | 3 | Fixed: the tree's word everywhere; "You" for yourself; "Not in the tree yet" until placed |
+| 49 | 2 Real-world match | A new family was asked its name before joint or nuclear, with joint already chosen | 2 | Fixed: joint or nuclear first, nothing chosen for them; grandparents are joint-family roles |
+| 50 | 1 Visibility | At 320 the joint and nuclear choices spilled out of their pills, and the chosen one was invisible in dark | 2 | Fixed: title over description; a marigold ring marks the chosen segment in both themes; chips and segments say which is chosen to a screen reader |
