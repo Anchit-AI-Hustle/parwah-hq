@@ -1443,6 +1443,9 @@ check("day: no city is told apart from an unknown one",
       "unset: true" in plc and "j.place.unset" in appday and 'id="mu-addcity"' in appday)
 _coins_src = (API_DIR / "_coins.mjs").read_text(encoding="utf-8")
 _earn = _coins_src[_coins_src.index("export const EARN = {"):_coins_src.index("};", _coins_src.index("export const EARN = {"))]
+check("keys: a key the family saved can be removed (the card matches what /api/keys reports)",
+      "st.src === 'circle' ? ' <button class=\"linkbtn\" data-kclear" in appday
+      and "src[p] = 'circle'" in (API_DIR / "_keys.mjs").read_text(encoding="utf-8"))
 check("coins: no rule is listed that is never paid (check-ins and medicines earn nothing)",
       "checkin:" not in _earn and "pill:" not in _earn and "game:" in _earn
       and "award(sql, circleId, p.id, 'game'" in (API_DIR / "games.mjs").read_text(encoding="utf-8"))

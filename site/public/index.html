@@ -5479,7 +5479,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           if (st.set) any = true;
           h += '<div class="kv"><b>' + K_LABEL[p] + '</b><span>' +
                (st.set ? '✅ set' + (st.src === 'env' ? ' (on the server)' : '') +
-                 (st.src === 'vault' ? ' <button class="linkbtn" data-kclear="' + p + '">remove</button>' : '')
+                 // A key this family saved itself ('circle', as /api/keys reports it)
+                 // is theirs to remove; a server or deployment-wide key is not.
+                 (st.src === 'circle' ? ' <button class="linkbtn" data-kclear="' + p + '">remove</button>' : '')
                 : '-') + '</span></div>';
         });
         $('klist').innerHTML = h + (any ? '' : '<p class="hint" style="margin:var(--space-8) 0 var(--space-12)">No key yet - Ekta cannot answer until one is added.</p>');
