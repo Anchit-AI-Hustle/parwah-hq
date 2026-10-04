@@ -1,5 +1,5 @@
 // POST /api/circle - create a care circle or join one with its code.
-import { db, ensureSchema, makeCode, circleByCode, isUuid, normPhone, phoneError, rateLimit, clientIp } from './_db.mjs';
+import { db, ensureSchema, makeCode, circleByCode, isUuid, normPhone, phoneError, rateLimit, clientIp, sessionUser } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     if (!allowed) return res.status(429).json({ ok: false, error: 'Too many join attempts from this device - please wait a few minutes and try again' });
   }
 
-  const NAMELESS = ['update_member', 'leave', 'set_code', 'approve_join', 'decline_join', 'set_join_policy', 'place', 'unplace', 'add_person', 'remove_person'];
+  const NAMELESS = ['join_status', 'update_member', 'leave', 'set_code', 'approve_join', 'decline_join', 'set_join_policy', 'place', 'unplace', 'add_person', 'remove_person'];
   if (!name && !NAMELESS.includes(action)) return res.status(400).json({ ok: false, error: 'Please tell us your name' });
 
   try {
@@ -146,6 +146,20 @@ export default async function handler(req, res) {
     }
 
     // Any member can decide on a request; there is no owner in a Parwah circle.
+    // "Check again" on the waiting screen: in, still waiting, or declined.
+    // Only the signed-in person's own request, found by their session.
+    if (action === 'join_status') {
+      const su = await sessionUser(sql, tokenOf(req));
+      if (!su) return res.status(401).json({ ok: false, signin: true, error: 'Please sign in again' });
+      const circle = await circleByCode(sql, code);
+      if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });
+      const m = await sql`select id from members where circle_id = ${circle.id} and user_id = ${su.user_id}`;
+      if (m[0]) return res.status(200).json({ ok: true, status: 'in' });
+      const q = await sql`select status from join_requests where circle_id = ${circle.id} and user_id = ${su.user_id}
+                          order by created_at desc limit 1`;
+      return res.status(200).json({ ok: true, status: q[0] ? q[0].status : 'none' });
+    }
+
     if (action === 'approve_join' || action === 'decline_join') {
       const circle = await circleByCode(sql, code);
       if (!circle) return res.status(404).json({ ok: false, error: 'No circle found with that code' });

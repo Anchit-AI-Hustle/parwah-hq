@@ -3107,6 +3107,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var t = e.text || '', me = state && state.name ? String(state.name).split(' ')[0] : '';
     // Something running late, or waiting for someone to take it.
     if (/running late|needs someone|nobody has it/i.test(t)) return true;
+    // Someone waiting at the door (the request is a care event, not a join).
+    if (/has asked to join/i.test(t)) return true;
     // Something given to you, asked of you, or about you by name.
     if (me && new RegExp('\\b(to|for|asked|about) ' + me.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(t)) return true;
     return false;
@@ -4405,7 +4407,18 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           var got = (j.circles || []).filter(function(c){ return String(c.code).toUpperCase() === String(pendCode || '').toUpperCase(); })[0];
           if (got) { inviteDone(); window._authCircles = j.circles; enterCircle(got); return; }
         }
-        toast('Not yet - the family has not answered');
+        // Not in yet: still waiting, or did the family say no? A declined
+        // request must not keep coming back as "waiting" on every reload.
+        var code = pendCode;
+        return post(API.circle, { action: 'join_status', code: code }).then(function(st){
+          if (st && st.ok && st.status === 'declined') {
+            inviteDone();
+            showStep('setup');
+            $('ob-err').textContent = 'The family did not take up your request to join. If that was a mistake, ask them to send the invite again.';
+            return;
+          }
+          toast('Not yet - the family has not answered');
+        });
       })
       .catch(function(){ btn.disabled = false; toast('No connection - try again'); });
   });
@@ -8646,26 +8659,49 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // Parwah comes back to the screen (and every half hour) it asks whether
   // a newer version is out, and moves to it - at once if nothing is being
   // typed, otherwise with a bar that says so.
-  var appTag = null;
+  // appLost: the first check failed (opened offline, from the saved copy),
+  // so which version is running is not known - the first answer that does
+  // come is treated as newer.
+  var appTag = null, appLost = false;
   function appVersion(){
     return fetch('/', { method: 'HEAD', cache: 'no-store' })
       .then(function(r){ return r.ok ? (r.headers.get('etag') || r.headers.get('last-modified') || null) : null; })
       .catch(function(){ return null; });
   }
+  // Something typed and not yet saved, wherever focus has gone since: a
+  // field the person typed into that still holds text. Saving clears the
+  // field, so it no longer counts; sign-in fields stop counting once the
+  // sign-in screen has gone.
+  var TEXTY = /^(text|search|tel|email|number|url|date|time|datetime-local|)$/;
+  document.addEventListener('input', function(e){
+    var t = e.target;
+    if (t && (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && TEXTY.test(t.type || '')))) t.__typed = true;
+  }, true);
   function typing(){
     var a = document.activeElement;
-    return !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.value);
+    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.value) return true;
+    var f = document.querySelectorAll('input, textarea');
+    for (var i = 0; i < f.length; i++) {
+      if (f[i].__typed && f[i].value && !($('onboard').hidden && f[i].closest('#onboard'))) return true;
+    }
+    return false;
   }
+  function moveToNew(){
+    if (typing() || !$('asksheet').hidden || !$('tsheet').hidden) { $('updbar').hidden = false; return; }
+    location.reload();
+  }
+  // Every later check waits for the first one: if it is still out when the
+  // connection comes back, an answer to a later check must not be taken as
+  // the version that is running.
+  var appFirst = appVersion().then(function(t){ if (!t) appLost = true; else if (!appTag) appTag = t; });
   function checkUpdate(){
-    appVersion().then(function(t){
+    appFirst.then(appVersion).then(function(t){
       if (!t) return;
-      if (!appTag) { appTag = t; return; }
+      if (!appTag) { appTag = t; if (appLost) { appLost = false; moveToNew(); } return; }
       if (t === appTag) return;
-      if (typing() || !$('asksheet').hidden || !$('tsheet').hidden) { $('updbar').hidden = false; return; }
-      location.reload();
+      moveToNew();
     });
   }
-  appVersion().then(function(t){ if (t && !appTag) appTag = t; });
   document.addEventListener('visibilitychange', function(){ if (!document.hidden) checkUpdate(); });
   window.addEventListener('focus', checkUpdate);
   setInterval(checkUpdate, 30 * 60000);
