@@ -339,6 +339,19 @@ for (const vp of [{ width:320, height:640 }, { width:390, height:844 }]) {
   await pg.close();
 }
 
+// ---------- TODAY'S SHORTCUTS LAND ON WHAT THEY SAY ----------
+{
+  const pg = await fresh({ viewport:{ width:390, height:844 }, signedIn:true });
+  const sel = () => pg.evaluate(() => [...document.querySelectorAll('#bk-filter .sel')].map(b => b.dataset.bk).join(','));
+  await pg.locator('#widgets [data-bk="health"]').click(); await pg.waitForTimeout(400);
+  ok((await pg.evaluate(() => location.hash)) === '#memory' && await sel() === 'med,fact', 'Health opens medicines and health facts together');
+  await pg.evaluate(() => { location.hash = '#home'; }); await pg.waitForTimeout(400);
+  if (!(await pg.locator('#more').evaluate(d => d.open))) await pg.click('#more > summary');
+  await pg.locator('#more [data-bk="people"]').click(); await pg.waitForTimeout(400);
+  ok(await sel() === 'contact,address', 'and Contacts & addresses opens contacts and addresses, not what was open last (' + await sel() + ')');
+  await pg.close();
+}
+
 // ---------- CONTROLS A PARENT CAN ACTUALLY HIT ----------
 {
   const pg = await fresh({ viewport:{ width:390, height:844 }, signedIn:true });
