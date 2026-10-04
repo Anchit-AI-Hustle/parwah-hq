@@ -8,7 +8,8 @@
 // screen - "taking Mum to a new doctor tomorrow, what do we have?" - is a
 // retrieval question that needs no model at all.
 import { LOCAL_MODEL, isBillingFailure, isAuthFailure, isDeadKey, classify, whoIsAsked,
-         renderSummary, renderMemory, renderCircle, offlineNote, cannotAnswer, stalePhrase }
+         renderSummary, renderMemory, renderCircle, offlineNote, cannotAnswer, stalePhrase,
+         renderEmergency, renderCrisis, renderHealth }
   from '../../api/_ektalocal.mjs';
 
 let pass = 0; const fails = [];
@@ -90,7 +91,36 @@ ok('no key at all is named as no key', /no AI key is set up/.test(offlineNote('n
 ok('the note says where to fix it', /Ekta's brain/.test(offlineNote('billing')));
 const no = cannotAnswer('billing');
 ok('an unanswerable question is refused, not guessed at', /will not guess/.test(no));
-ok('and it says what she CAN still do', /what do we have for Papa/.test(no) && /who checked in today/.test(no));
+ok('and it says what she CAN still do', /what do we have for Papa/.test(no) && /scam/.test(no));
+ok('every example it offers is one she can really answer', [...no.matchAll(/"([^"]+)"/g)].every(m => classify(m[1]) !== 'unknown'));
+ok('a refusal never claims it was read from the records', !/answered that straight from your family records/.test(no));
+ok('a refusal still points at 112 and SOS', /112/.test(no) && /SOS/.test(no));
+ok('out of coins is named as out of coins, with no key advice', /out of coins/.test(offlineNote('coins')) && !/Ekta's brain/.test(offlineNote('coins')));
+
+// ---- SOMEONE MAY BE IN DANGER: before everything, in fixed words ----
+for (const t of ['Papa has chest pain and is sweating, what do I do?', 'Mummy has fallen in the bathroom', 'Dadi behosh ho gayi',
+                 'He is not breathing', 'Papa is having a stroke', 'Bhaiya met with an accident', 'Papa just had a heart attack',
+                 'Hi, Papa collapsed', 'she swallowed poison'])
+  ok('urgent: ' + t, classify(t) === 'emergency');
+for (const t of ['Papa had a stroke in 2019, what medicines is he on?', 'He had a heart attack in 2019', 'I accidentally deleted a photo',
+                 'Book a cardiac checkup for Papa', 'I fell asleep early'])
+  ok('not urgent, so not alarmed: ' + t, classify(t) !== 'emergency');
+ok('words about ending a life reach a person', classify('I want to die') === 'crisis' && classify('main jeena nahi chahta') === 'crisis');
+const em = renderEmergency();
+ok('urgent: call 112, ambulance 108, press SOS', /112/.test(em) && /108/.test(em) && /SOS/.test(em));
+ok('urgent: no first aid instructions, no diagnosis', !/\b(cpr|aspirin|press on|lie (him|her) down|give (him|her))\b/i.test(em) && /not a doctor/.test(em));
+ok('crisis: Tele-MANAS 14416 and 112', /14416/.test(renderCrisis()) && /112/.test(renderCrisis()));
+ok('urgent answers have no em dash', !em.includes('\u2014') && !renderCrisis().includes('\u2014'));
+
+// ---- A MEDICINE QUESTION IS THE DOCTOR'S ----
+ok('can she take X is a health question', classify('Can Papa take a Crocin with his BP tablet?') === 'health');
+ok('should we stop is a health question', classify('Is Papa diabetic? Should we stop his sugar tablets?') === 'health');
+ok('a dose question is a health question', classify('what dose of metformin is right') === 'health');
+const hp = renderHealth({ entries: [{ kind: 'med', name: 'Amlodipine 5mg', forwhat: 'BP', last_verified_at: new Date().toISOString() },
+                                     { kind: 'contact', name: 'Dr Mehra' }] }, 'Papa', { name: 'Dr Mehra', phone: '+91 98111 11111' });
+ok('health: reads back what is recorded', /Amlodipine 5mg/.test(hp) && /Papa/.test(hp));
+ok('health: never advises, sends to the doctor by name', /cannot advise on medicines/.test(hp) && /Dr Mehra/.test(hp) && /98111/.test(hp));
+ok('health: with no doctor recorded, says ask the doctor or a pharmacist', /pharmacist/.test(renderHealth({ entries: [] }, 'Papa', null)));
 
 ok('the offline model is named so the client can tell', LOCAL_MODEL === 'parwah-local');
 ok('a never-checked fact says so', /never checked/.test(stalePhrase(null, false)));
@@ -109,8 +139,8 @@ ok('a never-checked fact says so', /never checked/.test(stalePhrase(null, false)
   ok('the app offers suggestion chips', chips.length >= 4);
   for (const c of chips) ok('chip has an offline answer, not a refusal: ' + c.slice(0, 40), classify(c) !== 'unknown');
   const byText = t => chips.find(c => c.includes(t)) || '';
-  ok('the circle-update chip reads the circle', classify(byText('update on my family')) === 'circle');
-  ok('the reminder chip is a reminder, not a circle summary', classify(byText('daily reminder')) === 'remind');
+  ok('the saved-records chip reads the records', classify(byText('What do we have recorded')) === 'memory');
+  ok('the doctor-visit chip prepares a summary', classify(byText('doctor visit')) === 'summary');
   ok('the scam chip is a scam check', classify(byText('OTP')) === 'scam');
   ok('the help chip asks the circle, not a summary', classify(byText('ask the family')) === 'help');
 }

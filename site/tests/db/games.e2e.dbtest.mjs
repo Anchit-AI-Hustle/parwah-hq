@@ -92,6 +92,13 @@ const lastGame = async (kind) => (await admin.query(`select * from games where k
 const vis = (p, s) => p.locator(s).first().isVisible();
 
 const R = await phone(rohan);
+// A finished game is dropped from the open screen by the next 3-second poll
+// (review D, D-3, fixed separately): by the time the test taps "All games"
+// the list may already be showing. Either way, the list is where it ends up.
+async function backToList() {
+  if (await R.isVisible('#g-back')) await R.click('#g-back', { timeout: 5000 }).catch(() => {});
+  await R.waitForTimeout(300);
+}
 ok('the Coming soon game tiles are gone', (await R.locator('#pane-fun >> text=Coming soon').count()) === 0);
 for (const k of ['ludo', 'bhabhi', 'vyapar']) ok(`${k}: its card is there to start`, await R.locator(`[data-bstart="${k}"]`).count() === 1);
 ok('each game card lets you pick family to play with', (await R.locator('.bpick[data-for="ludo"] input[type=checkbox]').count()) === 1);
@@ -125,7 +132,7 @@ const tap = (loc) => loc.click({ force: true, timeout: 3000 }).then(() => true, 
   ok('ludo: it ends with a winner', !!g.state.winner && g.status === 'done', g.state.winner);
   ok('ludo: the screen says who won', /won/.test(await R.textContent('#l-status')));
   ok('ludo: a solo game is not announced to the family', (await admin.query(`select count(*)::int as n from events where text like '%Ludo%'`)).rows[0].n === 0);
-  await R.click('#g-back'); await R.waitForTimeout(300);
+  await backToList();
 }
 
 // ---------------- Bhabhi, alone, to the end ----------------
@@ -156,7 +163,7 @@ const tap = (loc) => loc.click({ force: true, timeout: 3000 }).then(() => true, 
   ok('bhabhi: the screen names the Bhabhi', /Bhabhi/.test(await R.textContent('#b-status')));
   // A card you may not play cannot be tapped.
   ok('bhabhi: only playable cards were ever enabled', refused === 0);
-  await R.click('#g-back'); await R.waitForTimeout(300);
+  await backToList();
 }
 
 // ---------------- Vyapar, alone ----------------

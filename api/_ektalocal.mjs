@@ -41,8 +41,16 @@ export function isDeadKey(e) { return isBillingFailure(e) || isAuthFailure(e); }
 
 // ---------- what was asked ----------
 const RE = {
+  // Someone may be in danger right now. Checked before anything else, and
+  // answered in fixed words that never cost a coin: a model, a records
+  // lookup or a coin balance must never stand between a family and 112.
+  emergency: /\b(chest ?pain|pain in (his|her|my|the) chest|(having|is having|just had|has just had) a heart attack|heart attack (now|right now|just now)|can'?t breathe|cannot breathe|not breathing|breathless|struggling to breathe|trouble breathing|breathing (problem|difficulty)|saans (nahi|nahin|nhi)|unconscious|not responding|unresponsive|fainted|passed out|collapsed|behosh|(has|have|just|she|he) (fallen|had a fall)|fell (down|over|off|in the)|had a fall|(having|is having|just had) a stroke|stroke (now|right now|just now)|signs of (a )?stroke|face (is )?droop|slurred|paralys|bleeding (a lot|heavily|badly|won'?t stop)|heavy bleeding|khoon (beh|nikal)|seizure|convulsion|mirgi|choking|swallowed (poison|something)|poison|overdose|took too many (tablets|pills)|badly burn(ed|t)|(had|been in|met with) an? accident\b|accident (now|just now|right now))/i,
+  // Words about ending one's life get a person to talk to, at once.
+  crisis: /\b(kill (my|him|her)self|suicid|end (my|his|her) life|want to die|don'?t want to live|jeena nahi|marna chahta|marna chahti)/i,
+  // A question about what to do with a medicine is the doctor's to answer.
+  health: /\b((should|can|could|may) (he|she|i|papa|mummy|mumma|mom|mum|dad|dadi|dada|nani|nana|maa|they|we) (take|have|stop|skip|double|increase|reduce|start)|stop (his|her|the|my) (medicine|tablet|dawa|dose)|dose|dosage|side ?effects?|is (he|she|papa|mummy|maa|dad) (diabetic|hypertensive)|mix (with|it with)|along with (his|her) (bp|sugar|medicine|tablet))\b/i,
   summary: /\b(doctor|hospital|appointment|clinic|check ?up|checkup|visit|emergency|casualty|admit|surgery|prepare|summary|taking (him|her|them|mum|mom|papa|dad|maa|amma))\b/i,
-  memory:  /\b(medicine|medicines|dawa|dawai|tablet|blood ?group|allerg|insurance|policy|doctor'?s? number|contact|address|plumber|electrician|maid|records?|recorded|papers?|documents?)\b/i,
+  memory:  /\b(what do we (have|know)|what('s| is) (recorded|saved)|medicine|medicines|dawa|dawai|tablet|blood ?group|allerg|insurance|policy|doctor'?s? number|contact|address|plumber|electrician|maid|records?|recorded|papers?|documents?)\b/i,
   circle:  /\b(check ?in|checked in|today|kaisa|kaise|how (is|are)|everything ok|all ok|what'?s happening|kya ho raha|reminder|reminders|request|requests|due|pending|task|todo|to do|family|circle|who)\b/i,
   greet:   /^\s*(hi|hello|hey|namaste|namaskar|hii+|salaam|adaab|good (morning|evening|afternoon))\b/i,
   // The three the suggestion chips send, which the patterns above either
@@ -73,7 +81,10 @@ export function classify(text) {
   const t = String(text || '');
   // Safety first, and before the greeting: "Hi, is this OTP message a scam?"
   // is a scam question that happens to start politely.
+  if (RE.crisis.test(t))    return 'crisis';
+  if (RE.emergency.test(t)) return 'emergency';
   if (RE.scam.test(t))   return 'scam';
+  if (RE.health.test(t)) return 'health';
   if (RE.greet.test(t))  return 'greet';
   if (RE.remind.test(t)) return 'remind';
   if (RE.help.test(t))   return 'help';
@@ -172,7 +183,8 @@ export function renderCircle(payload) {
 
 // The honest footer. A family must never be told that a limit is an answer.
 function offlineWhy(reason) {
-  return reason === 'billing' ? 'my AI key has no credit right now'
+  return reason === 'coins' ? 'the family is out of coins'
+    : reason === 'billing' ? 'my AI key has no credit right now'
     : reason === 'auth' ? 'my AI key is not working right now'
     : reason === 'none' ? 'no AI key is set up yet'
     : 'I could not reach my AI right now';
@@ -217,21 +229,57 @@ export function renderCannotDo(kind, reason) {
   return where.join(NL);
 }
 
+// Only for an answer that really was read from the records.
 export function offlineNote(reason) {
-  const why = reason === 'billing' ? 'my AI key has no credit right now'
-    : reason === 'auth' ? 'my AI key is not working right now'
-    : reason === 'none' ? 'no AI key is set up yet'
-    : 'I could not reach my AI right now';
-  return 'I answered that straight from your family records, because ' + why
-    + '. Everything above is exactly what is saved. For a proper conversation, add a working key under Profile, Ekta\'s brain.';
+  return 'I answered that straight from your family records, because ' + offlineWhy(reason)
+    + '. Everything above is exactly what is saved, and reading it back costs no coins.'
+    + (reason === 'coins' ? '' : ' For a proper conversation, add a working key under Profile, Ekta\'s brain.');
 }
 
+// Nothing was answered, so nothing claims to have been read from records.
 export function cannotAnswer(reason) {
-  return ['I cannot chat properly at the moment, so I will not guess.', '',
-    'What I can still do right now, from your family records:',
+  return ['I cannot chat properly at the moment, because ' + offlineWhy(reason) + ', so I will not guess.', '',
+    'What I can still do right now, free, from your family records:',
     bullets([
       'Read back what is recorded for anyone: "what do we have for Papa"',
       'Prepare a doctor or hospital visit: "taking Papa to the doctor tomorrow"',
-      'Tell you what has happened in the circle: "who checked in today"'
-    ]), '', offlineNote(reason)].join(NL);
+      'Check a message that might be a scam: "is this OTP message a scam"'
+    ]), '',
+    'If someone is unwell or hurt right now, call 112 (ambulance 108) and press SOS so the family knows.'].join(NL);
+}
+
+// Fixed words, the same for every family, so they can be checked once and
+// trusted always. No first aid instructions: Parwah is not a doctor.
+export function renderEmergency() {
+  return ['This sounds urgent. Please do this now:', '',
+    bullets([
+      'Call 112 now. For an ambulance you can also call 108.',
+      'Press SOS below, so everyone in the family is told at once.',
+      'Stay with them, and keep your phone with you.'
+    ]), '',
+    'I am not a doctor and cannot judge how serious this is. The people on 112 can.'].join(NL);
+}
+
+export function renderCrisis() {
+  return ['I am really glad you said something. You do not have to carry this alone.', '',
+    bullets([
+      'Tele-MANAS is free and open day and night: call 14416. They speak Hindi, English and many other languages.',
+      'If anyone is in danger right now, call 112.',
+      'Tell one person in your family you trust. Press SOS below if you want them all to know now.'
+    ])].join(NL);
+}
+
+// A medicine question: what is recorded, then the doctor. Never advice.
+export function renderHealth(payload, who, doctor) {
+  const entries = ((payload && payload.entries) || []).filter(e => e.kind === 'med' || e.kind === 'fact');
+  const out = [];
+  if (entries.length) {
+    out.push('This is what the family has recorded' + (who ? ' for ' + who : '') + ':');
+    out.push(bullets(entries.slice(0, 12).map(e => e.name + (e.forwhat ? ' (' + e.forwhat + ')' : '') + stalePhrase(e.last_verified_at, e.stale))));
+  } else {
+    out.push('Nothing about medicines or health is recorded' + (who ? ' for ' + who : '') + ' yet.');
+  }
+  out.push('I cannot advise on medicines: whether to take, stop, mix or change anything is for ' + (who ? who + "'s" : 'the') + ' doctor to say.'
+    + (doctor ? ' The doctor recorded is ' + doctor.name + (doctor.phone ? ', ' + doctor.phone : '') + '.' : ' Please ask the doctor or a pharmacist before changing anything.'));
+  return out.join(NL + NL);
 }

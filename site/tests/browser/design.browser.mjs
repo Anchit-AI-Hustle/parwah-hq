@@ -167,6 +167,42 @@ ok(S === 0, 'every control is at least 44px to tap on touch, 36px on desktop (' 
 ok(T === 0, 'no text is smaller than 12px (' + T + ')');
 ok(C === 0, 'all text passes WCAG AA contrast in light and dark (' + C + ' below)');
 
+// Ekta, when someone may be in danger: the answer comes with Call 112 and
+// SOS as real buttons, big enough and readable in both themes, and SOS tells
+// the family what was said.
+{
+  const { renderEmergency } = await import('../../../api/_ektalocal.mjs');
+  for (const theme of ['light', 'dark']) {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, colorScheme: theme, serviceWorkers: 'block' });
+    const errs = []; page.on('pageerror', e => errs.push(e.message));
+    await page.addInitScript(([me]) => {
+      localStorage.setItem('parwah', JSON.stringify({ code: 'ABCDEF', memberId: me, name: 'Rohan', role: 'family', circleName: 'Sharma Family' }));
+      localStorage.setItem('parwah-user', JSON.stringify({ id: 'u1', name: 'Rohan', phone: '+919800000001', toured: true }));
+      localStorage.setItem('parwah-token', 't'); localStorage.setItem('parwah-voice', 'off');
+    }, [ME]);
+    let sos = null;
+    await page.route('**/api/**', r => r.fulfill({ json: { ok: false, error: 'stub' } }));
+    await page.route('**/api/events*', r => {
+      const b = r.request().postDataJSON && r.request().method() === 'POST' ? r.request().postDataJSON() : null;
+      if (b && b.type === 'sos') { sos = b; return r.fulfill({ json: { ok: true } }); }
+      return r.fulfill({ json: EV });
+    });
+    await page.route('**/api/ekta*', r => r.fulfill({ json: { ok: true, reply: renderEmergency(), actions: [], model: 'parwah-local', emergency: true } }));
+    await page.goto(BASE + '/#ekta'); await page.waitForTimeout(900);
+    await page.fill('#msg', 'Papa has chest pain'); await page.click('#send'); await page.waitForTimeout(600);
+    ok(await page.isVisible('.eurgent a[href="tel:112"]') && await page.isVisible('.eurgent [data-esos]'), theme + ': an urgent answer comes with Call 112 and SOS buttons');
+    const m = await page.evaluate(measure, 44);
+    const bad = [...m.small, ...m.lowc].filter(x => /Call 112|Send SOS/.test(x));
+    ok(bad.length === 0, theme + ': both are big enough and readable' + (bad.length ? ' - ' + bad.join(' | ') : ''));
+    await page.click('.eurgent [data-esos]'); await page.waitForTimeout(300);
+    await page.click('#as-yes');
+    await page.waitForTimeout(600);
+    ok(sos && sos.type === 'sos' && /chest pain/.test(sos.text), theme + ': SOS asks first, then tells the family what was said', JSON.stringify(sos));
+    ok(errs.length === 0, theme + ': no script errors' + (errs.length ? ' - ' + errs[0] : ''));
+    await page.close();
+  }
+}
+
 await browser.close(); server.close();
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

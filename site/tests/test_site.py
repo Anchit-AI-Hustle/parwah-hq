@@ -739,8 +739,8 @@ check("guide: an answer can quietly say a call would be nice",
       "call: true" in pulse and "could do with a call" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
 check("guide: everyone in a circle sees the same question on the same day",
       "derived from the date" in pulse or "same style for everyone" in pulse)
-check("guide: the plan is named and bundled as the guide names it",
-      "Parwah Family Plan" in plan and "'Family Readiness'" in plan and "'Family Pulse'" in plan)
+check("plan: named as the guide names it, and never sells the removed mood question (Family Pulse)",
+      "Parwah Family Plan" in plan and "'Family Readiness'" in plan and "Pulse" not in plan)
 
 # 10p. THE GUIDE'S REMAINING SCREENS - 1, 2 and 4.
 ekta_src = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
@@ -1494,7 +1494,7 @@ check("entry: an interview can open straight onto the concept",
       "demoWanted()" in appob and "get('demo') === '1'" in appob)
 _demo = appob[appob.index("var DEMO = ["):appob.index("var demoAt = 0;")]
 check("guide demo: the five screens the guide specifies, then the price",
-      all(k in _demo for k in ("'promise'", "'memory'", "'ekta'", "'pulse'", "'ready'", "'plan'")))
+      all(k in _demo for k in ("'promise'", "'memory'", "'ekta'", "'todo'", "'ready'", "'plan'")) and "'pulse'" not in _demo and "pulse" not in _demo.lower())
 check("guide demo: screen 1 is the promise and four people, nothing else",
       "nobody should have to scramble" in _demo and "You decide who can see what" in _demo)
 check("guide demo: screen 2 carries the guide's own five sections",
@@ -1504,8 +1504,8 @@ check("guide demo: screen 3 is the readiness number with named gaps",
       "78% ready" in _demo and "insurance card missing" in _demo)
 check("guide demo: Ekta retrieves and never diagnoses",
       "Prepare summary" in _demo and "does not diagnose" in _demo)
-check("guide demo: the pulse can quietly ask for a call",
-      "a call would be nice" in _demo)
+check("guide demo: things to do shows who has what (and what nobody has yet), with the offline emergency card",
+      "Nobody has it yet" in _demo and "It works with no internet." in _demo)
 check("guide demo: the price comes last, per family, in both currencies",
       "2,499" in _demo and "per family, per year" in _demo and "29.99" in _demo)
 # "Do NOT show chat, games, gifting, calls or a feature menu here."
@@ -1745,6 +1745,17 @@ check("names: one name per place on tiles, tabs and menu, and family not circle 
 check("staying current: an open or installed Parwah moves to a new version when it comes back to the screen, and the page is never served from the browser cache",
       "function checkUpdate()" in _appt and 'id="updbar"' in _appt
       and "fetch(url.href, { cache: 'no-store'" in (REPO / "site" / "public" / "sw.js").read_text(encoding="utf-8"))
+_ekt = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
+check("ekta: anyone in danger is answered first, in fixed words, free - before coins, keys or a model",
+      _ekt.index("asked === 'emergency' || asked === 'crisis'") < _ekt.index("const paid = await spend(")
+      and "function ektaUrgent(said)" in _appt and 'href="tel:112"' in _appt and "if (j.emergency) ektaUrgent(v);" in _appt)
+check("ekta: out of coins still answers what was always free, and says how anyone can earn more",
+      "const free = await localTurn(sql, circle, me, history, 'coins');" in _ekt and "EARN.checkin" not in _ekt)
+check("ekta: the screen says what she does, that she gives no medical advice and what a question costs; chips point at real things",
+      "I never give medical advice. A question uses 2 coins" in _appt and "Daily check-in reminder" not in _appt and 'id="evoice" aria-pressed="true" aria-label="Read replies aloud"' in _appt)
+check("muhurat: no health advice in a Rog window, and care never waits for a muhurat",
+      "health matters" not in _appt and "Medicines, doctor visits and emergencies never wait for a muhurat." in _appt
+      and "health matters" not in (API_DIR / "_panchang.mjs").read_text(encoding="utf-8"))
 check("create: joint or nuclear is asked first, with no answer chosen for them",
       "var newFamilyType = null;" in _appt and _appt.index('id="c-ftype"') < _appt.index('id="c-circle"') < _appt.index('id="c-name"'))
 check("roles: a new group asks for your role in the group, and starts on Friend",
