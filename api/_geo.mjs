@@ -69,6 +69,28 @@ export function worthSending(last, next, now = Date.now()) {
   return distanceM(last, next) >= 50;
 }
 
+// How long to share, like Find My and Google Maps: an hour, until tonight,
+// or until you stop. The phone sends the end time (it knows "tonight" in its
+// own time zone); the server accepts only a time from 5 minutes to 7 days on.
+export const MIN_SHARE_MS = 5 * 60000, MAX_SHARE_MS = 7 * 86400000;
+export function shareUntil(until, now = Date.now()) {
+  if (until === undefined || until === null || until === '') return null;
+  const t = Date.parse(until);
+  if (!Number.isFinite(t) || t < now + MIN_SHARE_MS || t > now + MAX_SHARE_MS) return { error: 'Pick how long to share again' };
+  return new Date(t);
+}
+
+// The map shown on the screen. Google's plain embed needs no key, and it is
+// loaded only when someone taps to see it - loading it sends the point to
+// Google. "Area only" is shown zoomed out, so the house is never centred.
+export function embedUrl(lat, lng, precision) {
+  return 'https://maps.google.com/maps?q=' + encodeURIComponent(lat + ',' + lng) +
+    '&z=' + (precision === 'area' ? 13 : 16) + '&output=embed';
+}
+export function directionsUrl(lat, lng) {
+  return 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(lat + ',' + lng);
+}
+
 export function mapsUrl(lat, lng) {
   return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(lat + ',' + lng);
 }
