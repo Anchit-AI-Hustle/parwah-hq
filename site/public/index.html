@@ -1228,7 +1228,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <summary>More<small>Chats, contacts, plans, Ekta, muhurat, payments, games</small></summary>
       <div class="widgets" id="morewidgets">
       <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b>Chats</b><small id="w-chat">Family + personal</small></button>
-      <button class="widget" data-goto="memory"><span class="wic" aria-hidden="true">📒</span><b>Contacts &amp; addresses</b><small id="w-book">Doctors, neighbours, addresses</small></button>
+      <button class="widget" data-goto="memory" data-bk="people"><span class="wic" aria-hidden="true">📒</span><b>Contacts &amp; addresses</b><small id="w-book">Doctors, neighbours, addresses</small></button>
       <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true">💡</span><b>Suggested</b><small id="w-req">Loading…</small></button>
       <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
       <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check - just ask</small></button>
@@ -4478,6 +4478,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('r-for').addEventListener('change', todoHint);
 
   // ---------- Family book: contacts, addresses, meds-map ----------
+  // Shortcuts that open more than one section at once.
+  var BK_GROUPS = { health: ['med', 'fact'], people: ['contact', 'address'] };
   var bookCache = [], prepCache = [], bookAccess = [], bookConsent = [], bkFilter = 'all', bkAbout = '', bEditId = null, bKind = 'contact', bookStaleDays = 180;
   var BK_ICON = { contact: '☎️', address: '📍', med: '💊', fact: '🩸', insurance: '🛡' };
   var BK_LABEL = { contact: 'Contact', address: 'Address', med: 'Meds', fact: 'Health fact', insurance: 'Insurance' };
@@ -4551,7 +4553,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var qy = $('b-search').value.trim().toLowerCase();
     bkAbout = $('bk-about').value;
     var list = bookCache.filter(function(e){
-      if (bkFilter === 'health' ? !(e.kind === 'med' || e.kind === 'fact') : (bkFilter !== 'all' && e.kind !== bkFilter)) return false;
+      if (!(BK_GROUPS[bkFilter] ? BK_GROUPS[bkFilter].indexOf(e.kind) >= 0 : (bkFilter === 'all' || e.kind === bkFilter))) return false;
       if (bkAbout === 'fam' && e.about_member) return false;
       if (bkAbout && bkAbout !== 'fam' && e.about_member !== bkAbout) return false;
       if (!qy) return true;
@@ -4579,13 +4581,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       ? nM + ' medicine' + (nM === 1 ? '' : 's') + ' · ' + nF + ' health fact' + (nF === 1 ? '' : 's')
       : 'Medicines, blood groups, allergies';
   }
-  // The Health shortcut opens medicines and health facts together; the
+  // The Health and Contacts shortcuts each open two sections together; the
   // section buttons show both as chosen.
   function setBkFilter(k){
     bkFilter = k;
     $('bk-filter').querySelectorAll('button').forEach(function(x){
       var v = x.getAttribute('data-bk');
-      x.classList.toggle('sel', k === 'health' ? (v === 'med' || v === 'fact') : v === k);
+      x.classList.toggle('sel', BK_GROUPS[k] ? BK_GROUPS[k].indexOf(v) >= 0 : v === k);
     });
     renderBook();
   }
@@ -6178,6 +6180,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       : 'Your location could not be found just now. Step near a window or turn on location, then try again.');
   }
   function locSend(pos, action){
+    // A held phone sends nothing, whoever asks: a watch, a one-shot fix after
+    // a precision change, or another tab of Parwah on this phone.
+    if (action === 'update' && locIsHeld()) { locStopWatch(); return Promise.resolve({ ok: false, held: true }); }
     var body = { code: state.code, memberId: state.memberId, action: action, lat: pos.coords.latitude, lng: pos.coords.longitude,
                  accuracy: pos.coords.accuracy, precision: locPrec };
     locLast = { lat: body.lat, lng: body.lng, at: Date.now() };
@@ -6194,6 +6199,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       locSend(pos, 'update').then(function(j){ if (!j.ok || curTab === 'people') refreshLoc(); }).catch(function(){});
     }, function(err){ if (err && err.code === 1) { locGeoError(err); } }, { enableHighAccuracy: locPrec === 'exact', maximumAge: 60000, timeout: 30000 });
   }
+  window.addEventListener('storage', function(e){
+    if (e.key && e.key.indexOf('parwah-loc-held:') === 0 && e.newValue === '1' && e.key === locHoldKey()) { locStopWatch(); locLast = null; renderLoc(); }
+  });
   function locStopWatch(){ if (locWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(locWatch); locWatch = null; }
   document.addEventListener('visibilitychange', function(){ if (document.hidden) locStopWatch(); else if (locMe.sharing) locStartWatch(); });
   $('loc-share').addEventListener('click', function(){
@@ -6218,11 +6226,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     locGen++; locStopping = true; locSetHeld(true); locMe.sharing = false; locStopWatch(); locLast = null;
     post(locUrl(), { code: state.code, memberId: state.memberId, action: 'stop' }).then(function(j){
       locStopping = false; locGen++; btn.disabled = false;
-      if (!j.ok) { toast((j.error || 'Could not stop') + '. This phone has stopped sending; tap Stop again to delete it.'); refreshLoc(); return; }
+      if (!j.ok) { locMe.sharing = true; renderLoc(); toast((j.error || 'Could not stop') + '. This phone has stopped sending; tap Stop again to delete it.'); refreshLoc(); return; }
       locSetHeld(false);
       toast('Stopped. Your location is deleted.');
       refreshLoc();
-    }).catch(function(){ locStopping = false; locGen++; btn.disabled = false; toast('No connection. This phone has stopped sending; tap Stop again to delete it.'); refreshLoc(); });
+    }).catch(function(){
+      // Parwah still holds the position as far as we know: say so, with Stop
+      // to tap again, even if the reload below cannot reach it either.
+      locStopping = false; locGen++; btn.disabled = false; locMe.sharing = true; renderLoc();
+      toast('No connection. This phone has stopped sending; tap Stop again to delete it.'); refreshLoc();
+    });
   });
   $('loc-prec').addEventListener('click', function(e){
     var b = e.target.closest('button[data-prec]'); if (!b) return;

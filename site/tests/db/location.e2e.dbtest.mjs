@@ -236,20 +236,42 @@ await R.context().setGeolocation(PUNE);
 await R.click('#loc-share');
 await R.waitForTimeout(1500);
 ok('Rohan shares yet again', (await share()).enabled === true);
+// A second tab of Parwah on the same phone, also sharing.
+const R2 = await R.context().newPage();
+R2.on('pageerror', e => errors.push('Rohan tab 2: ' + e.message));
+await R2.goto(BASE + '/#people'); await R2.waitForTimeout(1500);
+// No connection at all: Stop fails, and so does every reload.
+let offline = true;
 await R.route('**/api/settings?area=location*', (route) => {
   const req = route.request();
   if (req.method() === 'POST' && (req.postDataJSON() || {}).action === 'stop') return route.abort();
+  if (offline && req.method() === 'GET') return route.abort();
   return route.continue();
 });
-const sentAfterFail = [];
+const sentAfterFail = [], sentFromTab2 = [];
 let failedAt = 0;
-R.on('request', (req) => { if (failedAt && req.method() === 'POST' && (req.postDataJSON() || {}).action === 'update') sentAfterFail.push(req.url()); });
+const watchUpdates = (pg, into) => pg.on('request', (req) => { if (failedAt && req.method() === 'POST' && (req.postDataJSON() || {}).action === 'update') into.push(req.url()); });
+watchUpdates(R, sentAfterFail); watchUpdates(R2, sentFromTab2);
 await R.click('#loc-stop');
 failedAt = Date.now();
 await R.waitForTimeout(1200);
+ok('with no connection at all, the card still says this phone has stopped sending',
+   /stopped sending; tap Stop again/.test(await R.textContent('#loc-status')) && await R.isVisible('#loc-stop'), await R.textContent('#loc-status'));
+offline = false;
 await R.context().setGeolocation({ latitude: 18.5590, longitude: 73.7868, accuracy: 15 });
 await R.waitForTimeout(2500);
 ok('Stop could not reach the server: the phone still sends nothing', sentAfterFail.length === 0, sentAfterFail.length);
+ok('not from the other tab of Parwah on this phone either', sentFromTab2.length === 0, sentFromTab2.length);
+await R2.close();
+// A reload that does reach Parwah: it says the server still holds the share.
+await R.evaluate(() => { location.hash = '#home'; }); await R.waitForTimeout(400);
+await R.evaluate(() => { location.hash = '#people'; }); await R.waitForTimeout(1200);
+const beforePrec = sentAfterFail.length;
+await R.click('#loc-prec [data-prec="exact"]');
+await R.waitForTimeout(2000);
+ok('changing to exact while held does not send a fresh position', sentAfterFail.length === beforePrec, sentAfterFail.length - beforePrec);
+await R.click('#loc-prec [data-prec="area"]');
+await R.waitForTimeout(800);
 ok('and says so plainly', /stopped sending; tap Stop again/.test(await R.textContent('#loc-status')), await R.textContent('#loc-status'));
 await R.reload(); await R.waitForTimeout(1500);
 await R.context().setGeolocation({ latitude: 18.6000, longitude: 73.7500, accuracy: 15 });
