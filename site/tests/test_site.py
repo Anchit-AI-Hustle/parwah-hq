@@ -1766,6 +1766,14 @@ _swsrc = (REPO / "site" / "public" / "sw.js").read_text(encoding="utf-8")
 check("staying current: a window on a copy from before v41 is moved by the new service worker (started, not awaited), and one opened offline moves once back online",
       "c.navigate(c.url)" in _swsrc and "return Promise.all(list.map(function (c) { return 'navigate' in c ? c.navigate" not in _swsrc
       and "+m[1] < SELF_UPDATING" in _swsrc and "if (appLost) { appLost = false; moveToNew(); }" in _appt)
+check("staying current: the worker leaves other sites alone, hands redirects back to the browser, and stays alive until windows are moved",
+      "if (url.origin !== location.origin) return;" in _swsrc and "redirect: 'manual'" in _swsrc
+      and "return self.clients.matchAll({ type: 'window' })" in _swsrc and "var SELF_UPDATING = 42;" in _swsrc and "'parwah-app-v42'" in _swsrc)
+check("staying current: unsaved typing holds back a reload even after focus moves; later checks wait for the first",
+      "t.__typed = true" in _appt and "appFirst.then(appVersion)" in _appt)
+check("joining: a declined request ends the waiting, and a request to join shows in the bell",
+      "action: 'join_status'" in _appt and "if (action === 'join_status')" in (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+      and "/has asked to join/i.test(t)" in _appt)
 check("create: joint or nuclear is asked first, with no answer chosen for them",
       "var newFamilyType = null;" in _appt and _appt.index('id="c-ftype"') < _appt.index('id="c-circle"') < _appt.index('id="c-name"'))
 check("roles: a new group asks for your role in the group, and starts on Friend",
