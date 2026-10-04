@@ -233,7 +233,7 @@ await O.goto(BASE + '/?join=' + code); await O.waitForTimeout(800);
 ok('signed out, the entry says you have been invited, with the code', await O.isVisible('#ob-invite') && (await O.textContent('#ob-invite-sub')).includes(code));
 await O.reload(); await O.waitForTimeout(800);
 ok('a reload before joining keeps the invite', await O.isVisible('#ob-invite') && (await O.textContent('#ob-invite-sub')).includes(code));
-ok('the pitch is the five things, and the hint is true', /papers, health, things to do and an emergency card/i.test(await O.textContent('#onboard > .lede')) && /your number and your PIN or password\. New here\? You will choose one next/.test(await O.textContent('#auth-step')));
+ok('the pitch is the five things, and the hint is true', /papers, health, things to do and an emergency card/i.test(await O.textContent('#onboard > .lede')) && /your number and your 4-number PIN\. New here\? You will choose one next/.test(await O.textContent('#auth-step')));
 await O.fill('#au-phone', U.Papa.phone.slice(3)); await O.click('#au-go'); await O.waitForTimeout(900);
 ok('a known number is asked for its PIN without saying whose it is', await O.isVisible('#au-pinwrap') && !/Papa/.test(await O.textContent('#auth-step')), await O.textContent('#au-pinnote'));
 
@@ -281,7 +281,7 @@ ok('Family call is under More', !!(await A.$('#more #callnow')));
 const tiles = await A.$$eval('#widgets .widget b', bs => bs.map(b => b.textContent));
 const tabs = await A.$$eval('#tabs .inner > button:not(.deskonly)', bs => bs.map(b => b.textContent.trim()));
 ok('the tiles and tabs use the same names', tiles.join() === 'Vault,Health,To do,Family' && tabs.some(t => /To do$/.test(t)) && tabs.some(t => /Family$/.test(t)), tiles.join() + ' / ' + tabs.join());
-ok('no floating chat button over the five things on a phone', !(await A.isVisible('#chat-fab')));
+ok('Chat and Ekta float on Today on a phone too, the way the owner asked', await A.isVisible('#chat-fab') && await A.isVisible('#ekta-fab'));
 ok('the round profile tile goes straight to Profile', await A.isVisible('#metile'));
 await A.click('#metile'); await A.waitForTimeout(400);
 ok('Profile opens on You', await A.isVisible('#pane-profile') && (await A.$eval('#pane-profile .card h3', h => h.textContent)) === 'You');

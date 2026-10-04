@@ -27,6 +27,9 @@ node site/tests/sectest.mjs
 # Sign-in: a PIN, a session token, and a lockout. _auth.mjs imports only
 # node:crypto, which is builtin, so this runs before npm install too.
 node site/tests/authtest.mjs
+# Names, dates of birth, rupee amounts, links and head-counts: one rule each,
+# used by the server and mirrored in the app. _valid.mjs imports nothing.
+node site/tests/validtest.mjs
 # The launch list: consent, one-person-one-row, and the interest field that
 # says which half to build next. _waitlist.mjs imports only _phone.mjs, which
 # imports nothing, so this runs before npm install too.

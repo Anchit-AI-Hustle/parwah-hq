@@ -104,6 +104,8 @@ focus, active, disabled; loading where it acts).
   `.tlink`.
 - Member picker `.members` of `.gchk`, widget tile `.widget`, seat `.bseat`,
   calendar header `.calhead`, toast `.toast`.
+- Field error `.fielderr`: the reason a box was refused, right under it,
+  with `aria-invalid` on the box. A refused form says so here, not in a toast.
 
 **Organisms** - sections of a screen.
 - Top bar `.bar` (sticky on phones), bottom tab bar `#tabs` / desktop

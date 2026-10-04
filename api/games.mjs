@@ -1,12 +1,12 @@
-// Family games - Saanp Seedhi (Snakes & Ladders), playable by the whole
+// Family games - Snakes & Ladders, playable by the whole
 // circle across any distance. Server-side dice; state in Postgres jsonb.
 // A circle can have SEVERAL games running at once, including two of the same
-// kind: "Saanp Seedhi" and "Saanp Seedhi 2" are different games with their own
+// kind: "Snakes & Ladders" and "Snakes & Ladders 2" are different games with their own
 // players, turns and boards.
 // GET  /api/games?circle=CODE&member=UUID          → { ok, games[], game|null }
 // GET  /api/games?circle=CODE&member=UUID&game=ID  → { ok, game, games[] }
 // POST /api/games {code, memberId, action:'start'|'roll'|'end', gameId?}
-import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat , requireMember} from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat, requireMember, rateLimit } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
@@ -24,7 +24,7 @@ async function payPlayed(sql, circleId, gameId, st) {
 // the deploy gate can unit-test it on a fresh clone, before npm install.
 import { MAX_ACTIVE, gameName, numberAfter, gameSummary, isBot, isParwah, teamList, currentPlayer } from './_gamelist.mjs';
 export { MAX_ACTIVE, GAME_LABEL, gameName, numberAfter, gameSummary, isBot, currentPlayer } from './_gamelist.mjs';
-// Ludo, Bhabhi and Vyapar: the rules live in their own dependency-free module.
+// Ludo, Get Away and Business: the rules live in their own dependency-free module.
 import { boardStart, boardMove, runBoardBots, botSeats, bhabhiView, BOARD_SEATS, isOver as boardOver, vyEnd } from './_boardgames.mjs';
 const BOARD_KINDS = ['ludo', 'bhabhi', 'vyapar'];
 
@@ -67,7 +67,7 @@ const REWARDS = [
 ];
 const WIN_REWARD = '🏆 Champion! Every member must post one favourite memory with the winner in the family chat 🧡';
 
-// ---------- Party games (Antakshari + Dumb Charades): lobby, teams, admins ----------
+// ---------- Party games (Song Chain + Dumb Charades): lobby, teams, admins ----------
 // Modes: 'chat' (play via family chat / in person) or 'call' (a video room is
 // attached - Dumb Charades acting mode). Creator is admin; admins can begin,
 // kick, promote co-admins and end. Anyone in the circle can opt in any time;
@@ -287,7 +287,7 @@ export function runBots(st, rng) {
 
 // Never leak the secret movie to anyone but the actor.
 export function publicState(game, memberId) {
-  // In Bhabhi each player sees only their own cards.
+  // In Get Away each player sees only their own cards.
   if (game && game.state && game.state.kind === 'bhabhi') return { ...game, state: bhabhiView(game.state, memberId) };
   if (!game || !game.state || game.state.kind !== 'charades' || !game.state.prompt) return game;
   const actor = currentPlayer(game.state);
@@ -315,7 +315,7 @@ export function playTurn(st, memberId, rng) {
     event = 'snake! down to ' + SNAKES[to]; to = SNAKES[to];
     const truth = R() < 0.4;
     challenge = { type: truth ? 'truth' : 'dare', text: pick(truth ? TRUTHS : DARES) };
-    announce = '🐍 Saanp! ' + me.name + ' slid down to ' + to + '. ' +
+    announce = '🐍 Snake! ' + me.name + ' slid down to ' + to + '. ' +
       (truth ? '🎤 Truth for ' : '🎭 Dare for ') + me.name + ': ' + challenge.text + ' (Or pass - nobody minds.)';
   }
   else if (LADDERS[to]) {
@@ -328,7 +328,7 @@ export function playTurn(st, memberId, rng) {
   if (to === 100) {
     st.winner = me.name;
     st.last.reward = WIN_REWARD;
-    announce = '🎉 ' + me.name + ' WON Saanp Seedhi! ' + WIN_REWARD;
+    announce = '🎉 ' + me.name + ' WON Snakes & Ladders! ' + WIN_REWARD;
   } else {
     st.turn = (idx + 1) % st.players.length;
   }
@@ -553,7 +553,7 @@ export default async function handler(req, res) {
       return res.status(201).json({ ok: true, game: g[0] });
     }
 
-    // ---------- Ludo, Bhabhi, Vyapar ----------
+    // ---------- Ludo, Get Away, Business ----------
     if (body.action === 'start_board') {
       const kind = body.game;
       if (!BOARD_KINDS.includes(kind)) return res.status(400).json({ ok: false, error: 'Pick a game' });
@@ -665,7 +665,7 @@ export default async function handler(req, res) {
           endLine = vyEnd(st);
           await sql`update games set state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
         }
-        // Vyapar ended early still has a result (the richest wins), so it
+        // Business ended early still has a result (the richest wins), so it
         // stays readable; any other game ended early simply goes.
         await sql`update games set status = 'done', ended_at = case when ${!!endLine}::boolean then now() else null end where id = ${g.id}`;
         if (endLine && st.players.filter(p => !isParwah(p)).length > 1) await announce(endLine);
@@ -689,7 +689,7 @@ export default async function handler(req, res) {
       if (over) {
         await sql`update games set status = 'done', state = ${JSON.stringify(st)}::jsonb, ended_at = now() where id = ${g.id}`;
         await payPlayed(sql, circle.id, g.id, st);
-        if (!solo) await feed(sql, circle.id, me.id, `${st.winner} won Saanp Seedhi! 🎉🐍🪜`);
+        if (!solo) await feed(sql, circle.id, me.id, `${st.winner} won Snakes & Ladders! 🎉🐍🪜`);
       } else {
         await sql`update games set state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
       }
@@ -706,7 +706,7 @@ export default async function handler(req, res) {
       if (!over && !solo) {
         const nxt = st.players[st.turn];
         if (nxt && !isBot(nxt) && nxt.id !== me.id) {
-          await pushCircle(sql, circle.id, { title: '🎲 Your roll', body: 'Saanp Seedhi - ' + me.name + ' has played' }, { only: nxt.id });
+          await pushCircle(sql, circle.id, { title: '🎲 Your roll', body: 'Snakes & Ladders - ' + me.name + ' has played' }, { only: nxt.id });
         }
       }
       return res.status(200).json({ ok: true, game: { id: g.id, kind: 'snakes', status: over ? 'done' : 'active', state: st } });
@@ -769,6 +769,28 @@ export default async function handler(req, res) {
       if (done) await payPlayed(sql, circle.id, g.id, st);
       if (st.players.filter(p => !isParwah(p)).length > 1) await feed(sql, circle.id, me.id, line);
       return res.status(200).json({ ok: true, game: publicState({ id: g.id, kind: st.kind, status: done ? 'done' : 'active', state: st }, me.id) });
+    }
+
+    // A NUDGE. "Waiting for Amit" left everyone else staring at the board.
+    // Anyone in the game can tap a friendly reminder to the person whose
+    // turn it is; it reaches only them, and once every two minutes at most,
+    // so it stays a nudge and never becomes a nag.
+    if (body.action === 'nudge') {
+      if (!isUuid(body.gameId)) return res.status(400).json({ ok: false, error: 'Bad game id' });
+      const rows = await sql`select id, status, state from games where id = ${body.gameId} and circle_id = ${circle.id}`;
+      const g = rows[0];
+      if (!g || g.status !== 'active') return res.status(404).json({ ok: false, error: 'That game is over or was ended' });
+      const st = g.state;
+      if (!TURN_KINDS.includes(st.kind)) return res.status(400).json({ ok: false, error: 'This game has no turns to nudge' });
+      if (!st.players.some(p => p && p.id === me.id)) return res.status(403).json({ ok: false, error: 'You are not in this game' });
+      const p = st.players[st.turn];
+      if (!p || isBot(p) || p.away) return res.status(409).json({ ok: false, error: 'The computer is playing this turn - no need to nudge' });
+      if (p.id === me.id) return res.status(409).json({ ok: false, error: 'It is your turn!' });
+      if (!(await rateLimit(sql, 'nudge', g.id + ':' + p.id, 1, 120))) {
+        return res.status(429).json({ ok: false, error: p.name + ' was nudged a moment ago - give them two minutes' });
+      }
+      await pushCircle(sql, circle.id, { title: '👋 ' + me.name + ' is waiting for you', body: 'Your turn in ' + gameName(st.kind, st.n) + ' - tap to play', url: '/#fun' }, { only: p.id });
+      return res.status(200).json({ ok: true, nudged: p.name });
     }
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });

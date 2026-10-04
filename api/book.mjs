@@ -25,6 +25,7 @@ import boardApi from './_boardapi.mjs';
 import vaultApi, { ensureVaultSchema } from './_vaultapi.mjs';
 let vaultReady = false;
 import { award } from './_coins.mjs';
+import { GAPS, gapTitle, taskAction, ensureTaskSchema } from './_tasks.mjs';
 
 const KINDS = ['contact', 'address', 'med', 'fact', 'insurance'];
 const CATS = ['housework', 'doctor', 'vet', 'driver', 'shops', 'repairs', 'emergency', 'local', 'other'];
@@ -333,7 +334,25 @@ export default async function handler(req, res) {
           await pushCircle(sql, circle.id, { title: '📒 ' + me.name + ' noted something about you', body: label + ' ' + name + ' - open Family memory to check it is right' }, { only: about });
         }
         await award(sql, circle.id, me.id, 'memory_add', r[0].id);
-        return res.status(201).json({ ok: true, id: r[0].id });
+        // Recording it IS doing the "Record Papa's blood group" task: it is
+        // finished here, in the family's history, rather than left open for
+        // someone to tick by hand.
+        let finished = 0;
+        const gap = about && GAPS.find(g => g.kind === kind && g.cat === category);
+        if (gap) {
+          try {
+            await ensureTaskSchema(sql);
+            const who = await sql`select name from members where id = ${about}`;
+            const open = await sql`select id from requests where circle_id = ${circle.id}
+                                     and status in ('open','assigned','claimed')
+                                     and lower(title) = lower(${gapTitle(who[0].name, gap.label)})`;
+            for (const t of open) {
+              const d = await taskAction(sql, circle, me, { action: 'task_done', taskId: t.id, note: 'Recorded in Health & contacts' });
+              if (d && d.status === 200) finished++;
+            }
+          } catch (e) { /* the entry is saved either way */ }
+        }
+        return res.status(201).json({ ok: true, id: r[0].id, finished });
       }
       const rdU = await readable(body.id);
       if (rdU.err) return res.status(rdU.err === 'Entry not found' ? 404 : 403).json({ ok: false, error: rdU.err });

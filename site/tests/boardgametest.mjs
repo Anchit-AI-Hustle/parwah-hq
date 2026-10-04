@@ -128,7 +128,7 @@ const clone = (x) => JSON.parse(JSON.stringify(x));
   ok('bhabhi: all followed: the three diamonds are set aside', t.hands.flat().length === 3 && !t.hands.flat().some(c => c[0] === 'D'));
   ok('bhabhi: the Queen leads next', t.turn === 1);
 
-  // Escaping, and the Bhabhi.
+  // Escaping, and the Get Away.
   t = G.bhabhiStart([A, B, C], seeded(1));
   t.first = false; t.turn = 0;
   t.hands = [['S5'], ['S9', 'H4'], ['S2', 'C7']];
@@ -138,7 +138,7 @@ const clone = (x) => JSON.parse(JSON.stringify(x));
   G.bhabhiPlay(t, 'b', 'H4');
   G.bhabhiPlay(t, 'c', 'C7');
   ok('bhabhi: Chachi cannot follow hearts: Bittu picks both up', t.hands[1].length === 2 && t.hands[2].length === 0);
-  ok('bhabhi: Chachi escapes, so Bittu is the Bhabhi', t.loser === 'Bittu' && t.winner === 'Asha');
+  ok('bhabhi: Chachi escapes, so Bittu is the Get Away', t.loser === 'Bittu' && t.winner === 'Asha');
   ok('bhabhi: nothing more can be played', !!G.bhabhiPlay(t, 'b', 'H4').error);
 
   // The lead passes on when the leader has just escaped.
@@ -154,7 +154,7 @@ const clone = (x) => JSON.parse(JSON.stringify(x));
   ok('bhabhi: and only how many cards the others hold', v.hands.slice(1).every(h => h.length === 0) && v.counts[1] === st.hands[1].length);
   ok('bhabhi: the view never carries anyone else\'s cards', !JSON.stringify(v).includes('"' + st.hands[1][0] + '"') || st.trick.some(x => x.card === st.hands[1][0]));
 
-  // Whole games between opponents end with a Bhabhi and conserve cards.
+  // Whole games between opponents end with a Get Away and conserve cards.
   let done = 0, lost = 0;
   for (let s = 1; s <= 20; s++) {
     const R = seeded(s);
@@ -166,7 +166,7 @@ const clone = (x) => JSON.parse(JSON.stringify(x));
     }
     if (g.loser) done++;
   }
-  ok('bhabhi: twenty games between opponents all end with a Bhabhi', done === 20, done);
+  ok('bhabhi: twenty games between opponents all end with a Get Away', done === 20, done);
   ok('bhabhi: no card is ever duplicated along the way', lost === 0, lost);
 }
 

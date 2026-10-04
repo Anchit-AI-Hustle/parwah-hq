@@ -569,14 +569,14 @@ check("layout: Today uses two columns on a wide screen",
 care = (API_DIR / "care.mjs").read_text(encoding="utf-8")
 events = (API_DIR / "events.mjs").read_text(encoding="utf-8")
 plan = (API_DIR / "_planapi.mjs").read_text(encoding="utf-8")
-check("games: Ludo, Bhabhi and Vyapar are real games, not Coming soon tiles",
+check("games: Ludo, Get Away and Business are real games, not Coming soon tiles",
       all('data-bstart="' + k + '"' in appsrc for k in ("ludo", "bhabhi", "vyapar"))
       and "More coming" not in appsrc and "<small>Coming soon</small>" not in appsrc)
 _bg = (API_DIR / "_boardgames.mjs").read_text(encoding="utf-8")
 _gm = (API_DIR / "games.mjs").read_text(encoding="utf-8")
 check("games: a board move saves only on the version it was made on (two taps never both land)",
       "coalesce((state->>'v')::int, 0) = ${v0}" in _gm)
-check("games: in Bhabhi each player is sent only their own hand",
+check("games: in Get Away each player is sent only their own hand",
       "bhabhiView(game.state, memberId)" in _gm and "v.hands = st.hands.map((h, i) => (i === me ? h : []))" in _bg)
 _bare = [l.strip() for l in appsrc.splitlines()
          if "fetch(" in l and "authHeaders" not in l and "function apiGet" not in l
@@ -823,7 +823,7 @@ check("games: the bot flag survives seating, or a solo duel freezes",
 
 # SEVERAL GAMES AT ONCE. A circle used to be allowed exactly one game: every
 # start handed back the game already running, so a second family could not
-# play while the first was mid-board, and two Saanp Seedhis were impossible.
+# play while the first was mid-board, and two Snakes and Ladders games were impossible.
 glist = (API_DIR / "_gamelist.mjs").read_text(encoding="utf-8")
 check("games: starting never hands back the game already running",
       "const existing = await activeGame" not in games and "activeGames(sql" in games)
@@ -1166,14 +1166,16 @@ check("signin: the PIN is salted and run through a real KDF, not hashed once",
 check("signin: PINs are compared in constant time",
       "timingSafeEqual" in _au)
 check("signin: the PINs a thief tries first are refused",
-      "'123456'" in _au and "'000000'" in _au)
+      "'1234'" in _au and "'0000'" in _au)
 check("signin: wrong PINs lock the account rather than allowing a million tries",
       "MAX_TRIES" in _au and "locked_until" in _authmjs and "lockMessage" in _authmjs)
-# A PIN of 4 to 6 numbers or a password, the person's choice. An old 6-digit
-# PIN signs in once, then a new one is chosen before any session is issued.
-check("signin: a PIN of 4 to 6 numbers, or a password",
-      "PIN_MIN = 4" in _au and "PIN_MAX = 6" in _au and "PASS_MIN = 8" in _au and "PIN_LEN" not in _au)
-check("signin: an old 6-digit PIN is marked, and replaced before a session is issued",
+# One secret for everyone: a PIN of exactly 4 numbers (owner, 2026-10-04).
+# An older PIN or a password signs in once, then a 4-number PIN is chosen
+# before any session is issued.
+check("signin: a PIN of exactly 4 numbers, and no password option",
+      "PIN_LEN = 4" in _au and "PASS_MIN" not in _au and "PIN_MAX" not in _au
+      and "SECRET_V = 3" in _au)
+check("signin: an older PIN or password is marked, and replaced before a session is issued",
       "add column if not exists secret_v" in _dbs and "changeSecret: true" in _authmjs
       and 0 < _authmjs.find("if (user.secret_v !== SECRET_V) {") < _authmjs.find("const token = newToken()"))
 # The try is claimed in the database, while unlocked, BEFORE the PIN is
@@ -1183,9 +1185,13 @@ check("signin: each try is claimed before it is checked, so a burst cannot beat 
       _claim is not None and _claim.start() < _authmjs.find("verifyPin(body.pin, user.pin_salt, user.pin_hash)"))
 check("signin: a background refresh proves itself with the session, not a PIN",
       "sessionUser(sql, tokenOf(req))" in _authmjs and "su.user_id === user.id" in _authmjs)
-check("signin: the box takes a PIN or a password, typed out of sight",
+_pinbox = _appa.split('id="au-pin"')[1][:200]
+check("signin: the box takes 4 numbers on the number pad, typed out of sight",
       re.search(r'<input type="password" id="au-pin"', _appa) is not None
-      and 'id="au-pin2"' in _appa and 'maxlength="6"' not in _appa.split('id="au-pin"')[1][:200])
+      and 'id="au-pin2"' in _appa and 'maxlength="4"' in _pinbox and 'inputmode="numeric"' in _pinbox)
+check("signin: no copy still offers a password at sign-in",
+      "PIN or password" not in _appa.split('id="auth-step"')[1].split('</div>\n  </div>')[0]
+      and "Choose a PIN or password" not in _appa)
 _old_copy = re.findall(r"6-number|[Ss]ix numbers|(?<!to )\b6 numbers", _appa)
 check("signin: no copy still asks for six numbers", not _old_copy, ", ".join(_old_copy))
 check("signin: the lock and the old-PIN path are tested against a real database",
@@ -1427,7 +1433,7 @@ check("day: an auspicious window is never filed under the times to avoid",
       'id="mu-good"' in _good_tab and 'id="mu-avoid"' not in _good_tab
       and "{ name: 'Abhijit Muhurat', per: p.abhijit, good: true }" in appday)
 check("day: the sixteen windows are a reference, folded inside Hourly",
-      "The 16 Choghadiya windows" in appday and 'id="mp-hours"' in appday
+      "All 16 time windows" in appday and 'id="mp-hours"' in appday
       and appday.find('id="mp-hours"') < appday.find('id="mu-day"') < appday.find('id="mp-good"'))
 # ONE answer for every moment. Three layers (the Choghadiya, the three times
 # to avoid, Abhijit) used to be shown separately, so the same 9:12 am read
@@ -1528,7 +1534,7 @@ check("guide demo: things to do shows who has what (and what nobody has yet), wi
 check("guide demo: the price comes last, per family, in both currencies",
       "2,499" in _demo and "per family, per year" in _demo and "29.99" in _demo)
 # "Do NOT show chat, games, gifting, calls or a feature menu here."
-_banned = [w for w in ("chat", "game", "gift", "video call", "Snakes", "Antakshari")
+_banned = [w for w in ("chat", "game", "gift", "video call", "Snakes", "Song Chain")
            if w.lower() in _demo.lower()]
 check("guide demo: none of what the guide forbids on these screens",
       not _banned, ", ".join(_banned))
@@ -1934,7 +1940,11 @@ check("theme: a status button keeps its status colour under the Mela gradient",
 # docs/design/TODAY.md and guarded by the "today:" checks.
 _navseg = _appt[_appt.index('<nav class="tabs" id="tabs"'):_appt.index('id="side-groups-head"')]
 _nav = re.findall(r'<button data-tab="(\w+)"(?! data-sec)([^>]*)>', _navseg)
-_want_nav = ["home", "vault", "memory", "care", "people", "chat", "notifs", "ekta", "fun", "day", "profile"]
+# Owner (2026-10-04): Chat, Ask Ekta and Together (Plans & calls, Games,
+# Drawing board) sit right under Today, ahead of the records. The phone tab
+# bar is unchanged; those three are a tap away there through the floating
+# buttons and the menu.
+_want_nav = ["home", "chat", "ekta", "fun", "vault", "memory", "care", "people", "notifs", "day", "profile"]
 check("order: the sidebar runs by real-life use",
       [t for t, _ in _nav] == _want_nav, " > ".join(t for t, _ in _nav))
 check("order: the phone tab bar is Today, Vault, Care, People (families chat on WhatsApp; the vault is what it cannot do)",
@@ -2124,6 +2134,45 @@ check("signout: and it can never reload more than once in a row",
       "parwah-signout-at" in _so and "showStep('auth')" in _so)
 check("signout: a returning family is told why, not dropped on a bare login",
       'id="au-why"' in _app_src and "parwah-why-signin" in _app_src)
+
+# ---------- OWNER ROUND 2026-10-04 ----------
+# No Hindi names in the app: the brand mark, Ekta's header, the games and the
+# day's sections all read in English. (Ekta and Parwah are names, and stay.)
+_devanagari = [l.strip()[:60] for l in _app_src.split("\n") if re.search("[\u0900-\u097F]", l)]
+check("words: no Devanagari anywhere in the app", not _devanagari, " | ".join(_devanagari[:3]))
+check("words: the games have English names",
+      all(w not in _app_src for w in ("Saanp Seedhi", ">Bhabhi", "Vyapar 🏠", "Antakshari"))
+      and "Snakes &amp; Ladders" in _app_src and "Song Chain" in _app_src)
+check("words: the day's sections are Good times and Horoscope",
+      '>Good times</button>' in _app_src and '>Horoscope</button>' in _app_src and '>Rashifal</button>' not in _app_src)
+# Chat and Ekta on every screen but their own.
+_sw = _fn_body(_app_src, "function switchTab(")
+check("fabs: Chat floats everywhere except Chat, Ekta everywhere except Ekta",
+      "$('chat-fab').hidden = !inApp || t === 'chat';" in _sw and "t === 'ekta'" in _sw
+      and "wideScreen()" not in _app_src)
+# To do: a task done somewhere in Parwah takes you there, and doing it there
+# finishes it.
+check("todo: a task that is done somewhere in Parwah has a button that goes there",
+      "function taskGo(q)" in _app_src and "taskGoButton(q, 'cbtn go-now')" in _app_src)
+check("todo: recording a missing fact finishes its Record task",
+      "gapTitle(who[0].name, gap.label)" in (API_DIR / "book.mjs").read_text(encoding="utf-8")
+      and "action: 'task_done'" in (API_DIR / "book.mjs").read_text(encoding="utf-8"))
+# Basic checks: one rule each, on the server and mirrored in the app.
+_val = (API_DIR / "_valid.mjs").read_text(encoding="utf-8")
+check("valid: the rules are dependency-free and unit-tested by the gate",
+      "import" not in _val and "validtest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
+check("valid: names are checked wherever a person or family is named, on the server",
+      "nameError(name)" in (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+      and "nameError(pn)" in (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+      and "nameError(name, 'name')" in (API_DIR / "auth.mjs").read_text(encoding="utf-8"))
+check("valid: a date of birth in the future is refused, not saved as nothing",
+      "dobError(d," in (API_DIR / "circle.mjs").read_text(encoding="utf-8"))
+check("valid: spending caps are whole rupees above zero",
+      "amountError(body.perTxnCap" in (API_DIR / "_vaultapi.mjs").read_text(encoding="utf-8"))
+check("valid: and the app checks the same, beside the box that is wrong",
+      all(x in _app_src for x in ("fieldErr('c-name'", "fieldErr('j-name'", "fieldErr('e-name'", "fieldErr('e-dob'",
+                                    "fieldErr('vp-cap'", "fieldErr('vd-expires'", "fieldErr('p-count'", "fieldErr('call-link'"))
+      and "nameCheck($('au-name').value" in _app_src and ".fielderr{" in _app_src)
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

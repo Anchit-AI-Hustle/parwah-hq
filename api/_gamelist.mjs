@@ -4,13 +4,13 @@
 // and api/games.mjs pulls in the database driver.
 //
 // A circle can have several games running at once, including two of the same
-// kind. Two Saanp Seedhis are two different games with their own players,
+// kind. Two Snakes and Ladders games are two different games with their own players,
 // turns and boards, so each keeps the number it was started as.
 export const MAX_ACTIVE = 12;
 export const GAME_LABEL = {
-  snakes: 'Saanp Seedhi 🐍🪜', ttt: 'Tic-Tac-Toe ⭕✕',
-  antakshari: 'Antakshari 🎤', charades: 'Dumb Charades 🎭',
-  ludo: 'Ludo 🎯', bhabhi: 'Bhabhi 🃏', vyapar: 'Vyapar 🏠'
+  snakes: 'Snakes & Ladders 🐍🪜', ttt: 'Tic-Tac-Toe ⭕✕',
+  antakshari: 'Song Chain 🎤', charades: 'Dumb Charades 🎭',
+  ludo: 'Ludo 🎯', bhabhi: 'Get Away 🃏', vyapar: 'Business 🏠'
 };
 export function gameName(kind, n) {
   const base = GAME_LABEL[kind] || 'Game';
@@ -38,7 +38,7 @@ export function currentPlayer(st) {
   return list[st.ptr[t] % list.length];
 }
 
-// One row of the list: enough to choose between two Saanp Seedhis without
+// One row of the list: enough to choose between two Snakes and Ladders games without
 // opening either, and to see at a glance which one is waiting on you.
 export function gameSummary(g, memberId) {
   const st = g.state || {};

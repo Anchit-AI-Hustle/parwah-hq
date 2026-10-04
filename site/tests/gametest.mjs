@@ -16,8 +16,8 @@ const BE = '33333333-3333-4333-8333-333333333333';
 const row = (state, id) => ({ id: id || 'g1', kind: state.kind, status: 'active', state, created_at: '2026-09-02T10:00:00Z' });
 
 // ---- naming: the first of a kind is unadorned, the rest are numbered
-ok('the first game of a kind is just its name', gameName('snakes', 1) === 'Saanp Seedhi 🐍🪜');
-ok('a second game of the same kind is numbered', gameName('snakes', 2) === 'Saanp Seedhi 🐍🪜 2');
+ok('the first game of a kind is just its name', gameName('snakes', 1) === 'Snakes & Ladders 🐍🪜');
+ok('a second game of the same kind is numbered', gameName('snakes', 2) === 'Snakes & Ladders 🐍🪜 2');
 ok('a missing number reads as the first', gameName('ttt', undefined) === 'Tic-Tac-Toe ⭕✕');
 ok('every kind has a name', Object.keys(GAME_LABEL).length === 7 && ['charades', 'ludo', 'bhabhi', 'vyapar'].every(k => !!GAME_LABEL[k]));
 ok('an unknown kind still gets a name', gameName('chess', 1) === 'Game');

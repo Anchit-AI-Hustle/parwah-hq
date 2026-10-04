@@ -219,6 +219,9 @@ label + select{width:100%}
 .err{color:var(--alert);font-size:var(--fs-14);margin-top:var(--space-12);min-height:1.2em}
 .codechip{display:inline-block;background:var(--dusk);color:var(--marigold);font-family:var(--disp);font-weight:700;letter-spacing:.25em;border-radius:var(--radius-12);padding:var(--space-8) var(--space-16);font-size:var(--fs-18)}
 .hint{font-size:var(--fs-12);color:var(--ink-soft);margin-top:var(--space-8)}
+/* A box that is wrong says so beside itself, not in a toast that vanishes. */
+.fielderr{font-size:var(--fs-14);font-weight:600;color:var(--sindoor);margin:var(--space-4) 0 var(--space-8)}
+[aria-invalid="true"]{border-color:var(--sindoor)!important;box-shadow:0 0 0 2px var(--sindoor)}
 
 /* senior mode */
 .big{border:0;width:100%;border-radius:var(--radius-20);padding:var(--space-24) var(--space-16);font-family:var(--disp);font-weight:700;font-size:var(--fs-24);cursor:pointer;margin-bottom:var(--space-16)}
@@ -762,6 +765,7 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
 
 /* member profile sheet */
 .fab.chatfab{bottom:calc(var(--tabs-h) + 84px + env(safe-area-inset-bottom));background:var(--surface);color:var(--ink);border:1px solid var(--bone-2)}
+.fab.chatfab.solo{bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom))}
 /* On a phone the two floating buttons are round icons: with their words
    they covered the controls under them (Start duel, on a 320px screen).
    The names stay for screen readers and as tooltips. */
@@ -769,6 +773,7 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
   .fab{width:56px;height:56px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:var(--fs-24)}
   .fab .flbl{display:none}
   .fab.chatfab{bottom:calc(var(--tabs-h) + 86px + env(safe-area-inset-bottom))}
+  .fab.chatfab.solo{bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom))}
 }
 #nc-list{display:flex;flex-direction:column;gap:var(--space-8);margin-top:var(--space-8);max-height:44vh;overflow-y:auto}
 .msheet{position:fixed;inset:0;background:rgba(24,38,34,.55);z-index:var(--z-sheet);display:flex;align-items:flex-start;justify-content:center;padding:var(--space-20);overflow-y:auto;overscroll-behavior:contain}
@@ -866,6 +871,7 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
   body.inapp .toast{left:calc(50% + var(--side-w)/2);bottom:26px}
   body.inapp .fab{right:28px;bottom:28px}
   body.inapp .fab.chatfab{bottom:94px}
+  body.inapp .fab.chatfab.solo{bottom:28px}
 
   /* Reading and typing want a comfortable measure even when the window is
      wide - only the grids below are allowed to use the full width. */
@@ -1118,7 +1124,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   <div class="card" id="auth-step">
     <h3>Sign in with your mobile number</h3>
-<p class="hint" id="au-why" hidden style="margin:var(--space-4) 0 var(--space-12);font-weight:600;color:var(--marigold-d)">Parwah now lets you choose a PIN or a password, so your family's records open only for you. Sign in with your number once to set it. Your families are all still here.</p>
+<p class="hint" id="au-why" hidden style="margin:var(--space-4) 0 var(--space-12);font-weight:600;color:var(--marigold-d)">Parwah now signs in with a 4-number PIN, so your family's records open only for you. Sign in with your number once to set it. Your families are all still here.</p>
     <label for="au-phone">Mobile number</label>
     <div class="phrow">
       <select id="au-cc" class="ccsel" aria-label="Country code"></select>
@@ -1126,17 +1132,19 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     </div>
     <div id="au-pinwrap" hidden>
       <p class="hint" id="au-pinnote" style="margin:var(--space-12) 0 var(--space-2);font-weight:700;color:var(--marigold-d)"></p>
-      <label for="au-pin" id="au-pinlabel">Your PIN or password</label>
-      <input type="password" id="au-pin" autocomplete="current-password" maxlength="64"
-             placeholder="PIN or password" aria-describedby="au-pinnote au-pinrule"
+      <label for="au-pin" id="au-pinlabel">Your 4-number PIN</label>
+      <input type="password" id="au-pin" autocomplete="current-password" maxlength="4"
+             inputmode="numeric" pattern="[0-9]*"
+             placeholder="4 numbers" aria-describedby="au-pinnote au-pinrule"
              style="letter-spacing:.2em;text-align:center;font-size:var(--fs-20)">
-      <p class="hint" id="au-pinrule" hidden style="margin:var(--space-8) 0 0">A PIN of 4 to 6 numbers, or a password of 8 or more characters that mixes letters with numbers or symbols.</p>
+      <p class="hint" id="au-pinrule" hidden style="margin:var(--space-8) 0 0">Exactly 4 numbers. Not 1234, not your birth year, not one number repeated.</p>
       <div id="au-pin2wrap" hidden>
         <label for="au-pin2">Type it again</label>
-        <input type="password" id="au-pin2" autocomplete="new-password" maxlength="64"
-               placeholder="The same again" style="letter-spacing:.2em;text-align:center;font-size:var(--fs-20)">
+        <input type="password" id="au-pin2" autocomplete="new-password" maxlength="4"
+               inputmode="numeric" pattern="[0-9]*"
+               placeholder="The same 4 numbers" style="letter-spacing:.2em;text-align:center;font-size:var(--fs-20)">
       </div>
-      <button class="linkbtn" id="au-forgot" hidden type="button">Forgotten your PIN or password?</button>
+      <button class="linkbtn" id="au-forgot" hidden type="button">Forgotten your PIN?</button>
     </div>
     <div id="au-namewrap" hidden>
       <p class="hint" id="au-newnote" hidden style="margin:var(--space-12) 0 var(--space-2);font-weight:700;color:var(--marigold-d)"></p>
@@ -1145,7 +1153,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     </div>
     <button class="go" id="au-go">Continue</button>
     <button class="cbtn ghost" id="au-see" style="width:100%;margin-top:var(--space-12)">What is Parwah? See it first →</button>
-    <p class="hint">Sign in with your number and your PIN or password. New here? You will choose one next.</p>
+    <p class="hint">Sign in with your number and your 4-number PIN. New here? You will choose one next.</p>
     <p class="hint" style="margin-top:var(--space-8)"><a href="welcome/">About Parwah</a></p>
   </div>
 
@@ -1324,7 +1332,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     </div>
 
     <details class="todaymore" id="more">
-      <summary>More<small>Chats, calls, contacts, plans, Ekta, muhurat &amp; rashifal, payments, games &amp; drawing</small></summary>
+      <summary>More<small>Chats, calls, contacts, plans, Ekta, good times &amp; horoscope, payments, games &amp; drawing</small></summary>
       <div class="widgets" id="morewidgets">
       <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b>Chats</b><small id="w-chat">Family + personal</small></button>
       <button class="widget callgo" id="callnow"><span class="wic" aria-hidden="true">📹</span><b>Family call</b><small>Everyone joins with one tap</small></button>
@@ -1332,7 +1340,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true">💡</span><b>Suggested</b><small id="w-req">Loading…</small></button>
       <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
       <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check - just ask</small></button>
-      <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true">🕉</span><b>Muhurat</b><small id="w-day">Choghadiya for your city</small></button>
+      <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true">🕉</span><b>Good times</b><small id="w-day">Good hours for your city</small></button>
       <button class="widget" data-goto="vault" data-sec="pay"><span class="wic" aria-hidden="true">💳</span><b>Payments</b><small id="w-pay">Who may use which way of paying</small></button>
       <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Seven games, play together</small></button>
       </div>
@@ -1752,8 +1760,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <label for="vp-handle">UPI ID, or the last 4 digits of the card</label>
         <input type="text" id="vp-handle" maxlength="60" autocomplete="off" placeholder="e.g. papa@okhdfc  ·  ••••4321">
         <div class="pickrow">
-          <label class="pick"><span>Cap per payment ₹</span><input type="number" id="vp-cap" min="0" step="100" aria-label="Cap per payment"></label>
-          <label class="pick"><span>Cap per month ₹</span><input type="number" id="vp-mcap" min="0" step="100" aria-label="Cap per month"></label>
+          <label class="pick"><span>Cap per payment ₹</span><input type="number" id="vp-cap" min="1" step="1" inputmode="numeric" aria-label="Cap per payment"></label>
+          <label class="pick"><span>Cap per month ₹</span><input type="number" id="vp-mcap" min="1" step="1" inputmode="numeric" aria-label="Cap per month"></label>
         </div>
         <label for="vp-note">Notes</label>
         <input type="text" id="vp-note" maxlength="200" placeholder="e.g. for the chemist and groceries only">
@@ -1792,8 +1800,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <!-- THE DAY - muhurat for where you live, and the twelve rashis -->
   <section id="pane-day" hidden>
     <div class="seg pageseg" id="day-seg" role="tablist" aria-label="Day sections">
-      <button data-sec="muhurat" class="sel">🕉 Muhurat</button>
-      <button data-sec="rashi">✨ Rashifal</button>
+      <button data-sec="muhurat" class="sel">🕉 Good times</button>
+      <button data-sec="rashi">✨ Horoscope</button>
     </div>
 
     <div class="subsec" data-sec="muhurat">
@@ -1852,7 +1860,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <button class="linkbtn" id="mu-earlier" type="button" style="margin-top:var(--space-12)">Show earlier today</button>
         </div>
         <details class="more">
-          <summary>The 16 Choghadiya windows <span class="hint" style="display:inline">- the traditional list</span></summary>
+          <summary>All 16 time windows <span class="hint" style="display:inline">- the traditional Choghadiya list</span></summary>
           <p class="eyebrow" style="margin-top:var(--space-16)">Daytime</p>
           <div class="feed" id="mu-day"></div>
           <p class="eyebrow">Night</p>
@@ -2007,8 +2015,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <!-- EKTA -->
   <section id="pane-ekta" hidden>
     <div class="ektahead">
-      <span class="dev" aria-hidden="true">एकता</span>
-      <span><b>Ekta</b><small>Your family's helper · Hindi ya English</small></span>
+      <span class="dev" aria-hidden="true">✨</span>
+      <span><b>Ekta</b><small>Your family's helper · Hindi or English</small></span>
       <button class="cbtn ghost" id="evoice" aria-pressed="true" aria-label="Read replies aloud">🔊 Read aloud</button>
     </div>
     <div class="crow" id="ekta-offline" hidden style="margin-bottom:var(--space-12);border-left:3px solid var(--marigold)">
@@ -2108,8 +2116,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <p class="hint" style="margin:calc(var(--space-8) * -1) 0 var(--space-12)">You can have more than one going at once, even two of the same game.</p>
       <p class="eyebrow">Whole family · 2 to 12 players</p>
       <div class="card">
-        <h3>Saanp Seedhi 🐍🪜</h3>
-        <p>Snakes & Ladders with a twist - snakes cost you a truth-or-dare, ladders earn rewards. 2 to 8 players.</p>
+        <h3>Snakes &amp; Ladders 🐍🪜</h3>
+        <p>Snakes &amp; Ladders with a twist - snakes cost you a truth-or-dare, ladders earn rewards. 2 to 8 players.</p>
         <p class="pickhead">Who's playing with you?</p>
         <div class="members bpick" data-for="snakes"></div>
         <div class="prow2">
@@ -2119,10 +2127,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <p class="hint" style="margin-top:var(--space-8)">Only the people you tick are asked to play. If someone has not played for 12 hours, anyone in the game can let the computer play their turn.</p>
       </div>
       <div class="card">
-        <h3>Antakshari 🎤</h3>
+        <h3>Song Chain 🎤</h3>
         <p>Teams, turns, letters and scores - the app referees while the family sings. Opens a lobby everyone can join.</p>
         <div class="seg" id="am-seg"><button type="button" data-m="chat" class="sel">💬 In chat / in person</button><button type="button" data-m="call">📹 On a video call</button></div>
-        <button class="go" id="ga-start" style="margin-top:var(--space-12)">🎤 Open Antakshari lobby</button>
+        <button class="go" id="ga-start" style="margin-top:var(--space-12)">🎤 Open Song Chain lobby</button>
       </div>
       <div class="card">
         <h3>Dumb Charades 🎭</h3>
@@ -2153,8 +2161,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <p class="hint" style="margin-top:var(--space-8)">Empty seats are filled by the computer, so a game always has at least two players.</p>
       </div>
       <div class="card" data-bgame="bhabhi">
-        <h3>Bhabhi 🃏 <small class="hint">card party</small></h3>
-        <p>Follow suit or pick up the pile. Empty your hand to get away - the last one holding cards is the Bhabhi! 3 to 6 players.</p>
+        <h3>Get Away 🃏 <small class="hint">card party</small></h3>
+        <p>Follow suit or pick up the pile. Empty your hand to get away - the last one still holding cards loses! 3 to 6 players.</p>
         <p class="pickhead">Who's playing with you?</p>
         <div class="members bpick" data-for="bhabhi"></div>
         <div class="prow2">
@@ -2164,12 +2172,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <p class="hint" style="margin-top:var(--space-8)">Everyone sees only their own cards.</p>
       </div>
       <div class="card" data-bgame="vyapar">
-        <h3>Vyapar 🏠 <small class="hint">property game</small></h3>
+        <h3>Business 🏠 <small class="hint">property game</small></h3>
         <p>Buy Jaipur, Mumbai and Goa, collect rent, build houses - richest family business wins. 2 to 6 players. Play money only.</p>
         <p class="pickhead">Who's playing with you?</p>
         <div class="members bpick" data-for="vyapar"></div>
         <div class="prow2">
-          <button class="go" data-bstart="vyapar">🏠 Start Vyapar</button>
+          <button class="go" data-bstart="vyapar">🏠 Start Business</button>
           <button class="cbtn ghost" data-bsolo="vyapar">🙋 Play alone</button>
         </div>
       </div>
@@ -2226,7 +2234,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         </div>
       </div>
       <div class="card" id="g-bhabhi" hidden>
-        <h3>Bhabhi 🃏</h3>
+        <h3>Get Away 🃏</h3>
         <p class="hint" id="b-status" style="margin:var(--space-4) 0 var(--space-8)" aria-live="polite"></p>
         <div id="b-seats" class="bseats"></div>
         <p class="pickhead">On the table</p>
@@ -2237,7 +2245,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <button class="cbtn no" id="b-end" style="margin-top:var(--space-12)">End game</button>
       </div>
       <div class="card" id="g-vyapar" hidden>
-        <h3>Vyapar 🏠</h3>
+        <h3>Business 🏠</h3>
         <p class="hint" style="margin:var(--space-2) 0">Play money only.</p>
         <p class="hint" id="v-status" style="margin:var(--space-4) 0 var(--space-8)" aria-live="polite"></p>
         <div id="vboard" class="vboard"></div>
@@ -2246,9 +2254,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <button class="cbtn no" id="v-end" style="margin-top:var(--space-12)">End game</button>
       </div>
       <div class="card" id="g-snakes" hidden>
-        <h3>Saanp Seedhi 🐍🪜</h3>
+        <h3>Snakes &amp; Ladders 🐍🪜</h3>
         <p class="hint" id="g-status" style="margin:var(--space-4) 0 var(--space-8)"></p>
-        <canvas id="board-cv" aria-label="Saanp Seedhi board"></canvas>
+        <canvas id="board-cv" aria-label="Snakes &amp; Ladders board"></canvas>
         <div class="dicerow">
           <div class="die" id="die" aria-live="polite">🎲</div>
           <button class="go" id="g-roll" style="margin-top:0;flex:1">🎲 Roll</button>
@@ -2264,6 +2272,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <p class="hint" id="g-away" hidden></p>
         <div class="prow2" id="g-acts" style="flex-wrap:wrap">
           <button class="go" id="g-again" hidden>🔁 Play again</button>
+          <button class="cbtn" id="g-nudge" hidden></button>
           <button class="cbtn" id="g-hand" hidden></button>
           <button class="cbtn ghost" id="g-done" hidden>← All games</button>
           <button class="cbtn no" id="g-leave" hidden>Leave this game</button>
@@ -2327,7 +2336,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <label for="e-place">Where do you stay? (city)</label>
         <input type="text" id="e-place" maxlength="80" placeholder="e.g. Pune">
         <label for="e-dob">Date of birth</label>
-        <input type="date" id="e-dob">
+        <input type="date" id="e-dob" min="1900-01-01">
         <p class="hint" style="margin-top:var(--space-4)">Used for your sun sign, and so the family never forgets a birthday.</p>
         <label for="e-country">Country</label>
         <select id="e-country">
@@ -2468,8 +2477,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 <!-- bottom tabs -->
 <nav class="tabs" id="tabs" hidden aria-label="App sections">
   <div class="inner">
-    <div class="side-brand side-only"><span class="dev" aria-hidden="true">परवाह</span><span class="side-name">Parwah<small class="side-tag">family superapp</small></span></div>
+    <div class="side-brand side-only"><span class="dev" aria-hidden="true">🧡</span><span class="side-name">Parwah<small class="side-tag">family superapp</small></span></div>
     <button data-tab="home" class="sel"><span class="ic" aria-hidden="true">🏠</span>Today</button>
+    <button data-tab="chat" class="deskonly"><span class="ic" aria-hidden="true">💬</span>Chat</button>
+    <button data-tab="ekta" class="deskonly"><span class="ic" aria-hidden="true">✨</span>Ask Ekta</button>
+    <button data-tab="fun" class="deskonly"><span class="ic" aria-hidden="true">🎉</span>Together</button>
+    <div class="subnav side-only" data-parent="fun">
+      <button data-tab="fun" data-sec="plans">Plans &amp; calls</button>
+      <button data-tab="fun" data-sec="games">Games</button>
+      <button data-tab="fun" data-sec="board">Drawing board</button>
+    </div>
     <button data-tab="vault"><span class="ic" aria-hidden="true">🔐</span>Vault</button>
     <div class="subnav side-only" data-parent="vault">
       <button data-tab="vault" data-sec="docs">Documents</button>
@@ -2483,19 +2500,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     </div>
     <button data-tab="people" id="tab-people"><span class="ic" aria-hidden="true">👨‍👩‍👧</span><span id="tab-people-l">Family</span></button>
     <p class="side-more side-only">More</p>
-    <button data-tab="chat" class="deskonly"><span class="ic" aria-hidden="true">💬</span>Chat</button>
     <button data-tab="notifs" class="deskonly" id="side-nb" style="position:relative"><span class="ic" aria-hidden="true">🔔</span>Notifications<i class="dot" id="nb-dot2" hidden></i></button>
-    <button data-tab="ekta" class="deskonly"><span class="ic" aria-hidden="true">✨</span>Ask Ekta</button>
-    <button data-tab="fun" class="deskonly"><span class="ic" aria-hidden="true">🎉</span>Together</button>
-    <div class="subnav side-only" data-parent="fun">
-      <button data-tab="fun" data-sec="plans">Plans &amp; calls</button>
-      <button data-tab="fun" data-sec="games">Games</button>
-      <button data-tab="fun" data-sec="board">Drawing board</button>
-    </div>
     <button data-tab="day" class="deskonly"><span class="ic" aria-hidden="true">🕉</span>The day</button>
     <div class="subnav side-only" data-parent="day">
-      <button data-tab="day" data-sec="muhurat">Muhurat</button>
-      <button data-tab="day" data-sec="rashi">Rashifal</button>
+      <button data-tab="day" data-sec="muhurat">Good times</button>
+      <button data-tab="day" data-sec="rashi">Horoscope</button>
     </div>
     <button data-tab="profile" class="deskonly"><span class="ic" aria-hidden="true">👤</span>Profile</button>
     <div class="sidehead side-only" id="side-groups-head" hidden>👨‍👩‍👧‍👦 My Groups</div>
@@ -2540,8 +2549,18 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
 <div class="drawer" id="drawer" hidden role="dialog" aria-modal="true" aria-label="Menu">
   <div class="dpanel">
-    <div class="dhead"><span class="dev" aria-hidden="true">परवाह</span> Parwah <button class="x" id="drawer-x" aria-label="Close menu">✕</button></div>
+    <div class="dhead"><span class="dev" aria-hidden="true">🧡</span> Parwah <button class="x" id="drawer-x" aria-label="Close menu">✕</button></div>
     <button class="ditem" data-tab="home">🏠 Today</button>
+    <button class="ditem" data-tab="chat">💬 Chat</button>
+    <button class="ditem" data-tab="ekta">✨ Ask Ekta</button>
+    <div class="dgroup">
+      <button class="ditem dparent" data-grp="fun">🎉 Together <span class="caret">▾</span></button>
+      <div class="dsub">
+        <button class="ditem sub" data-tab="fun" data-sec="plans">Plans &amp; calls</button>
+        <button class="ditem sub" data-tab="fun" data-sec="games">Games</button>
+        <button class="ditem sub" data-tab="fun" data-sec="board">Drawing board</button>
+      </div>
+    </div>
     <div class="dgroup">
       <button class="ditem dparent" data-grp="vault">🔐 Vault <span class="caret">▾</span></button>
       <div class="dsub">
@@ -2559,22 +2578,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     </div>
     <button class="ditem" data-tab="people">👨‍👩‍👧 Family</button>
     <p class="dlabel">More</p>
-    <button class="ditem" data-tab="chat">💬 Chat</button>
     <button class="ditem" data-tab="notifs">🔔 Notifications</button>
-    <button class="ditem" data-tab="ekta">✨ Ask Ekta</button>
-    <div class="dgroup">
-      <button class="ditem dparent" data-grp="fun">🎉 Together <span class="caret">▾</span></button>
-      <div class="dsub">
-        <button class="ditem sub" data-tab="fun" data-sec="plans">Plans &amp; calls</button>
-        <button class="ditem sub" data-tab="fun" data-sec="games">Games</button>
-        <button class="ditem sub" data-tab="fun" data-sec="board">Drawing board</button>
-      </div>
-    </div>
     <div class="dgroup">
       <button class="ditem dparent" data-grp="day">🕉 The day <span class="caret">▾</span></button>
       <div class="dsub">
-        <button class="ditem sub" data-tab="day" data-sec="muhurat">Muhurat &amp; Choghadiya</button>
-        <button class="ditem sub" data-tab="day" data-sec="rashi">Daily rashifal</button>
+        <button class="ditem sub" data-tab="day" data-sec="muhurat">Good times of the day</button>
+        <button class="ditem sub" data-tab="day" data-sec="rashi">Daily horoscope</button>
       </div>
     </div>
     <button class="ditem" data-tab="profile">👤 Profile</button>
@@ -2849,11 +2858,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (t === 'day' && curTab !== 'day') showMuTab('overview');
     curTab = t;
     setInputMode();
-    $('ekta-fab').hidden = !document.body.classList.contains('inapp') || t === 'ekta' || (t === 'chat' && !!curChat);
-    // New chat floats beside Ekta, and steps aside inside an open chat. On a
-    // phone it shows only on the chat list: families talk on WhatsApp, and
-    // elsewhere it covered the five things.
-    $('chat-fab').hidden = $('ekta-fab').hidden || (!wideScreen() && t !== 'chat');
+    // Chat and Ekta float on every screen except their own (owner,
+    // 2026-10-04), so either is one tap from anywhere. Inside an open chat
+    // the typing bar needs the corner, so Ekta steps aside there too; the
+    // chat list has its own New group and Personal chat buttons.
+    var inApp = document.body.classList.contains('inapp');
+    $('ekta-fab').hidden = !inApp || t === 'ekta' || (t === 'chat' && !!curChat);
+    $('chat-fab').hidden = !inApp || t === 'chat';
+    // Alone, the chat button takes the bottom slot rather than floating
+    // over an empty one.
+    $('chat-fab').classList.toggle('solo', $('ekta-fab').hidden);
     fabRoom();
     $('ncsheet').hidden = true;
     $('tsheet').hidden = true;
@@ -2944,7 +2958,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   });
 
   // ---------- hamburger drawer (mobile) ----------
-  function wideScreen(){ return window.matchMedia && window.matchMedia('(min-width:900px)').matches; }
   // The menu is a dialog: focus goes into it, Escape closes it, and focus
   // returns to the button that opened it.
   function drawerOpen(o){
@@ -3127,7 +3140,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var t = (e.text || '');
     if (/reminder/i.test(t)) return '🔔';
     if (/asked the (circle|family|group)|is on it|finished/i.test(t)) return '🤝';
-    if (/Saanp|Antakshari|Charades|Tic-Tac|game/i.test(t)) return '🎲';
+    if (/Snakes|Song Chain|Charades|Tic-Tac|game/i.test(t)) return '🎲';
     if (/planned|cancelled|is in for/i.test(t)) return '🗓';
     if (/board/i.test(t)) return '🎨';
     return '🧡';
@@ -3140,7 +3153,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (/family tree/i.test(t)) return { tab: 'people', label: 'See the family tree' };
     if (/reminder|task|to do/i.test(t)) return { tab: 'care', sec: 'rem', label: 'Open Things to do' };
     if (/asked the (circle|family|group)|is on it|finished/i.test(t)) return { tab: 'care', sec: 'req', label: 'Open Suggested' };
-    if (/Saanp|Antakshari|Charades|Tic-Tac|game/i.test(t)) return { tab: 'fun', sec: 'games', label: 'Open Games' };
+    if (/Snakes|Song Chain|Charades|Tic-Tac|game/i.test(t)) return { tab: 'fun', sec: 'games', label: 'Open Games' };
     if (/planned|cancelled|is in for/i.test(t)) return { tab: 'fun', sec: 'plans', label: 'Open Plans' };
     if (/board/i.test(t)) return { tab: 'fun', sec: 'board', label: 'Open the Board' };
     if (e.type === 'join') return { tab: 'people', label: 'See the family' };
@@ -3472,6 +3485,61 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (q.status === 'assigned') return q.claimed_by === me ? 'Waiting for your yes' : 'Waiting for ' + (q.claimed_name || 'them') + ' to say yes';
     return q.claimed_by === me ? 'You have it' : (q.claimed_name || 'Someone') + ' has it';
   }
+  // WHERE A TASK IS DONE. "Record Papa's allergies" with only "I'm on it"
+  // left the person to find the right form themselves. A task that is done
+  // somewhere in Parwah gets a button that goes there, already set up.
+  var GAP_KEY = { 'blood group': 'blood', 'allergies': 'allergies', "doctor's number": 'doctor', 'emergency contact': 'emergency' };
+  function taskMember(q, name){
+    var ms = membersCache || [], m = null;
+    if (q.about_member) ms.forEach(function(x){ if (x.id === q.about_member) m = x; });
+    if (!m && name) ms.forEach(function(x){ if (!m && String(x.name).toLowerCase() === String(name).toLowerCase()) m = x; });
+    return m;
+  }
+  function taskGo(q){
+    var t = String(q.title || ''), m;
+    var gap = /^record (.+?)['’]s (blood group|allergies|doctor['’]s number|emergency contact)$/i.exec(t);
+    if (gap) {
+      m = taskMember(q, gap[1]);
+      return { go: 'fill:' + (m ? m.id : '') + ':' + GAP_KEY[gap[2].toLowerCase().replace('’', "'")], label: 'Do it now →' };
+    }
+    if (/^check .+ is still right$/i.test(t)) { m = taskMember(q); return { go: 'book:' + (m ? m.id : '') + ':all', label: 'Check it now →' }; }
+    if (/\b(medicines?|tablets?|pills?|refill|prescriptions?|meds)\b/i.test(t)) { m = taskMember(q); return { go: 'book:' + (m ? m.id : '') + ':med', label: 'Open medicines →' }; }
+    if (/\b(doctor|appointment|check-?up|hospital|clinic|dentist|lab test|blood test|scan)\b/i.test(t)) { m = taskMember(q); return { go: 'book:' + (m ? m.id : '') + ':contact', label: 'Open doctors & contacts →' }; }
+    if (/\b(aadhaar|pan card|passport|insurance|policy|documents?|papers|licen[cs]e|certificate|will)\b/i.test(t)) return { go: 'tab:vault:docs', label: 'Open documents →' };
+    if (/\b(pay|bills?|electricity|rent|recharge|emi|premium|fees)\b/i.test(t)) return { go: 'tab:vault:pay', label: 'Open payments →' };
+    if (/\b(call|phone|ring)\b/i.test(t)) { m = taskMember(q); if (m && m.phone && m.id !== state.memberId) return { go: 'tel:' + m.phone, label: '📞 Call ' + String(m.name).split(' ')[0] }; }
+    if (/\b(trip|puja|party|plan|birthday|anniversary|get-?together)\b/i.test(t)) return { go: 'tab:fun:plans', label: 'Open plans →' };
+    if (/\b(where|location|reached|pick ?up|drop)\b/i.test(t)) return { go: 'tab:people:', label: 'See where everyone is →' };
+    return null;
+  }
+  function taskGoButton(q, cls){
+    var g = taskOpen(q) && taskGo(q); if (!g) return '';
+    return g.go.indexOf('tel:') === 0
+      ? '<a class="' + cls + '" href="tel:' + encodeURIComponent(g.go.slice(4)) + '">' + esc(g.label) + '</a>'
+      : '<button class="' + cls + '" data-tgo="' + q.id + '">' + esc(g.label) + '</button>';
+  }
+  function taskGoRun(id){
+    var q = null; taskCache.forEach(function(x){ if (x.id === id) q = x; });
+    var g = q && taskGo(q); if (!g) return;
+    // Doing it is taking it: an open task becomes yours, so nobody else
+    // starts the same thing.
+    if (q.status === 'open') carePost({ action: 'task_ack', taskId: q.id });
+    tsClose();
+    var p = g.go.split(':');
+    if (p[0] === 'fill') { personId = p[1] || ''; ppAddFor(p[2]); return; }
+    if (p[0] === 'book') {
+      switchTab('memory');
+      setTimeout(function(){
+        try { $('book-detail').hidden = true; $('book-list-view').hidden = false; rebuildAboutSelects(); $('bk-about').value = p[1] || ''; setBkFilter(p[2] || 'all'); } catch (e) {}
+      }, 120);
+      return;
+    }
+    if (p[0] === 'tab') { switchTab(p[1]); if (p[2]) setSec(p[1], p[2]); }
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-tgo]'); if (!b || !state) return;
+    taskGoRun(b.getAttribute('data-tgo'));
+  });
   function taskRow(q){
     var me = state.memberId, late = taskLate(q), bits = [];
     if (q.about_name) bits.push('for ' + (q.about_member === me ? 'you' : q.about_name));
@@ -3486,7 +3554,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     else if (q.status === 'done') right = '<span class="badge on">Done</span>';
     return '<div class="crow' + (late ? ' late urgent' : '') + '" data-task="' + q.id + '"><span class="txt">' +
            '<button class="tlink" data-topen="' + q.id + '">' + esc(q.title) + '</button>' +
-           '<small>' + esc(bits.join(' · ')) + (late ? ' · running late' : '') + '</small></span>' + right + '</div>';
+           '<small>' + esc(bits.join(' · ')) + (late ? ' · running late' : '') + '</small></span>' + taskGoButton(q, 'cbtn go-now') + right + '</div>';
   }
   function dueKey(x){
     if (x.t) {
@@ -3499,7 +3567,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
 
   // ---------- one task, up close ----------
-  var TS_WORD = { created:'added it', assigned:'gave it to', acknowledged:'said yes', declined:'handed it back',
+  var TS_WORD = { created:'added it', assigned:'gave it to', acknowledged:'said yes', declined:'handed it back', nudged:'sent a reminder to',
                   done:'finished it', reopened:'reopened it', archived:'put it away', edited:'changed it',
                   overdue:'' };
   function tsTask(){ var q = null; taskCache.forEach(function(x){ if (x.id === tsId) q = x; }); return q; }
@@ -3522,8 +3590,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         if (!j.ok) { $('ts-hist').innerHTML = '<div class="ev">Could not load what happened - try again in a moment.</div>'; return; }
         $('ts-hist').innerHTML = j.history.map(function(h){
           var line = h.action === 'overdue' ? 'Running late - the family was told'
-            : esc(h.name || 'Someone') + ' ' + TS_WORD[h.action] + (h.action === 'assigned' && h.note ? ' ' + esc(h.note) : '');
-          var note = h.action !== 'assigned' && h.note ? '<small>“' + esc(h.note) + '”</small>' : '';
+            : esc(h.name || 'Someone') + ' ' + TS_WORD[h.action] + ((h.action === 'assigned' || h.action === 'nudged') && h.note ? ' ' + esc(h.note) : '');
+          var note = h.action !== 'assigned' && h.action !== 'nudged' && h.note ? '<small>“' + esc(h.note) + '”</small>' : '';
           return '<div class="crow"><span class="txt">' + line + note + '<small>' + esc(fmtTime(h.created_at)) + '</small></span></div>';
         }).join('') || '<div class="ev">Nothing yet.</div>';
       }).catch(function(){ if (id === tsId) $('ts-hist').innerHTML = '<div class="ev">No connection - what happened will show when you are back online.</div>'; });
@@ -3567,8 +3635,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       if (open && (creator || owner)) { a.push(['give', 'Give to someone', 'cbtn ghost']); if (!(late && creator && !owner)) a.push(['edit', 'Change it', 'cbtn ghost']); a.push(['archive', 'Put it away', 'cbtn ghost']); }
     }
     if (q.status === 'done' && (creator || owner || q.completed_by === me)) a.push(['reopen', 'Reopen', 'cbtn']);
+    // Waiting on someone else: a reminder to their phone.
+    if (open && !owner && !waitingYes) a.push(['nudge', '🔔 Remind ' + (q.claimed_by ? String(q.claimed_name || 'them').split(' ')[0] : 'the family'), 'cbtn ghost']);
     a.push(['talk', '💬 Talk about it', 'cbtn ghost']);
-    $('ts-actions').innerHTML = a.map(function(x){
+    var goNow = taskGoButton(q, 'go');
+    $('ts-actions').innerHTML = goNow + a.map(function(x){
       return x[0].indexOf('call:') === 0
         ? '<a class="' + x[2] + '" href="tel:' + encodeURIComponent(x[0].slice(5)) + '">' + esc(x[1]) + '</a>'
         : '<button class="' + x[2] + '" data-ts="' + x[0] + '">' + x[1] + '</button>';
@@ -3591,6 +3662,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (k === 'decline') { if (confirm('Hand this back so someone else can take it?')) tsPost({ action:'task_decline' }, 'Handed back - the family has been told'); }
     if (k === 'archive') { if (confirm('Put this away? It leaves the list; its history is kept.')) { tsPost({ action:'task_archive' }, 'Put away'); tsClose(); } }
     if (k === 'reopen') tsPost({ action:'task_reopen' }, 'Reopened');
+    if (k === 'nudge') tsPost({ action:'task_nudge' }, '🔔 Reminder sent' + (q.claimed_by ? ' to ' + (q.claimed_name || 'them') : ' to the family'));
     if (k === 'give') {
       var h = '<option value="">Anyone - whoever is free</option>';
       (membersCache || []).filter(onApp).forEach(function(m){ h += '<option value="' + m.id + '">' + (m.id === state.memberId ? 'Me' : esc(m.name)) + '</option>'; });
@@ -3852,8 +3924,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('p-role').textContent = '-';
     $('p-senior').textContent = elderLine();
     try {
-      var td = new Date().toISOString().slice(0, 10);
+      // Today here, not in UTC: before 5:30 am in India, UTC is still yesterday.
+      var td = todayStr();
       $('r-date').min = td; $('p-date').min = td;
+      $('e-dob').max = td; $('vd-issued').max = td;
     } catch (e) {}
     switchTab(location.hash.replace('#','') || 'home');
     refresh();
@@ -4063,8 +4137,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('jc-back').addEventListener('click', showSetup);
   $('cs-newfam').addEventListener('click', function(){ startCreate('family'); });
   $('cs-newgrp').addEventListener('click', function(){ startCreate('group'); });
-  // Signed in with an old 6-digit PIN (or none): the first time the app is
-  // opened, they type it once and choose a PIN or password, as at sign-in.
+  // Signed in with an older PIN or a password (or none): the first time the
+  // app is opened, they type it once and choose a 4-number PIN, as at sign-in.
   function askNewSecret(){
     $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
     // The floating buttons belong to the app, never on top of a sign-in form.
@@ -4073,7 +4147,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var sp = splitE164(authUser && authUser.phone);
     if (sp) { $('au-cc').value = sp.cc; $('au-phone').value = sp.local; }
     showStep('auth');
-    secretBox('enter', 'Parwah now lets you use a PIN of 4 to 6 numbers or a password. Type your current PIN once, then choose your new one. Your families are all still here.');
+    secretBox('older', 'Parwah now signs in with a 4-number PIN. Type your current PIN or password once, then choose your new PIN. Your families are all still here.');
     $('au-go').textContent = 'Continue';
     try { $('au-pin').focus(); } catch (e) {}
   }
@@ -4199,39 +4273,51 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     try { $('ob-err').scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
     if (focusId) { try { $(focusId).focus(); } catch (e) {} }
   }
-  // The secret box is either for typing the PIN or password you have, or
-  // for choosing one: a new account, an account with none yet, or replacing
-  // an old 6-digit PIN (which is carried along, proved a moment ago).
+  // The secret box is either for typing the PIN you have, or for choosing
+  // one: a new account, an account with none yet, or replacing an older PIN
+  // or password (which is carried along, proved a moment ago). 'older' is
+  // the one time the box takes more than 4 numbers: a secret chosen before
+  // PINs were exactly 4, typed once so it can be replaced.
   var secretMode = 'enter', oldSecret = '';
   function secretBox(mode, note){
-    var choosing = mode !== 'enter';
+    var choosing = mode === 'choose' || mode === 'change';
     secretMode = mode;
     $('au-pinwrap').hidden = false;
     $('au-pin2wrap').hidden = !choosing;
     $('au-pinrule').hidden = !choosing;
     $('au-pin').value = ''; $('au-pin2').value = '';
     $('au-pin').setAttribute('autocomplete', choosing ? 'new-password' : 'current-password');
-    $('au-pinlabel').textContent = choosing ? 'Choose a PIN or password' : 'Your PIN or password';
+    $('au-pin').setAttribute('maxlength', mode === 'older' ? '64' : '4');
+    if (mode === 'older') $('au-pin').removeAttribute('inputmode'); else $('au-pin').setAttribute('inputmode', 'numeric');
+    $('au-pin').setAttribute('placeholder', mode === 'older' ? 'Your current PIN or password' : '4 numbers');
+    $('au-pinlabel').textContent = choosing ? 'Choose a 4-number PIN' : mode === 'older' ? 'Your current PIN or password' : 'Your 4-number PIN';
     $('au-pinnote').hidden = !note;
     $('au-pinnote').textContent = note || '';
   }
   // The same rule the server applies, for an answer before the round trip.
   // The server is the one that decides; it also refuses the obvious ones.
   function secretRule(v){
-    if (!v) return 'Choose a PIN of 4 to 6 numbers, or a password.';
-    if (/^[0-9]+$/.test(v)) return v.length >= 4 && v.length <= 6 ? null
-      : 'A PIN is 4 to 6 numbers, and you typed ' + v.length + '. For something longer, use a password with a letter in it.';
-    if (v.length < 8) return 'A password needs at least 8 characters, and you typed ' + v.length + '.';
-    if (!/\p{L}/u.test(v) || !/[^\p{L}]/u.test(v)) return 'Mix letters with numbers or symbols, so it is hard to guess.';
+    if (!v) return 'Choose a PIN of 4 numbers.';
+    if (!/^[0-9]+$/.test(v)) return 'A PIN is numbers only - 4 of them.';
+    if (v.length !== 4) return 'A PIN is exactly 4 numbers, and you typed ' + v.length + '.';
     return null;
   }
   function secretCheck(){
     var v = $('au-pin').value;
-    if (secretMode === 'enter') return v ? null : 'Type your PIN or password.';
+    if (secretMode === 'older') return v ? null : 'Type your current PIN or password.';
+    if (secretMode === 'enter') return !v ? 'Type your 4-number PIN.' : secretRule(v) ? 'Your PIN is 4 numbers.' : null;
     var e = secretRule(v); if (e) return e;
-    if (v !== $('au-pin2').value) return 'The two do not match. Please type it the same way twice.';
+    if (v !== $('au-pin2').value) return 'The two do not match. Please type the same 4 numbers twice.';
     return null;
   }
+  // A PIN box takes numbers only, whatever the keyboard sends.
+  ['au-pin', 'au-pin2'].forEach(function(id){
+    $(id).addEventListener('input', function(){
+      if (secretMode === 'older' && id === 'au-pin') return;
+      var d = this.value.replace(/[^0-9]/g, '').slice(0, 4);
+      if (d !== this.value) this.value = d;
+    });
+  });
   $('au-go').addEventListener('click', function(){
     var phone = $('au-phone').value.trim(), cc = $('au-cc').value;
     var perr = phoneCheck(cc, phone);
@@ -4241,7 +4327,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (!$('au-namewrap').hidden && !$('au-name').value.trim()) {
       authErr('Please type your name so your family knows who joined.', 'au-name'); return;
     }
-    // A PIN or password is what makes a phone number stop being the whole key.
+    if (!$('au-namewrap').hidden && nameCheck($('au-name').value, 'name')) { authErr(nameCheck($('au-name').value, 'name'), 'au-name'); return; }
+    // A PIN is what makes a phone number stop being the whole key.
     if (!$('au-pinwrap').hidden) {
       var se = secretCheck();
       if (se) { authErr(se, /match/.test(se) ? 'au-pin2' : 'au-pin'); return; }
@@ -4249,7 +4336,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var secret = $('au-pin').value;
     var btn = this; btn.disabled = true; $('ob-err').textContent = '';
     post(API.auth, { action: 'enter', phone: phone, cc: cc, name: $('au-name').value.trim(),
-                     // Replacing an old 6-digit PIN sends it once more, with the new one.
+                     // Replacing an older PIN or password sends it once more, with the new one.
                      pin: secretMode === 'change' ? oldSecret : (secret || undefined),
                      newPin: secretMode === 'change' ? secret : undefined,
                      device: (navigator.platform || 'device') })
@@ -4258,7 +4345,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         // A PIN that is wrong, or an account locked after five tries: both
         // keep the person on this screen with the reason and a way out.
         if (!j.ok && (j.wrongPin || j.locked)) {
-          secretBox('enter');
+          secretBox(secretMode === 'older' ? 'older' : 'enter');
           $('au-forgot').hidden = false;
           authErr(j.error, 'au-pin');
           return;
@@ -4267,21 +4354,23 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         // A known number that has a PIN, or one that needs to choose its
         // first. Both ask here rather than letting the number alone in.
         // An old 6-digit PIN that has just proved who this is: before going
-        // in, they choose a PIN or password under the new rules.
+        // in, they choose a 4-number PIN.
         if (j.exists && j.changeSecret) {
-          if (secretMode === 'enter') oldSecret = secret;
-          secretBox('change', 'Welcome back' + (j.name ? ', ' + j.name : '') + '. You can now use a PIN of 4 to 6 numbers or a password. Choose yours to continue.');
+          if (secretMode === 'enter' || secretMode === 'older') oldSecret = secret;
+          secretBox('change', 'Welcome back' + (j.name ? ', ' + j.name : '') + '. Parwah now signs in with a 4-number PIN. Choose yours to continue.');
           $('au-forgot').hidden = true;
           $('au-go').textContent = 'Save and continue';
           if (j.error) authErr(j.error, 'au-pin'); else { $('ob-err').textContent = ''; try { $('au-pin').focus(); } catch (e) {} }
           return;
         }
-        // A known number that has a PIN or password, or one that needs to
-        // choose its first. Both ask here rather than letting the number in.
+        // A known number that has a PIN, or one that needs to choose its
+        // first. Both ask here rather than letting the number in. A secret
+        // from before PINs were exactly 4 numbers is typed once as it was.
         if (j.exists && (j.needPin || j.setPin)) {
-          secretBox(j.setPin ? 'choose' : 'enter', j.setPin
-            ? 'Parwah asks for a PIN or password as well as your number, so nobody who knows the number can open your family.'
-            : 'Type your PIN or password.');
+          secretBox(j.setPin ? 'choose' : j.older ? 'older' : 'enter', j.setPin
+            ? 'Parwah asks for a 4-number PIN as well as your number, so nobody who knows the number can open your family.'
+            : j.older ? 'Type the PIN or password you set before, once. Then you will choose a 4-number PIN.'
+            : 'Type your 4-number PIN.');
           $('au-forgot').hidden = !j.needPin;
           $('au-go').textContent = j.setPin ? 'Save and continue' : 'Sign in';
           if (j.error) authErr(j.error, 'au-pin'); else { $('ob-err').textContent = ''; try { $('au-pin').focus(); } catch (e) {} }
@@ -4318,7 +4407,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('au-forgot').addEventListener('click', function(){
     var phone = $('au-phone').value.trim(), cc = $('au-cc').value;
     if (phoneCheck(cc, phone)) { authErr('Type your number first, then tap this again.', 'au-phone'); return; }
-    if (!confirm('Ask your family to let you back in?\n\nSomeone already in your family will get a request to approve. Once they do, you can choose a new PIN or password.')) return;
+    if (!confirm('Ask your family to let you back in?\n\nSomeone already in your family will get a request to approve. Once they do, you can choose a new PIN.')) return;
     post(API.auth, { action: 'reset_request', phone: phone, cc: cc })
       .then(function(j){
         if (!j.ok) { authErr(j.error || 'Could not ask just now.'); return; }
@@ -4326,7 +4415,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         $('au-pinnote').hidden = false;
         $('au-pinnote').textContent = j.noFamily
           ? 'You are not in a family yet, so there is nobody to approve this. Write to care@parwah.in and we will help.'
-          : 'Asked. When someone in your family approves it, come back here and you can choose a new PIN or password.';
+          : 'Asked. When someone in your family approves it, come back here and you can choose a new PIN.';
       })
       .catch(function(){ authErr('No connection - try again.'); });
   });
@@ -4406,6 +4495,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var name = $('c-name').value.trim();
     if (newKind === 'family' && !newFamilyType) { $('ob-err').textContent = 'Choose joint family or nuclear family first.'; try { $('c-ftype').querySelector('button').focus(); } catch (e) {} return; }
     if (!name) { $('ob-err').textContent = 'Please enter your name.'; return; }
+    if (nameCheck(name)) { fieldErr('c-name', nameCheck(name)); return; }
+    if ($('c-circle').value.trim() && nameCheck($('c-circle').value, newKind === 'group' ? 'group name' : 'family name')) {
+      fieldErr('c-circle', nameCheck($('c-circle').value, newKind === 'group' ? 'group name' : 'family name')); return;
+    }
     this.disabled = true; $('ob-err').textContent = '';
     post(API.circle, { action:'create', kind:newKind, familyType: newKind === 'family' ? newFamilyType : null, memberName:name, circleName:$('c-circle').value.trim(), userId: authUser && authUser.id, role: $('c-senior').checked ? 'parent' : 'family', relation: cRole() })
       .then(function(j){
@@ -4423,6 +4516,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('j-go').addEventListener('click', function(){
     var name = $('j-name').value.trim(), code = $('j-code').value.trim().toUpperCase();
     if (!code || !name) { $('ob-err').textContent = 'Please enter the code and your name.'; return; }
+    if (!/^[A-Z0-9]{4,12}$/.test(code)) { fieldErr('j-code', 'A family code is letters and numbers only, like KJM4PW.'); return; }
+    if (nameCheck(name)) { fieldErr('j-name', nameCheck(name)); return; }
     this.disabled = true; $('ob-err').textContent = '';
     post(API.circle, { action:'join', memberName:name, code:code, userId: authUser && authUser.id, role: $('j-senior').checked ? 'parent' : 'family', relation: jRole() })
       .then(function(j){
@@ -5572,6 +5667,57 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (r.re && !r.re.test(d)) return 'That does not look like a valid ' + r.name + ' mobile number';
     return null;
   }
+  // BASIC CHECKS, the same rules as api/_valid.mjs (the server decides; this
+  // answers before the round trip, beside the box that is wrong).
+  function nameCheck(v, what){
+    var w = what || 'name', n = String(v || '').replace(/\s+/g, ' ').trim();
+    if (!n) return 'Write the ' + w + '.';
+    if (n.length > 60) return 'That ' + w + ' is longer than 60 letters - please shorten it.';
+    if (/@/.test(n)) return 'That looks like an email address - write the ' + w + ' instead.';
+    if ((n.match(/\d/g) || []).length >= 5) return 'That looks like a phone number - write the ' + w + ' instead.';
+    if (!/\p{L}/u.test(n)) return 'A ' + w + ' needs letters, not only numbers or symbols.';
+    if (/[<>{}\[\]\\|^~`$#%*=+_]/.test(n)) return 'A ' + w + ' can have letters, spaces, dots, hyphens and apostrophes.';
+    return null;
+  }
+  function todayStr(){ var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function dobCheck(v){
+    if (!v) return null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return 'Pick the date of birth from the calendar.';
+    if (v > todayStr()) return 'A date of birth cannot be in the future.';
+    if (+v.slice(0, 4) < 1900) return 'Please check the year - that is before 1900.';
+    return null;
+  }
+  function amountCheck(v, max){
+    var s2 = String(v == null ? '' : v).replace(/[,\s₹]/g, '');
+    if (!s2) return null;
+    if (!/^\d+$/.test(s2)) return 'Write the amount as a whole number of rupees, like 5000.';
+    if (+s2 <= 0) return 'The amount has to be more than ₹0.';
+    if (max && +s2 > max) return 'That is more than ₹' + max.toLocaleString('en-IN') + ' - please check it.';
+    return null;
+  }
+  function linkCheck(v){
+    var s2 = String(v || '').trim(); if (!s2) return null;
+    var u; try { u = new URL(s2); } catch (e) { return 'That is not a link - paste one that starts with https://'; }
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return 'Only web links (https://) can be shared here.';
+    if (!/\.[a-z]{2,}$/i.test(u.hostname)) return 'That link does not have a real web address in it.';
+    return null;
+  }
+  // Says what is wrong where it is wrong: the box is marked, read out, and
+  // focused, and the mark clears as soon as it is changed.
+  function fieldErr(id, msg){
+    var el = $(id); if (!el) { toast(msg); return; }
+    el.setAttribute('aria-invalid', 'true');
+    var tip = $(id + '-err');
+    if (!tip) { tip = document.createElement('p'); tip.id = id + '-err'; tip.className = 'fielderr'; tip.setAttribute('role', 'alert'); el.insertAdjacentElement('afterend', tip); }
+    tip.textContent = msg; tip.hidden = false;
+    el.setAttribute('aria-describedby', ((el.getAttribute('aria-describedby') || '').replace(id + '-err', '') + ' ' + id + '-err').trim());
+    try { el.scrollIntoView({ block: 'center' }); el.focus(); } catch (e) {}
+  }
+  document.addEventListener('input', function(e){
+    var el = e.target; if (!el || !el.id || el.getAttribute('aria-invalid') !== 'true') return;
+    el.removeAttribute('aria-invalid');
+    var tip = $(el.id + '-err'); if (tip) tip.hidden = true;
+  });
   function pushSupported(){ return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
   function urlB64(v){
     var pad = '='.repeat((4 - v.length % 4) % 4);
@@ -5790,8 +5936,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('call-link').hidden = callMode === 'talk' || callMode === 'audio';
   });
   function startCall(){
-    var room = 'https://meet.jit.si/parwah-' + state.code.toLowerCase() + '-' + Math.random().toString(36).slice(2, 8);
     var link = ($('call-link').value || '').trim().slice(0, 300);
+    if (link && !$('call-link').hidden && linkCheck(link)) { fieldErr('call-link', linkCheck(link)); return; }
+    var room = 'https://meet.jit.si/parwah-' + state.code.toLowerCase() + '-' + Math.random().toString(36).slice(2, 8);
     if (callMode === 'audio') room += '#config.startAudioOnly=true&config.startWithVideoMuted=true';
     var head = callMode === 'music' ? '🎶 ' + state.name + ' started a MUSIC PARTY'
              : callMode === 'watch' ? '🎬 ' + state.name + ' started a MOVIE/OTT NIGHT'
@@ -5895,6 +6042,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var d = $('p-date').value, tm = $('p-time').value;
     if (!d || !tm) { toast('Pick the date and time'); return; }
     var at = new Date(d + 'T' + tm);
+    if (at < new Date(Date.now() - 5 * 60000)) { fieldErr('p-date', 'That time has already gone - pick a time from now on.'); return; }
+    var pc = $('p-count').value;
+    if (pc && (!/^\d+$/.test(pc) || +pc < 1 || +pc > 50)) { fieldErr('p-count', 'Write how many people as a number from 1 to 50.'); return; }
     post(API.plans, { code: state.code, memberId: state.memberId, action: 'create', title: t, kind: planKind, at: at.toISOString(), place: $('p-place').value.trim(), expected: $('p-count').value })
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not set the plan'); return; }
@@ -5910,13 +6060,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (b.dataset.pcancel && confirm('Cancel this plan for everyone?')) post(API.plans, { code: state.code, memberId: state.memberId, action: 'cancel', planId: b.dataset.pcancel }).then(refreshFun).catch(function(){});
   });
 
-  // ---------- games: Saanp Seedhi ----------
+  // ---------- games: Snakes & Ladders ----------
   var GICON = { snakes: '🐍', ttt: '⭕', antakshari: '🎤', charades: '🎭', ludo: '🎯', bhabhi: '🃏', vyapar: '🏠' };
-  var GNAME = { snakes: 'Saanp Seedhi 🐍🪜', ttt: 'Tic-Tac-Toe ⭕✕', antakshari: 'Antakshari 🎤', charades: 'Dumb Charades 🎭', ludo: 'Ludo 🎯', bhabhi: 'Bhabhi 🃏', vyapar: 'Vyapar 🏠' };
+  var GNAME = { snakes: 'Snakes & Ladders 🐍🪜', ttt: 'Tic-Tac-Toe ⭕✕', antakshari: 'Song Chain 🎤', charades: 'Dumb Charades 🎭', ludo: 'Ludo 🎯', bhabhi: 'Get Away 🃏', vyapar: 'Business 🏠' };
   var SN = { 99:41, 95:75, 92:88, 89:68, 74:53, 64:60, 62:19, 49:11, 46:25, 16:6 };
   var LD = { 2:38, 7:14, 8:31, 15:26, 21:42, 28:84, 36:44, 51:67, 71:91, 78:98, 87:94 };
   var TOKC = ['#E8A23D', '#24463C', '#A64B2A', '#2F7A4D', '#B3372B', '#4C4437'];
-  // ---------- Saanp Seedhi: real board, dice and motion ----------
+  // ---------- Snakes & Ladders: real board, dice and motion ----------
   var DIE_FACES = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
   var sbAnim = { running: false, lastKey: null };
   var reducedMotion = false;
@@ -6300,6 +6450,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var stuck = cur && !cur.bot && !cur.away && cur.id !== state.memberId && meSeat && waited >= GAWAY_MS;
     $('g-hand').hidden = !stuck;
     $('g-away').hidden = !stuck;
+    // Waiting on someone: a friendly nudge to their phone, any time.
+    var waitingOn = cur && !cur.bot && !cur.away && cur.id !== state.memberId && meSeat;
+    $('g-nudge').hidden = !waitingOn;
+    if (waitingOn) { $('g-nudge').textContent = '👋 Nudge ' + String(cur.name).split(' ')[0]; $('g-nudge').setAttribute('data-target', cur.id); }
     if (stuck) {
       $('g-hand').textContent = '🤖 Let the computer play for ' + cur.name;
       $('g-hand').setAttribute('data-target', cur.id);
@@ -6326,7 +6480,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     ['g-snakes', 'g-party', 'g-ttt', 'g-ludo', 'g-bhabhi', 'g-vyapar'].forEach(function(id){ $(id).hidden = true; });
     if (!g) { showGameList(); return; }
     var st = g.state, kind = st.kind || g.kind;
-    // The open game says which one it is: with two Saanp Seedhis on the go,
+    // The open game says which one it is: with two Snakes and Ladders games on the go,
     // the board alone does not tell you which board you are looking at.
     $('gm-name').textContent = GNAME[kind] ? (Number(st.n) > 1 ? GNAME[kind] + ' ' + Number(st.n) : GNAME[kind]) : 'Game';
     var turnP = st.players[st.turn], meTurn = turnP && turnP.id === state.memberId;
@@ -6430,6 +6584,15 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     else gamePost(alone ? { action: 'start_board', game: kind, solo: true } : { action: 'start_board', game: kind, playerIds: others });
   });
   $('g-done').addEventListener('click', function(){ showGameList(); refreshFun(); });
+  $('g-nudge').addEventListener('click', function(){
+    var b = this; b.disabled = true;
+    post(API.games, { code: state.code, memberId: state.memberId, action: 'nudge', gameId: curGame && curGame.id })
+      .then(function(j){
+        b.disabled = false;
+        toast(j.ok ? '👋 Nudged ' + j.nudged + ' - their phone will tell them it is their turn' : (j.error || 'Could not nudge just now'));
+      })
+      .catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
   $('g-hand').addEventListener('click', function(){
     var who = this.getAttribute('data-target');
     gamePost({ action: 'away', who: 'them', targetId: who });
@@ -6483,7 +6646,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('c-draw').addEventListener('click', function(){ gamePost({ action: 'draw' }); });
   $('c-guessed').addEventListener('click', function(){ gamePost({ action: 'guessed' }); });
   $('c-flop').addEventListener('click', function(){ gamePost({ action: 'flop' }); });
-  // ---------- Ludo, Bhabhi, Vyapar ----------
+  // ---------- Ludo, Get Away, Business ----------
   document.addEventListener('click', function(e){
     var b = e.target.closest('[data-bstart],[data-bsolo]'); if (!b || !state) return;
     var kind = b.getAttribute('data-bstart') || b.getAttribute('data-bsolo');
@@ -6925,6 +7088,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var say = function(t){ err.textContent = t; err.hidden = false; };
     err.hidden = true;
     if (isNew && !$('tr-name').value.trim()) { say('Write their name.'); try { $('tr-name').focus(); } catch (e) {} return; }
+    if (isNew && nameCheck($('tr-name').value)) { say(nameCheck($('tr-name').value)); try { $('tr-name').focus(); } catch (e) {} return; }
     if (!g) { say('Choose he or she, so Parwah can say son or daughter.'); return; }
     if (!$('tr-place').value) { say('Choose son, daughter, husband, wife and so on.'); return; }
     if (!$('tr-of').value) { say('Choose who they are related to.'); return; }
@@ -7342,13 +7506,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   });
   $('e-save').addEventListener('click', function(){
     var nm = $('e-name').value.trim();
-    if (!nm) { toast('Name cannot be empty'); return; }
+    if (nameCheck(nm)) { fieldErr('e-name', nameCheck(nm)); return; }
+    if (dobCheck($('e-dob').value)) { fieldErr('e-dob', dobCheck($('e-dob').value)); return; }
     var role = $('e-senior').checked ? 'parent' : 'family';
     var relation = eRole();
     var newPhone = $('e-phone').value.trim();
     if (newPhone) {
       var perr = phoneCheck($('e-cc').value, newPhone);
-      if (perr) { toast(perr); return; }
+      if (perr) { fieldErr('e-phone', perr); return; }
     }
     // Phone goes to the member row too, so the 📞 buttons the family sees update.
     post(API.circle, { action: 'update_member', code: state.code, memberId: state.memberId, memberName: nm, role: role, relation: relation, phone: newPhone || undefined, phoneCc: $('e-cc').value, place: $('e-place').value.trim(), dob: $('e-dob').value || '', country: $('e-country').value || '',
@@ -7801,6 +7966,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   });
   $('vd-save').addEventListener('click', function(){
     if (!state) return;
+    var iss = $('vd-issued').value, exp = $('vd-expires').value;
+    if (iss && iss > todayStr()) { fieldErr('vd-issued', 'A paper cannot be issued in the future - please check the date.'); return; }
+    if (iss && exp && exp <= iss) { fieldErr('vd-expires', 'It has to expire after the day it was issued.'); return; }
     var body = {
       code: state.code, memberId: state.memberId, area: 'vault',
       action: vEditId ? 'update' : 'add', id: vEditId,
@@ -7990,7 +8158,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('vp-cancel').addEventListener('click', vpReset);
   $('vp-save').addEventListener('click', function(){
     if (!state) return;
-    if (!$('vp-label').value.trim()) { toast('Give it a name'); return; }
+    if (!$('vp-label').value.trim()) { fieldErr('vp-label', 'Give it a name, like Papa\'s HDFC UPI.'); return; }
+    var capE = amountCheck($('vp-cap').value, 10000000), mcapE = amountCheck($('vp-mcap').value, 100000000);
+    if (capE) { fieldErr('vp-cap', capE); return; }
+    if (mcapE) { fieldErr('vp-mcap', mcapE); return; }
+    if ($('vp-cap').value && $('vp-mcap').value && +$('vp-mcap').value < +$('vp-cap').value) { fieldErr('vp-mcap', 'The monthly limit cannot be less than the limit for one payment.'); return; }
     vPayAct({
       action: vPayEditId ? 'update' : 'add', id: vPayEditId,
       kind: $('vp-kind').value, label: $('vp-label').value, bank: $('vp-bank').value,
@@ -8351,7 +8523,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var wd = $('w-day');
     if (wd) wd.textContent = cur
       ? ((cur.good ? '✓ Good time' : '✕ Better to wait') + ' · until ' + dTime(iso(cur.to), tz))
-      : ('Choghadiya for ' + place);
+      : ('Good hours for ' + place);
   }
 
   // Tapping the band answers "what is that bit?" without opening anything.
@@ -8566,7 +8738,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         '<div class="ev"><b>Parwah Family Plan</b><small>The family memory · Health &amp; emergency information · Trusted contacts · Family readiness · Ekta</small></div>' +
         '<p style="margin:var(--space-12) 0 var(--space-2);font-size:var(--fs-24);font-family:var(--disp);font-weight:600">₹2,499 <span style="font-size:var(--fs-16);font-weight:400;color:var(--ink-soft)">per family, per year</span></p>' +
         '<p class="hint" style="margin:var(--space-2) 0 0">About $29.99 at ₹85 to the dollar. Nothing is charged here - Parwah is not taking payments yet.</p>' +
-        '<p class="hint" style="margin-top:var(--space-16)">Ready to start? Signing in takes your mobile number and a PIN or password you choose, so nobody who knows the number can open your family. Nothing is posted anywhere.</p>' }
+        '<p class="hint" style="margin-top:var(--space-16)">Ready to start? Signing in takes your mobile number and a 4-number PIN you choose, so nobody who knows the number can open your family. Nothing is posted anywhere.</p>' }
   ];
 
   function dcard(name, rel, todo){

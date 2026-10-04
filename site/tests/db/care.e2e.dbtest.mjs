@@ -30,7 +30,7 @@ await admin.connect();
 await admin.query('drop schema public cascade; create schema public;');
 
 const HANDLERS = {};
-for (const n of ['care', 'events', 'chats', 'auth']) HANDLERS[n] = (await import(`../../../api/${n}.mjs`)).default;
+for (const n of ['care', 'events', 'chats', 'auth', 'book']) HANDLERS[n] = (await import(`../../../api/${n}.mjs`)).default;
 const { db, ensureSchema } = await import('../../../api/_db.mjs');
 const { newToken, tokenHash, hashPin, SECRET_V } = await import('../../../api/_auth.mjs');
 const { fromWall } = await import('../../../api/_recur.mjs');
@@ -260,6 +260,15 @@ const tomorrow = localDay(Date.now() + 86400000);
   await R.waitForTimeout(500);
   const acts = await R.$$eval('#ts-actions [data-ts]', b => b.map(x => x.getAttribute('data-ts')));
   ok('but, as the one who asked, he can close, hand over, change or put it away', ['done', 'give', 'edit', 'archive'].every(k => acts.includes(k)) && !acts.includes('decline'), acts.join());
+  // Meera has it: Rohan can send her a reminder, once an hour.
+  ok('he can remind Meera', acts.includes('nudge') && /Remind Meera/.test(await R.textContent('#ts-actions [data-ts="nudge"]')));
+  await R.click('#ts-actions [data-ts="nudge"]'); await R.waitForTimeout(800);
+  const tn = await task('Book the gas refill');
+  const nl = (await admin.query(`select note from task_log where task_id = $1 and action = 'nudged'`, [tn.id])).rows;
+  ok('the reminder is sent to Meera and kept in the history', nl.length === 1 && nl[0].note === 'Meera', JSON.stringify(nl));
+  await R.click('#ts-actions [data-ts="nudge"]'); await R.waitForTimeout(800);
+  ok('a second reminder within the hour is held back, and says why', /last hour/.test(await R.textContent('.toast')) &&
+     (await admin.query(`select count(*)::int as n from task_log where task_id = $1 and action = 'nudged'`, [tn.id])).rows[0].n === 1);
   await R.click('#ts-actions [data-ts="give"]');
   await R.selectOption('#ts-give-to', papa.id);
   await R.click('#ts-give-go');
@@ -267,6 +276,62 @@ const tomorrow = localDay(Date.now() + 86400000);
   const t = await task('Book the gas refill');
   ok('he gives it to Papa, who is asked to say yes', t.status === 'assigned' && t.claimed_by === papa.id);
   await R.click('#ts-x');
+}
+
+// ---- 8. A task done somewhere in Parwah takes you there, and doing it
+//         there finishes it. "Record Papa's allergies" had only "I'm on it".
+{
+  await reload(R);
+  await R.evaluate(() => { document.querySelector('#care-seg [data-sec="req"]').click(); });
+  await R.waitForTimeout(400);
+  const gaps = await R.$$eval('#sugglist .crow', rs => rs.filter(r => /Record .+'s /.test(r.textContent) && r.querySelector('[data-sfill]')).length);
+  ok('Parwah suggests recording what is missing, each with a way to fill it now', gaps > 0, String(gaps));
+  // Added to To do, as a family task anyone can take.
+  await R.evaluate(async () => {
+    await fetch('/api/care', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': localStorage.getItem('parwah-token') },
+      body: JSON.stringify({ action: 'request_create', code: 'SHARMA', memberId: JSON.parse(localStorage.getItem('parwah')).memberId, title: "Record Papa's allergies" }) });
+  });
+  await reload(M);
+  const row = rowOf(M, "Record Papa's allergies");
+  ok('the task shows "Do it now" beside "I\'m on it"', await row.locator('[data-tgo]').count() === 1 && await row.locator('[data-tack]').count() === 1,
+     await row.innerText());
+  await row.locator('[data-tgo]').click();
+  await M.waitForTimeout(900);
+  ok('it opens Health & contacts', await M.locator('#pane-memory').isVisible());
+  ok('with the form set to allergies, about Papa', await M.inputValue('#b-factcat') === 'allergy' && await M.inputValue('#b-about') === papa.id,
+     await M.inputValue('#b-factcat') + ' / ' + await M.inputValue('#b-about'));
+  ok('ready to type', await M.evaluate(() => document.activeElement && document.activeElement.id === 'b-name'));
+  let t = await task("Record Papa's allergies");
+  ok('and Meera now has the task, so nobody else starts it', t.status === 'claimed' && t.claimed_by === meera.id, t.status);
+  await M.fill('#b-name', 'Penicillin');
+  await M.click('#b-save');
+  await M.waitForTimeout(1200);
+  t = await task("Record Papa's allergies");
+  ok('saving it finishes the task, by her, with a note saying where', t.status === 'done' && t.completed_by === meera.id && /Health & contacts/.test(t.completion_note || ''),
+     JSON.stringify({ s: t.status, n: t.completion_note }));
+  const hist = (await admin.query(`select action from task_log where task_id = $1 order by created_at`, [t.id])).rows.map(r => r.action);
+  ok('and the history says so', hist.includes('done'), hist.join());
+  // A task about paying a bill opens payments; one about papers, documents.
+  for (const [title, sec] of [['Pay the society maintenance bill', 'pay'], ['Renew Papa\'s passport', 'docs']]) {
+    await R.evaluate(async (ttl) => {
+      await fetch('/api/care', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': localStorage.getItem('parwah-token') },
+        body: JSON.stringify({ action: 'request_create', code: 'SHARMA', memberId: JSON.parse(localStorage.getItem('parwah')).memberId, title: ttl }) });
+    }, title);
+    await M.goto(BASE + '/#care'); await M.waitForTimeout(300);
+    await reload(M);
+    await rowOf(M, title).locator('[data-tgo]').click();
+    await M.waitForTimeout(600);
+    const open = await M.evaluate(() => { const d = [...document.querySelectorAll('#pane-vault .subsec')].find(x => !x.hidden); return document.getElementById('pane-vault').hidden ? null : d && d.getAttribute('data-sec'); });
+    ok('"' + title + '" opens the vault at ' + sec, open === sec, String(open));
+  }
+  // A task with nowhere to go has no such button.
+  await R.evaluate(async () => {
+    await fetch('/api/care', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': localStorage.getItem('parwah-token') },
+      body: JSON.stringify({ action: 'request_create', code: 'SHARMA', memberId: JSON.parse(localStorage.getItem('parwah')).memberId, title: 'Water the tulsi' }) });
+  });
+  await M.goto(BASE + '/#care'); await M.waitForTimeout(300);
+  await reload(M);
+  ok('a task with nowhere to go has no "go" button', await rowOf(M, 'Water the tulsi').locator('[data-tgo]').count() === 0);
 }
 
 if (process.env.SHOTS) {

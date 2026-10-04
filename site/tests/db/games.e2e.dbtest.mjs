@@ -161,7 +161,7 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
   await backToList();
 }
 
-// ---------------- Bhabhi, alone, to the end ----------------
+// ---------------- Get Away, alone, to the end ----------------
 {
   await R.click('[data-bsolo="bhabhi"]');
   await R.waitForTimeout(700);
@@ -185,15 +185,15 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
   }
   const g = await lastGame('bhabhi');
   ok('bhabhi: played by tapping cards (' + plays + ' plays)', plays > 3);
-  ok('bhabhi: it ends with a Bhabhi', !!g.state.loser && g.status === 'done', g.state.loser);
+  ok('bhabhi: it ends with a Get Away', !!g.state.loser && g.status === 'done', g.state.loser);
   // Named without a family title: "holds the last cards" (review D-19).
-  ok('bhabhi: the screen says who got away and who holds the last cards', /got away first/.test(await R.textContent('#b-status')) && /holds the last cards/.test(await R.textContent('#b-status')) && !/is the Bhabhi/.test(await R.textContent('#b-status')), await R.textContent('#b-status'));
+  ok('bhabhi: the screen says who got away and who holds the last cards', /got away first/.test(await R.textContent('#b-status')) && /holds the last cards/.test(await R.textContent('#b-status')) && !/is the Get Away/.test(await R.textContent('#b-status')), await R.textContent('#b-status'));
   // A card you may not play cannot be tapped.
   ok('bhabhi: only playable cards were ever enabled', refused === 0);
   await backToList();
 }
 
-// ---------------- Vyapar, alone ----------------
+// ---------------- Business, alone ----------------
 {
   await R.click('[data-bsolo="vyapar"]');
   await R.waitForTimeout(700);
@@ -257,7 +257,7 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
   await M.close();
 }
 
-// ---------------- Saanp Seedhi: only who you pick; nobody holds it up ----------------
+// ---------------- Snakes & Ladders: only who you pick; nobody holds it up ----------------
 {
   const M = await phone(meera);
   await R.goto(BASE + '/#fun'); await R.waitForTimeout(600);
@@ -280,6 +280,22 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
   }, [g.id, rohan.token, rohan.id, meera.id]);
   ok('snakes: an hour later, nobody can take Meera\'s turn yet', early === 409, early);
   ok('snakes: and the screen does not offer it', !(await vis(R, '#g-hand')));
+  // Waiting for Meera: Rohan can nudge her, once every two minutes.
+  await R.waitForTimeout(3400);
+  ok('nudge: while waiting for Meera, Rohan is offered "Nudge Meera"', await vis(R, '#g-nudge') && /Nudge Meera/.test(await R.textContent('#g-nudge')),
+     await R.textContent('#g-nudge').catch(() => ''));
+  await R.click('#g-nudge'); await R.waitForTimeout(700);
+  ok('nudge: tapping it says Meera was nudged', /Nudged Meera/.test(await R.textContent('.toast').catch(() => '')), await R.textContent('.toast').catch(() => ''));
+  const nudge = (page, who) => page.evaluate(async ([gid, tok, me]) => {
+    const r = await fetch('/api/games', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': tok },
+      body: JSON.stringify({ code: 'SHARMA', memberId: me, action: 'nudge', gameId: gid }) });
+    return [r.status, (await r.json()).error || ''];
+  }, [g.id, who.token, who.id]);
+  const again = await nudge(R, rohan);
+  ok('nudge: a second nudge within two minutes is held back, and says why', again[0] === 429 && /two minutes/.test(again[1]), again.join(' '));
+  const self = await nudge(M, meera);
+  ok('nudge: Meera cannot nudge herself on her own turn', self[0] === 409 && /your turn/.test(self[1]), self.join(' '));
+  ok('nudge: and on her own turn she is not offered one', !(await vis(M, '#g-nudge')));
   const away = (who, target) => R.evaluate(async ([gid, tok, me, w, them]) => {
     const r = await fetch('/api/games', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': tok },
       body: JSON.stringify({ code: 'SHARMA', memberId: me, action: 'away', who: w, targetId: them, gameId: gid }) });

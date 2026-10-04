@@ -238,3 +238,17 @@ three, and from his profile it could not be done at all.
 | 84 | 2 Real-world match | The profile sheet said "Father · senior mode · admin", gifting outranked Call, and it was not a dialog | 2 | Fixed: the family word only, Call first, gifts last; Escape and focus |
 | 85 | 2 Real-world match | Someone who joined as "family" stayed genderless, so the tree said Parent instead of Father; a new joiner was never placed; "Grandmother (by marriage)" | 2 | Fixed: the tree asks he or she for them once; after a yes, the tree form is ready for the joiner; "Grandmother-in-law" |
 | 86 | 1 Visibility | "Suggested1"; options in lower case; For whom could not be changed | 1 | Fixed |
+
+### Review 7, owner round of 2026-10-04 (sign-in, menu, To do, checks, nudges)
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 87 | 4 Consistency | Sign-in offered a PIN of 4 to 6 numbers or a password: two kinds of secret, one box, and a choice nobody needed | 3 | Fixed: a PIN of exactly 4 numbers, on the number pad; an older PIN or password is typed once, then a 4-number PIN is chosen |
+| 88 | 7 Flexibility | Chat, Ekta and Together sat under More in the side menu, below the records | 2 | Fixed: Today, Chat, Ask Ekta, Together (Plans & calls, Games, Drawing board) first |
+| 89 | 2 Real-world match | Hindi names (the Devanagari mark, Saanp Seedhi, Bhabhi, Vyapar, Antakshari, Muhurat, Rashifal) | 2 | Fixed: Snakes & Ladders, Get Away, Business, Song Chain, Good times, Horoscope; no Devanagari in the app |
+| 90 | 7 Flexibility | Chat and Ekta were missing from most screens on a phone | 2 | Fixed: both float on every screen except their own; alone, Chat drops to the bottom slot. Supersedes #78 at the owner's direction |
+| 91 | 3 User control | "Record Amit's allergies" had only "I'm on it": the person had to find the form | 3 | Fixed: "Do it now" opens Health & contacts set to allergies for Amit, takes the task, and saving it finishes the task |
+| 92 | 5 Error prevention | A name of dots or a phone number, a birthday in the future, a cap of minus five rupees, a "link" that was a sentence were all saved | 3 | Fixed: one rule each on the server (api/_valid.mjs) and in the app; the box that is wrong is marked and says why, beside itself |
+| 93 | 1 Visibility | "Waiting for Amit" in a game, and a task someone else holds, gave no way to ask | 2 | Fixed: Nudge (games, once every two minutes) and Remind (tasks, once an hour), to that person's phone only |
+
+New pattern: the field error (`.fielderr` under the box, `aria-invalid` on it, focus moved there, cleared on the next keystroke). Use it instead of a toast whenever a form is refused.
