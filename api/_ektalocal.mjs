@@ -83,19 +83,21 @@ const PARTS = /[,;.!?]+|\b(?:and|but|then|aur|lekin|par)\b/i;
 // asks whether something happened at some point since then ("Did Papa have
 // a seizure at any time since his fall last year?").
 const ONGOING = /\b(since|ab tak|abhi tak)\b/i;
-const ASKS_IF = /^\s*(did|was|were)\b|\b(any time|at any point|ever(?! since))\b/i;
+// "Has Papa had a seizure since...?" asks whether it happened, like "Did...".
+const ASKS_IF = /^\s*(did|was|were)\b|^\s*(has|have)\s+(\S+\s+){1,3}had\b|\b(any time|at any point|ever(?! since))\b/i;
 // "Getting worse" counts for the part that names the emergency, or a part
 // that refers back to it ("...and it is worse today") - not for something
 // else in the same message ("his knee pain is getting worse").
 // "was getting worse" is part of the past, not now.
-const WORSE = /(?<!\b(was|were|had been|had|used to be)\s+)\b((is|it'?s|getting) worse|worsening|badh (raha|rahi)|zyada ho)/i;
+// An adverb in between ("was rapidly getting worse") does not change that.
+const WORSE = /(?<!\b(was|were|had been|had|used to be)\s+(\w+ly\s+)?)\b((is|it'?s|getting) worse|worsening|badh (raha|rahi)|zyada ho)/i;
 // Refers back when what is getting worse is the pronoun, or nothing at all
 // ("it is worse today", "he is getting worse", "...and is getting worse",
 // "; worsening today", "Is he getting worse?"), not "he says his knee pain
 // is worse".
 const REFERS_BACK = new RegExp(
   // a pronoun is what is getting worse ("he is getting worse", "Is it worse?")
-  /^\s*((is|isn'?t|has|does|kya)\s+)?(it|this|that|he|she|they|woh?|ye[h]?)\s+((is|'s|has been|keeps)\s+)?((getting|becoming)\s+)?(worse|worsening|badh (raha|rahi)|zyada)/.source
+  /^\s*((is|isn'?t|has|does|kya)\s+)?(it|this|that|he|she|they|woh?|ye[h]?)\s+((is|'s|has been|keeps)\s+)?(\w+ly\s+)?((getting|becoming)\s+)?(\w+ly\s+)?(worse|worsening|badh (raha|rahi)|zyada)/.source
   // or nothing is named at all ("...and is getting worse", "; worsening today"),
   // never "worsening knee pain"
   + '|' + /^\s*((is|'s|has been|keeps)\s+)?((getting|becoming)\s+)?(worse|worsening)(\s+(today|now|tonight|again|fast|quickly|badly|every day))*\s*$/.source, 'i');
