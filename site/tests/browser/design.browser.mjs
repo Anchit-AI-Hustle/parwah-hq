@@ -195,9 +195,13 @@ ok(C === 0, 'all text passes WCAG AA contrast in light and dark (' + C + ' below
     const bad = [...m.small, ...m.lowc].filter(x => /Call 112|Send SOS/.test(x));
     ok(bad.length === 0, theme + ': both are big enough and readable' + (bad.length ? ' - ' + bad.join(' | ') : ''));
     await page.click('.eurgent [data-esos]'); await page.waitForTimeout(300);
-    await page.click('#as-yes');
-    await page.waitForTimeout(600);
-    ok(sos && sos.type === 'sos' && /chest pain/.test(sos.text), theme + ': SOS asks first, then tells the family what was said', JSON.stringify(sos));
+    ok(await page.isVisible('#ss-cancel') && !sos, theme + ': SOS counts down with Cancel first, nothing sent yet');
+    await page.click('#ss-now');
+    await page.waitForTimeout(4800);
+    ok(sos && sos.type === 'sos' && /chest pain/.test(sos.text), theme + ': then tells the family what was said', JSON.stringify(sos));
+    const sm = await page.evaluate(measure, 44);
+    const sbad = [...sm.small, ...sm.lowc];
+    ok(sbad.length === 0, theme + ': the SOS screen is big enough and readable' + (sbad.length ? ' - ' + sbad.slice(0, 3).join(' | ') : ''));
     ok(errs.length === 0, theme + ': no script errors' + (errs.length ? ' - ' + errs[0] : ''));
     await page.close();
   }

@@ -84,7 +84,10 @@
   --radius-20:20px; --radius-24:24px; --radius-pill:999px;
   /* Layers, lowest to highest. A new layer is a new named token, never a number. */
   --z-raised:1; --z-above:2; --z-bar:5; --z-inputbar:6; --z-fab:7; --z-tabs:8; --z-toast:9;
-  --z-sos:12; --z-menu:20; --z-sheet:25; --z-drawer:30; --z-coach:60; --z-fx:99;
+  --z-sos:12; --z-menu:20; --z-sheet:25; --z-drawer:30; --z-coach:60; --z-alarm:70; --z-fx:99;
+  /* Emergency red: the SOS button and alarm only, the same in both themes
+     (white on it is 5.9:1). Nothing else is this colour. */
+  --sos:#C8102E; --sos-deep:#8E0B20; --on-sos:#FFFFFF;
   /* Motion. */
   --motion-fast:.15s; --motion-base:.25s; --motion-slow:.4s;
   /* The smallest thing a finger is asked to hit. */
@@ -126,6 +129,7 @@
     --day:#120C18; --bone:#1C1224; --bone-2:#3A2B45;
     --surface:#1F1628; --surface-2:#251A30; --focus-ring:#FFF3E6; --focus-halo:#120C18; --card-face:#FFFDF8; --card-ink:#221428; --card-red:#B3261E; --card-note:#5E4B5E; --tok-ring:#FFFFFF;
     --marigold:#FFBE3B; --marigold-d:#FFC857; --sindoor:#FF7EB6;
+    --sos:#C8102E; --sos-deep:#8E0B20; --on-sos:#FFFFFF;
     --ink:#FFF3E6; --ink-soft:#CDB8D6; --cream:#FFF3E6; --dim:#A898AF; --dim-day:#A898AF;
     --ok:#43D9A0; --alert:#FF7A5C;
     --tint-warm:#3A2A0E; --tint-warm-2:#33240C; --tint-ok:#10291F; --tint-bad:#3A1810;
@@ -145,6 +149,7 @@
   --day:#120C18; --bone:#1C1224; --bone-2:#3A2B45;
   --surface:#1F1628; --surface-2:#251A30; --focus-ring:#FFF3E6; --focus-halo:#120C18; --card-face:#FFFDF8; --card-ink:#221428; --card-red:#B3261E; --card-note:#5E4B5E; --tok-ring:#FFFFFF;
   --marigold:#FFBE3B; --marigold-d:#FFC857; --sindoor:#FF7EB6;
+    --sos:#C8102E; --sos-deep:#8E0B20; --on-sos:#FFFFFF;
   --ink:#FFF3E6; --ink-soft:#CDB8D6; --cream:#FFF3E6; --dim:#A898AF; --dim-day:#A898AF;
   --ok:#43D9A0; --alert:#FF7A5C;
   --tint-warm:#3A2A0E; --tint-warm-2:#33240C; --tint-ok:#10291F; --tint-bad:#3A1810;
@@ -219,6 +224,24 @@ label + select{width:100%}
 .err{color:var(--alert);font-size:var(--fs-14);margin-top:var(--space-12);min-height:1.2em}
 .codechip{display:inline-block;background:var(--dusk);color:var(--marigold);font-family:var(--disp);font-weight:700;letter-spacing:.25em;border-radius:var(--radius-12);padding:var(--space-8) var(--space-16);font-size:var(--fs-18)}
 .hint{font-size:var(--fs-12);color:var(--ink-soft);margin-top:var(--space-8)}
+/* ---- SOS: the red button, the countdown, the live screen, the alarm ---- */
+.sosfab{position:fixed;left:16px;bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom));z-index:var(--z-fab);width:64px;height:64px;border-radius:50%;border:3px solid var(--on-sos);background:var(--sos);color:var(--on-sos);font-family:var(--body);font-weight:800;font-size:var(--fs-18);letter-spacing:.04em;cursor:pointer;box-shadow:0 0 0 4px rgba(200,16,46,.28),0 10px 26px rgba(0,0,0,.35)}
+@media(min-width:900px){body.inapp .sosfab{left:calc(var(--side-w) + 28px);bottom:28px}}
+.sosscreen,.sosalert{position:fixed;inset:0;z-index:var(--z-alarm);background:var(--sos);color:var(--on-sos);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;overscroll-behavior:contain;padding:var(--space-24) var(--space-16) var(--space-40)}
+.sosalert{background:var(--sos-deep)}
+.ss-in{width:100%;max-width:480px;display:flex;flex-direction:column;gap:var(--space-12);margin:auto 0}
+.ss-in h2{font-family:var(--disp);font-size:var(--fs-30);line-height:1.15;margin:0;text-wrap:balance}
+.ss-in p{margin:0;font-size:var(--fs-16);line-height:1.45}
+.ss-n{display:block;font-family:var(--disp);font-size:var(--fs-48);font-weight:800;line-height:1;margin:var(--space-8) 0;font-variant-numeric:tabular-nums}
+.ss-btn{display:flex;align-items:center;justify-content:center;gap:var(--space-8);min-height:56px;width:100%;border-radius:var(--radius-16);border:2px solid var(--on-sos);background:transparent;color:var(--on-sos);font-family:var(--body);font-weight:700;font-size:var(--fs-18);text-decoration:none;cursor:pointer;padding:var(--space-12) var(--space-16);text-align:center}
+.ss-btn.solid{background:var(--on-sos);color:var(--sos-deep)}
+.ss-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-8)}
+.ss-checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--space-8)}
+.ss-checks li{background:rgba(0,0,0,.18);border-radius:var(--radius-12);padding:var(--space-12);font-size:var(--fs-16);line-height:1.4}
+.ss-label{font-size:var(--fs-14)!important;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:var(--space-8)!important}
+.ss-note{font-size:var(--fs-14)!important;opacity:.95}
+@media(prefers-reduced-motion:no-preference){.sosalert h2{animation:sospulse 1s ease-in-out infinite alternate}}
+@keyframes sospulse{from{opacity:1}to{opacity:.72}}
 /* A box that is wrong says so beside itself, not in a toast that vanishes. */
 .fielderr{font-size:var(--fs-14);font-weight:600;color:var(--sindoor);margin:var(--space-4) 0 var(--space-8)}
 [aria-invalid="true"]{border-color:var(--sindoor)!important;box-shadow:0 0 0 2px var(--sindoor)}
@@ -2594,6 +2617,49 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   </div>
 </div>
 
+<button type="button" class="sosfab" id="sos-fab" hidden aria-label="SOS - get help now" title="SOS - get help now">SOS</button>
+
+<div class="sosscreen" id="sosscreen" hidden role="alertdialog" aria-modal="true" aria-labelledby="ss-title" aria-describedby="ss-sub">
+  <div class="ss-in" id="ss-count">
+    <h2 id="ss-title">Sending SOS in <span class="ss-n" id="ss-n">5</span></h2>
+    <p id="ss-sub">Your whole family will be alerted, your exact location shared, and a short recording started.</p>
+    <button type="button" class="ss-btn solid" id="ss-now">Send SOS now</button>
+    <button type="button" class="ss-btn" id="ss-cancel">Cancel - I am fine</button>
+  </div>
+  <div class="ss-in" id="ss-live" hidden>
+    <h2 id="ss-live-title" tabindex="-1">🆘 SOS sent</h2>
+    <p id="ss-status">Your family is being told now.</p>
+    <ul class="ss-checks" aria-live="polite">
+      <li id="ss-loc">📍 Finding your location…</li>
+      <li id="ss-rec">🎙 Starting a short recording…</li>
+      <li id="ss-who">⏳ Waiting for someone in the family to answer…</li>
+    </ul>
+    <p class="ss-label">Call now</p>
+    <div class="ss-row" id="ss-calls"><a class="ss-btn solid" href="tel:112">📞 Call 112</a></div>
+    <p class="ss-label">Send the alert outside Parwah too</p>
+    <div class="ss-row">
+      <a class="ss-btn" id="ss-wa" target="_blank" rel="noopener">WhatsApp</a>
+      <a class="ss-btn" id="ss-sms">SMS</a>
+      <a class="ss-btn" id="ss-mail">Email</a>
+      <button type="button" class="ss-btn" id="ss-copy">Copy message</button>
+    </div>
+    <p class="ss-note" id="ss-lock">📍 Your location stays on, exact, until someone in the family marks you safe. Keep Parwah open so it keeps updating.</p>
+    <button type="button" class="ss-btn solid" id="ss-safe">I am safe now</button>
+    <button type="button" class="ss-btn" id="ss-hide">Close this screen (the SOS stays on)</button>
+  </div>
+</div>
+
+<div class="sosalert" id="sosalert" hidden role="alertdialog" aria-modal="true" aria-labelledby="sa-title" aria-describedby="sa-sub">
+  <div class="ss-in">
+    <h2 id="sa-title" tabindex="-1">🆘 Someone needs help</h2>
+    <p id="sa-sub"></p>
+    <a class="ss-btn solid" id="sa-call">📞 Call</a>
+    <button type="button" class="ss-btn solid" id="sa-ack">🧡 I am on it</button>
+    <button type="button" class="ss-btn" id="sa-map">📍 See where they are</button>
+    <button type="button" class="ss-btn" id="sa-play" hidden>▶ Listen to the recording</button>
+    <button type="button" class="ss-btn" id="sa-quiet">Silence the alarm</button>
+  </div>
+</div>
 <button class="fab" id="ekta-fab" hidden aria-label="Ask Ekta" title="Ask Ekta"><span class="fic" aria-hidden="true">✨</span><span class="flbl"> Ekta</span></button>
 <button class="fab chatfab" id="chat-fab" hidden aria-label="Start a new chat" title="Start a new chat" aria-haspopup="dialog"><span class="fic" aria-hidden="true">💬</span><span class="flbl"> New chat</span></button>
 
@@ -2862,6 +2928,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var inApp = document.body.classList.contains('inapp');
     $('ekta-fab').hidden = !inApp || t === 'ekta' || (t === 'chat' && !!curChat);
     $('chat-fab').hidden = !inApp || t === 'chat';
+    // SOS is on every screen, always.
+    $('sos-fab').hidden = !inApp;
     fabRoom();
     $('ncsheet').hidden = true;
     $('tsheet').hidden = true;
@@ -3059,6 +3127,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }
     // An SOS nobody has answered sits above everything until someone does.
     var so = (data.sos || [])[0];
+    window._sosList = data.sos || [];
+    sosSync(data.sos || []);
     $('sosbar').hidden = !so;
     if (so) {
       var mineSos = so.member_id === state.memberId;
@@ -3071,7 +3141,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       $('sos-call').href = so.phone ? 'tel:' + encodeURIComponent(so.phone) : '#';
       $('sos-call').hidden = mineSos || !so.phone;
       $('sos-ack').hidden = mineSos || so.status !== 'open';
-      $('sos-done').hidden = false;
+      // Your own SOS is closed by the family, not by you: that is what keeps
+      // your location on through it. "I am safe now" asks them to.
+      $('sos-done').hidden = mineSos && (data.members || []).some(function(m){ return m.id !== state.memberId && m.on_app; });
     }
 
     var mh = '';
@@ -4136,7 +4208,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function askNewSecret(){
     $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
     // The floating buttons belong to the app, never on top of a sign-in form.
-    $('ekta-fab').hidden = true; $('chat-fab').hidden = true; $('ncsheet').hidden = true; $('tsheet').hidden = true;
+    $('ekta-fab').hidden = true; $('chat-fab').hidden = true; $('sos-fab').hidden = true; $('ncsheet').hidden = true; $('tsheet').hidden = true;
     try { drawerOpen(false); } catch (e) {}
     var sp = splitE164(authUser && authUser.phone);
     if (sp) { $('au-cc').value = sp.cc; $('au-phone').value = sp.local; }
@@ -4149,7 +4221,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function newCircleFromApp(){
     $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
     // The floating buttons belong to the app, never on top of a sign-in form.
-    $('ekta-fab').hidden = true; $('chat-fab').hidden = true; $('ncsheet').hidden = true; $('tsheet').hidden = true;
+    $('ekta-fab').hidden = true; $('chat-fab').hidden = true; $('sos-fab').hidden = true; $('ncsheet').hidden = true; $('tsheet').hidden = true;
     drawerOpen(false);
     showSetup();
   }
@@ -4174,7 +4246,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
   function showWaiting(msg){
     $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
-    $('ekta-fab').hidden = true; $('chat-fab').hidden = true;
+    $('ekta-fab').hidden = true; $('chat-fab').hidden = true; $('sos-fab').hidden = true;
     try { drawerOpen(false); } catch (e) {}
     pendCode = pendingJoin;
     $('pend-msg').textContent = msg || 'Your request to join with code ' + pendingJoin + ' is with the family.';
@@ -4190,7 +4262,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // with the code filled in - never their old Today with the invite lost.
   function joinInvite(){
     $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
-    $('ekta-fab').hidden = true; $('chat-fab').hidden = true;
+    $('ekta-fab').hidden = true; $('chat-fab').hidden = true; $('sos-fab').hidden = true;
     try { drawerOpen(false); } catch (e) {}
     window._authCircles = window._authCircles || loadGroups();
     startJoin();
@@ -4773,6 +4845,253 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('sos-done').addEventListener('click', function(){
     if (confirm('Mark this SOS as sorted? Everyone will be told.')) sosPost('sos_resolve');
   });
+  // ---------- SOS: one tap, then everything at once ----------
+  // The red button is on every screen. A tap starts a 5-second countdown
+  // with a big Cancel (pockets press buttons), or Send now. Then, at once:
+  // the alert to every phone in the family, the message in the family chat,
+  // location on and exact until someone else marks you safe, a short
+  // recording, and one-tap calls and messages to the people who matter.
+  // What a web app cannot do, it does not pretend to: the calls and the
+  // outside messages are one tap each, already filled in.
+  var SOS_COUNT = 5, sosTick = null, sosSaid = '', sosLive = null, sosRec = null, sosRecTimer = null;
+  function sosMine(list){ return (list || []).filter(function(x){ return x.member_id === state.memberId; })[0] || null; }
+  function sosBuzz(p){ try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
+  function sosStart(said){
+    if (!state) return;
+    sosSaid = String(said || '').slice(0, 120);
+    // Already open: straight to the live screen, nothing counts down twice.
+    if (sosLive && sosLive.id) { sosShowLive(); return; }
+    $('ss-count').hidden = false; $('ss-live').hidden = true;
+    $('sosscreen').hidden = false;
+    var n = SOS_COUNT;
+    $('ss-n').textContent = n;
+    sosBuzz(200);
+    try { $('ss-cancel').focus(); } catch (e) {}
+    clearInterval(sosTick);
+    sosTick = setInterval(function(){
+      n--;
+      if (n <= 0) { clearInterval(sosTick); sosTick = null; sosFire(); return; }
+      $('ss-n').textContent = n; sosBuzz(200);
+    }, 1000);
+  }
+  function sosCancel(){
+    clearInterval(sosTick); sosTick = null;
+    $('sosscreen').hidden = true;
+    toast('Cancelled - nothing was sent');
+    try { $('sos-fab').focus(); } catch (e) {}
+  }
+  $('sos-fab').addEventListener('click', function(){ sosStart(''); });
+  $('ss-cancel').addEventListener('click', sosCancel);
+  $('ss-now').addEventListener('click', function(){ clearInterval(sosTick); sosTick = null; sosFire(); });
+  $('sosscreen').addEventListener('keydown', function(e){ if (e.key === 'Escape' && sosTick) sosCancel(); });
+  function sosPos(ms){
+    return new Promise(function(resolve){
+      if (!navigator.geolocation) { resolve(null); return; }
+      var done = false, t = setTimeout(function(){ if (!done) { done = true; resolve(null); } }, ms);
+      navigator.geolocation.getCurrentPosition(function(p){
+        if (done) return; done = true; clearTimeout(t);
+        resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy });
+      }, function(){ if (!done) { done = true; clearTimeout(t); resolve(null); } },
+      { enableHighAccuracy: true, timeout: ms, maximumAge: 30000 });
+    });
+  }
+  function sosFire(){
+    $('ss-count').hidden = true; $('ss-live').hidden = false;
+    $('ss-status').textContent = 'Telling your family now…';
+    $('ss-loc').textContent = '📍 Finding your location…';
+    sosBuzz([400, 150, 400]);
+    try { $('ss-live-title').focus(); } catch (e) {}
+    sosRecord();
+    // A position helps, but the alert never waits more than 4 seconds for one.
+    sosPos(4000).then(function(pos){
+      var body = { code: state.code, memberId: state.memberId, type: 'sos', text: sosSaid };
+      if (pos) { body.lat = pos.lat; body.lng = pos.lng; body.accuracy = Math.round(pos.accuracy || 0); }
+      return post(API.events, body).then(function(j){
+        if (!j.ok) { $('ss-status').textContent = (j.error || 'The SOS could not be sent') + '. Call 112 or your family now.'; return; }
+        sosLive = { id: j.sosId, text: j.text, contacts: j.contacts || [], map: j.map };
+        $('ss-status').textContent = 'Your family has been alerted' + (j.again ? ' again' : '') + '. The message is in the family chat.';
+        $('ss-loc').textContent = j.located ? '📍 Your exact location is shared with the family' + (pos && pos.accuracy ? ' (within ' + Math.round(pos.accuracy) + ' m)' : '') + '.'
+          : '📍 Your location could not be found yet. Turn on location for this browser; Parwah keeps trying.';
+        sosFillActions();
+        // The family map follows this phone from now on.
+        try { locSetHeld(false); } catch (e) {}
+        refreshLoc(); refresh();
+        if (sosRecUp) sosRecUp();
+      });
+    }).catch(function(){ $('ss-status').textContent = 'No connection - the SOS could not be sent. Call 112 or your family now.'; });
+  }
+  function sosFillActions(){
+    if (!sosLive) return;
+    var txt = sosLive.text || ('🆘 SOS from ' + state.name + '. I need help now.');
+    var nums = sosLive.contacts.map(function(c){ return c.phone; });
+    $('ss-calls').innerHTML = '<a class="ss-btn solid" href="tel:112">📞 Call 112</a>' +
+      sosLive.contacts.slice(0, 5).map(function(c){
+        return '<a class="ss-btn solid" href="tel:' + encodeURIComponent(c.phone) + '">📞 ' + esc(String(c.name).split(' ')[0]) + '</a>';
+      }).join('');
+    $('ss-wa').href = 'https://wa.me/?text=' + encodeURIComponent(txt);
+    $('ss-sms').href = 'sms:' + nums.join(',') + '?body=' + encodeURIComponent(txt);
+    $('ss-mail').href = 'mailto:?subject=' + encodeURIComponent('SOS from ' + state.name) + '&body=' + encodeURIComponent(txt);
+  }
+  $('ss-copy').addEventListener('click', function(){
+    var txt = (sosLive && sosLive.text) || '';
+    try { navigator.clipboard.writeText(txt).then(function(){ toast('Copied - paste it anywhere'); }, function(){ toast(txt); }); } catch (e) { toast(txt); }
+  });
+  // A short recording, so the family can hear what was happening. Up to
+  // half a minute, kept with the SOS, heard only by the family.
+  var sosRecUp = null;
+  function sosRecord(){
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
+      $('ss-rec').textContent = '🎙 This phone cannot record here. The alert still went.'; return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+      var types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
+      var mt = types.filter(function(t){ return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t); })[0] || '';
+      var rec = mt ? new MediaRecorder(stream, { mimeType: mt, audioBitsPerSecond: 32000 }) : new MediaRecorder(stream);
+      var parts = [], started = Date.now();
+      sosRec = rec;
+      rec.ondataavailable = function(e){ if (e.data && e.data.size) parts.push(e.data); };
+      rec.onstop = function(){
+        stream.getTracks().forEach(function(t){ t.stop(); });
+        clearInterval(sosRecTimer);
+        var secs = Math.round((Date.now() - started) / 1000);
+        var blob = new Blob(parts, { type: (rec.mimeType || 'audio/webm').split(';')[0] });
+        $('ss-rec').textContent = '🎙 Recorded ' + secs + ' seconds. Sending it to the family…';
+        var fr = new FileReader();
+        fr.onload = function(){
+          var data = String(fr.result).split(',')[1] || '';
+          sosRecUp = function(){
+            sosRecUp = null;
+            if (!sosLive || !sosLive.id) return;
+            post(API.events, { code: state.code, memberId: state.memberId, type: 'sos_audio', sosId: sosLive.id,
+                               mime: blob.type, data: data, seconds: secs })
+              .then(function(j){ $('ss-rec').textContent = j.ok ? '🎙 Your ' + secs + '-second recording is with the family.' : '🎙 ' + (j.error || 'The recording could not be sent') + '.'; })
+              .catch(function(){ $('ss-rec').textContent = '🎙 The recording could not be sent - no connection.'; });
+          };
+          if (sosLive && sosLive.id) sosRecUp();
+        };
+        fr.readAsDataURL(blob);
+      };
+      rec.start(1000);
+      $('ss-rec').textContent = '🎙 Recording… 0 s';
+      sosRecTimer = setInterval(function(){
+        var s2 = Math.round((Date.now() - started) / 1000);
+        $('ss-rec').textContent = '🎙 Recording… ' + s2 + ' s (stops by itself at 30)';
+        if (s2 >= 30 && rec.state === 'recording') rec.stop();
+      }, 1000);
+    }).catch(function(){ $('ss-rec').textContent = '🎙 Microphone not allowed, so nothing is recorded. The alert still went.'; });
+  }
+  function sosShowLive(){ $('ss-count').hidden = true; $('ss-live').hidden = false; $('sosscreen').hidden = false; sosFillActions(); try { $('ss-live-title').focus(); } catch (e) {} }
+  $('ss-hide').addEventListener('click', function(){ $('sosscreen').hidden = true; try { $('sos-fab').focus(); } catch (e) {} });
+  $('ss-safe').addEventListener('click', function(){
+    if (!sosLive || !sosLive.id) { $('sosscreen').hidden = true; return; }
+    var b = this; b.disabled = true;
+    post(API.events, { code: state.code, memberId: state.memberId, type: 'sos_safe', sosId: sosLive.id })
+      .then(function(j){
+        b.disabled = false;
+        if (!j.ok) { toast(j.error || 'Could not send that'); return; }
+        if (j.resolved) { sosEnded('Glad you are safe. The SOS is closed.'); return; }
+        $('ss-status').textContent = 'Your family has been told you are safe, and asked to confirm. Your location stays on until they do.';
+      }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  function sosEnded(msg){
+    sosLive = null;
+    if (sosRec && sosRec.state === 'recording') { try { sosRec.stop(); } catch (e) {} }
+    $('sosscreen').hidden = true;
+    toast(msg);
+    refreshLoc();
+  }
+  $('sosbar').addEventListener('click', function(e){
+    if (e.target.closest('a,button')) return;
+    if (sosLive && sosLive.id) sosShowLive();
+  });
+
+  // THE ALARM on everyone else's phone. With Parwah open, an SOS takes the
+  // whole screen, sounds a siren and buzzes until someone answers or it is
+  // silenced on this phone. With Parwah closed, the emergency notification
+  // does that job (sw.js).
+  var sirenCtx = null, sirenOsc = null, sirenGain = null, sirenTimer = null, sirenBuzz = null, alarmFor = null;
+  function sirenStart(){
+    sirenStop();
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext; if (!AC) throw 0;
+      sirenCtx = sirenCtx || new AC();
+      if (sirenCtx.state === 'suspended') sirenCtx.resume().catch(function(){});
+      sirenOsc = sirenCtx.createOscillator(); sirenGain = sirenCtx.createGain();
+      sirenOsc.type = 'sawtooth'; sirenGain.gain.value = 0.18;
+      sirenOsc.connect(sirenGain); sirenGain.connect(sirenCtx.destination);
+      sirenOsc.frequency.value = 700; sirenOsc.start();
+      var hi = false;
+      sirenTimer = setInterval(function(){ hi = !hi; try { sirenOsc.frequency.setTargetAtTime(hi ? 1250 : 700, sirenCtx.currentTime, 0.12); } catch (e) {} }, 550);
+    } catch (e) { /* no sound here: the screen and the buzz still work */ }
+    sosBuzz([800, 300, 800, 300, 800]);
+    sirenBuzz = setInterval(function(){ sosBuzz([800, 300, 800, 300, 800]); }, 3500);
+  }
+  function sirenStop(){
+    clearInterval(sirenTimer); sirenTimer = null; clearInterval(sirenBuzz); sirenBuzz = null;
+    try { if (sirenOsc) sirenOsc.stop(); } catch (e) {}
+    sirenOsc = null; sosBuzz(0);
+  }
+  function alarmQuiet(id){ try { return sessionStorage.getItem('parwah-sos-quiet:' + id) === '1'; } catch (e) { return false; } }
+  function sosSync(list){
+    var mine = sosMine(list);
+    // My own SOS: the live screen keeps up with who answered; closed by the
+    // family, it ends here too.
+    if (sosLive && sosLive.id && !mine) sosEnded('The family marked you safe. Your location sharing is yours again.');
+    if (mine) {
+      if (!sosLive) sosLive = { id: mine.id, text: null, contacts: [] };
+      $('ss-who').textContent = mine.status === 'acked' ? '🧡 ' + (mine.acked_name || 'Someone') + ' is on it.'
+        : mine.escalated ? '⏳ Nobody has answered yet, so the family has been alerted again.' : '⏳ Waiting for someone in the family to answer…';
+    }
+    // Someone else's SOS that nobody has answered: the alarm.
+    var other = (list || []).filter(function(x){ return x.member_id !== state.memberId && x.status === 'open'; })[0];
+    if (!other || alarmQuiet(other.id)) { if (alarmFor) { alarmFor = null; $('sosalert').hidden = true; sirenStop(); } return; }
+    var first = alarmFor !== other.id;
+    alarmFor = other.id;
+    $('sa-title').textContent = '🆘 ' + other.name + ' needs help';
+    $('sa-sub').textContent = 'SOS sent ' + fmtTime(other.created_at).replace(/^Today, /, 'at ') + (other.escalated ? ' - nobody has answered yet' : '') +
+      (other.safe_at ? '. They say they are safe now - check, then mark it sorted.' : '.') + (other.map ? ' Their location is shared with the family.' : '');
+    $('sa-call').href = other.phone ? 'tel:' + encodeURIComponent(other.phone) : 'tel:112';
+    $('sa-call').textContent = other.phone ? '📞 Call ' + String(other.name).split(' ')[0] : '📞 Call 112';
+    $('sa-map').hidden = !other.map;
+    $('sa-play').hidden = !other.audio_id;
+    $('sa-play').setAttribute('data-audio', other.audio_id || '');
+    if (first) {
+      $('sosalert').hidden = false;
+      sirenStart();
+      try { $('sa-title').focus(); } catch (e) {}
+    }
+  }
+  function alarmClose(){ if (alarmFor) { try { sessionStorage.setItem('parwah-sos-quiet:' + alarmFor, '1'); } catch (e) {} } sirenStop(); $('sosalert').hidden = true; }
+  $('sa-quiet').addEventListener('click', function(){ alarmClose(); toast('Alarm silenced on this phone. The SOS is still open at the top.'); });
+  $('sa-ack').addEventListener('click', function(){
+    var id = alarmFor; if (!id) return;
+    alarmClose();
+    post(API.events, { code: state.code, memberId: state.memberId, type: 'sos_ack', sosId: id })
+      .then(function(j){ toast(j.ok ? 'The family knows you are on it 🧡' : (j.error || 'Could not do that')); refresh(); })
+      .catch(function(){ toast('No connection - try again'); });
+  });
+  $('sa-call').addEventListener('click', function(){ sirenStop(); });
+  $('sa-map').addEventListener('click', function(){
+    var id = alarmFor; alarmClose();
+    switchTab('people');
+    setTimeout(function(){
+      var who = null; (window._sosList || []).forEach(function(x){ if (x.id === id) who = x.member_id; });
+      var x = locShares.filter(function(s){ return s.memberId === who; })[0];
+      if (x) { locShowMap(x); try { $('loc-map').scrollIntoView({ block: 'center' }); } catch (e) {} }
+    }, 900);
+  });
+  $('sa-play').addEventListener('click', function(){
+    var aid = this.getAttribute('data-audio'); if (!aid) return;
+    sirenStop();
+    var b = this; b.disabled = true;
+    apiGet(API.events + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + '&sosAudio=' + encodeURIComponent(aid))
+      .then(function(j){
+        b.disabled = false;
+        if (!j.ok) { toast(j.error || 'Could not load the recording'); return; }
+        try { new Audio('data:' + j.mime + ';base64,' + j.data).play(); } catch (e) { toast('This phone could not play it'); }
+      }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+
 
   // ---------- coachmarks: the interface, pointed at once ----------
   // Runs the first time a person reaches a circle, right after the
@@ -5070,12 +5389,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (at) { toast('Already noted today at ' + new Date(+at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })); return; }
     sendEvent('pill', '', function(){ try { localStorage.setItem(pillKey(), String(Date.now())); } catch (e) {} pillShow(); toast('Noted - the family can see it'); });
   });
-  $('btn-sos').addEventListener('click', function(){
-    askSheet('Send SOS to the whole family?', 'Everyone is told at once, with your name.', 'Yes, send SOS', 'No, go back', true).then(function(yes){
-      if (!yes) return;
-      sendEvent('sos', '', function(){ toast('SOS sent - the family has been told'); });
-    });
-  });
+  // The 5-second countdown with Cancel is the confirmation now.
+  $('btn-sos').addEventListener('click', function(){ sosStart(''); });
 
   // ---------- add reminder / request ----------
   var repeatMode = 'once';
@@ -5841,12 +6156,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var d = document.createElement('div');
     d.className = 'eurgent';
     d.innerHTML = '<a class="cbtn urgent" href="tel:112">📞 Call 112</a><button type="button" class="cbtn urgent" data-esos>🆘 Send SOS to the family</button>';
-    d.querySelector('[data-esos]').addEventListener('click', function(){
-      askSheet('Send SOS to the whole family?', 'Everyone is told at once, with your name.', 'Yes, send SOS', 'No, go back', true).then(function(yes){
-        if (!yes) return;
-        sendEvent('sos', String(said || '').slice(0, 120), function(){ toast('SOS sent - the family has been told'); });
-      });
-    });
+    d.querySelector('[data-esos]').addEventListener('click', function(){ sosStart(said); });
     $('emsgs').appendChild(d);
     $('emsgs').scrollTop = $('emsgs').scrollHeight;
   }
@@ -7210,7 +7520,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       : 'You are not sharing your location.';
     $('loc-share').hidden = on;
     $('loc-forpick').hidden = on;
-    $('loc-stop').hidden = !on;
+    // An open SOS holds sharing on until the family marks the person safe.
+    $('loc-stop').hidden = !on || !!locMe.sosLock;
+    $('loc-prec').hidden = !!locMe.sosLock;
+    if (locMe.sosLock) $('loc-status').textContent = '🆘 Your SOS is open, so your family can see exactly where you are. Sharing stays on until someone in the family marks you safe.';
     $('loc-for').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-for') === locFor); });
     $('loc-prec').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-prec') === locPrec); });
     var mine = null; locShares.forEach(function(x){ if (x.mine) mine = x; });

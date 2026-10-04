@@ -61,9 +61,14 @@ export async function pushCircle(sql, circleId, payload, { except = null, only =
         and (${except}::uuid is null or s.member_id <> ${except})
         and (${only}::uuid is null or s.member_id = ${only})
       limit 60`;
-    const body = JSON.stringify({ title: payload.title, body: payload.body || '', url: payload.url || '/' });
+    // An emergency is sent as one: high urgency (delivered at once, even to
+    // a phone saving battery), kept for a day if the phone is off, and marked
+    // so the phone keeps it on screen and keeps buzzing until it is seen.
+    const urgent = !!payload.urgent;
+    const body = JSON.stringify({ title: payload.title, body: payload.body || '', url: payload.url || '/', urgent });
+    const opts = urgent ? { TTL: 86400, urgency: 'high', topic: 'parwah-sos' } : { TTL: 3600 };
     await Promise.allSettled(subs.map(s =>
-      wp.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, { TTL: 3600 })
+      wp.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, opts)
         .catch(async (e) => {
           const sc = e && e.statusCode;
           if (sc === 404 || sc === 410) { try { await sql`delete from push_subs where id = ${s.id}`; } catch (_) {} }

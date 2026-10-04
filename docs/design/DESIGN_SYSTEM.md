@@ -106,6 +106,9 @@ focus, active, disabled; loading where it acts).
   calendar header `.calhead`, toast `.toast`.
 - Field error `.fielderr`: the reason a box was refused, right under it,
   with `aria-invalid` on the box. A refused form says so here, not in a toast.
+- SOS button `.sosfab` (every screen, bottom left), SOS screen `.sosscreen`,
+  alarm `.sosalert`, their buttons `.ss-btn`. Emergency red `--sos` is for
+  these only.
 
 **Organisms** - sections of a screen.
 - Top bar `.bar` (sticky on phones), bottom tab bar `#tabs` / desktop

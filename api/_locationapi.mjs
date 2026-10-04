@@ -42,7 +42,39 @@ export async function ensureLocationSchema(sql) {
   )`;
   // Sharing for a set time ends by itself, like Find My: null is "until I stop".
   await sql`alter table location_shares add column if not exists expires_at timestamptz`;
+  // An open SOS holds sharing on, exact, until someone in the family marks
+  // the person safe (api/events.mjs). The id of that SOS, or null.
+  await sql`alter table location_shares add column if not exists sos_lock uuid`;
   ready = true;
+}
+
+// Locked by an SOS that is still open. A lock left by an SOS that is somehow
+// gone or resolved does not hold anyone.
+export async function sosLocked(sql, circleId, memberId) {
+  try {
+    const r = await sql`select s.id from location_shares l join sos s on s.id = l.sos_lock
+                        where l.circle_id = ${circleId} and l.member_id = ${memberId} and s.status <> 'resolved'`;
+    return !!r[0];
+  } catch (e) { return false; }   // no SOS has ever been raised here
+}
+export const SOS_LOCK_MSG = 'Your SOS is still open, so your family can see exactly where you are. ' +
+  'Sharing stays on until someone in the family marks you safe.';
+// Turn sharing on, exact and with no end time, for an SOS. Used by the SOS
+// itself, never by anyone else's request.
+export async function lockForSos(sql, circleId, memberId, sosId, pos) {
+  await ensureLocationSchema(sql);
+  await sql`insert into location_shares (circle_id, member_id, enabled, precision, lat, lng, accuracy, updated_at, enabled_at, expires_at, sos_lock)
+            values (${circleId}, ${memberId}, true, 'exact', ${pos ? pos.lat : null}, ${pos ? pos.lng : null}, ${pos ? pos.accuracy : null},
+                    ${pos ? new Date() : null}, now(), null, ${sosId})
+            on conflict (circle_id, member_id) do update set enabled = true, precision = 'exact', expires_at = null, sos_lock = ${sosId},
+              lat = coalesce(${pos ? pos.lat : null}, location_shares.lat), lng = coalesce(${pos ? pos.lng : null}, location_shares.lng),
+              accuracy = coalesce(${pos ? pos.accuracy : null}, location_shares.accuracy),
+              updated_at = case when ${!!pos}::boolean then now() else location_shares.updated_at end,
+              enabled_at = coalesce(case when location_shares.enabled then location_shares.enabled_at end, now())`;
+}
+export async function unlockSos(sql, circleId, memberId) {
+  await ensureLocationSchema(sql);
+  await sql`update location_shares set sos_lock = null where circle_id = ${circleId} and member_id = ${memberId}`;
 }
 
 async function feed(sql, circleId, memberId, text) {
@@ -72,7 +104,7 @@ export default async function handler(req, res) {
         updated_at = null, enabled_at = null, expires_at = null
       from members m
       where s.circle_id = ${circle.id} and s.enabled and s.expires_at is not null and s.expires_at <= now()
-        and m.id = s.member_id
+        and s.sos_lock is null and m.id = s.member_id
       returning m.id, m.name`;
     for (const e of ended) await feed(sql, circle.id, e.id, `${e.name}'s location sharing ended, as they chose`);
 
@@ -84,10 +116,12 @@ export default async function handler(req, res) {
         order by (s.member_id = ${me.id}) desc, s.updated_at desc`;
       const mine = await sql`select enabled, precision, updated_at, expires_at from location_shares
                              where circle_id = ${circle.id} and member_id = ${me.id}`;
+      const locked = await sosLocked(sql, circle.id, me.id);
       return res.status(200).json({
         ok: true,
         me: { sharing: !!(mine[0] && mine[0].enabled), precision: mine[0] ? mine[0].precision : 'exact',
-              updatedAt: mine[0] ? mine[0].updated_at : null, until: mine[0] && mine[0].enabled ? mine[0].expires_at : null },
+              updatedAt: mine[0] ? mine[0].updated_at : null, until: mine[0] && mine[0].enabled ? mine[0].expires_at : null,
+              sosLock: locked },
         shares: rows.map(r => ({ memberId: r.member_id, name: r.name, relation: r.relation, mine: r.member_id === me.id,
                                  lat: r.lat, lng: r.lng, accuracy: r.accuracy, precision: r.precision,
                                  updatedAt: r.updated_at, until: r.expires_at, stale: isStale(r.updated_at) }))
@@ -100,6 +134,13 @@ export default async function handler(req, res) {
 
     const action = body.action;
     const cur = (await sql`select * from location_shares where circle_id = ${circle.id} and member_id = ${me.id}`)[0];
+    // During an open SOS the position keeps flowing, exact, with no end time.
+    // Stopping, blurring it to the area, or setting a time limit waits until
+    // the family has marked the person safe.
+    const locked = cur && cur.sos_lock ? await sosLocked(sql, circle.id, me.id) : false;
+    if (locked && (action === 'stop' || action === 'precision' || (action === 'share' && (body.precision === 'area' || body.until)))) {
+      return res.status(423).json({ ok: false, sosLock: true, error: SOS_LOCK_MSG });
+    }
 
     if (action === 'share' || action === 'update') {
       if (action === 'update' && !(cur && cur.enabled)) return res.status(409).json({ ok: false, error: 'Turn on sharing first' });
