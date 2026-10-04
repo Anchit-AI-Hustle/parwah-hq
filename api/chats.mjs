@@ -235,8 +235,9 @@ export default async function handler(req, res) {
       if (chat.kind !== 'group') return res.status(400).json({ ok: false, error: chat.kind === 'circle' ? 'Everyone is already in the circle chat' : 'Personal chats stay 1:1 - make a group instead' });
       const addId = body.addId;
       if (!isUuid(addId)) return res.status(400).json({ ok: false, error: 'Pick a person to add' });
-      const aRow = await sql`select id, name from members where id = ${addId} and circle_id = ${circle.id}`;
+      const aRow = await sql`select id, name, user_id from members where id = ${addId} and circle_id = ${circle.id}`;
       if (!aRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this circle' });
+      if (!aRow[0].user_id) return res.status(400).json({ ok: false, error: aRow[0].name + ' is not on Parwah, so cannot be in a chat' });
       await sql`insert into chat_members (chat_id, member_id) values (${chat.id}, ${addId}) on conflict do nothing`;
       await sql`insert into messages (chat_id, member_id, text) values (${chat.id}, ${me.id}, ${'➕ Added ' + aRow[0].name + ' to the group'})`;
       // the person added is told; so is everyone already in the group

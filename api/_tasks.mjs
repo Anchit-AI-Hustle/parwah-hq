@@ -192,15 +192,18 @@ export async function createTask(sql, circle, me, body) {
   if (offApp(owner)) return no(400, offApp(owner));
   const status = !owner ? 'open' : owner.id === me.id ? 'claimed' : 'assigned';
   const dueAt = due.at ? new Date(due.at) : null;
+  // A task written down after its time has passed is not news to the
+  // family: it shows as late, but nobody is woken up about it.
   const r = await sql`
     insert into requests (circle_id, by_member, title, status, claimed_by, due_at, all_day, tz, due_date,
                           recurrence, series_id, series_anchor, done_when, notes, escalate, about_member,
-                          acknowledged_at)
+                          acknowledged_at, overdue_alerted_for)
     values (${circle.id}, ${me.id}, ${title}, ${status}, ${owner ? owner.id : null}, ${dueAt}, ${due.allDay}, ${tz},
             ${due.at ? localDate(due.at, tz) : null}, ${rec},
             ${rec !== 'once' ? randomUUID() : null}, ${rec !== 'once' ? dueAt : null},
             ${clip(body.doneWhen, 200)}, ${clip(body.notes, 500)}, ${esc}, ${about ? about.id : null},
-            ${status === 'claimed' ? new Date() : null})
+            ${status === 'claimed' ? new Date() : null},
+            ${dueAt && dueAt.getTime() < Date.now() ? dueAt : null})
     returning id, circle_id`;
   const t = r[0];
   await log(sql, t, me, 'created', null);
@@ -292,11 +295,18 @@ export async function taskAction(sql, circle, me, body) {
     const esc = body.escalate !== undefined ? (ESCALATE.includes(body.escalate) ? body.escalate : 'people') : t.escalate;
     const doneWhen = body.doneWhen !== undefined ? clip(body.doneWhen, 200) : t.done_when;
     const notes = body.notes !== undefined ? clip(body.notes, 500) : t.notes;
+    // Who it is for can change too ("For whom": anyone in the family, or
+    // the whole family when empty).
+    let aboutId = t.about_member;
+    if (body.aboutMemberId !== undefined) {
+      if (!body.aboutMemberId) aboutId = null;
+      else { const a = await memberIn(sql, circle.id, body.aboutMemberId); if (!a) return no(404, 'That person is not in this circle'); aboutId = a.id; }
+    }
     const series = rec === 'once' ? null : (t.series_id || randomUUID());
     await sql`update requests set title = ${title}, due_at = ${dueAt}, all_day = ${allDay}, due_date = ${dueDate},
                 tz = ${tz}, recurrence = ${rec}, series_id = ${series},
                 series_anchor = ${rec === 'once' ? null : (t.recurrence === rec && t.series_anchor ? t.series_anchor : dueAt)},
-                escalate = ${esc}, done_when = ${doneWhen}, notes = ${notes}
+                escalate = ${esc}, done_when = ${doneWhen}, notes = ${notes}, about_member = ${aboutId}
               where id = ${t.id}`;
     await log(sql, t, me, 'edited', null);
     return ok(200, {});

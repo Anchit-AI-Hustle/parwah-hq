@@ -205,6 +205,11 @@ const tomorrow = localDay(Date.now() + 86400000);
   await R.click('#r-add');
   await R.waitForFunction(() => document.querySelector('#r-title').value === '', null, { timeout: 10000 }).catch(() => {});
   await Promise.all([reload(R), reload(M)]);
+  // Written down after its time: it shows as late, but nobody is woken.
+  ok('a task written down after its time wakes nobody', (await admin.query(`select count(*)::int as n from events where text like 'Running late%electricity%'`)).rows[0].n === 0);
+  // It runs late after it was set (as if set yesterday morning for the evening).
+  await admin.query(`update requests set overdue_alerted_for = null, due_at = now() - interval '2 minutes' where title = 'Pay the electricity bill'`);
+  await Promise.all([reload(R), reload(M)]);
   ok('a task past its time is under Needs attention', (await groupOf(M, 'Pay the electricity bill')) === 'g-need');
   ok('marked as running late', /running late/.test(await rowOf(M, 'Pay the electricity bill').textContent()));
   ok('with a next step right there: I\'m on it', await rowOf(M, 'Pay the electricity bill').locator('[data-tack]').isVisible());
