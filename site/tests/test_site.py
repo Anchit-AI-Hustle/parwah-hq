@@ -1844,9 +1844,13 @@ check("create: joint or nuclear is asked first, with no answer chosen for them",
 check("roles: a new group asks for your role in the group, and starts on Friend",
       "'Who are you in this ' + newKind + '?'" in _appt and "newKind === 'group' ? 'friend' : 'family'" in _appt)
 _loc = (API_DIR / "_locationapi.mjs").read_text(encoding="utf-8")
+# "Ask to share" names another person, and only pushes them a request: it
+# never writes anyone's sharing. Nothing else in the file names anyone else.
+_ask = _loc[_loc.index("if (action === 'ask')"):_loc.index("if (action === 'stop')")]
 check("location: only the person turns it on; there is no action to share for someone else",
       "requireMember(sql, code, memberId, tokenOf(req))" in _loc and "values (${circle.id}, ${me.id}, true" in _loc
-      and "otherId" not in _loc and "targetId" not in _loc)
+      and "otherId" not in _loc and "targetId" not in _loc.replace(_ask, "")
+      and "insert into location_shares" not in _ask and "update location_shares" not in _ask)
 check("location: stopping deletes the position, not just hides it",
       "set enabled = false, lat = null, lng = null, accuracy = null" in _loc)
 check("location: area only is rounded on the server, so an exact spot is never stored",

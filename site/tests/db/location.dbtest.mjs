@@ -201,6 +201,74 @@ const PUNE = { lat: 18.520430, lng: 73.856743, accuracy: 12 };
   await call(rohan, { body: { action: 'stop' } });
 }
 
+// ---- places: arriving and leaving, like Find My
+{
+  const HOME = { lat: 18.5204, lng: 73.8567 };            // a point in Pune
+  const AWAY = { lat: 18.5600, lng: 73.9100, accuracy: 10 }; // about 7 km off
+  let r = await call(meera, { body: { action: 'place_add', name: '', ...HOME, radius: 200 } });
+  ok('a place needs a name', r.status === 400 && /Name the place/.test(r.error));
+  r = await call(meera, { body: { action: 'place_add', name: 'Home', ...HOME, radius: 50 } });
+  ok('a place smaller than 100 m is refused', r.status === 400 && /100 m/.test(r.error));
+  r = await call(meera, { body: { action: 'place_add', name: 'Home', ...HOME, radius: 200 } });
+  ok('Meera saves Home', r.status === 201 && !!r.id);
+  const homeId = r.id;
+  ok('the family sees the place', (await look(rohan)).places.some(p => p.name === 'Home' && p.radius === 200));
+  ok('and is told it was saved', (await admin.query(`select count(*)::int as n from events where text = 'Meera saved a place: Home'`)).rows[0].n === 1);
+  const said = async () => (await admin.query(`select text from events where type = 'location' and text like '📍 Rohan%' order by created_at`)).rows.map(x => x.text);
+
+  // Starting to share while already at home is not news.
+  await call(rohan, { body: { action: 'share', lat: HOME.lat, lng: HOME.lng, accuracy: 15, battery: 64, charging: false } });
+  ok('starting to share at home announces nothing', (await said()).length === 0, (await said()).join());
+  let s1 = (await look(meera)).shares.find(x => x.name === 'Rohan');
+  ok('but the family sees he is at Home', s1 && s1.at.join() === 'Home', s1 && JSON.stringify(s1.at));
+  ok('with his battery', s1 && s1.battery === 64 && s1.charging === false);
+  // He leaves.
+  await call(rohan, { body: { action: 'update', ...AWAY, battery: 61 } });
+  ok('leaving Home is told to the family once', (await said()).join() === '📍 Rohan left Home', (await said()).join());
+  s1 = (await look(meera)).shares.find(x => x.name === 'Rohan');
+  ok('he is no longer shown at Home, and the battery is current', s1.at.length === 0 && s1.battery === 61);
+  await call(rohan, { body: { action: 'update', ...AWAY } });
+  ok('staying away says nothing more', (await said()).length === 1);
+  // A wobbly fix right at the edge is not an arrival.
+  await call(rohan, { body: { action: 'update', lat: HOME.lat + 0.0015, lng: HOME.lng, accuracy: 250 } });
+  ok('a fuzzy reading near the edge does not count as arriving', (await said()).length === 1, (await said()).join());
+  await call(rohan, { body: { action: 'update', lat: HOME.lat, lng: HOME.lng, accuracy: 10 } });
+  ok('coming back is an arrival, told once', (await said()).join(' | ') === '📍 Rohan left Home | 📍 Rohan arrived at Home', (await said()).join(' | '));
+  // Two updates at once from inside: one arrival, not two.
+  await call(rohan, { body: { action: 'update', ...AWAY } });
+  await Promise.all([call(rohan, { body: { action: 'update', lat: HOME.lat, lng: HOME.lng, accuracy: 5 } }),
+                     call(rohan, { body: { action: 'update', lat: HOME.lat, lng: HOME.lng, accuracy: 6 } })]);
+  const arr = (await said()).filter(t => /arrived/.test(t)).length;
+  ok('two updates at once announce one arrival', arr === 2, String(arr));
+  // Area only never announces places: the point is blurred on purpose.
+  await call(rohan, { body: { action: 'precision', precision: 'area' } });
+  await call(rohan, { body: { action: 'update', ...AWAY } });
+  ok('sharing only the area announces no places', (await said()).filter(t => /left/.test(t)).length === 2 && (await look(meera)).shares.find(x => x.name === 'Rohan').at.length === 0);
+  await call(rohan, { body: { action: 'precision', precision: 'exact' } });
+  // Removing the place.
+  r = await call(rohan, { body: { action: 'place_remove', id: homeId } });
+  ok('anyone in the family can remove a place', r.status === 200 && (await look(meera)).places.length === 0);
+  ok('a place from another family cannot be removed', (await call(vikramG, { body: { action: 'place_remove', id: homeId } })).status === 404);
+  // Stopping clears where he was and his battery.
+  await call(rohan, { body: { action: 'stop' } });
+  const st = await row(rohan);
+  ok('stopping deletes the battery and the places too', st.battery === null && st.inside === null);
+}
+
+// ---- asking someone to share
+{
+  let r = await call(meera, { body: { action: 'ask', targetId: rohan.id } });
+  ok('Meera can ask Rohan to share', r.status === 200 && r.asked === 'Rohan', JSON.stringify(r));
+  r = await call(meera, { body: { action: 'ask', targetId: rohan.id } });
+  ok('asking again within 10 minutes is held back, and says why', r.status === 429 && /few minutes ago/.test(r.error));
+  ok('nobody can ask themselves', (await call(meera, { body: { action: 'ask', targetId: meera.id } })).status === 400);
+  ok('nobody outside the family can be asked', (await call(meera, { body: { action: 'ask', targetId: vikramG.id } })).status === 404);
+  ok('asking never turns sharing on for them', !((await row(rohan)) || {}).enabled);
+  await call(rohan, { body: { action: 'share', ...PUNE } });
+  ok('someone already sharing does not need asking', (await call(meera, { body: { action: 'ask', targetId: rohan.id } })).status === 409);
+  await call(rohan, { body: { action: 'stop' } });
+}
+
 await admin.end();
 for (const p of globalThis.__parwahPools || []) await p.end();
 if (fails.length) { console.error(`location.dbtest: ${fails.length} FAILED of ${pass + fails.length}`); for (const f of fails) console.error('  - ' + f); process.exit(1); }

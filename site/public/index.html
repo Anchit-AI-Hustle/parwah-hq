@@ -1543,6 +1543,26 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         </div>
       </div>
       <div class="feed" id="loc-list"><div class="ev">Loading…</div></div>
+      <p class="pickhead" id="loc-ask-head" hidden>Not sharing</p>
+      <div class="feed" id="loc-ask"></div>
+      <p class="pickhead">Places</p>
+      <p class="hint" style="margin:0 0 var(--space-8)">Name a place - Home, School, Office - and the family is told when someone sharing their exact location arrives or leaves.</p>
+      <div class="feed" id="loc-places"></div>
+      <details class="more" id="loc-padd">
+        <summary>Add a place</summary>
+        <label for="lp-name">Name</label>
+        <input type="text" id="lp-name" maxlength="40" placeholder="e.g. Home, School, Office">
+        <label for="lp-where">Where it is</label>
+        <select id="lp-where"></select>
+        <label for="lp-size">How big</label>
+        <select id="lp-size">
+          <option value="150">A house or flat (150 m)</option>
+          <option value="300" selected>A building or school (300 m)</option>
+          <option value="800">A neighbourhood (800 m)</option>
+          <option value="2000">A large campus (2 km)</option>
+        </select>
+        <button type="button" class="go" id="lp-save">Save the place</button>
+      </details>
       <p class="hint" style="margin-top:var(--space-12)">Locations update whenever Parwah is open on the phone. Area only shows the neighbourhood, never the house.</p>
     </div>
 </section>
@@ -3435,6 +3455,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   function renderForSelect(members){
     membersCache = members;
+    // Who can be asked to share their location depends on who is in the
+    // family, which can arrive after the locations did.
+    if (curTab === 'people' && locMe && locMe.precision !== undefined) { try { renderLoc(); } catch (e) {} }
     // "How ready" lists the elders the family looks after, which it can only
     // tell once the family is known: drawn again if the papers came first.
     if (prepCache && prepCache.length) renderPrep();
@@ -7491,7 +7514,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     apiGet(locUrl()).then(function(j){
       if (gen !== locGen || locStopping) return;   // read before or during a Stop: out of date
       if (!j.ok) { $('loc-list').innerHTML = '<div class="ev">Could not load locations - try again in a moment.</div>'; return; }
-      locMe = j.me; locShares = j.shares || []; locPrec = locMe.precision || 'exact';
+      locMe = j.me; locShares = j.shares || []; locPrec = locMe.precision || 'exact'; locPlaces = j.places || [];
       renderLoc();
       // Sharing for a set time: look again the moment it ends, so this screen
       // never says "sharing" after the time is up.
@@ -7533,7 +7556,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       var xm = (membersCache || []).filter(function(m){ return m.id === x.memberId; })[0];
       if (!x.mine) bits.push(relLabel(xm || { relation: x.relation }));
       bits.push(x.precision === 'area' ? 'area only' : (x.accuracy ? 'within ' + (x.accuracy < 1000 ? x.accuracy + ' m' : (Math.round(x.accuracy / 100) / 10) + ' km') : 'exact'));
+      if (x.at && x.at.length) bits.push('at ' + x.at.join(', '));
       bits.push((x.stale ? 'last seen ' : 'updated ') + locAgo(x.updatedAt));
+      if (x.battery !== null && x.battery !== undefined) bits.push((x.charging ? '⚡ charging, ' : (x.battery <= 15 ? '🪫 ' : '🔋 ')) + x.battery + '%');
       if (x.until) bits.push('until ' + locClock(x.until));
       if (from && !x.mine) bits.push(locDistText(locDist(from, x)));
       var who = x.mine ? 'your' : x.name + "'s";
@@ -7542,7 +7567,68 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
              (x.mine ? '' : '<a class="cbtn ghost" href="' + esc(locRoute(x)) + '" target="_blank" rel="noopener" aria-label="Directions to ' + esc(x.name) + '">🧭 Directions</a>') +
              '</span></div>';
     }).join('') : '<div class="ev">Nobody here is sharing yet. When someone turns it on, they appear here.</div>';
+    // Not sharing: ask them, the way Find My lets you ask. Only they can
+    // turn it on.
+    var sharing = {}; locShares.forEach(function(x){ sharing[x.memberId] = 1; });
+    var askable = (membersCache || []).filter(function(m){ return m.id !== state.memberId && m.on_app !== false && !sharing[m.id]; });
+    $('loc-ask-head').hidden = !askable.length;
+    $('loc-ask').innerHTML = askable.map(function(m){
+      return '<div class="crow"><span class="txt"><b>' + esc(m.name) + '</b><small>Not sharing</small></span>' +
+             '<button type="button" class="cbtn ghost" data-locask="' + esc(m.id) + '">📍 Ask ' + esc(String(m.name).split(' ')[0]) + ' to share</button></div>';
+    }).join('');
+    // Saved places, and who is at each one now.
+    var places = locPlaces || [];
+    $('loc-places').innerHTML = places.length ? places.map(function(pl){
+      var here = locShares.filter(function(x){ return (x.at || []).indexOf(pl.name) >= 0; }).map(function(x){ return x.mine ? 'You' : x.name; });
+      return '<div class="crow"><span class="txt"><b>📍 ' + esc(pl.name) + '</b><small>' +
+             esc((here.length ? here.join(', ') + (here.length === 1 && here[0] !== 'You' ? ' is' : ' are') + ' here' : 'Nobody sharing is here') + ' · ' + (pl.radius >= 1000 ? (pl.radius / 1000) + ' km' : pl.radius + ' m') + ' across') +
+             '</small></span><button type="button" class="cbtn ghost" data-placerm="' + esc(pl.id) + '" aria-label="Remove ' + esc(pl.name) + '">Remove</button></div>';
+    }).join('') : '<div class="ev">No places yet. Add Home first - it takes ten seconds.</div>';
+    var wh = '<option value="me">Where I am now</option>';
+    locShares.forEach(function(x){ if (!x.mine && x.precision === 'exact') wh += '<option value="' + esc(x.memberId) + '">Where ' + esc(x.name) + ' is now</option>'; });
+    var keep = $('lp-where').value; $('lp-where').innerHTML = wh; if (keep && $('lp-where').querySelector('option[value="' + keep + '"]')) $('lp-where').value = keep;
   }
+  var locPlaces = [];
+  $('loc-ask').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-locask]'); if (!b) return;
+    b.disabled = true;
+    post(locUrl(), { code: state.code, memberId: state.memberId, action: 'ask', targetId: b.getAttribute('data-locask') })
+      .then(function(j){ b.disabled = false; toast(j.ok ? 'Asked ' + j.asked + ' - their phone will ask them to share' : (j.error || 'Could not ask just now')); })
+      .catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  $('loc-places').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-placerm]'); if (!b) return;
+    askSheet('Remove this place?', 'The family will no longer be told about arriving or leaving it.', 'Remove', 'Keep it', true).then(function(yes){
+      if (!yes) return;
+      post(locUrl(), { code: state.code, memberId: state.memberId, action: 'place_remove', id: b.getAttribute('data-placerm') })
+        .then(function(j){ toast(j.ok ? 'Removed' : (j.error || 'Could not remove it')); refreshLoc(); })
+        .catch(function(){ toast('No connection - try again'); });
+    });
+  });
+  $('lp-save').addEventListener('click', function(){
+    var name = $('lp-name').value.trim(), where = $('lp-where').value, size = +$('lp-size').value, btn = this;
+    if (!name) { fieldErr('lp-name', 'Name the place, like Home or School.'); return; }
+    var save = function(lat, lng){
+      btn.disabled = true;
+      post(locUrl(), { code: state.code, memberId: state.memberId, action: 'place_add', name: name, lat: lat, lng: lng, radius: size })
+        .then(function(j){
+          btn.disabled = false;
+          if (!j.ok) { fieldErr('lp-name', j.error || 'Could not save the place'); return; }
+          $('lp-name').value = ''; $('loc-padd').open = false;
+          toast('Saved ' + name + ' 📍 The family will be told about arriving and leaving');
+          refreshLoc();
+        }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
+    };
+    if (where !== 'me') {
+      var x = locShares.filter(function(s){ return s.memberId === where; })[0];
+      if (!x) { toast('They stopped sharing - pick another'); return; }
+      save(x.lat, x.lng); return;
+    }
+    if (!navigator.geolocation) { fieldErr('lp-where', 'This phone cannot tell where it is - pick someone who is sharing.'); return; }
+    navigator.geolocation.getCurrentPosition(function(pos){ save(pos.coords.latitude, pos.coords.longitude); },
+      function(){ fieldErr('lp-where', 'Location is not allowed on this phone - allow it, or pick someone who is sharing.'); },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+  });
   // How far away someone is, without sharing yourself: if this phone has
   // already allowed location, read it here, on the phone, for the distance
   // only. It is never sent, and Parwah never asks just for this.
@@ -7562,6 +7648,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       ? 'Your phone is not letting Parwah see your location. Allow location for Parwah in your phone or browser settings, then tap Share again.'
       : 'Your location could not be found just now. Step near a window or turn on location, then try again.');
   }
+  // The phone's battery, where the browser says (Chrome on Android does;
+  // iPhones do not): the family sees it beside the position, like Find My.
+  var locBattery = null;
+  try { if (navigator.getBattery) navigator.getBattery().then(function(b){ locBattery = b; }).catch(function(){}); } catch (e) {}
   function locSend(pos, action){
     // A held phone sends nothing, whoever asks: a watch, a one-shot fix after
     // a precision change, or another tab of Parwah on this phone.
@@ -7569,6 +7659,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var body = { code: state.code, memberId: state.memberId, action: action, lat: pos.coords.latitude, lng: pos.coords.longitude,
                  accuracy: pos.coords.accuracy, precision: locPrec };
     if (action === 'share') { var u = locUntil(); if (u) body.until = u; }
+    if (locBattery) { body.battery = Math.round(locBattery.level * 100); body.charging = !!locBattery.charging; }
     locLast = { lat: body.lat, lng: body.lng, at: Date.now() };
     return post(locUrl(), body);
   }
