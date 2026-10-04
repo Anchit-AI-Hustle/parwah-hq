@@ -92,13 +92,21 @@ const WORSE = /\b((is|it'?s|getting) worse|worsening|badh (raha|rahi)|zyada ho)/
 // ("it is worse today", "he is getting worse", "...and is getting worse",
 // "; worsening today", "Is he getting worse?"), not "he says his knee pain
 // is worse".
-const REFERS_BACK = /^\s*((is|isn'?t|has|does|kya)\s+)?((it|this|that|he|she|they|woh?|ye[h]?)\s+)?((is|'s|has been|keeps)\s+)?((getting|becoming)\s+)?(worse|worsening|badh (raha|rahi)|zyada)/i;
+const REFERS_BACK = new RegExp(
+  // a pronoun is what is getting worse ("he is getting worse", "Is it worse?")
+  /^\s*((is|isn'?t|has|does|kya)\s+)?(it|this|that|he|she|they|woh?|ye[h]?)\s+((is|'s|has been|keeps)\s+)?((getting|becoming)\s+)?(worse|worsening|badh (raha|rahi)|zyada)/.source
+  // or nothing is named at all ("...and is getting worse", "; worsening today"),
+  // never "worsening knee pain"
+  + '|' + /^\s*((is|'s|has been|keeps)\s+)?((getting|becoming)\s+)?(worse|worsening)(\s+(today|now|tonight|again|fast|quickly|badly|every day))*\s*$/.source, 'i');
 // Every signal is read in its own part of the message, so a separate
 // question ("...and has this ever happened before?") does not cancel a
 // current emergency in another part.
 const saysNow = t => NOW.test(t)
   || t.split(PARTS).some(c => c && (
-       (RE.emergency.test(c) && ((!PAST.test(c) && !NOT_NOW.test(c)) || (ONGOING.test(c) && !ASKS_IF.test(c))))
+       (RE.emergency.test(c) && !PAST.test(c) && !NOT_NOW.test(c))
+    // "since" in any part, unless that part asks whether something happened
+    // ("...and has not woken up since" is about the collapse named before it)
+    || (ONGOING.test(c) && !ASKS_IF.test(c))
     || (WORSE.test(c) && (RE.emergency.test(c) || REFERS_BACK.test(c)))));
 // Words alone cannot always tell whether it is happening now. So a message
 // that names an emergency is never answered without the way to 112, even
