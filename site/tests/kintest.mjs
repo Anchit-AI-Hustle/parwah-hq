@@ -60,6 +60,9 @@ is('dev', 'isha', 'Mami');                // his wife
 is('dev', 'riya', 'Mausi');               // mother's sister
 // Cousins, nephews, nieces
 is('aarav', 'kabir', 'Cousin');
+is('vihaan', 'amit', 'Grand-uncle');      // great-grandfather's son, not his grandfather
+is('vihaan', 'neha', 'Grand-aunt');
+is('amit', 'vihaan', 'Grand-nephew');
 is('amit', 'aarav', 'Nephew');
 is('amit', 'anaya', 'Niece');
 // Not in the tree yet: no guess

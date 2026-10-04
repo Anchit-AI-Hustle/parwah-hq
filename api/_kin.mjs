@@ -139,6 +139,9 @@ export function kinLabel(by, fromId, toId) {
     const spouseName = { Chacha: 'Chachi', Mama: 'Mami', Bua: 'Fufa', Mausi: 'Mausa', Uncle: 'Aunt', Aunt: 'Uncle' }[bloodName];
     return spouseName || 'Uncle or aunt by marriage';
   }
+  // A grandparent's brother or sister, and a brother's or sister's grandchildren.
+  if (up === 3 && down === 1) return pick(L('Grand-uncle', 'Grand-aunt', 'Grand-uncle or grand-aunt'), g);
+  if (up === 1 && down === 3 && !toIn) return pick(L('Grand-nephew', 'Grand-niece', 'Grand-nephew or grand-niece'), g);
   if (up === 2 && down === 2) return toIn ? "Cousin's " + (g === 'm' ? 'husband' : g === 'f' ? 'wife' : 'spouse') : 'Cousin';
   return 'Family';
 }
