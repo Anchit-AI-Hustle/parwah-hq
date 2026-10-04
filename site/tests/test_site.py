@@ -1745,6 +1745,10 @@ check("names: one name per place on tiles, tabs and menu, and family not circle 
 check("staying current: an open or installed Parwah moves to a new version when it comes back to the screen, and the page is never served from the browser cache",
       "function checkUpdate()" in _appt and 'id="updbar"' in _appt
       and "fetch(url.href, { cache: 'no-store'" in (REPO / "site" / "public" / "sw.js").read_text(encoding="utf-8"))
+_swsrc = (REPO / "site" / "public" / "sw.js").read_text(encoding="utf-8")
+check("staying current: a window on a copy from before v41 is moved by the new service worker (started, not awaited), and one opened offline moves once back online",
+      "c.navigate(c.url)" in _swsrc and "return Promise.all(list.map(function (c) { return 'navigate' in c ? c.navigate" not in _swsrc
+      and "+m[1] < SELF_UPDATING" in _swsrc and "if (appLost) { appLost = false; moveToNew(); }" in _appt)
 check("create: joint or nuclear is asked first, with no answer chosen for them",
       "var newFamilyType = null;" in _appt and _appt.index('id="c-ftype"') < _appt.index('id="c-circle"') < _appt.index('id="c-name"'))
 check("roles: a new group asks for your role in the group, and starts on Friend",
