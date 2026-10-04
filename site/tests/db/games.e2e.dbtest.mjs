@@ -148,7 +148,11 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
   const again = await lastGame('ludo');
   ok('ludo: Play again starts a new game, alone again', again.id !== before && again.status === 'active' && again.state.players.some(p => p.bot) && await vis(R, '#g-ludo'));
   await admin.query(`update games set status = 'done' where id = $1`, [again.id]);   // put away, with no result
-  await R.click('#g-back'); await R.waitForTimeout(600);
+  // Back to the list: by the button, or by the app itself - its next look
+  // sees the game was put away and leaves it, which can happen first.
+  if (await vis(R, '#g-back')) await tap(R.locator('#g-back'));
+  await R.waitForFunction(() => { const l = document.querySelector('#glist'); return !!(l && l.getClientRects().length); }, null, { timeout: 8000 });
+  await R.waitForTimeout(600);
   const rows = await R.$$eval('#glist button[data-gopen]', bs => bs.map(b => b.getAttribute('data-gopen') + '|' + b.textContent));
   ok('ludo: the list keeps the finished game, marked Done', rows.some(r => r.startsWith(before + '|') && /Done/.test(r)), rows.join(' / '));
   ok('ludo: a game put away without a result leaves the list', !rows.some(r => r.startsWith(again.id + '|')));

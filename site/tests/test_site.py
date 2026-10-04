@@ -176,6 +176,11 @@ check("wa.me links present", wa >= 3, f"found {wa} links to wa.me/{WA_NUMBER}")
 check("wa.me links all go to the real number, none to another",
       not _wa_wrong and _wa_all == wa, ", ".join(_wa_wrong))
 
+# No public page promises an offer the launch no longer makes.
+_promises = [str(q.relative_to(ROOT / "public")) for q in SITE_PAGES
+             if re.search(r"founding[- ]member|launch-week pricing", markup_only(q.read_text(encoding="utf-8")), re.I)]
+check("public pages: no founding-member or launch-week pricing is promised", not _promises, ", ".join(_promises))
+
 # ---------- 6. A11y basics ----------
 for p in PAGES:
     html = p.read_text(encoding="utf-8")

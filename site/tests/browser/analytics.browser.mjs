@@ -151,6 +151,34 @@ for (const url of MARKETING) {
   await pg.close();
 }
 
+// ---- 7b. the walk-through is a demo open, not an app open
+{
+  const { pg } = await open('/welcome/', { withId: true, storage: 'yes' });
+  await pg.waitForTimeout(900);
+  const sent = [];
+  await pg.exposeFunction('__ev', (n, p) => sent.push([n, p]));
+  await pg.evaluate(() => {
+    const real = window.gtag;
+    window.gtag = function (kind, name, params) { if (kind === 'event') window.__ev(name, params); return real && real.apply(this, arguments); };
+  });
+  await pg.evaluate(() => { const a = document.querySelector('a[href="../?demo=1"]'); a.setAttribute('target', '_blank'); a.click(); });
+  await pg.waitForTimeout(400);
+  ok(sent.some(e => e[0] === 'open_demo') && !sent.some(e => e[0] === 'open_app'),
+     '"See it first" (../?demo=1) is counted as opening the walk-through, not the app');
+  await pg.close();
+}
+// ---- 7c. an old /demo/ link: counted (after a yes), then on to the walk-through
+{
+  const { pg, google } = await open('/demo/', { withId: true, storage: 'yes' });
+  await pg.waitForTimeout(2200);
+  ok(google.some(u => /gtag\/js/.test(u)), 'an old /demo/ link, after a yes, is counted before it moves on');
+  ok(/\/\?demo=1$/.test(pg.url()), 'and then lands on the walk-through');
+  await pg.close();
+  const n = await open('/demo/');
+  ok(/\/\?demo=1$/.test(n.pg.url()), 'with no yes, /demo/ moves on at once');
+  await n.pg.close();
+}
+
 // ---- 8. an event raised before consent is held, not lost
 {
   const { pg, google } = await open('/launch/', { withId: true });

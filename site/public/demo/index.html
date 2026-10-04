@@ -8,9 +8,23 @@
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://parwah-hq.anchit-tandon.com/?demo=1">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
-<meta http-equiv="refresh" content="0; url=../?demo=1">
+<noscript><meta http-equiv="refresh" content="0; url=../?demo=1"></noscript>
 <script src="../analytics.js" defer></script>
-<script>location.replace('../?demo=1');</script>
+<script>
+// Straight on to the walk-through. Someone who has already allowed counting
+// is counted first (the app itself never is), so an old link is not lost
+// from the numbers.
+(function () {
+  function go() { location.replace('../?demo=1'); }
+  var yes = false;
+  try { yes = localStorage.getItem('parwah-consent') === 'yes'; } catch (e) {}
+  if (!yes) { go(); return; }
+  window.addEventListener('load', function () {
+    if (window.parwahTrack) window.parwahTrack('open_demo', { page: '/demo/', via: 'old link' });
+    setTimeout(go, 1200);
+  });
+})();
+</script>
 <style>body{font-family:system-ui,sans-serif;background:#FFF6EA;color:#221428;padding:40px 16px;text-align:center}a{color:#5A2A6E}@media(prefers-color-scheme:dark){body{background:#2A1235;color:#FFE9DA}a{color:#FFB31A}}</style>
 </head>
 <body>
