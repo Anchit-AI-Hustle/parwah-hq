@@ -1,0 +1,28 @@
+# THE TIMER: reminders and alarms ring at their time even when nobody in the
+# family has Parwah open.
+#
+# There is no scheduler on the Vercel plan Parwah runs on (one cron a day),
+# so this asks the live site every 10 minutes to send whatever is due. The
+# endpoint reads nothing private and returns only counts; each alert is
+# claimed in the database, so a late or doubled run never sends twice; and
+# it runs at most once a minute whoever calls it. GitHub may start a
+# scheduled run a few minutes late; phones with Parwah open check on their
+# own every few seconds, so this is the floor, not the only path.
+name: Reminder timer
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Send what is due
+        run: |
+          curl -fsS --max-time 60 'https://parwah-hq.anchit-tandon.com/api/events?tick=1'

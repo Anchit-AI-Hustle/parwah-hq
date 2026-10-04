@@ -35,6 +35,21 @@ export const GAPS = [
 export function gapTitle(name, label) { return 'Record ' + name + "'s " + label; }
 
 export const ESCALATE = ['people', 'everyone'];
+// When to remind: at the time, or this many minutes before. A task with a
+// reminder gets 30 minutes' grace before it is "running late": the alarm
+// rings at 6, the family is not told at 6:01.
+export const REMIND = [0, 10, 30, 60, 1440];
+export const LATE_GRACE_MIN = 30;
+export function remindOf(v) {
+  if (v === null || v === undefined || v === '' || v === 'none') return null;
+  const n = Number(v);
+  return REMIND.includes(n) ? n : null;
+}
+export function remindText(t) {
+  const r = Number(t.remind_before) || 0;
+  if (!r) return 'It is time: ' + t.title;
+  return (r === 1440 ? 'Tomorrow' : 'In ' + (r >= 60 ? (r / 60) + ' hour' : r + ' minutes')) + ': ' + t.title;
+}
 const OPEN = ['open', 'assigned', 'claimed'];
 
 let taskReady = false;
@@ -67,6 +82,10 @@ async function createTaskSchema(sql) {
   await sql`alter table requests add column if not exists completion_note text`;
   await sql`alter table requests add column if not exists archived_at timestamptz`;
   await sql`alter table requests add column if not exists overdue_alerted_for timestamptz`;
+  // A reminder AT the time (0) or before it (minutes), sent once per
+  // occurrence. Null: no reminder, only the running-late alert.
+  await sql`alter table requests add column if not exists remind_before integer`;
+  await sql`alter table requests add column if not exists reminded_for timestamptz`;
   await sql`create unique index if not exists requests_series_due on requests (series_id, due_at) where series_id is not null`;
   await sql`create table if not exists task_log (
     id uuid primary key default gen_random_uuid(),
@@ -129,6 +148,7 @@ export async function taskList(sql, circleId) {
     select q.id, q.title, q.status, q.created_at, q.due_date, q.due_at, q.all_day, q.tz, q.recurrence,
            q.done_when, q.notes, q.escalate, q.acknowledged_at, q.completed_at, q.completion_note,
            q.about_member, q.by_member, q.claimed_by, q.completed_by,
+           q.remind_before,
            (q.due_at is not null and q.due_at < now() and q.status in ('open','assigned','claimed')) as overdue,
            b.name as by_name, c.name as claimed_name, a.name as about_name, d.name as completed_name
     from requests q
@@ -159,7 +179,8 @@ export async function sweepOverdue(sql, circleId) {
   const due = await sql`
     update requests set overdue_alerted_for = due_at
     where circle_id = ${circleId} and status in ('open','assigned','claimed')
-      and due_at is not null and due_at < now()
+      and due_at is not null
+      and due_at < now() - make_interval(mins => case when remind_before is null then 0 else ${LATE_GRACE_MIN} end)
       and overdue_alerted_for is distinct from due_at
     returning id, circle_id, title, status, by_member, claimed_by, escalate`;
   for (const t of due) {
@@ -178,6 +199,27 @@ export async function sweepOverdue(sql, circleId) {
     };
     if (t.escalate === 'everyone' || !t.claimed_by) await pushCircle(sql, circleId, payload, {});
     else await tell(sql, circleId, [t.claimed_by, t.by_member], payload, null);
+  }
+  return due.length;
+}
+
+// Reminders due now: to whoever has the task (or, if nobody has it yet, to
+// everyone who could take it). Claimed by a conditional UPDATE, so any
+// number of phones and the timer checking at once send each one once. A
+// reminder more than 30 minutes stale is dropped, not sent late.
+export async function sweepReminders(sql, circleId) {
+  const due = await sql`
+    update requests set reminded_for = due_at
+    where circle_id = ${circleId} and status in ('open','assigned','claimed')
+      and due_at is not null and remind_before is not null
+      and due_at - make_interval(mins => remind_before) <= now()
+      and due_at - make_interval(mins => remind_before) > now() - interval '30 minutes'
+      and reminded_for is distinct from due_at
+    returning id, circle_id, title, status, by_member, claimed_by, remind_before, due_at`;
+  for (const t of due) {
+    const payload = { title: '⏰ ' + remindText(t), body: 'Open Parwah to mark it done', url: '/#care', urgent: true };
+    if (t.claimed_by) await tell(sql, circleId, [t.claimed_by], payload, null);
+    else await pushCircle(sql, circleId, { ...payload, body: 'Nobody has it yet - first to tap "I\'m on it" takes it' }, {});
   }
   return due.length;
 }
@@ -208,12 +250,14 @@ export async function createTask(sql, circle, me, body) {
   const r = await sql`
     insert into requests (circle_id, by_member, title, status, claimed_by, due_at, all_day, tz, due_date,
                           recurrence, series_id, series_anchor, done_when, notes, escalate, about_member,
-                          acknowledged_at, overdue_alerted_for)
+                          acknowledged_at, overdue_alerted_for, remind_before, reminded_for)
     values (${circle.id}, ${me.id}, ${title}, ${status}, ${owner ? owner.id : null}, ${dueAt}, ${due.allDay}, ${tz},
             ${due.at ? localDate(due.at, tz) : null}, ${rec},
             ${rec !== 'once' ? randomUUID() : null}, ${rec !== 'once' ? dueAt : null},
             ${clip(body.doneWhen, 200)}, ${clip(body.notes, 500)}, ${esc}, ${about ? about.id : null},
             ${status === 'claimed' ? new Date() : null},
+            ${dueAt && dueAt.getTime() < Date.now() ? dueAt : null},
+            ${dueAt && !due.allDay ? remindOf(body.remindBefore) : null},
             ${dueAt && dueAt.getTime() < Date.now() ? dueAt : null})
     returning id, circle_id`;
   const t = r[0];
@@ -332,7 +376,9 @@ export async function taskAction(sql, circle, me, body) {
     await sql`update requests set title = ${title}, due_at = ${dueAt}, all_day = ${allDay}, due_date = ${dueDate},
                 tz = ${tz}, recurrence = ${rec}, series_id = ${series},
                 series_anchor = ${rec === 'once' ? null : (t.recurrence === rec && t.series_anchor ? t.series_anchor : dueAt)},
-                escalate = ${esc}, done_when = ${doneWhen}, notes = ${notes}, about_member = ${aboutId}
+                escalate = ${esc}, done_when = ${doneWhen}, notes = ${notes}, about_member = ${aboutId},
+                remind_before = ${body.remindBefore !== undefined ? (dueAt && !allDay ? remindOf(body.remindBefore) : null) : (dueAt && !allDay ? t.remind_before : null)},
+                reminded_for = case when due_at is distinct from ${dueAt} then null else reminded_for end
               where id = ${t.id}`;
     await log(sql, t, me, 'edited', null);
     return ok(200, {});
@@ -360,10 +406,10 @@ export async function taskAction(sql, circle, me, body) {
         const nextStatus = !owner ? 'open' : t.status === 'assigned' ? 'assigned' : 'claimed';
         const ins = await sql`
           insert into requests (circle_id, by_member, title, status, claimed_by, acknowledged_at, due_at, all_day, tz, due_date,
-                                recurrence, series_id, series_anchor, done_when, notes, escalate, about_member)
+                                recurrence, series_id, series_anchor, done_when, notes, escalate, about_member, remind_before)
           values (${t.circle_id}, ${t.by_member}, ${t.title}, ${nextStatus}, ${owner}, ${nextStatus === 'claimed' ? new Date() : null}, ${new Date(n)}, ${t.all_day}, ${t.tz},
                   ${localDate(n, t.tz || 'Asia/Kolkata')}, ${t.recurrence}, ${t.series_id}, ${t.series_anchor},
-                  ${t.done_when}, ${t.notes}, ${t.escalate}, ${t.about_member})
+                  ${t.done_when}, ${t.notes}, ${t.escalate}, ${t.about_member}, ${t.remind_before})
           on conflict do nothing returning id, circle_id`;
         if (ins[0]) { next = ins[0].id; await log(sql, ins[0], me, 'created', 'next time'); }
       }

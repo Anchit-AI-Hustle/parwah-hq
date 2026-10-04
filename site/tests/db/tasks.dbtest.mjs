@@ -37,7 +37,7 @@ const { default: care } = await import('../../../api/care.mjs');
 const { default: events } = await import('../../../api/events.mjs');
 const { db, ensureSchema } = await import('../../../api/_db.mjs');
 const { newToken, tokenHash } = await import('../../../api/_auth.mjs');
-const { sweepOverdue, ensureTaskSchema, taskAction } = await import('../../../api/_tasks.mjs');
+const { sweepOverdue, sweepReminders, ensureTaskSchema, taskAction } = await import('../../../api/_tasks.mjs');
 const { fromWall } = await import('../../../api/_recur.mjs');
 
 const sql = db();
@@ -289,6 +289,64 @@ let given;
   const vr = await call(care, vikram, { body: { action: 'task_create', title: 'Verma task', dueAt: new Date(Date.now() - 5000).toISOString() } });
   await sweepOverdue(sql, sharma);
   ok('one family\'s check never announces another family\'s task', (await admin.query(`select count(*)::int as n from task_log where task_id = $1`, [vr.id])).rows[0].n === 1);
+}
+
+// ---- reminders: at the time, or before it; once; and a grace before "late"
+{
+  await admin.query(`update requests set reminded_for = due_at, overdue_alerted_for = due_at`);   // only the new ones are fresh
+  const at = m => new Date(Date.now() + m * 60000).toISOString();
+  const soon = await act(meera, 'task_create', { title: 'Papa\'s 9 pm tablets', ownerId: 'me', dueAt: at(5), tz: IN, remindBefore: 10 });
+  ok('a task can be reminded 10 minutes before', (await row(soon.id)).remind_before === 10);
+  const later = await act(meera, 'task_create', { title: 'Call the plumber', ownerId: 'me', dueAt: at(120), tz: IN, remindBefore: 30 });
+  const alarm = await act(meera, 'task_create', { title: 'Wake up', ownerId: 'me', dueAt: at(1), tz: IN, remindBefore: 0 });
+  const none = await act(meera, 'task_create', { title: 'No reminder please', ownerId: 'me', dueAt: at(1), tz: IN });
+  ok('no reminder unless asked', (await row(none.id)).remind_before === null);
+  const odd = await act(meera, 'task_create', { title: 'Odd reminder', ownerId: 'me', dueAt: at(60), tz: IN, remindBefore: 7 });
+  ok('a reminder time that is not offered is ignored, not stored', (await row(odd.id)).remind_before === null);
+  const allDay = await act(meera, 'task_create', { title: 'Some day', dueDate: new Date().toISOString().slice(0, 10), tz: IN, remindBefore: 0 });
+  ok('a task with only a date has no reminder time', (await row(allDay.id)).remind_before === null);
+  // Five phones checking at once send the 10-minute reminder once.
+  const sent = await Promise.all([1, 2, 3, 4, 5].map(() => sweepReminders(sql, sharma)));
+  ok('the reminder that is due goes out exactly once, however many check', sent.reduce((a, b) => a + b, 0) === 1, sent.join());
+  ok('and it is the 10-minutes-before one', (await row(soon.id)).reminded_for !== null && (await row(later.id)).reminded_for === null);
+  ok('the alarm at the time is not early', (await row(alarm.id)).reminded_for === null);
+  await admin.query(`update requests set due_at = now() - interval '1 minute' where id = $1`, [alarm.id]);
+  ok('at the time, the alarm goes', (await sweepReminders(sql, sharma)) === 1 && (await row(alarm.id)).reminded_for !== null);
+  ok('and only once', (await sweepReminders(sql, sharma)) === 0);
+  // Grace: an alarm a few minutes old is not yet "running late".
+  const lateBefore = (await admin.query(`select count(*)::int as n from events where text like 'Running late%'`)).rows[0].n;
+  await sweepOverdue(sql, sharma);
+  ok('a task with a reminder is not "running late" a minute after', (await admin.query(`select count(*)::int as n from events where text like 'Running late%'`)).rows[0].n === lateBefore);
+  await admin.query(`update requests set due_at = now() - interval '40 minutes', overdue_alerted_for = null where id = $1`, [alarm.id]);
+  await sweepOverdue(sql, sharma);
+  ok('but is after 30 minutes', (await admin.query(`select count(*)::int as n from events where text like 'Running late%Wake up%'`)).rows[0].n === 1);
+  // A reminder long missed is dropped, not sent late.
+  const missed = await act(meera, 'task_create', { title: 'Missed one', ownerId: 'me', dueAt: at(1), tz: IN, remindBefore: 0 });
+  await admin.query(`update requests set due_at = now() - interval '2 hours' where id = $1`, [missed.id]);
+  ok('a reminder more than 30 minutes stale is not sent', (await sweepReminders(sql, sharma)) === 0);
+  // A new time is a new reminder.
+  await act(meera, 'task_edit', { taskId: soon.id, dueAt: at(8) });
+  ok('changing the time sets the reminder going again', (await row(soon.id)).reminded_for === null && (await row(soon.id)).remind_before === 10);
+  await act(meera, 'task_edit', { taskId: soon.id, remindBefore: 'none' });
+  ok('and it can be switched off', (await row(soon.id)).remind_before === null);
+  // A repeating task keeps its reminder on the next one.
+  const daily = await act(meera, 'task_create', { title: 'Morning walk', ownerId: 'me', dueAt: at(30), tz: IN, recurrence: 'daily', remindBefore: 10 });
+  const d1 = await act(meera, 'task_done', { taskId: daily.id });
+  ok('the next morning walk is reminded too', d1.next && (await row(d1.next)).remind_before === 10, JSON.stringify(d1));
+  ok('the family sees when each is reminded', (await list(meera)).some(x => x.id === later.id && x.remind_before === 30));
+}
+
+// ---- the timer: rings what is due when no phone is open
+{
+  await admin.query(`update requests set reminded_for = due_at`);
+  const t = await act(meera, 'task_create', { title: 'Timer test', ownerId: 'me', dueAt: new Date(Date.now() + 60000).toISOString(), tz: IN, remindBefore: 10 });
+  const tick = async () => { let st = 200, js = null; await events({ method: 'GET', headers: {}, query: { tick: '1' }, body: {} },
+    { status(x) { st = x; return this; }, json(j) { js = j; return this; }, setHeader() {} }); return { st, ...js }; };
+  const a = await tick();
+  ok('the timer needs no sign-in, and sends what is due', a.st === 200 && a.ok && a.reminded === 1 && (await row(t.id)).reminded_for !== null, JSON.stringify(a));
+  ok('it says only counts, nothing about any family', Object.keys(a).sort().join() === 'circles,events,late,ok,reminded,st', Object.keys(a).sort().join());
+  const b = await tick();
+  ok('called again within the minute, it does nothing', b.ok && b.skipped === true);
 }
 
 await admin.end();

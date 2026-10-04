@@ -782,6 +782,7 @@ CIRCLE_WIDE_OK = {
     ("events.mjs", "could do with a call"): "the point of the pulse",
     ("care.mjs",   "needs a hand"):       "a job anyone can pick up",
     ("_tasks.mjs", "payload, {})"):       "late, and nobody has it - or the family chose to tell everyone",
+    ("_tasks.mjs", "Nobody has it yet - first to tap"): "its time has come and nobody has it: anyone may take it",
     ("plans.mjs",  ""):                   "a plan invites the whole circle",
     ("games.mjs",  "lobby is open"):      "an open lobby invites everyone",
 }
@@ -1844,9 +1845,13 @@ check("create: joint or nuclear is asked first, with no answer chosen for them",
 check("roles: a new group asks for your role in the group, and starts on Friend",
       "'Who are you in this ' + newKind + '?'" in _appt and "newKind === 'group' ? 'friend' : 'family'" in _appt)
 _loc = (API_DIR / "_locationapi.mjs").read_text(encoding="utf-8")
+# "Ask to share" names another person, and only pushes them a request: it
+# never writes anyone's sharing. Nothing else in the file names anyone else.
+_ask = _loc[_loc.index("if (action === 'ask')"):_loc.index("if (action === 'stop')")]
 check("location: only the person turns it on; there is no action to share for someone else",
       "requireMember(sql, code, memberId, tokenOf(req))" in _loc and "values (${circle.id}, ${me.id}, true" in _loc
-      and "otherId" not in _loc and "targetId" not in _loc)
+      and "otherId" not in _loc and "targetId" not in _loc.replace(_ask, "")
+      and "insert into location_shares" not in _ask and "update location_shares" not in _ask)
 check("location: stopping deletes the position, not just hides it",
       "set enabled = false, lat = null, lng = null, accuracy = null" in _loc)
 check("location: area only is rounded on the server, so an exact spot is never stored",
@@ -2208,6 +2213,30 @@ check("sos: one tap to 112, the family, WhatsApp, SMS and email",
       'href="tel:112"' in _app_src and "wa.me/?text=" in _app_src and "'sms:' + nums.join(',')" in _app_src and "mailto:?subject=" in _app_src)
 check("sos: the end-to-end suite runs with the database suites",
       "sos.e2e.dbtest.mjs" in (REPO / "package.json").read_text(encoding="utf-8"))
+
+# ---------- Everyday family tools (owner, 2026-10-04) ----------
+_tasksrc = (API_DIR / "_tasks.mjs").read_text(encoding="utf-8")
+check("reminders: a task can ring at its time or before it, once, and is late only after a grace",
+      "export async function sweepReminders" in _tasksrc and "reminded_for is distinct from due_at" in _tasksrc
+      and "LATE_GRACE_MIN" in _tasksrc and 'id="r-remind"' in _app_src and 'id="alarmsheet"' in _app_src)
+check("reminders: a timer rings them with every phone closed, and says nothing private",
+      (REPO / ".github/workflows/tick.yml").exists() and "?tick=1" in (REPO / ".github/workflows/tick.yml").read_text(encoding="utf-8")
+      and "req.query.tick !== undefined" in _evt and "rateLimit(sql, 'tick', 'all', 1, 50)" in _evt)
+_notes = (API_DIR / "_notesapi.mjs").read_text(encoding="utf-8")
+check("notes: shared lists under To do; a private note is private in the query itself",
+      'data-sec="notes"' in _app_src and "(not n.private or n.by_member = ${me.id})" in _notes
+      and "if (area === 'notes') return notesApi(req, res);" in (API_DIR / "book.mjs").read_text(encoding="utf-8"))
+check("notes: never a card number or a banking secret",
+      "function luhn(d)" in _notes and "noteRisk" in _notes)
+check("events: appointments, functions and trips; reminded an hour before; birthdays from dates of birth",
+      "'appointment', 'function', 'trip'" in (API_DIR / "plans.mjs").read_text(encoding="utf-8")
+      and "sweepPlanReminders" in _evt and "function bdaysSoon(days)" in _app_src)
+check("quick add: one row on Today reaches every add form",
+      _app_src.count('data-qadd="') == 5 and _app_src.index('class="quickadd"') < _app_src.index('id="widgets"'))
+_geo = (API_DIR / "_geo.mjs").read_text(encoding="utf-8")
+check("find my: places with arrive and leave alerts, ask to share, battery",
+      "export function placesAt" in _geo and "async function placeNews" in _loc and "action === 'ask'" in _loc
+      and "navigator.getBattery" in _app_src)
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

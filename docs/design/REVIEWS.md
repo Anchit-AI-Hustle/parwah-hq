@@ -264,3 +264,15 @@ New pattern: the field error (`.fielderr` under the box, `aria-invalid` on it, f
 | 98 | 3 User control | Location during an SOS could be switched off by the person mid-emergency | 3 | Changed at the owner's direction: held on, exact, until someone else in the family marks them safe; then it is theirs again. Alone in a family, the person may close it |
 
 New patterns: the SOS button (`.sosfab`), the SOS and alarm screens (`.sosscreen`, `.sosalert`, `.ss-btn`). Emergency red (`--sos`) is used for these and nothing else.
+
+### Review 9, everyday family tools (owner, 2026-10-04)
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 99 | 6 Recognition | Basic things (an event, a reminder, a list) were missing or hidden behind the right tab | 3 | Fixed: one Add row on Today - Reminder or task, Event or plan, List or note, Contact or health, Document - each straight to its form, cursor in place |
+| 100 | 1 Visibility | A task's time passed silently; an alarm at 6 read "Running late" at 6 | 3 | Fixed: Remind at the time or before it (at the time by default); an alarm screen with a chime, Done, Snooze 10 minutes; 30 minutes' grace before "running late"; a 10-minute timer rings them with every phone closed |
+| 101 | 7 Flexibility | No shared lists or notes: groceries and packing lived in WhatsApp | 2 | Fixed: Notes & lists under To do; tick together; "Only me" for private notes |
+| 102 | 2 Real-world match | Plans were calls and parties only; birthdays were nowhere | 2 | Fixed: appointments, functions, trips; birthdays from dates of birth on the calendar and the list, with Wish them; whoever is going is reminded an hour before |
+| 103 | 1 Visibility | Location sharing was a dot on a map: no "at home", no way to ask, no battery | 2 | Fixed: saved places with arrive and leave alerts, who is at each place, Ask to share, battery beside each person |
+
+New patterns: the Add row (`.quickadd`), the note card (`.note`, `.noteitem`), the reminder alarm (the `#alarmsheet` sheet).

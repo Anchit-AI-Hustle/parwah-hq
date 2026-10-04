@@ -208,7 +208,9 @@ const tomorrow = localDay(Date.now() + 86400000);
   // Written down after its time: it shows as late, but nobody is woken.
   ok('a task written down after its time wakes nobody', (await admin.query(`select count(*)::int as n from events where text like 'Running late%electricity%'`)).rows[0].n === 0);
   // It runs late after it was set (as if set yesterday morning for the evening).
-  await admin.query(`update requests set overdue_alerted_for = null, due_at = now() - interval '2 minutes' where title = 'Pay the electricity bill'`);
+  // It has a reminder (the form's default), so the family is told it is
+  // running late 30 minutes after its time, not the minute it passes.
+  await admin.query(`update requests set overdue_alerted_for = null, due_at = now() - interval '40 minutes' where title = 'Pay the electricity bill'`);
   await Promise.all([reload(R), reload(M)]);
   ok('a task past its time is under Needs attention', (await groupOf(M, 'Pay the electricity bill')) === 'g-need');
   ok('marked as running late', /running late/.test(await rowOf(M, 'Pay the electricity bill').textContent()));
@@ -333,6 +335,92 @@ const tomorrow = localDay(Date.now() + 86400000);
   await reload(M);
   ok('a task with nowhere to go has no "go" button', await rowOf(M, 'Water the tulsi').locator('[data-tgo]').count() === 0);
   ok('a gas refill is not mistaken for medicines', await rowOf(M, 'Book the gas refill').locator('[data-tgo]').count() === 0);
+  // A call task: the dialer opens, and the task is taken, like every other "Do it now".
+  await admin.query(`update members set phone = '+919820000099' where id = $1`, [papa.id]);
+  for (const t of ['Call Papa about the pension', 'Will call Papa tomorrow', "Find Dadaji's will"]) {
+    await R.evaluate(async ([ttl, pid]) => {
+      await fetch('/api/care', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': localStorage.getItem('parwah-token') },
+        body: JSON.stringify({ action: 'task_create', code: 'SHARMA', memberId: JSON.parse(localStorage.getItem('parwah')).memberId, title: ttl, aboutMemberId: pid }) });
+    }, [t, papa.id]);
+  }
+  await M.goto(BASE + '/#care'); await M.waitForTimeout(300); await reload(M);
+  await M.evaluate(() => document.addEventListener('click', e => { if (e.target.closest('a[href^="tel:"]')) e.preventDefault(); }, true));
+  const callGo = rowOf(M, 'Call Papa about the pension').locator('[data-tgo]');
+  ok('a call task offers the call', /Call Papa/.test(await callGo.textContent()) && /^tel:/.test(await callGo.getAttribute('href')));
+  await callGo.click(); await M.waitForTimeout(900);
+  ok('and calling takes the task, so nobody else calls at the same time', (await task('Call Papa about the pension')).claimed_by === meera.id);
+  ok('"Will call Papa" is a call, not a legal will', /Call Papa/.test(await rowOf(M, 'Will call Papa tomorrow').locator('[data-tgo]').textContent()));
+  ok('a will is still a document', /Open documents/.test(await rowOf(M, "Find Dadaji's will").locator('[data-tgo]').textContent()));
+}
+
+// ---- 9. Reminders: chosen on the form, and an alarm that rings on time
+{
+  await reload(R);
+  ok('the add form offers when to remind, at the time by default', await R.inputValue('#r-remind') === '0'
+     && (await R.$$eval('#r-remind option', os => os.map(o => o.value))).join() === '0,10,30,60,1440,none');
+  const mk = (title, mins) => M.evaluate(async ([t, at]) => {
+    const r = await fetch('/api/care', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': localStorage.getItem('parwah-token') },
+      body: JSON.stringify({ action: 'task_create', code: 'SHARMA', memberId: JSON.parse(localStorage.getItem('parwah')).memberId, title: t, ownerId: 'me', dueAt: at, remindBefore: 0, tz: 'Asia/Kolkata' }) });
+    return r.json();
+  }, [title, new Date(Date.now() + mins * 60000).toISOString()]);
+  const w0 = await mk('Wake up for the airport', 2);
+  await admin.query(`update requests set due_at = now() - interval '30 seconds', reminded_for = null, created_at = now() - interval '1 hour' where id = $1`, [w0.id]);
+  await M.goto(BASE + '/#care'); await reload(M);
+  ok('at its time, the alarm takes the screen', await M.isVisible('#alarmsheet') && /It is time: Wake up for the airport/.test(await M.textContent('#al-title')),
+     await M.textContent('#al-title').catch(() => ''));
+  ok('the task shows its reminder', /🔔 at the time/.test(await M.textContent('#rlist')));
+  await M.click('#al-snooze'); await M.waitForTimeout(300);
+  ok('Snooze closes it', !(await M.isVisible('#alarmsheet')));
+  await reload(M);
+  ok('and it does not ring again straight away', !(await M.isVisible('#alarmsheet')));
+  await M.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('parwah-rem:')) localStorage.setItem(k, String(Date.now() - 1000)); });
+  await reload(M);
+  ok('it rings again when the snooze is up', await M.isVisible('#alarmsheet'));
+  await M.click('#al-done'); await M.waitForTimeout(900);
+  const w = await task('Wake up for the airport');
+  ok('Done from the alarm finishes the task', w.status === 'done' && w.completed_by === meera.id, w.status);
+  // Someone else's task does not ring on this phone.
+  await R.evaluate(async (pid) => {
+    await fetch('/api/care', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': localStorage.getItem('parwah-token') },
+      body: JSON.stringify({ action: 'task_create', code: 'SHARMA', memberId: JSON.parse(localStorage.getItem('parwah')).memberId, title: 'Rohan only', ownerId: 'me', dueAt: new Date(Date.now() + 120000).toISOString(), remindBefore: 0, tz: 'Asia/Kolkata' }) });
+  });
+  await admin.query(`update requests set due_at = now() - interval '20 seconds', created_at = now() - interval '1 hour' where title = 'Rohan only'`);
+  await reload(M);
+  ok('a task someone else has does not ring on your phone', !(await M.isVisible('#alarmsheet')));
+  // Written down already late: shown as late, but no alarm.
+  await mk('Already late when written', -5);
+  await reload(M);
+  ok('a task written down after its time does not ring', !(await M.isVisible('#alarmsheet')));
+}
+
+// ---- 10. Notes and lists, shared
+{
+  // Rohan's own reminder from above would ring on his phone: it is done.
+  await admin.query(`update requests set status = 'done', completed_at = now() where title = 'Rohan only'`);
+  const toNotes = async (page) => { await page.goto(BASE + '/#care'); await page.waitForTimeout(600);
+    await page.click('#care-seg [data-sec="notes"]'); await page.waitForTimeout(900); };
+  await toNotes(M);
+  ok('To do has Notes & lists', await M.isVisible('#n-title') && /No notes yet/.test(await M.textContent('#notelist')));
+  await M.click('#n-add'); await M.waitForTimeout(200);
+  ok('a note without a title is refused beside the box', /Give it a title/.test(await M.textContent('#n-title-err')));
+  await M.fill('#n-title', 'Groceries');
+  await M.fill('#n-items', 'Atta 5 kg\nMilk\n\nHaldi');
+  await M.click('#n-add'); await M.waitForTimeout(1000);
+  ok('a list is saved, one tick box per line', (await M.$$eval('#notelist .noteitem', ls => ls.length)) === 3);
+  await M.fill('#n-title', 'Surprise for Rohan');
+  await M.click('#n-kind [data-nkind="note"]');
+  await M.fill('#n-items', 'A watch');
+  await M.check('#n-private');
+  await M.click('#n-add'); await M.waitForTimeout(1000);
+  await toNotes(R);
+  ok('Rohan sees the family list', /Groceries/.test(await R.textContent('#notelist')));
+  ok('but not Meera\'s private note', !/Surprise for Rohan/.test(await R.textContent('#notelist')));
+  await R.locator('#notelist .noteitem', { hasText: 'Milk' }).locator('input').check(); await R.waitForTimeout(800);
+  await R.fill('#notelist [data-nadd]', 'Eggs'); await R.press('#notelist [data-nadd]', 'Enter'); await R.waitForTimeout(1000);
+  await toNotes(M);
+  if (process.env.SHOTS) await M.screenshot({ path: process.env.SHOTS + '/notes.png', fullPage: true });
+  ok('Meera sees Rohan ticked Milk, and added Eggs', /1 of 4 done/.test(await M.textContent('#notelist')) && /Milk · Rohan/.test(await M.textContent('#notelist')) && /Eggs/.test(await M.textContent('#notelist')),
+     await M.textContent('#notelist'));
 }
 
 if (process.env.SHOTS) {

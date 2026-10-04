@@ -6,7 +6,7 @@ import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 import { award, today } from './_coins.mjs';
-import { ensureTaskSchema, taskList, taskHistory, taskAction, sweepOverdue, GAPS, gapTitle } from './_tasks.mjs';
+import { ensureTaskSchema, taskList, taskHistory, taskAction, sweepOverdue, sweepReminders, GAPS, gapTitle } from './_tasks.mjs';
 
 async function feed(sql, circleId, memberId, text) {
   await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'care', ${text})`;
@@ -165,6 +165,7 @@ export default async function handler(req, res) {
       }
       // Anything that just ran late is announced once, here or on any
       // other phone's next look - whichever comes first.
+      await sweepReminders(sql, g.circle.id);
       await sweepOverdue(sql, g.circle.id);
       const state = await careState(sql, g.circle.id);
       // Scoped to the caller: the suggestions used to name private entries.

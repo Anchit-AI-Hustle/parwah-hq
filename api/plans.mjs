@@ -6,10 +6,11 @@
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { countError } from './_valid.mjs';
+import { whenText } from './_plansweep.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 
-const KINDS = ['call', 'party', 'meet', 'other'];
+const KINDS = ['call', 'party', 'meet', 'appointment', 'function', 'trip', 'other'];
 
 async function feed(sql, circleId, memberId, text) {
   await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'care', ${text})`;
@@ -37,6 +38,7 @@ export default async function handler(req, res) {
       created_at timestamptz not null default now()
     )`;
     await sql`alter table plans add column if not exists expected int`;
+    await sql`alter table plans add column if not exists reminded_at timestamptz`;
   } catch (e) { return failDb(res, e); }
 
   try {
@@ -86,7 +88,7 @@ export default async function handler(req, res) {
                           values (${circle.id}, ${me.id}, ${title}, ${kind}, ${at.toISOString()}, ${place}, ${room}, ${'{' + me.id + '}'}, ${expected})
                           returning id`;
       await feed(sql, circle.id, me.id, `${me.name} planned: ${title} 🗓`);
-      const whenTxt = at.toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+      const whenTxt = whenText(at, body.tz);
       await pushCircle(sql, circle.id, { title: '🗓 ' + me.name + ' planned: ' + title, body: whenTxt + ' - open Parwah to say you are in' }, { except: me.id });
       return res.status(201).json({ ok: true, id: p[0].id });
     }

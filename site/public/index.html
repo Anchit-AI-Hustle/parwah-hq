@@ -242,6 +242,23 @@ label + select{width:100%}
 .ss-note{font-size:var(--fs-14)!important;opacity:.95}
 @media(prefers-reduced-motion:no-preference){.sosalert h2{animation:sospulse 1s ease-in-out infinite alternate}}
 @keyframes sospulse{from{opacity:1}to{opacity:.72}}
+.note{display:flex;flex-direction:column;gap:var(--space-8)}
+.notehead{display:flex;flex-direction:column;gap:var(--space-2)}
+.notehead b{font-size:var(--fs-16)}
+.notehead small{font-size:var(--fs-12);color:var(--ink-soft)}
+.notebody{margin:0;white-space:pre-wrap;font-size:var(--fs-14);line-height:1.5}
+.noteitem{display:flex;align-items:center;gap:var(--space-12);min-height:var(--tap-min);border-bottom:1px solid var(--bone-2);font-size:var(--fs-16)}
+.noteitem input{width:22px;height:22px;flex:none;accent-color:var(--marigold-d)}
+.noteitem span{flex:1}
+.noteitem.done span{text-decoration:line-through;color:var(--ink-soft)}
+.noteitem small{font-size:var(--fs-12)}
+.noteadd{display:flex;gap:var(--space-8)}
+.noteadd input{flex:1;min-width:0}
+.day .bday{position:absolute;top:1px;right:2px;font-size:var(--fs-12);font-style:normal;line-height:1}
+.bdayrow{border-left:3px solid var(--marigold)}
+.quickadd{display:flex;flex-wrap:wrap;gap:var(--space-8);padding:var(--space-4) 0 var(--space-12)}
+.quickadd button{flex:1 1 auto;min-height:var(--tap-min);border:1px solid var(--bone-2);background:var(--surface);color:var(--ink);border-radius:var(--radius-pill);padding:var(--space-8) var(--space-16);font-family:var(--body);font-weight:700;font-size:var(--fs-14);cursor:pointer;white-space:nowrap}
+.quickadd button:hover{border-color:var(--marigold)}
 /* A box that is wrong says so beside itself, not in a toast that vanishes. */
 .fielderr{font-size:var(--fs-14);font-weight:600;color:var(--sindoor);margin:var(--space-4) 0 var(--space-8)}
 [aria-invalid="true"]{border-color:var(--sindoor)!important;box-shadow:0 0 0 2px var(--sindoor)}
@@ -748,7 +765,7 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
 .calhead button{border:0;background:var(--bone);border-radius:var(--radius-8);font-size:var(--fs-16);padding:var(--space-2) var(--space-16);cursor:pointer;color:var(--ink);line-height:1.4}
 .calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--space-4);text-align:center}
 .calgrid .dow{font-size:var(--fs-12);color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;padding:var(--space-2) 0}
-.calgrid .day{border:1px solid transparent;border-radius:var(--radius-12);padding:var(--space-8) 0 var(--space-4);font-size:var(--fs-14);cursor:pointer;min-height:34px}
+.calgrid .day{position:relative;border:1px solid transparent;border-radius:var(--radius-12);padding:var(--space-8) 0 var(--space-4);font-size:var(--fs-14);cursor:pointer;min-height:34px}
 .calgrid .day:hover{background:var(--bone)}
 .calgrid .day.blank{cursor:default;background:none}
 .calgrid .day.today{border-color:var(--marigold);font-weight:700}
@@ -831,8 +848,8 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
 .plan b{display:block;font-size:var(--fs-16)}
 .plan small{color:var(--ink-soft);font-size:var(--fs-12);display:block;margin-top:var(--space-2)}
 .plan .prow{display:flex;gap:var(--space-8);margin-top:var(--space-12);flex-wrap:wrap}
-.pkind{display:flex;gap:var(--space-8);margin-top:var(--space-8)}
-.pkind button{flex:1;border:1.5px solid var(--bone-2);background:var(--surface);border-radius:var(--radius-12);padding:var(--space-8) var(--space-4);font-family:var(--body);font-weight:600;font-size:var(--fs-12);cursor:pointer;color:var(--ink)}
+.pkind{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-8)}
+.pkind button{flex:1 1 30%;min-width:0;min-height:var(--tap-min);border:1.5px solid var(--bone-2);background:var(--surface);border-radius:var(--radius-12);padding:var(--space-8) var(--space-4);font-family:var(--body);font-weight:600;font-size:var(--fs-12);cursor:pointer;color:var(--ink)}
 .pkind button.sel{border-color:var(--marigold);background:var(--tint-warm)}
 .callbtn{text-decoration:none;margin-left:var(--space-2)}
 .hero2{display:flex;gap:var(--space-12)}
@@ -1330,6 +1347,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <h1 id="m-title"></h1>
       <p class="herostatus" id="hero-status">…</p>
     </div>
+    <!-- ONE PLACE TO ADD ANYTHING. With this many features, the basic "add a
+         reminder / an event / a list" must not depend on knowing which tab
+         holds it. Each goes straight to its form, ready to type. -->
+    <div class="quickadd" role="group" aria-label="Add something">
+      <button type="button" data-qadd="task">⏰ Reminder or task</button>
+      <button type="button" data-qadd="event">🗓 Event or plan</button>
+      <button type="button" data-qadd="note">📝 List or note</button>
+      <button type="button" data-qadd="contact">☎️ Contact or health</button>
+      <button type="button" data-qadd="doc">📄 Document</button>
+    </div>
     <div id="frslot"></div>
     <!-- THE FIVE THINGS. Families talk on WhatsApp; Parwah holds what WhatsApp
          cannot: the papers, the medicines, who does what, who is who, and the
@@ -1408,6 +1435,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="seg pageseg" id="care-seg" role="tablist" aria-label="Care sections">
       <button data-sec="rem" class="sel">✅ Things to do</button>
       <button data-sec="req">💡 Suggested<i class="dot" id="sugg-dot" hidden></i></button>
+      <button data-sec="notes">📝 Notes &amp; lists</button>
     </div>
     <div class="subsec" data-sec="rem">
     <p class="hint" style="margin:0 0 var(--space-12)">What needs doing, who is handling it, and when it is done - the whole family sees the same list.</p>
@@ -1422,6 +1450,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <label class="pick"><span>Time</span><input type="time" id="r-time" aria-label="Time"></label>
         <label class="pick"><span>Who does it</span><select id="r-for" aria-label="Who does it"></select></label>
         <label class="pick"><span>For whom</span><select id="r-about" aria-label="Who it is for"><option value="">The whole family</option></select></label>
+        <label class="pick"><span>Remind</span><select id="r-remind" aria-label="When to remind"><option value="0">At the time</option><option value="10">10 minutes before</option><option value="30">30 minutes before</option><option value="60">1 hour before</option><option value="1440">1 day before</option><option value="none">No reminder</option></select></label>
       </div>
       <div class="pick" style="margin-top:var(--space-12)"><span>Repeat</span>
         <div class="seg" id="r-seg" role="group" aria-label="Repeat">
@@ -1442,6 +1471,24 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <p class="hint" id="r-hint">Nobody is given it yet - the first person to tap "I'm on it" takes it.</p>
       <p class="hint">No medical details needed here - "Papa's 9 pm tablets" is enough.</p>
     </div>
+    </div>
+
+    <div class="subsec" data-sec="notes" hidden>
+    <p class="hint" style="margin:0 0 var(--space-12)">Lists and notes the family shares - groceries, packing for a trip, what to ask the doctor. Tick things off together. "Only me" keeps a note to yourself.</p>
+    <div class="card">
+      <h3>New note or list</h3>
+      <label for="n-title">Title</label>
+      <input type="text" id="n-title" maxlength="80" placeholder="e.g. Groceries · Packing for Goa · Ask the doctor">
+      <label for="n-items">Items or notes</label>
+      <textarea id="n-items" rows="3" maxlength="2000" placeholder="One item per line becomes a tick box. Or write a note."></textarea>
+      <div class="seg" id="n-kind" role="group" aria-label="List or note" style="margin-top:var(--space-12)">
+        <button type="button" data-nkind="list" class="sel">☑ A list</button>
+        <button type="button" data-nkind="note">📝 A note</button>
+      </div>
+      <label class="gchk" style="margin-top:var(--space-12);width:fit-content"><input type="checkbox" id="n-private"> Only me</label>
+      <button class="go" id="n-add" style="margin-top:var(--space-12)">Save</button>
+    </div>
+    <div class="feed" id="notelist" style="margin-top:var(--space-16)"><div class="ev">Loading…</div></div>
     </div>
 
     <div class="subsec" data-sec="req" hidden>
@@ -1543,6 +1590,26 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         </div>
       </div>
       <div class="feed" id="loc-list"><div class="ev">Loading…</div></div>
+      <p class="pickhead" id="loc-ask-head" hidden>Not sharing</p>
+      <div class="feed" id="loc-ask"></div>
+      <p class="pickhead">Places</p>
+      <p class="hint" style="margin:0 0 var(--space-8)">Name a place - Home, School, Office - and the family is told when someone sharing their exact location arrives or leaves.</p>
+      <div class="feed" id="loc-places"></div>
+      <details class="more" id="loc-padd">
+        <summary>Add a place</summary>
+        <label for="lp-name">Name</label>
+        <input type="text" id="lp-name" maxlength="40" placeholder="e.g. Home, School, Office">
+        <label for="lp-where">Where it is</label>
+        <select id="lp-where"></select>
+        <label for="lp-size">How big</label>
+        <select id="lp-size">
+          <option value="150">A house or flat (150 m)</option>
+          <option value="300" selected>A building or school (300 m)</option>
+          <option value="800">A neighbourhood (800 m)</option>
+          <option value="2000">A large campus (2 km)</option>
+        </select>
+        <button type="button" class="go" id="lp-save">Save the place</button>
+      </details>
       <p class="hint" style="margin-top:var(--space-12)">Locations update whenever Parwah is open on the phone. Area only shows the neighbourhood, never the house.</p>
     </div>
 </section>
@@ -2100,18 +2167,21 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="card">
       <div class="calhead"><button id="cal-prev" aria-label="Previous month">‹</button><b id="cal-title"></b><button id="cal-next" aria-label="Next month">›</button></div>
       <div class="calgrid" id="pcal"></div>
-      <p class="hint" style="margin-top:var(--space-8)">Tap a date to see that day's plans - and to start a new plan on it. Dots mark days with plans.</p>
+      <p class="hint" style="margin-top:var(--space-8)">Tap a date to see that day - and to add something on it. Dots mark plans and events; 🎂 marks birthdays, from each person's date of birth.</p>
     </div>
 
-    <p class="eyebrow">Plans</p>
+    <p class="eyebrow">Plans, events and birthdays</p>
     <div class="feed" id="plist"><div class="ev">Loading…</div></div>
     <div class="card" style="margin-top:var(--space-16)">
-      <h3>Plan something 🎈</h3>
+      <h3>Add a plan or event 🎈</h3>
       <input type="text" id="p-title" maxlength="100" placeholder="What's the plan? e.g. Sunday video call, Diwali dinner" aria-label="Plan title">
       <div class="pkind" id="p-kind">
         <button type="button" data-kind="call" class="sel">📹 Call</button>
         <button type="button" data-kind="party">🎶 Watch/listen party</button>
         <button type="button" data-kind="meet">🤗 Meet up</button>
+        <button type="button" data-kind="appointment">🩺 Appointment</button>
+        <button type="button" data-kind="function">🪔 Function</button>
+        <button type="button" data-kind="trip">✈️ Trip</button>
       </div>
       <div class="pickrow">
         <label class="pick"><span>Date</span><input type="date" id="p-date" aria-label="Plan date"></label>
@@ -2122,7 +2192,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <label class="pick"><span>Place (meet-ups)</span><input type="text" id="p-place" maxlength="120" placeholder="optional" aria-label="Plan place"></label>
       </div>
       <button class="go" id="p-add" style="margin-top:var(--space-16)">Set the plan</button>
-      <p class="hint">Everyone sees it in their own timezone - perfect when family is abroad. Add it to Google Calendar in one tap.</p>
+      <p class="hint">Everyone sees it in their own time zone, and whoever is going is reminded an hour before. Add it to Google Calendar in one tap.</p>
     </div>
     </div>
 
@@ -2517,6 +2587,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="subnav side-only" data-parent="care">
       <button data-tab="care" data-sec="rem">Tasks</button>
       <button data-tab="care" data-sec="req">Suggested</button>
+      <button data-tab="care" data-sec="notes">Notes &amp; lists</button>
     </div>
     <button data-tab="people" id="tab-people"><span class="ic" aria-hidden="true">👨‍👩‍👧</span><span id="tab-people-l">Family</span></button>
     <p class="side-more side-only">More</p>
@@ -2594,6 +2665,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <div class="dsub">
         <button class="ditem sub" data-tab="care" data-sec="rem">Tasks</button>
         <button class="ditem sub" data-tab="care" data-sec="req">Suggested</button>
+        <button class="ditem sub" data-tab="care" data-sec="notes">Notes &amp; lists</button>
       </div>
     </div>
     <button class="ditem" data-tab="people">👨‍👩‍👧 Family</button>
@@ -2649,6 +2721,17 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   </div>
 </div>
 
+<div class="msheet" id="alarmsheet" hidden role="alertdialog" aria-modal="true" aria-labelledby="al-title" aria-describedby="al-sub">
+  <div class="mp" style="max-width:420px">
+    <h3 id="al-title" tabindex="-1" style="margin:0 0 var(--space-8)"></h3>
+    <p class="hint" id="al-sub" style="margin:0 0 var(--space-16)"></p>
+    <div class="prow2" style="flex-direction:column">
+      <button type="button" class="go" id="al-done" style="margin-top:0">Done ✔</button>
+      <button type="button" class="cbtn" id="al-snooze">Snooze 10 minutes</button>
+      <button type="button" class="cbtn ghost" id="al-close">Close</button>
+    </div>
+  </div>
+</div>
 <div class="sosalert" id="sosalert" hidden role="alertdialog" aria-modal="true" aria-labelledby="sa-title" aria-describedby="sa-sub">
   <div class="ss-in">
     <h2 id="sa-title" tabindex="-1">🆘 Someone needs help</h2>
@@ -2688,6 +2771,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <label class="pick"><span>Time</span><input type="time" id="ts-e-time"></label>
         <label class="pick"><span>Repeat</span><select id="ts-e-rep"><option value="once">Once</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></label>
         <label class="pick"><span>For whom</span><select id="ts-e-about" aria-label="For whom"></select></label>
+        <label class="pick"><span>Remind</span><select id="ts-e-remind"><option value="0">At the time</option><option value="10">10 minutes before</option><option value="30">30 minutes before</option><option value="60">1 hour before</option><option value="1440">1 day before</option><option value="none">No reminder</option></select></label>
         <label class="pick"><span>If late, tell</span><select id="ts-e-esc"><option value="people">Whoever has it, and me</option><option value="everyone">Everyone in the family</option></select></label>
       </div>
       <label for="ts-e-done" style="margin-top:var(--space-12)">Done when</label>
@@ -2759,7 +2843,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var API = { circle: '/api/circle', events: '/api/events', care: '/api/care', ekta: '/api/ekta', chats: '/api/chats', games: '/api/games', plans: '/api/plans', auth: '/api/auth', book: '/api/book', vault: '/api/book?area=vault', pay: '/api/book?area=pay', push: '/api/settings?area=push', keys: '/api/settings?area=keys', coins: '/api/settings?area=coins', plan: '/api/settings?area=plan', day: '/api/settings?area=day', pin: '/api/settings?area=pin', location: '/api/settings?area=location' };
+  var API = { notes: '/api/book?area=notes', circle: '/api/circle', events: '/api/events', care: '/api/care', ekta: '/api/ekta', chats: '/api/chats', games: '/api/games', plans: '/api/plans', auth: '/api/auth', book: '/api/book', vault: '/api/book?area=vault', pay: '/api/book?area=pay', push: '/api/settings?area=push', keys: '/api/settings?area=keys', coins: '/api/settings?area=coins', plan: '/api/settings?area=plan', day: '/api/settings?area=day', pin: '/api/settings?area=pin', location: '/api/settings?area=location' };
   var TABS = ['home','people','person','memory','vault','care','day','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
@@ -2999,6 +3083,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       b.classList.toggle('sel', b.getAttribute('data-sec') === sec);
     });
     if (pane === 'fun') fabRoom();
+    if (pane === 'care' && sec === 'notes') refreshNotes();
   }
   ['care', 'fun', 'vault', 'day'].forEach(function(pane){
     $(pane + '-seg').addEventListener('click', function(e){
@@ -3435,6 +3520,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   function renderForSelect(members){
     membersCache = members;
+    // Who can be asked to share their location depends on who is in the
+    // family, which can arrive after the locations did.
+    if (curTab === 'people' && locMe && locMe.precision !== undefined) { try { renderLoc(); } catch (e) {} }
+    // Birthdays come from the family list, which can arrive after the plans.
+    if (curTab === 'fun' && plansCache) { try { renderPlans(plansCache); } catch (e) {} }
     // "How ready" lists the elders the family looks after, which it can only
     // tell once the family is known: drawn again if the papers came first.
     if (prepCache && prepCache.length) renderPrep();
@@ -3532,9 +3622,160 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
   });
 
+  // ---------- notes and lists ----------
+  // Groceries, packing, what to ask the doctor. A family note is everyone's
+  // to tick and change; "Only me" is yours alone, kept so by the server.
+  var notesCache = [], noteKind = 'list', noteTimer = null;
+  function notesUrl(){ return API.notes + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId); }
+  function refreshNotes(){
+    if (!state) return;
+    clearInterval(noteTimer);
+    noteTimer = setInterval(function(){ if (!document.hidden && curTab === 'care' && !$('pane-care').querySelector('.subsec[data-sec="notes"]').hidden) loadNotes(); }, 10000);
+    loadNotes();
+  }
+  function loadNotes(){
+    apiGet(notesUrl()).then(function(j){
+      if (!j.ok) { $('notelist').innerHTML = '<div class="ev">Could not load notes - try again in a moment.</div>'; return; }
+      notesCache = j.notes || []; renderNotes();
+    }).catch(function(){ $('notelist').innerHTML = '<div class="ev">No connection - notes will show when you are back online.</div>'; });
+  }
+  function renderNotes(){
+    // Keep what someone is typing into an "add item" box through a refresh.
+    var typing = document.activeElement && document.activeElement.getAttribute('data-nadd');
+    var typed = typing ? document.activeElement.value : '';
+    $('notelist').innerHTML = notesCache.length ? notesCache.map(function(n){
+      var items = n.items || [], done = items.filter(function(i){ return i.done; }).length;
+      var head = '<div class="notehead"><b>' + (n.pinned ? '📌 ' : '') + (n['private'] ? '🔒 ' : '') + esc(n.title) + '</b>' +
+        '<small>' + (items.length ? done + ' of ' + items.length + ' done · ' : '') + 'by ' + esc(n.by_member === state.memberId ? 'you' : (n.by_name || 'someone')) +
+        (n.updated_name && n.updated_name !== n.by_name ? ', changed by ' + esc(n.updated_name) : '') + ' · ' + esc(fmtTime(n.updated_at)) + '</small></div>';
+      var body = n.body ? '<p class="notebody">' + esc(n.body) + '</p>' : '';
+      var list = items.map(function(i){
+        return '<label class="noteitem' + (i.done ? ' done' : '') + '"><input type="checkbox" data-nitem="' + esc(i.id) + '" data-note="' + esc(n.id) + '"' + (i.done ? ' checked' : '') + '>' +
+               '<span>' + esc(i.t) + (i.done && i.by ? ' <small>· ' + esc(i.by) + '</small>' : '') + '</span>' +
+               '<button type="button" class="linkbtn" data-nrm="' + esc(i.id) + '" data-note="' + esc(n.id) + '" aria-label="Remove ' + esc(i.t) + '">✕</button></label>';
+      }).join('');
+      var add = '<form class="noteadd" data-note="' + esc(n.id) + '"><input type="text" maxlength="120" data-nadd="' + esc(n.id) + '" placeholder="Add an item" aria-label="Add an item to ' + esc(n.title) + '"><button type="submit" class="cbtn">Add</button></form>';
+      var acts = '<div class="row"><button type="button" class="cbtn ghost" data-npin="' + esc(n.id) + '">' + (n.pinned ? 'Unpin' : '📌 Pin') + '</button>' +
+                 '<button type="button" class="cbtn no" data-ndel="' + esc(n.id) + '">Remove</button></div>';
+      return '<div class="card note">' + head + body + list + add + acts + '</div>';
+    }).join('') : '<div class="ev">No notes yet. Start with the grocery list - everyone can add to it and tick it off.</div>';
+    if (typing) { var box = $('notelist').querySelector('[data-nadd="' + typing + '"]'); if (box) { box.value = typed; box.focus(); } }
+  }
+  function notePost(body, after){
+    body.code = state.code; body.memberId = state.memberId; body.area = 'notes';
+    post(API.notes, body).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not save that'); loadNotes(); return; }
+      if (after) after(j); loadNotes();
+    }).catch(function(){ toast('No connection - try again'); });
+  }
+  $('n-kind').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-nkind]'); if (!b) return;
+    noteKind = b.getAttribute('data-nkind');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
+    $('n-items').placeholder = noteKind === 'list' ? 'One item per line becomes a tick box' : 'Write the note';
+  });
+  $('n-add').addEventListener('click', function(){
+    var t = $('n-title').value.trim(), txt = $('n-items').value;
+    if (!t) { fieldErr('n-title', 'Give it a title, like Groceries.'); return; }
+    var body = { action: 'add', title: t, 'private': $('n-private').checked };
+    if (noteKind === 'list') body.items = txt.split('\n').map(function(x){ return x.trim(); }).filter(Boolean);
+    else body.body = txt;
+    notePost(body, function(){ $('n-title').value = ''; $('n-items').value = ''; $('n-private').checked = false; toast('Saved 📝'); });
+  });
+  $('notelist').addEventListener('change', function(e){
+    var c = e.target.closest('input[data-nitem]'); if (!c) return;
+    notePost({ action: 'item_toggle', id: c.getAttribute('data-note'), itemId: c.getAttribute('data-nitem'), done: c.checked });
+  });
+  $('notelist').addEventListener('submit', function(e){
+    var f = e.target.closest('form.noteadd'); if (!f) return;
+    e.preventDefault();
+    var inp = f.querySelector('input'), v = inp.value.trim(); if (!v) return;
+    inp.value = '';
+    notePost({ action: 'item_add', id: f.getAttribute('data-note'), text: v }, function(){ setTimeout(function(){ var b = $('notelist').querySelector('[data-nadd="' + f.getAttribute('data-note') + '"]'); if (b) b.focus(); }, 300); });
+  });
+  $('notelist').addEventListener('click', function(e){
+    var rm = e.target.closest('button[data-nrm]'), pin = e.target.closest('button[data-npin]'), del = e.target.closest('button[data-ndel]');
+    if (rm) { e.preventDefault(); notePost({ action: 'item_remove', id: rm.getAttribute('data-note'), itemId: rm.getAttribute('data-nrm') }); }
+    if (pin) { var n = notesCache.filter(function(x){ return x.id === pin.getAttribute('data-npin'); })[0]; notePost({ action: 'pin', id: pin.getAttribute('data-npin'), pinned: !(n && n.pinned) }); }
+    if (del) askSheet('Remove this note?', 'It goes for everyone who can see it.', 'Remove', 'Keep it', true).then(function(yes){ if (yes) notePost({ action: 'remove', id: del.getAttribute('data-ndel') }, function(){ toast('Removed'); }); });
+  });
+
   // ---------- family tasks ----------
   var taskCache = [], tsId = null;
   var REP_WORD = { daily:'every day', weekly:'every week', monthly:'every month' };
+  function REM_WORD(m){ m = +m; return !m ? 'at the time' : m === 1440 ? '1 day before' : m === 60 ? '1 hour before' : m + ' min before'; }
+
+  // THE ALARM, when Parwah is open: at a task's reminder time it takes the
+  // screen with a chime, for whoever has it (or anyone, when nobody does).
+  // Done, Snooze 10 minutes, or Close. With Parwah closed, the reminder
+  // arrives as a notification instead (api/_tasks.mjs sweepReminders).
+  var alarmTask = null, alarmBeep = null;
+  // Per occurrence, on this phone: rung once, or snoozed until a time.
+  function remKey(q){ return 'parwah-rem:' + q.id + ':' + q.due_at; }
+  function remState(q){ try { return localStorage.getItem(remKey(q)) || ''; } catch (e) { return ''; } }
+  function remSet(q, v){ try { localStorage.setItem(remKey(q), v); } catch (e) {} }
+  function alarmCheck(){
+    if (!state || alarmTask || !$('sosalert').hidden || !$('sosscreen').hidden) return;
+    var now = Date.now(), due = null;
+    (taskCache || []).forEach(function(q){
+      if (due || !taskOpen(q) || !q.due_at || q.remind_before === null || q.remind_before === undefined) return;
+      if (q.claimed_by && q.claimed_by !== state.memberId) return;
+      var ring = Date.parse(q.due_at) - (+q.remind_before) * 60000;
+      if (ring > now || ring < now - 30 * 60000) return;
+      // Written down after its own reminder time: not news, so no alarm -
+      // the same rule the server keeps for notifications.
+      if (q.created_at && Date.parse(q.created_at) > ring) return;
+      var st = remState(q);                       // '' never rung, 'rung', or a snooze-until time
+      if (st === 'rung' || (st && +st > now)) return;
+      due = q;
+    });
+    if (due) alarmShow(due);
+  }
+  function alarmShow(q){
+    alarmTask = q;
+    remSet(q, 'rung');
+    $('al-title').textContent = '⏰ ' + (+q.remind_before ? REM_WORD(q.remind_before).replace(' before', ' to go') + ': ' : 'It is time: ') + q.title;
+    $('al-sub').textContent = taskDue(q) + (q.about_name ? ' · for ' + q.about_name : '');
+    $('al-done').hidden = !(q.claimed_by === state.memberId || q.status === 'open');
+    $('alarmsheet').hidden = false;
+    try { $('al-title').focus(); } catch (e) {}
+    alarmChime();
+  }
+  function alarmChime(){
+    alarmQuiet();
+    var n = 0;
+    var ring = function(){
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) {
+          sirenCtx = sirenCtx || new AC();
+          if (sirenCtx.state === 'suspended') sirenCtx.resume().catch(function(){});
+          [0, 0.35, 0.7].forEach(function(t, i){
+            var o = sirenCtx.createOscillator(), g = sirenCtx.createGain();
+            o.type = 'sine'; o.frequency.value = i === 2 ? 1320 : 880; g.gain.value = 0.2;
+            o.connect(g); g.connect(sirenCtx.destination);
+            o.start(sirenCtx.currentTime + t); o.stop(sirenCtx.currentTime + t + 0.25);
+          });
+        }
+      } catch (e) {}
+      sosBuzz([300, 150, 300]);
+      if (++n >= 20) alarmQuiet();                // a minute of chiming at most
+    };
+    ring(); alarmBeep = setInterval(ring, 3000);
+  }
+  function alarmQuiet(){ clearInterval(alarmBeep); alarmBeep = null; }
+  function remClose(){ alarmQuiet(); $('alarmsheet').hidden = true; alarmTask = null; }
+  $('al-close').addEventListener('click', remClose);
+  $('al-snooze').addEventListener('click', function(){
+    if (alarmTask) remSet(alarmTask, String(Date.now() + 10 * 60000));
+    remClose(); toast('Snoozed - it will ring again in 10 minutes on this phone');
+  });
+  $('al-done').addEventListener('click', function(){
+    var q = alarmTask; remClose(); if (!q) return;
+    carePost({ action: 'task_done', taskId: q.id }, function(){ toast('Done ✔'); });
+  });
+  $('alarmsheet').addEventListener('keydown', function(e){ if (e.key === 'Escape') remClose(); });
+  setInterval(alarmCheck, 20000);
   function localDay(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function clockOf(d){ return dtf([], { hour:'numeric', minute:'2-digit' }).format(d); }
   function taskOpen(q){ return q.status === 'open' || q.status === 'assigned' || q.status === 'claimed'; }
@@ -3571,7 +3812,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (/^check .+ is still right$/i.test(t)) { m = taskMember(q); return { go: 'book:' + (m ? m.id : '') + ':all', label: 'Check it now →' }; }
     if (/\b(medicines?|tablets?|pills?|prescriptions?|meds)\b/i.test(t)) { m = taskMember(q); return { go: 'book:' + (m ? m.id : '') + ':med', label: 'Open medicines →' }; }
     if (/\b(doctor|appointment|check-?up|hospital|clinic|dentist|lab test|blood test|scan)\b/i.test(t)) { m = taskMember(q); return { go: 'book:' + (m ? m.id : '') + ':contact', label: 'Open doctors & contacts →' }; }
-    if (/\b(aadhaar|pan card|passport|insurance|policy|documents?|papers|licen[cs]e|certificate|will)\b/i.test(t)) return { go: 'tab:vault:docs', label: 'Open documents →' };
+    // A legal will, not the future tense: "Will call Papa" is a call.
+    if (/\b(aadhaar|pan card|passport|insurance|policy|documents?|papers|licen[cs]e|certificate|testament)\b|\b(a|the|my|his|her|their)\s+will\b|['’]s will\b/i.test(t)) return { go: 'tab:vault:docs', label: 'Open documents →' };
     if (/\b(pay|bills?|electricity|rent|recharge|emi|premium|fees)\b/i.test(t)) return { go: 'tab:vault:pay', label: 'Open payments →' };
     if (/\b(call|phone|ring)\b/i.test(t)) { m = taskMember(q); if (m && m.phone && m.id !== state.memberId) return { go: 'tel:' + m.phone, label: '📞 Call ' + String(m.name).split(' ')[0] }; }
     if (/\b(trip|puja|party|plan|birthday|anniversary|get-?together)\b/i.test(t)) return { go: 'tab:fun:plans', label: 'Open plans →' };
@@ -3581,7 +3823,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function taskGoButton(q, cls){
     var g = taskOpen(q) && taskGo(q); if (!g) return '';
     return g.go.indexOf('tel:') === 0
-      ? '<a class="' + cls + '" href="tel:' + encodeURIComponent(g.go.slice(4)) + '">' + esc(g.label) + '</a>'
+      ? '<a class="' + cls + '" href="tel:' + encodeURIComponent(g.go.slice(4)) + '" data-tgo="' + q.id + '">' + esc(g.label) + '</a>'
       : '<button class="' + cls + '" data-tgo="' + q.id + '">' + esc(g.label) + '</button>';
   }
   function taskGoRun(id){
@@ -3591,6 +3833,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // starts the same thing.
     if (q.status === 'open') carePost({ action: 'task_ack', taskId: q.id });
     tsClose();
+    // A call: the link itself opens the dialer; taking the task is all
+    // there is to do here.
+    if (g.go.indexOf('tel:') === 0) return;
     var p = g.go.split(':');
     if (p[0] === 'fill') { personId = p[1] || ''; ppAddFor(p[2]); return; }
     if (p[0] === 'book') {
@@ -3611,6 +3856,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (q.about_name) bits.push('for ' + (q.about_member === me ? 'you' : q.about_name));
     var due = taskDue(q); if (due) bits.push(due);
     if (REP_WORD[q.recurrence]) bits.push(REP_WORD[q.recurrence]);
+    if (taskOpen(q) && q.remind_before !== null && q.remind_before !== undefined) bits.push('🔔 ' + REM_WORD(q.remind_before));
     bits.push(taskWho(q));
     var right = '';
     if (q.status === 'open') right = '<button class="cbtn" data-tack="' + q.id + '">I’m on it</button>';
@@ -3742,6 +3988,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       $('ts-e-time').value = d && !q.all_day ? String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') : '';
       $('ts-e-rep').value = q.recurrence || 'once';
       $('ts-e-esc').value = q.escalate || 'people';
+      $('ts-e-remind').value = q.remind_before === null || q.remind_before === undefined ? 'none' : String(q.remind_before);
       $('ts-e-about').innerHTML = '<option value="">The whole family</option>' + (membersCache || []).map(function(m){ return '<option value="' + m.id + '">' + esc(m.id === state.memberId ? 'Me' : m.name) + '</option>'; }).join('');
       $('ts-e-about').value = q.about_member || '';
       $('ts-e-done').value = q.done_when || '';
@@ -3770,7 +4017,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var due = dueFrom($('ts-e-date').value, $('ts-e-time').value), rep = $('ts-e-rep').value;
     if (rep !== 'once' && !due.dueAt && !due.dueDate) { toast('A repeating task needs a date or a time'); return; }
     tsPost({ action:'task_edit', title:t, dueAt: due.dueAt || '', dueDate: due.dueDate || '', recurrence: rep,
-             escalate: $('ts-e-esc').value, doneWhen: $('ts-e-done').value, aboutMemberId: $('ts-e-about').value, tz: homeTz() }, 'Saved');
+             escalate: $('ts-e-esc').value, doneWhen: $('ts-e-done').value, aboutMemberId: $('ts-e-about').value, tz: homeTz(),
+             remindBefore: $('ts-e-remind').value }, 'Saved');
     $('ts-edit').hidden = true;
   });
   function homeTz(){ try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } }
@@ -3831,6 +4079,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('rlist').innerHTML = rh || '<div class="ev">Nothing to do right now 🧡 Add the next thing the family should not forget.</div>';
     $('qlist').hidden = true;
     if (tsId && !$('tsheet').hidden) tsRender();
+    alarmCheck();
     window._careCounts = { need: need.length, today: now.length, soon: soon.length, waiting: waiting };
 
     // What Parwah noticed, offered rather than imposed.
@@ -5411,13 +5660,15 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
                  doneWhen: $('r-donewhen').value.trim() || undefined,
                  escalate: $('r-esc').value };
     if (due.dueAt) body.dueAt = due.dueAt; else if (due.dueDate) body.dueDate = due.dueDate;
+    // A reminder needs a time to ring at; with a date alone there is none.
+    if (due.dueAt) body.remindBefore = $('r-remind').value;
     carePost(body, function(j){
       $('r-title').value = ''; $('r-time').value = ''; $('r-date').value = ''; $('r-donewhen').value = '';
       // Back to the defaults, so the next thing is not silently "Daily,
       // given to Papa, about Papa".
       repeatMode = 'once';
       $('r-seg').querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x.getAttribute('data-rep') === 'once'); });
-      $('r-for').value = 'any'; $('r-about').value = ''; $('r-esc').value = 'people'; $('r-more').open = false; todoHint();
+      $('r-for').value = 'any'; $('r-about').value = ''; $('r-esc').value = 'people'; $('r-remind').value = '0'; $('r-more').open = false; todoHint();
       var when = due.tomorrow ? ' - for tomorrow, as that time has passed today' : '';
       toast((j.status === 'assigned' ? 'Sent - they will be asked to say yes'
         : j.status === 'claimed' ? 'Added - it is yours 🧡' : 'Asked the whole family 🧡') + when);
@@ -6287,8 +6538,38 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   calMonth.setDate(1);
   function pad2(n){ return ('0' + n).slice(-2); }
   function pDay(at){ var d = new Date(at); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  // BIRTHDAYS, from each person's date of birth: on the calendar and at the
+  // top of the list when one is within a month. Nobody has to add them.
+  function bdaysIn(y, mo){
+    var out = {};
+    (membersCache || []).forEach(function(m){
+      if (!m.dob) return;
+      var d = String(m.dob).slice(0, 10).split('-');
+      if (+d[1] - 1 !== mo) return;
+      var k = y + '-' + pad2(mo + 1) + '-' + pad2(+d[2]);
+      (out[k] = out[k] || []).push({ name: m.name, turns: y - (+d[0]), mine: m.id === state.memberId });
+    });
+    return out;
+  }
+  function bdaysSoon(days){
+    var now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(), out = [];
+    (membersCache || []).forEach(function(m){
+      if (!m.dob) return;
+      var d = String(m.dob).slice(0, 10).split('-');
+      var next = new Date(now.getFullYear(), +d[1] - 1, +d[2]);
+      if (next.getTime() < t0) next = new Date(now.getFullYear() + 1, +d[1] - 1, +d[2]);
+      var inDays = Math.round((next.getTime() - t0) / 86400000);
+      if (inDays <= days) out.push({ name: m.name, mine: m.id === state.memberId, inDays: inDays, turns: next.getFullYear() - (+d[0]), key: pDay(next) });
+    });
+    return out.sort(function(a, b){ return a.inDays - b.inDays; });
+  }
+  function bdayLine(b){
+    var when = b.inDays === 0 ? 'today' : b.inDays === 1 ? 'tomorrow' : 'on ' + fmtDue(b.key);
+    return '🎂 ' + (b.mine ? 'Your birthday' : b.name + "'s birthday") + ' ' + when + (b.turns > 0 && b.turns < 120 ? ' - ' + (b.mine ? 'you turn ' : 'turns ') + b.turns : '');
+  }
   function renderCal(){
     var y = calMonth.getFullYear(), mo = calMonth.getMonth();
+    var bd = bdaysIn(y, mo);
     $('cal-title').textContent = calMonth.toLocaleDateString([], { month: 'long', year: 'numeric' });
     var counts = {};
     plansCache.forEach(function(p){ var k = pDay(p.at); counts[k] = (counts[k] || 0) + 1; });
@@ -6299,7 +6580,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var days = new Date(y, mo + 1, 0).getDate(), todayK = pDay(new Date());
     for (var d = 1; d <= days; d++) {
       var k = y + '-' + pad2(mo + 1) + '-' + pad2(d);
-      h += '<span class="day' + (k === todayK ? ' today' : '') + (k === calSel ? ' sel' : '') + '" data-cday="' + k + '" role="button" tabindex="0">' + d + (counts[k] ? '<i class="pdot"></i>' : '') + '</span>';
+      h += '<span class="day' + (k === todayK ? ' today' : '') + (k === calSel ? ' sel' : '') + '" data-cday="' + k + '" role="button" tabindex="0"' +
+           (bd[k] ? ' aria-label="' + d + ', ' + esc(bd[k].map(function(b){ return b.name; }).join(' and ')) + ' birthday"' : '') + '>' + d +
+           (bd[k] ? '<i class="bday" aria-hidden="true">🎂</i>' : '') + (counts[k] ? '<i class="pdot"></i>' : '') + '</span>';
     }
     $('pcal').innerHTML = h;
   }
@@ -6319,11 +6602,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     renderCal();
     var list = calSel ? plans.filter(function(p){ return pDay(p.at) === calSel; }) : plans;
     var h = '';
+    var bds = calSel ? bdaysSoon(366).filter(function(b){ return b.key === calSel; }) : bdaysSoon(31);
+    bds.forEach(function(b){
+      h += '<div class="plan bdayrow"><b>' + esc(bdayLine(b)) + '</b>' +
+           (b.mine ? '' : '<div class="prow"><button class="cbtn" data-bdwish="' + esc(b.name) + '">💬 Wish them</button></div>') + '</div>';
+    });
     list.forEach(function(p){
       var when = new Date(p.at);
       var whenTxt = fmtDue(when.toISOString().slice(0, 10)) + ', ' + when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       var mine = (p.going || []).indexOf(state.memberId) >= 0;
-      var icon = p.kind === 'call' ? '📹' : p.kind === 'party' ? '🎶' : p.kind === 'meet' ? '🤗' : '🗓';
+      var icon = { call: '📹', party: '🎶', meet: '🤗', appointment: '🩺', 'function': '🪔', trip: '✈️' }[p.kind] || '🗓';
       h += '<div class="plan"><b>' + icon + ' ' + esc(p.title) + '</b>' +
         '<small>' + esc(whenTxt) + ' (your time) · by ' + esc(p.by_name || 'family') +
         (p.place ? ' · ' + esc(p.place) : '') + (p.expected ? ' · ~' + p.expected + ' people' : '') +
@@ -6340,6 +6628,21 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       : '<div class="ev">Nothing planned yet - make the first plan below 🎈</div>');
     $('w-plan').textContent = plans.length ? plans.length + ' coming up - next: ' + plans[0].title : 'Calls, parties, get-togethers';
   }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-bdwish]'); if (!b || !state) return;
+    var fam = null; chatsCache.forEach(function(x){ if (x.kind === 'circle') fam = x; });
+    switchTab('chat');
+    if (fam) { openChat(fam.id); $('msg').value = 'Happy birthday, ' + b.getAttribute('data-bdwish') + '! 🎂🧡 '; try { $('msg').focus(); } catch (x) {} }
+  });
+  // Quick add on Today: straight to the right form, cursor in the first box.
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-qadd]'); if (!b || !state) return;
+    var k = b.getAttribute('data-qadd');
+    var go = { task: ['care', 'rem', 'r-title'], event: ['fun', 'plans', 'p-title'], note: ['care', 'notes', 'n-title'],
+               contact: ['memory', null, 'b-name'], doc: ['vault', 'docs', 'vd-label'] }[k];
+    switchTab(go[0]); if (go[1]) setSec(go[0], go[1]);
+    setTimeout(function(){ var f = $(go[2]); if (f) { try { f.scrollIntoView({ block: 'center' }); f.focus(); } catch (x) {} } }, 250);
+  });
   $('p-add').addEventListener('click', function(){
     var t = $('p-title').value.trim();
     if (!t) { toast('Give the plan a name'); return; }
@@ -6349,7 +6652,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (at < new Date(Date.now() - 5 * 60000)) { fieldErr('p-date', 'That time has already gone - pick a time from now on.'); return; }
     var pc = $('p-count').value;
     if (pc && (!/^\d+$/.test(pc) || +pc < 1 || +pc > 50)) { fieldErr('p-count', 'Write how many people as a number from 1 to 50.'); return; }
-    post(API.plans, { code: state.code, memberId: state.memberId, action: 'create', title: t, kind: planKind, at: at.toISOString(), place: $('p-place').value.trim(), expected: $('p-count').value })
+    post(API.plans, { code: state.code, memberId: state.memberId, action: 'create', title: t, kind: planKind, at: at.toISOString(), place: $('p-place').value.trim(), expected: $('p-count').value, tz: homeTz() })
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not set the plan'); return; }
         $('p-title').value = ''; $('p-place').value = '';
@@ -7491,7 +7794,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     apiGet(locUrl()).then(function(j){
       if (gen !== locGen || locStopping) return;   // read before or during a Stop: out of date
       if (!j.ok) { $('loc-list').innerHTML = '<div class="ev">Could not load locations - try again in a moment.</div>'; return; }
-      locMe = j.me; locShares = j.shares || []; locPrec = locMe.precision || 'exact';
+      locMe = j.me; locShares = j.shares || []; locPrec = locMe.precision || 'exact'; locPlaces = j.places || [];
       renderLoc();
       // Sharing for a set time: look again the moment it ends, so this screen
       // never says "sharing" after the time is up.
@@ -7533,7 +7836,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       var xm = (membersCache || []).filter(function(m){ return m.id === x.memberId; })[0];
       if (!x.mine) bits.push(relLabel(xm || { relation: x.relation }));
       bits.push(x.precision === 'area' ? 'area only' : (x.accuracy ? 'within ' + (x.accuracy < 1000 ? x.accuracy + ' m' : (Math.round(x.accuracy / 100) / 10) + ' km') : 'exact'));
+      if (x.at && x.at.length) bits.push('at ' + x.at.join(', '));
       bits.push((x.stale ? 'last seen ' : 'updated ') + locAgo(x.updatedAt));
+      if (x.battery !== null && x.battery !== undefined) bits.push((x.charging ? '⚡ charging, ' : (x.battery <= 15 ? '🪫 ' : '🔋 ')) + x.battery + '%');
       if (x.until) bits.push('until ' + locClock(x.until));
       if (from && !x.mine) bits.push(locDistText(locDist(from, x)));
       var who = x.mine ? 'your' : x.name + "'s";
@@ -7542,7 +7847,68 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
              (x.mine ? '' : '<a class="cbtn ghost" href="' + esc(locRoute(x)) + '" target="_blank" rel="noopener" aria-label="Directions to ' + esc(x.name) + '">🧭 Directions</a>') +
              '</span></div>';
     }).join('') : '<div class="ev">Nobody here is sharing yet. When someone turns it on, they appear here.</div>';
+    // Not sharing: ask them, the way Find My lets you ask. Only they can
+    // turn it on.
+    var sharing = {}; locShares.forEach(function(x){ sharing[x.memberId] = 1; });
+    var askable = (membersCache || []).filter(function(m){ return m.id !== state.memberId && m.on_app !== false && !sharing[m.id]; });
+    $('loc-ask-head').hidden = !askable.length;
+    $('loc-ask').innerHTML = askable.map(function(m){
+      return '<div class="crow"><span class="txt"><b>' + esc(m.name) + '</b><small>Not sharing</small></span>' +
+             '<button type="button" class="cbtn ghost" data-locask="' + esc(m.id) + '">📍 Ask ' + esc(String(m.name).split(' ')[0]) + ' to share</button></div>';
+    }).join('');
+    // Saved places, and who is at each one now.
+    var places = locPlaces || [];
+    $('loc-places').innerHTML = places.length ? places.map(function(pl){
+      var here = locShares.filter(function(x){ return (x.at || []).indexOf(pl.name) >= 0; }).map(function(x){ return x.mine ? 'You' : x.name; });
+      return '<div class="crow"><span class="txt"><b>📍 ' + esc(pl.name) + '</b><small>' +
+             esc((here.length ? here.join(', ') + (here.length === 1 && here[0] !== 'You' ? ' is' : ' are') + ' here' : 'Nobody sharing is here') + ' · ' + (pl.radius >= 1000 ? (pl.radius / 1000) + ' km' : pl.radius + ' m') + ' across') +
+             '</small></span><button type="button" class="cbtn ghost" data-placerm="' + esc(pl.id) + '" aria-label="Remove ' + esc(pl.name) + '">Remove</button></div>';
+    }).join('') : '<div class="ev">No places yet. Add Home first - it takes ten seconds.</div>';
+    var wh = '<option value="me">Where I am now</option>';
+    locShares.forEach(function(x){ if (!x.mine && x.precision === 'exact') wh += '<option value="' + esc(x.memberId) + '">Where ' + esc(x.name) + ' is now</option>'; });
+    var keep = $('lp-where').value; $('lp-where').innerHTML = wh; if (keep && $('lp-where').querySelector('option[value="' + keep + '"]')) $('lp-where').value = keep;
   }
+  var locPlaces = [];
+  $('loc-ask').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-locask]'); if (!b) return;
+    b.disabled = true;
+    post(locUrl(), { code: state.code, memberId: state.memberId, action: 'ask', targetId: b.getAttribute('data-locask') })
+      .then(function(j){ b.disabled = false; toast(j.ok ? 'Asked ' + j.asked + ' - their phone will ask them to share' : (j.error || 'Could not ask just now')); })
+      .catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  $('loc-places').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-placerm]'); if (!b) return;
+    askSheet('Remove this place?', 'The family will no longer be told about arriving or leaving it.', 'Remove', 'Keep it', true).then(function(yes){
+      if (!yes) return;
+      post(locUrl(), { code: state.code, memberId: state.memberId, action: 'place_remove', id: b.getAttribute('data-placerm') })
+        .then(function(j){ toast(j.ok ? 'Removed' : (j.error || 'Could not remove it')); refreshLoc(); })
+        .catch(function(){ toast('No connection - try again'); });
+    });
+  });
+  $('lp-save').addEventListener('click', function(){
+    var name = $('lp-name').value.trim(), where = $('lp-where').value, size = +$('lp-size').value, btn = this;
+    if (!name) { fieldErr('lp-name', 'Name the place, like Home or School.'); return; }
+    var save = function(lat, lng){
+      btn.disabled = true;
+      post(locUrl(), { code: state.code, memberId: state.memberId, action: 'place_add', name: name, lat: lat, lng: lng, radius: size })
+        .then(function(j){
+          btn.disabled = false;
+          if (!j.ok) { fieldErr('lp-name', j.error || 'Could not save the place'); return; }
+          $('lp-name').value = ''; $('loc-padd').open = false;
+          toast('Saved ' + name + ' 📍 The family will be told about arriving and leaving');
+          refreshLoc();
+        }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
+    };
+    if (where !== 'me') {
+      var x = locShares.filter(function(s){ return s.memberId === where; })[0];
+      if (!x) { toast('They stopped sharing - pick another'); return; }
+      save(x.lat, x.lng); return;
+    }
+    if (!navigator.geolocation) { fieldErr('lp-where', 'This phone cannot tell where it is - pick someone who is sharing.'); return; }
+    navigator.geolocation.getCurrentPosition(function(pos){ save(pos.coords.latitude, pos.coords.longitude); },
+      function(){ fieldErr('lp-where', 'Location is not allowed on this phone - allow it, or pick someone who is sharing.'); },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+  });
   // How far away someone is, without sharing yourself: if this phone has
   // already allowed location, read it here, on the phone, for the distance
   // only. It is never sent, and Parwah never asks just for this.
@@ -7562,6 +7928,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       ? 'Your phone is not letting Parwah see your location. Allow location for Parwah in your phone or browser settings, then tap Share again.'
       : 'Your location could not be found just now. Step near a window or turn on location, then try again.');
   }
+  // The phone's battery, where the browser says (Chrome on Android does;
+  // iPhones do not): the family sees it beside the position, like Find My.
+  var locBattery = null;
+  try { if (navigator.getBattery) navigator.getBattery().then(function(b){ locBattery = b; }).catch(function(){}); } catch (e) {}
   function locSend(pos, action){
     // A held phone sends nothing, whoever asks: a watch, a one-shot fix after
     // a precision change, or another tab of Parwah on this phone.
@@ -7569,6 +7939,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var body = { code: state.code, memberId: state.memberId, action: action, lat: pos.coords.latitude, lng: pos.coords.longitude,
                  accuracy: pos.coords.accuracy, precision: locPrec };
     if (action === 'share') { var u = locUntil(); if (u) body.until = u; }
+    if (locBattery) { body.battery = Math.round(locBattery.level * 100); body.charging = !!locBattery.charging; }
     locLast = { lat: body.lat, lng: body.lng, at: Date.now() };
     return post(locUrl(), body);
   }

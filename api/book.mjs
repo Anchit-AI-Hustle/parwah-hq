@@ -22,6 +22,7 @@ import { tokenOf } from './_token.mjs';
 import { feedName } from './_sec.mjs';
 import { pushCircle } from './_push.mjs';
 import boardApi from './_boardapi.mjs';
+import notesApi from './_notesapi.mjs';
 import vaultApi, { ensureVaultSchema } from './_vaultapi.mjs';
 let vaultReady = false;
 import { award } from './_coins.mjs';
@@ -40,6 +41,7 @@ export default async function handler(req, res) {
   const area = String((req.query && req.query.area) || (req.body && req.body.area) || '');
   if (area === 'board') return boardApi(req, res);
   if (area === 'vault' || area === 'pay') return vaultApi(req, res);
+  if (area === 'notes') return notesApi(req, res);
   let sql;
   try {
     sql = db(); await ensureSchema(sql);

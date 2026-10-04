@@ -94,3 +94,35 @@ export function directionsUrl(lat, lng) {
 export function mapsUrl(lat, lng) {
   return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(lat + ',' + lng);
 }
+
+// ---- Places: Home, School, Office. Arriving and leaving are told to the
+// family, like Find My. A place is a point and a radius (100 m to 2 km).
+export const PLACE_MIN_M = 100, PLACE_MAX_M = 2000;
+export function placeError(p) {
+  const name = String((p && p.name) || '').replace(/\s+/g, ' ').trim();
+  if (!name) return 'Name the place, like Home or School.';
+  if (name.length > 40) return 'Keep the place name under 40 letters.';
+  const pos = validPosition(p.lat, p.lng, null);
+  if (pos.error) return 'Set where the place is first.';
+  const r = Number(p.radius);
+  if (!Number.isFinite(r) || r < PLACE_MIN_M || r > PLACE_MAX_M) return 'Pick how big the place is, from 100 m to 2 km.';
+  return null;
+}
+// Which places a position is inside. A fix with poor accuracy counts as
+// inside only if even its edge is: a wobbly reading must not announce an
+// arrival that did not happen.
+export function placesAt(pos, places) {
+  if (!pos || !Number.isFinite(pos.lat)) return [];
+  const slack = Math.min(Number(pos.accuracy) || 0, 300);
+  return (places || []).filter(p => distanceM(pos, p) + slack <= p.radius).map(p => p.id);
+}
+// What changed between two sets of places: ids arrived at and ids left.
+export function placeMoves(before, after) {
+  const b = new Set(before || []), a = new Set(after || []);
+  return { arrived: [...a].filter(x => !b.has(x)), left: [...b].filter(x => !a.has(x)) };
+}
+// Battery, as the phone reports it: 0 to 100, or nothing.
+export function batteryOf(level) {
+  const n = Number(level);
+  return Number.isFinite(n) && n >= 0 && n <= 100 ? Math.round(n) : null;
+}

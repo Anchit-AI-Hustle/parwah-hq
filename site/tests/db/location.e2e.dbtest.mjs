@@ -308,6 +308,48 @@ await R.click('#loc-stop');
 await R.waitForTimeout(1000);
 await R.context().setGeolocation(PUNE);
 
+// ---- places, asking, and the battery: like Find My
+{
+  // Rohan is not sharing now: Meera can ask him.
+  await M.reload(); await M.waitForTimeout(1200);
+  const ask = M.locator('#loc-ask [data-locask]');
+  ok('someone not sharing has an Ask to share button', await ask.count() === 1 && /Ask Rohan to share/.test(await ask.first().textContent()));
+  await ask.first().click(); await M.waitForTimeout(600);
+  ok('asking says so', /Asked Rohan/.test(await M.textContent('.toast')), await M.textContent('.toast'));
+  ok('and never turns his sharing on', !(await share()).enabled);
+  // Rohan saves Home where he is, then shares.
+  await R.reload(); await R.waitForTimeout(1200);
+  await R.click('#loc-padd summary');
+  await R.click('#lp-save'); await R.waitForTimeout(300);
+  ok('a place needs a name, said beside the box', /Name the place/.test(await R.textContent('#lp-name-err')));
+  await R.fill('#lp-name', 'Home');
+  await R.selectOption('#lp-size', '150');
+  await R.click('#lp-save'); await R.waitForTimeout(1500);
+  const pl = (await admin.query(`select * from location_places where name = 'Home'`)).rows[0];
+  ok('Home is saved where Rohan is, 150 m across', pl && Math.abs(pl.lat - PUNE.latitude) < 1e-4 && pl.radius === 150, JSON.stringify(pl));
+  await R.click('#loc-prec [data-prec="exact"]');
+  await R.click('#loc-share'); await R.waitForTimeout(1500);
+  await M.reload(); await M.waitForTimeout(1500);
+  ok('Meera sees Rohan is at Home', /at Home/.test(await M.textContent('#loc-list')), await M.textContent('#loc-list'));
+  ok('and the place says who is there', /Rohan is here/.test(await M.textContent('#loc-places')), await M.textContent('#loc-places'));
+  ok('Meera can set a place where Rohan is', await M.locator('#lp-where option', { hasText: 'Where Rohan is now' }).count() === 1);
+  ok('Rohan is no longer in the Not sharing list', await M.locator('#loc-ask [data-locask]').count() === 0);
+  // He leaves home: the family is told.
+  await R.evaluate(async ([lat, lng]) => {
+    await fetch('/api/settings?area=location', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Parwah-Token': localStorage.getItem('parwah-token') },
+      body: JSON.stringify({ code: 'SHARMA', memberId: JSON.parse(localStorage.getItem('parwah')).memberId, action: 'update', lat, lng, accuracy: 20, battery: 42, charging: true }) });
+  }, [DELHI.latitude, DELHI.longitude]);
+  ok('leaving Home is in the family feed', (await admin.query(`select count(*)::int as n from events where text = '📍 Rohan left Home'`)).rows[0].n === 1);
+  await M.reload(); await M.waitForTimeout(1500);
+  if (process.env.SHOTS) { await M.evaluate(() => document.getElementById('loc-card').scrollIntoView()); await M.screenshot({ path: process.env.SHOTS + '/findmy.png', fullPage: true }); }
+  ok('and the battery shows beside him', /charging, 42%/.test(await M.textContent('#loc-list')), await M.textContent('#loc-list'));
+  // Removing the place.
+  await M.click('#loc-places [data-placerm]'); await M.waitForTimeout(300);
+  await M.click('#as-yes'); await M.waitForTimeout(1200);
+  ok('a place can be removed', (await admin.query(`select count(*)::int as n from location_places`)).rows[0].n === 0 && /No places yet/.test(await M.textContent('#loc-places')));
+  await R.click('#loc-stop'); await R.waitForTimeout(1000);
+}
+
 // ---- a phone that says no
 const D = await phone(meera, DELHI, false);
 await D.click('#loc-share');

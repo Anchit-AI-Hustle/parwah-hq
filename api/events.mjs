@@ -1,13 +1,14 @@
 // GET  /api/events?circle=CODE          - circle state: members + last 50 events
 // POST /api/events {code, memberId, type, text} - record a check-in, SOS, pill or message
-import { db, ensureSchema, circleByCode, requireMember, isUuid, ensureCircleChat } from './_db.mjs';
+import { db, ensureSchema, circleByCode, requireMember, isUuid, ensureCircleChat, rateLimit } from './_db.mjs';
 import { ensureSosSchema, sosText, parsePos, sosContacts, othersOnApp, mapLink, SOS_AUDIO_MAX, SOS_AUDIO_TYPES } from './_sos.mjs';
 import { lockForSos, unlockSos, ensureLocationSchema } from './_locationapi.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
 import { pushCircle } from './_push.mjs';
-import { ensureTaskSchema, sweepOverdue } from './_tasks.mjs';
+import { ensureTaskSchema, sweepOverdue, sweepReminders } from './_tasks.mjs';
+import { sweepPlanReminders } from './_plansweep.mjs';
 import { award, today } from './_coins.mjs';
 
 import { index as kinIndex, kinLabel, generations } from './_kin.mjs';
@@ -65,6 +66,33 @@ async function escalateStaleSos(sql, circleId) {
 }
 
   try {
+    // THE TIMER. Reminders and late tasks are also checked every 10 minutes
+    // by .github/workflows/tick.yml, so an alarm rings when nobody in the
+    // family has Parwah open. It reads nothing and returns only counts;
+    // each alert is claimed in the database, so it is never sent twice;
+    // and it runs at most once a minute whoever calls it.
+    if (req.method === 'GET' && req.query && req.query.tick !== undefined) {
+      if (!(await rateLimit(sql, 'tick', 'all', 1, 50))) return res.status(200).json({ ok: true, skipped: true });
+      await ensureTaskSchema(sql);
+      const circles = await sql`select distinct circle_id from requests
+                                where status in ('open','assigned','claimed') and due_at is not null
+                                  and due_at between now() - interval '2 days' and now() + interval '2 days'
+                                union select distinct circle_id from sos where status = 'open'
+                                union select distinct circle_id from plans where at between now() and now() + interval '2 hours'
+                                limit 500`.catch(async () => sql`select distinct circle_id from requests
+                                where status in ('open','assigned','claimed') and due_at is not null
+                                  and due_at between now() - interval '2 days' and now() + interval '2 days' limit 500`);
+      let reminded = 0, late = 0, events = 0;
+      for (const c of circles) {
+        try {
+          reminded += await sweepReminders(sql, c.circle_id);
+          late += await sweepOverdue(sql, c.circle_id);
+          events += await sweepPlanReminders(sql, c.circle_id);
+          await escalateStaleSos(sql, c.circle_id);
+        } catch (e) { /* one family's trouble never stops the others */ }
+      }
+      return res.status(200).json({ ok: true, circles: circles.length, reminded, late, events });
+    }
     if (req.method === 'GET') {
       // An invite code alone used to read this: every member's phone, date of
       // birth, the feed, live call rooms, and every member UUID - which is
@@ -116,7 +144,7 @@ async function escalateStaleSos(sql, circleId) {
       await escalateStaleSos(sql, circle.id);
       // Every open phone looks, so a late task is announced within a poll;
       // the sweep claims each alert, so it is still announced only once.
-      try { await ensureTaskSchema(sql); await sweepOverdue(sql, circle.id); } catch (e) { /* never break a read */ }
+      try { await ensureTaskSchema(sql); await sweepReminders(sql, circle.id); await sweepOverdue(sql, circle.id); await sweepPlanReminders(sql, circle.id); } catch (e) { /* never break a read */ }
       const pulse = await pulseToday(sql, circle.id);
       const sosOpen = await sql`
         select s.id, s.member_id, s.status, s.escalated, s.created_at, s.acked_at, s.safe_at,
