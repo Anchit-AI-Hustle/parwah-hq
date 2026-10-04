@@ -4495,6 +4495,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     switchTab('memory');
     setTimeout(function(){
       try {
+        // The person must be in "About whom" before it is set: on a slow
+        // phone the memory screen has not filled it yet.
+        rebuildAboutSelects();
         clearBookForm(); setBKind(fx[0]);
         if (fx[0] === 'contact' && fx[1]) $('b-cat').value = fx[1];
         if (fx[0] === 'fact' && fx[1]) $('b-factcat').value = fx[1];
@@ -4519,7 +4522,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('pp-ecard').addEventListener('click', function(){ if (personId) openEcard(personId); });
   $('pp-add').addEventListener('click', function(){
     switchTab('memory');
-    setTimeout(function(){ try { clearBookForm(); setBKind('med'); $('b-about').value = personId; $('b-name').scrollIntoView({ block: 'center' }); $('b-name').focus(); } catch (e) {} }, 120);
+    setTimeout(function(){ try { rebuildAboutSelects(); clearBookForm(); setBKind('med'); $('b-about').value = personId; $('b-name').scrollIntoView({ block: 'center' }); $('b-name').focus(); } catch (e) {} }, 120);
   });
   document.addEventListener('click', function(e){
     var b = e.target.closest('[data-person]'); if (b) openPerson(b.getAttribute('data-person'));
