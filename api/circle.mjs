@@ -274,9 +274,15 @@ export default async function handler(req, res) {
       const all = await sql`select id, name, gender, parent_id, spouse_id from members where circle_id = ${circle.id}`;
       const target = all.find(x => x.id === targetId);
       if (!target) return res.status(404).json({ ok: false, error: 'Choose someone in this family' });
+      // Taking someone out of the tree removes every link to them: their
+      // own, their husband's or wife's, and their children's. They and
+      // their children can be placed again.
       if (action === 'unplace') {
         await sql`update members set spouse_id = null where circle_id = ${circle.id} and spouse_id = ${targetId}`;
+        await sql`update members set parent_id = null where circle_id = ${circle.id} and parent_id = ${targetId}`;
         await sql`update members set parent_id = null, spouse_id = null where id = ${targetId}`;
+        await sql`insert into events (circle_id, member_id, type, text)
+                  values (${circle.id}, ${mRow[0].id}, 'care', ${mRow[0].name + ' took ' + target.name + ' out of the family tree'})`;
         return res.status(200).json({ ok: true });
       }
       const ofId = req.body.ofId;

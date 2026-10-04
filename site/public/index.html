@@ -1379,6 +1379,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         </div>
         <p class="hint" id="tr-err" role="alert" hidden></p>
         <button class="go" id="tr-go" style="margin-top:var(--space-12)">Add to the tree</button>
+        <button class="linkbtn" id="tr-out" type="button" hidden style="margin-top:var(--space-12)"></button>
       </div>
     </div>
     <div class="card" id="loc-card">
@@ -6223,6 +6224,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var w = treeMembers.filter(function(m){ return m.id === who; })[0];
     $('tr-gender').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', !!w && b.getAttribute('data-g') === w.gender); });
     $('tr-go').disabled = !others.length;
+    // A mistake is undone by taking the person out and placing them again.
+    var out = $('tr-out');
+    out.hidden = !(w && w.gen);
+    out.textContent = w ? 'Take ' + (w.id === state.memberId ? 'me' : w.name) + ' out of the tree' : '';
   }
   $('tr-who').addEventListener('change', fillTreeOf);
   $('tr-gender').addEventListener('click', function(e){
@@ -6240,6 +6245,19 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         btn.disabled = false;
         if (!j.ok) { err.textContent = j.error || 'Could not add that'; err.hidden = false; return; }
         toast('Added to the family tree 🌳'); refresh();
+      }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
+  });
+
+  $('tr-out').addEventListener('click', function(){
+    var who = $('tr-who').value, w = treeMembers.filter(function(m){ return m.id === who; })[0], btn = this;
+    if (!w) return;
+    if (!confirm('Take ' + w.name + ' out of the family tree?\n\nTheir links to a husband or wife, parents and children go. Nothing else changes, and they can be placed again.')) return;
+    btn.disabled = true;
+    post(API.circle, { action: 'unplace', code: state.code, memberId: state.memberId, targetId: who })
+      .then(function(j){
+        btn.disabled = false;
+        if (!j.ok) { $('tr-err').textContent = j.error || 'Could not take them out'; $('tr-err').hidden = false; return; }
+        toast('Taken out of the family tree'); refresh();
       }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
   });
 

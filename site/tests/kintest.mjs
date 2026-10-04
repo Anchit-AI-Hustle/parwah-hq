@@ -22,6 +22,7 @@ const people = [
   P('dev', 'm', 'anaya'),          // Anaya's son
   P('sunil', 'm', 'papa'),         // a son with no wife in the tree
   P('tara', 'f', 'sunil'),
+  P('mini', 'f', 'tara'),          // Sunil's granddaughter
   P('guest', null),                // not placed yet
 ];
 const by = K.index(people);
@@ -84,6 +85,13 @@ ok('a parent of someone who has one becomes the other parent (their husband or w
    !other.error && other.set.some(x => x.id === 'guest' && x.spouseId === 'sunil') && other.set.some(x => x.id === 'sunil' && x.spouseId === 'guest'), JSON.stringify(other));
 ok('a third parent is refused', !!pl('guest', 'parent', 'kabir').error);
 ok('nobody becomes their own ancestor', !!pl('papa', 'child', 'vihaan').error && !!pl('rohan', 'parent', 'papa').error);
+ok('a father and daughter cannot be placed as husband and wife', !!pl('tara', 'spouse', 'sunil').error && !!pl('sunil', 'spouse', 'tara').error);
+ok('nor a grandfather and granddaughter', !!pl('mini', 'spouse', 'sunil').error);
+ok('the other parent cannot be the child\'s own child', !!pl('mini', 'parent', 'tara').error, JSON.stringify(pl('mini', 'parent', 'tara')));
+ok('a husband or wife from outside the line is still fine', !pl('guest', 'spouse', 'sunil').error);
+const loopy = K.index([P('a', 'm', 'b'), P('b', 'm', 'a')]);
+const lg = K.generations(loopy);
+ok('links that already loop are counted once, not fifty times', lg.get('a') <= 2 && lg.get('b') <= 2, [lg.get('a'), lg.get('b')].join());
 ok('nobody is placed against themselves', !!pl('papa', 'child', 'papa').error);
 ok('an unknown place is refused', !!pl('guest', 'cousin', 'papa').error);
 ok('old one-word roles give a starting gender', K.genderFromRelation('daughter-in-law') === 'f' && K.genderFromRelation('grandson') === 'm' && K.genderFromRelation('family') === null);

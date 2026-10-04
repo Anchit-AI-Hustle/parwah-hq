@@ -124,6 +124,12 @@ const un = await call(circleApi, { token: M.Neha.token, body: { action: 'unplace
 const amitRow = (await admin.query('select spouse_id from members where id = $1', [M.Amit.id])).rows[0];
 ok('taking someone out of the tree clears both sides', un.status === 200 && amitRow.spouse_id === null);
 ok('and they are no longer labelled', (await look(M.Priya)).by.Neha.kin === null);
+ok('a father and son cannot be placed as husband and wife', (await place(papa, { targetId: M.Kabir.id, place: 'spouse', ofId: M.Amit.id })).status === 409);
+const un2 = await call(circleApi, { token: papa.token, body: { action: 'unplace', code, memberId: papa.id, targetId: M.Amit.id } });
+const kabirRow = (await admin.query('select parent_id from members where id = $1', [M.Kabir.id])).rows[0];
+ok('taking a parent out clears their children\'s link to them too', un2.status === 200 && kabirRow.parent_id === null, JSON.stringify(kabirRow));
+ok('so the parent is no longer labelled either', (await look(M.Priya)).by.Amit.kin === null);
+ok('and the family is told', (await admin.query(`select count(*)::int as n from events where circle_id = $1 and text = 'Papa took Amit out of the family tree'`, [circleId])).rows[0].n === 1);
 
 await admin.end();
 for (const p of globalThis.__parwahPools || []) await p.end();

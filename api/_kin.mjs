@@ -49,10 +49,22 @@ function marriedIn(u, person) { return u.members.length === 2 && u.line.id !== p
 // Ancestor chain of units, nearest first, with the person in each unit
 // whose line leads down to the start (to know father's or mother's side).
 function ancestors(by, id) {
-  const out = []; let u = unitOf(by, id), guard = 0;
-  while (u && guard++ < 50) { out.push(u); u = parentUnit(by, u); }
+  // A unit seen twice means bad links (a loop); stop there rather than
+  // count the same people again as older generations.
+  const out = [], seen = new Set(); let u = unitOf(by, id);
+  while (u && !seen.has(u.key) && out.length < 50) { seen.add(u.key); out.push(u); u = parentUnit(by, u); }
   return out;
 }
+// Everyone above a person: the units of their parents, grandparents and so
+// on, both members of each.
+function above(by, id) {
+  const p = by.get(id), out = new Set();
+  if (!p || !p.parentId) return out;
+  for (const u of ancestors(by, p.parentId)) for (const m of u.members) out.add(m.id);
+  return out;
+}
+// A husband and wife cannot be each other's ancestor or descendant.
+function lineal(by, a, b) { return above(by, a).has(b) || above(by, b).has(a); }
 
 const L = (m, f, n) => ({ m, f, n });
 const LABELS = {
@@ -158,6 +170,18 @@ export function wouldLoop(by, childId, parentId) {
 // admin, so anyone in the family may place anyone; the arithmetic only
 // refuses what cannot be true.
 export function placement(by, targetId, place, ofId) {
+  const plan = plan_(by, targetId, place, ofId);
+  if (plan.error) return plan;
+  // Whatever the path, never write links that loop: try them on a copy.
+  const next = new Map([...by].map(([k, v]) => [k, { ...v }]));
+  for (const w of plan.set) Object.assign(next.get(w.id), w);
+  for (const p of next.values()) {
+    const seen = new Set(); let u = unitOf(next, p.id);
+    while (u) { if (seen.has(u.key)) return { error: 'That would make someone their own ancestor' }; seen.add(u.key); u = parentUnit(next, u); }
+  }
+  return plan;
+}
+function plan_(by, targetId, place, ofId) {
   const t = by.get(targetId), o = by.get(ofId);
   if (!t || !o) return { error: 'Choose someone who is in this family' };
   if (targetId === ofId) return { error: 'Choose someone else' };
@@ -169,6 +193,7 @@ export function placement(by, targetId, place, ofId) {
   if (place === 'spouse') {
     if (o.spouseId && o.spouseId !== targetId) return { error: 'They already have a husband or wife in the tree' };
     if (t.spouseId && t.spouseId !== ofId) return { error: 'This person already has a husband or wife in the tree' };
+    if (lineal(by, targetId, ofId)) return { error: 'They are already parent and child, or grandparent and grandchild, in the tree' };
     return { set: [{ id: targetId, spouseId: ofId }, { id: ofId, spouseId: targetId }] };
   }
   if (place === 'parent') {
@@ -177,6 +202,8 @@ export function placement(by, targetId, place, ofId) {
       const p = by.get(o.parentId);
       if (p.spouseId && p.spouseId !== targetId) return { error: 'Both parents are already in the tree' };
       if (t.spouseId && t.spouseId !== p.id) return { error: 'This person already has a husband or wife in the tree' };
+      if (targetId === p.id) return { error: 'They are already a parent of this person' };
+      if (lineal(by, targetId, p.id)) return { error: 'That would make someone their own ancestor' };
       return { set: [{ id: targetId, spouseId: p.id }, { id: p.id, spouseId: targetId }] };
     }
     if (wouldLoop(by, ofId, targetId)) return { error: 'That would make someone their own ancestor' };

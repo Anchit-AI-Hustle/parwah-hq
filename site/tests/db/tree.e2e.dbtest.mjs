@@ -172,6 +172,20 @@ const priyaSheet = P2.locator('.tperson', { hasText: 'Papa' });
 await priyaSheet.click(); await P2.waitForTimeout(500);
 ok('tapping someone opens their profile, with the same word for them', await P2.isVisible('#msheet') && /Father-in-law/.test(await P2.textContent('#mp-role')), await P2.textContent('#mp-role'));
 
+// ---- a mistake is undone: take someone out, and they can be placed again
+await P1.selectOption('#tr-who', await idOf('Vihaan'));
+ok('someone in the tree can be taken out', await P1.isVisible('#tr-out') && /Take Vihaan out of the tree/.test(await P1.textContent('#tr-out')), await P1.textContent('#tr-out'));
+let asked = '';
+P1.once('dialog', d => { asked = d.message(); d.accept(); });
+await P1.click('#tr-out'); await P1.waitForTimeout(1300);
+ok('it asks first, and says what goes', /Take Vihaan out of the family tree/.test(asked) && /placed again/.test(asked), asked);
+ok('the links go', (await admin.query(`select parent_id from members where id = $1`, [await idOf('Vihaan')])).rows[0].parent_id === null);
+ok('and the tree says so: three generations, Vihaan not in it yet', /3 generations/.test(await P1.textContent('#tree-sub')) && /not in the tree yet: Vihaan/.test(await P1.textContent('#tree-sub')), await P1.textContent('#tree-sub'));
+await P1.selectOption('#tr-who', await idOf('Vihaan'));
+ok('someone not in the tree has nothing to take out', !(await P1.isVisible('#tr-out')));
+await place(P1, 'Vihaan', 'child', 'Aarav', 'm');
+ok('and they can be placed again', /4 generations/.test(await P1.textContent('#tree-sub')));
+
 ok('no script errors', errors.length === 0, errors.join(' | '));
 await browser.close();
 server.close();
