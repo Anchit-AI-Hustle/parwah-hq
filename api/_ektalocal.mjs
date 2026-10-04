@@ -70,7 +70,7 @@ const RE = {
 const PAST = /\b(yesterday|last (night|week|month|year)|(\d+|a|an|one|two|three|few) (hours?|days?|weeks?|months?|years?) ago|in (19|20)\d\d|kal raat|pichhle|pichle|history of|used to|years back)\b/i;
 // Said to be happening now, in so many words - including something that
 // began earlier and has not stopped ("has been unconscious since last night").
-const NOW = /\b(now|right now|just now|abhi|abhi tak|ab tak|still|since|ongoing|(has|have) been having|keeps? having|is (not breathing|unconscious|bleeding|having|choking)|can'?t get up|please help|help me)\b|\b(today|tonight|this (morning|afternoon|evening)|keeps?)\b[^.?!]{0,30}\b(breath|chest|pain|bleed|unconscious|unresponsive|not responding|faint|collaps|behosh|seizure|chok|fallen|fell)/i;
+const NOW = /\b(now|right now|just now|abhi|still|ongoing|(has|have) been having|keeps? having|is (not breathing|unconscious|bleeding|having|choking)|can'?t get up|please help|help me)\b|\b(today|tonight|this (morning|afternoon|evening)|keeps?)\b[^.?!]{0,30}\b(breath|chest|pain|bleed|unconscious|unresponsive|not responding|faint|collaps|behosh|seizure|chok|fallen|fell)/i;
 // When something past is mentioned, each part of the message is judged on
 // its own: "had a cold last week and has chest pain" is urgent, because the
 // past words belong to the cold. A part that names a symptom is happening
@@ -78,7 +78,42 @@ const NOW = /\b(now|right now|just now|abhi|abhi tak|ab tak|still|since|ongoing|
 // or a time gone by). When in doubt, it is urgent.
 const NOT_NOW = /\b(had|history|ever)\b/i;
 const PARTS = /[,;.!?]+|\b(?:and|but|then|aur|lekin|par)\b/i;
-const saysNow = t => NOW.test(t) || t.split(PARTS).some(c => c && RE.emergency.test(c) && !PAST.test(c) && !NOT_NOW.test(c));
+// "since last night" says it has not stopped, asked or told ("Has Papa
+// been unconscious since last night?" is still urgent) - unless the message
+// asks whether something happened at some point since then ("Did Papa have
+// a seizure at any time since his fall last year?").
+const ONGOING = /\b(since|ab tak|abhi tak)\b/i;
+const ASKS_IF = /^\s*(did|was|were)\b|\b(any time|at any point|ever(?! since))\b/i;
+// "Getting worse" counts for the part that names the emergency, or a part
+// that refers back to it ("...and it is worse today") - not for something
+// else in the same message ("his knee pain is getting worse").
+// "was getting worse" is part of the past, not now.
+const WORSE = /(?<!\b(was|were|had been|had|used to be)\s+)\b((is|it'?s|getting) worse|worsening|badh (raha|rahi)|zyada ho)/i;
+// Refers back when what is getting worse is the pronoun, or nothing at all
+// ("it is worse today", "he is getting worse", "...and is getting worse",
+// "; worsening today", "Is he getting worse?"), not "he says his knee pain
+// is worse".
+const REFERS_BACK = new RegExp(
+  // a pronoun is what is getting worse ("he is getting worse", "Is it worse?")
+  /^\s*((is|isn'?t|has|does|kya)\s+)?(it|this|that|he|she|they|woh?|ye[h]?)\s+((is|'s|has been|keeps)\s+)?((getting|becoming)\s+)?(worse|worsening|badh (raha|rahi)|zyada)/.source
+  // or nothing is named at all ("...and is getting worse", "; worsening today"),
+  // never "worsening knee pain"
+  + '|' + /^\s*((is|'s|has been|keeps)\s+)?((getting|becoming)\s+)?(worse|worsening)(\s+(today|now|tonight|again|fast|quickly|badly|every day))*\s*$/.source, 'i');
+// Every signal is read in its own part of the message, so a separate
+// question ("...and has this ever happened before?") does not cancel a
+// current emergency in another part.
+const saysNow = t => NOW.test(t)
+  || t.split(PARTS).some(c => c && (
+       (RE.emergency.test(c) && !PAST.test(c) && !NOT_NOW.test(c))
+    // "since" in any part, unless that part asks whether something happened
+    // ("...and has not woken up since" is about the collapse named before it)
+    || (ONGOING.test(c) && !ASKS_IF.test(c))
+    || (WORSE.test(c) && (RE.emergency.test(c) || REFERS_BACK.test(c)))));
+// Words alone cannot always tell whether it is happening now. So a message
+// that names an emergency is never answered without the way to 112, even
+// when it reads as the past and gets its records answer first.
+export function mentionsUrgent(text) { return RE.emergency.test(String(text || '')); }
+export const URGENT_TOO = 'If any of this is happening now: call 112 (ambulance 108), or send SOS to the family.';
 
 // The family's words for a person, and the relation saved for them, so
 // "can Papa take..." finds the one member saved as father.
