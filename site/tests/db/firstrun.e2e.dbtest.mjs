@@ -268,9 +268,9 @@ await P.reload(); await P.waitForTimeout(1200);
 ok('and stays pressed today after a reload', /Medicines taken ✔ · \d/.test(await P.textContent('#btn-pill')));
 ok('no coins for taking medicines', (await admin.query(`select count(*)::int as n from coins where reason = 'pill'`).catch(() => ({ rows: [{ n: 0 }] }))).rows[0].n === 0);
 await P.click('#btn-sos'); await P.waitForTimeout(200);
-ok('SOS asks in Parwah\'s own sheet, with big answers', await P.isVisible('#asksheet') && /Yes, send SOS/.test(await P.textContent('#as-yes')));
-await P.click('#as-no'); await P.waitForTimeout(200);
-ok('and No sends nothing', !(await P.isVisible('#asksheet')) && (await admin.query(`select count(*)::int as n from events where type = 'sos'`)).rows[0].n === 0);
+ok('SOS counts down full screen, with a big Cancel', await P.isVisible('#sosscreen') && await P.isVisible('#ss-cancel'));
+await P.click('#ss-cancel'); await P.waitForTimeout(5500);
+ok('and Cancel sends nothing', !(await P.isVisible('#sosscreen')) && (await admin.query(`select count(*)::int as n from events where type = 'sos'`)).rows[0].n === 0);
 
 // ---- a family member's Today: the hero is one line; tiles named like the tabs
 const A = await phone(as('Anchit'));
