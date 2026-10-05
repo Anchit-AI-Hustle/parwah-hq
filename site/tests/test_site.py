@@ -745,8 +745,8 @@ check("guide: an answer can quietly say a call would be nice",
       "call: true" in pulse and "could do with a call" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
 check("guide: everyone in a circle sees the same question on the same day",
       "derived from the date" in pulse or "same style for everyone" in pulse)
-check("plan: named as the guide names it, and never sells the removed mood question (Family Pulse)",
-      "Parwah Family Plan" in plan and "'Family Readiness'" in plan and "Pulse" not in plan)
+check("plan: named as the five things, and never sells the removed mood question (Family Pulse)",
+      "Parwah Family Plan" in plan and "'Health & contacts'" in plan and "'The vault'" in plan and "Pulse" not in plan)
 
 # 10p. THE GUIDE'S REMAINING SCREENS - 1, 2 and 4.
 ekta_src = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
