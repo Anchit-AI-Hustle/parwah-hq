@@ -336,7 +336,7 @@ for (const vp of [{ width:320, height:640 }, { width:390, height:844 }]) {
 {
   const pg = await fresh({ viewport:{ width:390, height:844 }, signedIn:true });
   // Only four tabs are reachable on a phone without opening the drawer, in
-  // order of utility: Today, Vault, Care, People (docs/design/TODAY.md).
+  // order of utility: Today, Vault, To do, Family (docs/design/TODAY.md).
   // Everything else is behind the hamburger, which is why its size (checked
   // below) matters so much.
   const tabs = ['people', 'vault', 'care'];

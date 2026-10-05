@@ -79,8 +79,8 @@ ok((seen[2].match(/✓/g)||[]).length===3 && (seen[2].match(/⚠/g)||[]).length=
 ok(/Ask Ekta/i.test(seen[3]) && /Prepare summary/.test(seen[3]), 'screen 4 is Ekta, including the doctor-visit summary');
 ok(/does not diagnose/i.test(seen[3]), 'and states that Ekta does not diagnose');
 // guide screen 5
-ok(/Things to do/.test(seen[4]) && /Nobody has it yet/.test(seen[4]) && /emergency card/i.test(seen[4]) && /no internet/.test(seen[4]),
-   'screen 5 is things to do (who has what) and the emergency card');
+ok(/To do/.test(seen[4]) && /Nobody has it yet/.test(seen[4]) && /emergency card/i.test(seen[4]) && /no internet/.test(seen[4]),
+   'screen 5 is To do (who has what) and the emergency card');
 ok(!/pulse|sunny|rainy/i.test(seen.join(' ')), 'the removed mood question is not sold anywhere in the demo');
 // the price, last
 ok(/2,499/.test(seen[5]) && /per family/.test(seen[5]), 'the price comes last, per family');

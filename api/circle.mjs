@@ -283,7 +283,7 @@ export default async function handler(req, res) {
       const countOf = async (label, run) => { try { const r = await run(); counts[label] = r[0] ? r[0].n : 0; } catch (e) { counts[label] = 0; } };
       await countOf('documents', () => sql`select count(*)::int as n from vault_docs where circle_id = ${circle.id} and about_member = ${mRow[0].id}`);
       await countOf('payment methods', () => sql`select count(*)::int as n from pay_methods where circle_id = ${circle.id} and owner_member = ${mRow[0].id}`);
-      await countOf('family memory entries', () => sql`select count(*)::int as n from family_book where circle_id = ${circle.id} and about_member = ${mRow[0].id}`);
+      await countOf('health and contact entries', () => sql`select count(*)::int as n from family_book where circle_id = ${circle.id} and about_member = ${mRow[0].id}`);
       const willGo = Object.keys(counts).filter(k => counts[k] > 0).map(k => counts[k] + ' ' + k);
       if (willGo.length && req.body.confirmDelete !== true) {
         return res.status(409).json({ ok: false, needsConfirm: true, counts,

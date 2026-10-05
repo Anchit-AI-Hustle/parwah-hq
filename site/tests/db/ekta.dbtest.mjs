@@ -144,7 +144,7 @@ ok('the family starts this with no coins', await pot() === 0);
   const r = await ask(rohan, 'write me a poem about the moon');
   delete process.env.ANTHROPIC_API_KEY;
   ok('a conversation needs coins: refused with 402', r.status === 402 && r.needCoins === true);
-  ok('and how to earn more is something any member can do (not check in)', /family memory/.test(r.error) && /vault/.test(r.error) && !/check(ing)? in/i.test(r.error), r.error);
+  ok('and how to earn more is something any member can do (not check in)', /Health & contacts/.test(r.error) && /vault/.test(r.error) && !/check(ing)? in/i.test(r.error), r.error);
   ok('and it says what stays free', /scam check and anything urgent stay free/.test(r.error), r.error);
   ok('nothing was spent', await pot() === 0);
   // Out of coins, but the message names an emergency: never a bare refusal.

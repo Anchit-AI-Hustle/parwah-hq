@@ -281,9 +281,9 @@ details.advanced summary{display:flex;flex-direction:column;gap:var(--space-2);l
 details.advanced summary small{color:var(--ink-soft);font-size:var(--fs-12)}
 details.giftmore summary{font-weight:700;color:var(--ink)}
 .senior .feed .ev{font-size:var(--fs-16)}
-/* A parent's phone: nothing floats over All is well, Pills or SOS. Chat is on
-   the tab bar and Ekta is in the menu and on Today's shortcuts, so the two
-   floating buttons only cost the SOS label. Desktop keeps them: there is room. */
+/* A parent's phone: nothing floats over All is well, Pills or SOS. Chat and
+   Ekta stay in the menu and on Today's shortcuts, so the two floating
+   buttons never cover those three. Desktop keeps them: there is room. */
 @media(max-width:899px){body.senior .fab{display:none!important}}
 
 /* feed */
@@ -1430,10 +1430,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     </div>
   </section>
 
-  <!-- CARE -->
+  <!-- TO DO -->
   <section id="pane-care" hidden>
-    <div class="seg pageseg" id="care-seg" role="tablist" aria-label="Care sections">
-      <button data-sec="rem" class="sel">✅ Things to do</button>
+    <div class="seg pageseg" id="care-seg" role="tablist" aria-label="To do sections">
+      <button data-sec="rem" class="sel">✅ To do</button>
       <button data-sec="req">💡 Suggested<i class="dot" id="sugg-dot" hidden></i></button>
       <button data-sec="notes">📝 Notes &amp; lists</button>
     </div>
@@ -1500,7 +1500,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   </section>
 
 
-  <!-- PEOPLE - the product is organised around the people you care about -->
+  <!-- FAMILY - who is who, and how ready the family is for each person -->
   <section id="pane-people" hidden>
     <div class="ektahead"><span style="font-size:var(--fs-24)" aria-hidden="true">👨‍👩‍👧</span><span><b>Family</b><small>Who is who, and how ready the family is for each person</small></span></div>
     <div class="card" id="joinreq-card" hidden>
@@ -1614,14 +1614,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     </div>
 </section>
 
-  <!-- FAMILY MEMORY - where the family knows -->
+  <!-- HEALTH & CONTACTS - medicines, facts, doctors, addresses -->
   <section id="pane-memory" hidden>
-    <div class="ektahead"><span style="font-size:var(--fs-24)" aria-hidden="true">📒</span><span><b>Family memory</b><small>WhatsApp is where the family talks. This is where the family knows.</small></span></div>
+    <div class="ektahead"><span style="font-size:var(--fs-24)" aria-hidden="true">🩺</span><span><b>Health &amp; contacts</b><small>Medicines, blood groups, allergies, doctors and addresses</small></span></div>
     <div id="book-list-view">
       <div class="addrow" style="margin-top:0">
-        <input type="search" id="b-search" maxlength="60" placeholder="Search the family memory…" aria-label="Search family book">
+        <input type="search" id="b-search" maxlength="60" placeholder="Search health and contacts…" aria-label="Search health and contacts">
       </div>
-      <div class="seg" id="bk-filter" role="group" aria-label="Family memory sections" style="margin-bottom:var(--space-8);flex-wrap:wrap">
+      <div class="seg" id="bk-filter" role="group" aria-label="Health and contacts sections" style="margin-bottom:var(--space-8);flex-wrap:wrap">
         <button type="button" data-bk="all" class="sel">All</button>
         <button type="button" data-bk="contact">☎️<span class="bkw">Contacts</span></button>
         <button type="button" data-bk="address">📍<span class="bkw">Addresses</span></button>
@@ -1632,7 +1632,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <select id="bk-about" aria-label="About whom" style="margin-bottom:var(--space-12)"><option value="">About anyone</option></select>
       <div class="feed" id="blist"><div class="ev">Nothing saved yet - add the family's first entry below 📒</div></div>
       <div class="card" style="margin-top:var(--space-16)">
-        <h3 id="bf-title">Add to the family memory</h3>
+        <h3 id="bf-title">Add a contact, medicine or health fact</h3>
         <div class="seg" id="b-kind" style="flex-wrap:wrap"><button type="button" data-k="contact" class="sel">☎️ Contact</button><button type="button" data-k="address">📍 Address</button><button type="button" data-k="med">💊 Meds</button><button type="button" data-k="fact">🩸 Health fact</button><button type="button" data-k="insurance">🛡 Insurance</button></div>
         <label for="b-about">About whom</label>
         <select id="b-about"><option value="">The whole family</option></select>
@@ -1694,13 +1694,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <label for="b-notes">Notes</label>
         <input type="text" id="b-notes" maxlength="300" placeholder="e.g. after breakfast · comes on Tuesdays · gate code 4321">
         <label class="seniorchk" id="b-private-l"><input type="checkbox" id="b-private"> Keep this private - only me and anyone I name</label>
-        <button class="go" id="b-save">Save to the family memory</button>
+        <button class="go" id="b-save">Save</button>
         <button class="linkbtn" id="b-cancel" hidden style="margin-top:var(--space-8)">Cancel editing</button>
         <p class="hint" id="b-vis-hint">Shared with the whole family - everyone can add, edit and keep it current.</p>
       </div>
     </div>
     <div id="book-detail" hidden>
-      <button class="cbtn ghost" id="bd-back">← Family memory</button>
+      <button class="cbtn ghost" id="bd-back">← Health &amp; contacts</button>
       <div class="card" style="margin-top:var(--space-12)">
         <h3 id="bd-name"></h3>
         <p class="hint" id="bd-kind" style="margin:var(--space-2) 0 var(--space-8)"></p>
@@ -1865,7 +1865,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   <!-- ONE PERSON - the sections the parent validation guide draws -->
   <section id="pane-person" hidden>
-    <button class="cbtn ghost" id="pp-back">← People</button>
+    <button class="cbtn ghost" id="pp-back">← Family</button>
     <div class="personhero" style="margin-top:var(--space-12)">
       <h1 id="pp-name"></h1>
       <p class="lede" id="pp-sub" style="margin:var(--space-2) 0 var(--space-12)"></p>
@@ -2585,7 +2585,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <button data-tab="memory" class="deskonly"><span class="ic" aria-hidden="true">🩺</span>Health &amp; contacts</button>
     <button data-tab="care"><span class="ic" aria-hidden="true">✅</span>To do<i class="dot" id="care-dot" hidden></i></button>
     <div class="subnav side-only" data-parent="care">
-      <button data-tab="care" data-sec="rem">Tasks</button>
+      <button data-tab="care" data-sec="rem">To do</button>
       <button data-tab="care" data-sec="req">Suggested</button>
       <button data-tab="care" data-sec="notes">Notes &amp; lists</button>
     </div>
@@ -2627,7 +2627,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="cbtn ghost" id="mp-gift">🎁 Send a gift</button>
     </div>
     <div id="giftbox" hidden>
-      <p class="hint" id="gift-sizes" hidden style="margin-top:var(--space-12);background:#FDF4E3;border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-8) var(--space-12)"></p>
+      <p class="hint" id="gift-sizes" hidden style="margin-top:var(--space-12);background:var(--tint-warm);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-8) var(--space-12)"></p>
       <p class="eyebrow" style="margin-top:var(--space-12)">Send money 💸</p>
       <div class="prow2" id="gift-cash"></div>
       <p class="eyebrow" style="margin-top:var(--space-12)">Gift from stores near them <span id="gift-region"></span></p>
@@ -2663,7 +2663,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="dgroup">
       <button class="ditem dparent" data-grp="care">✅ To do <span class="caret">▾</span></button>
       <div class="dsub">
-        <button class="ditem sub" data-tab="care" data-sec="rem">Tasks</button>
+        <button class="ditem sub" data-tab="care" data-sec="rem">To do</button>
         <button class="ditem sub" data-tab="care" data-sec="req">Suggested</button>
         <button class="ditem sub" data-tab="care" data-sec="notes">Notes &amp; lists</button>
       </div>
@@ -2811,7 +2811,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="cbtn ghost" id="ec-copy">📋 Copy</button>
       <button class="cbtn ghost" id="ec-print">🖨 Print</button>
     </div>
-    <p class="hint" style="margin-top:var(--space-12)">Everything here comes from your family memory. Blank rows mean nobody has recorded it yet - fill them in before you need them.</p>
+    <p class="hint" style="margin-top:var(--space-12)">Everything here comes from Health &amp; contacts. Blank rows mean nobody has recorded it yet - fill them in before you need them.</p>
   </div>
 </div>
 
@@ -3302,7 +3302,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (/vault|document/i.test(t)) return { tab: 'vault', sec: 'docs', label: 'Open the Vault' };
     if (/family memory|medicine/i.test(t)) return { tab: 'memory', label: 'Open Health & contacts' };
     if (/family tree/i.test(t)) return { tab: 'people', label: 'See the family tree' };
-    if (/reminder|task|to do/i.test(t)) return { tab: 'care', sec: 'rem', label: 'Open Things to do' };
+    if (/reminder|task|to do/i.test(t)) return { tab: 'care', sec: 'rem', label: 'Open To do' };
     if (/asked the (circle|family|group)|is on it|finished/i.test(t)) return { tab: 'care', sec: 'req', label: 'Open Suggested' };
     if (/Snakes|Song Chain|Charades|Tic-Tac|game/i.test(t)) return { tab: 'fun', sec: 'games', label: 'Open Games' };
     if (/planned|cancelled|is in for/i.test(t)) return { tab: 'fun', sec: 'plans', label: 'Open Plans' };
@@ -4129,7 +4129,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (b.dataset.goto)   { switchTab(b.dataset.goto); if (b.dataset.sec) setSec(b.dataset.goto, b.dataset.sec); }
     // A tile always opens on the whole family, not on a filter left over
     // from last time.
-    if (b.dataset.bk) { try { $('bk-about').value = ''; $('book-detail').hidden = true; $('book-list-view').hidden = false; } catch (x) {} setBkFilter(b.dataset.bk); }
+    if (b.dataset.bk) { try { $('bk-about').value = ''; $('book-detail').hidden = true; $('book-list-view').hidden = false; } catch (x) {} setBkFilter(b.dataset.bk); if (b.dataset.bk === 'health') setBKind('med'); if (b.dataset.bk === 'people') setBKind('contact'); }
     if (b.dataset.goto === 'vault' && b.classList.contains('widget')) { try { $('vd-who').value = ''; closeDoc(); renderDocs(); } catch (x) {} }
     if (b.dataset.qtalk)  {
       var fam = null; chatsCache.forEach(function(x){ if (x.kind === 'circle') fam = x; });
@@ -5013,7 +5013,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }).map(function(e){ return row(e); }), 'Nothing yet - the hospital they prefer, their chemist, anything the family keeps asking you.');
     $('pp-docs').textContent = id === state.memberId ? '📄 My documents' : '📄 Their documents';
     if (curTab !== 'person') personFrom = curTab;
-    $('pp-back').textContent = '← ' + ({ people: 'People', home: 'Today', memory: 'Family memory', vault: 'Family vault', care: 'Care' }[personFrom] || 'Back');
+    $('pp-back').textContent = '← ' + ({ people: 'Family', home: 'Today', memory: 'Health & contacts', vault: 'Vault', care: 'To do' }[personFrom] || 'Back');
     switchTab('person');
     window.scrollTo(0, 0);
   }
@@ -5348,13 +5348,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   var CM = [
     { sel:'#tabs button[data-tab="home"]', t:'Today',
       b:'Everything happening right now: who has checked in, what is planned, what needs you - across every family you are in.' },
-    { sel:'#tabs button[data-tab="people"]', t:'People',
+    { sel:'#tabs button[data-tab="people"]', t:'Family',
       b:'Everyone you look after, and how prepared the family is for each of them. Not a health score - a check that the important things are written down.' },
-    { sel:'#tabs button[data-tab="memory"]', t:'Family memory',
+    { sel:'#tabs button[data-tab="memory"]', t:'Health & contacts',
       b:'Doctors, medicines, addresses, blood groups, policies. Each entry says when it was last checked, so nothing old is trusted by mistake.' },
     { sel:'#btn-ecard', t:'The emergency card',
       b:'One screen with everything a doctor would ask for. It works with no internet - because the moment it matters is the moment the signal is worst.' },
-    { sel:'#tabs button[data-tab="care"]', t:'Care',
+    { sel:'#tabs button[data-tab="care"]', t:'To do',
       b:'What needs doing, who has it, and when it is done - shared, so no one person carries it all.' }
   ];
   var cmI = 0, cmOn = false;
@@ -5425,12 +5425,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       { k:'people', done: members > 1, b:'Invite someone to the family',
         s:'Parwah works when your family is in it',
         go:function(){ var b = document.querySelector('.invitebtn'); if (b) b.click(); } },
-      { k:'memory', done: (bookCache || []).length > 0, b:'Put one thing in the family memory',
+      { k:'vault',  done: vDocs.length > 0, b:'Put one document in the vault',
+        s:'An Aadhaar or a passport - only you can open it until you share it', go:function(){ switchTab('vault'); setSec('vault','docs'); } },
+      { k:'memory', done: (bookCache || []).length > 0, b:'Save one medicine, contact or health fact',
         s:'A doctor\u2019s number, a medicine, a blood group - start anywhere', go:function(){ switchTab('memory'); } },
       { k:'prep',   done: (prepCache || []).some(function(p){ return p.pct >= 50; }),
-        b:'Fill in one person\u2019s health', s:'Blood group, allergies, doctor and medicines', go:function(){ switchTab('people'); } },
-      { k:'vault',  done: vDocs.length > 0, b:'Put one document in the vault',
-        s:'An Aadhaar or a passport - only you can open it until you share it', go:function(){ switchTab('vault'); setSec('vault','docs'); } }
+        b:'Fill in one person\u2019s health', s:'Blood group, allergies, doctor and medicines', go:function(){ switchTab('people'); } }
     ];
     var n = steps.filter(function(x){ return x.done; }).length;
     if (n === steps.length) { $('firstrun').hidden = true; return; }
@@ -5569,7 +5569,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('coin-bal2').textContent = j.balance;
     // Advice anyone in the family can follow, not only one role.
     $('coin-sub').textContent = j.balance < 10
-      ? 'Running low - add to the family memory or put a paper in the vault to earn more'
+      ? 'Running low - add a health fact or contact, or put a paper in the vault, to earn more'
       : 'Earned by looking after each other - spent on Ekta';
     var cost = (j.spend && j.spend.ekta) || 2;
     $('coin-cost').textContent = 'each question to Ekta uses ' + cost + ' coin' + (cost === 1 ? '' : 's');
@@ -5824,7 +5824,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     clearAddrForm();
     $('b-cat').value = 'other';
     $('b-private').checked = false; $('b-private-l').hidden = false; bVisHint();
-    $('bf-title').textContent = 'Add to the family memory';
+    $('bf-title').textContent = 'Add a contact, medicine or health fact';
     $('b-cancel').hidden = true;
   }
   // The line under Save says who will see it, and changes with the box.
@@ -5854,7 +5854,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     post(API.book, body)
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not save'); return; }
-        toast(bEditId ? 'Entry updated 📒' : 'Saved to the family memory 📒');
+        toast(bEditId ? 'Entry updated 📒' : 'Saved to Health & contacts 📒');
         clearBookForm(); refreshBook();
       })
       .catch(function(){ toast('No connection - try again'); });
@@ -9400,7 +9400,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         '</div>' +
         '<p class="hint" style="margin-top:var(--space-12)">Ekta retrieves and organises what your family has stored and allowed her to see. She says where an answer came from and when it was last checked. She does not diagnose and does not make medical decisions.</p>' },
 
-    { k: 'todo', title: 'Things to do, and an emergency card',
+    { k: 'todo', title: 'To do, and an emergency card',
       body:
         '<div class="feed" style="margin-top:var(--space-12)">' +
         dtodo('Book Dad’s eye check-up', 'Rohan has it · by Friday') +
@@ -9413,7 +9413,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     { k: 'plan', title: 'What it costs',
       body:
         '<p class="hint" style="margin:var(--space-2) 0 var(--space-12)">One plan, for the whole family. Not per person.</p>' +
-        '<div class="ev"><b>Parwah Family Plan</b><small>The family memory · Health &amp; emergency information · Trusted contacts · Family readiness · Ekta</small></div>' +
+        '<div class="ev"><b>Parwah Family Plan</b><small>The vault · Health &amp; contacts · To do · Family · The emergency card · Ekta</small></div>' +
         '<p style="margin:var(--space-12) 0 var(--space-2);font-size:var(--fs-24);font-family:var(--disp);font-weight:600">₹2,499 <span style="font-size:var(--fs-16);font-weight:400;color:var(--ink-soft)">per family, per year</span></p>' +
         '<p class="hint" style="margin:var(--space-2) 0 0">About $29.99 at ₹85 to the dollar. Nothing is charged here - Parwah is not taking payments yet.</p>' +
         '<p class="hint" style="margin-top:var(--space-16)">Ready to start? Signing in takes your mobile number and a 4-number PIN you choose, so nobody who knows the number can open your family. Nothing is posted anywhere.</p>' }

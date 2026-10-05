@@ -1773,8 +1773,12 @@ check("invites: the code is kept until the person is in that family, and a reloa
       and "try { sessionStorage.removeItem('parwah-join'); } catch (e) {}\n        if (j.pending)" not in _appt)
 check("tree: the he or she for the other person is asked before Add is disabled, and cleared when that person changes",
       -1 < _appt.find("if (!$('tr-ofg-wrap').hidden && !ofg) { say(") < _appt.find("btn.disabled = true;\n    var body = { action: isNew ? 'add_person'") and "if (of !== trOfShown) {" in _appt)
-check("names: one name per place on tiles, tabs and menu, and family not circle in the copy",
-      '<b>To do</b>' in _appt and 'Health &amp; contacts' in _appt and "Create the circle" not in _appt and "Your circle's helper" not in _appt)
+check("names: one name per place on tiles, tabs, menu and screens, and family not circle in the copy",
+      '<b>To do</b>' in _appt and '<b>Health &amp; contacts</b>' in _appt
+      and "✅ To do</button>" in _appt and "← Family</button>" in _appt
+      and "✅ Things to do" not in _appt and "<b>Family memory</b>" not in _appt
+      and "← People" not in _appt and "Create the circle" not in _appt
+      and "Your circle's helper" not in _appt)
 # "Circle" is the data model's word (table circles, kind family or group).
 # A person reads "family", or "group" when the space is one. Tags go
 # whole, so ids, classes and the SVG <circle> are not copy.
@@ -1954,7 +1958,7 @@ _nav = re.findall(r'<button data-tab="(\w+)"(?! data-sec)([^>]*)>', _navseg)
 _want_nav = ["home", "chat", "ekta", "fun", "vault", "memory", "care", "people", "notifs", "day", "profile"]
 check("order: the sidebar runs by real-life use",
       [t for t, _ in _nav] == _want_nav, " > ".join(t for t, _ in _nav))
-check("order: the phone tab bar is Today, Vault, Care, People (families chat on WhatsApp; the vault is what it cannot do)",
+check("order: the phone tab bar is Today, Vault, To do, Family (families chat on WhatsApp; the vault is what it cannot do)",
       [t for t, a in _nav if "deskonly" not in a] == ["home", "vault", "care", "people"],
       " > ".join(t for t, a in _nav if "deskonly" not in a))
 _drw = _appt[_appt.index('<div class="dhead">'):_appt.index('id="d-groups-wrap"')]
