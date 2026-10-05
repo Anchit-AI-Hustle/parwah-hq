@@ -116,9 +116,10 @@ for (const mode of ['light','dark']) {
     ok(ratio >= need, `${mode}: ${label} passes WCAG AA (${ratio.toFixed(2)} vs ${need} needed)`);
   };
   await pg.evaluate(() => location.hash = '#home'); await pg.waitForTimeout(400);
-  await measure('#chat-fab', 'the floating New chat button');
-  await measure('#ekta-fab', 'the floating Ekta button');
-  await pg.click('#chat-fab'); await pg.waitForTimeout(250);
+  await measure('#tabs button[data-tab="chat"]', 'the sidebar Chat item');
+  await measure('#tabs button[data-tab="ekta"]', 'the sidebar Ask Ekta item');
+  await measure('#sos-fab', 'the sidebar SOS button');
+  await pg.evaluate(() => document.getElementById('chat-fab').click()); await pg.waitForTimeout(250);
   await measure('#nc-title', 'the New chat sheet title');
   await measure('#nc-family b', 'a New chat choice');
   await measure('#nc-family small', 'a New chat choice\'s detail');

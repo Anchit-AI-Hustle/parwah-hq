@@ -226,7 +226,9 @@ label + select{width:100%}
 .hint{font-size:var(--fs-12);color:var(--ink-soft);margin-top:var(--space-8)}
 /* ---- SOS: the red button, the countdown, the live screen, the alarm ---- */
 .sosfab{position:fixed;left:16px;bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom));z-index:var(--z-fab);width:64px;height:64px;border-radius:50%;border:3px solid var(--on-sos);background:var(--sos);color:var(--on-sos);font-family:var(--body);font-weight:800;font-size:var(--fs-18);letter-spacing:.04em;cursor:pointer;box-shadow:0 0 0 4px rgba(200,16,46,.28),0 10px 26px rgba(0,0,0,.35)}
-@media(min-width:900px){body.inapp .sosfab{left:calc(var(--side-w) + 28px);bottom:28px}}
+/* Inside the tab bar, the tab-button rules would wash the red out. The id
+   wins over .tabs button, and [hidden] still hides it when signed out. */
+#sos-fab{position:fixed;left:16px;bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom));z-index:var(--z-fab);flex:none;width:64px;height:64px;min-height:64px;max-width:64px;padding:0;display:flex;align-items:center;justify-content:center;flex-direction:row;background:var(--sos);color:var(--on-sos);border:3px solid var(--on-sos);border-radius:50%;font-family:var(--body);font-weight:800;font-size:var(--fs-18);letter-spacing:.04em}
 .sosscreen,.sosalert{position:fixed;inset:0;z-index:var(--z-alarm);background:var(--sos);color:var(--on-sos);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;overscroll-behavior:contain;padding:var(--space-24) var(--space-16) var(--space-40)}
 .sosalert{background:var(--sos-deep)}
 .ss-in{width:100%;max-width:480px;display:flex;flex-direction:column;gap:var(--space-12);margin:auto 0}
@@ -806,10 +808,11 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
 
 /* member profile sheet */
 .fab.chatfab{bottom:calc(var(--tabs-h) + 84px + env(safe-area-inset-bottom));background:var(--surface);color:var(--ink);border:1px solid var(--bone-2)}
-/* Under 1100px the two floating buttons are round icons: with their words
-   they covered the controls under them (Start duel on a phone, Do it now
-   on a small laptop). The names stay for screen readers and as tooltips. */
-@media (max-width:1099px){
+/* Under 900px the two floating buttons are round icons: with their words
+   they covered the controls under them (Start duel on a phone). From 900px
+   they are not on the page at all (they live in the sidebar). The names
+   stay for screen readers and as tooltips. */
+@media (max-width:899px){
   .fab{width:56px;height:56px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:var(--fs-24)}
   .fab .flbl{display:none}
   .fab.chatfab{bottom:calc(var(--tabs-h) + 86px + env(safe-area-inset-bottom))}
@@ -869,6 +872,9 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
 /* desktop: LHS sidebar menu */
 .side-only{display:none}
 .tabs .side-only{display:none}
+/* On a phone this wrapper disappears, so SOS can float and the account
+   line (side-only) stays out of the tab bar. */
+.side-foot{display:contents}
 .deskonly{display:none!important}
 @media(min-width:900px){
   .deskonly{display:flex!important}
@@ -896,7 +902,14 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
   .tabs button.sel{background:var(--pine-2);color:var(--marigold)}
   .tabs button.sel::after{display:none}
   .tabs .dot{position:static;margin-left:auto}
-  .side-user{margin-top:auto;color:var(--dim);font-size:var(--fs-14);padding:var(--space-16) var(--space-12) var(--space-8);border-top:1px solid var(--pine-2)}
+  .side-user{margin-top:0;color:var(--dim);font-size:var(--fs-14);padding:var(--space-16) var(--space-12) var(--space-8);border-top:1px solid var(--pine-2)}
+  /* Chat and Ask Ekta are sidebar items from here up. Floating copies sat
+     on the page. SOS is not a place, so it stays, in the rail above the
+     account line, and the page can use its full width again. */
+  .side-foot{display:flex;flex-direction:column;gap:var(--space-8);margin-top:auto;position:sticky;bottom:-20px;z-index:var(--z-above);background:var(--dusk);flex:none;padding-top:var(--space-8)}
+  .side-foot .side-user{position:static}
+  body.inapp #sos-fab{position:static;left:auto;bottom:auto;width:100%;max-width:none;height:64px;margin:0;border-radius:var(--radius-16);box-shadow:none;flex:none}
+  body.inapp #chat-fab,body.inapp #ekta-fab{display:none!important}
   .subnav{flex-direction:column;gap:0;margin:calc(var(--space-4) * -1) 0 var(--space-2)}
   .subnav button{padding:var(--space-8) var(--space-12) var(--space-8) var(--space-48);font-size:var(--fs-14);font-weight:600;color:var(--dim);border-radius:var(--radius-8);position:relative}
   .subnav button::before{content:"›";position:absolute;left:30px;opacity:.6}
@@ -904,14 +917,11 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
   body.inapp{padding-left:var(--side-w)}
   body.inapp .bar{display:none}
   body.inapp #livecall{margin-left:var(--side-w)}
-  body.inapp .wrap{max-width:1560px;padding:var(--space-32) var(--space-40) 170px;padding-left:calc(64px + var(--space-48))}
-  /* SOS is 64px and starts just inside the sidebar. The old 40px inset let
-     it sit on the first words of whatever row was at the bottom. */
-  /* To do is one column. The list and the form share its width, and the
-     column stops short of New chat and Ekta (a 139px pill, 28px from the
-     window) so "Do it now" is never underneath them. 880px keeps a title
-     and its buttons on one row instead of a bar stretched across the window. */
-  #pane-care{max-width:880px;margin-right:calc(160px + var(--space-8))}
+  body.inapp .wrap{max-width:1560px;padding:var(--space-32) var(--space-40) var(--space-48)}
+  /* To do is one column. The list and the form share its width. 880px keeps
+     a title and its buttons on one row instead of a bar stretched across
+     the window. */
+  #pane-care{max-width:880px}
   body.inapp .inputbar{left:var(--side-w);bottom:0;border-top:1px solid var(--bone-2)}
   body.inapp .inputbar .inner{max-width:1484px}
   body.inapp .toast{left:calc(50% + var(--side-w)/2);bottom:26px}
@@ -960,13 +970,6 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
     .widget,.chatrow,.ev[role="button"],.frstep{transition:none}
     .widget:hover,.chatrow:hover,.ev[role="button"]:hover{transform:none}
   }
-}
-
-/* Below 1100px the floating buttons are round icons, so To do only has to
-   clear 56px, not the "New chat" pill. Otherwise the list becomes a strip
-   and "I'm on it" drops onto its own line. */
-@media(min-width:900px) and (max-width:1099px){
-  #pane-care{margin-right:calc(56px + var(--space-24))}
 }
 
 .obpoints{display:flex;flex-direction:column;gap:var(--space-12);margin:var(--space-24) 0 0}
@@ -2618,7 +2621,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="sidehead side-only" id="side-groups-head" hidden>👨‍👩‍👧‍👦 My Groups</div>
     <div class="subnav side-only" id="side-groups"></div>
     <button class="side-new side-only" id="side-newcircle">＋ New family or group</button>
-    <div class="side-user side-only" id="side-user"></div>
+    <div class="side-foot">
+      <button type="button" class="sosfab" id="sos-fab" hidden aria-label="SOS - get help now" title="SOS - get help now">SOS</button>
+      <div class="side-user side-only" id="side-user"></div>
+    </div>
   </div>
 </nav>
 
@@ -2705,8 +2711,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="dfoot" id="d-user"></div>
   </div>
 </div>
-
-<button type="button" class="sosfab" id="sos-fab" hidden aria-label="SOS - get help now" title="SOS - get help now">SOS</button>
 
 <div class="sosscreen" id="sosscreen" hidden role="alertdialog" aria-modal="true" aria-labelledby="ss-title" aria-describedby="ss-sub">
   <div class="ss-in" id="ss-count">

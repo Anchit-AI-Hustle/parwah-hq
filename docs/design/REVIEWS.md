@@ -276,3 +276,11 @@ New patterns: the SOS button (`.sosfab`), the SOS and alarm screens (`.sosscreen
 | 103 | 1 Visibility | Location sharing was a dot on a map: no "at home", no way to ask, no battery | 2 | Fixed: saved places with arrive and leave alerts, who is at each place, Ask to share, battery beside each person |
 
 New patterns: the Add row (`.quickadd`), the note card (`.note`, `.noteitem`), the reminder alarm (the `#alarmsheet` sheet).
+
+### Review 10, three floating buttons (owner, 2026-10-05)
+
+On a laptop the sidebar already holds Chat and Ask Ekta. A second pair of floating buttons, plus SOS, sat on the page. The phone tab bar stays Today, Vault, To do, Family, so the three floats stay there.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 104 | 8 Minimalist | SOS, New chat and Ekta floated over a page that already has a sidebar. They sat on the to-do list | 3 | Fixed: Chat and Ask Ekta stay in the sidebar. SOS sits at the bottom of the sidebar, above the account line, full width and 64px tall. On a phone the three still float. Supersedes the wide-screen half of #90 |
