@@ -3462,7 +3462,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     apiGet(API.chats + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){
         if (!j.ok) { if (!chatsCache || !chatsCache.length) loadFail('clist', 'your chats'); return; }
-        chatsCache = j.chats;
+        chatsCache = j.chats || [];
         renderChatList();
         var fam = null;
         j.chats.forEach(function(c){ if (c.kind === 'circle') fam = c; });
@@ -3480,7 +3480,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       h += '<button class="chatrow" data-open="' + c.id + '"><span class="cic" aria-hidden="true">' + icon +
            '</span><span class="txt"><b>' + esc(chatTitle(c)) + '</b><small>' + esc(prev) + '</small></span></button>';
     });
-    $('clist').innerHTML = h || '<div class="ev">Loading…</div>';
+    $('clist').innerHTML = h || '<div class="ev">No chats yet. Start one below.</div>';
   }
   function openChat(id){
     var c = null;
@@ -6243,7 +6243,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var r = CC_RULES[cc];
     if (!r) return d.length >= 6 && d.length <= 12 ? null : 'That number does not look right';
     if (d.length < r.min || d.length > r.max) {
-      return 'A ' + r.name + ' number has ' + (r.min === r.max ? r.min : r.min + '-' + r.max) + ' digits after ' + cc;
+      return r.name + ' numbers have ' + (r.min === r.max ? r.min : r.min + ' to ' + r.max) + ' digits after ' + cc;
     }
     if (r.re && !r.re.test(d)) return 'That does not look like a valid ' + r.name + ' mobile number';
     return null;
