@@ -184,6 +184,30 @@ for (const [label, viewport] of [['phone', { width:390, height:844 }], ['wide sc
     await page.evaluate(h => { location.hash = '#' + h; }, t); await page.waitForTimeout(250);
     ok(await vis(page, '#chat-fab') && await vis(page, '#ekta-fab'), `${label}: Chat and Ekta are both on ${t}`);
   }
+  if (label === 'wide screen') {
+    // The list used to run under SOS on the left and under New chat / Ekta
+    // on the right, so "Do it now" was only half a button.
+    await page.evaluate(() => { location.hash = '#care'; });
+    await page.waitForTimeout(250);
+    const lane = await page.evaluate(() => {
+      const pane = document.getElementById('pane-care').getBoundingClientRect();
+      const hit = (sel) => {
+        const b = document.querySelector(sel);
+        if (!b || b.hidden) return false;
+        const r = b.getBoundingClientRect();
+        if (r.width < 1) return false;
+        return !(pane.right <= r.left + 1 || pane.left >= r.right - 1);
+      };
+      const list = document.getElementById('rlist').getBoundingClientRect().width;
+      const card = document.querySelector('#pane-care .card').getBoundingClientRect().width;
+      return {
+        sos: hit('#sos-fab'), chat: hit('#chat-fab'), ekta: hit('#ekta-fab'),
+        same: Math.abs(list - card) < 2
+      };
+    });
+    ok(!lane.sos && !lane.chat && !lane.ekta, `${label}: To do stays clear of SOS, New chat and Ekta`);
+    ok(lane.same, `${label}: the to-do list and the add form are the same width`);
+  }
   await page.close();
 }
 
