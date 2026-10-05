@@ -22,7 +22,7 @@
 export const EARN = {
   welcome:    { n: 120, label: 'Welcome to Parwah' },
   reminder:   { n: 3,   label: 'Finished a reminder' },
-  memory_add: { n: 5,   label: 'Added to the family memory' },
+  memory_add: { n: 5,   label: 'Added to Health & contacts' },
   memory_ok:  { n: 2,   label: 'Checked something is still current' },
   vault_add:  { n: 10,  label: 'Put a document in the vault' },
   welcomed:   { n: 5,   label: 'Welcomed someone into the family' },

@@ -3,6 +3,24 @@
 Newest first. Each review uses `CHECKLIST.md`; severities are Nielsen's:
 0 not a problem, 1 cosmetic, 2 minor, 3 major, 4 blocker.
 
+## Review 10 - 2026-10-05 - one name per place, as the utility ranks them
+
+**Reviewer:** Claude, acting as senior product designer.
+**Scope:** tiles, tab bar, menu, screen titles, back buttons, first-run,
+Ekta, pushes and the welcome pitch. The family review already ranked the
+five things (Vault, Health, To do, Family, emergency card). Review 74
+renamed the tiles and tabs; the screens and the words that point at them
+had kept the old names.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 104 | 4 Consistency | Health opened as "Family memory"; To do as "Things to do"; Family as "People" or "Care" | 3 | Fixed: Health & contacts, To do, Family, Vault on the screen, the back button, the first-run and the welcome pitch |
+| 105 | 2 Real-world match | Ekta and the phone push still said "Open Care, then Things to do" and "open Family memory" | 2 | Fixed: they name the place the family will tap |
+| 106 | 6 Recognition | The gift hint used a raw cream (`#FDF4E3`) instead of `--tint-warm` | 1 | Fixed |
+
+**Approved.** The `names:` gate now fails if a screen title or back button
+drifts from the tiles.
+
 ## Review 4 - 2026-10-03 - navigation by real-life use, and the phone apps
 
 **Reviewer:** Claude, acting as senior product designer.

@@ -101,7 +101,7 @@ LANGUAGE: reply in the language the user writes in - English, Hindi (Devanagari)
 WHAT YOU CAN DO: answer questions about the ${spaceWord(circle)} (use get_circle first), answer family-specific facts - meds, doctors, sizes, addresses, trusted contacts, insurance - ONLY from get_family_memory, set reminders (create_reminder - a reminder for someone ELSE is a request they must accept; always say so), and raise help requests to the whole ${spaceWord(circle)} (create_request). Confirm what you did in plain words.
 
 FAMILY FACTS DISCIPLINE:
-- A family fact lives in get_family_memory or it does not exist: if it is not there, say it is not recorded yet and offer to note it down via the Family memory tab.
+- A family fact lives in get_family_memory or it does not exist: if it is not there, say it is not recorded yet and offer to note it down via Health & contacts.
 - When sharing meds, health facts or insurance, mention when it was last checked; if marked stale, say it may be out of date and suggest the family verify it.
 - If records conflict, show both and say which is newer. Never merge or guess.
 
@@ -282,7 +282,7 @@ function isOverload(e) {
 // If every Anthropic tier fails (credits, auth, outage), Ekta keeps talking
 // through any other configured provider key. Backups run text-only: same
 // persona and hard rules, no tools - so they can never double an action.
-const BACKUP_NOTE = '\n\nNOTE: your family tools are temporarily unavailable - answer from the conversation only, and if the user wants a reminder or request set, warmly point them to the Care tab where they can set it themselves.';
+const BACKUP_NOTE = '\n\nNOTE: your family tools are temporarily unavailable - answer from the conversation only, and if the user wants a reminder or request set, warmly point them to To do where they can set it themselves.';
 
 // One adapter covers every OpenAI-compatible provider (OpenAI, Grok/xAI,
 // Kimi/Moonshot, Ollama, ...). `tokParam` differs: OpenAI now wants
@@ -578,7 +578,7 @@ export default async function handler(req, res) {
   }
   if (!paid.ok) {
     return res.status(402).json({ ok: false, needCoins: true, balance: paid.balance, cost: paid.cost,
-      error: ASSISTANT_NAME + ' is out of coins for a conversation (each question uses ' + paid.cost + '). The family earns more by adding to the family memory (+' +
+      error: ASSISTANT_NAME + ' is out of coins for a conversation (each question uses ' + paid.cost + '). The family earns more by adding to Health & contacts (+' +
              EARN.memory_add.n + '), checking something is still current (+' + EARN.memory_ok.n + ') or putting a paper in the vault (+' +
              EARN.vault_add.n + '). Reading back your records, the scam check and anything urgent stay free.' });
   }

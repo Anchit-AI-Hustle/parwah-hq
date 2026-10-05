@@ -193,7 +193,7 @@ await P.click('#members [data-mprof="' + U.Papa.memberId + '"]'); await P.waitFo
 await P.click('#mp-page'); await P.waitForTimeout(500);
 ok('Papa\'s page opens on the emergency card and what to complete', await P.isVisible('#pp-ecard') && await P.isVisible('#pp-todo-card') && /Doctor/.test(await P.textContent('#pp-todo')) && /Insurance/.test(await P.textContent('#pp-todo')), await P.textContent('#pp-todo'));
 ok('the hero subtitle is readable in light mode', await P.$eval('#pp-sub', el => getComputedStyle(el).color) !== 'rgb(94, 75, 94)');
-ok('Back says where it goes', /People/.test(await P.textContent('#pp-back')));
+ok('Back says where it goes', /Family/.test(await P.textContent('#pp-back')));
 if (process.env.VAULT_SHOT_DIR) { await P.screenshot({ path: process.env.VAULT_SHOT_DIR + '/person-papa-390-light.png' }); await P.emulateMedia({ colorScheme: 'dark' }); await P.screenshot({ path: process.env.VAULT_SHOT_DIR + '/person-papa-390-dark.png' }); await P.emulateMedia({ colorScheme: 'light' }); }
 await P.click('#pp-todo [data-pptodo="doctor"]');
 await P.waitForFunction((pid) => document.getElementById('b-cat').value === 'doctor' && document.getElementById('b-about').value === pid, U.Papa.memberId, { timeout: 5000 }).catch(() => {});

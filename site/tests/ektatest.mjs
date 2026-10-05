@@ -71,7 +71,7 @@ const mem = renderMemory({ entries: [
 ok('memory lists what is recorded', /Metformin/.test(mem) && /Dr Rao/.test(mem));
 ok('memory groups by what kind of thing it is', /Medicines/.test(mem) && /Contacts/.test(mem));
 ok('memory marks a stale entry', /worth confirming/.test(mem));
-ok('an empty memory points at where to add one', /Memory tab/.test(renderMemory({ entries: [] }, 'Papa')));
+ok('an empty memory points at where to add one', /Health & contacts/.test(renderMemory({ entries: [] }, 'Papa')));
 
 // ---- the circle, without a model
 const cir = renderCircle({ circleName: 'Test Family', members: [{ name: 'Rohan' }, { name: 'Papa' }],
@@ -220,7 +220,7 @@ if (typeof _lib.renderScam === 'function' && typeof _lib.renderCannotDo === 'fun
     const r = renderCannotDo(kind, 'billing');
     ok(kind + ': never claims to have done it', !/\b(i('| ha)ve (set|added|sent|posted|created)|done\b|all set)/i.test(r));
     ok(kind + ': says plainly that it will not pretend', /will not pretend/.test(r));
-    ok(kind + ': points at the real form, by its real name', r.includes('Things to do') && r.includes('Add something to do'));
+    ok(kind + ': points at the real form, by its real name', r.includes('Open To do') && r.includes('Add something to do'));
     ok(kind + ': no em dash', !r.includes('\u2014'));
   }
   ok('help: explains that "Anyone" reaches the whole circle', /Anyone/.test(renderCannotDo('help', 'billing')) && /I'm on it/.test(renderCannotDo('help', 'billing')));

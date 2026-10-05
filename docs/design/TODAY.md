@@ -54,10 +54,13 @@ family coins.
 
 ## Navigation follows the same order
 
-- **Phone tab bar:** Today, Vault, To do, Family.
-- **Sidebar and menu:** Today, Vault, Health & contacts, To do, Family,
-  then under More: Chat, Notifications, Ekta, Together, The day, Profile.
-  One name per place, the same on the tiles, the tab bar and the menu.
+- **Phone tab bar:** Today, Vault, To do, Family. Chat stays off the bar:
+  families already talk on WhatsApp; the vault is what WhatsApp cannot do.
+- **Sidebar and menu:** Today, then the daily tools (Chat, Ask Ekta,
+  Together), then the four records in utility order (Vault, Health &
+  contacts, To do, Family), then under More: Notifications, The day,
+  Profile. One name per place, the same on the tiles, the tab bar, the
+  menu and the screen that opens.
 - **Chat** is still one tap away, from the floating chat button and the
   menu.
 

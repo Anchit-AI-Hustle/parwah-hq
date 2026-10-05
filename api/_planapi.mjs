@@ -23,15 +23,15 @@ export const PLANS = {
   free: {
     id: 'free', name: 'Parwah', inr: 0,
     tagline: 'Everything a family needs to look after each other.',
-    includes: ['The family memory and preparedness', 'The emergency card, offline',
-               'The vault - documents with a permission on each', 'Check-ins, reminders and help requests',
+    includes: ['The vault - documents with a permission on each', 'Health & contacts and preparedness',
+               'The emergency card, offline', 'To do - reminders and who has what',
                'Chat, plans, calls and games', 'Ekta, on the coins the family earns']
   },
   care: {
     id: 'care', name: 'Parwah Family Plan', inr: 2499,
     tagline: 'One plan for the whole family, wherever each of you lives.',
-    includes: ['Family Memory', 'Health & Emergency Information', 'Trusted Contacts',
-               'Family Readiness', 'Ekta']
+    includes: ['The vault', 'Health & contacts', 'To do', 'Family',
+               'The emergency card', 'Ekta']
   }
 };
 

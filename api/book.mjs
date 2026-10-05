@@ -265,7 +265,7 @@ export default async function handler(req, res) {
                 values (${found.e.id}, ${circle.id}, ${me.id}, ${'shared it with ' + t[0].name})`;
       await pushCircle(sql, circle.id, {
         title: '📒 ' + me.name + ' shared something with you',
-        body: found.e.name + ' - open Family memory to see it'
+        body: found.e.name + ' - open Health & contacts to see it'
       }, { only: t[0].id });
       return res.status(200).json({ ok: true });
     }
@@ -330,10 +330,10 @@ export default async function handler(req, res) {
                             returning id`;
         const label = kind === 'contact' ? '☎️' : kind === 'address' ? '📍' : kind === 'med' ? '💊' : kind === 'fact' ? '🩸' : '🛡';
         await sql`insert into events (circle_id, member_id, type, text)
-                  values (${circle.id}, ${me.id}, 'care', ${me.name + ' added ' + feedName(vis, name) + ' to the family memory ' + label})`;
+                  values (${circle.id}, ${me.id}, 'care', ${me.name + ' added ' + feedName(vis, name) + ' to Health & contacts ' + label})`;
         // information recorded ABOUT someone is that person's business first
         if (about && about !== me.id) {
-          await pushCircle(sql, circle.id, { title: '📒 ' + me.name + ' noted something about you', body: label + ' ' + name + ' - open Family memory to check it is right' }, { only: about });
+          await pushCircle(sql, circle.id, { title: '📒 ' + me.name + ' noted something about you', body: label + ' ' + name + ' - open Health & contacts to check it is right' }, { only: about });
         }
         await award(sql, circle.id, me.id, 'memory_add', r[0].id);
         // Recording it IS doing the "Record Papa's blood group" task: it is
@@ -385,10 +385,10 @@ export default async function handler(req, res) {
       const ex = [rdR.e];
       await sql`delete from family_book where id = ${ex[0].id}`;
       await sql`insert into events (circle_id, member_id, type, text)
-                values (${circle.id}, ${me.id}, 'care', ${me.name + ' removed ' + feedName(ex[0].visibility, ex[0].name) + ' from the family memory'})`;
+                values (${circle.id}, ${me.id}, 'care', ${me.name + ' removed ' + feedName(ex[0].visibility, ex[0].name) + ' from Health & contacts'})`;
       // Papa's medicines are Papa's business first: he hears when one goes.
       if (ex[0].about_member && ex[0].about_member !== me.id) {
-        await pushCircle(sql, circle.id, { title: '📒 ' + me.name + ' removed something about you', body: ex[0].name + ' is no longer in Family memory' }, { only: ex[0].about_member });
+        await pushCircle(sql, circle.id, { title: '📒 ' + me.name + ' removed something about you', body: ex[0].name + ' is no longer in Health & contacts' }, { only: ex[0].about_member });
       }
       return res.status(200).json({ ok: true });
     }

@@ -224,7 +224,7 @@ const KIND_LABEL = { med: 'Medicines', fact: 'Health facts', contact: 'Contacts'
 export function renderMemory(payload, who) {
   const entries = (payload && payload.entries) || [];
   if (!entries.length) {
-    return 'Nothing is recorded' + (who ? ' for ' + who : ' in Family Memory') + ' yet. Open the Memory tab to add the first entry, and it will be here next time.';
+    return 'Nothing is recorded' + (who ? ' for ' + who : ' in Health & contacts') + ' yet. Open Health & contacts to add the first entry, and it will be here next time.';
   }
   const byKind = {};
   for (const e of entries) (byKind[e.kind] = byKind[e.kind] || []).push(e);
@@ -297,12 +297,12 @@ export function renderCannotDo(kind, reason) {
   const where = kind === 'help'
     ? ['I cannot post that to the family while ' + offlineWhy(reason) + ', and I will not pretend I did.', '',
        'You can ask them yourself in a few seconds:',
-       bullets(['Open Care, then Things to do.',
+       bullets(['Open To do.',
                 'Under "Add something to do", write what you need.',
                 'Leave "For" as Anyone. It goes to the whole family, and the first person to tap "I\'m on it" takes it.'])]
     : ['I cannot set reminders while ' + offlineWhy(reason) + ', and I will not pretend I did.', '',
        'You can add it yourself in a few seconds:',
-       bullets(['Open Care, then Things to do.',
+       bullets(['Open To do.',
                 'Under "Add something to do", write it, for example "Check in".',
                 'Set the time, choose Daily if it repeats, and tap Add it.'])];
   return where.join(NL);
