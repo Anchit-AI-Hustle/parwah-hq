@@ -98,10 +98,10 @@ const box = (page, sel) => page.locator(sel).boundingBox();
 const overlap = (a, b) => a && b && !(a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y);
 async function sheetOpen(page){ await page.click('#chat-fab'); await page.waitForTimeout(150); }
 
-for (const [label, viewport] of [['phone', { width:390, height:844 }], ['wide screen', { width:1280, height:860 }]]) {
+for (const [label, viewport] of [['phone', { width:390, height:844 }]]) {
   const page = await open(viewport);
   // Chat and Ekta float on every screen except their own (owner,
-  // 2026-10-04), phone and wide screen alike.
+  // 2026-10-04). On a laptop they live in the sidebar instead.
   ok(await vis(page, '#chat-fab'), `${label}: the New chat button is there on Today once signed in`);
   ok(await vis(page, '#ekta-fab'), `${label}: next to the Ekta button`);
   const a = await box(page, '#chat-fab'), b = await box(page, '#ekta-fab');
@@ -184,30 +184,43 @@ for (const [label, viewport] of [['phone', { width:390, height:844 }], ['wide sc
     await page.evaluate(h => { location.hash = '#' + h; }, t); await page.waitForTimeout(250);
     ok(await vis(page, '#chat-fab') && await vis(page, '#ekta-fab'), `${label}: Chat and Ekta are both on ${t}`);
   }
-  if (label === 'wide screen') {
-    // The list used to run under SOS on the left and under New chat / Ekta
-    // on the right, so "Do it now" was only half a button.
-    await page.evaluate(() => { location.hash = '#care'; });
-    await page.waitForTimeout(250);
-    const lane = await page.evaluate(() => {
-      const pane = document.getElementById('pane-care').getBoundingClientRect();
-      const hit = (sel) => {
-        const b = document.querySelector(sel);
-        if (!b || b.hidden) return false;
-        const r = b.getBoundingClientRect();
-        if (r.width < 1) return false;
-        return !(pane.right <= r.left + 1 || pane.left >= r.right - 1);
-      };
-      const list = document.getElementById('rlist').getBoundingClientRect().width;
-      const card = document.querySelector('#pane-care .card').getBoundingClientRect().width;
-      return {
-        sos: hit('#sos-fab'), chat: hit('#chat-fab'), ekta: hit('#ekta-fab'),
-        same: Math.abs(list - card) < 2
-      };
-    });
-    ok(!lane.sos && !lane.chat && !lane.ekta, `${label}: To do stays clear of SOS, New chat and Ekta`);
-    ok(lane.same, `${label}: the to-do list and the add form are the same width`);
-  }
+  await page.close();
+}
+
+// A laptop already has Chat and Ask Ekta in the sidebar. Floating copies
+// sat on the page. SOS is not a place, so it stays in the rail.
+{
+  const page = await open({ width:1280, height:860 });
+  const label = 'wide screen';
+  ok(!(await vis(page, '#chat-fab')) && !(await vis(page, '#ekta-fab')),
+     `${label}: Chat and Ekta do not float over the page`);
+  ok(await vis(page, '#tabs button[data-tab="chat"]') && await vis(page, '#tabs button[data-tab="ekta"]'),
+     `${label}: they are in the sidebar`);
+  const sos = await box(page, '#sos-fab'), tabs = await box(page, '#tabs');
+  ok(sos && sos.width >= 56 && sos.height >= 56,
+     `${label}: SOS is a full control (${sos && Math.round(sos.width)} by ${sos && Math.round(sos.height)})`);
+  ok(sos && tabs && sos.x >= tabs.x - 1 && sos.x + sos.width <= tabs.x + tabs.width + 1 && sos.y >= tabs.y - 1,
+     `${label}: SOS sits in the sidebar, not over the page`);
+  await page.evaluate(() => { location.hash = '#care'; });
+  await page.waitForTimeout(250);
+  const lane = await page.evaluate(() => {
+    const pane = document.getElementById('pane-care').getBoundingClientRect();
+    const r = document.getElementById('sos-fab').getBoundingClientRect();
+    const list = document.getElementById('rlist').getBoundingClientRect().width;
+    const card = document.querySelector('#pane-care .card').getBoundingClientRect().width;
+    const overlap = !(pane.right <= r.left + 1 || pane.left >= r.right - 1 || pane.bottom <= r.top + 1 || pane.top >= r.bottom - 1);
+    return { overlap, same: Math.abs(list - card) < 2, overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 };
+  });
+  ok(!lane.overlap, `${label}: To do does not run under SOS`);
+  ok(lane.same, `${label}: the to-do list and the add form are the same width`);
+  ok(!lane.overflow, `${label}: the page does not scroll sideways`);
+  await page.click('#tabs button[data-tab="chat"]');
+  await page.waitForTimeout(300);
+  ok(await vis(page, '#pane-chat') && !(await vis(page, '#ncsheet')),
+     `${label}: Chat in the sidebar opens the chat list, not the phone sheet`);
+  await page.click('#tabs button[data-tab="ekta"]');
+  await page.waitForTimeout(300);
+  ok(await vis(page, '#pane-ekta'), `${label}: Ask Ekta in the sidebar opens Ekta`);
   await page.close();
 }
 

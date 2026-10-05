@@ -2161,6 +2161,11 @@ _sw = _fn_body(_app_src, "function switchTab(")
 check("fabs: Chat floats everywhere except Chat, Ekta everywhere except Ekta",
       "$('chat-fab').hidden = !inApp || t === 'chat';" in _sw and "t === 'ekta'" in _sw
       and "wideScreen()" not in _app_src)
+check("fabs: on a laptop Chat and Ekta live in the sidebar, not as a second set of floats",
+      "body.inapp #chat-fab,body.inapp #ekta-fab{display:none!important}" in _app_src
+      and "wideScreen()" not in _app_src)
+check("sos: on a laptop the red button sits in the sidebar, not over the page",
+      "body.inapp #sos-fab{position:static" in _app_src and 'class="side-foot"' in _app_src)
 # To do: a task done somewhere in Parwah takes you there, and doing it there
 # finishes it.
 check("todo: a task that is done somewhere in Parwah has a button that goes there",
