@@ -112,10 +112,13 @@ const tmr = new Date(Date.now() + 86400000), d = tmr.getFullYear() + '-' + Strin
 await R.fill('#p-title', "Papa's eye check-up");
 await R.click('#p-kind [data-kind="appointment"]');
 await R.fill('#p-date', d); await R.fill('#p-time', '10:30');
+ok('place and how many wait under More options', !(await R.$eval('#p-more', d => d.open)) && !(await R.isVisible('#p-place')));
+await R.click('#p-more summary');
 await R.fill('#p-place', 'Centre for Sight, Pune');
 await R.click('#p-add'); await R.waitForTimeout(1200);
 const pl = (await admin.query(`select * from plans where title = $1`, ["Papa's eye check-up"])).rows[0];
 ok('the appointment is saved as one', pl && pl.kind === 'appointment' && pl.place === 'Centre for Sight, Pune');
+ok('and the form is cleared, More options folded again', (await R.inputValue('#p-place')) === '' && !(await R.$eval('#p-more', d => d.open)));
 ok('and shows with its icon', /🩺 Papa's eye check-up/.test(await R.textContent('#plist')), await R.textContent('#plist'));
 
 // ---- 3. Birthdays, from dates of birth

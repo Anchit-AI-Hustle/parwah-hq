@@ -158,6 +158,11 @@ await R.click('#ts-x').catch(() => {});
 await R.evaluate(() => { location.hash = '#care'; }); await R.click('#care-seg [data-sec="req"]').catch(() => {}); await R.waitForTimeout(600);
 const sug = await R.textContent('#sugglist');
 ok('a gap offers Fill it now, and Not needed', /Fill it now/.test(sug) && /Not needed/.test(sug), sug.slice(0, 200));
+{
+  const v = await R.$$eval('#sugglist .crow', rs => rs.filter(r => r.checkVisibility()).length);
+  const all = await R.$$eval('#sugglist .crow', rs => rs.length);
+  ok('three suggestions at a time, the rest one tap away', v === Math.min(3, all) && (all <= 3 || await R.isVisible('#sugg-more summary')), v + ' of ' + all);
+}
 await R.click('#sugglist [data-snot]'); await R.waitForTimeout(200);
 const n1 = await R.$$eval('#sugglist [data-snot]', x => x.length);
 await R.reload(); await R.waitForTimeout(1200); await R.evaluate(() => { location.hash = '#care'; }); await R.click('#care-seg [data-sec="req"]').catch(() => {}); await R.waitForTimeout(500);

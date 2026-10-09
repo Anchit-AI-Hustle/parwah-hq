@@ -1965,8 +1965,26 @@ _drw = _appt[_appt.index('<div class="dhead">'):_appt.index('id="d-groups-wrap"'
 _drw_top = re.findall(r'class="ditem(?: dparent)?" data-(?:tab|grp)="(\w+)"', _drw)
 check("order: the menu drawer runs by real-life use",
       _drw_top == _want_nav, " > ".join(_drw_top))
-check("order: on a parent's phone nothing floats over All is well, Pills or SOS",
-      "@media(max-width:899px){body.senior .fab{display:none!important}}" in _css)
+# Owner (2026-10-09): Chat and Ekta float for parents too. That they never
+# cover All is well, Medicines taken or SOS is proved in firstrun.e2e.
+check("order: on a parent's phone Chat and Ekta float too, and never over All is well, Pills or SOS",
+      "body.senior .fab{display:none" not in _css
+      and "Chat and Ekta float for a parent too, clear of the three big buttons" in (REPO / "site/tests/db/firstrun.e2e.dbtest.mjs").read_text(encoding="utf-8"))
+# Owner (2026-10-09): "too many options". Each busy form shows what it needs;
+# the rest is one tap away under a fold that names what is inside, opens when
+# something in it is set or refused (proved in vault.e2e, care.e2e, plans.e2e).
+_folds = re.findall(r'<details class="fmore" id="([a-z-]+)">\s*<summary>([^<]*)</summary>', _appt)
+check("options: the busy forms fold their extras under More options, each named",
+      sorted(f[0] for f in _folds) == ["b-more", "p-more", "r-more", "vd-more", "vp-more"]
+      and all(f[1].startswith("More options: ") for f in _folds)
+      and "for (var d = el.closest('details'); d;" in _appt
+      and all(("foldSync('" + f[0] + "')") in _appt for f in _folds))
+# Two functions of one name in the app's script: the later one silently
+# replaces the first everywhere. It happened (2026-10-09): the SOS helper took
+# over the reminder's "stop the chime", so a reminder chimed on after Snooze.
+_fnames = re.findall(r"^  function ([A-Za-z0-9_$]+)\(", _appt, re.M)
+check("script: no two app functions share a name (a later one replaces the first)",
+      len(_fnames) > 100 and len(_fnames) == len(set(_fnames)))
 check("phone app: the native Android/iPhone app hides the links to install it",
       "ParwahApp\\/" in _appt and ".native-app #getapp" in _css
       and ('"appendUserAgent": "ParwahApp/' in (REPO / "mobile" / "capacitor.config.json").read_text()

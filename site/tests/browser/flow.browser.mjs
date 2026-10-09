@@ -306,22 +306,23 @@ for (const theme of ['light', 'dark']) {
 }
 
 // ---------- A PARENT'S TODAY: nothing covers check-in or SOS ----------
-// A parent's check-in and SOS are the most important buttons in the app. On a
-// phone the floating chat and Ekta buttons sat over the SOS label, so a parent's
-// calm screen drops them (Chat is a tab, Ekta is in the menu and shortcuts).
+// A parent's check-in and SOS are the most important buttons in the app. Chat
+// and Ekta float for a parent too (owner, 2026-10-09), in the corner beside the
+// big buttons and never over All is well, Medicines taken or SOS.
 for (const vp of [{ width:320, height:640 }, { width:390, height:844 }]) {
   const pg = await fresh({ viewport:vp, signedIn:true, role:'parent' });
   const r = await pg.evaluate(() => {
     const box = el => { const b = el.getBoundingClientRect(); return { t:b.top, b:b.bottom, l:b.left, r:b.right, w:b.width }; };
     const sos = document.getElementById('btn-sos'), ok = document.getElementById('btn-checkin');
+    const bigs = ['btn-sos', 'btn-checkin', 'btn-pill', 'btn-ok'].map(id => document.getElementById(id)).filter(e => e && e.getBoundingClientRect().width > 0).map(box);
     const fabs = [...document.querySelectorAll('.fab')].filter(f => f.getBoundingClientRect().width > 0).map(box);
-    const s = box(sos);
-    return { shown: s.w > 0 && box(ok).w > 0,
-             covered: fabs.filter(f => f.l < s.r && f.r > s.l && f.t < s.b && f.b > s.t).length,
+    const hit = (f, s) => f.l < s.r && f.r > s.l && f.t < s.b && f.b > s.t;
+    return { shown: box(sos).w > 0 && box(ok).w > 0,
+             covered: fabs.filter(f => bigs.some(s => hit(f, s))).length,
              fabs: fabs.length };
   });
   ok(r.shown, vp.width + 'px parent: All is well and SOS are on Today');
-  ok(r.covered === 0 && r.fabs === 0, vp.width + 'px parent: nothing floats over SOS (' + r.fabs + ' floating buttons)');
+  ok(r.covered === 0 && r.fabs === 2, vp.width + 'px parent: Chat and Ekta float, and nothing floats over the big buttons (' + r.fabs + ' floating, ' + r.covered + ' over)');
   await pg.close();
 }
 {

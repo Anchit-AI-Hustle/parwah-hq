@@ -121,10 +121,11 @@ const tomorrow = localDay(Date.now() + 86400000);
 {
   await R.fill('#r-title', 'Book the gas refill');
   await R.selectOption('#r-for', meera.id);
+  ok('who it is for, the reminder and done-when wait under More options', !(await R.$eval('#r-more', d => d.open)) && !(await R.isVisible('#r-about')) && await R.isVisible('#r-for'));
+  await R.click('#r-more summary');
   await R.selectOption('#r-about', papa.id);
   await R.fill('#r-date', tomorrow);
   await R.fill('#r-time', '10:00');
-  await R.click('#r-more summary');
   await R.fill('#r-donewhen', 'Delivery date confirmed by the agency');
   ok('the hint says she will be asked', /asked to say yes/.test(await R.textContent('#r-hint')));
   await R.click('#r-add');
@@ -365,12 +366,23 @@ const tomorrow = localDay(Date.now() + 86400000);
   }, [title, new Date(Date.now() + mins * 60000).toISOString()]);
   const w0 = await mk('Wake up for the airport', 2);
   await admin.query(`update requests set due_at = now() - interval '30 seconds', reminded_for = null, created_at = now() - interval '1 hour' where id = $1`, [w0.id]);
+  // Count the tones this phone makes, to hear whether closing really stops them.
+  await M.context().addInitScript(() => {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    const make = AC.prototype.createOscillator; window.__tones = 0;
+    AC.prototype.createOscillator = function(){ window.__tones++; return make.apply(this, arguments); };
+  });
   await M.goto(BASE + '/#care'); await reload(M);
   ok('at its time, the alarm takes the screen', await M.isVisible('#alarmsheet') && /It is time: Wake up for the airport/.test(await M.textContent('#al-title')),
      await M.textContent('#al-title').catch(() => ''));
   ok('the task shows its reminder', /🔔 at the time/.test(await M.textContent('#rlist')));
   await M.click('#al-snooze'); await M.waitForTimeout(300);
   ok('Snooze closes it', !(await M.isVisible('#alarmsheet')));
+  {
+    const t0 = await M.evaluate(() => window.__tones); await M.waitForTimeout(7000);
+    const t1 = await M.evaluate(() => window.__tones);
+    ok('and the chime stops with it', t0 > 0 && t1 === t0, t0 + ' then ' + t1);
+  }
   await reload(M);
   ok('and it does not ring again straight away', !(await M.isVisible('#alarmsheet')));
   await M.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('parwah-rem:')) localStorage.setItem(k, String(Date.now() - 1000)); });
