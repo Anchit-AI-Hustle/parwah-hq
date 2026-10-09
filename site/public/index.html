@@ -283,10 +283,15 @@ details.advanced summary{display:flex;flex-direction:column;gap:var(--space-2);l
 details.advanced summary small{color:var(--ink-soft);font-size:var(--fs-12)}
 details.giftmore summary{font-weight:700;color:var(--ink)}
 .senior .feed .ev{font-size:var(--fs-16)}
-/* A parent's phone: nothing floats over All is well, Pills or SOS. Chat and
-   Ekta stay in the menu and on Today's shortcuts, so the two floating
-   buttons never cover those three. Desktop keeps them: there is room. */
-@media(max-width:899px){body.senior .fab{display:none!important}}
+/* A parent's phone keeps Chat and Ekta too (owner, 2026-10-09): one tap from
+   every screen, like everyone else. They sit in the bottom corner, below All
+   is well, Medicines taken and SOS, and never on top of them (proved in
+   firstrun.e2e at 320 and 390px). On a narrow phone the three big buttons
+   leave the floating column free, so they never meet at any scroll. */
+@media(max-width:560px){
+  body.senior #seniorui .big{margin-right:76px;width:auto}
+  body.senior #sos-fab{left:auto;right:16px;width:56px;height:56px;min-height:56px;max-width:56px;bottom:calc(var(--tabs-h) + 154px + env(safe-area-inset-bottom))}
+}
 
 /* feed */
 .eyebrow{font-size:var(--fs-12);letter-spacing:.2em;text-transform:uppercase;color:var(--sindoor);font-weight:700;margin:var(--space-20) 0 var(--space-12)}
@@ -402,7 +407,7 @@ button.pcard:disabled{opacity:.45;cursor:default}
 .tlink:hover{text-decoration:underline}
 .tlink:focus-visible{outline:2px solid var(--marigold);outline-offset:2px;border-radius:var(--radius-4)}
 .gnote{font-weight:500;letter-spacing:0;text-transform:none;opacity:.8}
-.donebox summary{cursor:pointer;list-style:revert}
+.donebox summary,.suggmore summary{cursor:pointer;list-style:revert}
 .donebox .crow{opacity:.78}
 #tsheet .feed .crow{box-shadow:none}
 .gtitle{font-size:var(--fs-12);font-weight:700;letter-spacing:.06em;color:var(--ink-soft);margin:var(--space-16) 0 var(--space-8)}
@@ -562,6 +567,14 @@ body.inapp #sosbar{padding-left:var(--space-16)}
 .avoidrow.good b{color:var(--ok)}
 
 details.more{margin-top:var(--space-16)}
+/* "More options" inside a form: the fields most people leave empty, one tap
+   away, so a form shows only what it needs (owner, 2026-10-09: "too many
+   options"). It opens by itself when something in it is set, or wrong. */
+details.fmore{margin-top:var(--space-12)}
+details.fmore>summary{cursor:pointer;font-weight:600;font-size:var(--fs-14);color:var(--ink);min-height:44px;display:flex;align-items:center;gap:var(--space-8);list-style:none}
+details.fmore>summary::-webkit-details-marker{display:none}
+details.fmore>summary::before{content:'';flex:none;width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform var(--motion-fast)}
+details.fmore[open]>summary::before{transform:rotate(45deg)}
 details.more>summary{cursor:pointer;font-weight:600;font-size:var(--fs-14);padding:var(--space-12) var(--space-16);
   background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-12);list-style:none}
 /* Opened, the summary and its body are ONE card - the body used to spill onto
@@ -1468,9 +1481,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <div class="pickrow">
         <label class="pick" id="r-datewrap"><span>Date</span><input type="date" id="r-date" aria-label="Date"></label>
         <label class="pick"><span>Time</span><input type="time" id="r-time" aria-label="Time"></label>
-        <label class="pick"><span>Who does it</span><select id="r-for" aria-label="Who does it"></select></label>
-        <label class="pick"><span>For whom</span><select id="r-about" aria-label="Who it is for"><option value="">The whole family</option></select></label>
-        <label class="pick"><span>Remind</span><select id="r-remind" aria-label="When to remind"><option value="0">At the time</option><option value="10">10 minutes before</option><option value="30">30 minutes before</option><option value="60">1 hour before</option><option value="1440">1 day before</option><option value="none">No reminder</option></select></label>
+        <label class="pick" style="grid-column:1/-1"><span>Who does it</span><select id="r-for" aria-label="Who does it"></select></label>
       </div>
       <div class="pick" style="margin-top:var(--space-12)"><span>Repeat</span>
         <div class="seg" id="r-seg" role="group" aria-label="Repeat">
@@ -1480,8 +1491,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <button type="button" data-rep="monthly">Monthly</button>
         </div>
       </div>
-      <details id="r-more" style="margin-top:var(--space-12)">
-        <summary>How you will know it is done, and who hears if it runs late</summary>
+      <details class="fmore" id="r-more">
+        <summary>More options: for whom, reminder, done when</summary>
+        <div class="pickrow">
+          <label class="pick"><span>For whom</span><select id="r-about" aria-label="Who it is for"><option value="">The whole family</option></select></label>
+          <label class="pick"><span>Remind</span><select id="r-remind" aria-label="When to remind"><option value="0">At the time</option><option value="10">10 minutes before</option><option value="30">30 minutes before</option><option value="60">1 hour before</option><option value="1440">1 day before</option><option value="none">No reminder</option></select></label>
+        </div>
         <label class="pick" style="display:block;margin-top:var(--space-12)"><span>Done when</span>
           <input type="text" id="r-donewhen" maxlength="200" placeholder="e.g. cylinder delivered, receipt in the vault"></label>
         <label class="pick" style="display:block;margin-top:var(--space-12)"><span>If it runs late, tell</span>
@@ -1711,9 +1726,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
             <option value="other" selected>📎 Other</option>
           </select>
         </div>
+        <details class="fmore" id="b-more">
+        <summary>More options: notes, keep private</summary>
         <label for="b-notes">Notes</label>
         <input type="text" id="b-notes" maxlength="300" placeholder="e.g. after breakfast · comes on Tuesdays · gate code 4321">
         <label class="seniorchk" id="b-private-l"><input type="checkbox" id="b-private"> Keep this private - only me and anyone I name</label>
+        </details>
         <button class="go" id="b-save">Save</button>
         <button class="linkbtn" id="b-cancel" hidden style="margin-top:var(--space-8)">Cancel editing</button>
         <p class="hint" id="b-vis-hint">Shared with the whole family - everyone can add, edit and keep it current.</p>
@@ -1791,10 +1809,15 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <input type="text" id="vd-number" maxlength="30" autocomplete="off" inputmode="text" placeholder="e.g. ABCDE1234F">
           <p class="hint" id="vd-numstate" style="margin:var(--space-4) 0 0"></p>
           <button type="button" class="cbtn ghost" id="vd-swap" hidden style="margin-top:var(--space-8)"></button>
+          <details class="fmore" id="vd-more">
+          <summary>More options: dates, notes</summary>
           <div class="pickrow">
             <label class="pick"><span>Issued</span><input type="date" id="vd-issued" aria-label="Issued on"></label>
             <label class="pick"><span>Expires</span><input type="date" id="vd-expires" aria-label="Expires on"></label>
           </div>
+          <label for="vd-notes">Notes</label>
+          <input type="text" id="vd-notes" maxlength="300" placeholder="e.g. renewal due before the Dubai trip">
+          </details>
           <p class="trlbl" style="margin-top:var(--space-16)">Photo or PDF of the document</p>
           <div class="prow2">
             <label class="cbtn" for="vd-cam" role="button" tabindex="0">📷 Take a photo</label>
@@ -1803,8 +1826,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <input type="file" id="vd-cam" accept="image/*" capture="environment" hidden>
           <input type="file" id="vd-file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" hidden>
           <p class="hint" id="vd-fname" style="margin-top:var(--space-4)">Up to 2 MB. Kept in the vault itself - never a public link.</p>
-          <label for="vd-notes">Notes</label>
-          <input type="text" id="vd-notes" maxlength="300" placeholder="e.g. renewal due before the Dubai trip">
           <button class="go" id="vd-save">Put it in the vault</button>
           <button class="linkbtn" id="vd-cancel" hidden style="margin-top:var(--space-8)">Cancel editing</button>
           <p class="hint">Only you and the person it belongs to can open it, until they share it. Every time someone opens it, they are told.</p>
@@ -1862,16 +1883,19 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <select id="vp-kind"></select>
         <label for="vp-label">Call it</label>
         <input type="text" id="vp-label" maxlength="80" placeholder="e.g. Papa's HDFC UPI">
-        <label for="vp-bank">Bank or provider</label>
-        <input type="text" id="vp-bank" maxlength="60" placeholder="e.g. HDFC Bank">
         <label for="vp-handle">UPI ID, or the last 4 digits of the card</label>
         <input type="text" id="vp-handle" maxlength="60" autocomplete="off" placeholder="e.g. papa@okhdfc  ·  ••••4321">
-        <div class="pickrow">
-          <label class="pick"><span>Cap per payment ₹</span><input type="number" id="vp-cap" min="1" step="1" inputmode="numeric" aria-label="Cap per payment"></label>
-          <label class="pick"><span>Cap per month ₹</span><input type="number" id="vp-mcap" min="1" step="1" inputmode="numeric" aria-label="Cap per month"></label>
-        </div>
+        <label for="vp-cap">Cap per payment ₹</label>
+        <input type="number" id="vp-cap" min="1" step="1" inputmode="numeric">
+        <details class="fmore" id="vp-more">
+        <summary>More options: bank, monthly cap, notes</summary>
+        <label for="vp-bank">Bank or provider</label>
+        <input type="text" id="vp-bank" maxlength="60" placeholder="e.g. HDFC Bank">
+        <label for="vp-mcap">Cap per month ₹</label>
+        <input type="number" id="vp-mcap" min="1" step="1" inputmode="numeric">
         <label for="vp-note">Notes</label>
         <input type="text" id="vp-note" maxlength="200" placeholder="e.g. for the chemist and groceries only">
+        </details>
         <button class="go" id="vp-save">Save this method</button>
         <button class="linkbtn" id="vp-cancel" hidden style="margin-top:var(--space-8)">Cancel editing</button>
         <p class="hint">Parwah never stores a full card number, CVV, PIN or password - only a name, a permission, and what was spent.</p>
@@ -2207,10 +2231,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <label class="pick"><span>Date</span><input type="date" id="p-date" aria-label="Plan date"></label>
         <label class="pick"><span>Time</span><input type="time" id="p-time" aria-label="Plan time"></label>
       </div>
-      <div class="pickrow" style="margin-top:var(--space-12)">
+      <details class="fmore" id="p-more">
+      <summary>More options: place, how many</summary>
+      <div class="pickrow">
         <label class="pick"><span>How many joining?</span><input type="number" id="p-count" min="2" max="50" placeholder="e.g. 6" aria-label="Expected people"></label>
         <label class="pick"><span>Place (meet-ups)</span><input type="text" id="p-place" maxlength="120" placeholder="optional" aria-label="Plan place"></label>
       </div>
+      </details>
       <button class="go" id="p-add" style="margin-top:var(--space-16)">Set the plan</button>
       <p class="hint">Everyone sees it in their own time zone, and whoever is going is reminded an hour before. Add it to Google Calendar in one tap.</p>
     </div>
@@ -4109,7 +4136,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // away on this phone.
     var hidden = suggHidden();
     var sg = (data.suggestions || []).filter(function(x){ return hidden.indexOf(x.key) < 0; });
-    $('sugglist').innerHTML = sg.length ? sg.map(function(x){
+    // Three at a time, urgent first; the rest wait one tap away, so the
+    // screen is a short list to act on, not a wall of buttons.
+    sg = sg.filter(function(x){ return x.urgent; }).concat(sg.filter(function(x){ return !x.urgent; }));
+    var srow = function(x){
       var gap = /^gap:/.test(x.key);
       return '<div class="crow' + (x.urgent ? ' urgent' : '') + '"><span class="txt">' +
              (x.urgent ? '⚠️ ' : '💡 ') + esc(x.title) +
@@ -4117,7 +4147,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
              (gap ? '<button class="cbtn" data-sfill="' + esc(x.key) + '">Fill it now</button>'
                   : '<button class="cbtn" data-sadd="' + esc(x.key) + '">Add to To do</button>') +
              '<button class="linkbtn" data-snot="' + esc(x.key) + '">Not needed</button></div>';
-    }).join('') : '<div class="ev">Nothing to suggest - the family is in good shape 🧡</div>';
+    };
+    var smOpen = !!($('sugg-more') && $('sugg-more').open);
+    $('sugglist').innerHTML = sg.length
+      ? sg.slice(0, 3).map(srow).join('') + (sg.length > 3
+        ? '<details class="suggmore" id="sugg-more"' + (smOpen ? ' open' : '') + '><summary class="gtitle">' + (sg.length - 3) + ' more ' + (sg.length === 4 ? 'suggestion' : 'suggestions') + '</summary>' + sg.slice(3).map(srow).join('') + '</details>' : '')
+      : '<div class="ev">Nothing to suggest - the family is in good shape 🧡</div>';
     suggCache = sg;
     var sdot = $('sugg-dot'), urg = sg.filter(function(x){ return x.urgent; }).length;
     if (urg) { sdot.textContent = urg; sdot.hidden = false; } else sdot.hidden = true;
@@ -5301,7 +5336,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     try { if (sirenOsc) sirenOsc.stop(); } catch (e) {}
     sirenOsc = null; sosBuzz(0);
   }
-  function alarmQuiet(id){ try { return sessionStorage.getItem('parwah-sos-quiet:' + id) === '1'; } catch (e) { return false; } }
+  function sosQuieted(id){ try { return sessionStorage.getItem('parwah-sos-quiet:' + id) === '1'; } catch (e) { return false; } }
   function sosSync(list){
     var mine = sosMine(list);
     // My own SOS: the live screen keeps up with who answered; closed by the
@@ -5314,7 +5349,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }
     // Someone else's SOS that nobody has answered: the alarm.
     var other = (list || []).filter(function(x){ return x.member_id !== state.memberId && x.status === 'open'; })[0];
-    if (!other || alarmQuiet(other.id)) { if (alarmFor) { alarmFor = null; $('sosalert').hidden = true; sirenStop(); } return; }
+    if (!other || sosQuieted(other.id)) { if (alarmFor) { alarmFor = null; $('sosalert').hidden = true; sirenStop(); } return; }
     var first = alarmFor !== other.id;
     alarmFor = other.id;
     $('sa-title').textContent = '🆘 ' + other.name + ' needs help';
@@ -5689,7 +5724,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       // given to Papa, about Papa".
       repeatMode = 'once';
       $('r-seg').querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x.getAttribute('data-rep') === 'once'); });
-      $('r-for').value = 'any'; $('r-about').value = ''; $('r-esc').value = 'people'; $('r-remind').value = '0'; $('r-more').open = false; todoHint();
+      $('r-for').value = 'any'; $('r-about').value = ''; $('r-esc').value = 'people'; $('r-remind').value = '0'; foldSync('r-more'); todoHint();
       var when = due.tomorrow ? ' - for tomorrow, as that time has passed today' : '';
       toast((j.status === 'assigned' ? 'Sent - they will be asked to say yes'
         : j.status === 'claimed' ? 'Added - it is yours 🧡' : 'Asked the whole family 🧡') + when);
@@ -5844,7 +5879,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('b-name').value = ''; $('b-phone').value = ''; $('b-address').value = ''; $('b-for').value = ''; $('b-notes').value = '';
     clearAddrForm();
     $('b-cat').value = 'other';
-    $('b-private').checked = false; $('b-private-l').hidden = false; bVisHint();
+    $('b-private').checked = false; $('b-private-l').hidden = false; bVisHint(); foldSync('b-more');
     $('bf-title').textContent = 'Add a contact, medicine or health fact';
     $('b-cancel').hidden = true;
   }
@@ -5984,6 +6019,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // Privacy is a consent decision, made on the entry ("Who can see this"),
     // not a box an edit could silently ignore.
     $('b-private-l').hidden = true; bVisHint();
+    foldSync('b-more');
     $('bf-title').textContent = 'Edit: ' + e.name;
     $('b-cancel').hidden = false;
     $('book-detail').hidden = true; $('book-list-view').hidden = false;
@@ -6283,10 +6319,21 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (!/\.[a-z]{2,}$/i.test(u.hostname)) return 'That link does not have a real web address in it.';
     return null;
   }
+  // A "More options" fold shows itself when something in it is already set
+  // (editing, or arriving from a person's page) and folds away when cleared.
+  function foldSync(id){
+    var d = $(id); if (!d) return;
+    d.open = [].some.call(d.querySelectorAll('input,select,textarea'), function(x){
+      if (x.type === 'checkbox' || x.type === 'radio') return x.checked;
+      if (x.tagName === 'SELECT') { var def = [].filter.call(x.options, function(o){ return o.defaultSelected; })[0] || x.options[0]; return !!def && x.value !== def.value; }
+      return x.value !== '';
+    });
+  }
   // Says what is wrong where it is wrong: the box is marked, read out, and
   // focused, and the mark clears as soon as it is changed.
   function fieldErr(id, msg){
     var el = $(id); if (!el) { toast(msg); return; }
+    for (var d = el.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true;
     el.setAttribute('aria-invalid', 'true');
     var tip = $(id + '-err');
     if (!tip) { tip = document.createElement('p'); tip.id = id + '-err'; tip.className = 'fielderr'; tip.setAttribute('role', 'alert'); el.insertAdjacentElement('afterend', tip); }
@@ -6676,7 +6723,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     post(API.plans, { code: state.code, memberId: state.memberId, action: 'create', title: t, kind: planKind, at: at.toISOString(), place: $('p-place').value.trim(), expected: $('p-count').value, tz: homeTz() })
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not set the plan'); return; }
-        $('p-title').value = ''; $('p-place').value = '';
+        $('p-title').value = ''; $('p-place').value = ''; $('p-count').value = ''; foldSync('p-more');
         toast('Plan set - the family can see it 🎉');
         refreshFun();
       })
@@ -8146,6 +8193,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var mm = (membersCache || []).filter(function(x){ return x.id === mid; })[0];
     $('r-about').value = mid !== state.memberId ? mid : '';
     $('r-for').value = 'any';
+    foldSync('r-more');
     todoHint();
     if (mm && mid !== state.memberId) $('r-title').placeholder = 'e.g. ' + String(mm.name).split(' ')[0] + "'s 9 pm tablets";
     try { $('r-title').focus(); } catch (e) {}
@@ -8638,7 +8686,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function vdReset(){
     vEditId = null; vFileData = null;
     ['vd-label','vd-number','vd-issued','vd-expires','vd-notes'].forEach(function(id){ $(id).value = ''; });
-    vApplyShape();
+    vApplyShape(); foldSync('vd-more');
     $('vd-file').value = ''; $('vd-cam').value = '';
     $('vd-fname').textContent = 'Up to 2 MB. Kept in the vault itself - never a public link.';
     $('vd-ftitle').textContent = 'Add a document';
@@ -8656,7 +8704,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (d.last4) $('vd-number').placeholder = 'Ending ' + d.last4 + ' - type the full number only to change it';
     $('vd-issued').value = d.issued_on ? String(d.issued_on).slice(0, 10) : '';
     $('vd-expires').value = d.expires_on ? String(d.expires_on).slice(0, 10) : '';
-    $('vd-notes').value = d.notes || '';
+    $('vd-notes').value = d.notes || ''; foldSync('vd-more');
     $('vd-ftitle').textContent = 'Edit ' + d.label;
     $('vd-save').textContent = 'Save changes';
     $('vd-cancel').hidden = false;
@@ -8850,6 +8898,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function vpReset(){
     vPayEditId = null;
     ['vp-label','vp-bank','vp-handle','vp-cap','vp-mcap','vp-note'].forEach(function(id){ $(id).value = ''; });
+    foldSync('vp-more');
     $('vp-ftitle').textContent = 'Add a way of paying';
     $('vp-save').textContent = 'Save this method';
     $('vp-cancel').hidden = true;
@@ -8879,7 +8928,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       vPayEditId = id;
       $('vp-kind').value = p.kind; $('vp-label').value = p.label; $('vp-bank').value = p.bank || '';
       $('vp-handle').value = p.handle || ''; $('vp-cap').value = p.per_txn_cap || '';
-      $('vp-mcap').value = p.monthly_cap || ''; $('vp-note').value = p.note || '';
+      $('vp-mcap').value = p.monthly_cap || ''; $('vp-note').value = p.note || ''; foldSync('vp-more');
       $('vp-ftitle').textContent = 'Edit ' + p.label;
       $('vp-save').textContent = 'Save changes';
       $('vp-cancel').hidden = false;

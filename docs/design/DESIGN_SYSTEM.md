@@ -104,6 +104,12 @@ focus, active, disabled; loading where it acts).
   `.tlink`.
 - Member picker `.members` of `.gchk`, widget tile `.widget`, seat `.bseat`,
   calendar header `.calhead`, toast `.toast`.
+- Form fold `details.fmore` ("More options: ..."): the fields most people
+  leave empty (notes, second dates, bank, monthly cap, place, how many).
+  The summary names what is inside. It opens by itself when anything in it
+  is set (editing, or arriving from a person) and when a field in it is
+  refused, so a set value or an error is never hidden. Long lists show three
+  and fold the rest (`.suggmore`).
 - Field error `.fielderr`: the reason a box was refused, right under it,
   with `aria-invalid` on the box. A refused form says so here, not in a toast.
 - SOS button `.sosfab` (every screen: a floating circle on a phone, a full-width control at the bottom of the sidebar on a laptop), SOS screen `.sosscreen`,

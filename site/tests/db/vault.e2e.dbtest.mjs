@@ -221,6 +221,22 @@ await P.click('#vd-save'); await P.waitForTimeout(1500);
 const saved = (await admin.query(`select file_mime, file_size from vault_docs where label = 'My Aadhaar'`)).rows[0];
 ok('and it is saved as a photo under 2 MB', saved && saved.file_mime === 'image/jpeg' && saved.file_size < 2 * 1048576, JSON.stringify(saved));
 
+// ---- More options: dates and notes fold away, and never hide what matters
+ok('after saving, dates and notes are folded under More options', !(await P.$eval('#vd-more', d => d.open)) && !(await P.isVisible('#vd-expires')));
+await P.click('#vd-more summary');
+await P.fill('#vd-label', 'My passport'); await P.selectOption('#vd-about', U.Anchit.memberId);
+await P.fill('#vd-issued', '2020-05-01'); await P.fill('#vd-expires', '2019-01-01');
+await P.click('#vd-more summary');
+await P.click('#vd-save'); await P.waitForTimeout(400);
+ok('a wrong date inside the fold opens it and says so, on the box', await P.$eval('#vd-more', d => d.open) && await P.isVisible('#vd-expires-err') && (await P.evaluate(() => document.activeElement.id)) === 'vd-expires');
+await P.fill('#vd-expires', '2030-01-01');
+await P.click('#vd-save'); await P.waitForTimeout(1500);
+const pp = (await admin.query(`select id, expires_on from vault_docs where label = 'My passport'`)).rows[0];
+ok('fixed, it is saved with its dates, and the fold closes', pp && !!pp.expires_on && !(await P.$eval('#vd-more', d => d.open)));
+await P.click('#vdlist [data-vopen="' + pp.id + '"]'); await P.waitForTimeout(300);
+await P.click('#vdd-edit'); await P.waitForTimeout(300);
+ok('editing it opens More options, so its dates are in view', await P.$eval('#vd-more', d => d.open) && (await P.inputValue('#vd-expires')) === '2030-01-01');
+
 ok('no script errors', errors.length === 0, errors.join(' | '));
 await browser.close();
 server.close();

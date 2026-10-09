@@ -261,6 +261,26 @@ ok('for Papa, SOS is on screen without scrolling', await P.isVisible('#btn-sos')
 ok('his buttons come before the family name', await P.evaluate(() => document.getElementById('seniorui').getBoundingClientRect().top < document.querySelector('.homehero').getBoundingClientRect().top));
 ok('big text is on for him', await P.evaluate(() => document.body.classList.contains('senior') && parseFloat(getComputedStyle(document.documentElement).fontSize) > 16));
 ok('no coach marks on top of it', !(await P.isVisible('#coach')));
+{
+  // Chat and Ekta float for a parent too, clear of the three big buttons -
+  // at 390px and on the smallest phone.
+  for (const w of [390, 320]) {
+    await P.setViewportSize({ width: w, height: w === 320 ? 640 : 844 }); await P.waitForTimeout(300);
+    await P.evaluate(() => window.scrollTo(0, 0));
+    const boxes = await P.evaluate(() => ['#chat-fab', '#ekta-fab', '#sos-fab', '#btn-ok', '#btn-checkin', '#btn-pill', '#btn-sos'].map(s => {
+      const e = document.querySelector(s); if (!e || e.hidden || getComputedStyle(e).display === 'none' || !e.getClientRects().length) return null;
+      const r = e.getBoundingClientRect(); return { s, x: r.x, y: r.y, w: r.width, h: r.height };
+    }).filter(Boolean));
+    const fabs = boxes.filter(b => /fab/.test(b.s)), bigs = boxes.filter(b => !/fab/.test(b.s));
+    const hit = (a, b) => !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
+    const clash = fabs.flatMap(f => bigs.filter(b => hit(f, b)).map(b => f.s + ' on ' + b.s));
+    ok('Chat and Ekta float for a parent too (' + w + 'px)', fabs.some(f => f.s === '#chat-fab') && fabs.some(f => f.s === '#ekta-fab'), fabs.map(f => f.s).join());
+    ok('and cover none of All is well, Medicines taken or SOS (' + w + 'px)', bigs.length >= 3 && !clash.length, clash.join() || bigs.map(b => b.s).join());
+    const stack = fabs.flatMap((f, i) => fabs.slice(i + 1).filter(g => hit(f, g)).map(g => f.s + ' on ' + g.s));
+    ok('and the floating buttons sit apart from each other (' + w + 'px)', fabs.length >= 3 && !stack.length, stack.join() || fabs.map(f => f.s).join());
+  }
+  await P.setViewportSize({ width: 390, height: 844 }); await P.waitForTimeout(200);
+}
 await P.click('#btn-pill'); await P.waitForTimeout(900);
 const pillTxt = await P.textContent('#btn-pill');
 ok('medicines taken says when, in an adult\'s words', /Medicines taken ✔ · \d/.test(pillTxt) && !/Well done/.test(pillTxt), pillTxt);
