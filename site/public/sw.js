@@ -42,17 +42,19 @@ self.addEventListener('push', function (e) {
   // An SOS stays on the screen until someone deals with it, buzzes in the
   // long pattern a phone uses for an emergency, and replaces (rather than
   // stacks under) an earlier SOS alert.
-  var urgent = !!d.urgent;
+  // A phone being rung to find it buzzes long too, under its own tag so it
+  // never replaces an SOS.
+  var urgent = !!d.urgent, ring = !urgent && !!d.ring;
   e.waitUntil(self.registration.showNotification(d.title || 'Parwah', {
     body: d.body || '',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     data: { url: d.url || '/' },
-    tag: urgent ? 'parwah-sos' : undefined,
-    renotify: urgent,
-    requireInteraction: urgent,
+    tag: urgent ? 'parwah-sos' : ring ? 'parwah-ring' : undefined,
+    renotify: urgent || ring,
+    requireInteraction: urgent || ring,
     silent: false,
-    vibrate: urgent ? [800, 300, 800, 300, 800, 300, 1500, 500, 800, 300, 800, 300, 800] : [200]
+    vibrate: urgent || ring ? [800, 300, 800, 300, 800, 300, 1500, 500, 800, 300, 800, 300, 800] : [200]
   }));
 });
 

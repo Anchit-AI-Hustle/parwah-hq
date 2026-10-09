@@ -1985,6 +1985,24 @@ check("options: the busy forms fold their extras under More options, each named"
 _fnames = re.findall(r"^  function ([A-Za-z0-9_$]+)\(", _appt, re.M)
 check("script: no two app functions share a name (a later one replaces the first)",
       len(_fnames) > 100 and len(_fnames) == len(set(_fnames)))
+# Find My (owner, 2026-10-04 and 10-09): ring a phone and Lost mode, proved
+# in findme.dbtest (rules) and findme.e2e (three real phones).
+_findsrc = (REPO / "api/_findme.mjs").read_text(encoding="utf-8")
+check("find my: ring a phone and Lost mode, held by the owner's PIN with the sign-in lockout",
+      "RING_SECONDS = 120" in _findsrc and "MAX_TRIES" in _findsrc and "lost_session === tokenHash(token)" in _findsrc
+      and 'id="ringscreen"' in _appt and 'id="lostscreen"' in _appt and "findSync(j.findme)" in _appt
+      and "ring ? 'parwah-ring'" in (REPO / "site/public/sw.js").read_text(encoding="utf-8")
+      and (REPO / "site/tests/db/findme.dbtest.mjs").exists() and (REPO / "site/tests/db/findme.e2e.dbtest.mjs").exists())
+_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("ci: every database test is in npm run test:db, so none is skipped in CI",
+      all(f.name in _testdb for f in (REPO / "site/tests/db").glob("*.dbtest.mjs")))
+# SOS by text, WhatsApp and call (owner, 2026-10-04): dormant until a Twilio
+# account is added; proved with a stand-in Twilio in sosdial.dbtest.
+_dialsrc = (REPO / "api/_sosdial.mjs").read_text(encoding="utf-8")
+check("sos: texts, WhatsApps and calls go out by themselves once Twilio keys are added, once each, never holding up the alarm",
+      "dialOut(sql, sosId, contacts" in (REPO / "api/events.mjs").read_text(encoding="utf-8")
+      and "on conflict do nothing" in _dialsrc and "DIAL_TIMEOUT_MS" in _dialsrc and "c.on = !!(" in _dialsrc
+      and "process.env.TWILIO" not in _appt)
 check("phone app: the native Android/iPhone app hides the links to install it",
       "ParwahApp\\/" in _appt and ".native-app #getapp" in _css
       and ('"appendUserAgent": "ParwahApp/' in (REPO / "mobile" / "capacitor.config.json").read_text()

@@ -115,6 +115,10 @@ focus, active, disabled; loading where it acts).
 - SOS button `.sosfab` (every screen: a floating circle on a phone, a full-width control at the bottom of the sidebar on a laptop), SOS screen `.sosscreen`,
   alarm `.sosalert`, their buttons `.ss-btn`. Emergency red `--sos` is for
   these only.
+- Find a phone `.findscreen`: the ring (`#ringscreen`) and Lost mode
+  (`#lostscreen`) take the screen like an alarm, in `--pine`, which is dark
+  in both themes, with marigold for the one main action. They reuse
+  `.ss-in` and `.ss-btn`, never SOS red.
 
 **Organisms** - sections of a screen.
 - Top bar `.bar` (sticky on phones), bottom tab bar `#tabs` / desktop
