@@ -26,6 +26,7 @@ import { tokenOf } from './_token.mjs';
 import { PRECISIONS, validPosition, shareable, isStale, shareUntil, placeError, placesAt, placeMoves, batteryOf } from './_geo.mjs';
 import { rateLimit } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
+import { findAction, isLost, LOST_LOCK_MSG } from './_findme.mjs';
 
 let ready = false;
 export async function ensureLocationSchema(sql) {
@@ -142,7 +143,7 @@ export default async function handler(req, res) {
         places,
         me: { sharing: !!(mine[0] && mine[0].enabled), precision: mine[0] ? mine[0].precision : 'exact',
               updatedAt: mine[0] ? mine[0].updated_at : null, until: mine[0] && mine[0].enabled ? mine[0].expires_at : null,
-              sosLock: locked },
+              sosLock: locked, lostLock: await isLost(sql, me.user_id) },
         shares: rows.map(r => ({ memberId: r.member_id, name: r.name, relation: r.relation, mine: r.member_id === me.id,
                                  lat: r.lat, lng: r.lng, accuracy: r.accuracy, precision: r.precision,
                                  updatedAt: r.updated_at, until: r.expires_at, stale: isStale(r.updated_at),
@@ -156,13 +157,21 @@ export default async function handler(req, res) {
     }
 
     const action = body.action;
+    // Ring a phone, and Lost mode (api/_findme.mjs).
+    const fa = await findAction(sql, circle, me, body, tokenOf(req));
+    if (fa) return res.status(fa.status).json(fa.json);
     const cur = (await sql`select * from location_shares where circle_id = ${circle.id} and member_id = ${me.id}`)[0];
     // During an open SOS the position keeps flowing, exact, with no end time.
     // Stopping, blurring it to the area, or setting a time limit waits until
     // the family has marked the person safe.
     const locked = cur && cur.sos_lock ? await sosLocked(sql, circle.id, me.id) : false;
-    if (locked && (action === 'stop' || action === 'precision' || (action === 'share' && (body.precision === 'area' || body.until)))) {
+    const holding = action === 'stop' || action === 'precision' || (action === 'share' && (body.precision === 'area' || body.until));
+    if (locked && holding) {
       return res.status(423).json({ ok: false, sosLock: true, error: SOS_LOCK_MSG });
+    }
+    // Lost mode holds it the same way: a finder cannot switch it off.
+    if (holding && await isLost(sql, me.user_id)) {
+      return res.status(423).json({ ok: false, lostLock: true, error: LOST_LOCK_MSG });
     }
 
     if (action === 'share' || action === 'update') {

@@ -65,8 +65,12 @@ export async function pushCircle(sql, circleId, payload, { except = null, only =
     // a phone saving battery), kept for a day if the phone is off, and marked
     // so the phone keeps it on screen and keeps buzzing until it is seen.
     const urgent = !!payload.urgent;
-    const body = JSON.stringify({ title: payload.title, body: payload.body || '', url: payload.url || '/', urgent });
-    const opts = urgent ? { TTL: 86400, urgency: 'high', topic: 'parwah-sos' } : { TTL: 3600 };
+    // Ringing a lost phone: delivered at once, but only worth anything for
+    // the two minutes it rings, and never in the SOS's place on the screen.
+    const ring = !urgent && !!payload.ring;
+    const body = JSON.stringify({ title: payload.title, body: payload.body || '', url: payload.url || '/', urgent, ring });
+    const opts = urgent ? { TTL: 86400, urgency: 'high', topic: 'parwah-sos' }
+      : ring ? { TTL: 120, urgency: 'high', topic: 'parwah-ring' } : { TTL: 3600 };
     await Promise.allSettled(subs.map(s =>
       wp.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, opts)
         .catch(async (e) => {

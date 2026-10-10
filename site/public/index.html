@@ -244,6 +244,16 @@ label + select{width:100%}
 .ss-note{font-size:var(--fs-14)!important;opacity:.95}
 @media(prefers-reduced-motion:no-preference){.sosalert h2{animation:sospulse 1s ease-in-out infinite alternate}}
 @keyframes sospulse{from{opacity:1}to{opacity:.72}}
+/* Find a phone: the ring and Lost mode take the whole screen like an alarm,
+   in the dark plum both themes share - SOS red stays for an emergency. */
+.findscreen{position:fixed;inset:0;z-index:var(--z-alarm);background:var(--pine);color:var(--on-dark);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;overscroll-behavior:contain;padding:var(--space-24) var(--space-16) var(--space-40)}
+.findscreen .ss-btn{border-color:var(--on-dark);color:var(--on-dark)}
+.findscreen .ss-btn.solid{background:var(--marigold);border-color:var(--marigold);color:var(--card-ink)}
+.findscreen label{color:var(--on-dark);font-weight:700}
+.findscreen input{font-size:var(--fs-24);letter-spacing:.4em;text-align:center;max-width:220px;margin:0 auto}
+.findscreen .fielderr{color:var(--on-dark);background:rgba(0,0,0,.25);border-radius:var(--radius-8);padding:var(--space-8)}
+.lostmsg{background:rgba(0,0,0,.22);border-radius:var(--radius-12);padding:var(--space-16);font-size:var(--fs-18)!important}
+@media(prefers-reduced-motion:no-preference){#ringscreen h2{animation:sospulse 1s ease-in-out infinite alternate}}
 .note{display:flex;flex-direction:column;gap:var(--space-8)}
 .notehead{display:flex;flex-direction:column;gap:var(--space-2)}
 .notehead b{font-size:var(--fs-16)}
@@ -1645,6 +1655,28 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         </select>
         <button type="button" class="go" id="lp-save">Save the place</button>
       </details>
+      <p class="pickhead">Lost a phone?</p>
+      <p class="hint" style="margin:0 0 var(--space-8)">Ring anyone's phone from their row above, or yours from here. It rings out loud for two minutes where Parwah is open, and their notification buzzes where it is not.</p>
+      <div id="loc-lostnow" hidden class="crow late"><span class="txt"><b>📵 Lost mode is on for your other phones</b><small>They show your message and who to call, and share exactly where they are. Turn it off here, or on the phone itself, with your PIN.</small></span></div>
+      <button type="button" class="cbtn ghost" id="loc-ringme" style="width:100%">🔔 Ring my phone</button>
+      <details class="more" id="loc-lost">
+        <summary id="loc-lost-sum">📵 Turn on Lost mode</summary>
+        <div class="explain">
+        <p class="hint" id="loc-lost-why">Every other phone signed in as you shows a full screen: your message, a button to call someone in the family, and it shares exactly where it is. Only your PIN turns it off. This phone stays as it is.</p>
+        <div id="loc-lost-onform">
+          <label for="ll-msg">Message for whoever finds it</label>
+          <input type="text" id="ll-msg" maxlength="160" placeholder="e.g. This phone is lost. Please call my son.">
+          <label for="ll-call">Who they should call</label>
+          <select id="ll-call"></select>
+          <button type="button" class="go" id="ll-on">📵 Turn on Lost mode</button>
+        </div>
+        <div id="loc-lost-offform" hidden>
+          <label for="ll-pin">Your 4-digit PIN</label>
+          <input type="password" id="ll-pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off">
+          <button type="button" class="go" id="ll-off">I have my phone: turn Lost mode off</button>
+        </div>
+        </div>
+      </details>
       <p class="hint" style="margin-top:var(--space-12)">Locations update whenever Parwah is open on the phone. Area only shows the neighbourhood, never the house.</p>
     </div>
 </section>
@@ -2791,6 +2823,25 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <button type="button" class="ss-btn" id="sa-quiet">Silence the alarm</button>
   </div>
 </div>
+<div class="findscreen" id="ringscreen" hidden role="alertdialog" aria-modal="true" aria-labelledby="rg-title" aria-describedby="rg-sub">
+  <div class="ss-in">
+    <h2 id="rg-title" tabindex="-1">🔔 Someone is looking for this phone</h2>
+    <p id="rg-sub">Tap below once you have it.</p>
+    <button type="button" class="ss-btn solid" id="rg-found">📱 I found it</button>
+  </div>
+</div>
+<div class="findscreen" id="lostscreen" hidden role="alertdialog" aria-modal="true" aria-labelledby="ls-title" aria-describedby="ls-msg">
+  <div class="ss-in">
+    <h2 id="ls-title" tabindex="-1">📵 This phone is lost</h2>
+    <p class="lostmsg" id="ls-msg"></p>
+    <a class="ss-btn solid" id="ls-call" hidden>📞 Call</a>
+    <p class="ss-note" id="ls-where">Its location is shared with the owner's family until they turn Lost mode off.</p>
+    <p class="ss-label">Is this your phone?</p>
+    <label for="ls-pin">Your 4-digit PIN</label>
+    <input type="password" id="ls-pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off">
+    <button type="button" class="ss-btn" id="ls-off">Turn off Lost mode</button>
+  </div>
+</div>
 <button class="fab" id="ekta-fab" hidden aria-label="Ask Ekta" title="Ask Ekta"><span class="fic" aria-hidden="true">✨</span><span class="flbl"> Ekta</span></button>
 <button class="fab chatfab" id="chat-fab" hidden aria-label="Start a new chat" title="Start a new chat" aria-haspopup="dialog"><span class="fic" aria-hidden="true">💬</span><span class="flbl"> New chat</span></button>
 
@@ -3444,7 +3495,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     homeOffline(false);
     apiGet(API.events + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){
-        if (j.ok) { homeOffline(false); seenAt = j.seenAt || seenAt; joinReqs = j.joinRequests || []; joinPolicy = j.joinPolicy || 'approve'; render(j); renderForSelect(j.members); renderTree(j); renderJoinReqs(); return; }
+        if (j.ok) { homeOffline(false); seenAt = j.seenAt || seenAt; joinReqs = j.joinRequests || []; joinPolicy = j.joinPolicy || 'approve'; render(j); renderForSelect(j.members); renderTree(j); renderJoinReqs(); findSync(j.findme); return; }
         // Not ok, and not a code change we can heal from below: say so.
         homeOffline(true);
         // Circle code changed by another member? Re-map by membership and recover.
@@ -5214,7 +5265,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       return post(API.events, body).then(function(j){
         if (!j.ok) { $('ss-status').textContent = (j.error || 'The SOS could not be sent') + '. Call 112 or your family now.'; return; }
         sosLive = { id: j.sosId, text: j.text, contacts: j.contacts || [], map: j.map };
-        $('ss-status').textContent = 'Your family has been alerted' + (j.again ? ' again' : '') + '. The message is in the family chat.';
+        var dl = j.dialed && j.dialed.configured ? j.dialed : null, sent = dl ? dl.sms + dl.whatsapp : 0;
+        $('ss-status').textContent = 'Your family has been alerted' + (j.again ? ' again' : '') + '. The message is in the family chat.' +
+          (dl && (sent || dl.call) ? ' Parwah also sent ' + (sent ? sent + (sent === 1 ? ' text message' : ' text messages') : '') +
+            (sent && dl.call ? ' and ' : '') + (dl.call ? 'is calling ' + dl.call + (dl.call === 1 ? ' person' : ' people') : '') + '.' : '');
         $('ss-loc').textContent = j.located ? '📍 Your exact location is shared with the family' + (pos && pos.accuracy ? ' (within ' + Math.round(pos.accuracy) + ' m)' : '') + '.'
           : '📍 Your location could not be found yet. Turn on location for this browser; Parwah keeps trying.';
         sosFillActions();
@@ -7894,6 +7948,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // An open SOS holds sharing on until the family marks the person safe.
     $('loc-stop').hidden = !on || !!locMe.sosLock;
     $('loc-prec').hidden = !!locMe.sosLock;
+    if (locMe.lostLock) { $('loc-stop').hidden = true; $('loc-prec').hidden = true; $('loc-status').textContent = '📵 Lost mode is on, so your family can see exactly where your phone is. Sharing stays on until you turn Lost mode off with your PIN.'; }
     if (locMe.sosLock) $('loc-status').textContent = '🆘 Your SOS is open, so your family can see exactly where you are. Sharing stays on until someone in the family marks you safe.';
     $('loc-for').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-for') === locFor); });
     $('loc-prec').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-prec') === locPrec); });
@@ -7909,10 +7964,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       if (x.battery !== null && x.battery !== undefined) bits.push((x.charging ? '⚡ charging, ' : (x.battery <= 15 ? '🪫 ' : '🔋 ')) + x.battery + '%');
       if (x.until) bits.push('until ' + locClock(x.until));
       if (from && !x.mine) bits.push(locDistText(locDist(from, x)));
+      if (findMe && (findMe.lostMembers || []).indexOf(x.memberId) >= 0) bits.unshift('📵 Lost mode on');
       var who = x.mine ? 'your' : x.name + "'s";
       return '<div class="crow' + (x.stale ? ' late' : '') + '"><span class="txt"><b>' + esc(x.mine ? 'You' : x.name) + '</b><small>' + esc(bits.join(' · ')) + '</small></span>' +
              '<span class="locacts"><button type="button" class="cbtn ghost" data-locmap="' + esc(x.memberId) + '" aria-label="Show ' + esc(who) + ' location on a map">🗺 Map</button>' +
              (x.mine ? '' : '<a class="cbtn ghost" href="' + esc(locRoute(x)) + '" target="_blank" rel="noopener" aria-label="Directions to ' + esc(x.name) + '">🧭 Directions</a>') +
+             (x.mine ? '' : '<button type="button" class="cbtn ghost" data-locring="' + esc(x.memberId) + '" data-name="' + esc(x.name) + '" aria-label="Ring ' + esc(x.name) + '\'s phone">🔔 Ring</button>') +
              '</span></div>';
     }).join('') : '<div class="ev">Nobody here is sharing yet. When someone turns it on, they appear here.</div>';
     // Not sharing: ask them, the way Find My lets you ask. Only they can
@@ -7921,8 +7978,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var askable = (membersCache || []).filter(function(m){ return m.id !== state.memberId && m.on_app !== false && !sharing[m.id]; });
     $('loc-ask-head').hidden = !askable.length;
     $('loc-ask').innerHTML = askable.map(function(m){
-      return '<div class="crow"><span class="txt"><b>' + esc(m.name) + '</b><small>Not sharing</small></span>' +
-             '<button type="button" class="cbtn ghost" data-locask="' + esc(m.id) + '">📍 Ask ' + esc(String(m.name).split(' ')[0]) + ' to share</button></div>';
+      var lostM = findMe && (findMe.lostMembers || []).indexOf(m.id) >= 0;
+      return '<div class="crow' + (lostM ? ' late' : '') + '"><span class="txt"><b>' + esc(m.name) + '</b><small>' + (lostM ? '📵 Lost mode on · its location shows once it is online' : 'Not sharing') + '</small></span>' +
+             '<span class="locacts"><button type="button" class="cbtn ghost" data-locask="' + esc(m.id) + '">📍 Ask ' + esc(String(m.name).split(' ')[0]) + ' to share</button>' +
+             '<button type="button" class="cbtn ghost" data-locring="' + esc(m.id) + '" data-name="' + esc(m.name) + '" aria-label="Ring ' + esc(m.name) + '\'s phone">🔔 Ring</button></span></div>';
     }).join('');
     // Saved places, and who is at each one now.
     var places = locPlaces || [];
@@ -8110,6 +8169,151 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         }
         refreshLoc();
       }).catch(function(){});
+  });
+
+  // ---------- find a phone: ring it, and Lost mode (api/_findme.mjs) ----------
+  // Both arrive with the family's state every poll, so they reach whichever
+  // screen is open. A ring sounds until "I found it" or two minutes; Lost
+  // mode holds this phone until its owner's PIN.
+  var findMe = null, ringFor = null, ringBeep = null, ringEnd = null, lostSent = 0, lostShown = false;
+  function ringDone(k){ try { return sessionStorage.getItem('parwah-ring-done:' + k) === '1'; } catch (e) { return false; } }
+  function ringSelfRecently(){ try { return Date.now() - (+sessionStorage.getItem('parwah-ring-self') || 0) < 130000; } catch (e) { return false; } }
+  function findSync(f){
+    var was = findMe ? (findMe.lostMembers || []).join() : '';
+    findMe = f || null;
+    if (!f) return;
+    // Whoever's Lost mode changed is shown on the Family list at once, even if
+    // the list was drawn before this arrived.
+    if ((f.lostMembers || []).join() !== was && typeof locMe !== 'undefined' && locMe && curTab === 'people') renderLoc();
+    var key = f.ring ? String(f.ring.at) : null;
+    // Ringing your own phone from this one rings the others, not this.
+    var mineHere = f.ring && f.ring.by === state.name && ringSelfRecently();
+    if (key && key !== ringFor && !ringDone(key) && !mineHere) ringShow(f.ring, key);
+    else if (!key && ringFor) ringHide();
+    if (f.lost) lostShow(f.lost); else if (lostShown) lostHide();
+    lostForm();
+  }
+  function ringTone(){
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) {
+        sirenCtx = sirenCtx || new AC();
+        if (sirenCtx.state === 'suspended') sirenCtx.resume().catch(function(){});
+        [0, 0.25, 0.5, 0.75].forEach(function(t, i){
+          var o = sirenCtx.createOscillator(), g = sirenCtx.createGain();
+          o.type = 'square'; o.frequency.value = i % 2 ? 1568 : 1175; g.gain.value = 0.16;
+          o.connect(g); g.connect(sirenCtx.destination);
+          o.start(sirenCtx.currentTime + t); o.stop(sirenCtx.currentTime + t + 0.2);
+        });
+      }
+    } catch (e) {}
+    sosBuzz([400, 150, 400]);
+  }
+  function ringShow(r, key){
+    ringHide();
+    ringFor = key;
+    var self = r.by === state.name;
+    $('rg-title').textContent = self ? '🔔 You rang this phone to find it' : '🔔 ' + (r.by || 'Someone in the family') + ' is looking for this phone';
+    $('rg-sub').textContent = 'Tap below once you have it. It stops by itself after two minutes.';
+    $('ringscreen').hidden = false;
+    try { $('rg-found').focus(); } catch (e) {}
+    ringTone(); ringBeep = setInterval(ringTone, 1500);
+    var left = 120000 - (Date.now() - Date.parse(r.at));
+    ringEnd = setTimeout(ringHide, Math.max(1000, Math.min(120000, left)));
+  }
+  function ringHide(){
+    clearInterval(ringBeep); ringBeep = null; clearTimeout(ringEnd); ringEnd = null;
+    $('ringscreen').hidden = true; sosBuzz(0);
+    ringFor = null;
+  }
+  $('rg-found').addEventListener('click', function(){
+    var k = ringFor;
+    try { if (k) sessionStorage.setItem('parwah-ring-done:' + k, '1'); } catch (e) {}
+    ringHide();
+    post(locUrl(), { code: state.code, memberId: state.memberId, action: 'found' }).catch(function(){});
+    toast('Found 📱 The ringing has stopped on all your phones');
+  });
+  function lostShow(l){
+    $('ls-msg').textContent = l.message || 'This phone is lost.';
+    if (l.call && l.call.phone) {
+      $('ls-call').href = 'tel:' + encodeURIComponent(l.call.phone);
+      $('ls-call').textContent = '📞 Call ' + String(l.call.name).split(' ')[0];
+      $('ls-call').hidden = false;
+    } else $('ls-call').hidden = true;
+    if (!lostShown) { $('lostscreen').hidden = false; lostShown = true; try { $('ls-title').focus(); } catch (e) {} }
+    lostLocate();
+  }
+  function lostHide(){ $('lostscreen').hidden = true; lostShown = false; $('ls-pin').value = ''; }
+  // A lost phone tells the family where it is, exact, at most once a minute.
+  function lostLocate(){
+    if (Date.now() - lostSent < 60000 || !navigator.geolocation) return;
+    lostSent = Date.now();
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var body = { code: state.code, memberId: state.memberId, action: 'share', lat: pos.coords.latitude, lng: pos.coords.longitude,
+                   accuracy: pos.coords.accuracy, precision: 'exact' };
+      if (locBattery) { body.battery = Math.round(locBattery.level * 100); body.charging = !!locBattery.charging; }
+      post(locUrl(), body).then(function(j){ $('ls-where').textContent = j.ok
+        ? 'Its location is shared with the owner\'s family until they turn Lost mode off.'
+        : 'Its location could not be sent just now.'; }).catch(function(){});
+    }, function(){ $('ls-where').textContent = 'This phone is not letting Parwah see where it is, so the family cannot see it on the map.'; },
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
+  }
+  function lostOff(input, done){
+    var pin = $(input).value.trim();
+    if (!/^\d{4}$/.test(pin)) { fieldErr(input, 'Type your 4-digit PIN.'); return; }
+    post(locUrl(), { code: state.code, memberId: state.memberId, action: 'lost_off', pin: pin }).then(function(j){
+      $(input).value = '';
+      if (!j.ok) { fieldErr(input, j.error || 'Could not turn it off just now'); return; }
+      if (findMe) { findMe.lost = null; findMe.lostHere = false; }
+      done(); refresh();
+    }).catch(function(){ fieldErr(input, 'No connection - try again'); });
+  }
+  $('ls-off').addEventListener('click', function(){
+    lostOff('ls-pin', function(){ lostHide(); toast('Lost mode is off. Welcome back 📱'); });
+  });
+  $('ls-pin').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('ls-off').click(); });
+  function lostForm(){
+    var here = !!(findMe && findMe.lostHere);
+    $('loc-lostnow').hidden = !here;
+    $('loc-lost-onform').hidden = here;
+    $('loc-lost-offform').hidden = !here;
+    $('loc-lost-sum').textContent = here ? '📵 Lost mode is on: turn it off' : '📵 Turn on Lost mode';
+    var keep = $('ll-call').value;
+    var who = (membersCache || []).filter(function(m){ return m.id !== state.memberId && m.phone; });
+    $('ll-call').innerHTML = who.length ? who.map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>'; }).join('')
+      : '<option value="">Nobody in the family has a number saved</option>';
+    if (keep && $('ll-call').querySelector('option[value="' + keep + '"]')) $('ll-call').value = keep;
+  }
+  function findRing(targetId, name){
+    if (targetId === state.memberId) { try { sessionStorage.setItem('parwah-ring-self', String(Date.now())); } catch (e) {} }
+    post(locUrl(), { code: state.code, memberId: state.memberId, action: 'ring', targetId: targetId }).then(function(j){
+      toast(j.ok ? (targetId === state.memberId ? 'Ringing your other phones for two minutes 🔔' : 'Ringing ' + name + '\'s phone for two minutes 🔔')
+        : (j.error || 'Could not ring it just now'));
+    }).catch(function(){ toast('No connection - try again'); });
+  }
+  $('loc-ringme').addEventListener('click', function(){ findRing(state.memberId, 'your'); });
+  ['loc-list', 'loc-ask'].forEach(function(id){
+    $(id).addEventListener('click', function(e){
+      var b = e.target.closest('button[data-locring]'); if (!b) return;
+      findRing(b.getAttribute('data-locring'), b.getAttribute('data-name'));
+    });
+  });
+  $('ll-on').addEventListener('click', function(){
+    var msg = $('ll-msg').value.trim();
+    if (msg.length > 160) { fieldErr('ll-msg', 'Keep the message to 160 letters - a finder reads it at a glance.'); return; }
+    askSheet('Turn on Lost mode?', 'Your other phones will lock with your message and share exactly where they are. Only your PIN turns it off.', 'Turn it on', 'Not now').then(function(yes){
+      if (!yes) return;
+      post(locUrl(), { code: state.code, memberId: state.memberId, action: 'lost_on', message: msg, callId: $('ll-call').value || undefined }).then(function(j){
+        if (!j.ok) { fieldErr(j.field === 'call' ? 'll-call' : 'll-msg', j.error || 'Could not turn it on'); return; }
+        $('ll-msg').value = '';
+        if (findMe) findMe.lostHere = true;
+        lostForm();
+        toast('Lost mode is on 📵 Your other phones will show it as soon as they are online');
+      }).catch(function(){ toast('No connection - try again'); });
+    });
+  });
+  $('ll-off').addEventListener('click', function(){
+    lostOff('ll-pin', function(){ lostForm(); toast('Lost mode is off'); });
   });
 
   // ---------- member profiles ----------

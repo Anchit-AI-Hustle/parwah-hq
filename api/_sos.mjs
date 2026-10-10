@@ -17,10 +17,13 @@
 //      there is nobody else to say so, so the person may.
 //   5. Hands the phone a list of who to call and message straight away.
 //
+//   6. With a Twilio account added, texts, WhatsApps and calls those people
+//      from the server as well (api/_sosdial.mjs). Without one, nothing extra.
+//
 // What a web app cannot do, and does not pretend to: send a government
-// cell-broadcast, place a phone call or an SMS by itself, or keep sending a
-// position once the app is closed. The phone does the calling and the
-// messaging, one tap each, with everything already filled in.
+// cell-broadcast, place a phone call or an SMS from the phone by itself, or
+// keep sending a position once the app is closed. The phone does the calling
+// and the messaging, one tap each, with everything already filled in.
 import { validPosition } from './_geo.mjs';
 
 export const SOS_AUDIO_MAX = 1600000;       // base64 characters, about 1.2 MB

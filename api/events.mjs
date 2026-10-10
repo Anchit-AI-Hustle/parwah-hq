@@ -3,6 +3,8 @@
 import { db, ensureSchema, circleByCode, requireMember, isUuid, ensureCircleChat, rateLimit } from './_db.mjs';
 import { ensureSosSchema, sosText, parsePos, sosContacts, othersOnApp, mapLink, SOS_AUDIO_MAX, SOS_AUDIO_TYPES } from './_sos.mjs';
 import { lockForSos, unlockSos, ensureLocationSchema } from './_locationapi.mjs';
+import { findState } from './_findme.mjs';
+import { dialOut } from './_sosdial.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
@@ -166,7 +168,8 @@ async function escalateStaleSos(sql, circleId) {
         kind: ck[0] ? ck[0].kind : 'family', familyType: ck[0] ? ck[0].family_type : null, members, events, seenAt, calls,
         joinRequests: joinReqs, joinPolicy: (pol[0] && pol[0].join_policy) || 'approve',
         sos: sosOpen.map(x => ({ ...x, map: mapLink(x.lat === null ? null : { lat: x.lat, lng: x.lng }) })),
-        sosEscalateMin: SOS_ESCALATE_MIN, pulse });
+        sosEscalateMin: SOS_ESCALATE_MIN, pulse,
+        findme: await findState(sql, circle, g.me, tokenOf(req)).catch(() => null) });
     }
 
     if (req.method === 'POST') {
@@ -359,5 +362,8 @@ async function raiseSos(sql, res, circle, me, said, body) {
     url: '/#home', urgent: true
   }, { except: me.id });
   const contacts = await sosContacts(sql, circle.id, me.id);
-  return res.status(201).json({ ok: true, sosId, again, text, map: mapLink(pos), located: !!pos, contacts });
+  // Texts, WhatsApp and calls sent by Parwah itself, once a Twilio account
+  // is added (api/_sosdial.mjs). Without one, this sends nothing.
+  const dialed = await dialOut(sql, sosId, contacts, { name: me.name, text, map: mapLink(pos) });
+  return res.status(201).json({ ok: true, sosId, again, text, map: mapLink(pos), located: !!pos, contacts, dialed });
 }
