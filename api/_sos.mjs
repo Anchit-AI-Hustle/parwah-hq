@@ -9,12 +9,9 @@
 //   3. Puts the message in the family chat with a map link, so anyone who
 //      opens Parwah sees where and when.
 //   4. Turns location sharing on, exact, with no end time, and holds it on
-//      until SOMEONE ELSE in the family marks the person safe. The person who
-//      pressed it cannot switch it off mid-emergency (owner's call,
-//      2026-10-04). This is the one place Parwah shares a position the person
-//      did not set up themselves; pressing SOS is that consent, and the lock
-//      ends the moment the family says they are safe. Alone in a family,
-//      there is nobody else to say so, so the person may.
+//      until the SOS is closed. Anyone in that family or group on Parwah
+//      closes it, the person who pressed it included (owner, 2026-10-10:
+//      an SOS nobody else answers must not stay on for ever).
 //   5. Hands the phone a list of who to call and message straight away.
 //
 //   6. With a Twilio account added, texts, WhatsApps and calls those people

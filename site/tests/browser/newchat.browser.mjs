@@ -105,7 +105,9 @@ for (const [label, viewport] of [['phone', { width:390, height:844 }]]) {
   ok(await vis(page, '#chat-fab'), `${label}: the New chat button is there on Today once signed in`);
   ok(await vis(page, '#ekta-fab'), `${label}: next to the Ekta button`);
   const a = await box(page, '#chat-fab'), b = await box(page, '#ekta-fab');
-  ok(a && b && !overlap(a, b) && a.y < b.y, `${label}: it sits above Ekta and never covers it`);
+  // On a phone both sit side by side in the dock above the tabs (owner,
+  // 2026-10-10: nothing floats over the page).
+  ok(a && b && !overlap(a, b) && a.x < b.x && Math.abs(a.y - b.y) < 2, `${label}: it sits beside Ekta in the dock and never covers it`);
   ok(a && a.y + a.height <= viewport.height && a.x + a.width <= viewport.width, `${label}: fully on screen`);
   const tabs = await page.locator('#tabs').boundingBox();
   ok(label !== 'phone' || (tabs && a.y + a.height <= tabs.y), `${label}: clear of the tab bar`);
@@ -176,8 +178,8 @@ for (const [label, viewport] of [['phone', { width:390, height:844 }]]) {
   ok(!(await vis(page, '#ekta-fab')), `${label}: on Ekta's screen the Ekta button steps aside`);
   ok(await vis(page, '#chat-fab'), `${label}: and the chat button stays`);
   const solo = await box(page, '#chat-fab'), send = await box(page, '#send'), bar = await page.locator('#composer').boundingBox();
-  ok(solo && send && !overlap(solo, send) && bar && solo.y + solo.height <= bar.y,
-     `${label}: on Ekta's screen it keeps its place above the typing bar, never on Send`);
+  ok(solo && send && !overlap(solo, send) && bar && solo.y >= bar.y + bar.height - 1,
+     `${label}: on Ekta's screen it stays in the dock below the typing bar, never on Send`);
 
   // Every other screen has both.
   for (const t of ['vault', 'care', 'people', 'fun', 'day', 'profile', 'notifs', 'memory']) {

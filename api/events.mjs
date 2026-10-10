@@ -1,7 +1,7 @@
 // GET  /api/events?circle=CODE          - circle state: members + last 50 events
 // POST /api/events {code, memberId, type, text} - record a check-in, SOS, pill or message
 import { db, ensureSchema, circleByCode, requireMember, isUuid, ensureCircleChat, rateLimit } from './_db.mjs';
-import { ensureSosSchema, sosText, parsePos, sosContacts, othersOnApp, mapLink, SOS_AUDIO_MAX, SOS_AUDIO_TYPES } from './_sos.mjs';
+import { ensureSosSchema, sosText, parsePos, sosContacts, mapLink, SOS_AUDIO_MAX, SOS_AUDIO_TYPES } from './_sos.mjs';
 import { lockForSos, unlockSos, ensureLocationSchema } from './_locationapi.mjs';
 import { findState } from './_findme.mjs';
 import { dialOut } from './_sosdial.mjs';
@@ -232,12 +232,10 @@ async function escalateStaleSos(sql, circleId) {
             body: 'They are helping ' + row[0].name + ' - you do not need to call as well' }, { except: memberId });
           return res.status(200).json({ ok: true });
         }
-        // Marking someone safe is the family's word, not the person's own:
-        // that is what keeps their location on through the emergency. Alone
-        // in a family there is nobody else, so they may.
-        if (row[0].member_id === memberId && (await othersOnApp(sql, circle.id, memberId)) > 0) {
-          return res.status(403).json({ ok: false, error: 'Someone else in the family marks you safe. Tap "I am safe now" and they will be asked to confirm.' });
-        }
+        // Anyone in this family or group on Parwah ends it, the person who
+        // sent it included (owner, 2026-10-10): an SOS nobody else answers
+        // must never stay on for ever. It ends here only, not in their other
+        // families or groups.
         if (row[0].status === 'resolved') return res.status(200).json({ ok: true, already: true });
         await sql`update sos set status = 'resolved', resolved_at = now(), resolved_by = ${memberId} where id = ${row[0].id}`;
         await unlockSos(sql, circle.id, row[0].member_id);
@@ -252,8 +250,8 @@ async function escalateStaleSos(sql, circleId) {
         return res.status(200).json({ ok: true });
       }
 
-      // The person who pressed SOS says they are alright. The family is told,
-      // and asked to confirm; until someone does, the SOS stays open.
+      // The person who pressed SOS says they are alright: that ends it, and
+      // the family is told.
       if (type === 'sos_safe' || type === 'sos_audio') {
         if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
         const sm = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
@@ -263,18 +261,13 @@ async function escalateStaleSos(sql, circleId) {
         if (!r[0] || r[0].status === 'resolved') return res.status(404).json({ ok: false, error: 'That SOS is not open' });
         if (r[0].member_id !== memberId) return res.status(403).json({ ok: false, error: 'Only the person who sent the SOS can do that' });
         if (type === 'sos_safe') {
-          const alone = (await othersOnApp(sql, circle.id, memberId)) === 0;
-          if (alone) {
-            await sql`update sos set status = 'resolved', resolved_at = now(), resolved_by = ${memberId}, safe_at = now() where id = ${r[0].id}`;
-            await unlockSos(sql, circle.id, memberId);
-            return res.status(200).json({ ok: true, resolved: true });
-          }
-          await sql`update sos set safe_at = now() where id = ${r[0].id}`;
+          await sql`update sos set status = 'resolved', resolved_at = now(), resolved_by = ${memberId}, safe_at = now() where id = ${r[0].id}`;
+          await unlockSos(sql, circle.id, memberId);
           await sql`insert into events (circle_id, member_id, type, text)
-                    values (${circle.id}, ${memberId}, 'care', ${sm[0].name + ' says they are safe now - please check and mark it sorted'})`;
-          await pushCircle(sql, circle.id, { title: '🧡 ' + sm[0].name + ' says they are safe',
-            body: 'Check on them, then tap Sorted so the SOS can close', url: '/#home' }, { except: memberId });
-          return res.status(200).json({ ok: true, resolved: false });
+                    values (${circle.id}, ${memberId}, 'care', ${sm[0].name + ' is safe now - the SOS is closed ✅'})`;
+          await pushCircle(sql, circle.id, { title: '✅ ' + sm[0].name + ' is safe',
+            body: 'They closed their SOS themselves. A call to check in never hurts.', url: '/#home' }, { except: memberId });
+          return res.status(200).json({ ok: true, resolved: true });
         }
         // A short recording from the phone that pressed SOS, so the family can
         // hear what was happening. Kept with the SOS, read only by the family.

@@ -76,7 +76,7 @@ export async function sosLocked(sql, circleId, memberId) {
   } catch (e) { return false; }   // no SOS has ever been raised here
 }
 export const SOS_LOCK_MSG = 'Your SOS is still open, so your family can see exactly where you are. ' +
-  'Sharing stays on until someone in the family marks you safe.';
+  'Sharing stays on until the SOS is closed: tap "I am safe" on the red bar, or anyone in the family can.';
 // Turn sharing on, exact and with no end time, for an SOS. Used by the SOS
 // itself, never by anyone else's request.
 export async function lockForSos(sql, circleId, memberId, sosId, pos) {
