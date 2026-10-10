@@ -112,9 +112,14 @@ focus, active, disabled; loading where it acts).
   and fold the rest (`.suggmore`).
 - Field error `.fielderr`: the reason a box was refused, right under it,
   with `aria-invalid` on the box. A refused form says so here, not in a toast.
-- SOS button `.sosfab` (every screen: a floating circle on a phone, a full-width control at the bottom of the sidebar on a laptop), SOS screen `.sosscreen`,
+- SOS button `.sosfab` (every screen: in the dock on a phone, a full-width control at the bottom of the sidebar on a laptop), SOS screen `.sosscreen`,
   alarm `.sosalert`, their buttons `.ss-btn`. Emergency red `--sos` is for
   these only.
+- Dock `#fabdock` (phones): SOS left, Chat and Ekta right, in a solid row
+  above the tabs. Nothing floats over the page: the page, the message box and
+  toasts end above the dock (owner, 2026-10-10: "elements should never get
+  hidden"). The SOS bar `#sosbar` pushes the page and its sticky header down
+  (`body.sosup`, `--sos-h`) instead of covering them.
 - Find a phone `.findscreen`: the ring (`#ringscreen`) and Lost mode
   (`#lostscreen`) take the screen like an alarm, in `--pine`, which is dark
   in both themes, with marigold for the one main action. They reuse

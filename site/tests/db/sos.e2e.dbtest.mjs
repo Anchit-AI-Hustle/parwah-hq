@@ -161,11 +161,9 @@ ok('the phone buzzed', (await P.evaluate(() => window.__buzz.length)) > 0);
 
 // ---- 4. Papa cannot switch his location off mid-emergency
 const stop = await api(P, papa, { __url: '/api/settings?area=location', action: 'stop' });
-ok('Stop is refused while the SOS is open, and says why', stop.status === 423 && /marks you safe/.test(stop.error), JSON.stringify(stop));
+ok('Stop is refused while the SOS is open, and says how to end it', stop.status === 423 && /I am safe/.test(stop.error), JSON.stringify(stop));
 const blur = await api(P, papa, { __url: '/api/settings?area=location', action: 'precision', precision: 'area' });
 ok('so is blurring it to the area', blur.status === 423);
-const self = await api(P, papa, { type: 'sos_resolve', sosId: sos.id });
-ok('Papa cannot mark his own SOS sorted while family is there', self.status === 403, JSON.stringify(self));
 const still = await q1('select enabled, sos_lock from location_shares where member_id = $1', [papa.id]);
 ok('and his location is still shared', still.enabled && still.sos_lock === sos.id);
 
@@ -195,12 +193,6 @@ ok('and the SOS shows Rohan has it', (await q1('select status, acked_by from sos
 await P.waitForTimeout(13000);
 ok('Papa\'s screen says Rohan is on it', /Rohan is on it/.test(await P.textContent('#ss-who')), await P.textContent('#ss-who'));
 
-// ---- 8. Papa says he is safe: the family is asked, nothing closes yet
-await P.click('#ss-safe'); await P.waitForTimeout(800);
-const s8 = await q1('select status, safe_at from sos where id = $1', [sos.id]);
-ok('"I am safe now" tells the family, but the SOS stays open', s8.safe_at && s8.status !== 'resolved');
-ok('and his location stays on', (await q1('select sos_lock from location_shares where member_id = $1', [papa.id])).sos_lock === sos.id);
-
 // ---- 9. Rohan marks it sorted: over, and the location is Papa's again
 await R.reload(); await R.waitForTimeout(1500);
 ok('Rohan has Sorted on the SOS bar', await vis(R, '#sos-done'));
@@ -212,6 +204,26 @@ await P.waitForTimeout(13000);
 ok('Papa\'s SOS screen closes by itself', !(await vis(P, '#sosscreen')));
 const stop2 = await api(P, papa, { __url: '/api/settings?area=location', action: 'stop' });
 ok('and now he can stop sharing', stop2.status === 200 && stop2.sharing === false, JSON.stringify(stop2));
+
+// ---- 10. Papa's own SOS, ended by Papa (owner, 2026-10-10: anyone in the
+//          family or group ends it, the sender included), from the red bar,
+//          which pushes the page down and never covers the header.
+{
+  const again = await api(P, papa, { type: 'sos', text: '', lat: 28.5355, lng: 77.391, accuracy: 9 });
+  ok('a second SOS goes', again.status === 201 && !!again.sosId, JSON.stringify(again));
+  await P.reload(); await P.waitForTimeout(1500);
+  await P.evaluate(() => { const s = document.getElementById('sosscreen'); if (s) s.hidden = true; });
+  ok('Papa sees his SOS bar, with I am safe', await vis(P, '#sosbar') && /I am safe/.test(await P.textContent('#sos-done')), await P.textContent('#sos-done').catch(() => ''));
+  const lay = await P.evaluate(() => { const b = document.getElementById('sosbar').getBoundingClientRect(), h = document.querySelector('.bar').getBoundingClientRect(); return { barBottom: b.bottom, headTop: h.top }; });
+  ok('the red bar sits above the header, never over it', lay.headTop >= lay.barBottom - 1, JSON.stringify(lay));
+  await P.click('#sos-done'); await P.waitForTimeout(1200);
+  const s10 = await q1('select status, resolved_by from sos where id = $1', [again.sosId]);
+  ok('Papa closes his own SOS', s10.status === 'resolved' && s10.resolved_by === papa.id, JSON.stringify(s10));
+  ok('the hold on his location is lifted', (await q1('select sos_lock from location_shares where member_id = $1', [papa.id])).sos_lock === null);
+  ok('and the family is told he is safe', !!(await q1("select 1 from events where text like 'Papa is safe now%'")));
+  await P.waitForTimeout(500);
+  ok('the bar is gone, and the page moves back up', !(await vis(P, '#sosbar')) && (await P.evaluate(() => !document.body.classList.contains('sosup'))));
+}
 
 ok('no script errors on either phone', errors.length === 0, errors.join(' | '));
 await browser.close();

@@ -305,6 +305,34 @@ for (const theme of ['light', 'dark']) {
   await pg.close();
 }
 
+// ---------- THE DOCK: on a phone nothing floats over the page ----------
+// Owner (2026-10-10): "elements should never get hidden". SOS, Chat and Ekta
+// sit in a solid row above the tabs; the page ends above that row.
+for (const vp of [{ width:320, height:640 }, { width:390, height:844 }]) {
+  const pg = await fresh({ viewport:vp, signedIn:true });
+  for (const tab of ['home', 'care', 'people', 'chat']) {
+    await pg.evaluate(t => { location.hash = '#' + t; }, tab); await pg.waitForTimeout(400);
+    await pg.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)); await pg.waitForTimeout(300);
+    const r = await pg.evaluate(() => {
+      const box = el => el.getBoundingClientRect();
+      const dock = document.getElementById('fabdock'), d = box(dock);
+      const shown = el => el && !el.hidden && el.checkVisibility({ checkVisibilityCSS: true }) && el.getClientRects().length;
+      const fabs = ['sos-fab', 'chat-fab', 'ekta-fab'].map(id => document.getElementById(id)).filter(shown);
+      const out = fabs.filter(f => { const b = box(f); return b.top < d.top - 1 || b.bottom > d.bottom + 1; }).map(f => f.id);
+      const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      fabs.forEach((f, i) => fabs.slice(i + 1).forEach(g => { if (hit(box(f), box(g))) out.push(f.id + ' on ' + g.id); }));
+      const pane = [...document.querySelectorAll('#main > section')].find(s => !s.hidden);
+      const last = pane ? [...pane.querySelectorAll('button, a, input, select, textarea, .card, .crow')].filter(shown).pop() : null;
+      const bar = document.querySelector('.inputbar'); const inBar = bar && shown(bar) ? box(bar).bottom : null;
+      return { dockShown: shown(dock), fabs: fabs.length, out, lastBottom: last ? box(last).bottom : 0, dockTop: d.top, inBar };
+    });
+    ok(r.dockShown && r.fabs >= 2 && !r.out.length, vp.width + 'px ' + tab + ': SOS, Chat and Ekta sit in the dock, apart, not on the page (' + r.fabs + ' in it' + (r.out.length ? ', out: ' + r.out.join() : '') + ')');
+    ok(r.lastBottom <= r.dockTop + 1, vp.width + 'px ' + tab + ': the page ends above the dock, nothing under it (' + Math.round(r.lastBottom) + ' vs ' + Math.round(r.dockTop) + ')');
+    if (r.inBar !== null) ok(r.inBar <= r.dockTop + 1, vp.width + 'px ' + tab + ': the message box sits above the dock');
+  }
+  await pg.close();
+}
+
 // ---------- A PARENT'S TODAY: nothing covers check-in or SOS ----------
 // A parent's check-in and SOS are the most important buttons in the app. Chat
 // and Ekta float for a parent too (owner, 2026-10-09), in the corner beside the

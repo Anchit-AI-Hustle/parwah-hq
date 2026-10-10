@@ -114,7 +114,7 @@
   --sh-1:0 1px 2px rgba(34,20,40,.04),0 8px 22px rgba(34,20,40,.06);
   --sh-2:0 2px 6px rgba(34,20,40,.06),0 20px 40px rgba(34,20,40,.12);
   --glow1:rgba(255,179,26,.26); --glow2:rgba(217,20,111,.12); --glow3:rgba(0,161,154,.12);
-  --tabs-h:62px; --side-w:232px;
+  --tabs-h:62px; --side-w:232px; --dock-h:72px;
   --disp:"Bricolage Grotesque","Plus Jakarta Sans",system-ui,sans-serif; --body:"Plus Jakarta Sans",system-ui,sans-serif; --dev:"Baloo 2","Plus Jakarta Sans",sans-serif;
   --rani:#D9146F; --peacock:#00A19A; --flame:#FF5B2E; --on-bright:#1E0F26; --dot:rgba(34,20,40,.09);
   --grad:linear-gradient(115deg,var(--marigold),var(--flame));
@@ -171,7 +171,7 @@ body{font-family:var(--body);color:var(--ink);min-height:100vh;min-height:100dvh
     var(--day);
   background-attachment:fixed}
 .bar{background:var(--dusk);color:var(--cream);display:flex;align-items:center;gap:var(--space-12);
-  position:sticky;top:0;z-index:var(--z-bar);
+  position:sticky;top:var(--sos-h,0px);z-index:var(--z-bar);
   padding:var(--space-16) var(--space-20);padding-top:calc(var(--space-16) + env(safe-area-inset-top));
   padding-left:calc(var(--space-20) + env(safe-area-inset-left));padding-right:calc(var(--space-20) + env(safe-area-inset-right))}
 .bar .brand{display:inline-flex;align-items:center;gap:var(--space-8);min-width:0}
@@ -298,10 +298,8 @@ details.giftmore summary{font-weight:700;color:var(--ink)}
    is well, Medicines taken and SOS, and never on top of them (proved in
    firstrun.e2e at 320 and 390px). On a narrow phone the three big buttons
    leave the floating column free, so they never meet at any scroll. */
-@media(max-width:560px){
-  body.senior #seniorui .big{margin-right:76px;width:auto}
-  body.senior #sos-fab{left:auto;right:16px;width:56px;height:56px;min-height:56px;max-width:56px;bottom:calc(var(--tabs-h) + 154px + env(safe-area-inset-bottom))}
-}
+/* (Elder mode needs nothing of its own here: on a phone SOS, Chat and Ekta
+   sit in the dock above the tabs, below every button on the page.) */
 
 /* feed */
 .eyebrow{font-size:var(--fs-12);letter-spacing:.2em;text-transform:uppercase;color:var(--sindoor);font-weight:700;margin:var(--space-20) 0 var(--space-12)}
@@ -492,9 +490,14 @@ button.pcard:disabled{opacity:.45;cursor:default}
 #sosbar{position:fixed;top:0;left:0;right:0;z-index:var(--z-sos);display:flex;align-items:center;gap:var(--space-12);
   padding:var(--space-12) var(--space-16);background:var(--alert);color:var(--on-accent);font-size:var(--fs-14);font-weight:600;
   box-shadow:0 6px 20px rgba(0,0,0,.3)}
-#sosbar .lc-join,#sosbar .lc-end{white-space:nowrap}
+#sosbar .lc-join,#sosbar .lc-end{white-space:nowrap;display:inline-flex;align-items:center;min-height:40px;border-radius:var(--radius-pill);padding:var(--space-8) var(--space-16);font-family:var(--body);font-size:var(--fs-14);font-weight:700;text-decoration:none;cursor:pointer}
+#sosbar .lc-join{background:var(--on-accent);color:var(--alert);border:0}
+#sosbar .lc-end{background:transparent;color:var(--on-accent);border:2px solid var(--on-accent)}
 body.inapp #sosbar{padding-left:var(--space-16)}
 @media(min-width:900px){body.inapp #sosbar{left:var(--side-w)}}
+/* The SOS bar never covers anything: while it shows, the page starts below
+   it and the header sticks under it (--sos-h is its measured height). */
+body.sosup{padding-top:var(--sos-h,0px)}
 
 /* the introduction, and the coachmarks that follow it */
 .trdots{display:flex;gap:var(--space-8);margin-top:var(--space-12)}
@@ -853,6 +856,22 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
 
 /* Ekta floating icon - on every screen, one tap away */
 .fab{position:fixed;right:16px;bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom));z-index:var(--z-fab);border:0;border-radius:var(--radius-pill);background:var(--dusk);color:var(--marigold);font-family:var(--body);font-weight:700;font-size:var(--fs-16);padding:var(--space-16) var(--space-20);cursor:pointer;box-shadow:0 10px 26px rgba(24,38,34,.4)}
+/* THE DOCK (phones): SOS, Chat and Ekta used to float over the page and hid
+   whatever was under them (owner, 2026-10-10: "elements should never get
+   hidden"). Below 900px they sit in their own solid row just above the tabs,
+   and the page, the chat box and the toasts all end above that row, so
+   nothing is ever under a button. */
+#fabdock{display:none}
+@media (max-width:899px){
+  body.hasdock #fabdock{display:block;position:fixed;left:0;right:0;bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom));height:var(--dock-h);background:var(--dusk);border-top:1px solid var(--pine-2);z-index:var(--z-inputbar)}
+  body.hasdock #sos-fab{left:16px;width:56px;height:56px;min-height:56px;max-width:56px;box-shadow:none;bottom:calc(var(--tabs-h) + (var(--dock-h) - 56px) / 2 + env(safe-area-inset-bottom))}
+  body.hasdock .fab{right:16px;box-shadow:none;bottom:calc(var(--tabs-h) + (var(--dock-h) - 56px) / 2 + env(safe-area-inset-bottom))}
+  body.hasdock .fab.chatfab{right:84px;bottom:calc(var(--tabs-h) + (var(--dock-h) - 56px) / 2 + env(safe-area-inset-bottom))}
+  body.hasdock #ekta-fab{background:var(--pine-2)}
+  body.hasdock .wrap{padding-bottom:calc(var(--tabs-h) + var(--dock-h) + 96px + env(safe-area-inset-bottom))}
+  body.hasdock .inputbar{bottom:calc(var(--tabs-h) + var(--dock-h) + env(safe-area-inset-bottom))}
+  body.hasdock .toast{bottom:calc(var(--tabs-h) + var(--dock-h) + 14px + env(safe-area-inset-bottom))}
+}
 
 /* game board */
 #board-cv{width:100%;aspect-ratio:1;border-radius:var(--radius-16);margin-top:var(--space-8);display:block;box-shadow:0 2px 12px rgba(36,31,23,.1)}
@@ -2797,7 +2816,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <a class="ss-btn" id="ss-mail">Email</a>
       <button type="button" class="ss-btn" id="ss-copy">Copy message</button>
     </div>
-    <p class="ss-note" id="ss-lock">📍 Your location stays on, exact, until someone in the family marks you safe. Keep Parwah open so it keeps updating.</p>
+    <p class="ss-note" id="ss-lock">📍 Your location stays on, exact, until the SOS is closed - by you with "I am safe now", or by anyone in the family. Keep Parwah open so it keeps updating.</p>
     <button type="button" class="ss-btn solid" id="ss-safe">I am safe now</button>
     <button type="button" class="ss-btn" id="ss-hide">Close this screen (the SOS stays on)</button>
   </div>
@@ -2844,6 +2863,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <button type="button" class="ss-btn" id="ls-off">Turn off Lost mode</button>
   </div>
 </div>
+<div id="fabdock" aria-hidden="true"></div>
 <button class="fab" id="ekta-fab" hidden aria-label="Ask Ekta" title="Ask Ekta"><span class="fic" aria-hidden="true">✨</span><span class="flbl"> Ekta</span></button>
 <button class="fab chatfab" id="chat-fab" hidden aria-label="Start a new chat" title="Start a new chat" aria-haspopup="dialog"><span class="fic" aria-hidden="true">💬</span><span class="flbl"> New chat</span></button>
 
@@ -3329,7 +3349,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       $('sos-ack').hidden = mineSos || so.status !== 'open';
       // Your own SOS is closed by the family, not by you: that is what keeps
       // your location on through it. "I am safe now" asks them to.
-      $('sos-done').hidden = mineSos && (data.members || []).some(function(m){ return m.id !== state.memberId && m.on_app; });
+      // Anyone in this family or group ends it, the sender too (owner,
+      // 2026-10-10): yours says "I am safe", anyone else's "Sorted".
+      $('sos-done').hidden = false;
+      $('sos-done').textContent = mineSos ? '✅ I am safe' : 'Sorted';
+      $('sosbar').dataset.mine = mineSos ? '1' : '';
     }
 
     var mh = '';
@@ -5214,13 +5238,25 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
   $('sos-ack').addEventListener('click', function(){ sosPost('sos_ack'); });
   $('sos-done').addEventListener('click', function(){
-    if (confirm('Mark this SOS as sorted? Everyone will be told.')) sosPost('sos_resolve');
+    var mine = $('sosbar').dataset.mine === '1';
+    if (!confirm(mine ? 'Close your SOS? The family will be told you are safe, and your location is yours again.' : 'Mark this SOS as sorted? Everyone will be told.')) return;
+    if (mine) {
+      var sid = $('sosbar').dataset.sid;
+      post(API.events, { code: state.code, memberId: state.memberId, type: 'sos_safe', sosId: sid })
+        .then(function(j){
+          if (!j.ok) { toast(j.error || 'Could not close it'); return; }
+          sosEnded('Glad you are safe. The SOS is closed and the family has been told.');
+          refresh();
+        }).catch(function(){ toast('No connection - try again'); });
+      return;
+    }
+    sosPost('sos_resolve');
   });
   // ---------- SOS: one tap, then everything at once ----------
   // The red button is on every screen. A tap starts a 5-second countdown
   // with a big Cancel (pockets press buttons), or Send now. Then, at once:
   // the alert to every phone in the family, the message in the family chat,
-  // location on and exact until someone else marks you safe, a short
+  // location on and exact until the SOS is closed (by you or the family), a short
   // recording, and one-tap calls and messages to the people who matter.
   // What a web app cannot do, it does not pretend to: the calls and the
   // outside messages are one tap each, already filled in.
@@ -5364,7 +5400,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         b.disabled = false;
         if (!j.ok) { toast(j.error || 'Could not send that'); return; }
         if (j.resolved) { sosEnded('Glad you are safe. The SOS is closed.'); return; }
-        $('ss-status').textContent = 'Your family has been told you are safe, and asked to confirm. Your location stays on until they do.';
+        sosEnded('Glad you are safe. The SOS is closed.');
       }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
   });
   function sosEnded(msg){
@@ -5374,6 +5410,23 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     toast(msg);
     refreshLoc();
   }
+  // The red bar is fixed at the top; the page and its sticky header start
+  // below it (body.sosup + --sos-h), so it never covers the menu or a title.
+  // The dock under SOS, Chat and Ekta shows whenever the SOS button does.
+  (function(){
+    var bar = $('sosbar'), fab = $('sos-fab'), root = document.documentElement;
+    function sosH(){
+      var h = bar.hidden ? 0 : bar.getBoundingClientRect().height;
+      root.style.setProperty('--sos-h', Math.round(h) + 'px');
+      document.body.classList.toggle('sosup', !bar.hidden);
+    }
+    function dock(){ document.body.classList.toggle('hasdock', !fab.hidden); }
+    try { new ResizeObserver(sosH).observe(bar); } catch (e) {}
+    new MutationObserver(sosH).observe(bar, { attributes: true, attributeFilter: ['hidden'], childList: true, subtree: true, characterData: true });
+    new MutationObserver(dock).observe(fab, { attributes: true, attributeFilter: ['hidden'] });
+    window.addEventListener('resize', sosH);
+    sosH(); dock();
+  })();
   $('sosbar').addEventListener('click', function(e){
     if (e.target.closest('a,button')) return;
     if (sosLive && sosLive.id) sosShowLive();
@@ -7964,7 +8017,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('loc-stop').hidden = !on || !!locMe.sosLock;
     $('loc-prec').hidden = !!locMe.sosLock;
     if (locMe.lostLock) { $('loc-stop').hidden = true; $('loc-prec').hidden = true; $('loc-status').textContent = '📵 Lost mode is on, so your family can see exactly where your phone is. Sharing stays on until you turn Lost mode off with your PIN.'; }
-    if (locMe.sosLock) $('loc-status').textContent = '🆘 Your SOS is open, so your family can see exactly where you are. Sharing stays on until someone in the family marks you safe.';
+    if (locMe.sosLock) $('loc-status').textContent = '🆘 Your SOS is open, so your family can see exactly where you are. Sharing stays on until the SOS is closed: tap I am safe on the red bar, or anyone in the family can.';
     $('loc-for').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-for') === locFor); });
     $('loc-prec').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-prec') === locPrec); });
     var mine = null; locShares.forEach(function(x){ if (x.mine) mine = x; });

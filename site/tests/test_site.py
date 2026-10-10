@@ -1879,7 +1879,7 @@ check("dls: every pull request carries the design checklist",
 _light = dict(re.findall(r"(--[a-z0-9-]+):\s*([^;]+);",
                          _css[_css.index(":root{"):_css.index("}", _css.index(":root{"))]))
 _dark = dict(re.findall(r"(--[a-z0-9-]+):\s*([^;]+);", _css[_css.index(':root[data-theme="dark"]{'):_dark_end]))
-_notype = {"--tabs-h", "--side-w", "--disp", "--body", "--dev", "color-scheme"}
+_notype = {"--tabs-h", "--side-w", "--dock-h", "--disp", "--body", "--dev", "color-scheme"}
 # Spacing, type, radius, layer, motion and tap tokens are the same in both
 # themes by design; only colours need a dark value.
 _notype |= {t for t in _light if re.match(r"--(space|fs|radius|z|motion|tap|avatar)-", t)}
@@ -2246,10 +2246,19 @@ check("sos: sent as an emergency push (high urgency, stays on screen, long buzz)
       and "requireInteraction: urgent" in (REPO / "site/public/sw.js").read_text(encoding="utf-8"))
 check("sos: the message goes in the family chat with a map link",
       "ensureCircleChat(sql, circle.id)" in _evt and "maps.google.com/?q=" in _sosmod)
-check("sos: location is held on until someone else marks the person safe",
+# Owner (2026-10-10): anyone in the family or group ends an SOS, the person
+# who sent it included; until then the location stays held on (sos.e2e).
+check("sos: location is held on until the SOS is closed, by the sender or anyone in the family",
       "lockForSos(sql, circle.id, me.id, sosId, pos)" in _evt and "unlockSos(sql, circle.id, row[0].member_id)" in _evt
+      and "unlockSos(sql, circle.id, memberId)" in _evt
       and "status(423)" in _locapi and "s.sos_lock is null" in _locapi
-      and "othersOnApp(sql, circle.id, memberId)) > 0" in _evt)
+      and "othersOnApp(sql, circle.id, memberId)) > 0" not in _evt)
+# Owner (2026-10-10): "elements should never get hidden". On a phone SOS,
+# Chat and Ekta sit in a solid dock above the tabs; the SOS bar pushes the
+# page down. Proved in flow.browser at 320 and 390px.
+check("layout: nothing floats over the page on a phone; the SOS bar never covers the header",
+      'id="fabdock"' in _appt and "body.hasdock .wrap{padding-bottom" in _appt and "body.sosup{padding-top:var(--sos-h" in _appt
+      and "position:sticky;top:var(--sos-h,0px)" in _appt)
 check("sos: a short recording, heard only by the family",
       "sos_media" in _sosmod and "SOS_AUDIO_MAX" in _evt and "and s.circle_id = ${circle.id}" in _evt.split("if (q.sosAudio)")[1][:700])
 check("sos: other phones take the whole screen with a siren until someone answers",
