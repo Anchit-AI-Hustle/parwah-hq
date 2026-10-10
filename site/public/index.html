@@ -2680,6 +2680,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="sidehead side-only" id="side-groups-head" hidden>👨‍👩‍👧‍👦 My Groups</div>
     <div class="subnav side-only" id="side-groups"></div>
     <button class="side-new side-only" id="side-newcircle">＋ New family or group</button>
+    <button class="side-new side-only" id="side-joincircle">🔑 Join with a code</button>
     <div class="side-foot">
       <button type="button" class="sosfab" id="sos-fab" hidden aria-label="SOS - get help now" title="SOS - get help now">SOS</button>
       <div class="side-user side-only" id="side-user"></div>
@@ -2765,6 +2766,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="ditem dparent" data-grp="groups">👨‍👩‍👧‍👦 My Groups <span class="caret">▾</span></button>
       <div class="dsub" id="d-groups"></div>
       <button class="ditem sub" id="d-newcircle">＋ New family or group</button>
+      <button class="ditem sub" id="d-joincircle">🔑 Join with a code</button>
     </div>
     <a class="ditem" href="get/" target="_blank" rel="noopener">📲 Get the app</a>
     <div class="dfoot" id="d-user"></div>
@@ -4581,8 +4583,21 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     drawerOpen(false);
     showSetup();
   }
+  // Joining a family someone else already made is NOT "new", and it was only
+  // reachable by pressing a button that says it is: New family or group, then
+  // "I have a code to join instead". Someone holding a code looked under My
+  // Groups, did not find it, and reported that the app has no way to join
+  // another family. It had one; the label hid it. It gets its own entry next to
+  // the one it was hiding behind, in both the sidebar and the drawer, and lands
+  // on the code field rather than on the pick-a-kind card.
+  function joinCircleFromApp(){
+    newCircleFromApp();
+    startJoin();
+  }
   $('side-newcircle').addEventListener('click', newCircleFromApp);
   $('d-newcircle').addEventListener('click', newCircleFromApp);
+  $('side-joincircle').addEventListener('click', joinCircleFromApp);
+  $('d-joincircle').addEventListener('click', joinCircleFromApp);
   function enterCircle(c){
     state = { code: c.code, circleName: c.circleName, memberId: c.memberId, name: c.memberName || (authUser && authUser.name) || '', role: c.role };
     saveState(state);
