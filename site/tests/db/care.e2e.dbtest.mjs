@@ -408,7 +408,10 @@ const tomorrow = localDay(Date.now() + 86400000);
 // ---- 10. Notes and lists, shared
 {
   // Rohan's own reminder from above would ring on his phone: it is done.
+  // Reload his phone too: a page still holding the old list rings it on its
+  // next tick, and that alarm would sit over everything below.
   await admin.query(`update requests set status = 'done', completed_at = now() where title = 'Rohan only'`);
+  await R.reload(); await R.waitForTimeout(1200);
   const toNotes = async (page) => { await page.goto(BASE + '/#care'); await page.waitForTimeout(600);
     await page.click('#care-seg [data-sec="notes"]'); await page.waitForTimeout(900); };
   await toNotes(M);
