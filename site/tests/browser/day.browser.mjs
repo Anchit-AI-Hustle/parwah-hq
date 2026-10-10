@@ -163,7 +163,10 @@ ok(/(Next good window|This window ends at|Good the rest)/.test(vnext),
 // ---- the day in three lines, inside the answer ----
 const facts = await page.locator('#mu-facts .mufact').allTextContents();
 ok(facts.length === 3, 'three facts under the answer, not three more cards');
-ok(/Best time ahead/.test(facts[0]) && /Next to avoid/.test(facts[1]) && /rises .* sets /.test(facts[2]),
+// Inside Rahu Kaal (or any time to avoid) the second line says so: "Avoid
+// now", by design, with the one after it as "next". Either is right; which
+// one depends on the hour the test runs.
+ok(/Best time ahead/.test(facts[0]) && /^\W*(Next to avoid|Avoid now):/.test(facts[1].trim()) && /rises .* sets /.test(facts[2]),
    'best time ahead, next to avoid, and the sun → ' + facts.map(f => f.trim()).join(' | '));
 
 // ---- five tabs, overview first ----
