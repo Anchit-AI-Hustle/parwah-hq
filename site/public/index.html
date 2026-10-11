@@ -1227,14 +1227,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <label for="au-phone">Mobile number</label>
     <div class="phrow">
       <select id="au-cc" class="ccsel" aria-label="Country code"></select>
-      <input type="tel" id="au-phone" maxlength="14" placeholder="98765 43210" autocomplete="tel">
+      <input type="tel" id="au-phone" maxlength="14" placeholder="e.g. 98765 43210" autocomplete="tel">
     </div>
     <div id="au-pinwrap" hidden>
       <p class="hint" id="au-pinnote" style="margin:var(--space-12) 0 var(--space-2);font-weight:700;color:var(--marigold-d)"></p>
       <label for="au-pin" id="au-pinlabel">Your 4-number PIN</label>
       <input type="password" id="au-pin" autocomplete="current-password" maxlength="4"
              inputmode="numeric" pattern="[0-9]*"
-             placeholder="4 numbers" aria-describedby="au-pinnote au-pinrule"
+             placeholder="● ● ● ●" aria-describedby="au-pinnote au-pinrule"
              style="letter-spacing:.2em;text-align:center;font-size:var(--fs-20)">
       <p class="hint" id="au-pinrule" hidden style="margin:var(--space-8) 0 0">Exactly 4 numbers. Not 1234, not your birth year, not one number repeated.</p>
       <div id="au-pin2wrap" hidden>
@@ -1351,7 +1351,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <div class="card" id="joincard" hidden>
     <h3>Join with a code</h3>
     <label for="j-code">Family code</label>
-    <input type="text" id="j-code" maxlength="12" placeholder="KJM4PW" style="text-transform:uppercase;letter-spacing:.2em" aria-describedby="j-code-hint">
+    <input type="text" id="j-code" maxlength="12" placeholder="e.g. KJM4PW" style="text-transform:uppercase;letter-spacing:.2em" aria-describedby="j-code-hint">
     <p class="hint" id="j-code-hint" style="margin:var(--space-4) 0 0">The code someone in the family sent you, e.g. KJM4PW or SHARMAS.</p>
     <label for="j-name">Your name</label>
     <input type="text" id="j-name" maxlength="60" placeholder="e.g. Papa">
@@ -1690,7 +1690,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <button type="button" class="go" id="ll-on">📵 Turn on Lost mode</button>
         </div>
         <div id="loc-lost-offform" hidden>
-          <label for="ll-pin">Your 4-digit PIN</label>
+          <label for="ll-pin">Your 4-number PIN</label>
           <input type="password" id="ll-pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off">
           <button type="button" class="go" id="ll-off">I have my phone: turn Lost mode off</button>
         </div>
@@ -1748,7 +1748,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <input type="text" id="b-address" maxlength="300" placeholder="e.g. S-354, Block S">
           <label for="b-pin">PIN code</label>
           <div class="phrow">
-            <input type="text" id="b-pin" inputmode="numeric" maxlength="6" placeholder="110048" autocomplete="postal-code">
+            <input type="text" id="b-pin" inputmode="numeric" maxlength="6" placeholder="e.g. 110048" autocomplete="postal-code">
             <button type="button" class="cbtn ghost" id="b-pinlook">Check</button>
           </div>
           <p class="hint" id="b-pinmsg" style="margin:var(--space-4) 0 0"></p>
@@ -2286,7 +2286,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <summary>More options: place, how many</summary>
       <div class="pickrow">
         <label class="pick"><span>How many joining?</span><input type="number" id="p-count" min="2" max="50" placeholder="e.g. 6" aria-label="Expected people"></label>
-        <label class="pick"><span>Place (meet-ups)</span><input type="text" id="p-place" maxlength="120" placeholder="optional" aria-label="Plan place"></label>
+        <label class="pick"><span>Place (meet-ups)</span><input type="text" id="p-place" maxlength="120" placeholder="e.g. Nani's house" aria-label="Plan place"></label>
       </div>
       </details>
       <button class="go" id="p-add" style="margin-top:var(--space-16)">Set the plan</button>
@@ -2389,7 +2389,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <div class="bigletter" id="a-letter"></div>
           <div id="a-mine" hidden>
             <div class="addrow">
-              <input type="text" id="a-next" maxlength="1" placeholder="Song ended on… (one letter)" style="text-transform:uppercase" aria-label="Next letter">
+              <input type="text" id="a-next" maxlength="1" placeholder="Last letter" style="text-transform:uppercase" aria-label="Last letter of the song you sang">
               <button class="cbtn" id="a-sang">🎶 I sang it! +1</button>
               <button class="cbtn no" id="a-pass">Pass 😅</button>
             </div>
@@ -2637,7 +2637,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <option value="anthropic_ws">↳ Anthropic workspace ID (only if your key asks for one)</option>
       </select>
       <label for="k-key">API key</label>
-      <input type="password" id="k-key" maxlength="300" placeholder="paste the key" autocomplete="off">
+      <input type="password" id="k-key" maxlength="300" placeholder="Paste your API key here" autocomplete="off">
       <button class="go" id="k-save">Save key</button>
       <p class="hint" style="margin-top:var(--space-8)">Anthropic: console.anthropic.com → API keys · Gemini: aistudio.google.com/apikey · OpenAI: platform.openai.com/api-keys. If Anthropic replies "workspace id is required", add the workspace ID here too.</p>
     </details>
@@ -2858,7 +2858,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <a class="ss-btn solid" id="ls-call" hidden>📞 Call</a>
     <p class="ss-note" id="ls-where">Its location is shared with the owner's family until they turn Lost mode off.</p>
     <p class="ss-label">Is this your phone?</p>
-    <label for="ls-pin">Your 4-digit PIN</label>
+    <label for="ls-pin">Your 4-number PIN</label>
     <input type="password" id="ls-pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off">
     <button type="button" class="ss-btn" id="ls-off">Turn off Lost mode</button>
   </div>
@@ -4750,7 +4750,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('au-pin').setAttribute('autocomplete', choosing ? 'new-password' : 'current-password');
     $('au-pin').setAttribute('maxlength', mode === 'older' ? '64' : '4');
     if (mode === 'older') $('au-pin').removeAttribute('inputmode'); else $('au-pin').setAttribute('inputmode', 'numeric');
-    $('au-pin').setAttribute('placeholder', mode === 'older' ? 'Your current PIN or password' : '4 numbers');
+    $('au-pin').setAttribute('placeholder', mode === 'older' ? 'Your current PIN or password' : '● ● ● ●');
     $('au-pinlabel').textContent = choosing ? 'Choose a 4-number PIN' : mode === 'older' ? 'Your current PIN or password' : 'Your 4-number PIN';
     $('au-pinnote').hidden = !note;
     $('au-pinnote').textContent = note || '';
@@ -4766,7 +4766,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function secretCheck(){
     var v = $('au-pin').value;
     if (secretMode === 'older') return v ? null : 'Type your current PIN or password.';
-    if (secretMode === 'enter') return !v ? 'Type your 4-number PIN.' : secretRule(v) ? 'Your PIN is 4 numbers.' : null;
+    if (secretMode === 'enter') return !v ? 'Type your 4-number PIN.' : secretRule(v) || null;
     var e = secretRule(v); if (e) return e;
     if (v !== $('au-pin2').value) return 'The two do not match. Please type the same 4 numbers twice.';
     return null;
@@ -4831,7 +4831,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           secretBox(j.setPin ? 'choose' : j.older ? 'older' : 'enter', j.setPin
             ? 'Parwah asks for a 4-number PIN as well as your number, so nobody who knows the number can open your family.'
             : j.older ? 'Type the PIN or password you set before, once. Then you will choose a 4-number PIN.'
-            : 'Type your 4-number PIN.');
+            : '');
           $('au-forgot').hidden = !j.needPin;
           $('au-go').textContent = j.setPin ? 'Save and continue' : 'Sign in';
           if (j.error) authErr(j.error, 'au-pin'); else { $('ob-err').textContent = ''; try { $('au-pin').focus(); } catch (e) {} }
@@ -8328,7 +8328,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
   function lostOff(input, done){
     var pin = $(input).value.trim();
-    if (!/^\d{4}$/.test(pin)) { fieldErr(input, 'Type your 4-digit PIN.'); return; }
+    if (!/^\d{4}$/.test(pin)) { fieldErr(input, 'Type your 4-number PIN.'); return; }
     post(locUrl(), { code: state.code, memberId: state.memberId, action: 'lost_off', pin: pin }).then(function(j){
       $(input).value = '';
       if (!j.ok) { fieldErr(input, j.error || 'Could not turn it off just now'); return; }

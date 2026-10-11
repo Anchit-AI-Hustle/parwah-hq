@@ -147,7 +147,7 @@ export async function findAction(sql, circle, me, body, token) {
   // lost_off: the same lockout as signing in, claimed before it is checked.
   const u = (await sql`select lost_at, pin_hash, pin_salt, locked_until from users where id = ${me.user_id}`)[0];
   if (!u || !u.lost_at) return { status: 200, json: { ok: true, lost: false } };
-  if (!/^\d{4}$/.test(String(body.pin || ''))) return { status: 400, json: { ok: false, error: 'Type your 4-digit PIN', field: 'pin' } };
+  if (!/^\d{4}$/.test(String(body.pin || ''))) return { status: 400, json: { ok: false, error: 'Type your 4-number PIN', field: 'pin' } };
   const claim = await sql`update users set pin_tries = pin_tries + 1
                           where id = ${me.user_id} and (locked_until is null or locked_until <= now()) returning pin_tries`;
   const lock = async () => {
