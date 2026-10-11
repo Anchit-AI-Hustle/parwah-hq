@@ -152,7 +152,7 @@ ok('Rohan sees Papa\'s phone on the list, marked Lost mode', /📵 Lost mode on/
 
 // ---- 4. Only Papa's PIN unlocks it
 await P2.click('#ls-off'); await P2.waitForTimeout(300);
-ok('an empty PIN is caught on the phone', await P2.isVisible('#ls-pin-err') && /4-digit PIN/.test(await P2.textContent('#ls-pin-err')));
+ok('an empty PIN is caught on the phone', await P2.isVisible('#ls-pin-err') && /4-number PIN/.test(await P2.textContent('#ls-pin-err')));
 await P2.fill('#ls-pin', '0000'); await P2.click('#ls-off'); await P2.waitForTimeout(900);
 ok('a wrong PIN is refused, with the tries left', /not right. 4 tries left/.test(await P2.textContent('#ls-pin-err')) && await P2.isVisible('#lostscreen'));
 await P2.fill('#ls-pin', '4819'); await P2.click('#ls-off'); await P2.waitForTimeout(1500);
