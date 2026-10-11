@@ -376,6 +376,15 @@ details.giftmore summary{font-weight:700;color:var(--ink)}
 .bseat{border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-8) var(--space-12);font-size:var(--fs-14);background:var(--surface);color:var(--ink)}
 .bseat.now{border-color:var(--marigold);box-shadow:0 0 0 2px var(--marigold)}
 .bseat.out{opacity:.6}
+/* One language in every game: a seat chip per player - your colour or mark,
+   your name ("You" for yourself), and the marigold ring on whoever plays now. */
+.gseats{margin:0 0 var(--space-8)}
+.gsw{display:inline-block;width:16px;height:16px;min-width:16px;border-radius:50%;border:2px solid var(--tok-ring);box-shadow:0 1px 2px rgba(0,0,0,.3);vertical-align:-3px;margin-right:var(--space-2)}
+.gsw.sm{width:11px;height:11px;min-width:11px;border-width:1.5px;vertical-align:-1px}
+.bseat .tsym{font-family:var(--disp);font-weight:800;font-size:var(--fs-16)}
+.tsym.x{color:var(--sindoor)}.tsym.o{color:var(--pine)}
+.bseat.lead{border-style:dashed;border-color:var(--marigold);background:var(--tint-warm);font-weight:700;align-self:center}
+.vmoney span.now{border-color:var(--marigold);box-shadow:0 0 0 2px var(--marigold)}
 .btrick,.bhand{display:flex;flex-wrap:wrap;gap:var(--space-8);min-height:58px}
 .pcard{width:44px;height:62px;border-radius:var(--radius-8);border:1px solid var(--bone-2);background:var(--card-face);color:var(--card-ink);font-weight:800;font-size:var(--fs-16);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;padding:0;font-family:var(--body)}
 .pcard.red{color:var(--card-red)}
@@ -2407,13 +2416,15 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       </div>
       <div class="card" id="g-ttt" hidden>
         <h3>Tic-Tac-Toe ⭕✕</h3>
-        <p class="hint" id="t-status" style="margin:var(--space-4) 0 var(--space-4)"></p>
+        <p class="hint" id="t-status" style="margin:var(--space-4) 0 var(--space-8)"></p>
+        <div id="t-seats" class="bseats gseats"></div>
         <div id="tboard"></div>
         <button class="cbtn no" id="t-end">End game</button>
       </div>
       <div class="card" id="g-ludo" hidden>
         <h3>Ludo 🎯</h3>
-        <p class="hint" id="l-status" style="margin:var(--space-4) 0 var(--space-4)" aria-live="polite"></p>
+        <p class="hint" id="l-status" style="margin:var(--space-4) 0 var(--space-8)" aria-live="polite"></p>
+        <div id="l-seats" class="bseats gseats"></div>
         <div id="lboard" class="lboard" role="grid" aria-label="Ludo board"></div>
         <p class="hint" id="l-last"></p>
         <div class="prow2">
@@ -2444,6 +2455,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <div class="card" id="g-snakes" hidden>
         <h3>Snakes &amp; Ladders 🐍🪜</h3>
         <p class="hint" id="g-status" style="margin:var(--space-4) 0 var(--space-8)"></p>
+        <div id="s-seats" class="bseats gseats"></div>
         <canvas id="board-cv" aria-label="Snakes &amp; Ladders board"></canvas>
         <div class="dicerow">
           <div class="die" id="die" aria-live="polite">🎲</div>
@@ -7083,6 +7095,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         var isAdm = st.admins.indexOf(p.id) >= 0;
         var isCur = cur && cur.id === p.id && st.status === 'playing';
         th += '<div class="pchip' + (isCur ? ' cur' : '') + '">' + (isAdm ? '⭐ ' : '') + esc(p.name) +
+              (p.id === state.memberId ? ' (you)' : '') +
               (isCur ? ' 🎯' : '') +
               ' <span class="sc">· ' + (p.score || 0) + '</span>' +
               (meAdmin && p.id !== state.memberId
@@ -7292,6 +7305,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       $('t-status').textContent = st.winner ? '🏆 ' + st.winner + ' wins!'
         : st.draw ? '🤝 A draw - rematch?'
         : (meTurn ? 'Your move (' + (st.turn === 0 ? '✕' : '◯') + ')' : (iAmIn ? turnP.name + "'s move…" : st.players[0].name + ' vs ' + st.players[1].name));
+      // Who is which mark, always on screen - not only when it is your turn.
+      $('t-seats').innerHTML = st.players.map(function(p, i){
+        return '<span class="bseat' + (!over && i === st.turn ? ' now' : '') + '">' +
+          '<span class="tsym ' + (i === 0 ? 'x' : 'o') + '" aria-hidden="true">' + (i === 0 ? '✕' : '◯') + '</span> ' +
+          esc(p.id === state.memberId ? 'You' : p.name) + (st.winner === p.name ? ' 🏆' : '') + '</span>';
+      }).join('');
       var LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
       var winSet = {};
       LINES.forEach(function(L){
@@ -7311,6 +7330,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }
     $('g-snakes').hidden = false;
     renderBoard(st);
+    // Which coloured token is whose: the chip's dot is the token's colour.
+    $('s-seats').innerHTML = st.players.map(function(p, i){
+      return '<span class="bseat' + (!st.winner && i === st.turn ? ' now' : '') + '">' +
+        '<span class="gsw" style="background:' + TOKC[i % TOKC.length] + '" aria-hidden="true"></span>' +
+        esc(p.id === state.memberId ? 'You' : p.name) + ' · ' + (p.pos || 'start') + (st.winner === p.name ? ' 🏆' : '') + '</span>';
+    }).join('');
     var myTurn = !st.winner && st.players[st.turn] && st.players[st.turn].id === state.memberId;
     $('g-status').textContent = st.winner ? '🎉 ' + st.winner + ' won! Well played, everyone.'
       : myTurn ? 'Your turn - roll the dice!' : 'Waiting for ' + st.players[st.turn].name + '…';
@@ -7477,6 +7502,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('l-status').textContent = st.winner ? '🏆 ' + st.winner + ' won - all four home!'
       : myTurn ? (st.moves ? 'You rolled ' + st.roll + ' - tap a glowing ' + col(me) + ' token to move it' : 'Your turn (' + col(me) + ') - roll the dice')
       : 'Waiting for ' + turnP.name + ' (' + col(st.turn) + ')';
+    // Which colour belongs to whom, and how many of their four are home.
+    $('l-seats').innerHTML = st.players.map(function(p, i){
+      var home = p.tokens.filter(function(t){ return t === 56; }).length;
+      return '<span class="bseat' + (!st.winner && i === st.turn ? ' now' : '') + '">' +
+        '<span class="gsw" style="background:' + LCOL[p.color] + '" aria-hidden="true"></span>' +
+        esc(p.id === state.memberId ? 'You' : p.name) + ' · ' + LNAME[p.color] + (home ? ' · ' + home + ' home' : '') + (st.winner === p.name ? ' 🏆' : '') + '</span>';
+    }).join('');
     $('l-last').textContent = st.last ? '🎲 ' + st.last.by + ' rolled ' + st.last.roll + ' and ' + st.last.text : '';
     var roll = $('l-roll');
     roll.disabled = !myTurn || !!st.moves;
@@ -7526,7 +7558,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       var cls = 'bseat' + (!over && i === st.turn ? ' now' : '') + (st.out[i] ? ' out' : '');
       return '<span class="' + cls + '">' + esc(i === me ? 'You' : p.name) + ' · ' + (st.out[i] ? 'got away ✓' : st.counts[i] + ' cards') + '</span>';
     }).join('');
-    $('b-trick').innerHTML = st.trick.length ? st.trick.map(function(t){
+    // The suit to follow sits beside the cards, for everyone - not only in
+    // the status line of whoever plays next.
+    var leadChip = st.trick.length && !over
+      ? '<span class="bseat lead">Follow ' + SUITSYM[st.leadSuit] + ' ' + ({ S: 'spades', H: 'hearts', D: 'diamonds', C: 'clubs' })[st.leadSuit] + '</span>' : '';
+    $('b-trick').innerHTML = st.trick.length ? leadChip + st.trick.map(function(t){
       return cardHtml(t.card, '<small>' + esc(t.p === me ? 'You' : st.players[t.p].name) + '</small>');
     }).join('') : '<span class="hint">' + (over ? 'Game over.' : 'Nothing yet - the next card starts the round.') + '</span>';
     $('b-last').textContent = st.last ? st.last.text : '';
@@ -7571,8 +7607,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var lines = st.last && st.last.lines ? st.last.lines.slice(-3).map(esc).join('<br>') : 'Roll to start';
     h += '<div class="vcenter">' + dice + '<span>' + lines + '</span></div>';
     $('vboard').innerHTML = h;
+    // The purse chip carries the player's board dot and the marigold ring
+    // when it is their go, so money, colour and turn read as one row.
     $('v-money').innerHTML = st.players.map(function(p, pi){
-      return '<span class="' + (p.out ? 'out' : '') + '" style="border-left:4px solid ' + TOKC[pi % TOKC.length] + '">' + esc(pi === me ? 'You' : p.name) + ' 💰' + p.money + '</span>';
+      var now = !st.winner && pi === st.turn && !p.out;
+      return '<span class="' + (p.out ? 'out' : '') + (now ? ' now' : '') + '" style="border-left:4px solid ' + TOKC[pi % TOKC.length] + '">' +
+        '<span class="gsw sm" style="background:' + TOKC[pi % TOKC.length] + '" aria-hidden="true"></span> ' +
+        esc(pi === me ? 'You' : p.name) + ' 💰' + p.money + '</span>';
     }).join('');
     var a = '';
     if (myTurn && st.phase === 'buy') {
