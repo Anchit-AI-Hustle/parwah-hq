@@ -1690,8 +1690,8 @@ _docnames = re.findall(r"^\| \d+ \| ([^|]+?) \|", _today_doc, re.M)
 check("today: the widgets are in the order of docs/design/TODAY.md (utility first, the vault at the core)",
       _wnames == _docnames and _wnames[:2] == ["Vault", "Health"], " > ".join(_wnames))
 _home = _appt[_appt.index('<section id="pane-home">'):_appt.index('<div class="homerail">')]
-_pos = [_home.index(m) for m in ('id="seniorui"', 'class="homehero"', 'id="frslot"', 'id="widgets"', 'id="btn-ecard"', 'id="more"')]
-check("today: an elder's SOS and big buttons first, then the family's name and status, a new family's checklist, the four tiles, the emergency card, then More",
+_pos = [_home.index(m) for m in ('id="seniorui"', 'class="homehero"', 'id="frslot"', 'id="widgets"', 'id="btn-ecard"', 'class="quickadd"', 'id="more"')]
+check("today: an elder's SOS and big buttons first, the family's name and status, a new family's checklist, the four tiles, the emergency card, only then the add buttons, then More",
       _pos == sorted(_pos), str(_pos))
 _above_more = _home[:_home.index('id="more"')]
 check("today: five things and no more - four tiles and the emergency card (the family review: track 5, not 50)",
@@ -1795,8 +1795,9 @@ check("to do: asked but not yet agreed shows one decision; late shows Set a new 
       "var waitingYes = q.status === 'assigned' && owner;" in _appt and "'Set a new time', 'go'" in _appt and "about_member = ${aboutId}" in _tsk)
 check("suggested: a gap is filled now, and any suggestion can be waved away",
       "data-sfill=" in _appt and "data-snot=" in _appt)
-check("people: who is waiting, the tree, how ready (one line per person looked after), the family, then where",
-      _appt.index('id="joinreq-card"') < _appt.index('id="treecard"') < _appt.index('id="prepcard"') < _appt.index('id="loc-card"')
+check("people: who is waiting, then the family itself, how ready they are, where everyone is, and the tree last with its form folded",
+      _appt.index('id="joinreq-card"') < _appt.index('id="famcard"') < _appt.index('id="prepcard"') < _appt.index('id="loc-card"') < _appt.index('id="treecard"')
+      and '<details class="treeadd" id="tree-more">' in _appt
       and "var looked = prepCache.filter(" in _appt)
 check("people: the profile is a dialog with Call first and only the family word for a person",
       'id="msheet" hidden role="dialog"' in _appt and "' · senior mode'" not in _appt and "function mpClose()" in _appt)
@@ -2291,8 +2292,9 @@ check("notes: never a card number or a banking secret",
 check("events: appointments, functions and trips; reminded an hour before; birthdays from dates of birth",
       "'appointment', 'function', 'trip'" in (API_DIR / "plans.mjs").read_text(encoding="utf-8")
       and "sweepPlanReminders" in _evt and "function bdaysSoon(days)" in _app_src)
-check("quick add: one row on Today reaches every add form",
-      _app_src.count('data-qadd="') == 5 and _app_src.index('class="quickadd"') < _app_src.index('id="widgets"'))
+check("quick add: one row on Today reaches every add form, after the content, never before it",
+      _app_src.count('data-qadd="') == 5 and _app_src.index('class="quickadd"') > _app_src.index('id="btn-ecard"')
+      and _app_src.index('class="quickadd"') < _app_src.index('id="more"'))
 _geo = (API_DIR / "_geo.mjs").read_text(encoding="utf-8")
 check("find my: places with arrive and leave alerts, ask to share, battery",
       "export function placesAt" in _geo and "async function placeNews" in _loc and "action === 'ask'" in _loc

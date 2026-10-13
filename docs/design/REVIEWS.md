@@ -3,6 +3,30 @@
 Newest first. Each review uses `CHECKLIST.md`; severities are Nielsen's:
 0 not a problem, 1 cosmetic, 2 minor, 3 major, 4 blocker.
 
+## Review 12 - 2026-10-13 - content first, forms last
+
+**Reviewer:** Claude, acting as senior product designer.
+**Owner's words:** "Overall entire app design is too kiddish - it's not about
+logos or emojis or icons. The overall pages structures and layouts need to be
+updated to prioritise the correct and important useful features correctly."
+**Scope:** the structure of Today, Family and To do's notes; what the Today
+tiles say; where forms sit on every screen. Judged against the utility
+ranking in `docs/design/TODAY.md`.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 111 | 8 Aesthetic & minimalist | Today led with a poster: a tall decorated hero and five add-buttons before any of the five things the review ranked | 3 | Fixed: the hero is a one-line header; the tiles and emergency card come first; the add row follows the content |
+| 112 | 1 Visibility of status | The Vault tile - ranked #1 by the family review - showed a slogan, not the family's papers | 3 | Fixed: the events payload now carries the document count and the tile reads "12 papers kept", or says the vault is empty |
+| 113 | 2 Real-world match | Family opened on the tree and its whole add-form; the people themselves - the screen's own subtitle - sat fourth | 4 | Fixed: who is waiting, the family, how ready, where everyone is, the tree last with its add-form folded (it opens itself while the tree is empty) |
+| 114 | 8 Aesthetic & minimalist | Notes opened on an empty form above the family's actual lists | 2 | Fixed: the lists first, the form after |
+
+**The rule this encodes:** content first, forms last. A screen opens on what
+the family has; the way to add more comes after it or behind a fold. The
+gates pin it: `test_site.py` (today, quick add, people checks), and the
+peoplecare, tree and first-run e2e suites.
+
+**Approved.**
+
 ## Review 11 - 2026-10-13 - a grown-up chrome: one bottom bar, drawn icons
 
 **Reviewer:** Claude, acting as senior product designer.

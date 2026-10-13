@@ -142,7 +142,9 @@ const papaId = (await admin.query(`select id from members where circle_id = $1 a
 
 // ---- placing the family through the People screen
 await P1.evaluate(() => { location.hash = '#people'; }); await P1.waitForTimeout(1500);
-ok('People leads with the family tree', await P1.isVisible('#treecard') && /Joint family tree/.test(await P1.textContent('#tree-title')));
+const unfold = (pg) => pg.evaluate(() => { const d = document.getElementById('tree-more'); if (d) d.open = true; });
+await unfold(P1);
+ok('the family tree is on People, named for the family kind', await P1.isVisible('#treecard') && /Joint family tree/.test(await P1.textContent('#tree-title')));
 ok('before anyone is placed, it explains how to start', /Start the tree/.test(await P1.textContent('#tree-sub')));
 const idOf = async (name) => (await admin.query(`select id from members where circle_id = $1 and name = $2`, [fam.id, name])).rows[0].id;
 async function place(page, who, where, of, g) {
@@ -197,6 +199,7 @@ ok('and children sit under their parents: Vihaan under Aarav', await P1.$$eval('
 
 // ---- the same tree in Priya's words, on a small phone, in the dark
 const P2 = await phone({ ...people.Priya, code: fam.code, circleName: 'Sachdeva Family' , memberId: people.Priya.memberId }, { scheme: 'dark', width: 320, hash: '#people' });
+await unfold(P2);
 const t2 = await P2.textContent('#tree');
 ok('Priya sees Papa as Father-in-law and Neha as Sister-in-law', /Father-in-law/.test(t2) && /Sister-in-law/.test(t2), t2);
 ok('and Amit as Brother-in-law, Aarav as Son', /Brother-in-law/.test(t2) && /Son/.test(t2));
@@ -237,6 +240,7 @@ ok('five generations now, with a quiet note on Dadi', /5 generations/.test(await
 await place(P1, 'new', 'sibling', 'Papa', 'f');
 await P1.fill('#tr-name', 'Usha'); await P1.click('#tr-go'); await P1.waitForTimeout(1300);
 const aaravP = await phone({ ...people.Aarav, code: fam.code, circleName: 'Sachdeva Family', memberId: people.Aarav.memberId }, { hash: '#people' });
+await unfold(aaravP);
 ok('with Dadi in, Papa\'s sister can be added: his Sister, Aarav\'s Grand-aunt', /UshaSister/.test(await P1.textContent('#tree')) && /UshaGrand-aunt/.test(await aaravP.textContent('#tree')), await aaravP.textContent('#tree'));
 ok('nobody can give Dadi a task or start a chat with her', !(await P1.$$eval('#r-for option', os => os.map(o => o.textContent))).includes('Dadi') &&
    !(await P1.evaluate(async () => { document.getElementById('chat-fab').click(); await new Promise(r => setTimeout(r, 300)); return document.getElementById('ncsheet').textContent; })).includes('Dadi'));
