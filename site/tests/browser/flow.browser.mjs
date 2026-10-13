@@ -305,9 +305,10 @@ for (const theme of ['light', 'dark']) {
   await pg.close();
 }
 
-// ---------- THE DOCK: on a phone nothing floats over the page ----------
-// Owner (2026-10-10): "elements should never get hidden". SOS, Chat and Ekta
-// sit in a solid row above the tabs; the page ends above that row.
+// ---------- ONE BOTTOM BAR: on a phone nothing floats over the page ----------
+// Owner (2026-10-13): one bar, not a dock stacked on the tabs. SOS is docked
+// inside the tab bar at its left, New chat sits in the top bar, Ekta is a
+// tab, and the page ends above the bar.
 for (const vp of [{ width:320, height:640 }, { width:390, height:844 }]) {
   const pg = await fresh({ viewport:vp, signedIn:true });
   for (const tab of ['home', 'care', 'people', 'chat']) {
@@ -315,49 +316,56 @@ for (const vp of [{ width:320, height:640 }, { width:390, height:844 }]) {
     await pg.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight)); await pg.waitForTimeout(300);
     const r = await pg.evaluate(() => {
       const box = el => el.getBoundingClientRect();
-      const dock = document.getElementById('fabdock'), d = box(dock);
       const shown = el => el && !el.hidden && el.checkVisibility({ checkVisibilityCSS: true }) && el.getClientRects().length;
-      const fabs = ['sos-fab', 'chat-fab', 'ekta-fab'].map(id => document.getElementById(id)).filter(shown);
-      const out = fabs.filter(f => { const b = box(f); return b.top < d.top - 1 || b.bottom > d.bottom + 1; }).map(f => f.id);
+      const tabs = box(document.getElementById('tabs'));
+      const sos = document.getElementById('sos-fab'), sb = shown(sos) ? box(sos) : null;
+      const chat = document.getElementById('chat-fab'), cb = shown(chat) ? box(chat) : null;
+      const ekta = document.querySelector('#tabs button[data-tab="ekta"]');
+      const over = [];
+      // SOS sits inside the tab bar band, at its left, 56px or bigger.
+      const sosDocked = sb && sb.width >= 56 && sb.height >= 56 && sb.top >= tabs.top - 1 && sb.bottom <= tabs.bottom + 1 && sb.left < 80;
+      // The tabs themselves start beside SOS, never under it.
       const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
-      fabs.forEach((f, i) => fabs.slice(i + 1).forEach(g => { if (hit(box(f), box(g))) out.push(f.id + ' on ' + g.id); }));
+      if (sb) [...document.querySelectorAll('#tabs .inner > button:not([hidden])')].forEach(b => {
+        if (b !== sos && shown(b) && hit(sb, box(b))) over.push('sos on ' + (b.dataset.tab || b.id));
+      });
       const pane = [...document.querySelectorAll('#main > section')].find(s => !s.hidden);
       const last = pane ? [...pane.querySelectorAll('button, a, input, select, textarea, .card, .crow')].filter(shown).pop() : null;
       const bar = document.querySelector('.inputbar'); const inBar = bar && shown(bar) ? box(bar).bottom : null;
-      return { dockShown: shown(dock), fabs: fabs.length, out, lastBottom: last ? box(last).bottom : 0, dockTop: d.top, inBar };
+      return { sosDocked, over, chatInBar: !!cb && cb.top >= 0 && cb.bottom <= 64,
+               chatHidden: !cb, tab: location.hash.slice(1),
+               ektaTab: shown(ekta), lastBottom: last ? box(last).bottom : 0, tabsTop: tabs.top, inBar };
     });
-    ok(r.dockShown && r.fabs >= 2 && !r.out.length, vp.width + 'px ' + tab + ': SOS, Chat and Ekta sit in the dock, apart, not on the page (' + r.fabs + ' in it' + (r.out.length ? ', out: ' + r.out.join() : '') + ')');
-    ok(r.lastBottom <= r.dockTop + 1, vp.width + 'px ' + tab + ': the page ends above the dock, nothing under it (' + Math.round(r.lastBottom) + ' vs ' + Math.round(r.dockTop) + ')');
-    if (r.inBar !== null) ok(r.inBar <= r.dockTop + 1, vp.width + 'px ' + tab + ': the message box sits above the dock');
+    ok(r.sosDocked && !r.over.length, vp.width + 'px ' + tab + ': SOS is docked in the one bottom bar, on no tab' + (r.over.length ? ' (' + r.over.join() + ')' : ''));
+    ok(r.ektaTab, vp.width + 'px ' + tab + ': Ekta is a tab of its own');
+    ok(tab === 'chat' ? r.chatHidden : r.chatInBar, vp.width + 'px ' + tab + ': New chat sits in the top bar' + (tab === 'chat' ? ', except on Chat itself' : ''));
+    ok(r.lastBottom <= r.tabsTop + 1, vp.width + 'px ' + tab + ': the page ends above the bar, nothing under it (' + Math.round(r.lastBottom) + ' vs ' + Math.round(r.tabsTop) + ')');
+    if (r.inBar !== null) ok(r.inBar <= r.tabsTop + 1, vp.width + 'px ' + tab + ': the message box sits above the bar');
   }
   await pg.close();
 }
 
 // ---------- A PARENT'S TODAY: nothing covers check-in or SOS ----------
-// A parent's check-in and SOS are the most important buttons in the app. Chat
-// and Ekta float for a parent too (owner, 2026-10-09), in the corner beside the
-// big buttons and never over All is well, Medicines taken or SOS.
+// A parent's check-in and SOS are the most important buttons in the app.
+// Nothing floats for a parent either (owner, 2026-10-13): New chat is in the
+// top bar, the SOS button is docked in the tab bar, and neither sits over
+// All is well, Medicines taken or SOS.
 for (const vp of [{ width:320, height:640 }, { width:390, height:844 }]) {
   const pg = await fresh({ viewport:vp, signedIn:true, role:'parent' });
   const r = await pg.evaluate(() => {
     const box = el => { const b = el.getBoundingClientRect(); return { t:b.top, b:b.bottom, l:b.left, r:b.right, w:b.width }; };
     const sos = document.getElementById('btn-sos'), ok = document.getElementById('btn-checkin');
     const bigs = ['btn-sos', 'btn-checkin', 'btn-pill', 'btn-ok'].map(id => document.getElementById(id)).filter(e => e && e.getBoundingClientRect().width > 0).map(box);
-    const fabs = [...document.querySelectorAll('.fab')].filter(f => f.getBoundingClientRect().width > 0).map(box);
+    const fixed = ['chat-fab', 'sos-fab'].map(id => document.getElementById(id)).filter(e => e && !e.hidden && e.getBoundingClientRect().width > 0).map(box);
     const hit = (f, s) => f.l < s.r && f.r > s.l && f.t < s.b && f.b > s.t;
+    const chat = box(document.getElementById('chat-fab'));
     return { shown: box(sos).w > 0 && box(ok).w > 0,
-             covered: fabs.filter(f => bigs.some(s => hit(f, s))).length,
-             fabs: fabs.length };
+             covered: fixed.filter(f => bigs.some(s => hit(f, s))).length,
+             chatInBar: chat.w > 0 && chat.t >= 0 && chat.b <= 64,
+             floats: [...document.querySelectorAll('.fab')].length };
   });
   ok(r.shown, vp.width + 'px parent: All is well and SOS are on Today');
-  ok(r.covered === 0 && r.fabs === 2, vp.width + 'px parent: Chat and Ekta float, and nothing floats over the big buttons (' + r.fabs + ' floating, ' + r.covered + ' over)');
-  await pg.close();
-}
-{
-  // A family member's phone keeps its floating buttons; only the parent's calm screen drops them.
-  const pg = await fresh({ viewport:{ width:390, height:844 }, signedIn:true });
-  const n = await pg.evaluate(() => [...document.querySelectorAll('.fab')].filter(f => f.getBoundingClientRect().width > 0).length);
-  ok(n >= 1, 'a family member still has the floating chat and Ekta buttons (' + n + ')');
+  ok(r.covered === 0 && r.floats === 0 && r.chatInBar, vp.width + 'px parent: nothing floats, New chat is in the top bar, and nothing covers the big buttons (' + r.floats + ' floating, ' + r.covered + ' over)');
   await pg.close();
 }
 
