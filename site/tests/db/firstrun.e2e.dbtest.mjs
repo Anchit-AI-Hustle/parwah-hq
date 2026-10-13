@@ -262,22 +262,25 @@ ok('his buttons come before the family name', await P.evaluate(() => document.ge
 ok('big text is on for him', await P.evaluate(() => document.body.classList.contains('senior') && parseFloat(getComputedStyle(document.documentElement).fontSize) > 16));
 ok('no coach marks on top of it', !(await P.isVisible('#coach')));
 {
-  // Chat and Ekta float for a parent too, clear of the three big buttons -
+  // Nothing floats over a parent's Today: New chat sits in the top bar, SOS
+  // is docked in the tab bar, Ekta is a tab - clear of the three big buttons,
   // at 390px and on the smallest phone.
   for (const w of [390, 320]) {
-    await P.setViewportSize({ width: w, height: w === 320 ? 640 : 844 }); await P.waitForTimeout(300);
+    const vh = w === 320 ? 640 : 844;
+    await P.setViewportSize({ width: w, height: vh }); await P.waitForTimeout(300);
     await P.evaluate(() => window.scrollTo(0, 0));
-    const boxes = await P.evaluate(() => ['#chat-fab', '#ekta-fab', '#sos-fab', '#btn-ok', '#btn-checkin', '#btn-pill', '#btn-sos'].map(s => {
+    const boxes = await P.evaluate(() => ['#chat-fab', '#sos-fab', '#btn-ok', '#btn-checkin', '#btn-pill', '#btn-sos'].map(s => {
       const e = document.querySelector(s); if (!e || e.hidden || getComputedStyle(e).display === 'none' || !e.getClientRects().length) return null;
       const r = e.getBoundingClientRect(); return { s, x: r.x, y: r.y, w: r.width, h: r.height };
     }).filter(Boolean));
-    const fabs = boxes.filter(b => /fab/.test(b.s)), bigs = boxes.filter(b => !/fab/.test(b.s));
+    const fixed = boxes.filter(b => /fab/.test(b.s)), bigs = boxes.filter(b => !/fab/.test(b.s));
     const hit = (a, b) => !(a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y);
-    const clash = fabs.flatMap(f => bigs.filter(b => hit(f, b)).map(b => f.s + ' on ' + b.s));
-    ok('Chat and Ekta float for a parent too (' + w + 'px)', fabs.some(f => f.s === '#chat-fab') && fabs.some(f => f.s === '#ekta-fab'), fabs.map(f => f.s).join());
-    ok('and cover none of All is well, Medicines taken or SOS (' + w + 'px)', bigs.length >= 3 && !clash.length, clash.join() || bigs.map(b => b.s).join());
-    const stack = fabs.flatMap((f, i) => fabs.slice(i + 1).filter(g => hit(f, g)).map(g => f.s + ' on ' + g.s));
-    ok('and the floating buttons sit apart from each other (' + w + 'px)', fabs.length >= 3 && !stack.length, stack.join() || fabs.map(f => f.s).join());
+    const clash = fixed.flatMap(f => bigs.filter(b => hit(f, b)).map(b => f.s + ' on ' + b.s));
+    const chat = fixed.find(f => f.s === '#chat-fab'), sos = fixed.find(f => f.s === '#sos-fab');
+    ok('New chat sits in the top bar for a parent too (' + w + 'px)', !!chat && chat.y >= 0 && chat.y + chat.h <= 64, JSON.stringify(chat));
+    ok('SOS is docked in the tab bar, big enough to hit (' + w + 'px)', !!sos && sos.w >= 56 && sos.h >= 56 && sos.y + sos.h <= vh + 1, JSON.stringify(sos));
+    ok('Ekta is a tab of its own (' + w + 'px)', await P.isVisible('#tabs button[data-tab="ekta"]'));
+    ok('and none of them cover All is well, Medicines taken or SOS (' + w + 'px)', bigs.length >= 3 && !clash.length, clash.join() || bigs.map(b => b.s).join());
   }
   await P.setViewportSize({ width: 390, height: 844 }); await P.waitForTimeout(200);
 }
@@ -301,7 +304,7 @@ ok('Family call is under More', !!(await A.$('#more #callnow')));
 const tiles = await A.$$eval('#widgets .widget b', bs => bs.map(b => b.textContent));
 const tabs = await A.$$eval('#tabs .inner > button:not(.deskonly)', bs => bs.map(b => b.textContent.trim()));
 ok('the tiles and tabs use the same names', tiles.join() === 'Vault,Health,To do,Family' && tabs.some(t => /To do$/.test(t)) && tabs.some(t => /Family$/.test(t)), tiles.join() + ' / ' + tabs.join());
-ok('Chat and Ekta float on Today on a phone too, the way the owner asked', await A.isVisible('#chat-fab') && await A.isVisible('#ekta-fab'));
+ok('New chat is one tap from Today in the top bar, and Ekta is a tab', await A.isVisible('#chat-fab') && await A.isVisible('#tabs button[data-tab="ekta"]'));
 ok('the round profile tile goes straight to Profile', await A.isVisible('#metile'));
 await A.click('#metile'); await A.waitForTimeout(400);
 ok('Profile opens on You', await A.isVisible('#pane-profile') && (await A.$eval('#pane-profile .card h3', h => h.textContent)) === 'You');

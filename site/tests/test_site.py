@@ -1841,8 +1841,8 @@ check("games: a finished game stays readable for a day, with the result, Play ag
       "status = 'done' and ended_at > now() - interval '1 day'" in _gm and 'id="g-again"' in _appt and "var GRULES = {" in _appt and 'id="g-result"' in _appt)
 check("games: only the people picked play, and nobody can hold a game up (leave, or let Parwah play after 12 hours)",
       "Pick who is playing with you" in _gm and "body.action === 'away'" in _gm and "AWAY_AFTER_MS = 12 * 3600 * 1000" in _gm and 'data-for="snakes"' in _appt)
-check("games and the board: the floating buttons step aside; the paper stays white; the eraser erases; undo; a wipe asks",
-      "body.nofab #ekta-fab" in _appt and "#dboard{width:100%;aspect-ratio:4/3;background:var(--card-face);" in _appt
+check("the board: the paper stays white; the eraser erases; undo; a wipe asks",
+      "#dboard{width:100%;aspect-ratio:4/3;background:var(--card-face);" in _appt
       and "'destination-out'" in _appt and 'id="d-undo"' in _appt and "Wipe the whole board?" in _appt)
 check("create: joint or nuclear is asked first, with no answer chosen for them",
       "var newFamilyType = null;" in _appt and _appt.index('id="c-ftype"') < _appt.index('id="c-circle"') < _appt.index('id="c-name"'))
@@ -1958,18 +1958,21 @@ _nav = re.findall(r'<button data-tab="(\w+)"(?! data-sec)([^>]*)>', _navseg)
 _want_nav = ["home", "chat", "ekta", "fun", "vault", "memory", "care", "people", "notifs", "day", "profile"]
 check("order: the sidebar runs by real-life use",
       [t for t, _ in _nav] == _want_nav, " > ".join(t for t, _ in _nav))
-check("order: the phone tab bar is Today, Vault, To do, Family (families chat on WhatsApp; the vault is what it cannot do)",
-      [t for t, a in _nav if "deskonly" not in a] == ["home", "vault", "care", "people"],
+check("order: the phone tab bar is Today, Vault, Ekta, To do, Family - one bar, SOS docked at its left",
+      [t for t, a in _nav if "deskonly" not in a] == ["home", "ekta", "vault", "care", "people"]
+      and all(x in _appt for x in ('.tabs button[data-tab="home"]{order:1}', '.tabs button[data-tab="vault"]{order:2}',
+                                   '.tabs button[data-tab="ekta"]{order:3}', '.tabs button[data-tab="care"]{order:4}',
+                                   '.tabs button[data-tab="people"]{order:5}', ".tabs .inner{padding-left:68px}")),
       " > ".join(t for t, a in _nav if "deskonly" not in a))
 _drw = _appt[_appt.index('<div class="dhead">'):_appt.index('id="d-groups-wrap"')]
 _drw_top = re.findall(r'class="ditem(?: dparent)?" data-(?:tab|grp)="(\w+)"', _drw)
 check("order: the menu drawer runs by real-life use",
       _drw_top == _want_nav, " > ".join(_drw_top))
-# Owner (2026-10-09): Chat and Ekta float for parents too. That they never
-# cover All is well, Medicines taken or SOS is proved in firstrun.e2e.
-check("order: on a parent's phone Chat and Ekta float too, and never over All is well, Pills or SOS",
-      "body.senior .fab{display:none" not in _css
-      and "Chat and Ekta float for a parent too, clear of the three big buttons" in (REPO / "site/tests/db/firstrun.e2e.dbtest.mjs").read_text(encoding="utf-8"))
+# Owner (2026-10-13): nothing floats on a phone. New chat sits in the top
+# bar, SOS is docked in the tab bar, Ekta is a tab - for parents too; that
+# none of them cover All is well, Pills or SOS is proved in firstrun.e2e.
+check("order: on a parent's phone nothing covers All is well, Pills or SOS",
+      "New chat sits in the top bar, SOS" in (REPO / "site/tests/db/firstrun.e2e.dbtest.mjs").read_text(encoding="utf-8"))
 # Owner (2026-10-09): "too many options". Each busy form shows what it needs;
 # the rest is one tap away under a fold that names what is inside, opens when
 # something in it is set or refused (proved in vault.e2e, care.e2e, plans.e2e).
@@ -2192,13 +2195,15 @@ check("words: the games have English names",
       and "Snakes &amp; Ladders" in _app_src and "Song Chain" in _app_src)
 check("words: the day's sections are Good times and Horoscope",
       '>Good times</button>' in _app_src and '>Horoscope</button>' in _app_src and '>Rashifal</button>' not in _app_src)
-# Chat and Ekta on every screen but their own.
+# New chat is in the top bar on every screen but Chat's own; Ekta is a tab.
 _sw = _fn_body(_app_src, "function switchTab(")
-check("fabs: Chat floats everywhere except Chat, Ekta everywhere except Ekta",
-      "$('chat-fab').hidden = !inApp || t === 'chat';" in _sw and "t === 'ekta'" in _sw
+check("chat: the New chat button is in the top bar, everywhere except Chat",
+      "$('chat-fab').hidden = !inApp || t === 'chat';" in _sw
+      and _app_src.index('id="chat-fab"') > _app_src.index('class="bar-actions"')
+      and _app_src.index('id="chat-fab"') < _app_src.index('id="bell"')
       and "wideScreen()" not in _app_src)
-check("fabs: on a laptop Chat and Ekta live in the sidebar, not as a second set of floats",
-      "body.inapp #chat-fab,body.inapp #ekta-fab{display:none!important}" in _app_src
+check("chat: on a laptop Chat and Ekta live in the sidebar, not as floats",
+      "body.inapp #chat-fab{display:none!important}" in _app_src
       and "wideScreen()" not in _app_src)
 check("sos: on a laptop the red button sits in the sidebar, not over the page",
       "body.inapp #sos-fab{position:static" in _app_src and 'class="side-foot"' in _app_src)
@@ -2235,9 +2240,9 @@ check("valid: and the app checks the same, beside the box that is wrong",
 _sosmod = (API_DIR / "_sos.mjs").read_text(encoding="utf-8")
 _evt = (API_DIR / "events.mjs").read_text(encoding="utf-8")
 _locapi = (API_DIR / "_locationapi.mjs").read_text(encoding="utf-8")
-check("sos: the red button is on every screen, never hidden by a game or a sheet rule",
-      'id="sos-fab"' in _app_src and "$('sos-fab').hidden = !inApp;" in _app_src and ".sosfab{" in _app_src
-      and "body.nofab #sos-fab" not in _app_src)
+check("sos: the red button is on every screen, docked in the one bottom bar, never hidden",
+      'id="sos-fab"' in _app_src and "$('sos-fab').hidden = !inApp;" in _app_src
+      and "#sos-fab{position:fixed" in _app_src and "width:56px;height:56px;min-height:56px" in _app_src)
 check("sos: a countdown with Cancel stands in for the question, and every SOS button uses it",
       "SOS_COUNT = 5" in _app_src and "$('btn-sos').addEventListener('click', function(){ sosStart(''); });" in _app_src
       and "sosStart(said)" in _app_src)
@@ -2253,11 +2258,12 @@ check("sos: location is held on until the SOS is closed, by the sender or anyone
       and "unlockSos(sql, circle.id, memberId)" in _evt
       and "status(423)" in _locapi and "s.sos_lock is null" in _locapi
       and "othersOnApp(sql, circle.id, memberId)) > 0" not in _evt)
-# Owner (2026-10-10): "elements should never get hidden". On a phone SOS,
-# Chat and Ekta sit in a solid dock above the tabs; the SOS bar pushes the
-# page down. Proved in flow.browser at 320 and 390px.
-check("layout: nothing floats over the page on a phone; the SOS bar never covers the header",
-      'id="fabdock"' in _appt and "body.hasdock .wrap{padding-bottom" in _appt and "body.sosup{padding-top:var(--sos-h" in _appt
+# Owner (2026-10-10): "elements should never get hidden"; owner (2026-10-13):
+# one bottom bar, no second dock. SOS is docked inside the tab bar, New chat
+# is in the top bar, and the SOS bar pushes the page down. Proved in
+# flow.browser at 320 and 390px.
+check("layout: one bottom bar on a phone, nothing floats over the page; the SOS bar never covers the header",
+      'id="fabdock"' not in _appt and "hasdock" not in _appt and "body.sosup{padding-top:var(--sos-h" in _appt
       and "position:sticky;top:var(--sos-h,0px)" in _appt)
 check("sos: a short recording, heard only by the family",
       "sos_media" in _sosmod and "SOS_AUDIO_MAX" in _evt and "and s.circle_id = ${circle.id}" in _evt.split("if (q.sosAudio)")[1][:700])

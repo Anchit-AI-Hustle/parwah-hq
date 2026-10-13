@@ -3,6 +3,33 @@
 Newest first. Each review uses `CHECKLIST.md`; severities are Nielsen's:
 0 not a problem, 1 cosmetic, 2 minor, 3 major, 4 blocker.
 
+## Review 11 - 2026-10-13 - a grown-up chrome: one bottom bar, drawn icons
+
+**Reviewer:** Claude, acting as senior product designer.
+**Owner's words:** "Design style and ui is too kiddish. Sticky bottom nav for
+the three floating icons is atrocious design - figure out the best ui styles
+and fix."
+**Scope:** the app chrome on a phone - top bar, bottom bar, menu drawer,
+sidebar, Today's tiles, screen headers. Light and dark at 320 and 390px,
+desktop at 1280px, parent's Today included.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 107 | 8 Aesthetic & minimalist | Emoji as navigation icons (🏠 🔐 ✅ 👨‍👩‍👧 🔔 ☰ 📲) read as a toy, and render differently on every platform | 3 | Fixed: one drawn line-icon set (24px grid, 1.8 stroke, currentColor) across the bar, tabs, sidebar, drawer, tiles and screen headers; emoji stay in content, where they are warmth, not wayfinding |
+| 108 | 8 Aesthetic & minimalist | The dock: a second dark band above the tabs holding SOS, Chat and Ekta - two stacked bottom bars eating ~134px of a phone screen | 4 | Fixed: one bottom bar. SOS docks inside the tab bar at its left (56px, red, always on screen); Ekta is a tab of its own; New chat is a top-bar action beside the bell |
+| 109 | 4 Consistency | Chat reachable only through a floating button on a phone while every other place is a tab or menu item | 2 | Fixed: New chat sits in the top bar on every screen but Chat's own |
+| 110 | 7 Efficiency | At 320px the bar could not hold the brand and four actions without the name touching the icons | 2 | Fixed: below 375px the bar gives up frame padding and gap, never the 44px tap targets |
+
+**Decisions.** The 2026-10-10 rule ("elements should never get hidden")
+stands: nothing floats over the page; the fix moves the three controls into
+the two bars instead of stacking a third. Emoji inside content (buttons,
+toasts, games) are deliberate Mela warmth and stay; the chrome is where they
+read as childish. The gates now pin the one-bar layout: `test_site.py`
+(order, chat, sos, layout checks), `flow.browser` at 320/390px,
+`newchat.browser`, and `firstrun.e2e` for a parent's phone.
+
+**Approved.**
+
 ## Review 10 - 2026-10-05 - one name per place, as the utility ranks them
 
 **Reviewer:** Claude, acting as senior product designer.

@@ -114,7 +114,7 @@
   --sh-1:0 1px 2px rgba(34,20,40,.04),0 8px 22px rgba(34,20,40,.06);
   --sh-2:0 2px 6px rgba(34,20,40,.06),0 20px 40px rgba(34,20,40,.12);
   --glow1:rgba(255,179,26,.26); --glow2:rgba(217,20,111,.12); --glow3:rgba(0,161,154,.12);
-  --tabs-h:62px; --side-w:232px; --dock-h:72px;
+  --tabs-h:62px; --side-w:232px;
   --disp:"Bricolage Grotesque","Plus Jakarta Sans",system-ui,sans-serif; --body:"Plus Jakarta Sans",system-ui,sans-serif; --dev:"Baloo 2","Plus Jakarta Sans",sans-serif;
   --rani:#D9146F; --peacock:#00A19A; --flame:#FF5B2E; --on-bright:#1E0F26; --dot:rgba(34,20,40,.09);
   --grad:linear-gradient(115deg,var(--marigold),var(--flame));
@@ -178,6 +178,17 @@ body{font-family:var(--body);color:var(--ink);min-height:100vh;min-height:100dvh
 .bar .logo{width:22px;height:22px;color:var(--marigold);flex:0 0 auto;display:block}
 .bar .appname{font-family:var(--disp);font-weight:600;white-space:nowrap}
 .bar-actions{margin-left:auto;display:flex;align-items:center;gap:var(--space-2);flex:0 0 auto}
+/* The line-icon set: stroke icons inherit the text colour wherever they sit. */
+.i{width:22px;height:22px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+#hamb .i{width:24px;height:24px}
+.brandflower{width:24px;height:24px;color:var(--marigold)}
+#chat-fab{position:relative;border:0;background:none;color:var(--cream);cursor:pointer;padding:var(--space-2) var(--space-8)}
+.ditem .i,.meitem .i,.side-new .i{width:20px;height:20px}
+.phead{display:inline-flex;color:var(--marigold-d)}
+.phead .i{width:28px;height:28px;stroke-width:1.6}
+.widget .wic{color:var(--ink-soft)}
+.widget .wic .i{width:26px;height:26px}
+.ic .i{margin:0 auto}
 .metile{width:32px;height:32px;border-radius:50%;border:0;margin-left:var(--space-8);
   background:var(--grad);color:var(--on-bright);
   font-family:var(--disp);font-weight:700;font-size:var(--fs-12);letter-spacing:.02em;
@@ -225,10 +236,19 @@ label + select{width:100%}
 .codechip{display:inline-block;background:var(--dusk);color:var(--marigold);font-family:var(--disp);font-weight:700;letter-spacing:.25em;border-radius:var(--radius-12);padding:var(--space-8) var(--space-16);font-size:var(--fs-18)}
 .hint{font-size:var(--fs-12);color:var(--ink-soft);margin-top:var(--space-8)}
 /* ---- SOS: the red button, the countdown, the live screen, the alarm ---- */
-.sosfab{position:fixed;left:16px;bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom));z-index:var(--z-fab);width:64px;height:64px;border-radius:50%;border:3px solid var(--on-sos);background:var(--sos);color:var(--on-sos);font-family:var(--body);font-weight:800;font-size:var(--fs-18);letter-spacing:.04em;cursor:pointer;box-shadow:0 0 0 4px rgba(200,16,46,.28),0 10px 26px rgba(0,0,0,.35)}
+
 /* Inside the tab bar, the tab-button rules would wash the red out. The id
    wins over .tabs button, and [hidden] still hides it when signed out. */
-#sos-fab{position:fixed;left:16px;bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom));z-index:var(--z-fab);flex:none;width:64px;height:64px;min-height:64px;max-width:64px;padding:0;display:flex;align-items:center;justify-content:center;flex-direction:row;background:var(--sos);color:var(--on-sos);border:3px solid var(--on-sos);border-radius:50%;font-family:var(--body);font-weight:800;font-size:var(--fs-18);letter-spacing:.04em}
+#sos-fab{position:fixed;left:max(8px, env(safe-area-inset-left));bottom:calc((var(--tabs-h) - 56px)/2 + env(safe-area-inset-bottom));z-index:var(--z-fab);flex:none;width:56px;height:56px;min-height:56px;max-width:56px;padding:0;display:flex;align-items:center;justify-content:center;flex-direction:row;background:var(--sos);color:var(--on-sos);border:2px solid var(--on-sos);border-radius:50%;font-family:var(--body);font-weight:800;font-size:var(--fs-14);letter-spacing:.04em;cursor:pointer}
+/* One bottom bar: SOS is docked at its left edge, the tabs start beside it. */
+@media (max-width:899px){
+  .tabs .inner{padding-left:68px}
+  .tabs button[data-tab="home"]{order:1}
+  .tabs button[data-tab="vault"]{order:2}
+  .tabs button[data-tab="ekta"]{order:3}
+  .tabs button[data-tab="care"]{order:4}
+  .tabs button[data-tab="people"]{order:5}
+}
 .sosscreen,.sosalert{position:fixed;inset:0;z-index:var(--z-alarm);background:var(--sos);color:var(--on-sos);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;overscroll-behavior:contain;padding:var(--space-24) var(--space-16) var(--space-40)}
 .sosalert{background:var(--sos-deep)}
 .ss-in{width:100%;max-width:480px;display:flex;flex-direction:column;gap:var(--space-12);margin:auto 0}
@@ -732,7 +752,6 @@ details.more[open]>summary::before{content:"▾ "}
 .grules{margin-top:var(--space-12)}
 .grules summary{font-weight:700;cursor:pointer}
 .grules ul{margin:var(--space-8) 0 0;padding-left:var(--space-20);display:grid;gap:var(--space-4)}
-body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
 #evoice[aria-pressed="false"]{opacity:.7}
 .eurgent{display:flex;flex-wrap:wrap;gap:var(--space-8);align-self:flex-start}
 .cbtn.urgent{min-height:var(--tap-min);background:var(--alert);color:var(--on-accent);text-decoration:none}
@@ -842,16 +861,6 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
 .seenline{align-self:flex-end;font-size:var(--fs-12);color:var(--ink-soft);margin-top:calc(var(--space-4) * -1)}
 
 /* member profile sheet */
-.fab.chatfab{bottom:calc(var(--tabs-h) + 84px + env(safe-area-inset-bottom));background:var(--surface);color:var(--ink);border:1px solid var(--bone-2)}
-/* Under 900px the two floating buttons are round icons: with their words
-   they covered the controls under them (Start duel on a phone). From 900px
-   they are not on the page at all (they live in the sidebar). The names
-   stay for screen readers and as tooltips. */
-@media (max-width:899px){
-  .fab{width:56px;height:56px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:var(--fs-24)}
-  .fab .flbl{display:none}
-  .fab.chatfab{bottom:calc(var(--tabs-h) + 86px + env(safe-area-inset-bottom))}
-}
 #nc-list{display:flex;flex-direction:column;gap:var(--space-8);margin-top:var(--space-8);max-height:44vh;overflow-y:auto}
 .msheet{position:fixed;inset:0;background:rgba(24,38,34,.55);z-index:var(--z-sheet);display:flex;align-items:flex-start;justify-content:center;padding:var(--space-20);overflow-y:auto;overscroll-behavior:contain}
 .msheet .mp{background:var(--day);border-radius:var(--radius-20);max-width:380px;width:100%;padding:var(--space-24);position:relative;box-shadow:0 20px 60px rgba(0,0,0,.35);margin:auto}
@@ -863,24 +872,6 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
 .mp .prow2{display:flex;gap:var(--space-8);flex-wrap:wrap;margin-top:var(--space-16)}
 .member{cursor:pointer}
 
-/* Ekta floating icon - on every screen, one tap away */
-.fab{position:fixed;right:16px;bottom:calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom));z-index:var(--z-fab);border:0;border-radius:var(--radius-pill);background:var(--dusk);color:var(--marigold);font-family:var(--body);font-weight:700;font-size:var(--fs-16);padding:var(--space-16) var(--space-20);cursor:pointer;box-shadow:0 10px 26px rgba(24,38,34,.4)}
-/* THE DOCK (phones): SOS, Chat and Ekta used to float over the page and hid
-   whatever was under them (owner, 2026-10-10: "elements should never get
-   hidden"). Below 900px they sit in their own solid row just above the tabs,
-   and the page, the chat box and the toasts all end above that row, so
-   nothing is ever under a button. */
-#fabdock{display:none}
-@media (max-width:899px){
-  body.hasdock #fabdock{display:block;position:fixed;left:0;right:0;bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom));height:var(--dock-h);background:var(--dusk);border-top:1px solid var(--pine-2);z-index:var(--z-inputbar)}
-  body.hasdock #sos-fab{left:16px;width:56px;height:56px;min-height:56px;max-width:56px;box-shadow:none;bottom:calc(var(--tabs-h) + (var(--dock-h) - 56px) / 2 + env(safe-area-inset-bottom))}
-  body.hasdock .fab{right:16px;box-shadow:none;bottom:calc(var(--tabs-h) + (var(--dock-h) - 56px) / 2 + env(safe-area-inset-bottom))}
-  body.hasdock .fab.chatfab{right:84px;bottom:calc(var(--tabs-h) + (var(--dock-h) - 56px) / 2 + env(safe-area-inset-bottom))}
-  body.hasdock #ekta-fab{background:var(--pine-2)}
-  body.hasdock .wrap{padding-bottom:calc(var(--tabs-h) + var(--dock-h) + 96px + env(safe-area-inset-bottom))}
-  body.hasdock .inputbar{bottom:calc(var(--tabs-h) + var(--dock-h) + env(safe-area-inset-bottom))}
-  body.hasdock .toast{bottom:calc(var(--tabs-h) + var(--dock-h) + 14px + env(safe-area-inset-bottom))}
-}
 
 /* game board */
 #board-cv{width:100%;aspect-ratio:1;border-radius:var(--radius-16);margin-top:var(--space-8);display:block;box-shadow:0 2px 12px rgba(36,31,23,.1)}
@@ -960,7 +951,7 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
   .side-foot{display:flex;flex-direction:column;gap:var(--space-8);margin-top:auto;position:sticky;bottom:-20px;z-index:var(--z-above);background:var(--dusk);flex:none;padding-top:var(--space-8)}
   .side-foot .side-user{position:static}
   body.inapp #sos-fab{position:static;left:auto;bottom:auto;width:100%;max-width:none;height:64px;margin:0;border-radius:var(--radius-16);box-shadow:none;flex:none}
-  body.inapp #chat-fab,body.inapp #ekta-fab{display:none!important}
+  body.inapp #chat-fab{display:none!important}
   .subnav{flex-direction:column;gap:0;margin:calc(var(--space-4) * -1) 0 var(--space-2)}
   .subnav button{padding:var(--space-8) var(--space-12) var(--space-8) var(--space-48);font-size:var(--fs-14);font-weight:600;color:var(--dim);border-radius:var(--radius-8);position:relative}
   .subnav button::before{content:"›";position:absolute;left:30px;opacity:.6}
@@ -976,8 +967,6 @@ body.nofab #ekta-fab,body.nofab #chat-fab{display:none!important}
   body.inapp .inputbar{left:var(--side-w);bottom:0;border-top:1px solid var(--bone-2)}
   body.inapp .inputbar .inner{max-width:1484px}
   body.inapp .toast{left:calc(50% + var(--side-w)/2);bottom:26px}
-  body.inapp .fab{right:28px;bottom:28px}
-  body.inapp .fab.chatfab{bottom:94px}
 
   /* Reading and typing want a comfortable measure even when the window is
      wide - only the grids below are allowed to use the full width. */
@@ -1143,11 +1132,11 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
    Measured on every screen by site/tests/browser/design.browser.mjs. ---- */
 button,select,textarea,.go,.cbtn,
 input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=hidden]){min-height:var(--tap-min)}
-.cbtn,.seg button,.calhead button,#bell,#getapp{display:inline-flex;align-items:center;justify-content:center;text-align:center}
+.cbtn,.seg button,.calhead button,#bell,#getapp,#chat-fab{display:inline-flex;align-items:center;justify-content:center;text-align:center}
 .subnav button{display:flex;align-items:center}
 /* With a mouse, 36px is easy to hit (WCAG AA asks for 24); touch keeps 44. */
 @media(min-width:900px){:root{--tap-min:36px}}
-#bell,#getapp,.calhead button,.x{min-width:var(--tap-min);min-height:var(--tap-min)}
+#bell,#getapp,#chat-fab,.calhead button,.x{min-width:var(--tap-min);min-height:var(--tap-min)}
 summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:border-box;cursor:pointer}
 /* The avatar stays a 32px circle; its tap area is the full 44px. */
 .metile{width:var(--tap-min);height:var(--tap-min);padding:calc((var(--tap-min) - var(--avatar-sm)) / 2);background-clip:content-box;margin-left:var(--space-2)}
@@ -1157,14 +1146,46 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
    install link is in the menu ("Get the app"), so it steps out of the bar.
    Last in the sheet: it must win over the icon atoms above. */
 @media (max-width:360px){#getapp{display:none}}
+/* The narrowest phones again: with New chat in the bar, the row earns its
+   room from the frame, never from the 44px tap targets. */
+@media (max-width:374px){
+  .bar{gap:var(--space-8);padding-left:calc(var(--space-12) + env(safe-area-inset-left));padding-right:calc(var(--space-12) + env(safe-area-inset-right))}
+}
 @media (max-width:430px){.relpick{grid-template-columns:repeat(2,minmax(0,1fr))}.relpick button[data-role="family"]{grid-column:auto}.relpick button{white-space:nowrap;font-size:var(--fs-14)}}
 .native-app #getapp,.native-app .ditem[href="get/"]{display:none}
 </style>
 </head>
 <body>
 
+<!-- The icon set: one drawn line language instead of emoji in the chrome, so
+     the app reads grown-up. Emoji stay in content, where they are warmth;
+     navigation, headers and section titles use these strokes. -->
+<svg hidden aria-hidden="true" focusable="false">
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.6 2.6H4.4L6 16z"/><path d="M10 21a2.3 2.3 0 0 0 4 0"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M12 20.5a8.5 8.5 0 1 0-7.4-4.3L3.5 20.5l4.5-1.1a8.5 8.5 0 0 0 4 1.1z"/></symbol>
+  <symbol id="i-get" viewBox="0 0 24 24"><rect x="7" y="2.8" width="10" height="18.4" rx="2.4"/><path d="M12 7.5v6m-2.6-2.4 2.6 2.6 2.6-2.6M10.4 17.8h3.2"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.7"/><path d="M5 20a7 7 0 0 1 14 0"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8.6" r="3.3"/><path d="M3.3 19.4a5.8 5.8 0 0 1 11.4 0"/><circle cx="16.8" cy="9.8" r="2.7"/><path d="M15.6 14.9a5.2 5.2 0 0 1 5.3 4.3"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11.2 12 4l8 7.2"/><path d="M6 9.8V20h12V9.8"/><path d="M10 20v-5.4h4V20"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M11 3.5l1.9 5.3 5.3 1.9-5.3 1.9-1.9 5.3-1.9-5.3-5.3-1.9 5.3-1.9z"/><path d="M18.5 15.5l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9z"/></symbol>
+  <symbol id="i-party" viewBox="0 0 24 24"><path d="M7 21V3.5"/><path d="M7 4.5h11.5l-2.8 3.8 2.8 3.8H7"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5.5" y="10.8" width="13" height="9.4" rx="2.2"/><path d="M8.5 10.8V8a3.5 3.5 0 0 1 7 0v2.8"/><circle cx="12" cy="15.4" r="1.2"/></symbol>
+  <symbol id="i-health" viewBox="0 0 24 24"><path d="M12 20.4S5 16 5 10.4a4.1 4.1 0 0 1 7-2.9 4.1 4.1 0 0 1 7 2.9c0 5.6-7 10-7 10z"/><path d="M8.2 11.6h1.9l1.2-2.4 1.5 3.8 1-1.4h2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M8.4 12.4l2.4 2.4 4.8-5.2"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15.4" rx="2.2"/><path d="M4 9.6h16M8.4 3v4M15.6 3v4"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><rect x="3" y="6.8" width="12.4" height="10.4" rx="2.2"/><path d="M15.4 10.6l5.6-2.8v8.4l-5.6-2.8"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5.2 4h9.6a3.2 3.2 0 0 1 3.2 3.2V20H8.4a3.2 3.2 0 0 1-3.2-3.2z"/><path d="M5.2 16.8a3.2 3.2 0 0 1 3.2-3.2H18"/></symbol>
+  <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 1 3.5 10.9c-.8.6-1.5 1.3-1.5 2.1h-4c0-.8-.7-1.5-1.5-2.1A6 6 0 0 1 12 3z"/><path d="M10 19h4M10.8 21.4h2.4"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="5.8" width="18" height="12.8" rx="2.2"/><path d="M3 10h18M6.6 14.8h4.4"/></symbol>
+  <symbol id="i-dice" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="15" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="15" r="1.3" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="12" r="3.4"/><path d="M11.4 12H20m-2.8 0v3m-2.8-3v2.2"/></symbol>
+  <symbol id="i-flower" viewBox="0 0 64 64"><g fill="currentColor" stroke="none"><ellipse cx="32" cy="14" rx="6" ry="9.2"/><ellipse cx="32" cy="14" rx="6" ry="9.2" transform="rotate(45 32 32)"/><ellipse cx="32" cy="14" rx="6" ry="9.2" transform="rotate(90 32 32)"/><ellipse cx="32" cy="14" rx="6" ry="9.2" transform="rotate(135 32 32)"/><ellipse cx="32" cy="14" rx="6" ry="9.2" transform="rotate(180 32 32)"/><ellipse cx="32" cy="14" rx="6" ry="9.2" transform="rotate(225 32 32)"/><ellipse cx="32" cy="14" rx="6" ry="9.2" transform="rotate(270 32 32)"/><ellipse cx="32" cy="14" rx="6" ry="9.2" transform="rotate(315 32 32)"/><circle cx="32" cy="32" r="8.6" fill="var(--sindoor)"/></g></symbol>
+</svg>
+
 <div class="bar">
-  <button id="hamb" hidden aria-label="Open menu">☰</button>
+  <button id="hamb" hidden aria-label="Open menu"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg></button>
   <!-- Logo and app name are two different things and now look like it: the mark
        reads as a mark, the name as a name, locked together as one unit so the
        row's gap cannot push them apart into two unrelated words. -->
@@ -1186,8 +1207,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
        does anything, so the grouping depended on which of them happened to be
        hidden. -->
   <div class="bar-actions">
-    <button id="bell" hidden aria-label="Notifications">🔔<i class="dot" id="bell-dot" hidden></i></button>
-    <a id="getapp" href="get/" target="_blank" rel="noopener" aria-label="Install the Parwah app" title="Install the app">📲</a>
+    <button id="chat-fab" hidden aria-label="Start a new chat" title="Start a new chat" aria-haspopup="dialog"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></button>
+    <button id="bell" hidden aria-label="Notifications"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg><i class="dot" id="bell-dot" hidden></i></button>
+    <a id="getapp" href="get/" target="_blank" rel="noopener" aria-label="Install the Parwah app" title="Install the app"><svg class="i" aria-hidden="true"><use href="#i-get"/></svg></a>
     <button id="metile" class="metile" hidden aria-label="Your profile"><span id="me-init">··</span></button>
   </div>
   <!-- The full name lives here rather than in the bar: on a 430px screen it was
@@ -1195,7 +1217,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
        Sign out is deliberately NOT here -- it belongs on the profile. -->
   <div class="memenu" id="memenu" hidden role="menu">
     <div class="who" id="who"></div>
-    <button class="meitem" id="me-profile" role="menuitem">👤 Profile</button>
+    <button class="meitem" id="me-profile" role="menuitem"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg> Profile</button>
   </div>
 </div>
 
@@ -1434,10 +1456,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
          card for an emergency. Ranked by utility in docs/design/TODAY.md; the
          gate keeps this order. Everything else is one tap away under More. -->
     <div class="widgets" id="widgets">
-      <button class="widget" data-goto="vault" data-sec="docs"><span class="wic" aria-hidden="true">🔐</span><b>Vault</b><small id="w-vault">Aadhaar, PAN, licence, policies - download or ask for them</small></button>
-      <button class="widget" data-goto="memory" data-bk="health"><span class="wic" aria-hidden="true">🩺</span><b>Health</b><small id="w-health">Medicines, blood groups, allergies</small></button>
-      <button class="widget" data-goto="care" data-sec="rem"><span class="wic" aria-hidden="true">✅</span><b>To do</b><small id="w-rem">Loading…</small></button>
-      <button class="widget" data-goto="people"><span class="wic" aria-hidden="true">👨‍👩‍👧</span><b>Family</b><small id="w-fam">Loading…</small></button>
+      <button class="widget" data-goto="vault" data-sec="docs"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg></span><b>Vault</b><small id="w-vault">Aadhaar, PAN, licence, policies - download or ask for them</small></button>
+      <button class="widget" data-goto="memory" data-bk="health"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-health"/></svg></span><b>Health</b><small id="w-health">Medicines, blood groups, allergies</small></button>
+      <button class="widget" data-goto="care" data-sec="rem"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg></span><b>To do</b><small id="w-rem">Loading…</small></button>
+      <button class="widget" data-goto="people"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg></span><b>Family</b><small id="w-fam">Loading…</small></button>
     </div>
     <button class="big ecard-big" id="btn-ecard">🚨 Emergency card<span class="sub">The details a doctor will ask for - works without internet</span></button>
     <div class="card" id="push-card" hidden style="margin:var(--space-16) 0">
@@ -1452,15 +1474,15 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <details class="todaymore" id="more">
       <summary>More<small>Chats, calls, contacts, plans, Ekta, good times &amp; horoscope, payments, games &amp; drawing</small></summary>
       <div class="widgets" id="morewidgets">
-      <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true">💬</span><b>Chats</b><small id="w-chat">Family + personal</small></button>
-      <button class="widget callgo" id="callnow"><span class="wic" aria-hidden="true">📹</span><b>Family call</b><small>Everyone joins with one tap</small></button>
-      <button class="widget" data-goto="memory" data-bk="people"><span class="wic" aria-hidden="true">📒</span><b>Contacts &amp; addresses</b><small id="w-book">Doctors, neighbours, addresses</small></button>
-      <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true">💡</span><b>Suggested</b><small id="w-req">Loading…</small></button>
-      <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true">🗓</span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
-      <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true">✨</span><b>Ekta</b><small>Reminders, help, scam check - just ask</small></button>
-      <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true">🕉</span><b>Good times</b><small id="w-day">Good hours for your city</small></button>
-      <button class="widget" data-goto="vault" data-sec="pay"><span class="wic" aria-hidden="true">💳</span><b>Payments</b><small id="w-pay">Who may use which way of paying</small></button>
-      <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true">🎲</span><b>Games</b><small id="w-game">Seven games, play together</small></button>
+      <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span><b>Chats</b><small id="w-chat">Family + personal</small></button>
+      <button class="widget callgo" id="callnow"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-cam"/></svg></span><b>Family call</b><small>Everyone joins with one tap</small></button>
+      <button class="widget" data-goto="memory" data-bk="people"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-book"/></svg></span><b>Contacts &amp; addresses</b><small id="w-book">Doctors, neighbours, addresses</small></button>
+      <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-bulb"/></svg></span><b>Suggested</b><small id="w-req">Loading…</small></button>
+      <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-cal"/></svg></span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
+      <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-spark"/></svg></span><b>Ekta</b><small>Reminders, help, scam check - just ask</small></button>
+      <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-sun"/></svg></span><b>Good times</b><small id="w-day">Good hours for your city</small></button>
+      <button class="widget" data-goto="vault" data-sec="pay"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-card"/></svg></span><b>Payments</b><small id="w-pay">Who may use which way of paying</small></button>
+      <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-dice"/></svg></span><b>Games</b><small id="w-game">Seven games, play together</small></button>
       </div>
       <button class="card coincard" id="coincard" hidden style="margin-bottom:var(--space-16);width:100%;text-align:left">
       <h3>🪙 <span id="coin-bal">-</span> family coins</h3>
@@ -1575,7 +1597,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   <!-- FAMILY - who is who, and how ready the family is for each person -->
   <section id="pane-people" hidden>
-    <div class="ektahead"><span style="font-size:var(--fs-24)" aria-hidden="true">👨‍👩‍👧</span><span><b>Family</b><small>Who is who, and how ready the family is for each person</small></span></div>
+    <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg></span><span><b>Family</b><small>Who is who, and how ready the family is for each person</small></span></div>
     <div class="card" id="joinreq-card" hidden>
       <h3>🙋 Waiting to join</h3>
       <p class="hint" id="jr-count" style="margin:var(--space-2) 0 var(--space-12)"></p>
@@ -1711,7 +1733,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   <!-- HEALTH & CONTACTS - medicines, facts, doctors, addresses -->
   <section id="pane-memory" hidden>
-    <div class="ektahead"><span style="font-size:var(--fs-24)" aria-hidden="true">🩺</span><span><b>Health &amp; contacts</b><small>Medicines, blood groups, allergies, doctors and addresses</small></span></div>
+    <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-health"/></svg></span><span><b>Health &amp; contacts</b><small>Medicines, blood groups, allergies, doctors and addresses</small></span></div>
     <div id="book-list-view">
       <div class="addrow" style="margin-top:0">
         <input type="search" id="b-search" maxlength="60" placeholder="Search health and contacts…" aria-label="Search health and contacts">
@@ -1844,7 +1866,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     </div>
 
     <div class="subsec" data-sec="docs">
-      <div class="ektahead"><span style="font-size:var(--fs-24)" aria-hidden="true">🔐</span><span><b>Family vault</b><small>Aadhaar, PAN, passport, licence, health and birth papers - each one shared with exactly who you choose</small></span></div>
+      <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>Family vault</b><small>Aadhaar, PAN, passport, licence, health and birth papers - each one shared with exactly who you choose</small></span></div>
       <div id="vd-list-view">
         <div class="card vcol" id="vd-requests" hidden>
           <h3>🙋 Asked of you</h3>
@@ -1935,7 +1957,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     </div>
 
     <div class="subsec" data-sec="pay" hidden>
-      <div class="ektahead"><span style="font-size:var(--fs-24)" aria-hidden="true">💳</span><span><b>Payments</b><small>Your ways of paying, and exactly who in the family may use each one</small></span></div>
+      <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-card"/></svg></span><span><b>Payments</b><small>Your ways of paying, and exactly who in the family may use each one</small></span></div>
       <div class="feed" id="vplist"><div class="ev">No payment methods saved yet.</div></div>
       <div class="card" style="margin-top:var(--space-16)">
         <h3 id="vp-ftitle">Add a way of paying</h3>
@@ -2206,7 +2228,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <!-- EKTA -->
   <section id="pane-ekta" hidden>
     <div class="ektahead">
-      <span class="dev" aria-hidden="true">✨</span>
+      <span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-spark"/></svg></span>
       <span><b>Ekta</b><small>Your family's helper · Hindi or English</small></span>
       <button class="cbtn ghost" id="evoice" aria-pressed="true" aria-label="Read replies aloud">🔊 Read aloud</button>
     </div>
@@ -2245,7 +2267,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   <!-- TOGETHER: calls, plans, games -->
   <section id="pane-fun" hidden>
-    <div class="ektahead"><span style="font-size:var(--fs-24)" aria-hidden="true">🎉</span><span><b>Together</b><small>Calls, plans and games - distance is just a number</small></span></div>
+    <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-party"/></svg></span><span><b>Together</b><small>Calls, plans and games - distance is just a number</small></span></div>
 
     <div class="seg pageseg" id="fun-seg" role="tablist" aria-label="Together sections">
       <button data-sec="plans" class="sel">🗓 Plans</button>
@@ -2677,41 +2699,41 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 <!-- bottom tabs -->
 <nav class="tabs" id="tabs" hidden aria-label="App sections">
   <div class="inner">
-    <div class="side-brand side-only"><span class="dev" aria-hidden="true">🧡</span><span class="side-name">Parwah<small class="side-tag">family superapp</small></span></div>
-    <button data-tab="home" class="sel"><span class="ic" aria-hidden="true">🏠</span>Today</button>
-    <button data-tab="chat" class="deskonly"><span class="ic" aria-hidden="true">💬</span>Chat</button>
-    <button data-tab="ekta" class="deskonly"><span class="ic" aria-hidden="true">✨</span>Ask Ekta</button>
-    <button data-tab="fun" class="deskonly"><span class="ic" aria-hidden="true">🎉</span>Together</button>
+    <div class="side-brand side-only"><svg class="i brandflower" aria-hidden="true"><use href="#i-flower"/></svg><span class="side-name">Parwah<small class="side-tag">family superapp</small></span></div>
+    <button data-tab="home" class="sel"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-home"/></svg></span>Today</button>
+    <button data-tab="chat" class="deskonly"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-chat"/></svg></span>Chat</button>
+    <button data-tab="ekta" aria-label="Ask Ekta"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-spark"/></svg></span>Ekta</button>
+    <button data-tab="fun" class="deskonly"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-party"/></svg></span>Together</button>
     <div class="subnav side-only" data-parent="fun">
       <button data-tab="fun" data-sec="plans">Plans &amp; calls</button>
       <button data-tab="fun" data-sec="games">Games</button>
       <button data-tab="fun" data-sec="board">Drawing board</button>
     </div>
-    <button data-tab="vault"><span class="ic" aria-hidden="true">🔐</span>Vault</button>
+    <button data-tab="vault"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-lock"/></svg></span>Vault</button>
     <div class="subnav side-only" data-parent="vault">
       <button data-tab="vault" data-sec="docs">Documents</button>
       <button data-tab="vault" data-sec="pay">Payments</button>
     </div>
-    <button data-tab="memory" class="deskonly"><span class="ic" aria-hidden="true">🩺</span>Health &amp; contacts</button>
-    <button data-tab="care"><span class="ic" aria-hidden="true">✅</span>To do<i class="dot" id="care-dot" hidden></i></button>
+    <button data-tab="memory" class="deskonly"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-health"/></svg></span>Health &amp; contacts</button>
+    <button data-tab="care"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></span>To do<i class="dot" id="care-dot" hidden></i></button>
     <div class="subnav side-only" data-parent="care">
       <button data-tab="care" data-sec="rem">To do</button>
       <button data-tab="care" data-sec="req">Suggested</button>
       <button data-tab="care" data-sec="notes">Notes &amp; lists</button>
     </div>
-    <button data-tab="people" id="tab-people"><span class="ic" aria-hidden="true">👨‍👩‍👧</span><span id="tab-people-l">Family</span></button>
+    <button data-tab="people" id="tab-people"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-users"/></svg></span><span id="tab-people-l">Family</span></button>
     <p class="side-more side-only">More</p>
-    <button data-tab="notifs" class="deskonly" id="side-nb" style="position:relative"><span class="ic" aria-hidden="true">🔔</span>Notifications<i class="dot" id="nb-dot2" hidden></i></button>
-    <button data-tab="day" class="deskonly"><span class="ic" aria-hidden="true">🕉</span>The day</button>
+    <button data-tab="notifs" class="deskonly" id="side-nb" style="position:relative"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-bell"/></svg></span>Notifications<i class="dot" id="nb-dot2" hidden></i></button>
+    <button data-tab="day" class="deskonly"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-sun"/></svg></span>The day</button>
     <div class="subnav side-only" data-parent="day">
       <button data-tab="day" data-sec="muhurat">Good times</button>
       <button data-tab="day" data-sec="rashi">Horoscope</button>
     </div>
-    <button data-tab="profile" class="deskonly"><span class="ic" aria-hidden="true">👤</span>Profile</button>
-    <div class="sidehead side-only" id="side-groups-head" hidden>👨‍👩‍👧‍👦 My Groups</div>
+    <button data-tab="profile" class="deskonly"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-user"/></svg></span>Profile</button>
+    <div class="sidehead side-only" id="side-groups-head" hidden>My Groups</div>
     <div class="subnav side-only" id="side-groups"></div>
     <button class="side-new side-only" id="side-newcircle">＋ New family or group</button>
-    <button class="side-new side-only" id="side-joincircle">🔑 Join with a code</button>
+    <button class="side-new side-only" id="side-joincircle"><svg class="i" aria-hidden="true"><use href="#i-key"/></svg> Join with a code</button>
     <div class="side-foot">
       <button type="button" class="sosfab" id="sos-fab" hidden aria-label="SOS - get help now" title="SOS - get help now">SOS</button>
       <div class="side-user side-only" id="side-user"></div>
@@ -2755,11 +2777,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 <div class="drawer" id="drawer" hidden role="dialog" aria-modal="true" aria-label="Menu">
   <div class="dpanel">
     <div class="dhead"><span class="dev" aria-hidden="true">🧡</span> Parwah <button class="x" id="drawer-x" aria-label="Close menu">✕</button></div>
-    <button class="ditem" data-tab="home">🏠 Today</button>
-    <button class="ditem" data-tab="chat">💬 Chat</button>
-    <button class="ditem" data-tab="ekta">✨ Ask Ekta</button>
+    <button class="ditem" data-tab="home"><svg class="i" aria-hidden="true"><use href="#i-home"/></svg> Today</button>
+    <button class="ditem" data-tab="chat"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg> Chat</button>
+    <button class="ditem" data-tab="ekta"><svg class="i" aria-hidden="true"><use href="#i-spark"/></svg> Ask Ekta</button>
     <div class="dgroup">
-      <button class="ditem dparent" data-grp="fun">🎉 Together <span class="caret">▾</span></button>
+      <button class="ditem dparent" data-grp="fun"><svg class="i" aria-hidden="true"><use href="#i-party"/></svg> Together <span class="caret">▾</span></button>
       <div class="dsub">
         <button class="ditem sub" data-tab="fun" data-sec="plans">Plans &amp; calls</button>
         <button class="ditem sub" data-tab="fun" data-sec="games">Games</button>
@@ -2767,37 +2789,37 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       </div>
     </div>
     <div class="dgroup">
-      <button class="ditem dparent" data-grp="vault">🔐 Vault <span class="caret">▾</span></button>
+      <button class="ditem dparent" data-grp="vault"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg> Vault <span class="caret">▾</span></button>
       <div class="dsub">
         <button class="ditem sub" data-tab="vault" data-sec="docs">Documents</button>
         <button class="ditem sub" data-tab="vault" data-sec="pay">Payments</button>
       </div>
     </div>
-    <button class="ditem" data-tab="memory">🩺 Health &amp; contacts</button>
+    <button class="ditem" data-tab="memory"><svg class="i" aria-hidden="true"><use href="#i-health"/></svg> Health &amp; contacts</button>
     <div class="dgroup">
-      <button class="ditem dparent" data-grp="care">✅ To do <span class="caret">▾</span></button>
+      <button class="ditem dparent" data-grp="care"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg> To do <span class="caret">▾</span></button>
       <div class="dsub">
         <button class="ditem sub" data-tab="care" data-sec="rem">To do</button>
         <button class="ditem sub" data-tab="care" data-sec="req">Suggested</button>
         <button class="ditem sub" data-tab="care" data-sec="notes">Notes &amp; lists</button>
       </div>
     </div>
-    <button class="ditem" data-tab="people">👨‍👩‍👧 Family</button>
+    <button class="ditem" data-tab="people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg> Family</button>
     <p class="dlabel">More</p>
-    <button class="ditem" data-tab="notifs">🔔 Notifications</button>
+    <button class="ditem" data-tab="notifs"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg> Notifications</button>
     <div class="dgroup">
-      <button class="ditem dparent" data-grp="day">🕉 The day <span class="caret">▾</span></button>
+      <button class="ditem dparent" data-grp="day"><svg class="i" aria-hidden="true"><use href="#i-sun"/></svg> The day <span class="caret">▾</span></button>
       <div class="dsub">
         <button class="ditem sub" data-tab="day" data-sec="muhurat">Good times of the day</button>
         <button class="ditem sub" data-tab="day" data-sec="rashi">Daily horoscope</button>
       </div>
     </div>
-    <button class="ditem" data-tab="profile">👤 Profile</button>
+    <button class="ditem" data-tab="profile"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg> Profile</button>
     <div class="dgroup" id="d-groups-wrap" hidden>
-      <button class="ditem dparent" data-grp="groups">👨‍👩‍👧‍👦 My Groups <span class="caret">▾</span></button>
+      <button class="ditem dparent" data-grp="groups"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg> My Groups <span class="caret">▾</span></button>
       <div class="dsub" id="d-groups"></div>
       <button class="ditem sub" id="d-newcircle">＋ New family or group</button>
-      <button class="ditem sub" id="d-joincircle">🔑 Join with a code</button>
+      <button class="ditem sub" id="d-joincircle"><svg class="i" aria-hidden="true"><use href="#i-key"/></svg> Join with a code</button>
     </div>
     <a class="ditem" href="get/" target="_blank" rel="noopener">📲 Get the app</a>
     <div class="dfoot" id="d-user"></div>
@@ -2875,9 +2897,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <button type="button" class="ss-btn" id="ls-off">Turn off Lost mode</button>
   </div>
 </div>
-<div id="fabdock" aria-hidden="true"></div>
-<button class="fab" id="ekta-fab" hidden aria-label="Ask Ekta" title="Ask Ekta"><span class="fic" aria-hidden="true">✨</span><span class="flbl"> Ekta</span></button>
-<button class="fab chatfab" id="chat-fab" hidden aria-label="Start a new chat" title="Start a new chat" aria-haspopup="dialog"><span class="fic" aria-hidden="true">💬</span><span class="flbl"> New chat</span></button>
 
 <div class="msheet" id="tsheet" hidden role="dialog" aria-modal="true" aria-labelledby="ts-title">
   <div class="mp" style="max-width:460px;max-height:88vh;overflow-y:auto">
@@ -3138,16 +3157,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (t === 'day' && curTab !== 'day') showMuTab('overview');
     curTab = t;
     setInputMode();
-    // Chat and Ekta float on every screen except their own (owner,
-    // 2026-10-04), so either is one tap from anywhere. Inside an open chat
-    // the typing bar needs the corner, so Ekta steps aside there too; the
-    // chat list has its own New group and Personal chat buttons.
+    // New chat lives in the top bar, one tap from anywhere; Chat's own
+    // screen has its own buttons, so it steps aside there. Ekta is a tab.
     var inApp = document.body.classList.contains('inapp');
-    $('ekta-fab').hidden = !inApp || t === 'ekta' || (t === 'chat' && !!curChat);
     $('chat-fab').hidden = !inApp || t === 'chat';
     // SOS is on every screen, always.
     $('sos-fab').hidden = !inApp;
-    fabRoom();
     $('ncsheet').hidden = true;
     $('tsheet').hidden = true;
     if (t !== 'ekta' && window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (e) {} }
@@ -3215,7 +3230,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     document.querySelectorAll('#tabs .subnav[data-parent="' + pane + '"] button').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-sec') === sec);
     });
-    if (pane === 'fun') fabRoom();
     if (pane === 'care' && sec === 'notes') refreshNotes();
   }
   ['care', 'fun', 'vault', 'day'].forEach(function(pane){
@@ -4602,7 +4616,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function askNewSecret(){
     $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
     // The floating buttons belong to the app, never on top of a sign-in form.
-    $('ekta-fab').hidden = true; $('chat-fab').hidden = true; $('sos-fab').hidden = true; $('ncsheet').hidden = true; $('tsheet').hidden = true;
+    $('chat-fab').hidden = true; $('sos-fab').hidden = true; $('ncsheet').hidden = true; $('tsheet').hidden = true;
     try { drawerOpen(false); } catch (e) {}
     var sp = splitE164(authUser && authUser.phone);
     if (sp) { $('au-cc').value = sp.cc; $('au-phone').value = sp.local; }
@@ -4615,7 +4629,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function newCircleFromApp(){
     $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
     // The floating buttons belong to the app, never on top of a sign-in form.
-    $('ekta-fab').hidden = true; $('chat-fab').hidden = true; $('sos-fab').hidden = true; $('ncsheet').hidden = true; $('tsheet').hidden = true;
+    $('chat-fab').hidden = true; $('sos-fab').hidden = true; $('ncsheet').hidden = true; $('tsheet').hidden = true;
     drawerOpen(false);
     showSetup();
   }
@@ -4653,7 +4667,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
   function showWaiting(msg){
     $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
-    $('ekta-fab').hidden = true; $('chat-fab').hidden = true; $('sos-fab').hidden = true;
+    $('chat-fab').hidden = true; $('sos-fab').hidden = true;
     try { drawerOpen(false); } catch (e) {}
     pendCode = pendingJoin;
     $('pend-msg').textContent = msg || 'Your request to join with code ' + pendingJoin + ' is with the family.';
@@ -4669,7 +4683,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // with the code filled in - never their old Today with the invite lost.
   function joinInvite(){
     $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
-    $('ekta-fab').hidden = true; $('chat-fab').hidden = true; $('sos-fab').hidden = true;
+    $('chat-fab').hidden = true; $('sos-fab').hidden = true;
     try { drawerOpen(false); } catch (e) {}
     window._authCircles = window._authCircles || loadGroups();
     startJoin();
@@ -5424,20 +5438,17 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
   // The red bar is fixed at the top; the page and its sticky header start
   // below it (body.sosup + --sos-h), so it never covers the menu or a title.
-  // The dock under SOS, Chat and Ekta shows whenever the SOS button does.
   (function(){
-    var bar = $('sosbar'), fab = $('sos-fab'), root = document.documentElement;
+    var bar = $('sosbar'), root = document.documentElement;
     function sosH(){
       var h = bar.hidden ? 0 : bar.getBoundingClientRect().height;
       root.style.setProperty('--sos-h', Math.round(h) + 'px');
       document.body.classList.toggle('sosup', !bar.hidden);
     }
-    function dock(){ document.body.classList.toggle('hasdock', !fab.hidden); }
     try { new ResizeObserver(sosH).observe(bar); } catch (e) {}
     new MutationObserver(sosH).observe(bar, { attributes: true, attributeFilter: ['hidden'], childList: true, subtree: true, characterData: true });
-    new MutationObserver(dock).observe(fab, { attributes: true, attributeFilter: ['hidden'] });
     window.addEventListener('resize', sosH);
-    sosH(); dock();
+    sosH();
   })();
   $('sosbar').addEventListener('click', function(e){
     if (e.target.closest('a,button')) return;
@@ -7178,7 +7189,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('game-on').hidden = true;
     $('game-list').hidden = false;
     $('game-none').hidden = false;
-    fabRoom();
   }
   function openGame(id){
     if (!state) return;
@@ -7206,7 +7216,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function renderGameInner(g){
     renderGameBody(g);
     renderFoot(g);
-    fabRoom();
   }
   // How to play, in a few plain lines, read from the rules the game uses.
   var GRULES = {
@@ -7277,11 +7286,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
   // The floating buttons step aside wherever they would cover a game or the
   // drawing board.
-  function fabRoom(){
-    var fun = curTab === 'fun';
-    var board = document.querySelector('#pane-fun .subsec[data-sec="board"]');
-    document.body.classList.toggle('nofab', fun && ((!$('game-on').hidden && !!curGame) || (board && !board.hidden)));
-  }
   function renderGameBody(g){
     curGame = g;
     $('game-list').hidden = !!g;
@@ -7722,7 +7726,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       .catch(function(){ toast('No connection - try again'); });
   });
   $('chatback').addEventListener('click', closeChat);
-  $('ekta-fab').addEventListener('click', function(){ switchTab('ekta'); });
 
   // ---------- new chat, from anywhere ----------
   function ncClose(){ $('ncsheet').hidden = true; $('chat-fab').focus(); }
