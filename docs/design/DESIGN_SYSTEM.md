@@ -88,7 +88,12 @@ ring for everything, `outline: 3px solid var(--focus-ring)` with a
 focus, active, disabled; loading where it acts).
 - Buttons: primary `.go` (one per view), secondary `.cbtn`, quiet
   `.cbtn.ghost`, destructive `.cbtn.no`, text `.linkbtn`, icon (bar buttons,
-  `.x` close), floating `.fab`.
+  `.x` close). Nothing floats over the page: there is no floating button.
+- Icons: one drawn line set, an SVG sprite of `<symbol id="i-...">` used as
+  `<svg class="i"><use href="#i-..."/></svg>`: 24px grid, 1.8 stroke
+  (1.6 in screen headers), `currentColor`, so they follow the theme. They
+  carry the chrome (top bar, tabs, sidebar, menu, Today's tiles, screen
+  headers). Emoji stay in content, where they are warmth, not wayfinding.
 - Inputs: text, date, time, number, `select`, `textarea`, checkbox chip
   `.gchk`, file.
 - Marks: `.badge`, `.gturn` (turn pill), `.dot` (counter), `.metile`
@@ -112,14 +117,21 @@ focus, active, disabled; loading where it acts).
   and fold the rest (`.suggmore`).
 - Field error `.fielderr`: the reason a box was refused, right under it,
   with `aria-invalid` on the box. A refused form says so here, not in a toast.
-- SOS button `.sosfab` (every screen: in the dock on a phone, a full-width control at the bottom of the sidebar on a laptop), SOS screen `.sosscreen`,
+- SOS button `.sosfab` (every screen: a 56px red circle docked inside the tab bar at its left on a phone, a full-width control at the bottom of the sidebar on a laptop), SOS screen `.sosscreen`,
   alarm `.sosalert`, their buttons `.ss-btn`. Emergency red `--sos` is for
   these only.
-- Dock `#fabdock` (phones): SOS left, Chat and Ekta right, in a solid row
-  above the tabs. Nothing floats over the page: the page, the message box and
-  toasts end above the dock (owner, 2026-10-10: "elements should never get
-  hidden"). The SOS bar `#sosbar` pushes the page and its sticky header down
-  (`body.sosup`, `--sos-h`) instead of covering them.
+- Bottom bar `.tabs` (phones): one bar, SOS docked at its left, then Today,
+  Vault, Ekta, To do, Family. New chat `#chat-fab` sits in the top bar beside
+  the bell. Nothing floats over the page: the page, the message box and
+  toasts end above the bar (owner, 2026-10-10: "elements should never get
+  hidden"). Below 375px the bar earns room from padding and gaps, never from
+  the 44px tap targets.
+- SOS bar `#sosbar`: while an SOS is open it pushes the page and its sticky
+  header down (`body.sosup`, `--sos-h`) instead of covering them. It always
+  has a way to end it: "I am safe" for the person who sent it, "Sorted" for
+  everyone else in that family or group (owner, 2026-10-10: any app user in
+  the circle may end it, and it ends only there). Ending it lifts the
+  location hold and tells the family.
 - Find a phone `.findscreen`: the ring (`#ringscreen`) and Lost mode
   (`#lostscreen`) take the screen like an alarm, in `--pine`, which is dark
   in both themes, with marigold for the one main action. They reuse

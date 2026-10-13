@@ -72,7 +72,7 @@ everyone is, and the tree last with its add-form folded.
   contacts, To do, Family), then under More: Notifications, The day,
   Profile. One name per place, the same on the tiles, the tab bar, the
   menu and the screen that opens.
-- **Chat** is still one tap away, from the floating chat button and the
+- **Chat** is still one tap away, from New chat in the top bar and the
   menu.
 
 The order is fixed rather than reshuffled by the app, because people find

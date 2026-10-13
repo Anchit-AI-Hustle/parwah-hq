@@ -13,7 +13,7 @@ and are ticked in the pull request (the template carries this list).
 - [ ] Spacing on the 4pt grid; related things closer than unrelated things.
 - [ ] One primary action per view; secondary actions visibly quieter.
 - [ ] Nothing scrolls sideways at 320, 390 or 1280px **(gate)**.
-- [ ] The last item clears the tab bar and the floating buttons.
+- [ ] The last item clears the tab bar and the message box; nothing floats over the page.
 
 ## 3. Type and content
 - [ ] Sizes from the ramp; no text under 12px **(gate)**.
