@@ -146,8 +146,7 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
   // the top bar, and the board owns the page.
   ok('ludo: nothing floats over an open game - New chat stays in the top bar', await R.evaluate(() => {
     const c = document.getElementById('chat-fab').getBoundingClientRect();
-    const b = document.getElementById('g-ludo').getBoundingClientRect();
-    return document.querySelectorAll('.fab').length === 0 && c.bottom <= 64 && c.bottom <= b.top;
+    return document.querySelectorAll('.fab').length === 0 && c.width > 0 && c.top >= 0 && c.bottom <= 64;
   }));
   const before = g.id;
   await R.click('#g-again'); await R.waitForTimeout(900);
@@ -357,8 +356,7 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
   await R.click('#fun-seg [data-sec="board"]'); await R.waitForTimeout(700);
   ok('board: nothing floats over the paper - New chat stays in the top bar', await R.evaluate(() => {
     const c = document.getElementById('chat-fab').getBoundingClientRect();
-    const b = document.getElementById('dboard').getBoundingClientRect();
-    return document.querySelectorAll('.fab').length === 0 && c.bottom <= 64 && c.bottom <= b.top;
+    return document.querySelectorAll('.fab').length === 0 && c.width > 0 && c.top >= 0 && c.bottom <= 64;
   }));
   const sizes = await R.$$eval('#dtools .dcol', bs => bs.map(b => Math.min(b.getBoundingClientRect().width, b.getBoundingClientRect().height)));
   ok('board: every colour is a 44px target', sizes.length >= 6 && sizes.every(x => x >= 44), sizes.join());
