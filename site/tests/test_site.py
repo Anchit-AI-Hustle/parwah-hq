@@ -1953,9 +1953,8 @@ check("theme: a status button keeps its status colour under the Mela gradient",
 _navseg = _appt[_appt.index('<nav class="tabs" id="tabs"'):_appt.index('id="side-groups-head"')]
 _nav = re.findall(r'<button data-tab="(\w+)"(?! data-sec)([^>]*)>', _navseg)
 # Owner (2026-10-04): Chat, Ask Ekta and Together (Plans & calls, Games,
-# Drawing board) sit right under Today, ahead of the records. The phone tab
-# bar is unchanged; those three are a tap away there through the floating
-# buttons and the menu.
+# Drawing board) sit right under Today, ahead of the records. On a phone,
+# Ekta is a tab, New chat is in the top bar, and Together is in the menu.
 _want_nav = ["home", "chat", "ekta", "fun", "vault", "memory", "care", "people", "notifs", "day", "profile"]
 check("order: the sidebar runs by real-life use",
       [t for t, _ in _nav] == _want_nav, " > ".join(t for t, _ in _nav))
