@@ -176,8 +176,8 @@ await call('circle', { action: 'join', code, memberName: 'Kabir', userId: U.Kabi
 await R.reload(); await R.waitForTimeout(800);
 await R.evaluate(() => { location.hash = '#people'; }); await R.waitForTimeout(1500);
 await R.waitForSelector('#joinreqs [data-jok]', { timeout: 15000 }).catch(() => {});
-const order = await R.evaluate(() => ['joinreq-card', 'treecard', 'prepcard', 'loc-card'].map(id => document.getElementById(id).getBoundingClientRect().top));
-ok('People runs: who is waiting, the tree, how ready, the family, then where', await R.isVisible('#joinreq-card') && order[0] < order[1] && order[1] < order[2] && order[2] < order[3], order.join());
+const order = await R.evaluate(() => ['joinreq-card', 'famcard', 'prepcard', 'loc-card', 'treecard'].map(id => document.getElementById(id).getBoundingClientRect().top));
+ok('People runs: who is waiting, the family itself, how ready, where everyone is, the tree last', await R.isVisible('#joinreq-card') && order.every((t, i) => !i || order[i - 1] < t), order.join());
 if (process.env.PC_SHOT_DIR) { await R.screenshot({ path: process.env.PC_SHOT_DIR + '/people-light.png', fullPage: false }); await R.emulateMedia({ colorScheme: 'dark' }); await R.locator('#prepcard').screenshot({ path: process.env.PC_SHOT_DIR + '/prep-dark.png' }); await R.emulateMedia({ colorScheme: 'light' }); }
 ok('the waiting person says what they say they are', /says they are: grandson/.test(await R.textContent('#joinreqs')), await R.textContent('#joinreqs'));
 const prep = await R.$$eval('#preplist .crow', rs => rs.map(r => r.textContent));

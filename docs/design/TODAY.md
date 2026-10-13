@@ -45,12 +45,23 @@ family coins.
 ## The screen, top to bottom
 
 1. Alerts and offline notices, when they apply.
-2. The family card: name, today's status, Invite and Family call.
-3. For a parent in senior mode: All is well, Pills taken, SOS.
-4. The four tiles, in the order above, then the emergency card.
-5. More.
-6. Set-up cards when they apply (how ready the family is, first steps,
+2. For a parent in senior mode: All is well, Pills taken, SOS.
+3. The family header: name and today's status, one line - a header, not a
+   poster.
+4. The four tiles, in the order above, then the emergency card. The tiles
+   show the family's real numbers (papers kept, medicines on file, what is
+   due, who checked in), never a slogan.
+5. The quick-add row - after the content, never before it. The screen
+   leads with what the family keeps, not with empty forms.
+6. More.
+7. Set-up cards when they apply (how ready the family is, first steps,
    other families).
+
+The same rule holds on every screen (owner, 2026-10-13): **content first,
+forms last.** A screen opens on what the family has - the list, the people,
+the papers - and the way to add more comes after it or behind a fold.
+On Family that means: the people themselves, how ready they are, where
+everyone is, and the tree last with its add-form folded.
 
 ## Navigation follows the same order
 

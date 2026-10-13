@@ -666,7 +666,8 @@ details.more[open]>summary::before{content:"▾ "}
 .tperson small{font-size:var(--fs-12);color:var(--ink-soft)}
 .tand{color:var(--sindoor);font-size:var(--fs-14)}
 .tpair{display:flex;align-items:center;gap:var(--space-8)}
-.treeadd{margin-top:var(--space-16);padding-top:var(--space-16);border-top:1px solid var(--bone-2)}
+.treeadd{margin-top:var(--space-16);padding-top:var(--space-4);border-top:1px solid var(--bone-2)}
+.treeadd summary{cursor:pointer;list-style:revert}
 .treeform{display:grid;grid-template-columns:1fr;gap:var(--space-8);margin-top:var(--space-12)}
 @media (min-width:600px){.treeform{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .trlbl{margin:var(--space-12) 0 var(--space-4);font-size:var(--fs-12);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
@@ -903,10 +904,11 @@ details.more[open]>summary::before{content:"▾ "}
 .go.callgo{background:var(--pine);color:var(--cream)}
 
 /* home hero card */
-.homehero{background:linear-gradient(135deg,var(--dusk) 0%,var(--pine) 78%);color:var(--cream);border-radius:var(--radius-20);padding:var(--space-24) var(--space-20) var(--space-20);margin-bottom:var(--space-20);position:relative;overflow:hidden;box-shadow:0 14px 34px rgba(24,38,34,.28)}
-.homehero::before{content:"";position:absolute;right:-40px;top:-40px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,rgba(255,79,154,.34),transparent 70%)}
-.homehero::after{content:"❁ ❁ ❁";position:absolute;top:16px;right:18px;color:var(--marigold);opacity:.65;letter-spacing:.45em;font-size:var(--fs-12)}
-.homehero h1{color:var(--on-dark)}
+/* A header, not a poster: the family's name and one line of status. The
+   screen's room belongs to the five things below it. */
+.homehero{background:linear-gradient(135deg,var(--dusk) 0%,var(--pine) 78%);color:var(--cream);border-radius:var(--radius-16);padding:var(--space-16) var(--space-20);margin-bottom:var(--space-16);position:relative;overflow:hidden;box-shadow:var(--sh-1)}
+.homehero::before{content:"";position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,rgba(255,79,154,.22),transparent 70%)}
+.homehero h1{color:var(--on-dark);font-size:var(--fs-24);margin:0}
 .homehero .lede{color:var(--dim);margin-bottom:var(--space-12)}
 .homehero .go{margin-top:var(--space-12)}
 .homehero .hint{color:var(--dim)}
@@ -1440,16 +1442,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <h1 id="m-title"></h1>
       <p class="herostatus" id="hero-status">…</p>
     </div>
-    <!-- ONE PLACE TO ADD ANYTHING. With this many features, the basic "add a
-         reminder / an event / a list" must not depend on knowing which tab
-         holds it. Each goes straight to its form, ready to type. -->
-    <div class="quickadd" role="group" aria-label="Add something">
-      <button type="button" data-qadd="task">⏰ Reminder or task</button>
-      <button type="button" data-qadd="event">🗓 Event or plan</button>
-      <button type="button" data-qadd="note">📝 List or note</button>
-      <button type="button" data-qadd="contact">☎️ Contact or health</button>
-      <button type="button" data-qadd="doc">📄 Document</button>
-    </div>
     <div id="frslot"></div>
     <!-- THE FIVE THINGS. Families talk on WhatsApp; Parwah holds what WhatsApp
          cannot: the papers, the medicines, who does what, who is who, and the
@@ -1462,6 +1454,17 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="widget" data-goto="people"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg></span><b>Family</b><small id="w-fam">Loading…</small></button>
     </div>
     <button class="big ecard-big" id="btn-ecard">🚨 Emergency card<span class="sub">The details a doctor will ask for - works without internet</span></button>
+    <!-- ONE PLACE TO ADD ANYTHING - after the five things, never before them:
+         the screen leads with what the family keeps, not with empty forms.
+         Each button goes straight to its form, ready to type. -->
+    <p class="eyebrow" style="margin-top:var(--space-20)">Add something</p>
+    <div class="quickadd" role="group" aria-label="Add something">
+      <button type="button" data-qadd="task">⏰ Reminder or task</button>
+      <button type="button" data-qadd="event">🗓 Event or plan</button>
+      <button type="button" data-qadd="note">📝 List or note</button>
+      <button type="button" data-qadd="contact">☎️ Contact or health</button>
+      <button type="button" data-qadd="doc">📄 Document</button>
+    </div>
     <div class="card" id="push-card" hidden style="margin:var(--space-16) 0">
       <h3>🔔 Get family alerts on this phone</h3>
       <p class="hint" style="margin:var(--space-2) 0 var(--space-12)">SOS, live calls, reminders and mentions reach you even when Parwah is closed.</p>
@@ -1570,6 +1573,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
     <div class="subsec" data-sec="notes" hidden>
     <p class="hint" style="margin:0 0 var(--space-12)">Lists and notes the family shares - groceries, packing for a trip, what to ask the doctor. Tick things off together. "Only me" keeps a note to yourself.</p>
+    <div class="feed" id="notelist" style="margin:0 0 var(--space-16)"><div class="ev">Loading…</div></div>
     <div class="card">
       <h3>New note or list</h3>
       <label for="n-title">Title</label>
@@ -1583,7 +1587,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <label class="gchk" style="margin-top:var(--space-12);width:fit-content"><input type="checkbox" id="n-private"> Only me</label>
       <button class="go" id="n-add" style="margin-top:var(--space-12)">Save</button>
     </div>
-    <div class="feed" id="notelist" style="margin-top:var(--space-16)"><div class="ev">Loading…</div></div>
     </div>
 
     <div class="subsec" data-sec="req" hidden>
@@ -1604,43 +1607,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <div class="feed" id="joinreqs"></div>
       <p class="hint" style="margin-top:var(--space-12)">Anyone already in the family can decide - let in only people you recognise.</p>
     </div>
-    <div class="card" id="treecard">
-      <h3 id="tree-title">🌳 Family tree</h3>
-      <p class="hint" id="tree-sub" style="margin:var(--space-4) 0 var(--space-12)"></p>
-      <div id="tree" class="tree"></div>
-      <div id="tree-add" class="treeadd">
-        <p class="eyebrow" id="tree-add-head">Add someone to the tree</p>
-        <label class="pick"><span>Who</span><select id="tr-who" aria-label="Who to place"></select></label>
-        <div id="tr-new" hidden>
-          <label class="pick" style="margin-top:var(--space-8)"><span>Their name</span><input type="text" id="tr-name" maxlength="60" placeholder="e.g. Dadi or Kamla Devi" autocomplete="off"></label>
-          <p class="hint" style="margin:var(--space-4) 0 0">For family who are not on Parwah: an elder without a phone, someone who has passed away, a young child.</p>
-        </div>
-        <p class="trlbl" id="tr-g-label">He or she?</p>
-        <div class="seg" id="tr-gender" role="group" aria-labelledby="tr-g-label">
-          <button type="button" data-g="m" aria-pressed="false">He</button><button type="button" data-g="f" aria-pressed="false">She</button>
-        </div>
-        <div class="treeform">
-          <label class="pick"><span>is the</span><select id="tr-place" aria-label="Their place"></select></label>
-          <label class="pick"><span>of</span><select id="tr-of" aria-label="Of whom"></select></label>
-        </div>
-        <div id="tr-ofg-wrap" hidden>
-          <p class="trlbl" id="tr-ofg-label"></p>
-          <div class="seg" id="tr-ofg" role="group" aria-labelledby="tr-ofg-label">
-            <button type="button" data-g="m" aria-pressed="false">He</button><button type="button" data-g="f" aria-pressed="false">She</button>
-          </div>
-        </div>
-        <p class="trsay" id="tr-say" aria-live="polite"></p>
-        <p class="hint" id="tr-err" role="alert" hidden></p>
-        <button class="go" id="tr-go" style="margin-top:var(--space-12)">Add to the tree</button>
-        <div id="tr-links" class="trlinks" hidden></div>
-      </div>
-    </div>
-    <div class="card" id="prepcard">
-      <h3>How ready the family is</h3>
-      <p class="hint" style="margin:var(--space-2) 0 var(--space-12)">For the people the family looks after: what is recorded and current. Not a health score.</p>
-      <div class="feed" id="preplist"><div class="ev">Loading…</div></div>
-    </div>
-    <div class="card">
+    <div class="card" id="famcard">
       <h3>Your family</h3>
       <p style="margin-bottom:var(--space-12)">Code: <span class="codechip" id="p-code"></span>
         <button class="linkbtn" id="code-edit" style="margin-left:var(--space-12)">✏️ Set your own code</button></p>
@@ -1654,6 +1621,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <p class="hint" style="margin:var(--space-16) 0 var(--space-8)"><b>How people join:</b> <span id="jp-state"></span></p>
       <button class="cbtn ghost" id="jp-toggle"></button>
       <p class="hint" style="margin-top:var(--space-12)">Tap any member to see their profile - call, message privately or set a reminder for them.</p>
+    </div>
+    <div class="card" id="prepcard">
+      <h3>How ready the family is</h3>
+      <p class="hint" style="margin:var(--space-2) 0 var(--space-12)">For the people the family looks after: what is recorded and current. Not a health score.</p>
+      <div class="feed" id="preplist"><div class="ev">Loading…</div></div>
     </div>
     <div class="card" id="loc-card">
       <h3>📍 Where everyone is</h3>
@@ -1728,6 +1700,39 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         </div>
       </details>
       <p class="hint" style="margin-top:var(--space-12)">Locations update whenever Parwah is open on the phone. Area only shows the neighbourhood, never the house.</p>
+    </div>
+    <div class="card" id="treecard">
+      <h3 id="tree-title">🌳 Family tree</h3>
+      <p class="hint" id="tree-sub" style="margin:var(--space-4) 0 var(--space-12)"></p>
+      <div id="tree" class="tree"></div>
+      <details class="treeadd" id="tree-more">
+        <summary class="eyebrow" id="tree-add-head">Add someone to the tree</summary>
+        <div id="tree-add">
+        <label class="pick"><span>Who</span><select id="tr-who" aria-label="Who to place"></select></label>
+        <div id="tr-new" hidden>
+          <label class="pick" style="margin-top:var(--space-8)"><span>Their name</span><input type="text" id="tr-name" maxlength="60" placeholder="e.g. Dadi or Kamla Devi" autocomplete="off"></label>
+          <p class="hint" style="margin:var(--space-4) 0 0">For family who are not on Parwah: an elder without a phone, someone who has passed away, a young child.</p>
+        </div>
+        <p class="trlbl" id="tr-g-label">He or she?</p>
+        <div class="seg" id="tr-gender" role="group" aria-labelledby="tr-g-label">
+          <button type="button" data-g="m" aria-pressed="false">He</button><button type="button" data-g="f" aria-pressed="false">She</button>
+        </div>
+        <div class="treeform">
+          <label class="pick"><span>is the</span><select id="tr-place" aria-label="Their place"></select></label>
+          <label class="pick"><span>of</span><select id="tr-of" aria-label="Of whom"></select></label>
+        </div>
+        <div id="tr-ofg-wrap" hidden>
+          <p class="trlbl" id="tr-ofg-label"></p>
+          <div class="seg" id="tr-ofg" role="group" aria-labelledby="tr-ofg-label">
+            <button type="button" data-g="m" aria-pressed="false">He</button><button type="button" data-g="f" aria-pressed="false">She</button>
+          </div>
+        </div>
+        <p class="trsay" id="tr-say" aria-live="polite"></p>
+        <p class="hint" id="tr-err" role="alert" hidden></p>
+        <button class="go" id="tr-go" style="margin-top:var(--space-12)">Add to the tree</button>
+        <div id="tr-links" class="trlinks" hidden></div>
+        </div>
+      </details>
     </div>
 </section>
 
@@ -3400,6 +3405,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       }
     });
     $('members').innerHTML = hasTree ? (mh ? '<p class="hint" style="margin:0 0 var(--space-8)">Not in the tree yet:</p>' + mh : '<p class="hint" style="margin:0">Everyone is in the tree above. Tap anyone there for their profile.</p>') : mh;
+    if (data.counts && typeof data.counts.docs === 'number') {
+      $('w-vault').textContent = data.counts.docs
+        ? data.counts.docs + (data.counts.docs === 1 ? ' paper' : ' papers') + ' kept - download or ask for any in a tap'
+        : 'Nothing kept yet - add Aadhaar, PAN, licence, policies';
+    }
     $('w-fam').textContent = data.members.length + ' in the family - ' +
       data.members.map(function(m){ return m.name.split(' ')[0]; }).slice(0, 4).join(', ') +
       (data.members.length > 4 ? '…' : '');
@@ -5107,7 +5117,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       joinAct({ action:'approve_join', requestId:id }, 'They are in 🧡 Now place them in the tree', function(j){
         if (!j.memberId || famKind === 'group') return;
         trWant = j.memberId;
-        setTimeout(function(){ try { $('tree-add').scrollIntoView({ block: 'center' }); } catch (x) {} }, 900);
+        setTimeout(function(){ try { $('tree-more').open = true; $('tree-add').scrollIntoView({ block: 'center' }); } catch (x) {} }, 900);
       });
       return;
     }
@@ -7856,6 +7866,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     else $('tr-who').value = unplaced.length ? order[0].id : 'new';
     if (trNext) { trNext = false; trShown = null; $('tr-name').value = ''; $('tr-place').value = ''; $('tr-of').value = ''; }
     $('tree-add-head').textContent = me && !me.gen ? 'Where are you in the family?' : 'Add someone to the tree';
+    if (!placed.length) $('tree-more').open = true;
     fillTreeOf();
   }
   // What a place is called once he or she is known.

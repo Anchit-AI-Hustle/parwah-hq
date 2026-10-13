@@ -164,7 +164,13 @@ async function escalateStaleSos(sql, circleId) {
                              where ns.member_id = ${member} and m.circle_id = ${circle.id}`;
         seenAt = sr[0] ? sr[0].seen_at : null;
       }
+      // The Vault tile on Today shows the family's real papers, not a slogan.
+      // The vault tables are made the first time the vault is used, so a
+      // family (or a test database) without them is not an error here: the
+      // count is simply left out and the tile keeps its words.
+      const docsN = await sql`select count(*)::int as n from vault_docs where circle_id = ${circle.id}`.catch(() => null);
       return res.status(200).json({ ok: true, circleName: circle.name, code: circle.code,
+        counts: docsN && docsN[0] ? { docs: docsN[0].n } : undefined,
         kind: ck[0] ? ck[0].kind : 'family', familyType: ck[0] ? ck[0].family_type : null, members, events, seenAt, calls,
         joinRequests: joinReqs, joinPolicy: (pol[0] && pol[0].join_policy) || 'approve',
         sos: sosOpen.map(x => ({ ...x, map: mapLink(x.lat === null ? null : { lat: x.lat, lng: x.lng }) })),
