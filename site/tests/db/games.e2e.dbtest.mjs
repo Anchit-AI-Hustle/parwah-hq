@@ -142,7 +142,13 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
   ok('ludo: a finished game offers Play again, and no longer "End game"', await vis(R, '#g-again') && !(await vis(R, '#l-end')));
   await R.click('#g-rules summary');
   ok('ludo: How to play says the rules the game uses', /Roll a 6 to bring a token out/.test(await R.textContent('#g-rules-list')) && /star squares/.test(await R.textContent('#g-rules-list')));
-  ok('ludo: the floating buttons step aside while a game is open', !(await vis(R, '#ekta-fab')) && !(await vis(R, '#chat-fab')));
+  // Nothing floats over an open game (owner, 2026-10-13): New chat lives in
+  // the top bar, and the board owns the page.
+  ok('ludo: nothing floats over an open game - New chat stays in the top bar', await R.evaluate(() => {
+    const c = document.getElementById('chat-fab').getBoundingClientRect();
+    const b = document.getElementById('g-ludo').getBoundingClientRect();
+    return document.querySelectorAll('.fab').length === 0 && c.bottom <= 64 && c.bottom <= b.top;
+  }));
   const before = g.id;
   await R.click('#g-again'); await R.waitForTimeout(900);
   const again = await lastGame('ludo');
@@ -349,7 +355,11 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
 {
   await R.goto(BASE + '/#fun'); await R.waitForTimeout(600);
   await R.click('#fun-seg [data-sec="board"]'); await R.waitForTimeout(700);
-  ok('board: the floating buttons step aside', !(await vis(R, '#ekta-fab')) && !(await vis(R, '#chat-fab')));
+  ok('board: nothing floats over the paper - New chat stays in the top bar', await R.evaluate(() => {
+    const c = document.getElementById('chat-fab').getBoundingClientRect();
+    const b = document.getElementById('dboard').getBoundingClientRect();
+    return document.querySelectorAll('.fab').length === 0 && c.bottom <= 64 && c.bottom <= b.top;
+  }));
   const sizes = await R.$$eval('#dtools .dcol', bs => bs.map(b => Math.min(b.getBoundingClientRect().width, b.getBoundingClientRect().height)));
   ok('board: every colour is a 44px target', sizes.length >= 6 && sizes.every(x => x >= 44), sizes.join());
   await R.emulateMedia({ colorScheme: 'dark' }); await R.waitForTimeout(200);
