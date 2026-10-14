@@ -26,9 +26,9 @@ import { LOCAL_MODEL, isDeadKey, isBillingFailure, isAuthFailure, classify, whoI
 import { spend, EARN } from './_coins.mjs';
 
 const ASSISTANT_NAME = 'Ekta'; // one-line swap if the persona name changes
-const MODEL_PRIMARY  = 'claude-sonnet-5';
-const MODEL_DEEP     = 'claude-opus-5';
-const MODEL_FALLBACK = 'claude-haiku-4-5-20251001';
+const MODEL_PRIMARY  = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
+const MODEL_DEEP     = process.env.ANTHROPIC_DEEP_MODEL || 'claude-3-opus-20240229';
+const MODEL_FALLBACK = process.env.ANTHROPIC_FALLBACK_MODEL || 'claude-3-5-haiku-20241022';
 
 const TOOLS = [
   {

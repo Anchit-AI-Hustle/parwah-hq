@@ -179,7 +179,8 @@ async function escalateStaleSos(sql, circleId) {
     }
 
     if (req.method === 'POST') {
-      const { code, memberId, type, text } = req.body || {};
+      req.body = req.body || {};
+      const { code, memberId, type, text } = req.body;
       const circle = await circleByCode(sql, code);
       if (!circle) return res.status(404).json({ ok: false, error: 'No family found with that code' });
       if (type === 'seen') {

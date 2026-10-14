@@ -178,7 +178,8 @@ export default async function handler(req, res) {
       return res.status(405).json({ ok: false, error: 'GET or POST only' });
     }
 
-    const { code, memberId, action } = req.body || {};
+    req.body = req.body || {};
+    const { code, memberId, action } = req.body;
     // One authorisation path. The inline version checked only that the
     // UUID belonged to the CIRCLE, never that it belonged to the caller,
     // and every member is shown every other member's UUID.

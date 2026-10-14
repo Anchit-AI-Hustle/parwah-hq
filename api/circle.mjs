@@ -17,7 +17,8 @@ export default async function handler(req, res) {
   try { sql = db(); await ensureSchema(sql); }
   catch (e) { return failDb(res, e); }
 
-  const { action, circleName, code, memberName, role, phone, userId } = req.body || {};
+  req.body = req.body || {};
+  const { action, circleName, code, memberName, role, phone, userId } = req.body;
   // Family role labels - purely descriptive; every member is an equal admin.
   const RELATIONS = ['father', 'mother', 'grandfather', 'grandmother', 'son', 'daughter', 'brother', 'sister',
                      'daughter-in-law', 'son-in-law', 'grandson', 'granddaughter', 'friend', 'family'];
