@@ -25,6 +25,24 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../styles.css">
+<style>
+.wl-card{background:var(--card,#fff);border:1px solid var(--bone-2,#F0DCC8);border-radius:24px;padding:32px 28px;max-width:540px;margin:28px auto 0;box-shadow:var(--sh-1,0 8px 24px rgba(36,31,23,.06));text-align:left}
+.wl-card h3{font-family:var(--disp);font-size:1.35rem;font-weight:700;margin:0 0 6px;color:var(--ink)}
+.wl-card p.wl-intro{font-size:.95rem;color:var(--ink-soft);margin:0 0 20px;line-height:1.5}
+.wl-form{display:flex;flex-direction:column;gap:16px}
+.wl-field{display:flex;flex-direction:column;gap:6px}
+.wl-field label{font-size:.85rem;font-weight:700;color:var(--ink);letter-spacing:.02em}
+.wl-input{width:100%;box-sizing:border-box;min-height:48px;padding:12px 16px;border-radius:14px;border:1px solid var(--bone-2,#E2CEB9);background:#fff;font-family:inherit;font-size:1rem;color:var(--ink);outline:none;transition:border-color .15s ease,box-shadow .15s ease}
+.wl-input:focus{border-color:var(--marigold,#FFB31A);box-shadow:0 0 0 3px rgba(255,179,26,.2)}
+.wl-select{appearance:none;background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235A2A6E' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right 14px center;background-size:16px;padding-right:40px}
+.wl-check{display:flex;align-items:flex-start;gap:12px;margin-top:4px;cursor:pointer}
+.wl-check input[type="checkbox"]{width:20px;height:20px;min-width:20px;margin-top:2px;accent-color:var(--sindoor,#D9146F);cursor:pointer}
+.wl-check span{font-size:.85rem;line-height:1.45;color:var(--ink-soft)}
+.wl-submit{margin-top:8px;width:100%;justify-content:center;border:none;cursor:pointer}
+.wl-msg{font-size:.92rem;line-height:1.45;padding:12px 16px;border-radius:12px;display:none}
+.wl-msg.err{background:rgba(217,20,111,.1);color:var(--sindoor,#D9146F);border:1px solid rgba(217,20,111,.25);display:block}
+.wl-msg.ok{background:rgba(0,161,154,.1);color:var(--peacock,#00A19A);border:1px solid rgba(0,161,154,.25);display:block}
+</style>
 </head>
 <body>
 
@@ -59,7 +77,45 @@
     <p class="eyebrow rv">The list</p>
     <h2 class="rv">One message, and nothing else.</h2>
     <p class="lede rv">We write once, when the range is ready, and your feedback shapes what we choose to stock.</p>
-    <p class="alt rv">Prefer email? Write to <a href="mailto:care@parwah.in?subject=Add%20me%20to%20the%20Parwah%20launch%20list">care@parwah.in</a></p>
+
+    <div class="wl-card rv">
+      <h3>Join the launch list</h3>
+      <p class="wl-intro">Leave your details and we will message you with first pick of the collection.</p>
+      <form class="wl-form" id="wl-form" novalidate>
+        <div class="wl-field">
+          <label for="wl-name">Your name *</label>
+          <input class="wl-input" type="text" id="wl-name" name="name" required maxlength="60" placeholder="e.g. Priya Sharma" autocomplete="name">
+        </div>
+        <div class="wl-field">
+          <label for="wl-email">Email address *</label>
+          <input class="wl-input" type="email" id="wl-email" name="email" required maxlength="160" placeholder="e.g. priya@example.com" autocomplete="email">
+        </div>
+        <div class="wl-field">
+          <label for="wl-phone">Phone number (optional)</label>
+          <input class="wl-input" type="tel" id="wl-phone" name="phone" placeholder="e.g. 98739 45238" autocomplete="tel">
+        </div>
+        <div class="wl-field">
+          <label for="wl-city">City (optional)</label>
+          <input class="wl-input" type="text" id="wl-city" name="city" maxlength="60" placeholder="e.g. New Delhi, Bengaluru, Pune">
+        </div>
+        <div class="wl-field">
+          <label for="wl-interest">What are you most interested in?</label>
+          <select class="wl-input wl-select" id="wl-interest" name="interest">
+            <option value="care" selected>The care range (daily-living aids)</option>
+            <option value="app">The family app</option>
+            <option value="both">Both</option>
+          </select>
+        </div>
+        <label class="wl-check">
+          <input type="checkbox" id="wl-consent" name="consent" required>
+          <span>Yes, you may contact me by email or WhatsApp about the Parwah launch.</span>
+        </label>
+        <div class="wl-msg" id="wl-msg" role="alert" aria-live="polite"></div>
+        <button class="btn btn-wa wl-submit" type="submit" id="wl-submit">Join the launch list</button>
+      </form>
+    </div>
+
+    <p class="alt rv" style="margin-top:28px">Prefer WhatsApp? <a href="https://wa.me/919873945238?text=Hi%20Parwah%20-%20add%20me%20to%20the%20care%20range%20launch%20list.%20My%20city%3A%20" rel="noopener">Chat with us directly</a> or email <a href="mailto:care@parwah.in?subject=Add%20me%20to%20the%20Parwah%20launch%20list">care@parwah.in</a></p>
     <div class="ctas rv">
       <a class="btn btn-ghost" href="../welcome/">Back to the home page</a>
     </div>
@@ -95,6 +151,63 @@
     entries.forEach(function(en){if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}});
   },{threshold:0.15});
   els.forEach(function(e){io.observe(e)});
+})();
+(function(){
+  var form=document.getElementById('wl-form');
+  if(!form)return;
+  var msg=document.getElementById('wl-msg');
+  var btn=document.getElementById('wl-submit');
+  function showMsg(text,isErr){
+    msg.textContent=text;
+    msg.className='wl-msg '+(isErr?'err':'ok');
+  }
+  form.addEventListener('submit',function(ev){
+    ev.preventDefault();
+    var name=(document.getElementById('wl-name').value||'').trim();
+    var email=(document.getElementById('wl-email').value||'').trim();
+    var phone=(document.getElementById('wl-phone').value||'').trim();
+    var city=(document.getElementById('wl-city').value||'').trim();
+    var interest=document.getElementById('wl-interest').value||'care';
+    var consent=document.getElementById('wl-consent').checked;
+
+    if(!name){showMsg('Please tell us your name',true);return;}
+    if(!email){showMsg('Please give us an email address',true);return;}
+    if(!consent){showMsg('Please tick the box to say we may contact you about the launch',true);return;}
+
+    btn.disabled=true;
+    btn.textContent='Joining...';
+    fetch('/api/auth/',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        action:'waitlist',
+        name:name,
+        email:email,
+        phone:phone||undefined,
+        city:city||undefined,
+        interest:interest,
+        consent:consent,
+        source:'launch-page'
+      })
+    }).then(function(r){return r.json();})
+    .then(function(data){
+      btn.disabled=false;
+      btn.textContent='Join the launch list';
+      if(data&&data.ok){
+        showMsg(data.message||'You are on the list! We will message you when we open.',false);
+        form.reset();
+        if(window.parwahTrack){
+          window.parwahTrack('join_waitlist',{method:'email',page:location.pathname});
+        }
+      }else{
+        showMsg((data&&data.error)||'Could not join right now - please try again',true);
+      }
+    }).catch(function(){
+      btn.disabled=false;
+      btn.textContent='Join the launch list';
+      showMsg('Could not connect - please check your connection and try again',true);
+    });
+  });
 })();
 </script>
 <script defer src="../analytics.js"></script>
