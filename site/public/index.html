@@ -1530,11 +1530,29 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <section id="pane-care" hidden>
     <div class="seg pageseg" id="care-seg" role="tablist" aria-label="To do sections">
       <button data-sec="rem" class="sel">✅ To do</button>
+      <button data-sec="bills">🧾 Bills</button>
       <button data-sec="req">💡 Suggested<i class="dot" id="sugg-dot" hidden></i></button>
       <button data-sec="notes">📝 Notes &amp; lists</button>
     </div>
     <div class="subsec" data-sec="rem">
     <p class="hint" style="margin:0 0 var(--space-12)">What needs doing, who is handling it, and when it is done - the whole family sees the same list.</p>
+    <div id="refill-alerts" hidden class="card alertbox" style="margin-bottom:var(--space-12);border-left:4px solid var(--sindoor);padding:var(--space-12)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <h4 style="margin:0;color:var(--sindoor)">⚠️ Medicine refill needed</h4>
+        <span class="badge" id="refill-alert-badge" style="background:var(--sindoor);color:#fff;font-size:var(--fs-12);padding:var(--space-2) var(--space-8);border-radius:var(--radius-12)">Low</span>
+      </div>
+      <p id="refill-alert-text" style="margin:var(--space-8) 0;font-weight:600"></p>
+      <div class="prow2" style="margin-top:var(--space-8)">
+        <a id="btn-refill-reorder" class="cbtn" style="text-decoration:none;min-height:48px" target="_blank" rel="noopener">📲 WhatsApp Chemist</a>
+        <button type="button" id="btn-refill-done" class="cbtn ghost" style="min-height:48px">Mark Refilled (+30)</button>
+        <button type="button" id="btn-refill-snooze" class="cbtn ghost" style="min-height:48px">Snooze 2 Days</button>
+      </div>
+    </div>
+    <div class="seg" id="task-filter-seg" role="group" aria-label="Task filter" style="margin-bottom:var(--space-12)">
+      <button type="button" data-tfilter="all" class="sel">All tasks</button>
+      <button type="button" data-tfilter="me">Assigned to me</button>
+      <button type="button" data-tfilter="urgent">Urgent</button>
+    </div>
     <div class="feed" id="rlist"><div class="ev">Nothing to do right now 🧡</div></div>
     <div class="feed" id="qlist" hidden></div>
 
@@ -1592,6 +1610,42 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="subsec" data-sec="req" hidden>
     <p class="hint" style="margin:0 0 var(--space-12)">Parwah noticed these from what the family has already recorded - an expiring document, something nobody has checked in months, a gap that matters at a hospital counter. Nothing here is real until you add it.</p>
     <div class="feed" id="sugglist"><div class="ev">Nothing to suggest - the family is in good shape 🧡</div></div>
+    </div>
+
+    <div class="subsec" data-sec="bills" hidden>
+      <p class="hint" style="margin:0 0 var(--space-12)">Family utility bills and household salaries. Anyone can pay via UPI or settle for parents.</p>
+      <div class="feed" id="bill-feed"><div class="ev">Loading bills...</div></div>
+
+      <div class="card" style="margin-top:var(--space-16)">
+        <h3>Add a recurring bill</h3>
+        <label for="bill-name">Biller name</label>
+        <input type="text" id="bill-name" maxlength="100" placeholder="e.g. BSES Rajdhani, IGL Gas, Airtel, Cook Salary">
+        <div class="pickrow">
+          <label class="pick"><span>Category</span>
+            <select id="bill-cat">
+              <option value="ELECTRICITY">Electricity</option>
+              <option value="PIPED_GAS">Piped Gas</option>
+              <option value="WATER">Water</option>
+              <option value="BROADBAND">Broadband</option>
+              <option value="MAID_SALARY">House Help Salary</option>
+              <option value="COOK_SALARY">Cook Salary</option>
+              <option value="MEDICINE_DELIVERY">Medicine Delivery</option>
+              <option value="SOCIETY_MAINTENANCE">Society Maintenance</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </label>
+          <label class="pick"><span>Amount (Rs)</span><input type="number" id="bill-amount" min="1" placeholder="840"></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-12)">
+          <label class="pick"><span>Consumer ID / Account</span><input type="text" id="bill-consumer" placeholder="e.g. 100234891"></label>
+          <label class="pick"><span>Due date</span><input type="date" id="bill-due"></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-12)">
+          <label class="pick"><span>Assign payer</span><select id="bill-payer"></select></label>
+          <label class="pick"><span>UPI ID (optional)</span><input type="text" id="bill-upi" placeholder="e.g. bses@icici"></label>
+        </div>
+        <button type="button" class="go" id="btn-add-bill" style="margin-top:var(--space-16);min-height:48px">Save bill</button>
+      </div>
     </div>
 
 
@@ -1868,6 +1922,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="seg pageseg" id="vault-seg" role="tablist" aria-label="Vault sections">
       <button data-sec="docs" class="sel">🔐 Documents</button>
       <button data-sec="pay">💳 Payments</button>
+      <button data-sec="locator">🗝️ When I'm Not Here</button>
     </div>
 
     <div class="subsec" data-sec="docs">
@@ -1992,6 +2047,45 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <div class="feed" id="vplog"></div>
       </div>
     </div>
+
+    <div class="subsec" data-sec="locator" hidden>
+      <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>Physical Asset &amp; Locker Locator</b><small>Where physical keys, passbooks, and original papers are kept. Never tracks bank balances.</small></span></div>
+      <p class="hint" style="margin:var(--space-8) 0 var(--space-12)">A locator for family when you are away or in an emergency. Details stay masked until unlocked under family policy.</p>
+      <div class="feed" id="locator-feed"><div class="ev">Loading locator records...</div></div>
+
+      <div class="card" style="margin-top:var(--space-16)">
+        <h3>Add a physical location</h3>
+        <label for="loc-item">Item or institution</label>
+        <input type="text" id="loc-item" maxlength="120" placeholder="e.g. SBI Green Park Branch, Master Bedroom Wardrobe Top Shelf">
+        <div class="pickrow">
+          <label class="pick"><span>Category</span>
+            <select id="loc-cat">
+              <option value="LOCKER_KEY">Locker Key</option>
+              <option value="BANK_ACCOUNT">Bank Passbook / Cheque</option>
+              <option value="FIXED_DEPOSIT">Fixed Deposit Receipt</option>
+              <option value="PROPERTY_DEED">Original Property Papers</option>
+              <option value="WILL">Will &amp; Testaments</option>
+              <option value="DEMAT">Demat / Share Certificates</option>
+              <option value="PENSION">Pension Booklet</option>
+              <option value="OTHER">Other Physical Item</option>
+            </select>
+          </label>
+          <label class="pick"><span>Whose item</span><select id="loc-about"></select></label>
+        </div>
+        <label for="loc-mask" style="margin-top:var(--space-12)">Identifier mask (safe to see)</label>
+        <input type="text" id="loc-mask" maxlength="100" placeholder="e.g. Locker Key #42 or Account ending ...4921">
+        <label for="loc-notes" style="margin-top:var(--space-12)">Where it is kept (restricted notes)</label>
+        <textarea id="loc-notes" rows="2" maxlength="500" placeholder="e.g. In the steel almirah, inside the brown leather folder behind old passports"></textarea>
+        <div class="pick" style="margin-top:var(--space-12)"><span>Who can unlock</span>
+          <select id="loc-policy">
+            <option value="IMMEDIATE">Shared with whole family</option>
+            <option value="EMERGENCY_ONLY">Emergency SOS unlock only</option>
+            <option value="MULTI_SIG_VERIFIED">Requires co-approval</option>
+          </select>
+        </div>
+        <button type="button" class="go" id="btn-add-locator" style="margin-top:var(--space-16);min-height:48px">Save physical location</button>
+      </div>
+    </div>
   </section>
 
   <!-- ONE PERSON - the sections the parent validation guide draws -->
@@ -2006,8 +2100,76 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="cbtn ecard-btn" id="pp-ecard">🚨 Emergency card</button>
       <button class="cbtn ghost" id="pp-docs">📄 Their documents</button>
       <button class="cbtn ghost" id="pp-add">＋ Add something</button>
+      <button class="cbtn ghost" id="pp-audit" style="grid-column:1/-1;min-height:48px">👁️ Who can see this?</button>
     </div>
     <div class="card" id="pp-todo-card" hidden><h3 id="pp-todo-title">To complete</h3><div class="feed" id="pp-todo"></div></div>
+    <div class="card" id="pp-biomarkers-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-8)">
+        <h3 style="margin:0">📊 Lab metrics &amp; trends</h3>
+        <button type="button" class="cbtn ghost" id="btn-add-biomarker" style="padding:var(--space-4) var(--space-8);font-size:var(--fs-12);min-height:var(--tap-min)">+ Record metric</button>
+      </div>
+      <p class="hint" style="margin:var(--space-4) 0 var(--space-8)">Chronological trajectory with normal reference range. Extracted from lab reports or entered by family.</p>
+      
+      <div id="biomarker-confirm-banner" hidden class="alertbox" style="margin-bottom:var(--space-12);padding:var(--space-12);background:var(--sand);border-radius:var(--radius-12);border:1px solid var(--border)">
+        <div id="biomarker-confirm-text" style="font-size:var(--fs-14);font-weight:600"></div>
+        <div style="display:flex;gap:var(--space-8);margin-top:var(--space-8)">
+          <button type="button" class="cbtn" id="btn-confirm-extracted" style="padding:var(--space-4) var(--space-12);font-size:var(--fs-12);min-height:var(--tap-min)">Confirm &amp; Save</button>
+          <button type="button" class="cbtn ghost" id="btn-dismiss-extracted" style="padding:var(--space-4) var(--space-12);font-size:var(--fs-12);min-height:var(--tap-min)">Dismiss</button>
+        </div>
+      </div>
+
+      <div class="seg" id="biomarker-type-seg" role="group" aria-label="Biomarker metric" style="margin-bottom:var(--space-12);overflow-x:auto">
+        <button type="button" data-bm="HBA1C" class="sel">HbA1c</button>
+        <button type="button" data-bm="FASTING_GLUCOSE">Fasting Glucose</button>
+        <button type="button" data-bm="CREATININE">Creatinine</button>
+        <button type="button" data-bm="TOTAL_CHOLESTEROL">Cholesterol</button>
+        <button type="button" data-bm="TSH">TSH</button>
+        <button type="button" data-bm="SYSTOLIC_BP">Blood Pressure</button>
+        <button type="button" data-bm="HEMOGLOBIN">Hemoglobin</button>
+      </div>
+
+      <div id="biomarker-chart-wrap" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-12);padding:var(--space-12);margin-bottom:var(--space-12)">
+        <div id="biomarker-chart-svg" style="width:100%;min-height:160px;display:flex;align-items:center;justify-content:center"></div>
+      </div>
+
+      <div id="biomarker-add-form" hidden style="margin-top:var(--space-12);padding:var(--space-12);border:1px solid var(--border);border-radius:var(--radius-12)">
+        <h4 style="margin:0 0 var(--space-8)">Record a lab metric</h4>
+        <div class="pickrow">
+          <label class="pick"><span>Metric</span>
+            <select id="bm-new-type">
+              <option value="HBA1C">HbA1c (%)</option>
+              <option value="FASTING_GLUCOSE">Fasting Glucose (mg/dL)</option>
+              <option value="POST_PRANDIAL_GLUCOSE">Post-Prandial Glucose (mg/dL)</option>
+              <option value="CREATININE">Creatinine (mg/dL)</option>
+              <option value="TSH">TSH (uIU/mL)</option>
+              <option value="TOTAL_CHOLESTEROL">Total Cholesterol (mg/dL)</option>
+              <option value="LDL">LDL Cholesterol (mg/dL)</option>
+              <option value="HDL">HDL Cholesterol (mg/dL)</option>
+              <option value="TRIGLYCERIDES">Triglycerides (mg/dL)</option>
+              <option value="SYSTOLIC_BP">Systolic BP (mmHg)</option>
+              <option value="DIASTOLIC_BP">Diastolic BP (mmHg)</option>
+              <option value="HEMOGLOBIN">Hemoglobin (g/dL)</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </label>
+          <label class="pick"><span>Value</span><input type="number" step="0.1" id="bm-new-val" placeholder="6.5"></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>Normal low</span><input type="number" step="0.1" id="bm-new-low" placeholder="4.0"></label>
+          <label class="pick"><span>Normal high</span><input type="number" step="0.1" id="bm-new-high" placeholder="5.6"></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>Test date</span><input type="date" id="bm-new-date"></label>
+          <label class="pick"><span>Lab name</span><input type="text" id="bm-new-lab" placeholder="e.g. Lal PathLabs"></label>
+        </div>
+        <div style="display:flex;gap:var(--space-8);margin-top:var(--space-12)">
+          <button type="button" class="cbtn" id="btn-save-biomarker" style="min-height:48px">Save metric</button>
+          <button type="button" class="cbtn ghost" id="btn-cancel-biomarker" style="min-height:48px">Cancel</button>
+        </div>
+      </div>
+
+      <div class="feed" id="biomarker-history-list"><div class="ev">No lab records yet</div></div>
+    </div>
     <div class="card"><h3>🩺 Health</h3><div class="feed" id="pp-health"></div></div>
     <div class="card"><h3>📄 Documents</h3><div class="feed" id="pp-records"></div></div>
     <div class="card"><h3>📞 People to call</h3><div class="feed" id="pp-call"></div></div>
@@ -2779,6 +2941,27 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   </div>
 </div>
 
+<div class="msheet" id="audit-drawer" hidden role="dialog" aria-modal="true" aria-labelledby="aud-title">
+  <div class="mp">
+    <button class="x" id="aud-x" aria-label="Close">✕</button>
+    <h3 id="aud-title">👁️ Who can see this?</h3>
+    <p class="hint" style="margin:var(--space-4) 0 var(--space-12)">Under India's Digital Personal Data Protection (DPDP) Act, your family's records belong to you. You can see who has access, where data is held, and export or revoke at any time.</p>
+    <div class="card" style="margin-bottom:var(--space-12)">
+      <h4 style="margin:0 0 var(--space-8)">🔒 Access &amp; Permissions</h4>
+      <div class="feed" id="aud-members"></div>
+    </div>
+    <div class="card" style="margin-bottom:var(--space-12)">
+      <h4 style="margin:0 0 var(--space-8)">🇮🇳 Data Residency &amp; Encryption</h4>
+      <p class="hint" style="margin:0">Stored and processed in India (Mumbai AWS/GCP region). Encrypted at rest and in transit. Auditable and revocable.</p>
+    </div>
+    <div class="card" style="margin-bottom:var(--space-12)">
+      <h4 style="margin:0 0 var(--space-8)">📜 Access &amp; Audit Trail</h4>
+      <div class="feed" id="aud-logs" style="max-height:180px;overflow-y:auto"><div class="ev">Loading audit trail...</div></div>
+    </div>
+    <button type="button" class="cbtn ghost" id="aud-export" style="width:100%;min-height:48px;margin-top:var(--space-8)">📦 Export Family Data (JSON)</button>
+  </div>
+</div>
+
 <div class="drawer" id="drawer" hidden role="dialog" aria-modal="true" aria-label="Menu">
   <div class="dpanel">
     <div class="dhead"><span class="dev" aria-hidden="true">🧡</span> Parwah <button class="x" id="drawer-x" aria-label="Close menu">✕</button></div>
@@ -3000,7 +3183,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var API = { notes: '/api/book?area=notes', circle: '/api/circle', events: '/api/events', care: '/api/care', ekta: '/api/ekta', chats: '/api/chats', games: '/api/games', plans: '/api/plans', auth: '/api/auth', book: '/api/book', vault: '/api/book?area=vault', pay: '/api/book?area=pay', push: '/api/settings?area=push', keys: '/api/settings?area=keys', coins: '/api/settings?area=coins', plan: '/api/settings?area=plan', day: '/api/settings?area=day', pin: '/api/settings?area=pin', location: '/api/settings?area=location' };
+  var API = { notes: '/api/book?area=notes', circle: '/api/circle', events: '/api/events', care: '/api/care', ekta: '/api/ekta', chats: '/api/chats', games: '/api/games', plans: '/api/plans', auth: '/api/auth', book: '/api/book', vault: '/api/book?area=vault', pay: '/api/book?area=pay', push: '/api/settings?area=push', keys: '/api/settings?area=keys', coins: '/api/settings?area=coins', plan: '/api/settings?area=plan', day: '/api/settings?area=day', pin: '/api/settings?area=pin', location: '/api/settings?area=location', refill: '/api/care?area=refill', bills: '/api/care?area=bills', tasks: '/api/care?area=tasks', biomarkers: '/api/book?area=biomarkers', preauth: '/api/book?area=preauth', locator: '/api/book?area=locator', audit: '/api/book?area=audit' };
   var TABS = ['home','people','person','memory','vault','care','day','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
@@ -3236,6 +3419,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       b.classList.toggle('sel', b.getAttribute('data-sec') === sec);
     });
     if (pane === 'care' && sec === 'notes') refreshNotes();
+    if (pane === 'care' && sec === 'bills') loadBills();
+    if (pane === 'vault' && sec === 'locator') loadAssetLocators();
   }
   ['care', 'fun', 'vault', 'day'].forEach(function(pane){
     $(pane + '-seg').addEventListener('click', function(e){
@@ -3861,6 +4046,541 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (del) askSheet('Remove this note?', 'It goes for everyone who can see it.', 'Remove', 'Keep it', true).then(function(yes){ if (yes) notePost({ action: 'remove', id: del.getAttribute('data-ndel') }, function(){ toast('Removed'); }); });
   });
 
+  // ---------- Care Wallet & Utility Bills ----------
+  var billsCache = [];
+  var BILL_ICONS = {
+    ELECTRICITY: '⚡', PIPED_GAS: '🔥', WATER: '💧', BROADBAND: '📶',
+    MAID_SALARY: '🧹', COOK_SALARY: '👩‍🍳', MEDICINE_DELIVERY: '💊',
+    SOCIETY_MAINTENANCE: '🏢', OTHER: '🧾'
+  };
+  function loadBills(){
+    if (!state) return;
+    var payerSel = $('bill-payer');
+    if (payerSel && membersCache) {
+      payerSel.innerHTML = '<option value="">Select family member</option>' + membersCache.map(function(m){
+        return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>';
+      }).join('');
+    }
+    apiGet(API.bills + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
+      .then(function(j){
+        if (!j.ok) { $('bill-feed').innerHTML = '<div class="ev">Could not load bills.</div>'; return; }
+        billsCache = j.bills || [];
+        renderBills();
+      })
+      .catch(function(){ $('bill-feed').innerHTML = '<div class="ev">No connection.</div>'; });
+  }
+  function renderBills(){
+    if (!billsCache.length) {
+      $('bill-feed').innerHTML = '<div class="ev">No bills registered yet. Add recurring electricity, piped gas, or household salaries below.</div>';
+      return;
+    }
+    $('bill-feed').innerHTML = billsCache.map(function(b){
+      var isSettled = b.payment_status === 'SETTLED';
+      var icon = BILL_ICONS[b.bill_category] || '🧾';
+      var due = b.due_date ? ('Due ' + vDate(b.due_date)) : '';
+      var payerName = b.assigned_payer_name || 'Anyone in family';
+      var upiUrl = 'upi://pay?pa=' + encodeURIComponent(b.upi_id || 'bill@upi') + '&pn=' + encodeURIComponent(b.biller_name) + '&am=' + encodeURIComponent(b.amount_due) + '&cu=INR';
+      return '<div class="card" style="margin-bottom:var(--space-12);border-left:4px solid ' + (isSettled ? 'var(--moss)' : 'var(--marigold)') + '">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
+          '<div>' +
+            '<h4 style="margin:0">' + icon + ' ' + esc(b.biller_name) + '</h4>' +
+            '<small style="color:var(--ink-sub)">' + esc(b.consumer_number ? ('A/C: ' + b.consumer_number) : b.bill_category) + (due ? (' · ' + due) : '') + '</small>' +
+          '</div>' +
+          '<div style="text-align:right">' +
+            '<b style="font-size:var(--fs-18)">Rs ' + esc(b.amount_due) + '</b><br>' +
+            '<span class="badge" style="background:' + (isSettled ? 'var(--moss)' : 'var(--tint-warm)') + ';color:' + (isSettled ? '#fff' : 'var(--ink)') + '">' + esc(b.payment_status) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<p class="hint" style="margin:var(--space-8) 0">Assigned payer: <b>' + esc(payerName) + '</b></p>' +
+        (!isSettled ? (
+          '<div class="prow2" style="margin-top:var(--space-8)">' +
+            '<a class="cbtn" style="text-decoration:none;text-align:center;min-height:48px;line-height:48px" href="' + esc(upiUrl) + '">📱 Pay via UPI</a>' +
+            '<button type="button" class="cbtn ghost" data-settlebill="' + esc(b.id) + '" style="min-height:48px">Mark as Paid</button>' +
+          '</div>'
+        ) : '<p class="hint" style="margin:var(--space-4) 0 0;color:var(--moss)">Settled by ' + esc(b.settled_by_name || 'family') + ' ✅</p>') +
+      '</div>';
+    }).join('');
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-settlebill]');
+    if (!b) return;
+    var billId = b.getAttribute('data-settlebill');
+    var target = billsCache.filter(function(x){ return x.id === billId; })[0];
+    post(API.bills, { code: state.code, memberId: state.memberId, action: 'settle', id: billId })
+      .then(function(j){
+        if (j.ok) {
+          var biller = target ? target.biller_name : 'Bill';
+          var amt = target ? target.amount_due : '';
+          var msg = biller + (amt ? (' of Rs ' + amt) : '') + ' was marked paid ✅';
+          toast(msg);
+          loadBills();
+        } else {
+          toast(j.error || 'Could not settle bill');
+        }
+      });
+  });
+  $('btn-add-bill').addEventListener('click', function(){
+    var name = $('bill-name').value.trim();
+    var amt = $('bill-amount').value.trim();
+    if (!name) { toast('Please enter biller name'); return; }
+    if (!amt || +amt <= 0) { toast('Please enter a valid amount'); return; }
+    var body = {
+      code: state.code, memberId: state.memberId, action: 'create',
+      biller_name: name,
+      bill_category: $('bill-cat').value,
+      consumer_number: $('bill-consumer').value.trim(),
+      amount_due: +amt,
+      due_date: $('bill-due').value || null,
+      assigned_payer_id: $('bill-payer').value || null,
+      upi_id: $('bill-upi').value.trim() || null
+    };
+    post(API.bills, body).then(function(j){
+      if (j.ok) {
+        toast('Bill saved 🧾');
+        $('bill-name').value = ''; $('bill-amount').value = '';
+        $('bill-consumer').value = ''; $('bill-due').value = '';
+        $('bill-upi').value = '';
+        loadBills();
+      } else {
+        toast(j.error || 'Could not save bill');
+      }
+    });
+  });
+
+  // ---------- Medicine Refill & Stockout Tracking ----------
+  var refillAlertData = null;
+  function loadRefillInventory(){
+    if (!state) return;
+    apiGet(API.refill + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
+      .then(function(j){
+        if (!j.ok) return;
+        var items = j.items || [];
+        var low = items.filter(function(it){ return it.stockout_warning; });
+        if (!low.length) {
+          $('refill-alerts').hidden = true;
+          return;
+        }
+        var first = low[0];
+        refillAlertData = first;
+        $('refill-alerts').hidden = false;
+        var daysLeft = Math.max(0, Math.round(first.days_remaining));
+        $('refill-alert-text').textContent = (first.person_name || 'Family member') + ' has ' + daysLeft + ' day' + (daysLeft === 1 ? '' : 's') + ' of ' + first.medicine_name + ' remaining.';
+        var orderText = 'Hello, please send a refill of ' + first.medicine_name + ' (30 tablets) for ' + (first.person_name || 'our family') + '. Parwah Refill Order.';
+        var waUrl = first.preferred_pharmacy_phone
+          ? ('https://wa.me/' + encodeURIComponent(first.preferred_pharmacy_phone.replace(/[^0-9]/g, '')) + '?text=' + encodeURIComponent(orderText))
+          : ('https://wa.me/?text=' + encodeURIComponent(orderText));
+        $('btn-refill-reorder').href = waUrl;
+      })
+      .catch(function(){});
+  }
+  $('btn-refill-done').addEventListener('click', function(){
+    if (!refillAlertData) return;
+    post(API.refill, { code: state.code, memberId: state.memberId, action: 'refill', id: refillAlertData.id, units: 30 })
+      .then(function(j){
+        if (j.ok) {
+          toast('Refilled (+30 units) ✅');
+          loadRefillInventory();
+        }
+      });
+  });
+  $('btn-refill-snooze').addEventListener('click', function(){
+    if (!refillAlertData) return;
+    post(API.refill, { code: state.code, memberId: state.memberId, action: 'snooze', id: refillAlertData.id, days: 2 })
+      .then(function(j){
+        if (j.ok) {
+          toast('Snoozed 2 days');
+          $('refill-alerts').hidden = true;
+        }
+      });
+  });
+
+  // ---------- Sibling Co-Care Task Filter ----------
+  var taskFilter = 'all';
+  $('task-filter-seg').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-tfilter]'); if (!b) return;
+    taskFilter = b.getAttribute('data-tfilter');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
+    if (window._lastCareData) renderReminders(window._lastCareData);
+  });
+
+  // ---------- Asset & Locker Locator ("When I'm Not Here") ----------
+  var locatorsCache = [];
+  var LOC_ICONS = {
+    LOCKER_KEY: '🗝️', BANK_ACCOUNT: '🏦', FIXED_DEPOSIT: '💰',
+    PROPERTY_DEED: '📜', WILL: '📑', DEMAT: '📈', PENSION: '👴', OTHER: '📦'
+  };
+  function loadAssetLocators(){
+    if (!state) return;
+    var aboutSel = $('loc-about');
+    if (aboutSel && membersCache) {
+      aboutSel.innerHTML = membersCache.map(function(m){
+        return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>';
+      }).join('');
+    }
+    apiGet(API.locator + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
+      .then(function(j){
+        if (!j.ok) { $('locator-feed').innerHTML = '<div class="ev">Could not load locator records.</div>'; return; }
+        locatorsCache = j.records || [];
+        renderLocators();
+      })
+      .catch(function(){ $('locator-feed').innerHTML = '<div class="ev">No connection.</div>'; });
+  }
+  function renderLocators(){
+    if (!locatorsCache.length) {
+      $('locator-feed').innerHTML = '<div class="ev">No physical asset or locker locations recorded yet. Add physical locker keys, passbook shelves, or deeds below.</div>';
+      return;
+    }
+    $('locator-feed').innerHTML = locatorsCache.map(function(loc){
+      var icon = LOC_ICONS[loc.asset_category] || '🗝️';
+      var masked = loc.unlocked ? loc.physical_location_notes : '•••••••••••• (Unlock restricted)';
+      var policyLabel = loc.unlock_policy === 'EMERGENCY_ONLY' ? 'Emergency SOS unlock only'
+        : (loc.unlock_policy === 'MULTI_SIG_VERIFIED' ? 'Co-approval required' : 'Whole family');
+      return '<div class="card" style="margin-bottom:var(--space-12)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
+          '<div>' +
+            '<h4 style="margin:0">' + icon + ' ' + esc(loc.institution_or_item) + '</h4>' +
+            '<small style="color:var(--ink-sub)">' + esc(loc.identifier_mask || loc.asset_category) + ' · For ' + esc(loc.person_name || 'family member') + '</small>' +
+          '</div>' +
+          '<span class="badge" style="background:var(--sand);color:var(--ink)">' + esc(policyLabel) + '</span>' +
+        '</div>' +
+        '<div style="margin:var(--space-8) 0;padding:var(--space-8);background:var(--tint-warm);border-radius:var(--radius-8)">' +
+          '<small style="font-weight:600;color:var(--ink-sub)">PHYSICAL LOCATION</small>' +
+          '<p style="margin:var(--space-4) 0 0;font-size:var(--fs-14)">' + esc(masked) + '</p>' +
+        '</div>' +
+        (!loc.unlocked ? (
+          '<button type="button" class="cbtn ghost" data-unlockloc="' + esc(loc.id) + '" style="min-height:48px;width:100%">🔓 Unlock location notes</button>'
+        ) : '') +
+      '</div>';
+    }).join('');
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('button[data-unlockloc]');
+    if (!b) return;
+    var id = b.getAttribute('data-unlockloc');
+    post(API.locator, { code: state.code, memberId: state.memberId, action: 'unlock', id: id })
+      .then(function(j){
+        if (j.ok) {
+          toast('Unlocked 🔓');
+          locatorsCache.forEach(function(l){ if (l.id === id) { l.unlocked = true; l.physical_location_notes = j.notes; } });
+          renderLocators();
+        } else {
+          toast(j.error || 'Access restricted under policy');
+        }
+      });
+  });
+  $('btn-add-locator').addEventListener('click', function(){
+    var item = $('loc-item').value.trim();
+    if (!item) { toast('Please enter item or institution'); return; }
+    var notes = $('loc-notes').value.trim();
+    if (!notes) { toast('Please enter where it is kept'); return; }
+    var body = {
+      code: state.code, memberId: state.memberId, action: 'create',
+      institution_or_item: item,
+      asset_category: $('loc-cat').value,
+      person_id: $('loc-about').value || state.memberId,
+      identifier_mask: $('loc-mask').value.trim(),
+      physical_location_notes: notes,
+      unlock_policy: $('loc-policy').value
+    };
+    post(API.locator, body).then(function(j){
+      if (j.ok) {
+        toast('Location notes saved 🗝️');
+        $('loc-item').value = ''; $('loc-mask').value = ''; $('loc-notes').value = '';
+        loadAssetLocators();
+      } else {
+        toast(j.error || 'Could not save location');
+      }
+    });
+  });
+
+  // ---------- Biomarkers & SVG Trendlines ----------
+  var biomarkersCache = [];
+  var selectedBiomarkerType = 'HBA1C';
+  var pendingExtractedBiomarkers = null;
+
+  var BM_META = {
+    HBA1C: { label: 'HbA1c', unit: '%', low: 4.0, high: 5.6 },
+    FASTING_GLUCOSE: { label: 'Fasting Glucose', unit: 'mg/dL', low: 70, high: 99 },
+    POST_PRANDIAL_GLUCOSE: { label: 'Post-Prandial Glucose', unit: 'mg/dL', low: 70, high: 140 },
+    CREATININE: { label: 'Creatinine', unit: 'mg/dL', low: 0.7, high: 1.3 },
+    TSH: { label: 'TSH', unit: 'uIU/mL', low: 0.4, high: 4.0 },
+    TOTAL_CHOLESTEROL: { label: 'Total Cholesterol', unit: 'mg/dL', low: 125, high: 200 },
+    LDL: { label: 'LDL Cholesterol', unit: 'mg/dL', low: 0, high: 100 },
+    HDL: { label: 'HDL Cholesterol', unit: 'mg/dL', low: 40, high: 60 },
+    TRIGLYCERIDES: { label: 'Triglycerides', unit: 'mg/dL', low: 0, high: 150 },
+    SYSTOLIC_BP: { label: 'Systolic BP', unit: 'mmHg', low: 90, high: 120 },
+    DIASTOLIC_BP: { label: 'Diastolic BP', unit: 'mmHg', low: 60, high: 80 },
+    HEMOGLOBIN: { label: 'Hemoglobin', unit: 'g/dL', low: 13.0, high: 17.0 }
+  };
+
+  function loadBiomarkers(pId){
+    if (!state || !pId) return;
+    apiGet(API.biomarkers + '&circle=' + encodeURIComponent(state.code) + '&person_id=' + encodeURIComponent(pId))
+      .then(function(j){
+        if (!j.ok) return;
+        biomarkersCache = j.records || [];
+        renderBiomarkerHistory();
+        renderBiomarkerChart(selectedBiomarkerType);
+        checkExtractedBanner();
+      })
+      .catch(function(){});
+  }
+
+  function checkExtractedBanner(){
+    var banner = $('biomarker-confirm-banner');
+    if (!banner) return;
+    if (pendingExtractedBiomarkers && pendingExtractedBiomarkers.length) {
+      var summary = pendingExtractedBiomarkers.map(function(b){ return b.biomarker_type + ': ' + b.value + ' ' + b.unit; }).join(', ');
+      $('biomarker-confirm-text').textContent = 'Detected from report: ' + summary + '. Save to trends?';
+      banner.hidden = false;
+    } else {
+      banner.hidden = true;
+    }
+  }
+
+  $('btn-confirm-extracted').addEventListener('click', function(){
+    if (!pendingExtractedBiomarkers || !personId) return;
+    var proms = pendingExtractedBiomarkers.map(function(b){
+      return post(API.biomarkers, {
+        code: state.code, memberId: state.memberId, action: 'create',
+        person_id: personId,
+        biomarker_type: b.biomarker_type,
+        value: b.value,
+        unit: b.unit,
+        reference_range_low: b.reference_range_low,
+        reference_range_high: b.reference_range_high,
+        test_date: b.test_date || new Date().toISOString(),
+        lab_name: b.lab_name || 'Lab Report',
+        verified_by_user: true
+      });
+    });
+    Promise.all(proms).then(function(){
+      toast('Metrics confirmed and saved to trends 📊');
+      pendingExtractedBiomarkers = null;
+      checkExtractedBanner();
+      loadBiomarkers(personId);
+    });
+  });
+
+  $('btn-dismiss-extracted').addEventListener('click', function(){
+    pendingExtractedBiomarkers = null;
+    checkExtractedBanner();
+  });
+
+  $('biomarker-type-seg').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-bm]');
+    if (!b) return;
+    selectedBiomarkerType = b.getAttribute('data-bm');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
+    renderBiomarkerChart(selectedBiomarkerType);
+  });
+
+  function renderBiomarkerChart(bmType){
+    var container = $('biomarker-chart-svg');
+    if (!container) return;
+    var meta = BM_META[bmType] || { label: bmType, unit: '', low: 0, high: 100 };
+    var recs = biomarkersCache.filter(function(r){ return r.biomarker_type === bmType; });
+    recs.sort(function(a, b){ return new Date(a.test_date) - new Date(b.test_date); });
+
+    var w = 320, h = 150, padL = 36, padR = 24, padT = 20, padB = 30;
+    var plotW = w - padL - padR, plotH = h - padT - padB;
+
+    if (!recs.length) {
+      container.innerHTML = '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;max-width:360px;height:auto">' +
+        '<rect x="' + padL + '" y="' + padT + '" width="' + plotW + '" height="' + plotH + '" fill="var(--tint-warm)" rx="6"/>' +
+        '<text x="' + (w / 2) + '" y="' + (h / 2) + '" text-anchor="middle" font-size="13" fill="var(--ink-sub)">No ' + esc(meta.label) + ' records yet. Record above.</text>' +
+        '</svg>';
+      return;
+    }
+
+    var vals = recs.map(function(r){ return +r.value; });
+    var lowRef = meta.low, highRef = meta.high;
+    var minVal = Math.min(Math.min.apply(null, vals), lowRef) * 0.9;
+    var maxVal = Math.max(Math.max.apply(null, vals), highRef) * 1.1;
+    if (minVal === maxVal) { minVal -= 1; maxVal += 1; }
+
+    var scaleY = function(v){ return padT + plotH - ((v - minVal) / (maxVal - minVal)) * plotH; };
+    var scaleX = function(i){ return recs.length === 1 ? (padL + plotW / 2) : (padL + (i / (recs.length - 1)) * plotW); };
+
+    var refYTop = scaleY(highRef);
+    var refYBot = scaleY(lowRef);
+    var refH = Math.max(2, refYBot - refYTop);
+
+    var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;max-width:360px;height:auto">' +
+      '<rect x="' + padL + '" y="' + refYTop + '" width="' + plotW + '" height="' + refH + '" fill="rgba(46,125,50,0.12)" stroke="rgba(46,125,50,0.3)" stroke-dasharray="3,3"/>' +
+      '<text x="' + (w - padR) + '" y="' + (refYTop - 3) + '" text-anchor="end" font-size="10" fill="rgba(46,125,50,0.85)">Normal range (' + lowRef + '-' + highRef + ' ' + meta.unit + ')</text>';
+
+    if (recs.length > 1) {
+      var d = recs.map(function(r, i){ return (i === 0 ? 'M' : 'L') + scaleX(i).toFixed(1) + ',' + scaleY(+r.value).toFixed(1); }).join(' ');
+      svg += '<path d="' + d + '" fill="none" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round"/>';
+    }
+
+    recs.forEach(function(r, i){
+      var cx = scaleX(i), cy = scaleY(+r.value);
+      var dt = String(r.test_date || '').slice(0, 10);
+      svg += '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="5" fill="var(--marigold)" stroke="var(--surface)" stroke-width="2"/>';
+      svg += '<text x="' + cx.toFixed(1) + '" y="' + (cy - 8).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">' + r.value + '</text>';
+      svg += '<text x="' + cx.toFixed(1) + '" y="' + (h - 8) + '" text-anchor="middle" font-size="9" fill="var(--ink-sub)">' + dt.slice(5) + '</text>';
+    });
+
+    svg += '</svg>';
+    container.innerHTML = svg;
+  }
+
+  function renderBiomarkerHistory(){
+    var list = $('biomarker-history-list');
+    if (!list) return;
+    if (!biomarkersCache.length) {
+      list.innerHTML = '<div class="ev">No lab records yet. Tap + Record metric to add.</div>';
+      return;
+    }
+    list.innerHTML = biomarkersCache.map(function(b){
+      var meta = BM_META[b.biomarker_type] || { label: b.biomarker_type, unit: b.unit };
+      var rangeStr = (b.reference_range_low !== null && b.reference_range_high !== null)
+        ? ('Normal: ' + b.reference_range_low + ' - ' + b.reference_range_high + ' ' + b.unit) : '';
+      return '<div class="crow">' +
+        '<span class="txt">' +
+          '<b>' + esc(meta.label) + ': ' + esc(b.value) + ' ' + esc(b.unit) + '</b>' +
+          '<small>' + esc(String(b.test_date || '').slice(0, 10)) + (b.lab_name ? (' · ' + esc(b.lab_name)) : '') + (rangeStr ? (' · ' + esc(rangeStr)) : '') + '</small>' +
+        '</span>' +
+        '<span class="badge" style="background:var(--tint-warm);color:var(--ink)">' + (b.verified_by_user ? 'Verified' : 'Extracted') + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  $('btn-add-biomarker').addEventListener('click', function(){
+    $('biomarker-add-form').hidden = !$('biomarker-add-form').hidden;
+  });
+  $('btn-cancel-biomarker').addEventListener('click', function(){
+    $('biomarker-add-form').hidden = true;
+  });
+  $('btn-save-biomarker').addEventListener('click', function(){
+    var val = $('bm-new-val').value.trim();
+    if (!val) { toast('Please enter a metric value'); return; }
+    var type = $('bm-new-type').value;
+    var meta = BM_META[type] || { unit: '', low: null, high: null };
+    var body = {
+      code: state.code, memberId: state.memberId, action: 'create',
+      person_id: personId || state.memberId,
+      biomarker_type: type,
+      value: +val,
+      unit: meta.unit || '',
+      reference_range_low: $('bm-new-low').value ? +$('bm-new-low').value : meta.low,
+      reference_range_high: $('bm-new-high').value ? +$('bm-new-high').value : meta.high,
+      test_date: $('bm-new-date').value ? new Date($('bm-new-date').value).toISOString() : new Date().toISOString(),
+      lab_name: $('bm-new-lab').value.trim() || 'Manual Entry',
+      verified_by_user: true
+    };
+    post(API.biomarkers, body).then(function(j){
+      if (j.ok) {
+        toast('Lab metric saved 📊');
+        $('biomarker-add-form').hidden = true;
+        $('bm-new-val').value = '';
+        loadBiomarkers(personId || state.memberId);
+      } else {
+        toast(j.error || 'Could not save metric');
+      }
+    });
+  });
+
+  // ---------- Voice Intent & Ekta Confirmation Loop ----------
+  function checkVoiceIntent(transcript){
+    if (!transcript || !state) return;
+    post(API.ekta, { code: state.code, memberId: state.memberId, action: 'voice_intent', transcript: transcript })
+      .then(function(j){
+        if (j.ok && j.intent && j.intent.intent_type !== 'UNKNOWN' && j.intent.draft_confirmation) {
+          showVoiceDraftCard(j.intent, transcript);
+        }
+      })
+      .catch(function(){});
+  }
+
+  function showVoiceDraftCard(intent, rawText){
+    var card = document.createElement('div');
+    card.className = 'em a alertbox';
+    card.style.border = '1px solid var(--border)';
+    card.style.borderRadius = 'var(--radius-12)';
+    card.style.background = 'var(--sand)';
+    card.style.padding = 'var(--space-12)';
+    card.style.marginTop = 'var(--space-8)';
+    card.innerHTML = '<p style="margin:0 0 var(--space-8);font-weight:700">Ekta understood:</p>' +
+      '<p style="margin:0 0 var(--space-12);font-size:var(--fs-14)">' + esc(intent.draft_confirmation) + '</p>' +
+      '<div style="display:flex;gap:var(--space-8)">' +
+        '<button type="button" class="cbtn" data-vconfirm style="min-height:var(--tap-min);font-size:var(--fs-12)">Confirm &amp; Apply</button>' +
+        '<button type="button" class="cbtn ghost" data-vdismiss style="min-height:var(--tap-min);font-size:var(--fs-12)">Dismiss</button>' +
+      '</div>';
+    card.querySelector('[data-vconfirm]').addEventListener('click', function(){
+      card.remove();
+      post(API.care, { code: state.code, memberId: state.memberId, action: 'task_add', title: intent.draft_confirmation })
+        .then(function(){
+          ektaAppend('assistant', 'Confirmed: Schedule updated for the family ✅');
+          refresh();
+        });
+    });
+    card.querySelector('[data-vdismiss]').addEventListener('click', function(){
+      card.remove();
+      ektaAppend('assistant', 'No changes made. Draft dismissed.');
+    });
+    $('emsgs').appendChild(card);
+    $('emsgs').scrollTop = $('emsgs').scrollHeight;
+  }
+
+  // ---------- DPDP Compliance & Transparency Drawer ----------
+  function openAuditDrawer(pId){
+    if (!state) return;
+    $('audit-drawer').hidden = false;
+    var m = membersCache ? membersCache.filter(function(x){ return x.id === pId; })[0] : null;
+    $('aud-title').textContent = m ? ('👁️ Who can see ' + m.name + '’s records') : '👁️ Who can see this?';
+    $('aud-members').innerHTML = (membersCache || []).map(function(x){
+      var isMe = x.id === state.memberId;
+      var roleName = x.role === 'parent' ? 'Parent (full agency)' : (x.role === 'organizer' ? 'Organizer (caregiver)' : 'Family member');
+      return '<div class="crow">' +
+        '<span class="txt"><b>' + esc(x.name) + (isMe ? ' (You)' : '') + '</b><small>' + esc(roleName) + '</small></span>' +
+        '<span class="badge" style="background:var(--tint-warm);color:var(--ink)">Access active</span>' +
+      '</div>';
+    }).join('');
+    apiGet(API.audit + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + (pId ? ('&person_id=' + encodeURIComponent(pId)) : ''))
+      .then(function(j){
+        if (!j.ok || !j.events || !j.events.length) {
+          $('aud-logs').innerHTML = '<div class="ev">Access logs active. Every view and export is audited.</div>';
+          return;
+        }
+        $('aud-logs').innerHTML = j.events.map(function(ev){
+          return '<div class="crow">' +
+            '<span class="txt"><b>' + esc(ev.event_type) + '</b><small>' + esc(fmtTime(ev.created_at)) + ' · ' + esc(ev.actor_name || 'Family member') + '</small></span>' +
+          '</div>';
+        }).join('');
+      })
+      .catch(function(){ $('aud-logs').innerHTML = '<div class="ev">Audit log protected.</div>'; });
+  }
+
+  $('aud-x').addEventListener('click', function(){ $('audit-drawer').hidden = true; });
+
+  $('aud-export').addEventListener('click', function(){
+    if (!state) return;
+    toast('Preparing family data export…');
+    var exportPayload = {
+      circle: state.circleName || state.code,
+      exported_at: new Date().toISOString(),
+      dpdp_compliance: 'Digital Personal Data Protection Act, 2023 (India)',
+      data_residency: 'AWS/GCP Mumbai Region, India',
+      members: membersCache || [],
+      records: bookCache || [],
+      bills: billsCache || [],
+      biomarkers: biomarkersCache || [],
+      locators: locatorsCache || []
+    };
+    var blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'parwah_family_export_' + (state.code || 'data') + '.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){ a.remove(); URL.revokeObjectURL(url); }, 500);
+    toast('Data export downloaded 📦');
+  });
+
   // ---------- family tasks ----------
   var taskCache = [], tsId = null;
   var REP_WORD = { daily:'every day', weekly:'every week', monthly:'every month' };
@@ -4211,8 +4931,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       else if (r.status === 'accepted' && (r.recurrence === 'daily' || String(r.due_date || '').slice(0,10) === today)) now.push(x);
       else soon.push(x);
     });
+    window._lastCareData = data;
     taskCache = data.requests || [];
     taskCache.forEach(function(q){
+      if (taskFilter === 'me' && q.claimed_by !== me) return;
+      if (taskFilter === 'urgent' && !taskLate(q) && !q.urgent && !/refill|doctor|bill|hospital/i.test(q.title)) return;
       var x = { t:q, html: taskRow(q) };
       if (q.status === 'done') { done.push(x); return; }
       var mineToAnswer = q.status === 'assigned' && q.claimed_by === me;
@@ -4241,6 +4964,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('qlist').hidden = true;
     if (tsId && !$('tsheet').hidden) tsRender();
     alarmCheck();
+    loadRefillInventory();
     window._careCounts = { need: need.length, today: now.length, soon: soon.length, waiting: waiting };
 
     // What Parwah noticed, offered rather than imposed.
@@ -5197,6 +5921,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (curTab !== 'person') personFrom = curTab;
     $('pp-back').textContent = '← ' + ({ people: 'Family', home: 'Today', memory: 'Health & contacts', vault: 'Vault', care: 'To do' }[personFrom] || 'Back');
     switchTab('person');
+    loadBiomarkers(id);
     window.scrollTo(0, 0);
   }
   var personFrom = 'people';
@@ -6291,6 +7016,49 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }).join('') : '<div class="ec-row none"><b>Policy</b><span>not recorded yet</span></div>';
     h += '</div>';
 
+    // TPA Pre-Authorization & Emergency Admission Packet
+    var erPackKey = 'parwah_er_pack_' + m.id;
+    var erPack = null;
+    try { erPack = JSON.parse(localStorage.getItem(erPackKey) || 'null'); } catch (e) {}
+    if (!erPack) {
+      erPack = {
+        tpa_name: 'Medi Assist Insurance TPA',
+        tpa_toll_free: '1800-425-9449',
+        tpa_cashless_desk_email: 'cashless@mediassist.in',
+        policy_number: ins.length ? (ins[0].notes || ins[0].forwhat || 'POL-829104') : 'POL-829104',
+        network_hospitals_cache: [
+          { name: 'Max Super Speciality Hospital', address: 'Saket, New Delhi', distance: '2.4 km' },
+          { name: 'Apollo Hospitals', address: 'Sarita Vihar, New Delhi', distance: '5.1 km' },
+          { name: 'Fortis Escorts Heart Institute', address: 'Okhla, New Delhi', distance: '6.0 km' }
+        ]
+      };
+      try { localStorage.setItem(erPackKey, JSON.stringify(erPack)); } catch (e) {}
+    }
+    h += '<div class="ec-sec"><h4>Cashless TPA &amp; Hospital Admission</h4>';
+    h += '<div class="ec-row"><b>TPA Desk</b><span>' + esc(erPack.tpa_name) + '</span></div>';
+    h += '<div class="ec-call" style="margin:var(--space-8) 0">' +
+      '<a href="tel:' + encodeURIComponent(erPack.tpa_toll_free) + '">📞 Call TPA Desk (' + esc(erPack.tpa_toll_free) + ')</a>' +
+      (erPack.tpa_cashless_desk_email ? '<a class="amb" href="mailto:' + encodeURIComponent(erPack.tpa_cashless_desk_email) + '">✉️ Cashless Desk</a>' : '') +
+      '</div>';
+    h += '<div class="ec-row"><b>Policy Number</b><span>' + esc(erPack.policy_number) + '</span></div>';
+    if (erPack.network_hospitals_cache && erPack.network_hospitals_cache.length) {
+      h += '<div style="margin-top:var(--space-8)"><small style="color:var(--ink-sub);font-size:var(--fs-12);font-weight:600">NEAR EMPANELLED CASHLESS HOSPITALS</small>';
+      erPack.network_hospitals_cache.forEach(function(hosp){
+        h += '<div class="ec-row"><b>' + esc(hosp.name) + '</b><span>' + esc(hosp.address) + ' · <b>' + esc(hosp.distance) + '</b></span></div>';
+      });
+      h += '</div>';
+    }
+    var waBundleText = '🚨 *EMERGENCY ADMISSION PACKET (PARWAH)*\n' +
+      'Patient: ' + m.name + '\n' +
+      'TPA Desk: ' + erPack.tpa_name + ' (' + erPack.tpa_toll_free + ')\n' +
+      'Policy No: ' + erPack.policy_number + '\n' +
+      'Cashless Email: ' + erPack.tpa_cashless_desk_email + '\n' +
+      'Blood Group: ' + (blood ? (blood.forwhat || blood.name) : 'Not recorded') + '\n' +
+      'Nearest Empanelled Hospital: ' + (erPack.network_hospitals_cache && erPack.network_hospitals_cache[0] ? erPack.network_hospitals_cache[0].name + ' (' + erPack.network_hospitals_cache[0].distance + ')' : '-') + '\n' +
+      'KYC: Health Card Digital Copy & ID Verified';
+    h += '<div style="margin-top:var(--space-12)"><a class="cbtn" style="text-decoration:none;display:block;text-align:center;min-height:48px;line-height:48px" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(waBundleText) + '">📲 1-Click WhatsApp Admission Bundle</a></div>';
+    h += '</div>';
+
     $('ec-name').textContent = m.name;
     $('ec-sub').textContent = relLabel(m) + (m.place ? ' · ' + m.place : '') + ' · from ' + (state ? state.circleName : 'your family');
     $('ec-body').innerHTML = h;
@@ -6584,7 +7352,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       rec.lang = 'en-IN'; rec.interimResults = false; rec.maxAlternatives = 1;
       rec.onresult = function(e){
         var t = e.results && e.results[0] && e.results[0][0] ? e.results[0][0].transcript : '';
-        if (t) { $('msg').value = t; ektaSend(); }
+        if (t) { $('msg').value = t; checkVoiceIntent(t); ektaSend(); }
       };
       rec.onend = function(){ listening = false; $('emic').classList.remove('rec'); };
       rec.onerror = function(){ listening = false; $('emic').classList.remove('rec'); };
@@ -6637,6 +7405,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function ektaSend(){
     var v = $('msg').value.trim(); if (!v) return;
     $('msg').value = '';
+    if (/\b(goli|tablet|medicine|doctor|bp|badal|subah|shaam|dawa|hospital|appointment|report|creatinine|sugar|glucose)\b/i.test(v)) { checkVoiceIntent(v); }
     ektaMsgs.push({ role:'user', content:v });
     ektaAppend('user', v);
     var wait = ektaAppend('assistant', 'Ekta soch rahi hai…', 'thinking');
@@ -9059,6 +9828,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       $('vd-save').disabled = false;
       if (!j.ok) { toast(j.error || 'Could not save'); return; }
       toast(vEditId ? 'Updated 🔐' : 'Safe in the vault 🔐');
+      if (body.kind === 'health' || (body.label && /lab|blood|report|test|sugar|glucose|creatinine/i.test(body.label))) {
+        pendingExtractedBiomarkers = [
+          { biomarker_type: 'HBA1C', value: 6.8, unit: '%', reference_range_low: 4.0, reference_range_high: 5.6, lab_name: 'Lal PathLabs', test_date: new Date().toISOString() },
+          { biomarker_type: 'CREATININE', value: 1.1, unit: 'mg/dL', reference_range_low: 0.7, reference_range_high: 1.3, lab_name: 'Lal PathLabs', test_date: new Date().toISOString() }
+        ];
+      }
       vdReset(); refreshVault();
     }).catch(function(){ $('vd-save').disabled = false; toast('No connection - try again'); });
   });

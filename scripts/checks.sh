@@ -51,6 +51,9 @@ node site/tests/geotest.mjs
 # The family tree: who is whose son, daughter-in-law, Chacha or Bua, across
 # four generations. _kin.mjs imports nothing.
 node site/tests/kintest.mjs
+# Advanced care & preparedness engine: refill forecast, biomarker extraction,
+# ER packets, audio intents, bill delegation, asset locator access.
+node site/tests/carepreptest.mjs
 test -f site/tests/test_site.py || { echo "site test suite missing from build input"; exit 1; }
 if command -v python3 >/dev/null 2>&1; then
   python3 site/tests/test_site.py

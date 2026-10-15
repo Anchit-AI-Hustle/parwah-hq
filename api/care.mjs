@@ -7,6 +7,7 @@ import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 import { award, today } from './_coins.mjs';
 import { ensureTaskSchema, taskList, taskHistory, taskAction, sweepOverdue, sweepReminders, GAPS, gapTitle } from './_tasks.mjs';
+import { refillApi, billsApi, siblingTasksApi } from './_careprep.mjs';
 
 async function feed(sql, circleId, memberId, text) {
   await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'care', ${text})`;
@@ -146,6 +147,11 @@ export async function createRequest(sql, circle, me, { title, dueDate, aboutMemb
 }
 
 export default async function handler(req, res) {
+  const area = String((req.query && req.query.area) || (req.body && req.body.area) || '');
+  if (area === 'refill' || (req.body && typeof req.body.action === 'string' && /^refill_/.test(req.body.action))) return refillApi(req, res);
+  if (area === 'bills' || (req.body && typeof req.body.action === 'string' && /^bill_/.test(req.body.action))) return billsApi(req, res);
+  if (area === 'tasks' || (req.body && typeof req.body.action === 'string' && /^sibling_task_/.test(req.body.action))) return siblingTasksApi(req, res);
+
   let sql;
   try {
     sql = db(); await ensureSchema(sql);

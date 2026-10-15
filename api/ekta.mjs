@@ -517,6 +517,12 @@ export default async function handler(req, res) {
   const meRow = [_g.me];
   const me = meRow[0];
 
+  if (req.body && req.body.action === 'voice_intent') {
+    const { extractVoiceIntent } = await import('./_careprep.mjs');
+    const intent = extractVoiceIntent(req.body.transcript || req.body.text || '');
+    return res.status(200).json({ ok: true, intent });
+  }
+
   const history = Array.isArray(messages) ? messages
     .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
     .slice(-12)

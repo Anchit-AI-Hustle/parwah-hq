@@ -27,6 +27,7 @@ import vaultApi, { ensureVaultSchema } from './_vaultapi.mjs';
 let vaultReady = false;
 import { award } from './_coins.mjs';
 import { GAPS, gapTitle, taskAction, ensureTaskSchema } from './_tasks.mjs';
+import { biomarkersApi, preauthApi, locatorApi, auditApi } from './_careprep.mjs';
 
 const KINDS = ['contact', 'address', 'med', 'fact', 'insurance'];
 const CATS = ['housework', 'doctor', 'vet', 'driver', 'shops', 'repairs', 'emergency', 'local', 'other'];
@@ -42,6 +43,10 @@ export default async function handler(req, res) {
   if (area === 'board') return boardApi(req, res);
   if (area === 'vault' || area === 'pay') return vaultApi(req, res);
   if (area === 'notes') return notesApi(req, res);
+  if (area === 'biomarkers' || (req.body && typeof req.body.action === 'string' && /^biomarker_/.test(req.body.action))) return biomarkersApi(req, res);
+  if (area === 'preauth') return preauthApi(req, res);
+  if (area === 'locator' || (req.body && typeof req.body.action === 'string' && /^locator_/.test(req.body.action))) return locatorApi(req, res);
+  if (area === 'audit') return auditApi(req, res);
   let sql;
   try {
     sql = db(); await ensureSchema(sql);
