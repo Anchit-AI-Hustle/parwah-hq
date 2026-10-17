@@ -44,20 +44,28 @@ export function dobError(v, today) {
   return null;
 }
 
-// Rupees, as a whole number above zero. Empty is allowed where the amount is
-// optional; the caller says so.
+// Money, as a whole number above zero, in the currency of whoever's money it
+// is (o.cur, an ISO code; rupees when not given). Empty is allowed where the
+// amount is optional; the caller says so.
+const MONEY_MARKS = /[,\s₹$£€¥]/g;
+function moneyText(n, cur) {
+  const c = cur === undefined ? 'INR' : cur;
+  if (!c) return Number(n).toLocaleString('en-US');
+  try { return new Intl.NumberFormat(c === 'INR' ? 'en-IN' : 'en', { style: 'currency', currency: c, maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(n); }
+  catch (e) { return c + ' ' + Number(n).toLocaleString('en-US'); }
+}
 export function amountError(v, opts) {
   const o = opts || {};
-  const s = String(v == null ? '' : v).replace(/[,\s₹]/g, '');
-  if (!s) return o.required ? 'Write the amount in rupees.' : null;
-  if (!/^\d+$/.test(s)) return 'Write the amount as a whole number of rupees, like 5000.';
+  const s = String(v == null ? '' : v).replace(MONEY_MARKS, '');
+  if (!s) return o.required ? 'Write the amount.' : null;
+  if (!/^\d+$/.test(s)) return 'Write the amount as a whole number, like 5000.';
   const n = Number(s);
-  if (n <= 0) return 'The amount has to be more than ₹0.';
-  if (o.max && n > o.max) return 'That is more than ₹' + o.max.toLocaleString('en-IN') + ' - please check it.';
+  if (n <= 0) return 'The amount has to be more than ' + moneyText(0, o.cur) + '.';
+  if (o.max && n > o.max) return 'That is more than ' + moneyText(o.max, o.cur) + ' - please check it.';
   return null;
 }
 export function amountOf(v) {
-  const s = String(v == null ? '' : v).replace(/[,\s₹]/g, '');
+  const s = String(v == null ? '' : v).replace(MONEY_MARKS, '');
   return /^\d+$/.test(s) && Number(s) > 0 ? Number(s) : null;
 }
 

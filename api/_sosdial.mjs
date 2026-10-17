@@ -24,6 +24,7 @@
 // DIAL_TIMEOUT_MS so the alarm to the family is never held up for long.
 // Nothing here ever throws into the SOS.
 
+import { normPhone } from './_phone.mjs';
 export const CALL_MAX = 2;
 export const TEXT_MAX = 8;
 export const DIAL_TIMEOUT_MS = 6000;
@@ -41,11 +42,18 @@ export function dialConfig(env = process.env) {
   return c;
 }
 
-// A number Twilio can dial: +country code and digits. Ten digits starting 6
-// to 9 are an Indian mobile, the way most families write them.
-export function e164(phone) {
+// A number Twilio can dial: +country code and digits. A number written
+// without one belongs to the sender's own country (`cc`, e.g. +44): its
+// leading trunk 0 is dropped, the way it is dialled from abroad. With no
+// country known, ten digits starting 6 to 9 are an Indian mobile.
+export function e164(phone, cc) {
   const p = String(phone || '').replace(/[^\d+]/g, '');
-  if (/^\+[1-9]\d{7,14}$/.test(p)) return p;
+  // Saved before the trunk 0 was dropped (+44 07700...): clean it now.
+  if (/^\+[1-9]\d{7,15}$/.test(p)) { const n = normPhone(p); return n ? n.e164 : (/^\+[1-9]\d{7,14}$/.test(p) ? p : null); }
+  if (/^\+[1-9]\d{0,3}$/.test(String(cc || '')) && cc !== '+91' && /^\d+$/.test(p)) {
+    const local = p.replace(/^0+/, '');
+    return local.length >= 6 && local.length <= 13 && (cc + local).length <= 16 ? cc + local : null;
+  }
   if (/^[6-9]\d{9}$/.test(p)) return '+91' + p;
   if (/^0[6-9]\d{9}$/.test(p)) return '+91' + p.slice(1);
   if (/^91[6-9]\d{9}$/.test(p)) return '+' + p;
@@ -53,12 +61,13 @@ export function e164(phone) {
 }
 
 // What the phone call says: slowly, twice, in plain words.
-export function callScript(name) {
+export function callScript(name, cc) {
+  const voice = !cc || cc === '+91' ? 'voice="Polly.Aditi" language="en-IN"' : 'voice="Polly.Joanna" language="en-US"';
   const who = String(name || 'Someone in your family').replace(/[<>&"']/g, ' ').trim();
   const line = 'Emergency. ' + who + ' pressed S O S in Parwah and needs help now. ' +
     'Open your messages or Parwah to see where they are, and call them.';
-  return '<Response><Say voice="Polly.Aditi" language="en-IN">' + line + '</Say><Pause length="1"/>' +
-         '<Say voice="Polly.Aditi" language="en-IN">' + line + '</Say></Response>';
+  return '<Response><Say ' + voice + '>' + line + '</Say><Pause length="1"/>' +
+         '<Say ' + voice + '>' + line + '</Say></Response>';
 }
 
 export async function ensureDialSchema(sql) {
@@ -92,14 +101,14 @@ async function twilio(cfg, path, form, fetchImpl) {
 
 // Send the SOS out. Returns what happened, for the SOS screen:
 // { configured, sms, whatsapp, call, failed }.
-export async function dialOut(sql, sosId, contacts, { name, text, map }, { env = process.env, fetchImpl = globalThis.fetch } = {}) {
+export async function dialOut(sql, sosId, contacts, { name, text, map, cc }, { env = process.env, fetchImpl = globalThis.fetch } = {}) {
   const cfg = dialConfig(env);
   const out = { configured: cfg.on, sms: 0, whatsapp: 0, call: 0, failed: 0 };
   if (!cfg.on || !sosId) return out;
   try {
     await ensureDialSchema(sql);
     const people = [];
-    for (const c of contacts || []) { const to = e164(c.phone); if (to && !people.some(p => p.to === to)) people.push({ to, name: c.name }); }
+    for (const c of contacts || []) { const to = e164(c.phone, cc); if (to && !people.some(p => p.to === to)) people.push({ to, name: c.name }); }
     const jobs = [];
     people.slice(0, TEXT_MAX).forEach((p, i) => {
       if (cfg.sms) jobs.push({ p, channel: 'sms', path: 'Messages.json', form: { To: p.to, From: cfg.sms, Body: text } });
@@ -109,7 +118,7 @@ export async function dialOut(sql, sosId, contacts, { name, text, map }, { env =
         else form.Body = text;
         jobs.push({ p, channel: 'whatsapp', path: 'Messages.json', form });
       }
-      if (cfg.voice && i < CALL_MAX) jobs.push({ p, channel: 'call', path: 'Calls.json', form: { To: p.to, From: cfg.voice, Twiml: callScript(name) } });
+      if (cfg.voice && i < CALL_MAX) jobs.push({ p, channel: 'call', path: 'Calls.json', form: { To: p.to, From: cfg.voice, Twiml: callScript(name, cc) } });
     });
     await Promise.allSettled(jobs.map(async j => {
       // Claimed first: a second press, or two servers at once, never sends twice.

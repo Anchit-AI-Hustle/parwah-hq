@@ -52,8 +52,12 @@ export function mapLink(pos) {
 // The words that go to the family, and out by WhatsApp, SMS and email.
 // Short enough for one SMS-sized glance, and true whether or not a position
 // was found.
-export function sosText(name, pos, when) {
-  const t = new Date(when || Date.now()).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' });
+export function sosText(name, pos, when, tz) {
+  // The sender's own clock, with its zone named, so family in another
+  // country reads the right time. UTC when the phone did not say.
+  let zone = 'UTC';
+  try { if (typeof tz === 'string' && tz && tz.length <= 64) { new Intl.DateTimeFormat('en-US', { timeZone: tz }); zone = tz; } } catch (e) {}
+  const t = new Date(when || Date.now()).toLocaleTimeString('en-US', { timeZone: zone, hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).replace('GMT+5:30', 'IST');
   const link = mapLink(pos);
   return '🆘 SOS from ' + name + ' at ' + t + '. I need help now. ' +
     (link ? 'Where I am: ' + link : 'My location could not be found - please call me.') +

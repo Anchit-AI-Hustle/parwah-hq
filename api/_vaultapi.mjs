@@ -25,6 +25,7 @@ import { amountError, amountOf } from './_valid.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 import { award } from './_coins.mjs';
+import { currencyOf, money } from './_money.mjs';
 
 const DOC_KINDS = {
   aadhaar:  { label: 'Aadhaar',            icon: '🆔' },
@@ -32,6 +33,9 @@ const DOC_KINDS = {
   passport: { label: 'Passport',           icon: '🛂' },
   dl:       { label: 'Driving licence',    icon: '🚗' },
   voter:    { label: 'Voter ID',           icon: '🗳' },
+  oci:      { label: 'OCI card',           icon: '🪪' },
+  residence:{ label: 'Visa or residence permit', icon: '🛬' },
+  nationalid:{ label: 'National ID card',  icon: '🪪' },
   health:   { label: 'Health record',      icon: '🩺' },
   birth:    { label: 'Birth certificate',  icon: '🍼' },
   policy:   { label: 'Insurance policy',   icon: '🛡' },
@@ -276,9 +280,10 @@ async function docsApi(req, res, sql, circle, me) {
     const label = clean(body.label, 90);
     if (!label) return res.status(400).json({ ok: false, error: 'Give the document a name, e.g. "Papa\'s passport"' });
     if (!isUuid(body.aboutId)) return res.status(400).json({ ok: false, error: 'Say whose document this is' });
-    const aRow = await sql`select id, name from members where id = ${body.aboutId} and circle_id = ${circle.id}`;
+    const aRow = await sql`select id, name, country from members where id = ${body.aboutId} and circle_id = ${circle.id}`;
     if (!aRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this family' });
-    const chk = checkNumber(kind, body.number);
+    // The holder's country decides whose passport rules apply.
+    const chk = checkNumber(kind, body.number, aRow[0].country);
     if (!chk.ok) return res.status(400).json({ ok: false, error: chk.why });
     const last4 = chk.last4;
     const issued = clean(body.issuedOn, 10);
@@ -523,7 +528,7 @@ async function payApi(req, res, sql, circle, me) {
   if (req.method === 'GET') {
     const methods = await sql`
       select p.id, p.kind, p.label, p.bank, p.handle, p.per_txn_cap, p.monthly_cap, p.note,
-             p.owner_member, p.created_at, m.name as owner_name,
+             p.owner_member, p.created_at, m.name as owner_name, m.country as owner_country,
              (p.owner_member = ${me.id}) as mine,
              (p.owner_member = ${me.id} or pp.member_id is not null) as can_use,
              pp.per_txn_cap as my_cap, pp.needs_ok as my_needs_ok
@@ -545,7 +550,7 @@ async function payApi(req, res, sql, circle, me) {
       : [];
     const members = await sql`select id, name, relation from members where circle_id = ${circle.id} order by created_at`;
     // A handle is only ever shown to its owner and to those allowed to use it.
-    methods.forEach(p => { if (!p.can_use) p.handle = p.handle ? '••••' : null; });
+    methods.forEach(p => { if (!p.can_use) p.handle = p.handle ? '••••' : null; p.currency = currencyOf(p.owner_country); delete p.owner_country; });
     return res.status(200).json({ ok: true, methods, perms, log, members, kinds: PAY_KINDS });
   }
   if (req.method !== 'POST') {
@@ -553,6 +558,11 @@ async function payApi(req, res, sql, circle, me) {
     return res.status(405).json({ ok: false, error: 'GET or POST only' });
   }
 
+  // A cap or a payment is in the money of whoever owns the card or account.
+  async function curOf(ownerId) {
+    const r = await sql`select country from members where id = ${ownerId}`;
+    return currencyOf(r[0] && r[0].country);
+  }
   async function ownedMethod(id) {
     if (!isUuid(id)) return { err: 'Bad request' };
     const r = await sql`select * from pay_methods where id = ${id} and circle_id = ${circle.id}`;
@@ -574,7 +584,8 @@ async function payApi(req, res, sql, circle, me) {
     }
     const bank = clean(body.bank, 60);
     // A cap of minus five, or "5k", capped nothing and said nothing.
-    const capErr = amountError(body.perTxnCap, { max: 10000000 }) || amountError(body.monthlyCap, { max: 100000000 });
+    const myCur = currencyOf(me.country);
+    const capErr = amountError(body.perTxnCap, { max: 10000000, cur: myCur }) || amountError(body.monthlyCap, { max: 100000000, cur: myCur });
     if (capErr) return res.status(400).json({ ok: false, error: capErr });
     const perTxn = amountOf(body.perTxnCap);
     const monthly = amountOf(body.monthlyCap);
@@ -612,7 +623,7 @@ async function payApi(req, res, sql, circle, me) {
       await pushCircle(sql, circle.id, { title: '💳 Payment access changed', body: me.name + ' has taken back use of ' + own.m.label }, { only: tRow[0].id });
       return res.status(200).json({ ok: true });
     }
-    const capE = amountError(body.perTxnCap, { max: 10000000 });
+    const capE = amountError(body.perTxnCap, { max: 10000000, cur: currencyOf(me.country) });
     if (capE) return res.status(400).json({ ok: false, error: capE });
     const cap = amountOf(body.perTxnCap);
     const needsOk = !!body.needsOk;
@@ -623,7 +634,7 @@ async function payApi(req, res, sql, circle, me) {
     await sql`insert into pay_log (method_id, member_id, action, amount, note) values (${own.m.id}, ${me.id}, 'allowed', ${cap}, ${tRow[0].name})`;
     await pushCircle(sql, circle.id, {
       title: '💳 ' + me.name + ' let you use ' + own.m.label,
-      body: (cap ? 'Up to ₹' + cap + ' per payment' : 'No limit set') + (needsOk ? ' · ask first each time' : '')
+      body: (cap ? 'Up to ' + money(cap, await curOf(own.m.owner_member)) + ' per payment' : 'No limit set') + (needsOk ? ' · ask first each time' : '')
     }, { only: tRow[0].id });
     return res.status(200).json({ ok: true });
   }
@@ -641,7 +652,8 @@ async function payApi(req, res, sql, circle, me) {
     const amount = Math.max(1, Math.min(100000000, parseInt(body.amount, 10) || 0));
     if (!amount) return res.status(400).json({ ok: false, error: 'How much is it for?' });
     const cap = isOwner ? m.per_txn_cap : (m.my_cap || m.per_txn_cap);
-    if (cap && amount > cap) return res.status(400).json({ ok: false, error: 'That is over the ₹' + cap + ' limit set for you on ' + m.label });
+    const cur = await curOf(m.owner_member);
+    if (cap && amount > cap) return res.status(400).json({ ok: false, error: 'That is over the ' + money(cap, cur) + ' limit set for you on ' + m.label });
     const note = clean(body.note, 160);
     const risk = credentialRisk(note);
     if (risk) return res.status(400).json({ ok: false, error: risk });
@@ -665,7 +677,7 @@ async function payApi(req, res, sql, circle, me) {
         select ${m.id}, ${me.id}, ${act}, ${amount}, ${note} from bump returning id`;
       if (!wrote[0]) {
         const so = await sql`select spent from pay_month where method_id = ${m.id} and month = date_trunc('month', now())::date`;
-        return res.status(400).json({ ok: false, error: 'That would take ' + m.label + ' over its ₹' + m.monthly_cap.toLocaleString('en-IN') + ' limit for this month (₹' + ((so[0] && so[0].spent) || 0).toLocaleString('en-IN') + ' so far)' });
+        return res.status(400).json({ ok: false, error: 'That would take ' + m.label + ' over its ' + money(m.monthly_cap, cur) + ' limit for this month (' + money((so[0] && so[0].spent) || 0, cur) + ' so far)' });
       }
     } else {
       await sql`insert into pay_log (method_id, member_id, action, amount, note) values (${m.id}, ${me.id}, ${act}, ${amount}, ${note})`;
@@ -673,7 +685,7 @@ async function payApi(req, res, sql, circle, me) {
     if (!isOwner) {
       await pushCircle(sql, circle.id, {
         title: act === 'asked' ? '💳 ' + me.name + ' is asking to use ' + m.label : '💳 ' + me.name + ' used ' + m.label,
-        body: '₹' + amount + (note ? ' - ' + note : '')
+        body: money(amount, cur) + (note ? ' - ' + note : '')
       }, { only: m.owner_member });
     }
     return res.status(200).json({ ok: true, status: act });
@@ -694,7 +706,7 @@ async function payApi(req, res, sql, circle, me) {
     if (r[0].member_id) {
       await pushCircle(sql, circle.id, {
         title: act === 'approved' ? '💳 ' + me.name + ' said yes' : '💳 ' + me.name + ' said not this time',
-        body: '₹' + r[0].amount + ' on ' + r[0].label
+        body: money(r[0].amount, await curOf(r[0].owner_member)) + ' on ' + r[0].label
       }, { only: r[0].member_id });
     }
     return res.status(200).json({ ok: true, status: act });

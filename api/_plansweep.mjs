@@ -7,8 +7,13 @@ import { pushCircle } from './_push.mjs';
 export const PLAN_REMIND_MIN = 60;
 export const PLAN_ICON = { call: '📹', party: '🎶', meet: '🤗', appointment: '🩺', function: '🪔', trip: '✈️', other: '🗓' };
 
+// The time in the zone of whoever set it, with that zone named ("IST",
+// "GMT+1", "EDT"), because the family reading it may live somewhere else.
 export function whenText(at, tz) {
-  return new Date(at).toLocaleString('en-IN', { timeZone: tz || 'Asia/Kolkata', weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  let zone = 'UTC';
+  try { if (tz) { new Intl.DateTimeFormat('en-US', { timeZone: tz }); zone = tz; } } catch (e) {}
+  return new Date(at).toLocaleString('en-GB', { timeZone: zone, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short' })
+    .replace('GMT+5:30', 'IST');
 }
 
 export async function sweepPlanReminders(sql, circleId) {

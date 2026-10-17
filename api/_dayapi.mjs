@@ -7,6 +7,7 @@ import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { panchang, currentPeriod } from './_panchang.mjs';
 import { placeOf } from './_places.mjs';
+import { validTz } from './_recur.mjs';
 import { horoscopeToday, signOf, SIGNS, SIGN_BASIS } from './_horoscope.mjs';
 
 export default async function handler(req, res) {
@@ -29,7 +30,9 @@ export default async function handler(req, res) {
     const me = meRow[0];
 
     const now = new Date();
-    const place = placeOf(me.place);
+    // An unknown city falls back to the capital of their country, then to
+    // a city in the phone's own timezone, and only then to Delhi.
+    const place = placeOf(me.place, me.country, validTz(q.tz));
     // The day must be THEIR day, not the server's. Slicing an ISO string gives
     // the UTC date, so between midnight and 05:30 in India - and for most of
     // the evening in the Americas - that is yesterday: the wrong sunrise and,

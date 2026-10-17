@@ -334,7 +334,10 @@ export async function requireMember(sql, code, memberId, token) {
   const circle = await circleByCode(sql, code);
   if (!circle) return { err: 'No family found with that code', status: 404 };
   if (!isUuid(memberId)) return { err: 'Not a member of this family', status: 403 };
-  const rows = await sql`select id, name, role, user_id from members
+  // place, country, dob and phone_cc are read by The day (city and sign),
+  // pricing, Ekta's emergency numbers and SOS dialling; without them every
+  // member looked like a New Delhi resident.
+  const rows = await sql`select id, name, role, user_id, place, country, dob, phone_cc from members
                          where id = ${memberId} and circle_id = ${circle.id}`;
   if (!rows[0]) return { err: 'Not a member of this family', status: 403 };
   // The membership must belong to whoever holds the token. Without this a

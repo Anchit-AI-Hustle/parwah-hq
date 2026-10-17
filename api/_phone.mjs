@@ -2,6 +2,8 @@
 // These are pure functions, and the unit test that covers them must be
 // runnable on a fresh clone with nothing installed. Keeping them out of
 // _db.mjs means the test never drags in the database driver.
+import { DIAL_CODES } from './_countries.mjs';
+
 // Country-code rules: the country code lives SEPARATELY from the local
 // number, and the local number is validated against that country's shape.
 // Strictest for India (the home market); pragmatic ranges elsewhere so real
@@ -36,12 +38,13 @@ export function normPhone(v, cc) {
       if (raw.startsWith(k)) { code = k; local = raw.slice(k.length); break; }
     }
     if (!code) {
-      // country we don't have rules for: split greedily, keep a sane local part
-      for (const n of [3, 2, 1]) {
-        const l = digits.slice(n);
-        if (l.length >= 6 && l.length <= 12) { code = '+' + digits.slice(0, n); local = l; break; }
-      }
+      // A country without its own length rule: match its real dialling code
+      // (every country is in api/_countries.mjs), then a sane local part.
+      code = DIAL_CODES.find(k => raw.startsWith(k)) || null;
       if (!code) return null;
+      local = raw.slice(code.length);
+      if (code !== '+39') local = local.replace(/^0+/, '');
+      if (local.length < 4 || local.length > 13) return null;
       return { e164: code + local, cc: code, local };
     }
   } else {
@@ -49,11 +52,16 @@ export function normPhone(v, cc) {
     code = (cc && /^\+\d{1,3}$/.test(String(cc))) ? String(cc) : '+91';
     local = raw;
   }
+  // The leading 0 people type at home (UK 07700..., Germany 0151...,
+  // Australia 04..., UAE 050...) is a trunk prefix: it is not dialled from
+  // abroad, so it is not part of the international number. Italy is the one
+  // big exception: its 0 stays.
+  if (code !== '+39') local = local.replace(/^0+/, '');
   const rule = PHONE_CC[code];
   if (rule) {
     if (local.length < rule.min || local.length > rule.max) return null;
     if (rule.re && !rule.re.test(local)) return null;
-  } else if (local.length < 6 || local.length > 12) return null;
+  } else if (local.length < 4 || local.length > 13) return null;
   return { e164: code + local, cc: code, local };
 }
 

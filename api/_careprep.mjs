@@ -13,6 +13,7 @@
 // 8. DPDP Audit Events & Access Transparency
 
 import { randomUUID } from 'node:crypto';
+import { currencyOf, money } from './_money.mjs';
 
 export function isUuid(v) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ''));
@@ -116,6 +117,9 @@ export async function ensureCarePrepSchema(sql) {
       visibility text not null default 'family'
     )`;
     await sql`create index if not exists idx_care_bills_circle on care_bills (circle_id, payment_status)`;
+    // The biller's own UPI ID (India only), and who settled it.
+    await sql`alter table care_bills add column if not exists upi_id text`;
+    await sql`alter table care_bills add column if not exists settled_by uuid references members(id) on delete set null`;
 
     // 5. Legacy Asset Locator ("When I'm Not Here")
     await sql`create table if not exists legacy_asset_locators (
@@ -313,20 +317,19 @@ export function buildEmergencyAdmissionPacket(person, policy, tpa, networkHospit
   const insName = policy ? policy.name : 'Health Insurance';
   const polNum = policy && policy.notes ? policy.notes : 'Available in Vault';
 
-  const tpaName = tpa ? tpa.name : 'TPA Cashless Desk';
-  const tpaPhone = tpa ? (tpa.phone || tpa.tollFree || '1800-102-4477') : '1800-102-4477';
-  const tpaEmail = tpa ? (tpa.email || 'cashless@tpa.desk') : 'cashless@tpa.desk';
+  // Only what the family recorded: no made-up helpline, email or hospital.
+  const tpaName = tpa && tpa.name ? tpa.name : null;
+  const tpaPhone = tpa ? (tpa.phone || tpa.tollFree || null) : null;
+  const tpaEmail = tpa ? (tpa.email || null) : null;
 
-  const hospitals = (networkHospitals.length > 0) ? networkHospitals : [
-    { name: 'Nearest Cashless Hospital', address: 'Consult TPA network directory', distance: 'Local area', phone: tpaPhone }
-  ];
+  const hospitals = networkHospitals.length > 0 ? networkHospitals : [];
 
   const shareText = `*Emergency Cashless Admission Packet*\n` +
     `Patient: ${pName}\n` +
     `Insurer: ${insName}\n` +
     `Policy / Member Ref: ${polNum}\n` +
-    `TPA Help Desk: ${tpaName} (${tpaPhone})\n` +
-    `Cashless Desk Email: ${tpaEmail}\n` +
+    (tpaName || tpaPhone ? `TPA Help Desk: ${tpaName || 'TPA'}${tpaPhone ? ' (' + tpaPhone + ')' : ''}\n` : '') +
+    (tpaEmail ? `Cashless Desk Email: ${tpaEmail}\n` : '') +
     `Senior ID (Masked): ${kycBundle.aadhaarMask || 'Recorded in Vault'}`;
 
   return {
@@ -434,16 +437,17 @@ export const BILL_CATEGORIES = [
   'OTHER'
 ];
 
-export function buildUpiDeepLink(billerName, amount, consumerNumber, category = 'OTHER') {
+// UPI is India's: a link is made only for a bill in rupees with the biller's
+// own UPI ID. A made-up ID would send a family's money to nobody.
+export function buildUpiDeepLink(billerName, amount, consumerNumber, category = 'OTHER', upiId = null, cur = 'INR') {
+  if (!upiId || !/^[\w.-]{2,}@[\w.-]{2,}$/.test(String(upiId)) || cur !== 'INR') return null;
   const amt = Number(amount || 0).toFixed(2);
-  const upiId = 'bills@parwah'; // In production, resolved from biller's verified VPA
   const note = encodeURIComponent(`${category} - ${billerName} ${consumerNumber ? '#' + consumerNumber : ''}`.trim());
-  return `upi://pay?pa=${upiId}&pn=${encodeURIComponent(billerName)}&am=${amt}&cu=INR&tn=${note}`;
+  return `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(billerName)}&am=${amt}&cu=INR&tn=${note}`;
 }
 
-export function formatBillSettledNotification(billerName, amount, payerName) {
-  const amt = Number(amount || 0).toFixed(0);
-  return `${billerName} bill of ₹${amt} was paid by ${payerName} ✅`;
+export function formatBillSettledNotification(billerName, amount, payerName, cur = 'INR') {
+  return `${billerName} bill of ${money(Math.round(Number(amount || 0)), cur)} was paid by ${payerName} ✅`;
 }
 
 // ---------------------------------------------------------------------------
@@ -709,18 +713,25 @@ export async function billsApi(req, res) {
       if (g.err) return res.status(g.status).json({ ok: false, error: g.err });
 
       const rows = await sql`
-        select cb.*, m.name as person_name, p.name as payer_name
+        select cb.*, m.name as person_name, p.name as payer_name, p.name as assigned_payer_name,
+               s.name as settled_by_name, c.country as creator_country
         from care_bills cb
         left join members m on m.id = cb.person_id
         left join members p on p.id = cb.assigned_payer_id
+        left join members s on s.id = cb.settled_by
+        left join members c on c.id = cb.created_by
         where cb.circle_id = ${g.circle.id}
         order by cb.payment_status asc, cb.due_date asc nulls last, cb.created_at desc
       `;
 
-      const bills = rows.map(b => ({
-        ...b,
-        upi_link: buildUpiDeepLink(b.biller_name, b.amount_due, b.consumer_number, b.bill_category)
-      }));
+      // A bill is in the money of whoever added it - the household it
+      // belongs to.
+      const bills = rows.map(b => {
+        const currency = currencyOf(b.creator_country);
+        const { creator_country, ...rest } = b;
+        return { ...rest, currency,
+          upi_link: buildUpiDeepLink(b.biller_name, b.amount_due, b.consumer_number, b.bill_category, b.upi_id, currency) };
+      });
 
       return res.status(200).json({ ok: true, bills });
     }
@@ -731,19 +742,30 @@ export async function billsApi(req, res) {
       const g = await requireMember(sql, code, memberId, tokenOf(req));
       if (g.err) return res.status(g.status).json({ ok: false, error: g.err });
 
-      if (action === 'bill_add') {
-        const { personId, category, billerName, consumerNumber, amount, dueDate, assignedPayerId } = req.body;
+      // The app has always sent create/settle with snake_case fields; both
+      // spellings are taken, so a bill saved from the app is really saved.
+      const B = req.body;
+      if (action === 'bill_add' || action === 'create') {
+        const personId = B.personId || B.person_id, category = B.category || B.bill_category;
+        const billerName = String(B.billerName || B.biller_name || '').trim().slice(0, 100);
+        const consumerNumber = String(B.consumerNumber || B.consumer_number || '').trim().slice(0, 60);
+        const amount = B.amount !== undefined ? B.amount : B.amount_due;
+        const dueDate = B.dueDate || B.due_date, assignedPayerId = B.assignedPayerId || B.assigned_payer_id;
+        const upiRaw = String(B.upiId || B.upi_id || '').trim();
         if (!billerName) return res.status(400).json({ ok: false, error: 'Biller name is required' });
+        if (!(Number(amount) > 0) || Number(amount) > 100000000) return res.status(400).json({ ok: false, error: 'Write the amount as a number above 0' });
+        if (dueDate && !/^\d{4}-\d{2}-\d{2}/.test(String(dueDate))) return res.status(400).json({ ok: false, error: 'Pick the due date from the calendar' });
+        if (upiRaw && !/^[\w.-]{2,}@[\w.-]{2,}$/.test(upiRaw)) return res.status(400).json({ ok: false, error: 'A UPI ID looks like name@bank' });
         const cat = BILL_CATEGORIES.includes(category) ? category : 'OTHER';
 
         const inserted = await sql`
           insert into care_bills (
             circle_id, person_id, bill_category, biller_name, consumer_number,
-            amount_due, due_date, assigned_payer_id, created_by
+            amount_due, due_date, assigned_payer_id, created_by, upi_id
           ) values (
             ${g.circle.id}, ${isUuid(personId) ? personId : null}, ${cat}, ${billerName},
             ${consumerNumber || null}, ${Number(amount) || 0}, ${dueDate ? new Date(dueDate) : null},
-            ${isUuid(assignedPayerId) ? assignedPayerId : null}, ${g.me.id}
+            ${isUuid(assignedPayerId) ? assignedPayerId : null}, ${g.me.id}, ${upiRaw || null}
           ) returning id
         `;
 
@@ -758,8 +780,8 @@ export async function billsApi(req, res) {
         return res.status(200).json({ ok: true, id: inserted[0].id });
       }
 
-      if (action === 'bill_settle') {
-        const { billId, proofAttachmentId } = req.body;
+      if (action === 'bill_settle' || action === 'settle') {
+        const billId = B.billId || B.id, proofAttachmentId = B.proofAttachmentId;
         if (!isUuid(billId)) return res.status(400).json({ ok: false, error: 'Invalid bill ID' });
 
         const bill = await sql`select * from care_bills where id = ${billId} and circle_id = ${g.circle.id}`;
@@ -769,12 +791,14 @@ export async function billsApi(req, res) {
           update care_bills set
             payment_status = 'SETTLED',
             settled_at = now(),
+            settled_by = ${g.me.id},
             proof_attachment_id = ${isUuid(proofAttachmentId) ? proofAttachmentId : null},
             updated_at = now()
           where id = ${billId}
         `;
 
-        const notifText = formatBillSettledNotification(bill[0].biller_name, bill[0].amount_due, g.me.name);
+        const cr = bill[0].created_by ? await sql`select country from members where id = ${bill[0].created_by}` : [];
+        const notifText = formatBillSettledNotification(bill[0].biller_name, bill[0].amount_due, g.me.name, currencyOf(cr[0] && cr[0].country));
         await sql`
           insert into events (circle_id, member_id, type, text)
           values (${g.circle.id}, ${g.me.id}, 'care', ${notifText})

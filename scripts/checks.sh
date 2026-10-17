@@ -21,6 +21,9 @@ node site/tests/gametest.mjs
 # Ekta with no credit: she retrieves from the family's own records rather
 # than dying. _ektalocal.mjs imports nothing, so this runs before npm install.
 node site/tests/ektatest.mjs
+# A family outside India: phone numbers, SOS dialling and time, emergency and
+# crisis lines, money and "today". Every module it loads imports only data.
+node site/tests/globaltest.mjs
 # Escaping, image URIs and private-entry names: the rules that keep one
 # family's data out of another's screen. _sec.mjs imports nothing either.
 node site/tests/sectest.mjs

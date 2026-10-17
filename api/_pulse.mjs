@@ -8,6 +8,7 @@
 //
 // Some answers quietly carry "a call would be nice". That is the whole point
 // of the feature: a way to say you are not fine without having to say it.
+import { dayIn } from './_recur.mjs';
 
 export const PULSE_STYLES = {
   weather: { name: 'Weather', ask: 'What is the weather like inside you today?', options: [
@@ -49,7 +50,8 @@ export const PULSE_STYLES = {
 
 const ORDER = ['weather', 'battery', 'animals', 'roads', 'food'];
 
-export function today() { return new Date().toISOString().slice(0, 10); }
+// The day where the asker is (their phone sends its zone), UTC otherwise.
+export function today(tz) { return dayIn(tz); }
 
 // The same style for everyone on a given day, derived from the date so no
 // state has to be kept and every device agrees without asking.
@@ -80,9 +82,9 @@ export async function ensurePulseSchema(sql) {
 
 // Today's answers, with everyone who has not answered included as null - the
 // screen is "how are my people", so a person who has not said is part of it.
-export async function pulseToday(sql, circleId) {
+export async function pulseToday(sql, circleId, tz) {
   await ensurePulseSchema(sql);
-  const day = today(), styleKey = styleFor(day);
+  const day = today(tz), styleKey = styleFor(day);
   const rows = await sql`
     select p.member_id, p.style, p.value, p.note, p.at
     from pulse p where p.circle_id = ${circleId} and p.day = ${day}`;

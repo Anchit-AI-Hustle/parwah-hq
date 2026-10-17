@@ -5,7 +5,7 @@
 // on a fresh clone before npm install, exactly like phonetest.mjs.
 import { sunTimes, panchang, currentPeriod, CHALDEAN, WEEKDAY_LORD, LORD_OF,
          derivedDaySeq, derivedNightSeq } from '../../api/_panchang.mjs';
-import { placeOf, CITIES } from '../../api/_places.mjs';
+import { placeOf, CITIES, CAPITALS } from '../../api/_places.mjs';
 import { SIGNS, signOf, fetchSign, ENDPOINT } from '../../api/_horoscope.mjs';
 
 let pass = 0, fail = 0;
@@ -139,8 +139,23 @@ ok(placeOf('').guessed === true && placeOf('').lat === 28.6139, 'no place at all
 ok(placeOf('').unset === true && !placeOf('Chhotapur').unset && !placeOf('Pune').unset,
    'no city at all is told apart from a city we do not know, so the app can say "add your city"');
 ok(placeOf('Nowhereville').name === 'Nowhereville', 'the flagged fallback still echoes what was typed');
-ok(Object.values(CITIES).every(c => c.length === 3 && Math.abs(c[0]) <= 90 && Math.abs(c[1]) <= 180 && /\//.test(c[2])),
-  'every city has a sane latitude, longitude and IANA timezone');
+ok(Object.values(CITIES).every(c => c.length === 4 && Math.abs(c[0]) <= 90 && Math.abs(c[1]) <= 180 && /\//.test(c[2]) && /^[A-Z]{2}$/.test(c[3])),
+  'every city has a sane latitude, longitude, IANA timezone and country');
+ok(Object.values(CAPITALS).every(c => c.length === 4 && Math.abs(c[0]) <= 90 && Math.abs(c[1]) <= 180 && /\//.test(c[2]) && c[3]),
+  'every capital has a sane latitude, longitude, timezone and name');
+ok(Object.values(CITIES).concat(Object.values(CAPITALS)).every(c => { try { new Intl.DateTimeFormat('en', { timeZone: c[2] }); return true; } catch (e) { return false; } }),
+  'every timezone in the tables is one the runtime knows');
+ok(placeOf('', 'US').tz === 'America/New_York' && placeOf('', 'US').unset && placeOf('', 'US').usedName === 'Washington',
+  'no city but a country: the capital of that country, not Delhi');
+ok(placeOf('Nowhereville', 'DE').tz === 'Europe/Berlin' && placeOf('Nowhereville', 'DE').guessed,
+  'an unknown city abroad falls back to that country, still flagged');
+ok(placeOf('', '', 'Europe/Paris').tz === 'Europe/Paris', 'no city or country: a city in the phone timezone');
+ok(placeOf('London', 'CA').tz === 'America/Toronto' && placeOf('London', 'GB').tz === 'Europe/London',
+  'a name shared by two countries follows the member country');
+ok(placeOf('Toronto', 'IN').tz === 'America/Toronto' && !placeOf('Toronto', 'IN').guessed,
+  'a city that exists only once wins over the profile country');
+ok(placeOf('Malerkotla').usedName === 'New Delhi', 'a short city name inside a longer word does not match (Male is not Malerkotla)');
+ok(placeOf('Sao Paulo').tz === 'America/Sao_Paulo' && placeOf('Tokyo').tz === 'Asia/Tokyo', 'cities far from India resolve');
 
 // ---- rashi from date of birth -------------------------------------------
 ok(SIGNS.length === 12, 'twelve signs');

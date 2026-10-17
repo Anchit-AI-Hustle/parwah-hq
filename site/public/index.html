@@ -1613,13 +1613,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     </div>
 
     <div class="subsec" data-sec="bills" hidden>
-      <p class="hint" style="margin:0 0 var(--space-12)">Family utility bills and household salaries. Anyone can pay via UPI or settle for parents.</p>
+      <p class="hint" style="margin:0 0 var(--space-12)">Family utility bills and household salaries. Anyone in the family can pay one, or settle it for parents.</p>
       <div class="feed" id="bill-feed"><div class="ev">Loading bills...</div></div>
 
       <div class="card" style="margin-top:var(--space-16)">
         <h3>Add a recurring bill</h3>
         <label for="bill-name">Biller name</label>
-        <input type="text" id="bill-name" maxlength="100" placeholder="e.g. BSES Rajdhani, IGL Gas, Airtel, Cook Salary">
+        <input type="text" id="bill-name" maxlength="100" placeholder="e.g. the electricity company, gas, internet, the cook's salary">
         <div class="pickrow">
           <label class="pick"><span>Category</span>
             <select id="bill-cat">
@@ -1634,7 +1634,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
               <option value="OTHER">Other</option>
             </select>
           </label>
-          <label class="pick"><span>Amount (Rs)</span><input type="number" id="bill-amount" min="1" placeholder="840"></label>
+          <label class="pick"><span>Amount <span class="vp-cur">₹</span></span><input type="number" id="bill-amount" min="1" placeholder="840"></label>
         </div>
         <div class="pickrow" style="margin-top:var(--space-12)">
           <label class="pick"><span>Consumer ID / Account</span><input type="text" id="bill-consumer" placeholder="e.g. 100234891"></label>
@@ -1642,7 +1642,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         </div>
         <div class="pickrow" style="margin-top:var(--space-12)">
           <label class="pick"><span>Assign payer</span><select id="bill-payer"></select></label>
-          <label class="pick"><span>UPI ID (optional)</span><input type="text" id="bill-upi" placeholder="e.g. bses@icici"></label>
+          <label class="pick" id="bill-upi-wrap"><span>Biller's UPI ID (optional)</span><input type="text" id="bill-upi" placeholder="e.g. bses@icici"></label>
         </div>
         <button type="button" class="go" id="btn-add-bill" style="margin-top:var(--space-16);min-height:48px">Save bill</button>
       </div>
@@ -1836,19 +1836,21 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <div id="bf-address" hidden>
           <label for="b-address">House / flat and street</label>
           <input type="text" id="b-address" maxlength="300" placeholder="e.g. S-354, Block S">
-          <label for="b-pin">PIN code</label>
+          <label for="b-actry">Country</label>
+          <select id="b-actry" autocomplete="country"></select>
+          <label for="b-pin" id="b-pin-l">PIN code</label>
           <div class="phrow">
             <input type="text" id="b-pin" inputmode="numeric" maxlength="6" placeholder="e.g. 110048" autocomplete="postal-code">
             <button type="button" class="cbtn ghost" id="b-pinlook">Check</button>
           </div>
           <p class="hint" id="b-pinmsg" style="margin:var(--space-4) 0 0"></p>
           <div id="b-pinout" hidden>
-            <label for="b-area">Locality</label>
+            <label for="b-area" id="b-area-l">Locality</label>
             <select id="b-area"></select>
             <div class="tworow">
-              <span><label for="b-city">District / city</label>
+              <span><label for="b-city" id="b-city-l">District / city</label>
                 <input type="text" id="b-city" maxlength="80" placeholder="e.g. South Delhi"></span>
-              <span><label for="b-state">State</label>
+              <span><label for="b-state" id="b-state-l">State</label>
                 <input type="text" id="b-state" maxlength="80" placeholder="e.g. Delhi"></span>
             </div>
           </div>
@@ -2027,13 +2029,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <input type="text" id="vp-label" maxlength="80" placeholder="e.g. Papa's HDFC UPI">
         <label for="vp-handle">UPI ID, or the last 4 digits of the card</label>
         <input type="text" id="vp-handle" maxlength="60" autocomplete="off" placeholder="e.g. papa@okhdfc  ·  ••••4321">
-        <label for="vp-cap">Cap per payment ₹</label>
+        <label for="vp-cap">Cap per payment <span class="vp-cur">₹</span></label>
         <input type="number" id="vp-cap" min="1" step="1" inputmode="numeric">
         <details class="fmore" id="vp-more">
         <summary>More options: bank, monthly cap, notes</summary>
         <label for="vp-bank">Bank or provider</label>
         <input type="text" id="vp-bank" maxlength="60" placeholder="e.g. HDFC Bank">
-        <label for="vp-mcap">Cap per month ₹</label>
+        <label for="vp-mcap">Cap per month <span class="vp-cur">₹</span></label>
         <input type="number" id="vp-mcap" min="1" step="1" inputmode="numeric">
         <label for="vp-note">Notes</label>
         <input type="text" id="vp-note" maxlength="200" placeholder="e.g. for the chemist and groceries only">
@@ -2153,6 +2155,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
             </select>
           </label>
           <label class="pick"><span>Value</span><input type="number" step="0.1" id="bm-new-val" placeholder="6.5"></label>
+          <label class="pick" id="bm-unit-wrap" hidden><span>Units on the report</span><select id="bm-new-unit"></select></label>
         </div>
         <div class="pickrow" style="margin-top:var(--space-8)">
           <label class="pick"><span>Normal low</span><input type="number" step="0.1" id="bm-new-low" placeholder="4.0"></label>
@@ -2160,7 +2163,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         </div>
         <div class="pickrow" style="margin-top:var(--space-8)">
           <label class="pick"><span>Test date</span><input type="date" id="bm-new-date"></label>
-          <label class="pick"><span>Lab name</span><input type="text" id="bm-new-lab" placeholder="e.g. Lal PathLabs"></label>
+          <label class="pick"><span>Lab name</span><input type="text" id="bm-new-lab" placeholder="e.g. the lab named on the report"></label>
         </div>
         <div style="display:flex;gap:var(--space-8);margin-top:var(--space-12)">
           <button type="button" class="cbtn" id="btn-save-biomarker" style="min-height:48px">Save metric</button>
@@ -2730,13 +2733,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <label for="e-country">Country</label>
         <select id="e-country">
           <option value="">Choose…</option>
-          <option value="IN">🇮🇳 India</option>
-          <option value="US">🇺🇸 USA</option>
-          <option value="GB">🇬🇧 UK</option>
-          <option value="CA">🇨🇦 Canada</option>
-          <option value="AE">🇦🇪 UAE</option>
-          <option value="AU">🇦🇺 Australia</option>
-          <option value="SG">🇸🇬 Singapore</option>
           <option value="XX">🌍 Elsewhere</option>
         </select>
         <details class="giftmore" style="margin-top:var(--space-16)">
@@ -2945,14 +2941,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <div class="mp">
     <button class="x" id="aud-x" aria-label="Close">✕</button>
     <h3 id="aud-title">👁️ Who can see this?</h3>
-    <p class="hint" style="margin:var(--space-4) 0 var(--space-12)">Under India's Digital Personal Data Protection (DPDP) Act, your family's records belong to you. You can see who has access, where data is held, and export or revoke at any time.</p>
+    <p class="hint" style="margin:var(--space-4) 0 var(--space-12)">Your family's records belong to you, wherever you live - in India the Digital Personal Data Protection (DPDP) Act says so in law. You can see who has access, where data is held, and export or revoke at any time.</p>
     <div class="card" style="margin-bottom:var(--space-12)">
       <h4 style="margin:0 0 var(--space-8)">🔒 Access &amp; Permissions</h4>
       <div class="feed" id="aud-members"></div>
     </div>
     <div class="card" style="margin-bottom:var(--space-12)">
-      <h4 style="margin:0 0 var(--space-8)">🇮🇳 Data Residency &amp; Encryption</h4>
-      <p class="hint" style="margin:0">Stored and processed in India (Mumbai AWS/GCP region). Encrypted at rest and in transit. Auditable and revocable.</p>
+      <h4 style="margin:0 0 var(--space-8)">🔐 Where it is kept</h4>
+      <p class="hint" style="margin:0">Held in Parwah's own cloud database (Neon Postgres), encrypted at rest and in transit, for families in every country alike. Every look is written in the audit trail below, and any access can be taken back.</p>
     </div>
     <div class="card" style="margin-bottom:var(--space-12)">
       <h4 style="margin:0 0 var(--space-8)">📜 Access &amp; Audit Trail</h4>
@@ -3214,7 +3210,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     XX: { flag: '🌍', cash: [['PayPal', 'https://www.paypal.com'], ['Wise', 'https://wise.com'], ['Western Union', 'https://www.westernunion.com'], ['Remitly', 'https://www.remitly.com']],
           shop: [['Amazon (global)', 'https://www.amazon.com'], ['Giftcards.com', 'https://www.giftcards.com']] }
   };
-  function regionOf(m){ return REGIONS[m && m.country] || REGIONS.IN; }
+  function regionOf(m){ var c = m && m.country; return REGIONS[c] || (c ? REGIONS.XX : REGIONS.IN); }
   function giftLines(m){
     var g = (m && m.gift_info) || {};
     var sizes = [];
@@ -3228,8 +3224,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
   function placeLine(m){
     if (!m || !m.place) return null;
-    var r = REGIONS[m.country];
-    return m.place + (r && m.country !== 'XX' ? ' ' + r.flag : (m.country === 'XX' ? ' 🌍' : ''));
+    var known = m.country && m.country !== 'XX' && COUNTRIES.some(function(c){ return c[0] === m.country; });
+    return m.place + (known ? ' ' + flagOf(m.country) : (m.country === 'XX' ? ' 🌍' : ''));
   }
   var curTab = 'home', curGame = null, gameTimer = null, planKind = 'call', gamesList = [];
   // While People is open, other people's positions reload on their own.
@@ -3258,6 +3254,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var h = extra || {};
     var t = authToken();
     if (t) h['X-Parwah-Token'] = t;
+    // So the server's "today" is this family's today, wherever they are.
+    try { var z = Intl.DateTimeFormat().resolvedOptions().timeZone; if (z) h['X-Parwah-Tz'] = z; } catch (e) {}
     return h;
   }
   // A session that has expired or been signed out elsewhere must land the
@@ -4055,6 +4053,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   };
   function loadBills(){
     if (!state) return;
+    // The amount box speaks the family's money; UPI is offered only in India.
+    document.querySelectorAll('.vp-cur').forEach(function(x){ x.textContent = curSym(myCurrency()); });
+    $('bill-upi-wrap').hidden = myCurrency() !== 'INR';
     var payerSel = $('bill-payer');
     if (payerSel && membersCache) {
       payerSel.innerHTML = '<option value="">Select family member</option>' + membersCache.map(function(m){
@@ -4079,7 +4080,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       var icon = BILL_ICONS[b.bill_category] || '🧾';
       var due = b.due_date ? ('Due ' + vDate(b.due_date)) : '';
       var payerName = b.assigned_payer_name || 'Anyone in family';
-      var upiUrl = 'upi://pay?pa=' + encodeURIComponent(b.upi_id || 'bill@upi') + '&pn=' + encodeURIComponent(b.biller_name) + '&am=' + encodeURIComponent(b.amount_due) + '&cu=INR';
+      // UPI only for a rupee bill with the biller's own UPI ID - the server
+      // makes the link, and never with a made-up ID.
+      var upiUrl = b.upi_link || '';
       return '<div class="card" style="margin-bottom:var(--space-12);border-left:4px solid ' + (isSettled ? 'var(--moss)' : 'var(--marigold)') + '">' +
         '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
           '<div>' +
@@ -4087,14 +4090,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
             '<small style="color:var(--ink-sub)">' + esc(b.consumer_number ? ('A/C: ' + b.consumer_number) : b.bill_category) + (due ? (' · ' + due) : '') + '</small>' +
           '</div>' +
           '<div style="text-align:right">' +
-            '<b style="font-size:var(--fs-18)">Rs ' + esc(b.amount_due) + '</b><br>' +
+            '<b style="font-size:var(--fs-18)">' + esc(moneyFmt(Math.round(Number(b.amount_due) || 0), b.currency === undefined ? 'INR' : b.currency)) + '</b><br>' +
             '<span class="badge" style="background:' + (isSettled ? 'var(--moss)' : 'var(--tint-warm)') + ';color:' + (isSettled ? '#fff' : 'var(--ink)') + '">' + esc(b.payment_status) + '</span>' +
           '</div>' +
         '</div>' +
         '<p class="hint" style="margin:var(--space-8) 0">Assigned payer: <b>' + esc(payerName) + '</b></p>' +
         (!isSettled ? (
           '<div class="prow2" style="margin-top:var(--space-8)">' +
-            '<a class="cbtn" style="text-decoration:none;text-align:center;min-height:48px;line-height:48px" href="' + esc(upiUrl) + '">📱 Pay via UPI</a>' +
+            (upiUrl ? '<a class="cbtn" style="text-decoration:none;text-align:center;min-height:48px;line-height:48px" href="' + esc(upiUrl) + '">📱 Pay via UPI</a>' : '') +
             '<button type="button" class="cbtn ghost" data-settlebill="' + esc(b.id) + '" style="min-height:48px">Mark as Paid</button>' +
           '</div>'
         ) : '<p class="hint" style="margin:var(--space-4) 0 0;color:var(--moss)">Settled by ' + esc(b.settled_by_name || 'family') + ' ✅</p>') +
@@ -4111,7 +4114,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         if (j.ok) {
           var biller = target ? target.biller_name : 'Bill';
           var amt = target ? target.amount_due : '';
-          var msg = biller + (amt ? (' of Rs ' + amt) : '') + ' was marked paid ✅';
+          var msg = biller + (amt ? (' of ' + moneyFmt(Math.round(Number(amt) || 0), target.currency === undefined ? 'INR' : target.currency)) : '') + ' was marked paid ✅';
           toast(msg);
           loadBills();
         } else {
@@ -4313,6 +4316,46 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     HEMOGLOBIN: { label: 'Hemoglobin', unit: 'g/dL', low: 13.0, high: 17.0 }
   };
 
+  // The same test is reported in different units in different countries:
+  // 6.0 mmol/L in Leeds is 108 mg/dL in Delhi. A report is entered in the
+  // units printed on it, and kept in one unit so every reading lines up.
+  // [SI unit, from SI to the stored unit]
+  var BM_SI = {
+    HBA1C: ['mmol/mol', function(v){ return v / 10.929 + 2.15; }, function(v){ return (v - 2.15) * 10.929; }],
+    FASTING_GLUCOSE: ['mmol/L', function(v){ return v * 18.016; }, function(v){ return v / 18.016; }],
+    POST_PRANDIAL_GLUCOSE: ['mmol/L', function(v){ return v * 18.016; }, function(v){ return v / 18.016; }],
+    CREATININE: ['µmol/L', function(v){ return v / 88.42; }, function(v){ return v * 88.42; }],
+    TOTAL_CHOLESTEROL: ['mmol/L', function(v){ return v * 38.67; }, function(v){ return v / 38.67; }],
+    LDL: ['mmol/L', function(v){ return v * 38.67; }, function(v){ return v / 38.67; }],
+    HDL: ['mmol/L', function(v){ return v * 38.67; }, function(v){ return v / 38.67; }],
+    TRIGLYCERIDES: ['mmol/L', function(v){ return v * 88.57; }, function(v){ return v / 88.57; }],
+    HEMOGLOBIN: ['g/L', function(v){ return v / 10; }, function(v){ return v * 10; }]
+  };
+  // Where labs print SI units by default; anyone can switch on the form.
+  var SI_LABS = ['GB','IE','CA','AU','NZ','ZA','SG','MY','HK','CH','NO','SE','DK','FI','IS','NL','BE','DE','AT','FR','ES','PT','IT','PL','CZ','GR'];
+  function bmPrefersSi(){
+    var c = '', mid = state && state.memberId;
+    (membersCache || []).forEach(function(x){ if (x.id === mid && x.country && x.country !== 'XX') c = x.country; });
+    return SI_LABS.indexOf(c || guessIso()) >= 0;
+  }
+  function bmRound(v){ return Math.round(v * 10) / 10; }
+  function bmUnits(){
+    var type = $('bm-new-type').value, si = BM_SI[type], meta = BM_META[type];
+    $('bm-unit-wrap').hidden = !si;
+    if (!si || !meta) return;
+    var sel = $('bm-new-unit');
+    sel.innerHTML = '<option value="si">' + esc(si[0]) + '</option><option value="conv">' + esc(meta.unit) + '</option>';
+    sel.value = bmPrefersSi() ? 'si' : 'conv';
+  }
+  $('bm-new-type').addEventListener('change', bmUnits);
+  // A stored reading, also in the reader's own units when they use SI.
+  function bmShow(type, v, unit){
+    var si = BM_SI[type], meta = BM_META[type];
+    var base = esc(v) + ' ' + esc(unit || '');
+    if (!si || !meta || unit !== meta.unit || !bmPrefersSi()) return base;
+    return esc(bmRound(si[2](+v))) + ' ' + esc(si[0]) + ' (' + base + ')';
+  }
+
   function loadBiomarkers(pId){
     if (!state || !pId) return;
     apiGet(API.biomarkers + '&circle=' + encodeURIComponent(state.code) + '&person_id=' + encodeURIComponent(pId))
@@ -4440,7 +4483,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         ? ('Normal: ' + b.reference_range_low + ' - ' + b.reference_range_high + ' ' + b.unit) : '';
       return '<div class="crow">' +
         '<span class="txt">' +
-          '<b>' + esc(meta.label) + ': ' + esc(b.value) + ' ' + esc(b.unit) + '</b>' +
+          '<b>' + esc(meta.label) + ': ' + bmShow(b.biomarker_type, b.value, b.unit) + '</b>' +
           '<small>' + esc(String(b.test_date || '').slice(0, 10)) + (b.lab_name ? (' · ' + esc(b.lab_name)) : '') + (rangeStr ? (' · ' + esc(rangeStr)) : '') + '</small>' +
         '</span>' +
         '<span class="badge" style="background:var(--tint-warm);color:var(--ink)">' + (b.verified_by_user ? 'Verified' : 'Extracted') + '</span>' +
@@ -4450,6 +4493,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   $('btn-add-biomarker').addEventListener('click', function(){
     $('biomarker-add-form').hidden = !$('biomarker-add-form').hidden;
+    bmUnits();
   });
   $('btn-cancel-biomarker').addEventListener('click', function(){
     $('biomarker-add-form').hidden = true;
@@ -4459,14 +4503,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (!val) { toast('Please enter a metric value'); return; }
     var type = $('bm-new-type').value;
     var meta = BM_META[type] || { unit: '', low: null, high: null };
+    var si = BM_SI[type] && !$('bm-unit-wrap').hidden && $('bm-new-unit').value === 'si' ? BM_SI[type] : null;
+    var toStored = function(x){ return si ? bmRound(si[1](+x)) : +x; };
     var body = {
       code: state.code, memberId: state.memberId, action: 'create',
       person_id: personId || state.memberId,
       biomarker_type: type,
-      value: +val,
+      value: toStored(val),
       unit: meta.unit || '',
-      reference_range_low: $('bm-new-low').value ? +$('bm-new-low').value : meta.low,
-      reference_range_high: $('bm-new-high').value ? +$('bm-new-high').value : meta.high,
+      reference_range_low: $('bm-new-low').value ? toStored($('bm-new-low').value) : meta.low,
+      reference_range_high: $('bm-new-high').value ? toStored($('bm-new-high').value) : meta.high,
       test_date: $('bm-new-date').value ? new Date($('bm-new-date').value).toISOString() : new Date().toISOString(),
       lab_name: $('bm-new-lab').value.trim() || 'Manual Entry',
       verified_by_user: true
@@ -4562,8 +4608,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var exportPayload = {
       circle: state.circleName || state.code,
       exported_at: new Date().toISOString(),
-      dpdp_compliance: 'Digital Personal Data Protection Act, 2023 (India)',
-      data_residency: 'AWS/GCP Mumbai Region, India',
+      rights: 'Your records belong to your family. In India: Digital Personal Data Protection Act, 2023.',
+      data_storage: 'Parwah cloud database (Neon Postgres), encrypted at rest and in transit',
       members: membersCache || [],
       records: bookCache || [],
       bills: billsCache || [],
@@ -5353,7 +5399,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('chat-fab').hidden = true; $('sos-fab').hidden = true; $('ncsheet').hidden = true; $('tsheet').hidden = true;
     try { drawerOpen(false); } catch (e) {}
     var sp = splitE164(authUser && authUser.phone);
-    if (sp) { $('au-cc').value = sp.cc; $('au-phone').value = sp.local; }
+    if (sp) { setCc('au-cc', sp.cc); $('au-phone').value = sp.local; }
     showStep('auth');
     secretBox('older', 'Parwah now signs in with a 4-number PIN. Type your current PIN or password once, then choose your new PIN. Your families are all still here.');
     $('au-go').textContent = 'Continue';
@@ -6072,10 +6118,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     sosRecord();
     // A position helps, but the alert never waits more than 4 seconds for one.
     sosPos(4000).then(function(pos){
-      var body = { code: state.code, memberId: state.memberId, type: 'sos', text: sosSaid };
+      var body = { code: state.code, memberId: state.memberId, type: 'sos', text: sosSaid, tz: homeTz() };
       if (pos) { body.lat = pos.lat; body.lng = pos.lng; body.accuracy = Math.round(pos.accuracy || 0); }
       return post(API.events, body).then(function(j){
-        if (!j.ok) { $('ss-status').textContent = (j.error || 'The SOS could not be sent') + '. Call 112 or your family now.'; return; }
+        if (!j.ok) { $('ss-status').textContent = (j.error || 'The SOS could not be sent') + '. Call ' + myEmergencyNo() + ' or your family now.'; return; }
         sosLive = { id: j.sosId, text: j.text, contacts: j.contacts || [], map: j.map };
         var dl = j.dialed && j.dialed.configured ? j.dialed : null, sent = dl ? dl.sms + dl.whatsapp : 0;
         $('ss-status').textContent = 'Your family has been alerted' + (j.again ? ' again' : '') + '. The message is in the family chat.' +
@@ -6089,13 +6135,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         refreshLoc(); refresh();
         if (sosRecUp) sosRecUp();
       });
-    }).catch(function(){ $('ss-status').textContent = 'No connection - the SOS could not be sent. Call 112 or your family now.'; });
+    }).catch(function(){ $('ss-status').textContent = 'No connection - the SOS could not be sent. Call ' + myEmergencyNo() + ' or your family now.'; });
   }
   function sosFillActions(){
     if (!sosLive) return;
     var txt = sosLive.text || ('🆘 SOS from ' + state.name + '. I need help now.');
     var nums = sosLive.contacts.map(function(c){ return c.phone; });
-    $('ss-calls').innerHTML = '<a class="ss-btn solid" href="tel:112">📞 Call 112</a>' +
+    $('ss-calls').innerHTML = '<a class="ss-btn solid" href="tel:' + myEmergencyNo() + '">📞 Call ' + myEmergencyNo() + '</a>' +
       sosLive.contacts.slice(0, 5).map(function(c){
         return '<a class="ss-btn solid" href="tel:' + encodeURIComponent(c.phone) + '">📞 ' + esc(String(c.name).split(' ')[0]) + '</a>';
       }).join('');
@@ -6235,8 +6281,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('sa-title').textContent = '🆘 ' + other.name + ' needs help';
     $('sa-sub').textContent = 'SOS sent ' + fmtTime(other.created_at).replace(/^Today, /, 'at ') + (other.escalated ? ' - nobody has answered yet' : '') +
       (other.safe_at ? '. They say they are safe now - check, then mark it sorted.' : '.') + (other.map ? ' Their location is shared with the family.' : '');
-    $('sa-call').href = other.phone ? 'tel:' + encodeURIComponent(other.phone) : 'tel:112';
-    $('sa-call').textContent = other.phone ? '📞 Call ' + String(other.name).split(' ')[0] : '📞 Call 112';
+    $('sa-call').href = other.phone ? 'tel:' + encodeURIComponent(other.phone) : 'tel:' + myEmergencyNo();
+    $('sa-call').textContent = other.phone ? '📞 Call ' + String(other.name).split(' ')[0] : '📞 Call ' + myEmergencyNo();
     $('sa-map').hidden = !other.map;
     $('sa-play').hidden = !other.audio_id;
     $('sa-play').setAttribute('data-audio', other.audio_id || '');
@@ -6744,11 +6790,17 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('b-kind').querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x.getAttribute('data-k') === k); });
     $('bf-contact').hidden = k !== 'contact';
     $('bf-address').hidden = k !== 'address';
+    if (k === 'address' && !bEditId) {
+      var meC = '', mid = state && state.memberId;
+      (membersCache || []).forEach(function(x){ if (x.id === mid && x.country && x.country !== 'XX') meC = x.country; });
+      if (meC && !$('b-address').value) $('b-actry').value = meC;
+      addrMode();
+    }
     $('bf-med').hidden = !(k === 'med' || k === 'fact' || k === 'insurance');
     $('bf-fact').hidden = k !== 'fact';
     $('b-for-l').textContent = k === 'med' ? 'For which problem' : k === 'fact' ? 'The detail' : 'Policy no / what it covers';
     $('b-for').placeholder = k === 'med' ? 'e.g. BP - as the doctor said' : k === 'fact' ? 'e.g. B+ · allergic to penicillin' : 'e.g. Star Health 12345 · hospital cover';
-    $('b-name-l').textContent = k === 'med' ? 'Name of the dawai' : k === 'address' ? 'Place name' : k === 'fact' ? 'Fact name' : k === 'insurance' ? 'Policy / insurer' : 'Who / what';
+    $('b-name-l').textContent = k === 'med' ? 'Name of the medicine' : k === 'address' ? 'Place name' : k === 'fact' ? 'Fact name' : k === 'insurance' ? 'Policy / insurer' : 'Who / what';
     $('b-name').placeholder = k === 'med' ? 'e.g. Amlopres 5' : k === 'address' ? "e.g. Dadi's house" : k === 'fact' ? 'e.g. Blood group' : k === 'insurance' ? 'e.g. Star Health family plan' : 'e.g. Ramesh - plumber';
   }
   $('b-kind').addEventListener('click', function(e){
@@ -6884,7 +6936,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     bEditId = e.id;
     $('b-name').value = e.name;
     var bsp = splitE164(e.phone);
-    $('b-cc').value = bsp ? bsp.cc : '+91';
+    setCc('b-cc', bsp ? bsp.cc : null);
     $('b-phone').value = bsp ? bsp.local : (e.phone || '');
     clearAddrForm();
     // Addresses were free text before this. Rather than guess which comma was
@@ -6980,7 +7032,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // First: who to ring, as big buttons - the first emergency contact, and
     // the ambulance number where they live.
     var first = emg.filter(function(e){ return e.phone; })[0];
-    var amb = { US: '911', CA: '911', GB: '999', AU: '000', NZ: '111', AE: '998', SG: '995' }[m.country] || '112';
+    var amb = emergencyNo(m);
     h += '<div class="ec-call">' + (first ? '<a href="tel:' + encodeURIComponent(first.phone) + '">📞 Call ' + esc(String(first.name).split(' - ')[0]) + '</a>' : '') +
          '<a class="amb" href="tel:' + amb + '">🚑 Ambulance ' + amb + '</a></div>';
     // Then what a doctor asks first, large.
@@ -7016,48 +7068,20 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }).join('') : '<div class="ec-row none"><b>Policy</b><span>not recorded yet</span></div>';
     h += '</div>';
 
-    // TPA Pre-Authorization & Emergency Admission Packet
-    var erPackKey = 'parwah_er_pack_' + m.id;
-    var erPack = null;
-    try { erPack = JSON.parse(localStorage.getItem(erPackKey) || 'null'); } catch (e) {}
-    if (!erPack) {
-      erPack = {
-        tpa_name: 'Medi Assist Insurance TPA',
-        tpa_toll_free: '1800-425-9449',
-        tpa_cashless_desk_email: 'cashless@mediassist.in',
-        policy_number: ins.length ? (ins[0].notes || ins[0].forwhat || 'POL-829104') : 'POL-829104',
-        network_hospitals_cache: [
-          { name: 'Max Super Speciality Hospital', address: 'Saket, New Delhi', distance: '2.4 km' },
-          { name: 'Apollo Hospitals', address: 'Sarita Vihar, New Delhi', distance: '5.1 km' },
-          { name: 'Fortis Escorts Heart Institute', address: 'Okhla, New Delhi', distance: '6.0 km' }
-        ]
-      };
-      try { localStorage.setItem(erPackKey, JSON.stringify(erPack)); } catch (e) {}
+    // An admission note for the hospital desk, built ONLY from what the
+    // family recorded: never an invented insurer, helpline, policy number or
+    // hospital list. (An earlier version filled those in with New Delhi
+    // examples and saved them on the phone; that copy is removed here.)
+    try { localStorage.removeItem('parwah_er_pack_' + m.id); } catch (e) {}
+    if (ins.length) {
+      var admit = 'EMERGENCY ADMISSION - ' + m.name + ' (from Parwah)\n' +
+        ins.map(function(e){ return 'Insurance: ' + e.name + (e.forwhat ? ' - ' + e.forwhat : '') + (e.phone ? ' (' + e.phone + ')' : ''); }).join('\n') + '\n' +
+        'Blood group: ' + (blood ? (blood.forwhat || blood.name) : 'not recorded') + '\n' +
+        'Allergies: ' + (allergy.length ? allergy.map(function(x){ return x.forwhat || x.name; }).join(', ') : 'none recorded');
+      h += '<div class="ec-sec"><h4>For the hospital desk</h4>' +
+        '<p class="hint" style="margin:0 0 var(--space-8)">Insurance, blood group and allergies in one message, from what your family recorded.</p>' +
+        '<a class="cbtn" style="text-decoration:none;display:block;text-align:center;min-height:48px;line-height:48px" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(admit) + '">📲 Send the admission details on WhatsApp</a></div>';
     }
-    h += '<div class="ec-sec"><h4>Cashless TPA &amp; Hospital Admission</h4>';
-    h += '<div class="ec-row"><b>TPA Desk</b><span>' + esc(erPack.tpa_name) + '</span></div>';
-    h += '<div class="ec-call" style="margin:var(--space-8) 0">' +
-      '<a href="tel:' + encodeURIComponent(erPack.tpa_toll_free) + '">📞 Call TPA Desk (' + esc(erPack.tpa_toll_free) + ')</a>' +
-      (erPack.tpa_cashless_desk_email ? '<a class="amb" href="mailto:' + encodeURIComponent(erPack.tpa_cashless_desk_email) + '">✉️ Cashless Desk</a>' : '') +
-      '</div>';
-    h += '<div class="ec-row"><b>Policy Number</b><span>' + esc(erPack.policy_number) + '</span></div>';
-    if (erPack.network_hospitals_cache && erPack.network_hospitals_cache.length) {
-      h += '<div style="margin-top:var(--space-8)"><small style="color:var(--ink-sub);font-size:var(--fs-12);font-weight:600">NEAR EMPANELLED CASHLESS HOSPITALS</small>';
-      erPack.network_hospitals_cache.forEach(function(hosp){
-        h += '<div class="ec-row"><b>' + esc(hosp.name) + '</b><span>' + esc(hosp.address) + ' · <b>' + esc(hosp.distance) + '</b></span></div>';
-      });
-      h += '</div>';
-    }
-    var waBundleText = '🚨 *EMERGENCY ADMISSION PACKET (PARWAH)*\n' +
-      'Patient: ' + m.name + '\n' +
-      'TPA Desk: ' + erPack.tpa_name + ' (' + erPack.tpa_toll_free + ')\n' +
-      'Policy No: ' + erPack.policy_number + '\n' +
-      'Cashless Email: ' + erPack.tpa_cashless_desk_email + '\n' +
-      'Blood Group: ' + (blood ? (blood.forwhat || blood.name) : 'Not recorded') + '\n' +
-      'Nearest Empanelled Hospital: ' + (erPack.network_hospitals_cache && erPack.network_hospitals_cache[0] ? erPack.network_hospitals_cache[0].name + ' (' + erPack.network_hospitals_cache[0].distance + ')' : '-') + '\n' +
-      'KYC: Health Card Digital Copy & ID Verified';
-    h += '<div style="margin-top:var(--space-12)"><a class="cbtn" style="text-decoration:none;display:block;text-align:center;min-height:48px;line-height:48px" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(waBundleText) + '">📲 1-Click WhatsApp Admission Bundle</a></div>';
-    h += '</div>';
 
     $('ec-name').textContent = m.name;
     $('ec-sub').textContent = relLabel(m) + (m.place ? ' · ' + m.place : '') + ' · from ' + (state ? state.circleName : 'your family');
@@ -7166,11 +7190,307 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // ---------- device alerts (Web Push) ----------
   // Country codes are kept SEPARATE from local numbers; each country has
   // its own validation (mirror of the server rules in api/_db.mjs).
-  var CC_LIST = [
-    ['+91', '🇮🇳 +91'], ['+1', '🇺🇸 +1'], ['+44', '🇬🇧 +44'], ['+971', '🇦🇪 +971'],
-    ['+61', '🇦🇺 +61'], ['+65', '🇸🇬 +65'], ['+49', '🇩🇪 +49'], ['+81', '🇯🇵 +81'],
-    ['+86', '🇨🇳 +86'], ['+92', '🇵🇰 +92'], ['+880', '🇧🇩 +880'], ['+977', '🇳🇵 +977'], ['+94', '🇱🇰 +94']
-  ];
+  // EVERY COUNTRY: [iso, name, dial code, ambulance]. An exact copy of
+  // api/_countries.mjs (the gate fails if they differ).
+  var COUNTRIES = [['AF','Afghanistan','+93','102'],
+    ['AL','Albania','+355','127'],
+    ['DZ','Algeria','+213','14'],
+    ['AD','Andorra','+376','112'],
+    ['AO','Angola','+244','112'],
+    ['AG','Antigua and Barbuda','+1','911'],
+    ['AR','Argentina','+54','107'],
+    ['AM','Armenia','+374','112'],
+    ['AU','Australia','+61','000'],
+    ['AT','Austria','+43','144'],
+    ['AZ','Azerbaijan','+994','103'],
+    ['BS','Bahamas','+1','911'],
+    ['BH','Bahrain','+973','999'],
+    ['BD','Bangladesh','+880','999'],
+    ['BB','Barbados','+1','511'],
+    ['BY','Belarus','+375','103'],
+    ['BE','Belgium','+32','112'],
+    ['BZ','Belize','+501','911'],
+    ['BJ','Benin','+229','112'],
+    ['BT','Bhutan','+975','112'],
+    ['BO','Bolivia','+591','118'],
+    ['BA','Bosnia and Herzegovina','+387','124'],
+    ['BW','Botswana','+267','997'],
+    ['BR','Brazil','+55','192'],
+    ['BN','Brunei','+673','991'],
+    ['BG','Bulgaria','+359','112'],
+    ['BF','Burkina Faso','+226','112'],
+    ['BI','Burundi','+257','112'],
+    ['KH','Cambodia','+855','119'],
+    ['CM','Cameroon','+237','112'],
+    ['CA','Canada','+1','911'],
+    ['CV','Cape Verde','+238','130'],
+    ['CF','Central African Republic','+236','112'],
+    ['TD','Chad','+235','112'],
+    ['CL','Chile','+56','131'],
+    ['CN','China','+86','120'],
+    ['CO','Colombia','+57','123'],
+    ['KM','Comoros','+269','112'],
+    ['CG','Congo','+242','112'],
+    ['CD','Congo (DRC)','+243','112'],
+    ['CR','Costa Rica','+506','911'],
+    ['CI','Cote d\'Ivoire','+225','185'],
+    ['HR','Croatia','+385','112'],
+    ['CU','Cuba','+53','104'],
+    ['CY','Cyprus','+357','112'],
+    ['CZ','Czechia','+420','155'],
+    ['DK','Denmark','+45','112'],
+    ['DJ','Djibouti','+253','112'],
+    ['DM','Dominica','+1','999'],
+    ['DO','Dominican Republic','+1','911'],
+    ['EC','Ecuador','+593','911'],
+    ['EG','Egypt','+20','123'],
+    ['SV','El Salvador','+503','911'],
+    ['GQ','Equatorial Guinea','+240','112'],
+    ['ER','Eritrea','+291','112'],
+    ['EE','Estonia','+372','112'],
+    ['SZ','Eswatini','+268','977'],
+    ['ET','Ethiopia','+251','907'],
+    ['FJ','Fiji','+679','911'],
+    ['FI','Finland','+358','112'],
+    ['FR','France','+33','15'],
+    ['GA','Gabon','+241','112'],
+    ['GM','Gambia','+220','116'],
+    ['GE','Georgia','+995','112'],
+    ['DE','Germany','+49','112'],
+    ['GH','Ghana','+233','112'],
+    ['GR','Greece','+30','166'],
+    ['GD','Grenada','+1','911'],
+    ['GT','Guatemala','+502','128'],
+    ['GN','Guinea','+224','112'],
+    ['GW','Guinea-Bissau','+245','112'],
+    ['GY','Guyana','+592','913'],
+    ['HT','Haiti','+509','116'],
+    ['HN','Honduras','+504','911'],
+    ['HK','Hong Kong','+852','999'],
+    ['HU','Hungary','+36','112'],
+    ['IS','Iceland','+354','112'],
+    ['IN','India','+91','112'],
+    ['ID','Indonesia','+62','119'],
+    ['IR','Iran','+98','115'],
+    ['IQ','Iraq','+964','122'],
+    ['IE','Ireland','+353','112'],
+    ['IL','Israel','+972','101'],
+    ['IT','Italy','+39','112'],
+    ['JM','Jamaica','+1','110'],
+    ['JP','Japan','+81','119'],
+    ['JO','Jordan','+962','911'],
+    ['KZ','Kazakhstan','+7','103'],
+    ['KE','Kenya','+254','999'],
+    ['KI','Kiribati','+686','994'],
+    ['KW','Kuwait','+965','112'],
+    ['KG','Kyrgyzstan','+996','103'],
+    ['LA','Laos','+856','1195'],
+    ['LV','Latvia','+371','112'],
+    ['LB','Lebanon','+961','140'],
+    ['LS','Lesotho','+266','112'],
+    ['LR','Liberia','+231','911'],
+    ['LY','Libya','+218','193'],
+    ['LI','Liechtenstein','+423','144'],
+    ['LT','Lithuania','+370','112'],
+    ['LU','Luxembourg','+352','112'],
+    ['MO','Macau','+853','999'],
+    ['MG','Madagascar','+261','124'],
+    ['MW','Malawi','+265','998'],
+    ['MY','Malaysia','+60','999'],
+    ['MV','Maldives','+960','102'],
+    ['ML','Mali','+223','15'],
+    ['MT','Malta','+356','112'],
+    ['MH','Marshall Islands','+692','911'],
+    ['MR','Mauritania','+222','101'],
+    ['MU','Mauritius','+230','114'],
+    ['MX','Mexico','+52','911'],
+    ['FM','Micronesia','+691','911'],
+    ['MD','Moldova','+373','112'],
+    ['MC','Monaco','+377','112'],
+    ['MN','Mongolia','+976','103'],
+    ['ME','Montenegro','+382','124'],
+    ['MA','Morocco','+212','150'],
+    ['MZ','Mozambique','+258','117'],
+    ['MM','Myanmar','+95','192'],
+    ['NA','Namibia','+264','112'],
+    ['NR','Nauru','+674','110'],
+    ['NP','Nepal','+977','102'],
+    ['NL','Netherlands','+31','112'],
+    ['NZ','New Zealand','+64','111'],
+    ['NI','Nicaragua','+505','128'],
+    ['NE','Niger','+227','15'],
+    ['NG','Nigeria','+234','112'],
+    ['KP','North Korea','+850','119'],
+    ['MK','North Macedonia','+389','194'],
+    ['NO','Norway','+47','113'],
+    ['OM','Oman','+968','9999'],
+    ['PK','Pakistan','+92','1122'],
+    ['PW','Palau','+680','911'],
+    ['PS','Palestine','+970','101'],
+    ['PA','Panama','+507','911'],
+    ['PG','Papua New Guinea','+675','111'],
+    ['PY','Paraguay','+595','911'],
+    ['PE','Peru','+51','106'],
+    ['PH','Philippines','+63','911'],
+    ['PL','Poland','+48','112'],
+    ['PT','Portugal','+351','112'],
+    ['PR','Puerto Rico','+1','911'],
+    ['QA','Qatar','+974','999'],
+    ['RO','Romania','+40','112'],
+    ['RU','Russia','+7','103'],
+    ['RW','Rwanda','+250','912'],
+    ['KN','Saint Kitts and Nevis','+1','911'],
+    ['LC','Saint Lucia','+1','911'],
+    ['VC','Saint Vincent and the Grenadines','+1','911'],
+    ['WS','Samoa','+685','994'],
+    ['SM','San Marino','+378','118'],
+    ['ST','Sao Tome and Principe','+239','112'],
+    ['SA','Saudi Arabia','+966','997'],
+    ['SN','Senegal','+221','1515'],
+    ['RS','Serbia','+381','194'],
+    ['SC','Seychelles','+248','999'],
+    ['SL','Sierra Leone','+232','999'],
+    ['SG','Singapore','+65','995'],
+    ['SK','Slovakia','+421','155'],
+    ['SI','Slovenia','+386','112'],
+    ['SB','Solomon Islands','+677','911'],
+    ['SO','Somalia','+252','888'],
+    ['ZA','South Africa','+27','10177'],
+    ['KR','South Korea','+82','119'],
+    ['SS','South Sudan','+211','112'],
+    ['ES','Spain','+34','112'],
+    ['LK','Sri Lanka','+94','1990'],
+    ['SD','Sudan','+249','999'],
+    ['SR','Suriname','+597','115'],
+    ['SE','Sweden','+46','112'],
+    ['CH','Switzerland','+41','144'],
+    ['SY','Syria','+963','110'],
+    ['TW','Taiwan','+886','119'],
+    ['TJ','Tajikistan','+992','103'],
+    ['TZ','Tanzania','+255','114'],
+    ['TH','Thailand','+66','1669'],
+    ['TL','Timor-Leste','+670','110'],
+    ['TG','Togo','+228','8200'],
+    ['TO','Tonga','+676','911'],
+    ['TT','Trinidad and Tobago','+1','811'],
+    ['TN','Tunisia','+216','190'],
+    ['TR','Turkey','+90','112'],
+    ['TM','Turkmenistan','+993','03'],
+    ['TV','Tuvalu','+688','911'],
+    ['UG','Uganda','+256','112'],
+    ['UA','Ukraine','+380','103'],
+    ['AE','United Arab Emirates','+971','998'],
+    ['GB','United Kingdom','+44','999'],
+    ['US','United States','+1','911'],
+    ['UY','Uruguay','+598','911'],
+    ['UZ','Uzbekistan','+998','103'],
+    ['VU','Vanuatu','+678','112'],
+    ['VE','Venezuela','+58','911'],
+    ['VN','Vietnam','+84','115'],
+    ['YE','Yemen','+967','191'],
+    ['ZM','Zambia','+260','991'],
+    ['ZW','Zimbabwe','+263','994']];
+  // The ambulance number where a person lives: their country in Parwah, or
+  // where this phone says it is. 112 also works from almost any mobile.
+  function emergencyNo(m){
+    var iso = (m && m.country && m.country !== 'XX') ? m.country : guessIso();
+    var c = COUNTRIES.filter(function(x){ return x[0] === iso; })[0];
+    return c ? c[3] : '112';
+  }
+  function myEmergencyNo(){
+    var me = null, mid = (typeof state !== 'undefined' && state) ? state.memberId : null;
+    (typeof membersCache !== 'undefined' && membersCache || []).forEach(function(x){ if (mid && x.id === mid) me = x; });
+    return emergencyNo(me);
+  }
+  // Mirrors api/_money.mjs: a payment is in the money of whoever owns the
+  // card or account. No country recorded is rupees; a country we have no
+  // currency for is a plain number, never someone else's symbol.
+  var CURRENCY = { IN: 'INR', US: 'USD', GB: 'GBP', CA: 'CAD', AU: 'AUD', NZ: 'NZD', AE: 'AED', SA: 'SAR', QA: 'QAR', KW: 'KWD', OM: 'OMR', BH: 'BHD', SG: 'SGD', MY: 'MYR', HK: 'HKD', NP: 'NPR', LK: 'LKR', BD: 'BDT', PK: 'PKR', BT: 'BTN', MV: 'MVR', CH: 'CHF', SE: 'SEK', NO: 'NOK', DK: 'DKK', PL: 'PLN', CZ: 'CZK', JP: 'JPY', KR: 'KRW', CN: 'CNY', TW: 'TWD', TH: 'THB', ID: 'IDR', PH: 'PHP', VN: 'VND', ZA: 'ZAR', KE: 'KES', NG: 'NGN', GH: 'GHS', UG: 'UGX', TZ: 'TZS', MU: 'MUR', EG: 'EGP', IL: 'ILS', TR: 'TRY', RU: 'RUB', UA: 'UAH', MX: 'MXN', BR: 'BRL', AR: 'ARS', CL: 'CLP', CO: 'COP', PE: 'PEN', FJ: 'FJD', TT: 'TTD', GY: 'GYD', SR: 'SRD', JM: 'JMD', IS: 'ISK' };
+  ['AT', 'BE', 'HR', 'CY', 'EE', 'FI', 'FR', 'DE', 'GR', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PT', 'SK', 'SI', 'ES'].forEach(function(c){ CURRENCY[c] = 'EUR'; });
+  function currencyOf(iso){ var c = String(iso || '').toUpperCase(); return c ? (CURRENCY[c] || null) : 'INR'; }
+  function myCurrency(){
+    var me = null, mid = (typeof state !== 'undefined' && state) ? state.memberId : null;
+    (typeof membersCache !== 'undefined' && membersCache || []).forEach(function(x){ if (mid && x.id === mid) me = x; });
+    return currencyOf(me && me.country);
+  }
+  function moneyFmt(n, cur){
+    var v = Number(n) || 0;
+    if (!cur) return v.toLocaleString('en-US');
+    try { return new Intl.NumberFormat(cur === 'INR' ? 'en-IN' : 'en', { style: 'currency', currency: cur, maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(v); }
+    catch (e) { return cur + ' ' + v.toLocaleString('en-US'); }
+  }
+  function curSym(cur){
+    if (!cur) return '';
+    try { var p = new Intl.NumberFormat(cur === 'INR' ? 'en-IN' : 'en', { style: 'currency', currency: cur }).formatToParts(0).filter(function(x){ return x.type === 'currency'; })[0]; return p ? p.value : cur; }
+    catch (e) { return cur; }
+  }
+  // Listening and reading aloud in the phone's own language: Indian English
+  // for a family in India (it hears Hinglish best), the phone's language
+  // elsewhere - an accent the recogniser expects is one it understands.
+  function speechLang(){
+    var l = '';
+    try { l = (navigator.languages && navigator.languages[0]) || navigator.language || ''; } catch (e) {}
+    if (/^hi\b/i.test(l)) return 'hi-IN';
+    if (guessIso() === 'IN' || !l) return 'en-IN';
+    return l;
+  }
+  function flagOf(iso){ return String(iso).toUpperCase().replace(/./g, function(ch){ return String.fromCodePoint(127397 + ch.charCodeAt(0)); }); }
+  // One option per country, by name; the value is the dialling code. The
+  // flag and code come first so a narrow box still shows them.
+  var CC_LIST = COUNTRIES.slice().sort(function(a, b){ return a[1].localeCompare(b[1]); })
+    .map(function(c){ return [c[2], flagOf(c[0]) + ' ' + c[2] + ' ' + c[1], c[0]]; });
+  // Several countries share a code (+1, +7, +44, +61): the one most people mean.
+  var CC_HOME = { '+1': 'US', '+7': 'RU', '+44': 'GB', '+61': 'AU', '+47': 'NO', '+39': 'IT', '+262': 'RE', '+590': 'GP' };
+  // Where this phone seems to be: its time zone first (that follows the
+  // phone, not the language it is set to), then the language region
+  // (en-GB, de-DE ...), then India.
+  var TZ_ISO = {
+    'Asia/Kolkata': 'IN', 'Asia/Calcutta': 'IN', 'America/New_York': 'US', 'America/Chicago': 'US', 'America/Denver': 'US',
+    'America/Phoenix': 'US', 'America/Los_Angeles': 'US', 'America/Anchorage': 'US', 'Pacific/Honolulu': 'US', 'America/Detroit': 'US',
+    'America/Toronto': 'CA', 'America/Vancouver': 'CA', 'America/Edmonton': 'CA', 'America/Winnipeg': 'CA', 'America/Halifax': 'CA',
+    'America/Mexico_City': 'MX', 'America/Sao_Paulo': 'BR', 'America/Argentina/Buenos_Aires': 'AR', 'America/Bogota': 'CO',
+    'America/Lima': 'PE', 'America/Santiago': 'CL', 'Europe/London': 'GB', 'Europe/Dublin': 'IE', 'Europe/Paris': 'FR',
+    'Europe/Berlin': 'DE', 'Europe/Madrid': 'ES', 'Europe/Rome': 'IT', 'Europe/Amsterdam': 'NL', 'Europe/Brussels': 'BE',
+    'Europe/Zurich': 'CH', 'Europe/Vienna': 'AT', 'Europe/Stockholm': 'SE', 'Europe/Oslo': 'NO', 'Europe/Copenhagen': 'DK',
+    'Europe/Helsinki': 'FI', 'Europe/Warsaw': 'PL', 'Europe/Prague': 'CZ', 'Europe/Lisbon': 'PT', 'Europe/Athens': 'GR',
+    'Europe/Istanbul': 'TR', 'Europe/Moscow': 'RU', 'Europe/Kiev': 'UA', 'Europe/Kyiv': 'UA', 'Europe/Bucharest': 'RO',
+    'Asia/Dubai': 'AE', 'Asia/Riyadh': 'SA', 'Asia/Qatar': 'QA', 'Asia/Kuwait': 'KW', 'Asia/Bahrain': 'BH', 'Asia/Muscat': 'OM',
+    'Asia/Karachi': 'PK', 'Asia/Dhaka': 'BD', 'Asia/Kathmandu': 'NP', 'Asia/Katmandu': 'NP', 'Asia/Colombo': 'LK',
+    'Asia/Singapore': 'SG', 'Asia/Kuala_Lumpur': 'MY', 'Asia/Bangkok': 'TH', 'Asia/Jakarta': 'ID', 'Asia/Manila': 'PH',
+    'Asia/Hong_Kong': 'HK', 'Asia/Shanghai': 'CN', 'Asia/Tokyo': 'JP', 'Asia/Seoul': 'KR', 'Asia/Taipei': 'TW',
+    'Asia/Ho_Chi_Minh': 'VN', 'Asia/Jerusalem': 'IL', 'Africa/Cairo': 'EG', 'Africa/Lagos': 'NG', 'Africa/Nairobi': 'KE',
+    'Africa/Johannesburg': 'ZA', 'Africa/Casablanca': 'MA', 'Australia/Sydney': 'AU', 'Australia/Melbourne': 'AU',
+    'Australia/Brisbane': 'AU', 'Australia/Perth': 'AU', 'Australia/Adelaide': 'AU', 'Pacific/Auckland': 'NZ', 'Pacific/Fiji': 'FJ'
+  };
+  function guessIso(){
+    try {
+      var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (tz && TZ_ISO[tz]) return TZ_ISO[tz];
+    } catch (e) {}
+    var langs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || '']);
+    for (var i = 0; i < langs.length; i++) {
+      var m = /-([A-Za-z]{2})$/.exec(String(langs[i] || ''));
+      // en-US is the factory setting on phones the world over, so it says
+      // nothing about where someone is; the US itself is known by its zones.
+      if (m && m[1].toUpperCase() === 'US') continue;
+      if (m && COUNTRIES.some(function(c){ return c[0] === m[1].toUpperCase(); })) return m[1].toUpperCase();
+    }
+    return 'IN';
+  }
+  function dialOf(iso){ var c = COUNTRIES.filter(function(x){ return x[0] === iso; })[0]; return c ? c[2] : '+91'; }
+  // Picks the right country in a code box: the given country when it has
+  // that code, else the usual country for the code.
+  function setCc(id, cc, iso){
+    var el = $(id); if (!el) return;
+    if (!el.options.length) fillCc(id);
+    cc = cc || dialOf(iso || guessIso());
+    var want = iso && dialOf(iso) === cc ? iso : (CC_HOME[cc] || null);
+    for (var i = 0; i < el.options.length; i++) {
+      var o = el.options[i];
+      if (o.value === cc && (!want || o.getAttribute('data-iso') === want)) { el.selectedIndex = i; return; }
+    }
+    el.value = cc;
+  }
   var CC_RULES = {
     '+91': { min: 10, max: 10, re: /^[6-9]\d{9}$/, name: 'India' },
     '+1': { min: 10, max: 10, re: /^[2-9]\d{9}$/, name: 'USA / Canada' },
@@ -7183,14 +7503,24 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   };
   function fillCc(id, def){
     var el = $(id); if (!el || el.options.length) return;
-    el.innerHTML = CC_LIST.map(function(c){ return '<option value="' + c[0] + '">' + c[1] + '</option>'; }).join('');
-    el.value = def || '+91';
+    el.innerHTML = CC_LIST.map(function(c){ return '<option value="' + c[0] + '" data-iso="' + c[2] + '">' + c[1] + '</option>'; }).join('');
+    var iso = guessIso();
+    setCc(id, def || dialOf(iso), iso);
   }
-  ['au-cc', 'e-cc', 'b-cc'].forEach(function(id){ fillCc(id, '+91'); });
+  ['au-cc', 'e-cc', 'b-cc'].forEach(function(id){ fillCc(id); });
+  // The SOS screen's first button, before anything is sent: this phone's own
+  // emergency number.
+  (function(){ var c = $('ss-calls'); if (c) c.innerHTML = '<a class="ss-btn solid" href="tel:' + myEmergencyNo() + '">📞 Call ' + myEmergencyNo() + '</a>'; })();
+  // Where a person lives: every country, by name.
+  (function(){
+    var el = $('e-country'); if (!el) return;
+    el.insertAdjacentHTML('beforeend', COUNTRIES.slice().sort(function(a, b){ return a[1].localeCompare(b[1]); })
+      .map(function(c){ return '<option value="' + c[0] + '">' + flagOf(c[0]) + ' ' + c[1] + '</option>'; }).join(''));
+  })();
   function splitE164(v){
     var raw = String(v || '');
     if (raw.charAt(0) !== '+') return null;
-    var ks = CC_LIST.map(function(c){ return c[0]; }).sort(function(a, b){ return b.length - a.length; });
+    var ks = COUNTRIES.map(function(c){ return c[2]; }).sort(function(a, b){ return b.length - a.length; });
     for (var i = 0; i < ks.length; i++) if (raw.indexOf(ks[i]) === 0) return { cc: ks[i], local: raw.slice(ks[i].length) };
     return null;
   }
@@ -7199,6 +7529,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var d = String(local || '').replace(/[()\-\s.]/g, '');
     if (!d) return 'Please enter the mobile number';
     if (!/^\d+$/.test(d)) return 'Digits only - the country code is picked separately';
+    // The 0 people type at home (07700..., 0151...) is not part of the
+    // international number; the server drops it the same way. Not in Italy.
+    if (cc !== '+39') d = d.replace(/^0+/, '');
     var r = CC_RULES[cc];
     if (!r) return d.length >= 6 && d.length <= 12 ? null : 'That number does not look right';
     if (d.length < r.min || d.length > r.max) {
@@ -7227,12 +7560,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (+v.slice(0, 4) < 1900) return 'Please check the year - that is before 1900.';
     return null;
   }
-  function amountCheck(v, max){
-    var s2 = String(v == null ? '' : v).replace(/[,\s₹]/g, '');
+  // Mirrors amountError on the server, in the money of whoever is typing.
+  function amountCheck(v, max, cur){
+    var c = cur === undefined ? myCurrency() : cur;
+    var s2 = String(v == null ? '' : v).replace(/[,\s₹$£€¥]/g, '');
     if (!s2) return null;
-    if (!/^\d+$/.test(s2)) return 'Write the amount as a whole number of rupees, like 5000.';
-    if (+s2 <= 0) return 'The amount has to be more than ₹0.';
-    if (max && +s2 > max) return 'That is more than ₹' + max.toLocaleString('en-IN') + ' - please check it.';
+    if (!/^\d+$/.test(s2)) return 'Write the amount as a whole number, like 5000.';
+    if (+s2 <= 0) return 'The amount has to be more than ' + moneyFmt(0, c) + '.';
+    if (max && +s2 > max) return 'That is more than ' + moneyFmt(max, c) + ' - please check it.';
     return null;
   }
   function linkCheck(v){
@@ -7335,7 +7670,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     try {
       speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(String(text).replace(/[🧡🙏✨✔✅🆘💊]/g, '').trim());
-      u.lang = 'en-IN'; u.rate = 0.95;
+      u.lang = speechLang(); u.rate = 0.95;
       var vs = speechSynthesis.getVoices() || [];
       var v = null;
       vs.forEach(function(x){ if (!v && /en-IN|hi-IN/i.test(x.lang)) v = x; });
@@ -7349,7 +7684,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   if (SR) {
     try {
       rec = new SR();
-      rec.lang = 'en-IN'; rec.interimResults = false; rec.maxAlternatives = 1;
+      rec.lang = speechLang(); rec.interimResults = false; rec.maxAlternatives = 1;
       rec.onresult = function(e){
         var t = e.results && e.results[0] && e.results[0][0] ? e.results[0][0].transcript : '';
         if (t) { $('msg').value = t; checkVoiceIntent(t); ektaSend(); }
@@ -7397,7 +7732,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function ektaUrgent(said){
     var d = document.createElement('div');
     d.className = 'eurgent';
-    d.innerHTML = '<a class="cbtn urgent" href="tel:112">📞 Call 112</a><button type="button" class="cbtn urgent" data-esos>🆘 Send SOS to the family</button>';
+    d.innerHTML = '<a class="cbtn urgent" href="tel:' + myEmergencyNo() + '">📞 Call ' + myEmergencyNo() + '</a><button type="button" class="cbtn urgent" data-esos>🆘 Send SOS to the family</button>';
     d.querySelector('[data-esos]').addEventListener('click', function(){ sosStart(said); });
     $('emsgs').appendChild(d);
     $('emsgs').scrollTop = $('emsgs').scrollHeight;
@@ -7409,7 +7744,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     ektaMsgs.push({ role:'user', content:v });
     ektaAppend('user', v);
     var wait = ektaAppend('assistant', 'Ekta soch rahi hai…', 'thinking');
-    post(API.ekta, { code: state.code, memberId: state.memberId, messages: ektaMsgs })
+    post(API.ekta, { code: state.code, memberId: state.memberId, messages: ektaMsgs, iso: guessIso() })
       .then(function(j){
         wait.remove();
         if (j.ok) {
@@ -7601,7 +7936,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     });
     list.forEach(function(p){
       var when = new Date(p.at);
-      var whenTxt = fmtDue(when.toISOString().slice(0, 10)) + ', ' + when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      var whenTxt = fmtDue(pDay(when)) + ', ' + when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       var mine = (p.going || []).indexOf(state.memberId) >= 0;
       var icon = { call: '📹', party: '🎶', meet: '🤗', appointment: '🩺', 'function': '🪔', trip: '✈️' }[p.kind] || '🗓';
       h += '<div class="plan"><b>' + icon + ' ' + esc(p.title) + '</b>' +
@@ -8787,11 +9122,19 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var h = Math.pow(Math.sin(r(b.lat - a.lat) / 2), 2) + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.pow(Math.sin(r(b.lng - a.lng) / 2), 2);
     return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
   }
+  // Miles where the road signs are in miles; kilometres everywhere else.
+  function usesMiles(){ var c = guessIso(); return c === 'US' || c === 'GB' || c === 'LR' || c === 'MM'; }
   function locDistText(m){
     if (m < 100) return 'right here';
+    if (usesMiles()) {
+      var mi = m / 1609.344;
+      if (mi < 0.1) return Math.round(m * 3.28084 / 10) * 10 + ' ft away';
+      if (mi < 10) return (Math.round(mi * 10) / 10) + ' mi away';
+      return Math.round(mi).toLocaleString('en-US') + ' mi away';
+    }
     if (m < 1000) return Math.round(m / 10) * 10 + ' m away';
     if (m < 10000) return (Math.round(m / 100) / 10) + ' km away';
-    return Math.round(m / 1000).toLocaleString('en-IN') + ' km away';
+    return Math.round(m / 1000).toLocaleString(guessIso() === 'IN' ? 'en-IN' : 'en-US') + ' km away';
   }
   function locAgo(iso){
     var min = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
@@ -9327,7 +9670,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (!f.hidden) {
       $('e-name').value = state.name;
       var sp = splitE164(authUser && authUser.phone);
-      $('e-cc').value = sp ? sp.cc : '+91';
+      var meC = null; membersCache.forEach(function(x){ if (x.id === state.memberId) meC = x; });
+      setCc('e-cc', sp ? sp.cc : null, (meC && meC.country) || null);
       $('e-phone').value = sp ? sp.local : ((authUser && authUser.phone) || '');
       var meM = null; membersCache.forEach(function(x){ if (x.id === state.memberId) meM = x; });
       $('e-place').value = (meM && meM.place) || '';
@@ -9552,7 +9896,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
   function vDoc(id){ var d = null; vDocs.forEach(function(x){ if (x.id === id) d = x; }); return d; }
   function vMeth(id){ var m = null; vPay.forEach(function(x){ if (x.id === id) m = x; }); return m; }
-  function inr(n){ return '₹' + (Number(n) || 0).toLocaleString('en-IN'); }
+  function inr(n, cur){ return moneyFmt(n, cur === undefined ? 'INR' : cur); }
   function vDate(s){ if (!s) return ''; var d = new Date(s); return isNaN(d) ? '' : d.toLocaleDateString([], { day:'numeric', month:'short', year:'numeric' }); }
   function vExpiry(d){
     if (!d.expires_on) return '';
@@ -9926,16 +10270,17 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // ----- payments: who may use which way of paying -----
   function renderPay(){
     var h = '';
+    document.querySelectorAll('.vp-cur').forEach(function(x){ x.textContent = curSym(myCurrency()); });
     vPay.forEach(function(p){
       var k = vPayKinds[p.kind] || { icon:'💳', label:'Payment' };
       var allowed = vPerms.filter(function(x){ return x.method_id === p.id; });
       var whoLine = allowed.length
-        ? allowed.map(function(a){ return esc(a.name) + (a.per_txn_cap ? ' (up to ' + inr(a.per_txn_cap) + ')' : '') + (a.needs_ok ? ' · asks first' : ''); }).join(', ')
+        ? allowed.map(function(a){ return esc(a.name) + (a.per_txn_cap ? ' (up to ' + inr(a.per_txn_cap, p.currency) + ')' : '') + (a.needs_ok ? ' · asks first' : ''); }).join(', ')
         : 'nobody else yet';
       h += '<div class="ev"><b>' + k.icon + ' ' + esc(p.label) + '</b>' +
            '<small>' + esc(p.owner_name) + (p.mine ? ' (you)' : '') +
            (p.bank ? ' · ' + esc(p.bank) : '') + (p.handle ? ' · ' + esc(p.handle) : '') +
-           (p.per_txn_cap ? ' · up to ' + inr(p.per_txn_cap) + ' a payment' : '') + (p.monthly_cap ? ' · ' + inr(p.monthly_cap) + ' a month' : '') + '</small>' +
+           (p.per_txn_cap ? ' · up to ' + inr(p.per_txn_cap, p.currency) + ' a payment' : '') + (p.monthly_cap ? ' · ' + inr(p.monthly_cap, p.currency) + ' a month' : '') + '</small>' +
            '<small>👥 Can use it: ' + whoLine + '</small>';
       if (p.mine) {
         h += '<div class="prow2" style="margin-top:var(--space-8)">' +
@@ -9945,7 +10290,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
              '<div class="permbox" id="perm-' + p.id + '" hidden style="margin-top:var(--space-12)">' +
              '<select data-vpwho="' + p.id + '" aria-label="Family member"></select>' +
              '<div class="pickrow" style="margin-top:var(--space-8)">' +
-             '<label class="pick"><span>Cap per payment ₹</span><input type="number" min="0" step="100" data-vpcap="' + p.id + '" aria-label="Cap per payment"></label>' +
+             '<label class="pick"><span>Cap per payment ' + esc(curSym(p.currency)) + '</span><input type="number" min="0" step="100" data-vpcap="' + p.id + '" aria-label="Cap per payment"></label>' +
              '</div><label class="seniorchk" style="margin-top:var(--space-8)"><input type="checkbox" data-vpask="' + p.id + '"> They ask me before each payment</label>' +
              '<button class="cbtn" data-vpallow="' + p.id + '" style="margin-top:var(--space-8)">Let them use it</button>' +
              (allowed.length ? '<div style="margin-top:var(--space-8)">' + allowed.map(function(a){
@@ -9954,7 +10299,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       }
       if (p.can_use) {
         h += '<div class="addrow" style="margin-top:var(--space-8)">' +
-             '<input type="number" min="1" step="1" data-vpamt="' + p.id + '" placeholder="₹ amount" aria-label="Amount">' +
+             '<input type="number" min="1" step="1" data-vpamt="' + p.id + '" placeholder="' + esc((curSym(p.currency) + ' amount').trim()) + '" aria-label="Amount">' +
              '<input type="text" maxlength="160" data-vpnote="' + p.id + '" placeholder="What for?" aria-label="What for">' +
              '<button class="cbtn" data-vpuse="' + p.id + '">' + (p.mine || !p.my_needs_ok ? 'Note a payment' : 'Ask to pay') + '</button></div>';
       }
@@ -9974,12 +10319,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // Each line reads as a sentence: who did what, with which, for how much.
     $('vplog').innerHTML = vPayLog.map(function(l){
       var m = vMeth(l.method_id), who = l.member_id === state.memberId ? 'You' : esc(l.name || 'Someone'), lbl = m ? esc(m.label) : 'it';
+      var lc = m ? m.currency : undefined, mf = function(n){ return inr(n, lc); };
       var line = {
-        used: who + ' paid ' + inr(l.amount) + ' with ' + lbl,
-        asked: who + ' asked to pay ' + inr(l.amount) + ' with ' + lbl,
-        approved: who + ' paid ' + inr(l.amount) + ' with ' + lbl + ' (allowed)',
-        declined: who + ' asked to pay ' + inr(l.amount) + ' with ' + lbl + ' (not allowed)',
-        allowed: who + ' let ' + esc(l.note || 'someone') + ' use ' + lbl + (l.amount ? ', up to ' + inr(l.amount) + ' a payment' : ''),
+        used: who + ' paid ' + mf(l.amount) + ' with ' + lbl,
+        asked: who + ' asked to pay ' + mf(l.amount) + ' with ' + lbl,
+        approved: who + ' paid ' + mf(l.amount) + ' with ' + lbl + ' (allowed)',
+        declined: who + ' asked to pay ' + mf(l.amount) + ' with ' + lbl + ' (not allowed)',
+        allowed: who + ' let ' + esc(l.note || 'someone') + ' use ' + lbl + (l.amount ? ', up to ' + mf(l.amount) + ' a payment' : ''),
         disallowed: who + ' took ' + lbl + ' back from ' + esc(l.note || 'someone')
       }[l.action] || (who + ' ' + esc(l.action) + ' ' + lbl);
       var note = (l.action === 'allowed' || l.action === 'disallowed') ? '' : (l.note ? esc(l.note) + ' · ' : '');
@@ -10084,7 +10430,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (!state) return;
     // The panchang only changes with the day, so a screen re-open re-uses it.
     if (!force && dayData && Date.now() - dayAt < 10 * 60 * 1000) { renderDay(); return; }
-    var qs = '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId);
+    var qs = '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + '&tz=' + encodeURIComponent(homeTz());
     apiGet(API.day + qs).then(function(j){
       if (!j.ok) { $('mu-sun').textContent = j.error || 'Could not work out today.'; return; }
       dayData = j; dayAt = Date.now(); renderDay();
@@ -10185,10 +10531,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('mu-place').textContent = 'Today in ' + place;
     $('mu-guesscard').hidden = !(j.place && j.place.guessed);
     if (j.place && j.place.guessed) {
+      var used = j.place.usedName || 'New Delhi';
       $('mu-guess').textContent = j.place.unset
-        ? 'These are New Delhi timings, because your city is not in your profile yet. Add it and every time on this screen is worked out for where you live.'
-        : 'We don’t know “' + place + '” yet, so these are New Delhi timings. Add the nearest big city in your profile and they’ll be worked out for you.';
-      if (j.place.unset) { place = 'New Delhi'; $('mu-place').textContent = 'Today in ' + place; }
+        ? 'These are ' + used + ' timings, because your city is not in your profile yet. Add it and every time on this screen is worked out for where you live.'
+        : 'We don’t know “' + place + '” yet, so these are ' + used + ' timings. Add the nearest big city in your profile and they’ll be worked out for you.';
+      if (j.place.unset) { place = used; $('mu-place').textContent = 'Today in ' + place; }
     }
     var card = $('mu-verdict');
     if (!p || !(p.day || []).length) {
@@ -10650,11 +10997,40 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var area = $('b-area').value === '__other' ? '' : $('b-area').value.trim();
     var city = $('b-city').value.trim();
     var st = $('b-state').value.trim();
-    var pin = $('b-pin').value.replace(/\s/g, '');
+    var pin = addrIndia() ? $('b-pin').value.replace(/\s/g, '') : $('b-pin').value.trim().toUpperCase();
     var line = [street, area, city].filter(Boolean).join(', ');
     var tail = [st, pin].filter(Boolean).join(' ');
-    return [line, tail].filter(Boolean).join(' - ');
+    var ctry = addrIndia() ? '' : countryNameOf($('b-actry').value);
+    return [line, tail, ctry].filter(Boolean).join(' - ');
   }
+  // India has six-digit PIN codes that India Post can check. Everywhere else
+  // has its own postcode, typed as it is written, and a town and region.
+  function addrIndia(){ var c = $('b-actry').value; return !c || c === 'IN'; }
+  function countryNameOf(iso){ var c = COUNTRIES.filter(function(x){ return x[0] === iso; })[0]; return c ? c[1] : ''; }
+  function addrMode(){
+    var ind = addrIndia(), p = $('b-pin');
+    $('b-pin-l').textContent = ind ? 'PIN code' : 'Postcode / ZIP';
+    p.setAttribute('inputmode', ind ? 'numeric' : 'text');
+    p.maxLength = ind ? 6 : 12;
+    p.placeholder = ind ? 'e.g. 110048' : 'e.g. SW1A 1AA';
+    $('b-pinlook').hidden = !ind;
+    $('b-area').hidden = !ind; $('b-area-l').hidden = !ind;
+    $('b-city-l').textContent = ind ? 'District / city' : 'Town / city';
+    $('b-state-l').textContent = ind ? 'State' : 'State / county / region';
+    $('b-city').placeholder = ind ? 'e.g. South Delhi' : 'e.g. Leicester';
+    $('b-state').placeholder = ind ? 'e.g. Delhi' : 'e.g. Leicestershire';
+    if (!ind) { clearTimeout(pinTimer); pinData = null; pinMsg(''); $('b-pinout').hidden = false; $('b-area').innerHTML = ''; }
+    else if (!pinData) $('b-pinout').hidden = true;
+    showAddr();
+  }
+  (function(){
+    var sel = $('b-actry');
+    sel.innerHTML = COUNTRIES.slice().sort(function(a, b){ return a[1].localeCompare(b[1]); })
+      .map(function(c){ return '<option value="' + c[0] + '">' + flagOf(c[0]) + ' ' + esc(c[1]) + '</option>'; }).join('');
+    sel.value = guessIso();
+    sel.addEventListener('change', addrMode);
+    addrMode();
+  })();
   function showAddr(){
     var l = addrLine();
     $('b-addrfull').textContent = l ? 'Saved as: ' + l : '';
@@ -10708,6 +11084,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
   $('b-pin').addEventListener('input', function(){
     clearTimeout(pinTimer);
+    if (!addrIndia()) { showAddr(); return; }
     var v = $('b-pin').value.replace(/[^\d]/g, '').slice(0, 6);
     if (v !== $('b-pin').value) $('b-pin').value = v;
     showAddr();
@@ -10719,7 +11096,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     clearTimeout(pinTimer); pinAt = ''; pinData = null;
     $('b-pin').value = ''; $('b-city').value = ''; $('b-state').value = '';
     $('b-area').innerHTML = ''; $('b-pinout').hidden = true;
-    pinMsg(''); showAddr();
+    var meC = '', mid = state && state.memberId;
+    (membersCache || []).forEach(function(x){ if (x.id === mid && x.country && x.country !== 'XX') meC = x.country; });
+    $('b-actry').value = meC || guessIso();
+    pinMsg(''); addrMode();
   }
 
 
@@ -10731,10 +11111,21 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   var vShapes = {};                       // from the server: one description per ID
   var vPanHolders = {};                   // 4th letter of a PAN → what kind of holder
 
-  function vSpec(){ return vShapes[$('vd-kind').value] || null; }
+  // Mirrors shapeFor on the server: a member abroad has another country's
+  // passport and licence, so only Aadhaar, PAN and voter ID keep India's shape.
+  function vHolderAbroad(){
+    var c = '', sel = $('vd-about');
+    (membersCache || []).forEach(function(m){ if (sel && m.id === sel.value) c = String(m.country || '').toUpperCase(); });
+    return !!c && c !== 'IN';
+  }
+  function vShapeFor(kind){
+    if (vHolderAbroad() && ['aadhaar', 'pan', 'voter'].indexOf(kind) < 0) return null;
+    return vShapes[kind] || null;
+  }
+  function vSpec(){ return vShapeFor($('vd-kind').value); }
   function vBare(s){ return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
   function vFormat(kind, raw){
-    var sp = vShapes[kind], v = vBare(raw);
+    var sp = vShapeFor(kind), v = vBare(raw);
     if (!sp) return v;
     var out = [], i = 0;
     for (var g = 0; g < sp.group.length; g++) {
@@ -10749,6 +11140,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function vCheck(kind, raw){
     var v = vBare(raw);
     if (!v) return { ok: true };
+    if (vHolderAbroad() && (kind === 'passport' || kind === 'dl'))
+      return (v.length >= 5 && v.length <= 20) ? { ok: true }
+        : { ok: false, why: 'A passport or licence number is usually 5 to 20 letters and digits - please check it' };
     if (kind === 'aadhaar') {
       var d = v.replace(/\D/g, '');
       if (d.length !== 12) return { ok: false, why: 'An Aadhaar number has 12 digits - please check it' };
@@ -10783,7 +11177,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var v = vBare(raw); if (!v) return null;
     for (var k in vShapes) {
       if (k === except) continue;
-      if (v.length === vShapes[k].len && vCheck(k, v).ok) return k;
+      if (vShapeFor(k) && v.length === vShapes[k].len && vCheck(k, v).ok) return k;
     }
     return null;
   }
@@ -10816,7 +11210,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }
     return out;
   }
-  $('vd-about').addEventListener('change', vNumberState);
+  $('vd-about').addEventListener('change', vApplyShape);
 
   // The field takes on the shape of whatever was chosen.
   function vApplyShape(){
@@ -10828,7 +11222,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     vNumberState();
   }
   function vNumberState(){
-    var kind = $('vd-kind').value, sp = vShapes[kind];
+    var kind = $('vd-kind').value, sp = vShapeFor(kind);
     var v = vBare($('vd-number').value);
     var box = $('vd-numstate'), swap = $('vd-swap');
     swap.hidden = true;
@@ -10864,7 +11258,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     box.textContent = chk.why; box.className = 'hint bad';
   }
   $('vd-number').addEventListener('input', function(){
-    var kind = $('vd-kind').value, sp = vShapes[kind], el = this;
+    var kind = $('vd-kind').value, sp = vShapeFor(kind), el = this;
     var before = el.value, caretAtEnd = el.selectionStart === before.length;
     var v = vBare(before);
     // Characters this document cannot contain are KEPT, not silently eaten.
@@ -11027,7 +11421,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         else {
           // The session ran out: the number is kept, and the PIN is asked.
           var sp = splitE164(authUser && authUser.phone);
-          if (sp) { $('au-cc').value = sp.cc; $('au-phone').value = sp.local; }
+          if (sp) { setCc('au-cc', sp.cc); $('au-phone').value = sp.local; }
           showStep('auth');
         }
       })

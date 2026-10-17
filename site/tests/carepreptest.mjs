@@ -99,8 +99,12 @@ const v3 = extractVoiceIntent('Kal sham ko cardiologist ke paas jaana hai');
 ok(v3 && v3.intent === 'CHORE_OR_APPOINTMENT', 'detected appointment intent from Hindi');
 
 // 5. Care Wallet & Utility Bill Delegation
-const upiLink = buildUpiDeepLink('BSES Rajdhani', 1450, '100482910', 'ELECTRICITY');
+const upiLink = buildUpiDeepLink('BSES Rajdhani', 1450, '100482910', 'ELECTRICITY', 'bses@icici');
+ok(buildUpiDeepLink('BSES Rajdhani', 1450, '100482910', 'ELECTRICITY') === null, 'no UPI link without the biller\'s own UPI ID - never a made-up one');
+ok(buildUpiDeepLink('Thames Water', 45, '1', 'WATER', 'tw@bank', 'GBP') === null, 'no UPI link for a bill outside India');
+ok(formatBillSettledNotification('Thames Water', 45, 'Priya', 'GBP') === 'Thames Water bill of £45 was paid by Priya ✅', 'a UK bill is said in pounds');
 ok(upiLink.indexOf('upi://pay?') === 0, 'generates standard UPI deep link');
+ok(upiLink.indexOf('pa=bses%40icici') > 0, 'the link pays the biller\'s own UPI ID');
 ok(upiLink.indexOf('am=1450.00') >= 0, 'UPI link includes exact decimal amount');
 
 const billNotif = formatBillSettledNotification('IGL Gas', 840, 'Rahul');

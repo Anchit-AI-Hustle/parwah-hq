@@ -9,6 +9,16 @@ export function validTz(tz) {
   if (typeof tz !== 'string' || !tz || tz.length > 64) return null;
   try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return tz; } catch (e) { return null; }
 }
+// The phone says its own time zone on every request, so "today" on the
+// server is the family's today, not London's.
+export function reqTz(req) {
+  const h = req && req.headers ? (req.headers['x-parwah-tz'] || req.headers['X-Parwah-Tz']) : null;
+  return validTz(Array.isArray(h) ? h[0] : h);
+}
+// The calendar date in a zone, YYYY-MM-DD; UTC when the zone is unknown.
+export function dayIn(tz, at) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: validTz(tz) || 'UTC' }).format(at ? new Date(at) : new Date());
+}
 const fmtCache = {};
 function wall(ms, tz) {
   const f = fmtCache[tz] || (fmtCache[tz] = new Intl.DateTimeFormat('en-US', {
@@ -43,7 +53,7 @@ function addPeriod(w, rec, k) {
 // task three days late does not queue up three overdue copies.
 export function nextDue(dueAtMs, rec, tz, anchorMs, nowMs = Date.now()) {
   if (!REPEATS.includes(rec) || rec === 'once') return null;
-  const zone = validTz(tz) || 'Asia/Kolkata';
+  const zone = validTz(tz) || 'UTC';
   const w0 = wall(anchorMs || dueAtMs, zone);
   const after = Math.max(dueAtMs, nowMs);
   const per = rec === 'daily' ? 86400000 : rec === 'weekly' ? 7 * 86400000 : 31 * 86400000;

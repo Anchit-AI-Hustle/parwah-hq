@@ -38,6 +38,9 @@ ok('negative is refused', /whole number/.test(amountError('-5')));
 ok('"5k" is refused', /whole number/.test(amountError('5k')));
 ok('paise are refused', /whole number/.test(amountError('99.50')));
 ok('over the cap is refused', /more than ₹/.test(amountError('20000000', { max: 10000000 })));
+ok('a pound or dollar sign is fine too', amountOf('£ 5,000') === 5000 && amountOf('$5000') === 5000);
+ok('the limit is said in the payer\'s own money', /more than £10,000,000/.test(amountError('20000000', { max: 10000000, cur: 'GBP' })));
+ok('a currency we cannot name is a plain number, never rupees', !/₹/.test(amountError('20000000', { max: 10000000, cur: null })));
 
 // ---- links
 ok('an https link is fine', urlError('https://youtu.be/abc') === null);
