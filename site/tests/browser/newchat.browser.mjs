@@ -205,7 +205,9 @@ for (const [label, viewport] of [['phone', { width:390, height:844 }]]) {
     const pane = document.getElementById('pane-care').getBoundingClientRect();
     const r = document.getElementById('sos-fab').getBoundingClientRect();
     const list = document.getElementById('rlist').getBoundingClientRect().width;
-    const card = document.querySelector('#pane-care .card').getBoundingClientRect().width;
+    // The add form, found by its title box: the first .card on To do is
+    // now whatever the family keeps (refill alerts and the like), not the form.
+    const card = document.getElementById('r-title').closest('.card').getBoundingClientRect().width;
     const overlap = !(pane.right <= r.left + 1 || pane.left >= r.right - 1 || pane.bottom <= r.top + 1 || pane.top >= r.bottom - 1);
     return { overlap, same: Math.abs(list - card) < 2, overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 };
   });
