@@ -12,6 +12,7 @@ import { pushCircle } from './_push.mjs';
 import { ensureTaskSchema, sweepOverdue, sweepReminders } from './_tasks.mjs';
 import { sweepPlanReminders } from './_plansweep.mjs';
 import { award, today } from './_coins.mjs';
+import { reqTz } from './_recur.mjs';
 
 import { index as kinIndex, kinLabel, generations } from './_kin.mjs';
 import { pulseToday, ensurePulseSchema, optionOf, styleFor, today as pulseDay } from './_pulse.mjs';
@@ -147,7 +148,7 @@ async function escalateStaleSos(sql, circleId) {
       // Every open phone looks, so a late task is announced within a poll;
       // the sweep claims each alert, so it is still announced only once.
       try { await ensureTaskSchema(sql); await sweepReminders(sql, circle.id); await sweepOverdue(sql, circle.id); await sweepPlanReminders(sql, circle.id); } catch (e) { /* never break a read */ }
-      const pulse = await pulseToday(sql, circle.id);
+      const pulse = await pulseToday(sql, circle.id, reqTz(req));
       const sosOpen = await sql`
         select s.id, s.member_id, s.status, s.escalated, s.created_at, s.acked_at, s.safe_at,
                s.lat, s.lng, s.accuracy,
@@ -198,7 +199,7 @@ async function escalateStaleSos(sql, circleId) {
         const pm = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
         if (!pm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
         await ensurePulseSchema(sql);
-        const day = pulseDay(), styleKey = styleFor(day);
+        const day = pulseDay(reqTz(req)), styleKey = styleFor(day);
         const opt = optionOf(styleKey, String(req.body.value || ''));
         if (!opt) return res.status(400).json({ ok: false, error: 'Pick how you are today' });
         const note = String(req.body.note || '').trim().slice(0, 120) || null;
@@ -350,7 +351,7 @@ async function raiseSos(sql, res, circle, me, said, body) {
   // Location on, exact, held on until the family marks them safe.
   await ensureLocationSchema(sql);
   await lockForSos(sql, circle.id, me.id, sosId, pos);
-  const text = sosText(me.name, pos, Date.now()) + (said ? ' "' + said + '"' : '');
+  const text = sosText(me.name, pos, Date.now(), body && body.tz) + (said ? ' "' + said + '"' : '');
   // In the family chat, where everyone looks, with the map link.
   try {
     const chatId = await ensureCircleChat(sql, circle.id);
@@ -364,6 +365,7 @@ async function raiseSos(sql, res, circle, me, said, body) {
   const contacts = await sosContacts(sql, circle.id, me.id);
   // Texts, WhatsApp and calls sent by Parwah itself, once a Twilio account
   // is added (api/_sosdial.mjs). Without one, this sends nothing.
-  const dialed = await dialOut(sql, sosId, contacts, { name: me.name, text, map: mapLink(pos) });
+  const meCc = me.phone_cc || ((await sql`select phone_cc from members where id = ${me.id}`)[0] || {}).phone_cc || null;
+  const dialed = await dialOut(sql, sosId, contacts, { name: me.name, text, map: mapLink(pos), cc: meCc });
   return res.status(201).json({ ok: true, sosId, again, text, map: mapLink(pos), located: !!pos, contacts, dialed });
 }

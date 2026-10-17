@@ -421,7 +421,7 @@ docid = (API_DIR / "_docid.mjs").read_text(encoding="utf-8")
 check("vault: Aadhaar numbers are checksum-verified",
       "verhoeffOk" in docid and "V_D" in docid and "checkNumber" in vault)
 check("vault: the server still has the last word on a number",
-      "const chk = checkNumber(kind, body.number);" in vault
+      "const chk = checkNumber(kind, body.number, aRow[0].country);" in vault
       and "return res.status(400).json({ ok: false, error: chk.why });" in vault)
 # The only free, legitimate PAN signals: the 4th and 5th characters, both
 # published by the Income Tax Department. The 10th is a check digit whose
@@ -622,8 +622,40 @@ phonesrc = (REPO / "site/tests/phonetest.mjs").read_text(encoding="utf-8")
 phonemod = (API_DIR / "_phone.mjs").read_text(encoding="utf-8")
 check("gate: the phone unit test does not need the database driver",
       "_phone.mjs" in phonesrc and "_db.mjs" not in phonesrc)
-check("gate: the phone rules module has no imports at all",
-      not re.search(r"^\s*import\s", phonemod, re.M))
+# The one import allowed is the country table, which is plain data with no
+# imports of its own, so the test still runs on a fresh clone.
+_phone_imports = re.findall(r"^\s*import\s.*?from\s+'([^']+)'", phonemod, re.M)
+_countries_src = (API_DIR / "_countries.mjs").read_text(encoding="utf-8")
+# The app carries its own copy of the country table (dialling code, flag,
+# ambulance) and of the currency table; a copy that drifts sends an SOS to
+# the wrong number or a cap in the wrong money.
+_idx_src = (ROOT / "public" / "index.html").read_text(encoding="utf-8")
+def _rows(src, start, end):
+    i = src.find(start); j = src.find(end, i)
+    return re.findall(r"\['([A-Z]{2})',\s*'([^']+)',\s*'(\+\d+)',\s*'(\d+)'\]", src[i:j + len(end)]) if i >= 0 and j > i else []
+_api_rows = _rows(_countries_src, "export const COUNTRIES", "\n];")
+_app_rows = _rows(_idx_src, "var COUNTRIES", "]];")
+check("global: the app's country table is exactly the server's (code, name, dialling code, ambulance)",
+      len(_api_rows) > 190 and _api_rows == _app_rows, f"{len(_api_rows)} vs {len(_app_rows)}")
+_money_src = (API_DIR / "_money.mjs").read_text(encoding="utf-8")
+def _cur(src, start):
+    i = src.find(start); j = src.find("}", i)
+    return dict(re.findall(r"([A-Z]{2}): '([A-Z]{3})'", src[i:j])) if i >= 0 else {}
+_m_euro = re.search(r"const EURO = (\[[^\]]*\])", _money_src)
+check("global: the app's currency table is exactly the server's",
+      len(_cur(_money_src, "export const CURRENCY")) > 50
+      and _cur(_money_src, "export const CURRENCY") == _cur(_idx_src, "var CURRENCY")
+      and _m_euro and _m_euro.group(1) in _idx_src)
+check("global: money and places modules import nothing, so they are tested before npm install",
+      not re.search(r"^\s*import\s", _money_src, re.M)
+      and not re.search(r"^\s*import\s", (API_DIR / "_places.mjs").read_text(encoding="utf-8"), re.M))
+check("global: no made-up UPI ID - a bill link pays the biller's own ID or is not offered",
+      "bills@parwah" not in (API_DIR / "_careprep.mjs").read_text(encoding="utf-8") and "'bill@upi'" not in _idx_src)
+check("global: the privacy screen does not claim a data region Parwah does not use",
+      "Mumbai AWS" not in _idx_src and "Mumbai Region" not in _idx_src)
+check("gate: the phone rules module imports nothing but the plain country table",
+      set(_phone_imports) <= {"./_countries.mjs"} and len(re.findall(r"^\s*import\s", phonemod, re.M)) == len(_phone_imports)
+      and not re.search(r"^\s*import\s", _countries_src, re.M), str(_phone_imports))
 check("gate: _db still re-exports the phone helpers for everything else",
       "export { PHONE_CC, normPhone, phoneError } from './_phone.mjs'" in dbsrc)
 deploysh = (REPO / "ops/deploy.sh").read_text(encoding="utf-8")
@@ -911,8 +943,10 @@ check("ekta: the probe says whether a model answered or the records did",
       "model_live" in eself and "brain" in eself and "offline_answers_from_records" in eself)
 check("ekta: the probe tests the degraded path rather than assuming it",
       "offline_never_diagnoses" in eself and "offline_says_why" in eself)
-check("ekta: the retrieval logic imports nothing, so the gate tests it early",
-      not re.search(r"^\s*import\s", elocal, re.M))
+_el_imports = re.findall(r"^\s*import\s.*?from\s+'([^']+)'", elocal, re.M)
+check("ekta: the retrieval logic imports nothing but the plain country table, so the gate tests it early",
+      set(_el_imports) <= {"./_countries.mjs"} and len(re.findall(r"^\s*import\s", elocal, re.M)) == len(_el_imports)
+      and not re.search(r"^\s*import\s", (API_DIR / "_countries.mjs").read_text(encoding="utf-8"), re.M), str(_el_imports))
 check("ekta: the retrieval logic is unit-tested by the gate",
       (REPO / "site/tests/ektatest.mjs").exists()
       and "ektatest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
@@ -1812,7 +1846,7 @@ check("ekta: anyone in danger is answered first, in fixed words, free - before c
 # saved), the answer refreshes the screen rather than hiding it.
 _ek = (REPO / "api/ekta.mjs").read_text(encoding="utf-8")
 check("ekta: a failed turn that names an emergency still refreshes what was already done",
-      "if (urgentToo) return answer({" in _ek and "actions: [{ tool: 'refresh' }]" in _ek and "please check before asking again" in _ek)
+      "if (isUrgent) return answer({" in _ek and "actions: [{ tool: 'refresh' }]" in _ek and "please check before asking again" in _ek)
 check("ekta: the scam check, records and medicine questions are never charged; a family word finds the one person saved with it",
       "if (['scam', 'memory', 'summary', 'health'].includes(asked)) {" in _ekt and "localTurn(sql, circle, me, history, 'records')" in _ekt
       and _ekt.find("localTurn(sql, circle, me, history, 'records')") < _ekt.find("await spend(sql, circle.id, me.id, 'ekta')")

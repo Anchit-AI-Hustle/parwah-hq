@@ -1,4 +1,5 @@
 // POST /api/circle - create a care circle or join one with its code.
+import { isCountry } from './_countries.mjs';
 import { db, ensureSchema, makeCode, circleByCode, spaceWord, isUuid, normPhone, phoneError, rateLimit, clientIp, sessionUser } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { cleanName, nameError, dobError } from './_valid.mjs';
@@ -459,7 +460,7 @@ export default async function handler(req, res) {
       // Place of stay - free text; country as a 2-letter code drives regional gifting.
       const newPlace = req.body.place !== undefined ? (String(req.body.place || '').trim().slice(0, 80) || null) : cur.place;
       const newCountry = req.body.country !== undefined
-        ? (/^[A-Z]{2}$/.test(String(req.body.country || '')) ? req.body.country : null)
+        ? ((req.body.country === 'XX' || isCountry(req.body.country)) ? String(req.body.country).toUpperCase() : null)
         : cur.country;
       // Date of birth: a real calendar date or nothing. A half-parsed date
       // would give a confidently wrong rashi.

@@ -15,6 +15,7 @@
 // Earning is idempotent by (member, reason, ref): verifying the same entry
 // twice in a month pays once, checking in twice in a day pays once. That is
 // enforced by a unique index, not by remembering to check.
+import { dayIn } from './_recur.mjs';
 
 // Only what is really paid is listed: a rule shown on screen that never pays
 // teaches the family the coins are not to be trusted. Check-ins and
@@ -72,7 +73,8 @@ export async function award(sql, circleId, memberId, reason, ref = null) {
   } catch (e) { return 0; }
 }
 
-export function today() { return new Date().toISOString().slice(0, 10); }
+// The day where the asker is (their phone sends its zone), UTC otherwise.
+export function today(tz) { return dayIn(tz); }
 
 // Take coins for an AI turn. Returns { ok, balance, cost } - a family with
 // an empty pot is told how to fill it, never billed into the negative.

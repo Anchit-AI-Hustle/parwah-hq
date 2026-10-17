@@ -180,10 +180,25 @@ export function looksLike(raw, exceptKind) {
 // Shape check for the number the family typed. Returns { ok, why, last4 } -
 // `why` is written for a person, not a developer. This is what the server
 // trusts; the client only mirrors it so nobody is surprised at save time.
-export function checkNumber(kind, raw) {
+// A passport or licence issued outside India has another country's shape,
+// so for a member who lives abroad only the Indian-only documents (Aadhaar,
+// PAN, voter ID) keep their Indian rules; the rest are checked loosely.
+export const INDIA_SHAPED_ABROAD = ['aadhaar', 'pan', 'voter'];
+export function isAbroad(iso) { const c = String(iso || '').toUpperCase(); return !!c && c !== 'IN'; }
+export function shapeFor(kind, iso) {
+  if (isAbroad(iso) && !INDIA_SHAPED_ABROAD.includes(kind)) return null;
+  return DOC_ID[kind] || null;
+}
+
+export function checkNumber(kind, raw, iso) {
   const v = bare(raw);
   if (!v) return { ok: true, why: null, last4: null };            // number is optional
   const last4 = v.slice(-4);
+  if (isAbroad(iso) && (kind === 'passport' || kind === 'dl')) {
+    // An Indian passport is still accepted for someone abroad, of course.
+    if (v.length < 5 || v.length > 20) return { ok: false, why: 'A passport or licence number is usually 5 to 20 letters and digits - please check it' };
+    return { ok: true, why: null, last4 };
+  }
   if (kind === 'aadhaar') {
     const d = digits(v);
     if (d.length !== 12) return { ok: false, why: 'An Aadhaar number has 12 digits - please check it' };

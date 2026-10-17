@@ -17,6 +17,7 @@
 // Dependency-free on purpose, so the deploy gate can unit-test the intent
 // classifier and every rendering on a fresh clone, before npm install.
 
+import { ambulanceFor } from './_countries.mjs';
 export const LOCAL_MODEL = 'parwah-local';
 
 // A billing failure is an ACCOUNT fact, not a model fact: retrying the same
@@ -117,7 +118,18 @@ const saysNow = t => NOW.test(t)
 // that names an emergency is never answered without the way to 112, even
 // when it reads as the past and gets its records answer first.
 export function mentionsUrgent(text) { return RE.emergency.test(String(text || '')); }
-export const URGENT_TOO = 'If any of this is happening now: call 112 (ambulance 108), or send SOS to the family.';
+// The number to ring, where the asker lives. India keeps 112 with 108 named
+// for an ambulance; elsewhere the country's own number (911, 999, 000 ...).
+function callLine(iso) {
+  const c = String(iso || 'IN').toUpperCase();
+  if (c === 'IN') return { first: '112', words: 'call 112 (ambulance 108)', also: ' For an ambulance you can also call 108.' };
+  const n = ambulanceFor(c);
+  return { first: n, words: 'call ' + n, also: n === '112' ? '' : ' 112 also works from any mobile.' };
+}
+export function urgentToo(iso) {
+  return 'If any of this is happening now: ' + callLine(iso).words + ', or send SOS to the family.';
+}
+export const URGENT_TOO = urgentToo('IN');
 
 // The family's words for a person, and the relation saved for them, so
 // "can Papa take..." finds the one member saved as father.
@@ -272,7 +284,16 @@ function offlineWhy(reason) {
 // A scam question does not need a model, and the right answer does not
 // change from family to family - which is exactly why it can be given
 // offline, word for word, and why it must never be improvised.
-export function renderScam(text, reason) {
+// Where to report fraud, by country. Elsewhere: the bank first, then police.
+const FRAUD = {
+  IN: 'If money has already gone, call 1930 straight away. It is the national cyber-crime helpline. You can also report at cybercrime.gov.in, and tell your bank.',
+  US: 'If money has already gone, call your bank straight away, then report it at reportfraud.ftc.gov (and ic3.gov for online fraud).',
+  GB: 'If money has already gone, call your bank straight away on 159, then report it to Action Fraud on 0300 123 2040 (Report Fraud in Scotland: call 101).',
+  CA: 'If money has already gone, call your bank straight away, then report it to the Canadian Anti-Fraud Centre on 1-888-495-8501.',
+  AU: 'If money has already gone, call your bank straight away, then report it at reportcyber.gov.au and scamwatch.gov.au.',
+  AE: 'If money has already gone, call your bank straight away, then report it to the police on 901 or through the eCrime portal.'
+};
+export function renderScam(text, reason, iso) {
   const t = String(text || '');
   const asked = /\b(otp|one[- ]time (password|code)|upi ?pin|atm ?pin|card ?pin|cvv)\b/i.test(t);
   const lead = asked
@@ -280,10 +301,10 @@ export function renderScam(text, reason) {
     : 'Here is how to tell, and what to do.';
   return [lead, '',
     bullets([
-      'No bank, UPI app, KYC desk or government office will ever ask you for an OTP, UPI PIN, card PIN or CVV. Not on a call, not by SMS, not on WhatsApp.',
+      'No bank, payment app, KYC desk or government office will ever ask you for an OTP, UPI PIN, card PIN or CVV. Not on a call, not by SMS, not on WhatsApp.',
       'An OTP is only for you to type into an app or website you opened yourself. The one code you do hand over is a delivery code, to the person at your door.',
       'Do not tap links in the message, and do not call back a number it gives you.',
-      'If money has already gone, call 1930 straight away. It is the national cyber-crime helpline. You can also report at cybercrime.gov.in, and tell your bank.',
+      FRAUD[String(iso || 'IN').toUpperCase()] || 'If money has already gone, call your bank straight away to stop it, then report it to the police.',
       'Tell someone in your family. A second pair of eyes stops most of these.'
     ]), '',
     'This is the standard advice, the same for every family, not something from your records. I am giving it without a conversation because ' + offlineWhy(reason) + '.'
@@ -317,7 +338,7 @@ export function offlineNote(reason) {
 }
 
 // Nothing was answered, so nothing claims to have been read from records.
-export function cannotAnswer(reason) {
+export function cannotAnswer(reason, iso) {
   return ['I cannot chat properly at the moment, because ' + offlineWhy(reason) + ', so I will not guess.', '',
     'What I can still do right now, free, from your family records:',
     bullets([
@@ -325,26 +346,39 @@ export function cannotAnswer(reason) {
       'Prepare a doctor or hospital visit: "taking Papa to the doctor tomorrow"',
       'Check a message that might be a scam: "is this OTP message a scam"'
     ]), '',
-    'If someone is unwell or hurt right now, call 112 (ambulance 108) and press SOS so the family knows.'].join(NL);
+    'If someone is unwell or hurt right now, ' + callLine(iso).words + ' and press SOS so the family knows.'].join(NL);
 }
 
 // Fixed words, the same for every family, so they can be checked once and
 // trusted always. No first aid instructions: Parwah is not a doctor.
-export function renderEmergency() {
+export function renderEmergency(iso) {
+  const c = callLine(iso);
   return ['This sounds urgent. Please do this now:', '',
     bullets([
-      'Call 112 now. For an ambulance you can also call 108.',
+      'Call ' + c.first + ' now.' + c.also,
       'Press SOS below, so everyone in the family is told at once.',
       'Stay with them, and keep your phone with you.'
     ]), '',
-    'I am not a doctor and cannot judge how serious this is. The people on 112 can.'].join(NL);
+    'I am not a doctor and cannot judge how serious this is. The people on ' + c.first + ' can.'].join(NL);
 }
 
-export function renderCrisis() {
+// Free crisis lines that answer day and night. Where none is listed here,
+// findahelpline.com lists the free ones for every country.
+const CRISIS = {
+  IN: 'Tele-MANAS is free and open day and night: call 14416. They speak Hindi, English and many other languages.',
+  US: 'The 988 Suicide and Crisis Lifeline is free and open day and night: call or text 988.',
+  CA: 'The 988 Suicide Crisis Helpline is free and open day and night: call or text 988.',
+  GB: 'Samaritans are free and open day and night: call 116 123.',
+  IE: 'Samaritans are free and open day and night: call 116 123.',
+  AU: 'Lifeline is free and open day and night: call 13 11 14.',
+  NZ: 'Need to talk? is free and open day and night: call or text 1737.'
+};
+export function renderCrisis(iso) {
+  const c = String(iso || 'IN').toUpperCase();
   return ['I am really glad you said something. You do not have to carry this alone.', '',
     bullets([
-      'Tele-MANAS is free and open day and night: call 14416. They speak Hindi, English and many other languages.',
-      'If anyone is in danger right now, call 112.',
+      CRISIS[c] || 'findahelpline.com lists free helplines in your country, many open day and night.',
+      'If anyone is in danger right now, call ' + callLine(c).first + '.',
       'Tell one person in your family you trust. Press SOS below if you want them all to know now.'
     ])].join(NL);
 }

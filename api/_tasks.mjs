@@ -231,7 +231,7 @@ const no = (status, error) => ({ status, json: { ok: false, error } });
 export async function createTask(sql, circle, me, body) {
   const title = clip(body.title, 200);
   if (!title) return no(400, 'Say what needs doing');
-  const tz = validTz(body.tz) || 'Asia/Kolkata';
+  const tz = validTz(body.tz) || 'UTC';
   const due = parseDue(body, tz);
   if (due.error) return no(400, due.error);
   const rec = REPEATS.includes(body.recurrence) ? body.recurrence : 'once';
@@ -310,7 +310,7 @@ export async function taskAction(sql, circle, me, body) {
     if (t.claimed_by === me.id) return no(409, 'You have this one yourself');
     if (!(await rateLimit(sql, 'tasknudge', t.id, 1, 3600))) return no(429, 'A reminder went out for this in the last hour - give it a little time');
     const holder = t.claimed_by ? await memberIn(sql, circle.id, t.claimed_by) : null;
-    const msg = { title: '🔔 ' + me.name + ' is reminding you', body: t.title + (t.due_at ? ' - due ' + new Date(t.due_at).toLocaleString('en-IN', { timeZone: t.tz || 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : ''), url: '/#care' };
+    const msg = { title: '🔔 ' + me.name + ' is reminding you', body: t.title + (t.due_at ? ' - due ' + new Date(t.due_at).toLocaleString('en-GB', { timeZone: t.tz || 'UTC', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true, timeZoneName: 'short' }).replace('GMT+5:30', 'IST') : ''), url: '/#care' };
     if (holder) await pushCircle(sql, circle.id, msg, { only: holder.id });
     else await pushCircle(sql, circle.id, { ...msg, title: '🔔 Can someone take this?' }, { except: me.id });
     await log(sql, t, me, 'nudged', holder ? holder.name : 'everyone');
@@ -351,7 +351,7 @@ export async function taskAction(sql, circle, me, body) {
     if (!isMine(t, me)) return no(403, 'Only the person who asked or the person who has it can change it');
     const title = body.title !== undefined ? clip(body.title, 200) : t.title;
     if (!title) return no(400, 'Say what needs doing');
-    const tz = validTz(body.tz) || t.tz || 'Asia/Kolkata';
+    const tz = validTz(body.tz) || t.tz || 'UTC';
     let dueAt = t.due_at, allDay = t.all_day, dueDate = t.due_date;
     if (body.dueAt !== undefined || body.dueDate !== undefined) {
       if (!body.dueAt && !body.dueDate) { dueAt = null; allDay = false; dueDate = null; }
@@ -408,7 +408,7 @@ export async function taskAction(sql, circle, me, body) {
           insert into requests (circle_id, by_member, title, status, claimed_by, acknowledged_at, due_at, all_day, tz, due_date,
                                 recurrence, series_id, series_anchor, done_when, notes, escalate, about_member, remind_before)
           values (${t.circle_id}, ${t.by_member}, ${t.title}, ${nextStatus}, ${owner}, ${nextStatus === 'claimed' ? new Date() : null}, ${new Date(n)}, ${t.all_day}, ${t.tz},
-                  ${localDate(n, t.tz || 'Asia/Kolkata')}, ${t.recurrence}, ${t.series_id}, ${t.series_anchor},
+                  ${localDate(n, t.tz || 'UTC')}, ${t.recurrence}, ${t.series_id}, ${t.series_anchor},
                   ${t.done_when}, ${t.notes}, ${t.escalate}, ${t.about_member}, ${t.remind_before})
           on conflict do nothing returning id, circle_id`;
         if (ins[0]) { next = ins[0].id; await log(sql, ins[0], me, 'created', 'next time'); }

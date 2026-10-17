@@ -6,6 +6,7 @@ import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 import { award, today } from './_coins.mjs';
+import { reqTz } from './_recur.mjs';
 import { ensureTaskSchema, taskList, taskHistory, taskAction, sweepOverdue, sweepReminders, GAPS, gapTitle } from './_tasks.mjs';
 import { refillApi, billsApi, siblingTasksApi } from './_careprep.mjs';
 
@@ -230,7 +231,7 @@ export default async function handler(req, res) {
       await feed(sql, circle.id, me.id, `${me.name} completed: ${row[0].title} ✔`);
       // A daily reminder earns once a day; a one-off earns once, ever.
       await award(sql, circle.id, me.id, 'reminder',
-        row[0].recurrence === 'daily' ? reminderId + ':' + today() : reminderId);
+        row[0].recurrence === 'daily' ? reminderId + ':' + today(reqTz(req)) : reminderId);
       if (row[0].by_member && row[0].by_member !== me.id) {
         await pushCircle(sql, circle.id, { title: '✔ ' + me.name + ' did it', body: row[0].title }, { only: row[0].by_member });
       }
@@ -246,7 +247,10 @@ export default async function handler(req, res) {
     // permission checks: a job can no longer be claimed twice at once, or
     // closed by someone who neither asked for it nor has it.
     if (/^task_/.test(action) || action === 'request_claim' || action === 'request_done') {
-      const out = await taskAction(sql, circle, me, req.body);
+      // A new task with no zone of its own takes the phone's, not India's;
+      // an edit keeps the zone the task was made in.
+      const b = req.body || {};
+      const out = await taskAction(sql, circle, me, action === 'task_create' && !b.tz ? { ...b, tz: reqTz(req) } : b);
       if (out.json.ok && out.json.status === 'done') {
         await award(sql, circle.id, me.id, 'reminder', req.body.taskId || req.body.requestId);
       }

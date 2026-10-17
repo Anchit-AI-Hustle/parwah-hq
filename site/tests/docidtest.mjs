@@ -2,7 +2,7 @@
 // the server applies before it stores anything. No imports, so this runs on a
 // fresh clone before npm install.
 import { DOC_ID, bare, format, progress, looksLike, checkNumber, verhoeffOk, fitsChars,
-         PAN_HOLDER, panFacts } from '../../api/_docid.mjs';
+         PAN_HOLDER, panFacts, shapeFor, isAbroad } from '../../api/_docid.mjs';
 
 let pass = 0, fail = 0;
 const ok = (c, n) => { c ? pass++ : (fail++, console.log('FAIL', n)); };
@@ -103,6 +103,17 @@ ok(panFacts('ALVZT2248R', 'Anchit Tandon').holder === null,
    'an unknown holder code is left null, never guessed');
 ok(!/checksum|check digit/i.test(JSON.stringify(panFacts('ALVPT2248R', 'Anchit Tandon'))),
    'nothing here claims to verify the tenth character');
+
+// ---- a family member who lives abroad -------------------------------------
+ok(checkNumber('passport', '533380006', 'US').ok, 'a US passport (nine digits) is accepted for a member in the US');
+ok(checkNumber('passport', 'GB1234567', 'GB').ok && checkNumber('dl', 'MORGA753116SM9IJ', 'GB').ok, 'a UK passport and licence are accepted for a member in the UK');
+ok(checkNumber('passport', 'A1234567', 'CA').ok, 'an Indian passport is still accepted for a member abroad');
+ok(!checkNumber('passport', 'AB1', 'US').ok, 'a number too short to be any passport is still refused');
+ok(!checkNumber('passport', '533380006', 'IN').ok && !checkNumber('passport', '533380006').ok, 'in India the Indian shape still applies');
+ok(!checkNumber('aadhaar', '1234', 'US').ok, 'an Aadhaar keeps its rules wherever the holder lives');
+ok(shapeFor('passport', 'US') === null && shapeFor('pan', 'US') === DOC_ID.pan && shapeFor('passport', 'IN') === DOC_ID.passport,
+   'the field drops the Indian passport shape only for a member abroad');
+ok(isAbroad('GB') && !isAbroad('IN') && !isAbroad('') && !isAbroad(null), 'abroad means a country other than India is recorded');
 
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
