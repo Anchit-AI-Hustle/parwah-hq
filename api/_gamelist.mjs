@@ -9,8 +9,8 @@
 export const MAX_ACTIVE = 12;
 export const GAME_LABEL = {
   snakes: 'Snakes & Ladders 🐍🪜', ttt: 'Tic-Tac-Toe ⭕✕',
-  antakshari: 'Song Chain 🎤', charades: 'Dumb Charades 🎭',
-  ludo: 'Ludo 🎯', bhabhi: 'Get Away 🃏', vyapar: 'Business 🏠'
+  antakshari: 'Antakshari 🎤', charades: 'Dumb Charades 🎭',
+  ludo: 'Ludo 🎯', bhabhi: 'Get Away 🃏', vyapar: 'Monopoly 🏠'
 };
 export function gameName(kind, n) {
   const base = GAME_LABEL[kind] || 'Game';

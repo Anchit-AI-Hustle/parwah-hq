@@ -198,7 +198,7 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
   await backToList();
 }
 
-// ---------------- Business, alone ----------------
+// ---------------- Monopoly, alone ----------------
 {
   await R.click('[data-bsolo="vyapar"]');
   await R.waitForTimeout(700);
