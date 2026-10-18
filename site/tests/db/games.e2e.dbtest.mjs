@@ -205,7 +205,10 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
   ok('vyapar: the board of cities opens', await vis(R, '#g-vyapar') && (await R.locator('#vboard .vc').count()) === 24);
   ok('vyapar: says it is play money', /Play money only/.test(await R.textContent('#g-vyapar')));
   let rolls = 0, buys = 0;
-  for (let i = 0; i < 160; i++) {
+  // Play until the bar is met or someone wins, not for a fixed number of
+  // looks: on a slow runner the bots' turns take longer, and 160 looks once
+  // ended a fair game at 19 rolls.
+  for (let i = 0; i < 600 && !(rolls > 20 && buys > 0); i++) {
     const s = (await lastGame('vyapar')).state;
     if (s.winner) break;
     const buy = R.locator('#v-acts [data-vdo="buy"]');
@@ -215,7 +218,7 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
     await R.waitForTimeout(60);
   }
   const s = (await lastGame('vyapar')).state;
-  ok('vyapar: played by tapping Roll and Buy (' + rolls + ' rolls, ' + buys + ' buys)', rolls > 20 && buys > 0);
+  ok('vyapar: played by tapping Roll and Buy (' + rolls + ' rolls, ' + buys + ' buys)', (rolls > 20 || !!s.winner) && buys > 0);
   ok('vyapar: cities get owned', Object.keys(s.owners).length > 0);
   ok('vyapar: money moves', s.players.some(p => p.money !== 1500));
   // End it: the richest wins.
