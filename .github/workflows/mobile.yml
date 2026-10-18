@@ -35,7 +35,7 @@ concurrency:
 
 env:
   # The release key's certificate. A signed build must carry exactly this.
-  RELEASE_CERT_SHA256: 2772b36b906ee3328e470f8c5fcd6230c0bac7f3e177d79e8e82ba861bc13c41
+  RELEASE_CERT_SHA256: e77176cd4af45a36747ef9239620168c7ff4dd4d821e2bb90c11109608de264e
 
 jobs:
   android:
