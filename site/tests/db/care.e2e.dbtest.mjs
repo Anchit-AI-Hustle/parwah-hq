@@ -438,6 +438,18 @@ const tomorrow = localDay(Date.now() + 86400000);
      await M.textContent('#notelist'));
 }
 
+// ---- the line under the family name says what it counts, and opens To do
+{
+  await R.evaluate(() => { location.hash = '#home'; }); await reload(R); await R.waitForTimeout(800);
+  const hs = await R.textContent('#hero-status');
+  ok('the Today line says its counts are to-dos ("To do: ... coming up"), not a bare "6 coming up"', /To do: /.test(hs) && !/^\d+ coming up/.test(hs.trim()), hs);
+  ok('and it reads as something to tap', (await R.getAttribute('#hero-status', 'role')) === 'button' && (await R.getAttribute('#hero-status', 'data-go')) === 'care');
+  await R.click('#hero-status'); await R.waitForTimeout(700);
+  ok('tapping it opens To do', await R.isVisible('#pane-care') && await R.isVisible('#rlist'));
+  await R.evaluate(() => { location.hash = '#home'; }); await R.waitForTimeout(500);
+  await R.focus('#hero-status'); await R.keyboard.press('Enter'); await R.waitForTimeout(600);
+  ok('and so does Enter on a keyboard', await R.isVisible('#pane-care'));
+}
 if (process.env.SHOTS) {
   await reload(R); await R.screenshot({ path: process.env.SHOTS + '/care-list.png', fullPage: true });
   await rowOf(R, 'Pay the electricity bill').locator('.tlink').click(); await R.waitForTimeout(700);
