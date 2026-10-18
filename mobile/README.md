@@ -57,6 +57,23 @@ web app already supports. With an account: add the signing certificate and
 provisioning profile as secrets and export a signed IPA for TestFlight and
 the App Store.
 
+### Your own iPhone with a free Apple ID
+
+On a Mac with Xcode 15 or newer and the iPhone plugged in:
+
+```
+curl -fsSLO https://raw.githubusercontent.com/Anchit-AI-Hustle/parwah-hq/main/mobile/ci/ios-install-free.sh
+bash ios-install-free.sh
+```
+
+It downloads the code, builds the app, signs it with your Personal Team and
+installs it. The first time it stops once to ask you to add your Apple ID in
+Xcode > Settings > Accounts. Apple stops free-signed apps from opening after
+7 days; run it again to renew. The phone needs Developer Mode on (iOS 16+)
+and, the first time, Settings > General > VPN & Device Management > Trust.
+Every build runs this script on a Mac in CI up to the two steps that need a
+person (the Apple ID and the phone).
+
 ## Building on a computer
 
 ```
