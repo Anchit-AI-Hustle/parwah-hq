@@ -38,8 +38,8 @@ appears on its own once the file exists.
 
 The release key is NOT in this repository. It lives in four GitHub secrets:
 `PARWAH_KEYSTORE_BASE64`, `PARWAH_KEYSTORE_PASSWORD`, `PARWAH_KEY_ALIAS`
-(`parwah`), `PARWAH_KEY_PASSWORD`. The owner holds the backup. Certificate
-SHA-256: `27:72:B3:6B:90:6E:E3:32:8E:47:0F:8C:5F:CD:62:30:C0:BA:C7:F3:E1:77:D7:9E:8E:82:BA:86:1B:C1:3C:41`;
+(`parwah`), `PARWAH_KEY_PASSWORD`. The owner holds the backup. The key was made on 2026-10-18 (RSA 4096, PKCS12, valid to 2054); the earlier key was never used for a published build. Certificate
+SHA-256: `E7:71:76:CD:4A:F4:5A:36:74:7E:F9:23:96:20:16:8C:7F:F4:DD:4D:82:1E:2B:B9:0C:11:10:96:08:DE:26:4E`;
 the workflow refuses a signed build that does not carry exactly this.
 Without the secrets the workflow builds a TEST APK (debug-signed, marked as a
 prerelease): it installs, but the next release will not install over it.

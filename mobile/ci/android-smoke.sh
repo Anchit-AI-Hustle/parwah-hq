@@ -51,9 +51,14 @@ adb shell svc wifi enable; adb shell svc data enable
 
 # 3. No crash at any point.
 adb logcat -d > "$OUT/logcat.txt"
-if grep -qE "FATAL EXCEPTION|Process: $PKG" "$OUT/logcat.txt"; then
-  bad "the app crashed"; grep -A15 "FATAL EXCEPTION" "$OUT/logcat.txt" | head -40
-else pass "no crash in the log"; fi
+# Only Parwah's own process counts: the UI dumps above run Android's
+# UiAutomation, which can itself die on an emulator, and that is not the app.
+if grep -qE "AndroidRuntime: Process: $PKG|>>> $PKG <<<" "$OUT/logcat.txt"; then
+  bad "the app crashed"; grep -B2 -A15 -E "AndroidRuntime: Process: $PKG|>>> $PKG <<<" "$OUT/logcat.txt" | head -40
+else
+  pass "no crash in the log"
+  grep -q "FATAL EXCEPTION" "$OUT/logcat.txt" && echo "NOTE  another process crashed (not Parwah): $(grep -A1 'FATAL EXCEPTION' "$OUT/logcat.txt" | sed -n 's/.*AndroidRuntime: Process: \([^,]*\).*/\1/p;s/.*FATAL EXCEPTION: \(.*\)/\1/p' | head -2 | tr '\n' ' ')"
+fi
 
 # Small copies of the screenshots in the log, so they can be reviewed by
 # anyone who can read the log but not download the artifacts.
