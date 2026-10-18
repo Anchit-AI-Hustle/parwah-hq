@@ -208,6 +208,28 @@ jobs:
       - name: Open it on an iPhone simulator
         run: bash mobile/ci/ios-smoke.sh "$RUNNER_TEMP/sim/Build/Products/Debug-iphonesimulator/App.app" shots/ios
 
+      # The free-Apple-ID install script (mobile/ci/ios-install-free.sh) runs
+      # on a real Mac up to where a person's Apple ID and iPhone are needed,
+      # and says what to do at each of those two stops.
+      - name: The free Apple ID install script runs on a Mac
+        run: |
+          set -u
+          out=$(bash mobile/ci/ios-install-free.sh 2>&1); code=$?
+          echo "$out" | tail -8
+          [ "$code" -ne 0 ] && echo "$out" | grep -q "Xcode does not know your Apple ID yet" \
+            || { echo "FAIL  with no Apple ID in Xcode it should stop and say how to add one"; exit 1; }
+          out=$(TEAM_ID=TESTTEAM00 bash mobile/ci/ios-install-free.sh 2>&1); code=$?
+          echo "$out" | tail -4
+          [ "$code" -ne 0 ] && echo "$out" | grep -q "App ID: com.parwah.app.testteam00" && echo "$out" | grep -q "no iPhone found" \
+            || { echo "FAIL  with a team and no iPhone it should stop and say how to connect one"; exit 1; }
+          git diff --quiet -- mobile/ios/App/App.xcodeproj/project.pbxproj || { echo "FAIL  the project file was left changed"; exit 1; }
+          # The app ID swap touches the app's two build settings and nothing else.
+          cp mobile/ios/App/App.xcodeproj/project.pbxproj "$RUNNER_TEMP/p.pbxproj"
+          sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = com.parwah.app;/PRODUCT_BUNDLE_IDENTIFIER = com.parwah.app.x;/g" "$RUNNER_TEMP/p.pbxproj"
+          [ "$(grep -c 'PRODUCT_BUNDLE_IDENTIFIER = com.parwah.app.x;' "$RUNNER_TEMP/p.pbxproj")" = 2 ] \
+            || { echo "FAIL  the app ID swap did not find exactly the app's two settings"; exit 1; }
+          echo "PASS  the install script stops with clear steps at the Apple ID and at the iPhone"
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
