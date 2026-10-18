@@ -213,7 +213,10 @@ jobs:
       # and says what to do at each of those two stops.
       - name: The free Apple ID install script runs on a Mac
         run: |
-          set -u
+          # The script is expected to stop (exit 1) at both points, so the
+          # step must not end on its exit code: -e is off and each stop is
+          # checked by its message instead.
+          set +e
           out=$(bash mobile/ci/ios-install-free.sh 2>&1); code=$?
           echo "$out" | tail -8
           [ "$code" -ne 0 ] && echo "$out" | grep -q "Xcode does not know your Apple ID yet" \
