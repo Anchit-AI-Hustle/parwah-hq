@@ -75,17 +75,15 @@
 
   <div class="platform" id="p-ios">
     <h2>🍎 iPhone &amp; iPad</h2>
-    <p>Installs from Safari in three taps:</p>
+    <p>The Parwah app for iPhone goes on your Home Screen from Safari: its own icon, full screen, signed in, and always up to date.</p>
+    <a class="getbtn" id="ios-get" href="../?install=ios">Get the iPhone app</a>
     <ol>
-      <li>Open <a href="../">the Parwah app</a> in <b>Safari</b></li>
-      <li>Tap the <b>Share</b> button (square with ↑)</li>
-      <li>Tap <b>“Add to Home Screen”</b></li>
+      <li>Tap <b>Get the iPhone app</b> above, in <b>Safari</b></li>
+      <li>Tap the <b>Share</b> button (square with ↑; on newer iPhones it is inside the <b>•••</b> menu)</li>
+      <li>Tap <b>“Add to Home Screen”</b>, then <b>Add</b></li>
     </ol>
-    <a class="getbtn" href="../">Open the app to install</a>
-    <p class="getor">The iPhone app file</p>
-    <p class="getnote">For installing with a computer, using Xcode, Sideloadly or AltStore and your own Apple ID. Apple asks for it to be renewed every 7 days. Most people should use Add to Home Screen above.</p>
-    <a class="getbtn dark" id="ipa-link" href="https://github.com/Anchit-AI-Hustle/parwah-hq/releases/download/mobile-v1.0.0-build15/parwah-ios-unsigned.ipa" download>⬇ iPhone app file (IPA)</a>
-    <br><a class="allbuilds" href="https://github.com/Anchit-AI-Hustle/parwah-hq/releases">All app builds</a>
+    <p class="getnote" id="ios-inapp" hidden>This page is open inside another app. Tap <b>•••</b> and choose <b>Open in Safari</b> first: only Safari can add Parwah to your Home Screen.</p>
+    <p class="getnote" id="ipa-dev">For developers: the <a id="ipa-link" href="https://github.com/Anchit-AI-Hustle/parwah-hq/releases/download/mobile-v1.0.0-build15/parwah-ios-unsigned.ipa">iPhone app file (IPA)</a> installs only through Xcode on a Mac, with the <a href="https://github.com/Anchit-AI-Hustle/parwah-hq/blob/main/mobile/README.md">install script</a>. <a class="allbuilds" href="https://github.com/Anchit-AI-Hustle/parwah-hq/releases">All app builds</a></p>
       </div>
 
   <div class="platform">
@@ -114,9 +112,14 @@
 (function(){
   // Surface the matching platform first
   var ua = navigator.userAgent || '';
-  if (/iPhone|iPad|iPod/i.test(ua)) {
+  var isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  if (isIOS) {
     var ios = document.getElementById('p-ios');
     ios.parentNode.insertBefore(ios, document.getElementById('p-android'));
+    // An IPA cannot be opened on the phone itself; only a computer can use it.
+    document.getElementById('ipa-dev').hidden = true;
+    // Instagram, WhatsApp and other in-app browsers have no Add to Home Screen.
+    if (/FBAN|FBAV|Instagram|WhatsApp|Line\/|GSA\/|Snapchat|Twitter|LinkedInApp/.test(ua)) document.getElementById('ios-inapp').hidden = false;
   }
   // The newest app build, from the public releases: a signed parwah.apk
   // when there is one, else the test build. The links in the page are the

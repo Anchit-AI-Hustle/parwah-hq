@@ -464,6 +464,8 @@ button.pcard:disabled{opacity:.45;cursor:default}
 .chips button:active{background:var(--bone)}
 .chips button:disabled{opacity:.6;cursor:default}
 .herostatus{margin-top:var(--space-12);font-size:var(--fs-14);background:rgba(250,247,239,.12);border:1px solid rgba(250,247,239,.18);border-radius:var(--radius-12);padding:var(--space-8) var(--space-12)}
+.herostatus.tappable{cursor:pointer;min-height:var(--tap-min);display:flex;align-items:center}
+.herostatus.tappable::after{content:'›';margin-left:auto;padding-left:var(--space-8);font-size:var(--fs-18);opacity:.8}
 .em{max-width:85%;border-radius:var(--radius-16);padding:var(--space-12) var(--space-16);font-size:var(--fs-14);white-space:pre-wrap}
 .em.u{align-self:flex-end;background:var(--marigold);color:var(--dusk);border-bottom-right-radius:4px}
 .em.a{align-self:flex-start;background:var(--surface);border:1px solid var(--bone-2);border-bottom-left-radius:4px}
@@ -800,6 +802,13 @@ details.more[open]>summary::before{content:"▾ "}
   #ec-x,.prow2,.hint{display:none!important}
 }
 @media(display-mode:standalone){#getapp{display:none!important}}
+#ioscoach{position:fixed;left:var(--space-12);right:var(--space-12);bottom:calc(var(--space-12) + env(safe-area-inset-bottom));z-index:var(--z-coach);background:var(--surface);color:var(--ink);border:1px solid var(--bone-2);border-radius:var(--radius-16);padding:var(--space-16);box-shadow:0 12px 32px rgba(36,31,23,.22);max-width:460px;margin:0 auto}
+#ioscoach h3{font-family:var(--disp);font-size:var(--fs-18);margin:0 var(--space-32) var(--space-8) 0}
+#ioscoach ol{margin:0 0 0 var(--space-20);padding:0}
+#ioscoach li{margin-bottom:var(--space-8);font-size:var(--fs-16);line-height:1.4}
+#ioscoach .x{position:absolute;top:var(--space-8);right:var(--space-8);background:none;border:0;color:var(--ink-soft);font-size:var(--fs-18);cursor:pointer}
+#ioscoach .shareglyph{display:inline-block;width:1.1em;height:1.1em;vertical-align:-.15em}
+
 #livecall{background:var(--pine);color:var(--cream);display:flex;align-items:center;gap:var(--space-12);padding:var(--space-8) var(--space-16);font-size:var(--fs-14)}
 #livecall .pulse{width:9px;min-width:9px;height:9px;border-radius:var(--radius-pill);background:var(--live);animation:lcpulse 1.4s ease infinite}
 @keyframes lcpulse{0%,100%{box-shadow:0 0 0 0 rgba(124,224,163,.55)}50%{box-shadow:0 0 0 6px rgba(124,224,163,0)}}
@@ -3617,14 +3626,31 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // well, then what is waiting. Never a nudge to go and chat.
     var bits = [];
     if (ins.length) bits.push('✅ ' + ins.join(' & ') + ' said all is well');
+    // The to-do counts say what they count ("6 coming up" alone did not),
+    // and the line opens To do, since it looks like something to tap.
     var todo = $('w-rem') ? $('w-rem').textContent : '';
-    if (todo && todo !== 'Nothing to do' && todo !== 'Loading…') bits.push(todo);
-    $('hero-status').textContent = sos ? '🆘 SOS today - call them now'
+    var hasTodo = !!(todo && todo !== 'Nothing to do' && todo !== 'Loading…' && !/^(Could not load|Offline|Not available offline)$/.test(todo));
+    if (hasTodo) bits.push('To do: ' + todo);
+    var hs = $('hero-status');
+    hs.textContent = sos ? '🆘 SOS today - call them now'
       : bits.length ? bits.join(' · ') : '🧡 All quiet. Everything the family keeps is a tap away.';
+    var go = sos ? 'notifs' : hasTodo ? 'care' : '';
+    hs.classList.toggle('tappable', !!go);
+    if (go) { hs.setAttribute('role', 'button'); hs.tabIndex = 0; hs.setAttribute('data-go', go); hs.setAttribute('aria-label', hs.textContent + (go === 'care' ? '. Open To do' : '. Open alerts')); }
+    else { hs.removeAttribute('role'); hs.removeAttribute('tabindex'); hs.removeAttribute('data-go'); hs.removeAttribute('aria-label'); }
 
     notifsCache = data.events;
     renderNotifs();
   }
+
+  function heroGo(){
+    var go = $('hero-status').getAttribute('data-go');
+    if (!go) return;
+    switchTab(go);
+    if (go === 'care') { setSec('care', 'rem'); var g = $('g-need') || $('g-today') || $('g-soon'); if (g) setTimeout(function(){ g.scrollIntoView({ block: 'start' }); }, 120); }
+  }
+  $('hero-status').addEventListener('click', heroGo);
+  $('hero-status').addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); heroGo(); } });
 
   // ---------- notifications ----------
   function notifIcon(e){
@@ -11437,6 +11463,38 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // app shows its own loading screen until it hears this. It says only that
   // Parwah has started - nothing about the family, so any origin may hear it.
   try { if (window.parent !== window) window.parent.postMessage({ parwah: 'ready' }, '*'); } catch (e) {}
+})();
+</script>
+<div id="ioscoach" role="dialog" aria-labelledby="ioscoach-t" hidden>
+  <button class="x" type="button" id="ioscoach-x" aria-label="Close">✕</button>
+  <h3 id="ioscoach-t">Put Parwah on your iPhone</h3>
+  <ol id="ioscoach-steps"></ol>
+</div>
+<script>
+/* The iPhone app is the home-screen app: Safari's Add to Home Screen gives
+   Parwah its own icon, full screen, like any app. Safari cannot be asked to
+   do it, so when someone arrives from Get the app on an iPhone, this card
+   shows the two taps, and says first when the page is open in an app's own
+   browser (Instagram, WhatsApp ...) where Add to Home Screen does not exist. */
+(function(){
+  var ua = navigator.userAgent || '';
+  var ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  var asked = /[?&]install=ios\b/.test(location.search);
+  if (asked) { try { history.replaceState(history.state, '', location.pathname + location.hash); } catch (e) {} }
+  var installed = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  if (!asked || !ios || installed || /\bParwahApp\//.test(ua)) return;
+  var share = '<svg class="shareglyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M6 11H5v10h14V11h-1"/></svg>';
+  var inApp = /FBAN|FBAV|Instagram|WhatsApp|Line\/|GSA\/|Snapchat|Twitter|LinkedInApp/.test(ua);
+  var steps = inApp
+    ? ['This page is open inside another app. Tap <b>•••</b> or the compass icon and choose <b>Open in Safari</b>.',
+       'In Safari, tap <b>Get the iPhone app</b> again.']
+    : ['Tap the <b>Share</b> button ' + share + ' (on newer iPhones it is inside the <b>•••</b> menu).',
+       'Scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b>.',
+       'Open Parwah from its new icon. It runs full screen, like any app.'];
+  document.getElementById('ioscoach-steps').innerHTML = steps.map(function(t){ return '<li>' + t + '</li>'; }).join('');
+  var box = document.getElementById('ioscoach');
+  box.hidden = false;
+  document.getElementById('ioscoach-x').addEventListener('click', function(){ box.hidden = true; });
 })();
 </script>
 </body>
