@@ -569,7 +569,7 @@ check("layout: Today uses two columns on a wide screen",
 care = (API_DIR / "care.mjs").read_text(encoding="utf-8")
 events = (API_DIR / "events.mjs").read_text(encoding="utf-8")
 plan = (API_DIR / "_planapi.mjs").read_text(encoding="utf-8")
-check("games: Ludo, Get Away and Business are real games, not Coming soon tiles",
+check("games: Ludo, Get Away and Monopoly are real games, not Coming soon tiles",
       all('data-bstart="' + k + '"' in appsrc for k in ("ludo", "bhabhi", "vyapar"))
       and "More coming" not in appsrc and "<small>Coming soon</small>" not in appsrc)
 _bg = (API_DIR / "_boardgames.mjs").read_text(encoding="utf-8")
@@ -1569,7 +1569,7 @@ check("guide demo: things to do shows who has what (and what nobody has yet), wi
 check("guide demo: the price comes last, per family, in both currencies",
       "2,499" in _demo and "per family, per year" in _demo and "29.99" in _demo)
 # "Do NOT show chat, games, gifting, calls or a feature menu here."
-_banned = [w for w in ("chat", "game", "gift", "video call", "Snakes", "Song Chain")
+_banned = [w for w in ("chat", "game", "gift", "video call", "Snakes", "Antakshari")
            if w.lower() in _demo.lower()]
 check("guide demo: none of what the guide forbids on these screens",
       not _banned, ", ".join(_banned))
@@ -2224,9 +2224,12 @@ check("signout: a returning family is told why, not dropped on a bare login",
 # day's sections all read in English. (Ekta and Parwah are names, and stay.)
 _devanagari = [l.strip()[:60] for l in _app_src.split("\n") if re.search("[\u0900-\u097F]", l)]
 check("words: no Devanagari anywhere in the app", not _devanagari, " | ".join(_devanagari[:3]))
-check("words: the games have English names",
-      all(w not in _app_src for w in ("Saanp Seedhi", ">Bhabhi", "Vyapar 🏠", "Antakshari"))
-      and "Snakes &amp; Ladders" in _app_src and "Song Chain" in _app_src)
+# The games go by the names families know them by (the owner's call):
+# Antakshari and Monopoly, explained in English on their cards.
+check("words: the games go by their proper names",
+      all(w not in _app_src for w in ("Saanp Seedhi", ">Bhabhi", "Vyapar 🏠", "Song Chain", "Business 🏠"))
+      and "Snakes &amp; Ladders" in _app_src and "<h3>Antakshari 🎤</h3>" in _app_src and "<h3>Monopoly 🏠" in _app_src
+      and "starts with the last letter" in _app_src)
 check("words: the day's sections are Good times and Horoscope",
       '>Good times</button>' in _app_src and '>Horoscope</button>' in _app_src and '>Rashifal</button>' not in _app_src)
 # New chat is in the top bar on every screen but Chat's own; Ekta is a tab.

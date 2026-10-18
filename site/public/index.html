@@ -2516,10 +2516,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <p class="hint" style="margin-top:var(--space-8)">Only the people you tick are asked to play. If someone has not played for 12 hours, anyone in the game can let the computer play their turn.</p>
       </div>
       <div class="card">
-        <h3>Song Chain 🎤</h3>
-        <p>Teams, turns, letters and scores - the app referees while the family sings. Opens a lobby everyone can join.</p>
+        <h3>Antakshari 🎤</h3>
+        <p>Sing a song that starts with the last letter of the one before. Teams, turns, letters and scores - the app referees while the family sings. Opens a lobby everyone can join.</p>
         <div class="seg" id="am-seg"><button type="button" data-m="chat" class="sel">💬 In chat / in person</button><button type="button" data-m="call">📹 On a video call</button></div>
-        <button class="go" id="ga-start" style="margin-top:var(--space-12)">🎤 Open Song Chain lobby</button>
+        <button class="go" id="ga-start" style="margin-top:var(--space-12)">🎤 Open Antakshari lobby</button>
       </div>
       <div class="card">
         <h3>Dumb Charades 🎭</h3>
@@ -2561,12 +2561,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <p class="hint" style="margin-top:var(--space-8)">Everyone sees only their own cards.</p>
       </div>
       <div class="card" data-bgame="vyapar">
-        <h3>Business 🏠 <small class="hint">property game</small></h3>
+        <h3>Monopoly 🏠 <small class="hint">property game</small></h3>
         <p>Buy Jaipur, Mumbai and Goa, collect rent, build houses - richest family business wins. 2 to 6 players. Play money only.</p>
         <p class="pickhead">Who's playing with you?</p>
         <div class="members bpick" data-for="vyapar"></div>
         <div class="prow2">
-          <button class="go" data-bstart="vyapar">🏠 Start Business</button>
+          <button class="go" data-bstart="vyapar">🏠 Start Monopoly</button>
           <button class="cbtn ghost" data-bsolo="vyapar">🙋 Play alone</button>
         </div>
       </div>
@@ -2636,7 +2636,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <button class="cbtn no" id="b-end" style="margin-top:var(--space-12)">End game</button>
       </div>
       <div class="card" id="g-vyapar" hidden>
-        <h3>Business 🏠</h3>
+        <h3>Monopoly 🏠</h3>
         <p class="hint" style="margin:var(--space-2) 0">Play money only.</p>
         <p class="hint" id="v-status" style="margin:var(--space-4) 0 var(--space-8)" aria-live="polite"></p>
         <div id="vboard" class="vboard"></div>
@@ -3635,7 +3635,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var t = (e.text || '');
     if (/reminder/i.test(t)) return '🔔';
     if (/asked the (circle|family|group)|is on it|finished/i.test(t)) return '🤝';
-    if (/Snakes|Song Chain|Charades|Tic-Tac|game/i.test(t)) return '🎲';
+    if (/Snakes|Antakshari|Song.Chain|Charades|Tic-Tac|Monopoly|Business|game/i.test(t)) return '🎲';
     if (/planned|cancelled|is in for/i.test(t)) return '🗓';
     if (/board/i.test(t)) return '🎨';
     return '🧡';
@@ -3648,7 +3648,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (/family tree/i.test(t)) return { tab: 'people', label: 'See the family tree' };
     if (/reminder|task|to do/i.test(t)) return { tab: 'care', sec: 'rem', label: 'Open To do' };
     if (/asked the (circle|family|group)|is on it|finished/i.test(t)) return { tab: 'care', sec: 'req', label: 'Open Suggested' };
-    if (/Snakes|Song Chain|Charades|Tic-Tac|game/i.test(t)) return { tab: 'fun', sec: 'games', label: 'Open Games' };
+    if (/Snakes|Antakshari|Song.Chain|Charades|Tic-Tac|Monopoly|Business|game/i.test(t)) return { tab: 'fun', sec: 'games', label: 'Open Games' };
     if (/planned|cancelled|is in for/i.test(t)) return { tab: 'fun', sec: 'plans', label: 'Open Plans' };
     if (/board/i.test(t)) return { tab: 'fun', sec: 'board', label: 'Open the Board' };
     if (e.type === 'join') return { tab: 'people', label: 'See the family' };
@@ -7996,7 +7996,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   // ---------- games: Snakes & Ladders ----------
   var GICON = { snakes: '🐍', ttt: '⭕', antakshari: '🎤', charades: '🎭', ludo: '🎯', bhabhi: '🃏', vyapar: '🏠' };
-  var GNAME = { snakes: 'Snakes & Ladders 🐍🪜', ttt: 'Tic-Tac-Toe ⭕✕', antakshari: 'Song Chain 🎤', charades: 'Dumb Charades 🎭', ludo: 'Ludo 🎯', bhabhi: 'Get Away 🃏', vyapar: 'Business 🏠' };
+  var GNAME = { snakes: 'Snakes & Ladders 🐍🪜', ttt: 'Tic-Tac-Toe ⭕✕', antakshari: 'Antakshari 🎤', charades: 'Dumb Charades 🎭', ludo: 'Ludo 🎯', bhabhi: 'Get Away 🃏', vyapar: 'Monopoly 🏠' };
   var SN = { 99:41, 95:75, 92:88, 89:68, 74:53, 64:60, 62:19, 49:11, 46:25, 16:6 };
   var LD = { 2:38, 7:14, 8:31, 15:26, 21:42, 28:84, 36:44, 51:67, 71:91, 78:98, 87:94 };
   var TOKC = ['#E8A23D', '#24463C', '#A64B2A', '#2F7A4D', '#B3372B', '#4C4437'];
@@ -8586,7 +8586,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('c-draw').addEventListener('click', function(){ gamePost({ action: 'draw' }); });
   $('c-guessed').addEventListener('click', function(){ gamePost({ action: 'guessed' }); });
   $('c-flop').addEventListener('click', function(){ gamePost({ action: 'flop' }); });
-  // ---------- Ludo, Get Away, Business ----------
+  // ---------- Ludo, Get Away, Monopoly ----------
   document.addEventListener('click', function(e){
     var b = e.target.closest('[data-bstart],[data-bsolo]'); if (!b || !state) return;
     var kind = b.getAttribute('data-bstart') || b.getAttribute('data-bsolo');

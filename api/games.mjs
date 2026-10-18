@@ -24,7 +24,7 @@ async function payPlayed(sql, circleId, gameId, st) {
 // the deploy gate can unit-test it on a fresh clone, before npm install.
 import { MAX_ACTIVE, gameName, numberAfter, gameSummary, isBot, isParwah, teamList, currentPlayer } from './_gamelist.mjs';
 export { MAX_ACTIVE, GAME_LABEL, gameName, numberAfter, gameSummary, isBot, currentPlayer } from './_gamelist.mjs';
-// Ludo, Get Away and Business: the rules live in their own dependency-free module.
+// Ludo, Get Away and Monopoly: the rules live in their own dependency-free module.
 import { boardStart, boardMove, runBoardBots, botSeats, bhabhiView, BOARD_SEATS, isOver as boardOver, vyEnd } from './_boardgames.mjs';
 const BOARD_KINDS = ['ludo', 'bhabhi', 'vyapar'];
 
@@ -67,7 +67,7 @@ const REWARDS = [
 ];
 const WIN_REWARD = '🏆 Champion! Every member must post one favourite memory with the winner in the family chat 🧡';
 
-// ---------- Party games (Song Chain + Dumb Charades): lobby, teams, admins ----------
+// ---------- Party games (Antakshari + Dumb Charades): lobby, teams, admins ----------
 // Modes: 'chat' (play via family chat / in person) or 'call' (a video room is
 // attached - Dumb Charades acting mode). Creator is admin; admins can begin,
 // kick, promote co-admins and end. Anyone in the circle can opt in any time;
@@ -553,7 +553,7 @@ export default async function handler(req, res) {
       return res.status(201).json({ ok: true, game: g[0] });
     }
 
-    // ---------- Ludo, Get Away, Business ----------
+    // ---------- Ludo, Get Away, Monopoly ----------
     if (body.action === 'start_board') {
       const kind = body.game;
       if (!BOARD_KINDS.includes(kind)) return res.status(400).json({ ok: false, error: 'Pick a game' });
@@ -665,7 +665,7 @@ export default async function handler(req, res) {
           endLine = vyEnd(st);
           await sql`update games set state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
         }
-        // Business ended early still has a result (the richest wins), so it
+        // Monopoly ended early still has a result (the richest wins), so it
         // stays readable; any other game ended early simply goes.
         await sql`update games set status = 'done', ended_at = case when ${!!endLine}::boolean then now() else null end where id = ${g.id}`;
         if (endLine && st.players.filter(p => !isParwah(p)).length > 1) await announce(endLine);
