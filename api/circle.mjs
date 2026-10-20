@@ -1,6 +1,6 @@
 // POST /api/circle - create a care circle or join one with its code.
 import { isCountry } from './_countries.mjs';
-import { db, ensureSchema, makeCode, circleByCode, spaceWord, isUuid, normPhone, phoneError, rateLimit, clientIp, sessionUser } from './_db.mjs';
+import { db, ensureSchema, makeCode, circleByCode, spaceWord, isUuid, normPhone, phoneError, rateLimit, clientIp, sessionUser, sessionIs } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { cleanName, nameError, dobError } from './_valid.mjs';
 import { tokenOf } from './_token.mjs';
@@ -39,6 +39,11 @@ export default async function handler(req, res) {
     });
   }
   const uid = isUuid(userId) ? userId : null;
+  // A family is created or joined only as the person who is signed in. See
+  // sessionIs: the userId in the body was trusted on its own.
+  if (uid && (action === 'create' || action === 'join') && !(await sessionIs(sql, tokenOf(req), uid))) {
+    return res.status(401).json({ ok: false, signin: true, error: 'Please sign in again' });
+  }
   const name = cleanName(memberName).slice(0, 60);
   // A name that is only symbols, a phone number or an email in the wrong box
   // is refused here, for every action that takes one.
