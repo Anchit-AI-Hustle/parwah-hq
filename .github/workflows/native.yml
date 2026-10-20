@@ -43,8 +43,8 @@ jobs:
       - name: The contract is what the server's rules say today
         working-directory: .
         run: node native/contract/generate.mjs --check
-      - name: Core tests and a debug build
-        run: ./gradlew --no-daemon :core:test :app:assembleDebug
+      - name: Core tests, the screens on Robolectric, and a debug build
+        run: ./gradlew --no-daemon :core:test :app:testDebugUnitTest :app:assembleDebug
       - name: Keep the test report and the APK
         if: always()
         uses: actions/upload-artifact@v4
@@ -52,4 +52,6 @@ jobs:
           name: native-android
           path: |
             native/android/core/build/reports/tests/
+            native/android/app/build/reports/tests/
+            native/android/app/build/journey/
             native/android/app/build/outputs/apk/debug/*.apk
