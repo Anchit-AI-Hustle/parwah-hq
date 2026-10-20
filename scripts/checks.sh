@@ -57,6 +57,11 @@ node site/tests/kintest.mjs
 # Advanced care & preparedness engine: refill forecast, biomarker extraction,
 # ER packets, audio intents, bill delegation, asset locator access.
 node site/tests/carepreptest.mjs
+# The native apps' copy of the server's rules (PINs, for now) is written by
+# the server itself. If a rule changes in api/ and the contract is not
+# regenerated, the phones would accept what the server then refuses. Vercel's
+# upload leaves native/ out, so the check runs only where the apps are.
+if [ -f native/contract/generate.mjs ]; then node native/contract/generate.mjs --check; fi
 test -f site/tests/test_site.py || { echo "site test suite missing from build input"; exit 1; }
 if command -v python3 >/dev/null 2>&1; then
   python3 site/tests/test_site.py

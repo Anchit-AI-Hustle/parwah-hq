@@ -1,0 +1,55 @@
+# THE NATIVE APPS: build them and run their tests on every change.
+#
+# native/android is Kotlin and Jetpack Compose; its core module (the API
+# client, the sign-in flow and the rules shared with the server) is tested on
+# the JVM, and the app is built into a debug APK. native/ios joins this
+# workflow on a macOS runner as it is written.
+name: Native apps
+
+on:
+  push:
+    branches: [main]
+    paths: ['native/**', 'api/_auth.mjs', '.github/workflows/native.yml']
+  pull_request:
+    branches: [main]
+    paths: ['native/**', 'api/_auth.mjs', '.github/workflows/native.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android (Kotlin) build and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: native/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: android-actions/setup-android@v3
+      - name: The contract is what the server's rules say today
+        working-directory: .
+        run: node native/contract/generate.mjs --check
+      - name: Core tests and a debug build
+        run: ./gradlew --no-daemon :core:test :app:assembleDebug
+      - name: Keep the test report and the APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-android
+          path: |
+            native/android/core/build/reports/tests/
+            native/android/app/build/outputs/apk/debug/*.apk
