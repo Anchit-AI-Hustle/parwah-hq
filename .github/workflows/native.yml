@@ -39,7 +39,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - uses: android-actions/setup-android@v3
+      # The Ubuntu runner already has the Android SDK, with ANDROID_HOME set,
+      # as the Capacitor workflow relies on. setup-android@v3 failed here asking
+      # sdkmanager for the retired 'tools' package.
       - name: The contract is what the server's rules say today
         working-directory: .
         run: node native/contract/generate.mjs --check
