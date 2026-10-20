@@ -334,6 +334,18 @@ export async function sessionUser(sql, token) {
   return rows[0];
 }
 
+// THE userId IN A BODY IS A CLAIM, NOT A PROOF. Four actions (rename a
+// profile, mark the tour seen, create a family, join one) took a userId from
+// the request and acted as that person, so anyone who learned an id could
+// rename someone, change their number, or attach a family to their account.
+// The id must be the signed-in person's own. True when it is, or when the
+// whole deployment runs with sign-in switched off.
+export async function sessionIs(sql, token, userId) {
+  if (!AUTH_REQUIRED) return true;
+  const su = await sessionUser(sql, token);
+  return !!su && String(su.user_id) === String(userId);
+}
+
 export async function requireMember(sql, code, memberId, token) {
   const circle = await circleByCode(sql, code);
   if (!circle) return { err: 'No family found with that code', status: 404 };

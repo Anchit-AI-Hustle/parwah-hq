@@ -2136,6 +2136,16 @@ _dbsrc = (API_DIR / "_db.mjs").read_text(encoding="utf-8")
 check("waitlist: it costs no serverless slot, it rides the front door",
       not (API_DIR / "waitlist.mjs").exists() and not (API_DIR / "join.mjs").exists()
       and "action === 'waitlist'" in _auth_src)
+# A userId in a request body is a claim, not a proof. Renaming a profile
+# (and changing its number), marking the tour seen, creating a family and
+# joining one each acted as whatever userId the body named. Proved against a
+# real database in site/tests/db/authz.dbtest.mjs; this pins the wiring.
+check("auth: profile update and the tour flag act only as the signed-in person",
+      _auth_src.count("await sessionIs(sql, tokenOf(req), body.userId)") == 2)
+check("auth: a family is created or joined only as the signed-in person",
+      "(action === 'create' || action === 'join') && !(await sessionIs(sql, tokenOf(req), uid))"
+      in (API_DIR / "circle.mjs").read_text(encoding="utf-8"))
+check("auth: and the database suite proves it", "authz.dbtest.mjs" in (REPO / "package.json").read_text(encoding="utf-8"))
 check("waitlist: the table is created by the schema, not by hand in a console",
       "create table if not exists waitlist" in _dbsrc)
 # This one broke a probe for weeks: _health.mjs wrote to waitlist and nothing

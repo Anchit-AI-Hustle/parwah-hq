@@ -7,7 +7,7 @@
 //                     can ask for it.
 // No OTP yet (SMS provider is a roadmap item) - the shape is ready for an
 // OTP check to slot in here without any client-flow change.
-import { db, ensureSchema, isUuid, normPhone, phoneError, rateLimit, clientIp, sessionUser } from './_db.mjs';
+import { db, ensureSchema, isUuid, normPhone, phoneError, rateLimit, clientIp, sessionUser, sessionIs } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { pushCircle } from './_push.mjs';
 import { pinError, hashPin, verifyPin, newToken, tokenHash, looksLikeToken,
@@ -149,6 +149,7 @@ export default async function handler(req, res) {
 
     if (body.action === 'update') {
       if (!isUuid(body.userId)) return res.status(403).json({ ok: false, error: 'Sign in first' });
+      if (!(await sessionIs(sql, tokenOf(req), body.userId))) return res.status(401).json({ ok: false, signin: true, error: 'Please sign in again' });
       const u = await sql`select id, name, phone from users where id = ${body.userId}`;
       if (!u[0]) return res.status(404).json({ ok: false, error: 'Profile not found' });
       const newName = cleanName(body.name).slice(0, 60) || u[0].name;
@@ -176,6 +177,7 @@ export default async function handler(req, res) {
     // than in the browser so a second phone does not mean a second tour.
     if (body.action === 'toured') {
       if (!isUuid(body.userId)) return res.status(403).json({ ok: false, error: 'Sign in first' });
+      if (!(await sessionIs(sql, tokenOf(req), body.userId))) return res.status(401).json({ ok: false, signin: true, error: 'Please sign in again' });
       await sql`update users set toured_at = coalesce(toured_at, now()) where id = ${body.userId}`;
       return res.status(200).json({ ok: true });
     }
