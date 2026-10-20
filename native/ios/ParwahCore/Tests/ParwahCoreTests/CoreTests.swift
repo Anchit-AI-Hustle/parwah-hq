@@ -43,17 +43,17 @@ final class AuthTests: XCTestCase {
 
     func testEveryAnswerOfTheSignInStep() async throws {
         answer(200, #"{"ok":true,"exists":false}"#)
-        XCTAssertEqual(try await auth.enter(phone: "9820000001"), .newNumber(error: nil))
+        do { let got = try await auth.enter(phone: "9820000001"); XCTAssertEqual(got, .newNumber(error: nil)) }
         answer(200, #"{"ok":true,"exists":true,"needPin":true,"older":true}"#)
-        XCTAssertEqual(try await auth.enter(phone: "9820000001"), .askPin(older: true))
+        do { let got = try await auth.enter(phone: "9820000001"); XCTAssertEqual(got, .askPin(older: true)) }
         answer(200, #"{"ok":true,"exists":true,"setPin":true}"#)
-        XCTAssertEqual(try await auth.enter(phone: "9820000001"), .choosePin(error: nil))
+        do { let got = try await auth.enter(phone: "9820000001"); XCTAssertEqual(got, .choosePin(error: nil)) }
         answer(200, #"{"ok":true,"exists":true,"changeSecret":true,"name":"Asha"}"#)
-        XCTAssertEqual(try await auth.enter(phone: "9820000001", pin: "old"), .replaceSecret(name: "Asha", error: nil))
+        do { let got = try await auth.enter(phone: "9820000001", pin: "old"); XCTAssertEqual(got, .replaceSecret(name: "Asha", error: nil)) }
         answer(401, #"{"ok":false,"wrongPin":true,"left":3,"error":"That PIN is not right. 3 tries left."}"#)
-        XCTAssertEqual(try await auth.enter(phone: "9820000001", pin: "4829"), .wrongPin(left: 3, error: "That PIN is not right. 3 tries left."))
+        do { let got = try await auth.enter(phone: "9820000001", pin: "4829"); XCTAssertEqual(got, .wrongPin(left: 3, error: "That PIN is not right. 3 tries left.")) }
         answer(429, #"{"ok":false,"locked":true,"error":"Locked for 15 minutes."}"#)
-        XCTAssertEqual(try await auth.enter(phone: "9820000001", pin: "4829"), .locked("Locked for 15 minutes."))
+        do { let got = try await auth.enter(phone: "9820000001", pin: "4829"); XCTAssertEqual(got, .locked("Locked for 15 minutes.")) }
     }
 
     func testSigningInKeepsTheTokenAndListsTheBusiestFamilyFirst() async throws {

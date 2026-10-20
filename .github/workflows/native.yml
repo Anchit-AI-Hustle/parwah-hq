@@ -55,3 +55,13 @@ jobs:
             native/android/app/build/reports/tests/
             native/android/app/build/journey/
             native/android/app/build/outputs/apk/debug/*.apk
+
+  ios-core:
+    name: iPhone (Swift) core tests
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: The API client, sign-in flow and PIN rule, against the server's contract
+        working-directory: native/ios/ParwahCore
+        run: swift test

@@ -6,4 +6,4 @@ android/*/build/
 android/local.properties
 ios/build/
 ios/*.xcodeproj/
-ios/.build/
+ios/**/.build/
