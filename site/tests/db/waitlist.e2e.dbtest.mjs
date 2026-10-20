@@ -95,8 +95,8 @@ const msgOf = (page) => page.locator('#wl-msg').innerText();
   ok('the privacy notice is linked right beside the form',
      await page.locator('#wl-form a[href="../privacy/#launch-list"]').count() === 1);
   ok('the bot trap is out of sight and out of the tab order',
-     await page.evaluate(() => { const r = document.getElementById('wl-website').getBoundingClientRect(); return r.right < 0 || r.width <= 1; })
-     && await page.getAttribute('#wl-website', 'tabindex') === '-1');
+     await page.evaluate(() => { const r = document.getElementById('wl-extra').getBoundingClientRect(); return r.right < 0 || r.width <= 1; })
+     && await page.getAttribute('#wl-extra', 'tabindex') === '-1');
 
   // ---- 2. a real join, tapped twice
   await page.check('#wl-consent');
@@ -114,7 +114,7 @@ const msgOf = (page) => page.locator('#wl-msg').innerText();
   ok('with the address lowercased and the details given', r1[0] && r1[0].email === 'priya@example.com' && r1[0].city === 'Pune' && r1[0].interest === 'both' && r1[0].source === 'launch-page');
   ok('with the yes recorded', r1[0] && r1[0].consent === true);
   ok('and the time of the yes recorded', r1[0] && r1[0].consent_at instanceof Date && Math.abs(Date.now() - r1[0].consent_at.getTime()) < 120000, String(r1[0] && r1[0].consent_at));
-  ok('the bot trap is not a column', r1[0] && !('website' in r1[0]));
+  ok('the bot trap is not a column', r1[0] && !('pw_extra' in r1[0]));
   await page.context().close();
 
   // ---- 3. joining again keeps one row and the FIRST yes
@@ -133,13 +133,40 @@ const msgOf = (page) => page.locator('#wl-msg').innerText();
   await again.context().close();
 }
 
+// ---- 3b. a yes from before the time was recorded is not stamped with today
+await admin.query(`insert into waitlist (name, email, consent, source, created_at, updated_at) values ('Old Yes','old@example.com', true, 'site', now() - interval '3 months', now() - interval '3 months')`);
+{
+  const page = await open('/launch/');
+  await page.fill('#wl-name', 'Old Yes');
+  await page.fill('#wl-email', 'old@example.com');
+  await page.check('#wl-consent');
+  await page.click('#wl-submit');
+  await page.waitForSelector('#wl-msg.ok', { timeout: 10000 });
+  const r = (await admin.query("select consent_at from waitlist where email = 'old@example.com'")).rows[0];
+  ok('an old yes keeps no time rather than gaining today\'s', r && r.consent_at === null, String(r && r.consent_at));
+  await page.context().close();
+}
+
+// ---- 3c. what the privacy page promises about deleting is what happens
+await admin.query(`insert into waitlist (name, email, consent, source, created_at, updated_at) values ('Long Gone','gone@example.com', true, 'site', now() - interval '25 months', now() - interval '25 months')`);
+await admin.query(`insert into rate_limit (bucket, k, window_start, n) values ('waitlist', '203.0.113.9', now() - interval '2 days', 1)`);
+{
+  const r = { method: 'GET', headers: {}, query: { stats: 'proof' }, body: {} };
+  let code = 0; const w = { status(s) { code = s; return this; }, json() { return this; }, setHeader() { return this; } };
+  await auth(r, w);
+  ok('the counts answer', code === 200, String(code));
+  ok('an entry untouched for 24 months is deleted', (await admin.query("select count(*)::int n from waitlist where email = 'gone@example.com'")).rows[0].n === 0);
+  ok('and a day-old address in the flood counter is deleted', (await admin.query("select count(*)::int n from rate_limit where k = '203.0.113.9'")).rows[0].n === 0);
+  ok('while a recent entry stays', (await admin.query("select count(*)::int n from waitlist where email = 'priya@example.com'")).rows[0].n === 1);
+}
+
 // ---- 4. a bot fills everything, the trap included
 {
   const page = await open('/launch/');
   await page.fill('#wl-name', 'Spam Bot');
   await page.fill('#wl-email', 'bot@spam.example');
   await page.check('#wl-consent');
-  await page.evaluate(() => { document.getElementById('wl-website').value = 'http://spam.example'; });
+  await page.evaluate(() => { document.getElementById('wl-extra').value = 'http://spam.example'; });
   await page.click('#wl-submit');
   await page.waitForSelector('#wl-msg.ok', { timeout: 10000 });
   ok('a bot is answered like a person', /You are on the list/.test(await msgOf(page)));
@@ -176,7 +203,12 @@ ok('neither failure stored a row', (await admin.query("select count(*)::int n fr
   await page.check('#wl-consent');
   await page.click('#wl-submit');
   await page.waitForSelector('#wl-msg.err', { timeout: 10000 });
-  ok("the server's own refusal reaches the person", /not on the list yet/.test(await msgOf(page)) && posts.length >= 3, await msgOf(page));
+  const said = await msgOf(page);
+  ok("the server's own refusal reaches the person", /not on the list yet/.test(said) && posts.length >= 3, said);
+  ok('and it reads as sentences: no stray dash, no double full stop', !/ - |\.\./.test(said), said);
+  ok('and the box it is about is marked', await page.getAttribute('#wl-phone', 'aria-invalid') === 'true');
+  await page.fill('#wl-phone', '');
+  ok('fixing the box clears its mark and its description', await page.getAttribute('#wl-phone', 'aria-invalid') === null && await page.getAttribute('#wl-phone', 'aria-describedby') === null);
   await page.context().close();
 }
 
@@ -244,7 +276,7 @@ for (const scheme of ['light', 'dark']) {
         await page.click('#wl-submit');
         const m = await page.evaluate(`(${COLOURS})('#wl-msg')`);
         ok(`and so can its error message (${label}, ${scheme})`, ratio(m[0], m[1]) >= 4.5, m.join(' on '));
-        const small = await page.evaluate(() => [...document.querySelectorAll('#wl-form input:not(#wl-website), #wl-form select, #wl-form button')]
+        const small = await page.evaluate(() => [...document.querySelectorAll('#wl-form input:not(#wl-extra), #wl-form select, #wl-form button')]
           .filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && Math.max(r.height, r.width) < 20; }).length);
         ok(`every control a finger uses is a fair size (${label}, ${scheme})`, small === 0, String(small));
       }

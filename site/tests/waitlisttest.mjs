@@ -102,13 +102,13 @@ ok('only the columns we asked for are in the row',
 ok('an extra field in the body cannot become a column', row.admin === undefined && row.id === undefined);
 
 // ---- THE HONEYPOT. A person never sees the field, so only a bot fills it.
-ok('the trap is named like a field worth filling', HONEYPOT === 'website');
-ok('an empty trap is a person', isBot({ name: 'Anchit', website: '' }) === false);
+ok('the trap has a name no autofill recognises', HONEYPOT === 'pw_extra' && !/web|url|site|mail|name|phone|address/i.test(HONEYPOT));
+ok('an empty trap is a person', isBot({ name: 'Anchit', pw_extra: '' }) === false);
 ok('a missing trap is a person', isBot({ name: 'Anchit' }) === false);
-ok('whitespace in the trap is still a person (autofill can leave a space)', isBot({ website: '   ' }) === false);
-ok('a filled trap is a bot', isBot({ website: 'http://spam.example' }) === true);
+ok('whitespace in the trap is still a person (autofill can leave a space)', isBot({ pw_extra: '   ' }) === false);
+ok('a filled trap is a bot', isBot({ pw_extra: 'http://spam.example' }) === true);
 ok('no body at all is not a crash', isBot(undefined) === false && isBot(null) === false);
-ok('and the trap never becomes a column', joinRow({ name: 'A B', email: 'a@b.com', consent: true, website: 'x' }).website === undefined);
+ok('and the trap never becomes a column', joinRow({ name: 'A B', email: 'a@b.com', consent: true, pw_extra: 'x' }).pw_extra === undefined);
 
 // ---- THE PROOF IS COUNTED, NEVER INVENTED.
 ok('two real counts pass through', JSON.stringify(proofCounts(12, 40)) === '{"waitlist":12,"users":40}');

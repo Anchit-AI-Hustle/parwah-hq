@@ -2176,18 +2176,22 @@ _launch = (ROOT / "public/launch/index.html").read_text(encoding="utf-8")
 _form = _launch[_launch.find('<form class="wl-form"'):_launch.find("</form>")]
 _wl_branch = _auth_src[_auth_src.find("action === 'waitlist'"):_auth_src.find("action === 'enter'")]
 check("signup: the form carries a honeypot no person can see or reach",
-      'name="website"' in _form and 'class="wl-hp" aria-hidden="true"' in _form
+      'name="pw_extra"' in _form and 'class="wl-hp" aria-hidden="true"' in _form
       and 'tabindex="-1"' in _form and ".wl-hp{position:absolute;left:-10000px" in _launch)
 check("signup: and a filled honeypot is answered like a person but never stored",
       "isBot(body)" in _wl_branch and _wl_branch.find("isBot(body)") < _wl_branch.find("insert into waitlist")
-      and "HONEYPOT = 'website'" in _wl)
+      and "HONEYPOT = 'pw_extra'" in _wl)
 check("signup: the consent box is required and starts unticked",
       re.search(r'<input type="checkbox" id="wl-consent" name="consent" required>', _form) is not None
       and "checked>" not in _form.split('id="wl-consent"')[1].split(">")[0] + ">")
 check("signup: the stored row keeps when consent was given, and the first yes is the one kept",
       "add column if not exists consent_at timestamptz" in _dbsrc
       and "case when ${row.consent} then now() end" in _wl_branch
-      and "consent_at = coalesce(waitlist.consent_at, excluded.consent_at)" in _wl_branch)
+      and "else coalesce(waitlist.consent_at, excluded.consent_at) end" in _wl_branch)
+check("privacy: what the page promises about keeping and deleting is done in code",
+      "delete from waitlist where updated_at < now() - interval '24 months'" in _auth_src
+      and "delete from rate_limit where bucket = 'waitlist' and window_start < now() - interval '1 day'" in _auth_src
+      and _auth_src.count("await purgeWaitlist(sql)") == 2)
 check("signup: one join at a time, a second tap does nothing",
       "if(busy)return;" in _launch and "btn.disabled=true;" in _launch)
 check("signup: a failure says the person is not on the list yet, and offers WhatsApp",
@@ -2198,7 +2202,8 @@ _priv = (ROOT / "public/privacy/index.html").read_text(encoding="utf-8")
 _priv_ll = _priv[_priv.find('id="launch-list"'):_priv.find('id="analytics"')]
 check("privacy: the launch list says what, why, where, how long, and how to delete",
       all(h in _priv_ll for h in ("What we collect", "Why we collect it", "Where it is kept",
-                                   "How long we keep it", "How to have it deleted", "mailto:care@parwah.in"))
+                                   "How long we keep it", "How to have it deleted", "mailto:care@parwah.in",
+                                   "at most 24 months", "internet address, for up to one day"))
       and "date and time you gave it" in _priv_ll)
 check("privacy: analytics is explained, and loads only after a yes",
       'id="analytics"' in _priv and "Nothing is loaded from Google until you press Allow" in _priv)

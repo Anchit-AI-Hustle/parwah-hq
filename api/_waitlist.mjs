@@ -89,9 +89,11 @@ export function normSource(v) {
 // THE HONEYPOT. A field no person can see or reach - off screen, out of the
 // tab order, hidden from screen readers - that a form-filling bot fills
 // because it fills everything. Named like a real field so it looks worth
-// filling. A filled one is answered exactly as a real join would be, and
+// filling to a bot, but not a name a password manager or an autofill
+// extension recognises: a person's browser filling it would drop them
+// silently. A filled one is answered exactly as a real join would be, and
 // nothing is stored: telling a bot it was caught teaches it the rule.
-export const HONEYPOT = 'website';
+export const HONEYPOT = 'pw_extra';
 export function isBot(body) {
   return String((body && body[HONEYPOT]) == null ? '' : body[HONEYPOT]).trim() !== '';
 }

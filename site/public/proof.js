@@ -1,7 +1,8 @@
 // THE PROOF ON THE HOME PAGE - one file, so the owner swaps it in one place.
 //
 // Two numbers and a few words from families. The numbers are COUNTED: this
-// asks the server for the launch list and the app's accounts, straight from
+// asks the server for everyone on the launch list (both halves) and every
+// account made in the app, straight from
 // the database, and shows those. Only when that answer cannot be had (no
 // database, a network failure, an old browser) does it fall back to SAMPLE,
 // and then the page says so in words beside them.
@@ -80,7 +81,7 @@
 
   quotes();
   // Never leave the numbers blank: a slow answer is no answer.
-  var timer = setTimeout(function () { show(SAMPLE, false); }, 3000);
+  var timer = setTimeout(function () { show(SAMPLE, false); }, 4000);
   if (!window.fetch) { clearTimeout(timer); show(SAMPLE, false); return; }
   fetch('/api/auth/?stats=proof', { headers: { Accept: 'application/json' } })
     .then(function (r) { return r.ok ? r.json() : null; })

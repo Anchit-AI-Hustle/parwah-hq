@@ -116,8 +116,8 @@
         </div>
         <!-- A trap for form-filling bots: no person can see or reach it. -->
         <div class="wl-hp" aria-hidden="true">
-          <label for="wl-website">Leave this empty</label>
-          <input type="text" id="wl-website" name="website" tabindex="-1" autocomplete="off">
+          <label for="wl-extra">Leave this empty</label>
+          <input type="text" id="wl-extra" name="pw_extra" tabindex="-1" autocomplete="off">
         </div>
         <label class="wl-check">
           <input type="checkbox" id="wl-consent" name="consent" required>
@@ -191,6 +191,22 @@
     msg.appendChild(a);
     msg.appendChild(document.createTextNode('.'));
   }
+  function clear(el){
+    if(el&&el.getAttribute&&el.getAttribute('aria-invalid')){el.removeAttribute('aria-invalid');el.removeAttribute('aria-describedby');}
+  }
+  // A server refusal names its field in words; point at that box too.
+  function fieldOf(text){
+    if(/tick the box/i.test(text))return 'wl-consent';
+    if(/email/i.test(text))return 'wl-email';
+    if(/number|digits|phone/i.test(text))return 'wl-phone';
+    if(/name/i.test(text))return 'wl-name';
+    return null;
+  }
+  // Server sentences use " - " between clauses; end them cleanly before
+  // adding ours, so nothing reads ".." or dangles.
+  function sentence(text){
+    return String(text||'').replace(/\s+-\s+/g,'. ').replace(/[.\s]+$/,'')+'.';
+  }
   function mark(id,text){
     var el=field(id);
     el.setAttribute('aria-invalid','true');
@@ -200,10 +216,10 @@
     return false;
   }
   form.addEventListener('input',function(ev){
-    if(ev.target&&ev.target.getAttribute('aria-invalid')){ev.target.removeAttribute('aria-invalid');}
+    clear(ev.target);
   });
   form.addEventListener('change',function(ev){
-    if(ev.target&&ev.target.getAttribute('aria-invalid')){ev.target.removeAttribute('aria-invalid');}
+    clear(ev.target);
   });
   function check(){
     var name=val('wl-name'),email=val('wl-email').toLowerCase(),phone=val('wl-phone');
@@ -237,7 +253,7 @@
         city:val('wl-city')||undefined,
         interest:field('wl-interest').value||'care',
         consent:field('wl-consent').checked,
-        website:field('wl-website').value,
+        pw_extra:field('wl-extra').value,
         source:'launch-page'
       })
     }).then(function(r){
@@ -252,9 +268,12 @@
           window.parwahTrack('join_waitlist',{method:'form',page:location.pathname});
         }
       }else if(data&&data.error&&res.status<500){
-        showFail(data.error+'. You are not on the list yet.');
+        var f=fieldOf(data.error);
+        showFail(sentence(data.error)+' You are not on the list yet.');
+        if(f){var el=field(f);el.setAttribute('aria-invalid','true');el.setAttribute('aria-describedby','wl-msg');el.focus();}
       }else{
-        showFail('Something went wrong on our side, and you are not on the list yet. Please try again in a minute.');
+        var ref=data&&data.error&&/\(ref [a-z0-9]+\)/i.exec(data.error);
+        showFail('Something went wrong on our side, and you are not on the list yet. Please try again in a minute'+(ref?' '+ref[0]:'')+'.');
       }
     }).catch(function(){
       done();
