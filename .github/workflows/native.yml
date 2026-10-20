@@ -95,10 +95,18 @@ jobs:
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
       - name: Build, then run the unit tests and the sign-in journey on the simulator
         working-directory: native/ios/App
+        # This step used to end in "| tail -60", so its status was tail's and a
+        # failing test would still have shown green. Now the full log is kept
+        # and the step fails unless xcodebuild says TEST SUCCEEDED, and unless
+        # the unit tests ran as well as the UI journey. Each test case is listed.
         run: |
+          set -o pipefail
           xcodebuild test -project Parwah.xcodeproj -scheme Parwah \
             -destination "id=${{ steps.sim.outputs.udid }}" \
-            -resultBundlePath "$RUNNER_TEMP/ParwahTests.xcresult" | tail -60
+            -resultBundlePath "$RUNNER_TEMP/ParwahTests.xcresult" 2>&1 | tee "$RUNNER_TEMP/xcodebuild.log" \
+            | grep -E "^Test Case .*(passed|failed)|error:|\*\* TEST" || true
+          grep -q "\*\* TEST SUCCEEDED \*\*" "$RUNNER_TEMP/xcodebuild.log"
+          grep -q "AppModelTests" "$RUNNER_TEMP/xcodebuild.log" || { echo "the unit tests did not run"; exit 1; }
       - name: Keep the results, screenshots included
         if: always()
         uses: actions/upload-artifact@v4
