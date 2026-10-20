@@ -1,0 +1,59 @@
+# XcodeGen spec: CI runs `xcodegen` to write Parwah.xcodeproj from this, so
+# the project file is never hand-merged. ParwahCore is the local Swift package.
+name: Parwah
+options:
+  bundleIdPrefix: com.parwah
+  deploymentTarget:
+    iOS: "16.0"
+packages:
+  ParwahCore:
+    path: ../ParwahCore
+targets:
+  Parwah:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    dependencies:
+      - package: ParwahCore
+    settings:
+      base:
+        # A new id while the Capacitor app (com.parwah.app) is still the one
+        # people install; it takes that id at the switch-over.
+        PRODUCT_BUNDLE_IDENTIFIER: com.parwah.native
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Parwah
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.9"
+        CODE_SIGNING_ALLOWED: NO
+  ParwahTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: Parwah
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO
+  ParwahUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: Parwah
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO
+        TEST_TARGET_NAME: Parwah
+schemes:
+  Parwah:
+    build:
+      targets:
+        Parwah: all
+    test:
+      targets: [ParwahTests, ParwahUITests]

@@ -65,3 +65,41 @@ jobs:
       - name: The API client, sign-in flow and PIN rule, against the server's contract
         working-directory: native/ios/ParwahCore
         run: swift test
+
+  ios-app:
+    name: iPhone (SwiftUI) app, unit and UI tests on a simulator
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Generate the Xcode project from project.yml
+        working-directory: native/ios/App
+        run: brew install xcodegen && xcodegen generate
+      - name: Pick the newest iPhone simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json,sys
+          best=None
+          for rt,devs in json.load(sys.stdin)["devices"].items():
+              if "iOS" not in rt: continue
+              for x in devs:
+                  if x["name"].startswith("iPhone") and (best is None or rt>best[0]): best=(rt,x["udid"])
+          print(best[1] if best else "")')
+          test -n "$UDID" || { echo "no iPhone simulator"; exit 1; }
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+      - name: Build, then run the unit tests and the sign-in journey on the simulator
+        working-directory: native/ios/App
+        run: |
+          xcodebuild test -project Parwah.xcodeproj -scheme Parwah \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -resultBundlePath "$RUNNER_TEMP/ParwahTests.xcresult" | tail -60
+      - name: Keep the results, screenshots included
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-ios-results
+          path: ${{ runner.temp }}/ParwahTests.xcresult
