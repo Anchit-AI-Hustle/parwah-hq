@@ -13,7 +13,7 @@ import { pushCircle } from './_push.mjs';
 import { pinError, hashPin, verifyPin, newToken, tokenHash, looksLikeToken,
          MAX_TRIES, LOCK_MINUTES, lockMessage, SESSION_DAYS, SECRET_V } from './_auth.mjs';
 import { tokenOf } from './_token.mjs';
-import { joinError, joinRow, joinedMessage } from './_waitlist.mjs';
+import { joinError, joinRow, joinedMessage, isBot, proofCounts } from './_waitlist.mjs';
 import { cleanName, nameError } from './_valid.mjs';
 
 // Every circle this number belongs to, each carrying what is waiting in it.
@@ -47,7 +47,35 @@ async function circlesOf(sql, userId) {
     order by m.created_at desc`;
 }
 
+// WHAT THE PRIVACY PAGE PROMISES, KEPT IN CODE. A launch list entry goes 24
+// months after it was last joined or changed, and the counters that stop
+// one device flooding the list (they hold its internet address) go after a
+// day. Run on the list's own traffic, so it needs no scheduler of its own.
+async function purgeWaitlist(sql) {
+  await sql`delete from waitlist where updated_at < now() - interval '24 months'`;
+  await sql`delete from rate_limit where bucket = 'waitlist' and window_start < now() - interval '1 day'`;
+}
+
 export default async function handler(req, res) {
+  // THE PROOF ON THE HOME PAGE: two counts, read from the real tables so the
+  // page never has to make a number up. A GET, so the CDN can hold the
+  // answer for ten minutes and a busy day costs the database one query in
+  // ten minutes rather than one per visitor. Counts only: no name, no row.
+  if (req.method === 'GET' && req.query && req.query.stats === 'proof') {
+    // No ensureSchema here: on a cold instance it is dozens of statements,
+    // and the page gives up waiting long before that. A table that is not
+    // there yet is an error, and an error shows the marked sample.
+    try {
+      const sql = db();
+      await purgeWaitlist(sql);
+      const w = await sql`select count(*)::int as n from waitlist where consent`;
+      const u = await sql`select count(*)::int as n from users`;
+      const counts = proofCounts(w[0] && w[0].n, u[0] && u[0].n);
+      if (!counts) return res.status(503).json({ ok: false, error: 'No count right now' });
+      res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=3600');
+      return res.status(200).json({ ok: true, ...counts });
+    } catch (e) { return res.status(503).json({ ok: false, error: 'No count right now' }); }
+  }
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, error: 'POST only' });
@@ -79,6 +107,8 @@ export default async function handler(req, res) {
       if (!allowed) {
         return res.status(429).json({ ok: false, error: 'That is a lot of sign-ups from one device - please try again in a little while' });
       }
+      // A bot is told what a person would be told, and nothing is stored.
+      if (isBot(body)) return res.status(200).json({ ok: true, message: joinedMessage(body.interest) });
       const bad = joinError(body);
       if (bad) return res.status(400).json({ ok: false, error: bad });
       const row = joinRow(body);
@@ -87,15 +117,21 @@ export default async function handler(req, res) {
       // except consent, which can be given but never silently withdrawn by
       // a later form - withdrawing is a request to a person, not a checkbox.
       await sql`
-        insert into waitlist (name, email, phone, city, interest, consent, source)
-        values (${row.name}, ${row.email}, ${row.phone}, ${row.city}, ${row.interest}, ${row.consent}, ${row.source})
+        insert into waitlist (name, email, phone, city, interest, consent, consent_at, source)
+        values (${row.name}, ${row.email}, ${row.phone}, ${row.city}, ${row.interest}, ${row.consent},
+                case when ${row.consent} then now() end, ${row.source})
         on conflict (lower(email)) do update set
           name = excluded.name,
           phone = coalesce(excluded.phone, waitlist.phone),
           city = coalesce(excluded.city, waitlist.city),
           interest = excluded.interest,
           consent = waitlist.consent or excluded.consent,
+          -- A row that said yes before the time was recorded keeps no time
+          -- rather than gaining today's, which would misstate when it said yes.
+          consent_at = case when waitlist.consent then waitlist.consent_at
+                            else coalesce(waitlist.consent_at, excluded.consent_at) end,
           updated_at = now()`;
+      await purgeWaitlist(sql);
       // The same answer whether the row was new or not. See joinedMessage.
       return res.status(200).json({ ok: true, message: joinedMessage(row.interest) });
     }

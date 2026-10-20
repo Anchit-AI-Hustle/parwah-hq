@@ -50,7 +50,7 @@ const ok = (c, m) => { console.log((c ? 'PASS  ' : 'FAIL  ') + m); c ? pass++ : 
 
 // Every page a person can be sent to, the app included: it is used on the
 // same phones. 320px is the narrowest phone still in real use in India.
-const ROUTES = ['/', '/welcome/', '/story/', '/story/aisle/', '/care/', '/get/', '/launch/', '/demo/'];
+const ROUTES = ['/', '/welcome/', '/story/', '/story/aisle/', '/care/', '/get/', '/launch/', '/privacy/', '/demo/'];
 const WIDTHS = [[320, 'a 320px phone'], [390, 'a 390px phone']];
 
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
@@ -74,7 +74,7 @@ for (const [width, label] of WIDTHS) {
 // page that would ever change that. It passed the HTML gate, the claims
 // scan and the overflow check above, because all a blank page is missing is
 // a class that JavaScript was supposed to add.
-for (const route of ['/welcome/', '/story/', '/story/aisle/', '/care/', '/launch/', '/get/']) {
+for (const route of ['/welcome/', '/story/', '/story/aisle/', '/care/', '/launch/', '/get/', '/privacy/']) {
   const pg = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   await pg.goto(BASE + route, { waitUntil: 'networkidle' });
   await pg.evaluate(async () => {

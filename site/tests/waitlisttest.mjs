@@ -4,7 +4,7 @@
 // deploy gate runs this on a fresh clone before npm install.
 import { joinError, joinRow, joinedMessage, normEmail, normInterest,
          consentGiven, emailError, nameError, normSource, INTERESTS,
-         LIMIT } from '../../api/_waitlist.mjs';
+         LIMIT, HONEYPOT, isBot, proofCounts } from '../../api/_waitlist.mjs';
 
 let pass = 0; const fails = [];
 const ok = (name, cond) => cond ? pass++ : fails.push(name);
@@ -100,6 +100,24 @@ const row = joinRow({ name: 'Anchit', email: 'A@B.com', consent: true, admin: tr
 ok('only the columns we asked for are in the row',
    Object.keys(row).sort().join(',') === 'city,consent,email,interest,name,phone,source');
 ok('an extra field in the body cannot become a column', row.admin === undefined && row.id === undefined);
+
+// ---- THE HONEYPOT. A person never sees the field, so only a bot fills it.
+ok('the trap has a name no autofill recognises', HONEYPOT === 'pw_extra' && !/web|url|site|mail|name|phone|address/i.test(HONEYPOT));
+ok('an empty trap is a person', isBot({ name: 'Anchit', pw_extra: '' }) === false);
+ok('a missing trap is a person', isBot({ name: 'Anchit' }) === false);
+ok('whitespace in the trap is still a person (autofill can leave a space)', isBot({ pw_extra: '   ' }) === false);
+ok('a filled trap is a bot', isBot({ pw_extra: 'http://spam.example' }) === true);
+ok('no body at all is not a crash', isBot(undefined) === false && isBot(null) === false);
+ok('and the trap never becomes a column', joinRow({ name: 'A B', email: 'a@b.com', consent: true, pw_extra: 'x' }).pw_extra === undefined);
+
+// ---- THE PROOF IS COUNTED, NEVER INVENTED.
+ok('two real counts pass through', JSON.stringify(proofCounts(12, 40)) === '{"waitlist":12,"users":40}');
+ok('zero is a real count, not a missing one', JSON.stringify(proofCounts(0, 0)) === '{"waitlist":0,"users":0}');
+ok('a count as a string from the driver still counts', proofCounts('7', '9').waitlist === 7);
+ok('a missing count means no proof, so the page shows its marked sample', proofCounts(undefined, 4) === null);
+ok('a negative count is not a count', proofCounts(-1, 4) === null);
+ok('a fraction is not a count', proofCounts(1.5, 4) === null);
+ok('nonsense is not a count', proofCounts('lots', 4) === null);
 
 console.log(`waitlisttest: ${pass}/${pass + fails.length} checks pass`);
 if (fails.length) { fails.forEach(f => console.log('  FAIL ' + f)); process.exit(1); }

@@ -222,6 +222,10 @@ export async function ensureSchema(sql) {
   await sql`alter table waitlist add column if not exists city text`;
   await sql`alter table waitlist add column if not exists interest text not null default 'both'`;
   await sql`alter table waitlist add column if not exists updated_at timestamptz not null default now()`;
+  // WHEN they said yes, not only that they did. DPDP asks us to be able to
+  // show consent, and a yes with no date cannot be shown. Null for a row
+  // that has never consented; set once, by the first yes, and kept.
+  await sql`alter table waitlist add column if not exists consent_at timestamptz`;
   // ONE PERSON IS ONE ROW, and the join depends on it: the insert uses
   // `on conflict (lower(email))`, which Postgres refuses outright when no
   // matching unique index exists - "there is no unique or exclusion
