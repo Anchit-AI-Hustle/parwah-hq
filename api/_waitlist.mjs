@@ -86,6 +86,16 @@ export function normSource(v) {
   return String(v == null ? '' : v).replace(/[^a-z0-9_-]/gi, '').slice(0, LIMIT.source) || 'site';
 }
 
+// THE HONEYPOT. A field no person can see or reach - off screen, out of the
+// tab order, hidden from screen readers - that a form-filling bot fills
+// because it fills everything. Named like a real field so it looks worth
+// filling. A filled one is answered exactly as a real join would be, and
+// nothing is stored: telling a bot it was caught teaches it the rule.
+export const HONEYPOT = 'website';
+export function isBot(body) {
+  return String((body && body[HONEYPOT]) == null ? '' : body[HONEYPOT]).trim() !== '';
+}
+
 // The phone is optional, but a phone that IS given and is wrong is worth
 // saying so about: it is the number we would have messaged.
 export function phoneOf(body) {
@@ -128,6 +138,17 @@ export function joinRow(body) {
     consent: consentGiven(b.consent),
     source: normSource(b.source),
   };
+}
+
+// THE PROOF ON THE HOME PAGE. Two numbers a visitor can see, both counted
+// from the real tables: people on this list, and people with a Parwah
+// account. Anything that is not a whole number at or above zero is not a
+// count, and the page falls back to its marked sample rather than show it.
+export function proofCounts(waitlistRows, userRows) {
+  const n = (v) => { const x = Number(v); return Number.isInteger(x) && x >= 0 ? x : null; };
+  const waitlist = n(waitlistRows), users = n(userRows);
+  if (waitlist === null || users === null) return null;
+  return { waitlist, users };
 }
 
 // What the person is told, and it is the SAME whether they were already on

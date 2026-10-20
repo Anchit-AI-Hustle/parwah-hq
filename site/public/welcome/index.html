@@ -25,6 +25,22 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../styles.css">
+<style>
+.pf-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:36px;max-width:720px}
+@media(max-width:420px){.pf-stats{grid-template-columns:1fr}}
+.pf-stat{display:flex;flex-direction:column;gap:6px;padding:24px;border-radius:24px;background:var(--card);border:1px solid var(--bone-2);box-shadow:var(--sh-1)}
+.pf-num{min-height:1em;font-family:var(--disp);font-weight:800;font-size:clamp(2.2rem,6vw,3.2rem);line-height:1;letter-spacing:-.03em;color:var(--ink)}
+.pf-lbl{font-size:.95rem;font-weight:600;color:var(--ink-soft)}
+.pf-quotes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:18px}
+@media(max-width:860px){.pf-quotes{grid-template-columns:1fr}}
+.pf-quote{display:flex;flex-direction:column;gap:12px;margin:0;padding:24px;border-radius:24px;background:var(--glass);border:1px solid var(--glass-line);box-shadow:var(--sh-1)}
+.pf-quote blockquote{margin:0;font-size:1rem;font-weight:500;color:var(--ink)}
+.pf-quote figcaption{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:.85rem;font-weight:600;color:var(--ink-soft)}
+.pf-tag{padding:3px 10px;border-radius:999px;background:var(--tint-marigold);color:var(--ink);font-size:.75rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.pf-note{margin-top:18px;font-size:.85rem;color:var(--ink-soft)}
+.pf-cta{margin-top:24px;display:flex;gap:14px;flex-wrap:wrap}
+</style>
+<noscript><style>.pf-stats{display:none}</style></noscript>
 </head>
 <body>
 
@@ -53,6 +69,23 @@
     </div>
   </section>
 </header>
+
+<!-- ============ PROOF (day): the numbers and words live in /proof.js ============ -->
+<section class="sec on-day" id="proof" aria-labelledby="proof-h" aria-busy="true">
+  <div class="wrap">
+    <p class="eyebrow rv">So far</p>
+    <h2 class="rv" id="proof-h">Who is joining Parwah.</h2>
+    <div class="pf-stats rv">
+      <div class="pf-stat"><span class="pf-num" data-proof="waitlist"></span><span class="pf-lbl">people on the care range launch list</span></div>
+      <div class="pf-stat"><span class="pf-num" data-proof="users"></span><span class="pf-lbl">people using the Parwah app</span></div>
+    </div>
+    <div class="pf-quotes" data-proof="quotes"></div>
+    <p class="pf-note" data-proof="note">Example figures, to be replaced with live numbers. The quotes are examples, to be replaced with words from real families.</p>
+    <div class="pf-cta rv">
+      <a class="btn btn-ghost" href="../launch/#launch">Join the launch list</a>
+    </div>
+  </div>
+</section>
 
 <!-- ============ THE FIVE THINGS (day) ============ -->
 <section class="sec on-day" id="features">
@@ -199,6 +232,7 @@
   els.forEach(function(e){io.observe(e)});
 })();
 </script>
+<script defer src="../proof.js"></script>
 <script defer src="../analytics.js"></script>
 </body>
 </html>

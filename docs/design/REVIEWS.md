@@ -3,6 +3,31 @@
 Newest first. Each review uses `CHECKLIST.md`; severities are Nielsen's:
 0 not a problem, 1 cosmetic, 2 minor, 3 major, 4 blocker.
 
+## Review 13 - 2026-10-20 - proof, a real signup, and privacy
+
+**Reviewer:** Claude, acting as senior product designer.
+**Brief:** a portfolio review said the site needs proof, a signup that
+really stores, and a privacy notice with consent before it convinces a
+visitor.
+**Scope:** the new proof section on `/welcome/`, the launch list form on
+`/launch/`, and the launch list and analytics sections of `/privacy/`.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 115 | 1 Visibility of status | The home page had no sign that anyone else uses Parwah | 3 | Fixed: a proof section under the hero: two counts read live from the database, three quotes, and a note that says in words what is an example |
+| 116 | 10 Trust | Sample figures and quotes could be read as real | 4 | Fixed: every quote carries an Example tag, the note names the figures as examples whenever the live count is not shown, and all of it sits in `site/public/proof.js` |
+| 117 | 9 Error recovery | A failed join said "Could not join right now" and nothing else | 3 | Fixed: the message says the person is not on the list yet, keeps what they typed, and offers WhatsApp |
+| 118 | 5 Error prevention | A typo in the email was only caught after a round trip; a second tap could send twice | 2 | Fixed: the server's rules are asked first, the box that is wrong is marked and focused; one join at a time |
+| 119 | 4 Consistency | The form's boxes were white with cream text in the night theme, and its messages used peacock and rani as status colours | 3 | Fixed: boxes on `--card`, messages in ink on tints with a ✓ or ! so status is never colour alone |
+| 120 | 2 Real-world match | The privacy notice did not mention the launch list at all; its spacing tokens did not exist, so its headings sat on the text | 3 | Fixed: what, why, where, how long and how to delete, linked beside the form; the page's style block uses real values |
+
+New patterns: the proof stat (`.pf-stat`), the quote card with its Example
+tag (`.pf-quote`, `.pf-tag`), and the honeypot (`.wl-hp`). Pinned by
+`test_site.py` (signup, proof, privacy and meta checks) and
+`site/tests/db/waitlist.e2e.dbtest.mjs`.
+
+**Approved.**
+
 ## Review 12 - 2026-10-13 - content first, forms last
 
 **Reviewer:** Claude, acting as senior product designer.

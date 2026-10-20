@@ -26,14 +26,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../styles.css">
 <style>
-.legal-page{padding:var(--space-48) 0;max-width:760px;margin:0 auto}
-.legal-page h2{font-family:var(--disp);font-size:var(--fs-24);margin:var(--space-32) 0 var(--space-12);color:var(--dusk)}
-.legal-page h3{font-family:var(--disp);font-size:var(--fs-18);margin:var(--space-20) 0 var(--space-8);color:var(--pine)}
-.legal-page p,.legal-page li{font-size:var(--fs-16);line-height:1.7;color:var(--ink);margin:0 0 var(--space-16)}
-.legal-page ul{margin:0 0 var(--space-20) var(--space-20);padding:0}
-.legal-page li{margin-bottom:var(--space-8)}
-.legal-page .card{background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-16);padding:var(--space-24);margin:var(--space-24) 0}
-.legal-badge{display:inline-block;padding:var(--space-4) var(--space-12);border-radius:var(--radius-pill);background:var(--bone);color:var(--dusk);font-weight:700;font-size:var(--fs-12);margin-bottom:var(--space-12)}
+.legal-page{padding-top:48px;padding-bottom:48px;max-width:760px;margin:0 auto}
+.legal-page h2{font-family:var(--disp);font-weight:800;font-size:1.5rem;line-height:1.2;letter-spacing:-.02em;margin:40px 0 12px;color:var(--ink)}
+.legal-page h3{font-family:var(--disp);font-weight:700;font-size:1.12rem;margin:24px 0 8px;color:var(--ink)}
+.legal-page p,.legal-page li{font-size:1rem;line-height:1.7;color:var(--ink);margin:0 0 16px}
+.legal-page ul{margin:0 0 20px 20px;padding:0}
+.legal-page li{margin-bottom:8px}
+.legal-page a{color:var(--sindoor);font-weight:700}
+.legal-page .card{background:var(--card);border:1px solid var(--bone-2);border-radius:16px;padding:24px;margin:24px 0;box-shadow:var(--sh-1)}
+.legal-badge{display:inline-block;padding:4px 12px;border-radius:999px;background:var(--bone);color:var(--ink);font-weight:700;font-size:.75rem;margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -69,6 +70,7 @@
       <p><b>2. No ad tracking in the app.</b> The Parwah application has zero advertising trackers and zero third-party behavioural profiling.</p>
       <p><b>3. Location on demand only.</b> Location is accessed only when you choose to share it (for example during an active emergency SOS or check-in). We do not run background location tracking.</p>
       <p><b>4. You can export or delete your circle anytime.</b> When you delete a record or leave a circle, it is removed from active databases.</p>
+      <p><b>5. The launch list is used for the launch, and nothing else.</b> <a href="#launch-list">What we keep when you join it</a>, and how to have it deleted.</p>
     </div>
 
     <h2 class="rv">1. Information We Collect</h2>
@@ -105,7 +107,30 @@
       <li><b>Right to Grievance Redressal:</b> You may write to our designated Grievance Officer with any questions or concerns.</li>
     </ul>
 
-    <h2 class="rv">6. Grievance Officer and Contact Details</h2>
+    <h2 class="rv" id="launch-list">6. The Launch List</h2>
+    <p class="rv">This part is about the form on our <a href="../launch/">launch page</a>, where you can ask to hear when the care range opens. It is separate from the Parwah app.</p>
+    <h3 class="rv">What we collect</h3>
+    <ul class="rv">
+      <li>Your name and email address.</li>
+      <li>Your phone number and city, only if you choose to give them.</li>
+      <li>What you are interested in: the care range, the family app, or both.</li>
+      <li>Your yes to being contacted, and the date and time you gave it.</li>
+      <li>Which of our pages the form was on, and when you joined or last changed your details.</li>
+    </ul>
+    <p class="rv">The form cannot be sent until you tick the box to say we may contact you. The box is never ticked for you.</p>
+    <h3 class="rv">Why we collect it</h3>
+    <p class="rv">To send you a message when the care range opens, by email or by WhatsApp if you gave a number. And to count how many people want the care range and how many want the app, so we know which to build first. We do not sell it, share it with advertisers, or add you to any other list.</p>
+    <h3 class="rv">Where it is kept</h3>
+    <p class="rv">In Parwah's own database, a PostgreSQL database run for us by Neon, the same service that holds the app's data. It travels there over an encrypted connection (HTTPS). Only the Parwah team can read it.</p>
+    <h3 class="rv">How long we keep it</h3>
+    <p class="rv">Until the care range has launched and we have told you, and for at most 12 months after that. Then it is deleted. If you ask us to delete it sooner, we do.</p>
+    <h3 class="rv">How to have it deleted</h3>
+    <p class="rv">Email <a href="mailto:care@parwah.in?subject=Please%20delete%20me%20from%20the%20launch%20list">care@parwah.in</a> from the address you joined with, with the subject "Please delete me from the launch list". We delete your details and write back to confirm within 15 working days. You can also ask us what we hold about you, or to correct it, the same way.</p>
+
+    <h2 class="rv" id="analytics">7. Visit Counting on Our Website</h2>
+    <p class="rv">Our information pages (not the app) may ask whether we can count visits with Google Analytics. Nothing is loaded from Google until you press Allow. If you press No thanks, or your browser asks sites not to track you, nothing is loaded at all. We turn off advertising features and shorten your internet address before it is stored. Your answer is kept only in your own browser, and clearing your browser data asks again. The Parwah app itself never loads analytics.</p>
+
+    <h2 class="rv">8. Grievance Officer and Contact Details</h2>
     <p class="rv">In accordance with the Information Technology Act, 2000 and the DPDP Act, the contact details of our Grievance Officer are:</p>
     <div class="card rv">
       <p><b>Grievance Officer:</b> Anchit Tandon</p>

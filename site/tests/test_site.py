@@ -2169,6 +2169,75 @@ check("waitlist: the gate runs its unit tests before npm install can have run",
 check("waitlist: and that module stays dependency-free so it can",
       "@neondatabase" not in _wl and "from './_db.mjs'" not in _wl)
 
+# THE SIGNUP, PROOF AND PRIVACY WORK (portfolio review, 2026-10-20). The form
+# stores a real entry, a bot cannot stuff it, a yes is kept with its time,
+# and the numbers on the home page are counted or plainly marked as samples.
+_launch = (ROOT / "public/launch/index.html").read_text(encoding="utf-8")
+_form = _launch[_launch.find('<form class="wl-form"'):_launch.find("</form>")]
+_wl_branch = _auth_src[_auth_src.find("action === 'waitlist'"):_auth_src.find("action === 'enter'")]
+check("signup: the form carries a honeypot no person can see or reach",
+      'name="website"' in _form and 'class="wl-hp" aria-hidden="true"' in _form
+      and 'tabindex="-1"' in _form and ".wl-hp{position:absolute;left:-10000px" in _launch)
+check("signup: and a filled honeypot is answered like a person but never stored",
+      "isBot(body)" in _wl_branch and _wl_branch.find("isBot(body)") < _wl_branch.find("insert into waitlist")
+      and "HONEYPOT = 'website'" in _wl)
+check("signup: the consent box is required and starts unticked",
+      re.search(r'<input type="checkbox" id="wl-consent" name="consent" required>', _form) is not None
+      and "checked>" not in _form.split('id="wl-consent"')[1].split(">")[0] + ">")
+check("signup: the stored row keeps when consent was given, and the first yes is the one kept",
+      "add column if not exists consent_at timestamptz" in _dbsrc
+      and "case when ${row.consent} then now() end" in _wl_branch
+      and "consent_at = coalesce(waitlist.consent_at, excluded.consent_at)" in _wl_branch)
+check("signup: one join at a time, a second tap does nothing",
+      "if(busy)return;" in _launch and "btn.disabled=true;" in _launch)
+check("signup: a failure says the person is not on the list yet, and offers WhatsApp",
+      _launch.count("not on the list yet") >= 3 and "join on WhatsApp" in _launch)
+check("signup: the privacy notice is linked beside the form",
+      'href="../privacy/#launch-list"' in _form)
+_priv = (ROOT / "public/privacy/index.html").read_text(encoding="utf-8")
+_priv_ll = _priv[_priv.find('id="launch-list"'):_priv.find('id="analytics"')]
+check("privacy: the launch list says what, why, where, how long, and how to delete",
+      all(h in _priv_ll for h in ("What we collect", "Why we collect it", "Where it is kept",
+                                   "How long we keep it", "How to have it deleted", "mailto:care@parwah.in"))
+      and "date and time you gave it" in _priv_ll)
+check("privacy: analytics is explained, and loads only after a yes",
+      'id="analytics"' in _priv and "Nothing is loaded from Google until you press Allow" in _priv)
+_no_priv = [str(q.relative_to(ROOT / "public")) for q in SITE_PAGES
+            if 'class="f-links"' in q.read_text(encoding="utf-8")
+            and "privacy/" not in q.read_text(encoding="utf-8").split('class="f-links"')[1].split("</nav>")[0]]
+check("privacy: every footer that has links links to the privacy page", not _no_priv, ", ".join(_no_priv))
+_welcome = (ROOT / "public/welcome/index.html").read_text(encoding="utf-8")
+_proof = (ROOT / "public/proof.js").read_text(encoding="utf-8") if (ROOT / "public/proof.js").exists() else ""
+check("proof: the home page shows it near the top, before the features",
+      0 < _welcome.find('id="proof"') < _welcome.find('id="features"') and "proof.js" in _welcome)
+check("proof: every sample figure and quote lives in one file",
+      "var SAMPLE = {" in _proof and "var QUOTES = [" in _proof
+      and not re.search(r'data-proof="(waitlist|users)">\s*\d', _welcome))
+check("proof: a sample is never shown without saying so on the page",
+      "Example figures, to be replaced with live numbers." in _proof
+      and "Example figures, to be replaced with live numbers." in _welcome
+      and "show(SAMPLE, false)" in _proof and "QUOTES_ARE_EXAMPLES ? ' ' + NOTE.quotes" in _proof)
+check("proof: the counts are read from the real tables, and cached at the edge",
+      "req.query.stats === 'proof'" in _auth_src and "from waitlist where consent" in _auth_src
+      and "count(*)::int as n from users" in _auth_src and "s-maxage=600" in _auth_src
+      and "proofCounts(" in _auth_src)
+# Every page a person can land on and share: a title, a description, a share
+# image and the one address search engines should file it under. The 404 is
+# not a page anyone should share or index, so it is the one exception.
+_meta_missing = []
+for _p in SITE_PAGES:
+    if _p.name == "404.html":
+        continue
+    _h = _p.read_text(encoding="utf-8")
+    for _need, _pat in (("title", r"<title>[^<]{8,}</title>"),
+                        ("description", r'<meta name="description" content="[^"]{30,}"'),
+                        ("og:image", r'<meta property="og:image" content="https://'),
+                        ("canonical", r'<link rel="canonical" href="https://parwah-hq\.anchit-tandon\.com/')):
+        if not re.search(_pat, _h):
+            _meta_missing.append(f"{_p.relative_to(ROOT / 'public')}: {_need}")
+check("meta: every shareable page has a title, description, og:image and canonical",
+      not _meta_missing, "; ".join(_meta_missing[:4]))
+
 # RESPONSIVENESS (INP). Vercel flagged the Muhurat widget: 280 ms from tap
 # to screen, "event handlers on this element blocked UI updates". Measured
 # A/B at 4x CPU throttle: median 228 -> 156 ms, time inside the handler
