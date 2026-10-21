@@ -1,0 +1,115 @@
+# THE NATIVE APPS: build them and run their tests on every change.
+#
+# native/android is Kotlin and Jetpack Compose; its core module (the API
+# client, the sign-in flow and the rules shared with the server) is tested on
+# the JVM, and the app is built into a debug APK. native/ios joins this
+# workflow on a macOS runner as it is written.
+name: Native apps
+
+on:
+  push:
+    branches: [main]
+    paths: ['native/**', 'api/_auth.mjs', '.github/workflows/native.yml']
+  pull_request:
+    branches: [main]
+    paths: ['native/**', 'api/_auth.mjs', '.github/workflows/native.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android (Kotlin) build and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: native/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # The Ubuntu runner already has the Android SDK, with ANDROID_HOME set,
+      # as the Capacitor workflow relies on. setup-android@v3 failed here asking
+      # sdkmanager for the retired 'tools' package.
+      - name: The contract is what the server's rules say today
+        working-directory: .
+        run: node native/contract/generate.mjs --check
+      - name: Core tests, the screens on Robolectric, and a debug build
+        run: ./gradlew --no-daemon :core:test :app:testDebugUnitTest :app:assembleDebug
+      - name: Keep the test report and the APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-android
+          path: |
+            native/android/core/build/reports/tests/
+            native/android/app/build/reports/tests/
+            native/android/app/build/journey/
+            native/android/app/build/outputs/apk/debug/*.apk
+
+  ios-core:
+    name: iPhone (Swift) core tests
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: The API client, sign-in flow and PIN rule, against the server's contract
+        working-directory: native/ios/ParwahCore
+        run: swift test
+
+  ios-app:
+    name: iPhone (SwiftUI) app, unit and UI tests on a simulator
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Generate the Xcode project from project.yml
+        working-directory: native/ios/App
+        run: brew install xcodegen && xcodegen generate
+      - name: Pick the newest iPhone simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json,sys
+          best=None
+          for rt,devs in json.load(sys.stdin)["devices"].items():
+              if "iOS" not in rt: continue
+              for x in devs:
+                  if x["name"].startswith("iPhone") and (best is None or rt>best[0]): best=(rt,x["udid"])
+          print(best[1] if best else "")')
+          test -n "$UDID" || { echo "no iPhone simulator"; exit 1; }
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+      - name: Build, then run the unit tests and the sign-in journey on the simulator
+        working-directory: native/ios/App
+        # This step used to end in "| tail -60", so its status was tail's and a
+        # failing test would still have shown green. Now the full log is kept
+        # and the step fails unless xcodebuild says TEST SUCCEEDED, and unless
+        # the unit tests ran as well as the UI journey. Each test case is listed.
+        run: |
+          set -o pipefail
+          xcodebuild test -project Parwah.xcodeproj -scheme Parwah \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -resultBundlePath "$RUNNER_TEMP/ParwahTests.xcresult" 2>&1 | tee "$RUNNER_TEMP/xcodebuild.log" \
+            | grep -E "^Test Case .*(passed|failed)|error:|\*\* TEST" || true
+          grep -q "\*\* TEST SUCCEEDED \*\*" "$RUNNER_TEMP/xcodebuild.log"
+          grep -q "AppModelTests" "$RUNNER_TEMP/xcodebuild.log" || { echo "the unit tests did not run"; exit 1; }
+      - name: Keep the results, screenshots included
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-ios-results
+          path: ${{ runner.temp }}/ParwahTests.xcresult

@@ -1,0 +1,9 @@
+# Build output and machine-local settings never belong in the repository.
+android/.gradle/
+android/.kotlin/
+android/build/
+android/*/build/
+android/local.properties
+ios/build/
+ios/*.xcodeproj/
+ios/**/.build/
