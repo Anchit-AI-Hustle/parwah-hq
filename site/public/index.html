@@ -820,6 +820,16 @@ details.more[open]>summary::before{content:"▾ "}
 .side-so:hover{color:var(--marigold)}
 .phrow{display:flex;gap:var(--space-8)}
 .phrow .ccsel{width:118px;min-width:118px;flex:0 0 auto}
+/* The closed code box shows only the flag and code (the name would be cut);
+   the open list keeps every country's name to find it by. */
+.ccwrap{position:relative;display:flex;flex:0 0 auto}
+.phrow .ccwrap .ccsel{width:108px;min-width:108px;color:transparent}
+.ccwrap .ccsel option{color:var(--ink)}
+.ccface{position:absolute;inset:0;display:flex;align-items:center;gap:var(--space-4);padding:0 var(--space-12);
+  font-family:var(--body);font-size:var(--fs-16);color:var(--ink);pointer-events:none;white-space:nowrap}
+/* The hidden text takes the native arrow with it, so the face draws one. */
+.ccface::after{content:"";margin-left:auto;width:7px;height:7px;border-right:2px solid;border-bottom:2px solid;
+  flex:0 0 auto;transform:translateY(-2px) rotate(45deg);opacity:.7}
 .phrow input{flex:1;min-width:0}
 .mentionbox{position:absolute;bottom:100%;left:0;right:0;background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-16) var(--radius-16) 0 0;box-shadow:0 -6px 18px rgba(36,31,23,.1);display:flex;flex-wrap:wrap;gap:var(--space-8);padding:var(--space-12)}
 .mentionbox button{border:1px solid var(--bone-2);background:var(--day);border-radius:var(--radius-pill);padding:var(--space-8) var(--space-12);font-family:var(--body);font-weight:600;font-size:var(--fs-14);cursor:pointer;color:var(--ink)}
@@ -7513,9 +7523,15 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var want = iso && dialOf(iso) === cc ? iso : (CC_HOME[cc] || null);
     for (var i = 0; i < el.options.length; i++) {
       var o = el.options[i];
-      if (o.value === cc && (!want || o.getAttribute('data-iso') === want)) { el.selectedIndex = i; return; }
+      if (o.value === cc && (!want || o.getAttribute('data-iso') === want)) { el.selectedIndex = i; ccFace(el); return; }
     }
-    el.value = cc;
+    el.value = cc; ccFace(el);
+  }
+  // The flag and code over a closed code box.
+  function ccFace(el){
+    var f = el && el.parentNode && el.parentNode.className === 'ccwrap' ? el.nextSibling : null;
+    var o = f && el.options[el.selectedIndex];
+    if (o) f.textContent = flagOf(o.getAttribute('data-iso')) + ' ' + o.value;
   }
   var CC_RULES = {
     '+91': { min: 10, max: 10, re: /^[6-9]\d{9}$/, name: 'India' },
@@ -7530,6 +7546,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function fillCc(id, def){
     var el = $(id); if (!el || el.options.length) return;
     el.innerHTML = CC_LIST.map(function(c){ return '<option value="' + c[0] + '" data-iso="' + c[2] + '">' + c[1] + '</option>'; }).join('');
+    var w = document.createElement('span'); w.className = 'ccwrap';
+    var f = document.createElement('span'); f.className = 'ccface'; f.setAttribute('aria-hidden', 'true');
+    el.parentNode.insertBefore(w, el); w.appendChild(el); w.appendChild(f);
+    el.addEventListener('change', function(){ ccFace(el); });
     var iso = guessIso();
     setCc(id, def || dialOf(iso), iso);
   }
