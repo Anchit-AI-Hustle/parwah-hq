@@ -92,6 +92,28 @@ for (const route of ['/welcome/', '/story/', '/story/aisle/', '/care/', '/launch
   await pg.close();
 }
 
+// THE CODE BOX SHOWS THE FLAG AND CODE, NEVER A CUT-OFF COUNTRY NAME.
+// The open list keeps the names to find a country by; the closed box at sign-in
+// showed "+91 Ind" on a phone. Its face must be the flag and code, whole.
+{
+  const pg = await browser.newPage({ viewport: { width: 320, height: 844 } });
+  await pg.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await pg.waitForTimeout(400);
+  const read = () => pg.$eval('#au-cc', s => {
+    const f = s.nextElementSibling;
+    return { text: f && f.textContent, fits: f && f.scrollWidth <= f.clientWidth, hidden: getComputedStyle(s).color === 'rgba(0, 0, 0, 0)' };
+  });
+  let r = await read();
+  ok(r.text && /^\S+ \+\d+$/.test(r.text) && r.fits && r.hidden,
+     'the sign-in code box shows only the flag and code, and it fits' + ` (${JSON.stringify(r)})`);
+  const al = await pg.$$eval('#au-cc option', o => o.findIndex(x => x.dataset.iso === 'AL'));
+  await pg.selectOption('#au-cc', { index: al });
+  r = await read();
+  ok(r.text === '\u{1F1E6}\u{1F1F1} +355' && r.fits, 'picking another country changes the flag and code, and a long code still fits' + ` (${r.text})`);
+  ok(await pg.$eval('#au-cc', s => s.options[s.selectedIndex].textContent.includes('Albania')), 'while the list itself still names every country');
+  await pg.close();
+}
+
 await browser.close();
 server.close();
 console.log(`\n${pass} passed, ${fail} failed`);
