@@ -49,7 +49,8 @@ async function page(ua, url, { standalone = false, scheme = 'light' } = {}) {
   const p = await page(SAFARI, '/get/');
   const order = await p.$$eval('.platform', ps => ps.map(x => x.id));
   ok(order[0] === 'p-ios', 'on an iPhone the iPhone section comes first', order.join());
-  ok(await p.isVisible('#ios-get') && (await p.getAttribute('#ios-get', 'href')) === '../?install=ios', 'it leads with Get the iPhone app, which opens the guided install');
+  ok(await p.isVisible('#ios-get') && (await p.getAttribute('#ios-get', 'href')) === '../install/parwah.mobileconfig', 'it leads with Install the iPhone app, which installs Parwah from Safari');
+  ok(await p.isVisible('#ios-guide') && (await p.getAttribute('#ios-guide', 'href')) === '../?install=ios', 'the guided Add to Home Screen stays as the other way');
   ok(!(await p.isVisible('#ipa-dev')) && !(await p.isVisible('#ipa-link')), 'an iPhone is never offered the IPA it cannot open');
   ok(!(await p.isVisible('#ios-inapp')), 'in Safari there is no "open in Safari" warning');
   ok(await p.evaluate(() => document.documentElement.scrollWidth <= 390), 'nothing scrolls sideways');

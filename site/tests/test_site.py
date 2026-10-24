@@ -2425,6 +2425,29 @@ check("find my: places with arrive and leave alerts, ask to share, battery",
       "export function placesAt" in _geo and "async function placeNews" in _loc and "action === 'ask'" in _loc
       and "navigator.getBattery" in _app_src)
 
+# ---------- iPhone install profile (owner, 2026-10-24) ----------
+# /get installs Parwah on any iPhone through a Web Clip profile: it must open
+# the live app full screen with the app's own icon, and match what
+# site/make-webclip.py writes.
+import plistlib as _plistlib
+_prof_path = ROOT / "public" / "install" / "parwah.mobileconfig"
+try:
+    _prof = _plistlib.loads(_prof_path.read_bytes())
+    _clip = _prof["PayloadContent"][0]
+except Exception as e:
+    _prof, _clip = {}, {"error": str(e)}
+check("iphone profile: one full-screen Web Clip of the live app with the app icon",
+      _prof.get("PayloadType") == "Configuration"
+      and _clip.get("PayloadType") == "com.apple.webClip.managed"
+      and _clip.get("URL") == "https://parwah-hq.anchit-tandon.com/"
+      and _clip.get("Label") == "Parwah" and _clip.get("FullScreen") is True
+      and _clip.get("Icon") == (ROOT / "public" / "apple-touch-icon.png").read_bytes(),
+      str({k: v for k, v in _clip.items() if k != "Icon"}))
+_vj = _json.loads((ROOT.parent / "vercel.json").read_text(encoding="utf-8"))
+_ph = [h for h in _vj.get("headers", []) if h["source"].endswith(".mobileconfig")]
+check("iphone profile: served as a profile, so Safari offers to install it",
+      any(x["key"] == "Content-Type" and x["value"] == "application/x-apple-aspen-config" for h in _ph for x in h["headers"]))
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

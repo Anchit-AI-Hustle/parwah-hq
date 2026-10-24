@@ -75,25 +75,16 @@
 
   <div class="platform" id="p-ios">
     <h2>🍎 iPhone &amp; iPad</h2>
-    <div id="ios-native" hidden>
-      <p>Install the Parwah app for iPhone straight from this page.</p>
-      <a class="getbtn" id="ios-native-get" href="itms-services://?action=download-manifest&amp;url=https://parwah-hq.anchit-tandon.com/downloads/parwah-ios.plist">⬇ Install the iPhone app</a>
-      <ol>
-        <li>Open this page in <b>Safari</b> on your iPhone and tap <b>Install the iPhone app</b></li>
-        <li>Tap <b>Install</b> when iOS asks. Parwah appears on your Home Screen</li>
-        <li>The first time only: <b>Settings</b>, <b>General</b>, <b>VPN &amp; Device Management</b>, tap the developer app and tap <b>Trust</b>. If iOS asks for Developer Mode: <b>Settings</b>, <b>Privacy &amp; Security</b>, <b>Developer Mode</b>, On</li>
-      </ol>
-      <p class="getnote">This is a test build for registered test iPhones, signed until <span id="ios-native-until">31 Oct 2026</span> and renewed every 7 days. Your family's data stays safe in between: it lives on Parwah, not in the app. On any other iPhone, use the Home Screen app below.</p>
-      <p class="getor">Or, on any iPhone, add Parwah to your Home Screen:</p>
-    </div>
-    <p>The Parwah app for iPhone goes on your Home Screen from Safari: its own icon, full screen, signed in, and always up to date.</p>
-    <a class="getbtn" id="ios-get" href="../?install=ios">Get the iPhone app</a>
+    <p>Install Parwah on your iPhone straight from this page: its own icon, full screen, and always up to date. Works on every iPhone and iPad, no App Store needed.</p>
+    <a class="getbtn" id="ios-get" href="../install/parwah.mobileconfig">⬇ Install the iPhone app</a>
     <ol>
-      <li>Tap <b>Get the iPhone app</b> above, in <b>Safari</b></li>
-      <li>Tap the <b>Share</b> button (square with ↑; on newer iPhones it is inside the <b>•••</b> menu)</li>
-      <li>Tap <b>“Add to Home Screen”</b>, then <b>Add</b></li>
+      <li>Open this page in <b>Safari</b> and tap <b>Install the iPhone app</b>, then tap <b>Allow</b></li>
+      <li>Open <b>Settings</b> and tap <b>Profile Downloaded</b> near the top (or <b>General</b>, <b>VPN &amp; Device Management</b>)</li>
+      <li>Tap <b>Install</b>, enter your passcode, and tap <b>Install</b> again</li>
+      <li>Parwah is on your Home Screen. Tap it and sign in</li>
     </ol>
-    <p class="getnote" id="ios-inapp" hidden>This page is open inside another app. Tap <b>•••</b> and choose <b>Open in Safari</b> first: only Safari can add Parwah to your Home Screen.</p>
+    <p class="getor">Or add it yourself: <a id="ios-guide" href="../?install=ios">open Parwah in Safari</a>, tap <b>Share</b>, then <b>Add to Home Screen</b>.</p>
+    <p class="getnote" id="ios-inapp" hidden>This page is open inside another app. Tap <b>•••</b> and choose <b>Open in Safari</b> first: only Safari can install Parwah on your iPhone.</p>
     <p class="getnote" id="ipa-dev">For developers: the <a id="ipa-link" href="https://github.com/Anchit-AI-Hustle/parwah-hq/releases/download/mobile-v1.0.0-build15/parwah-ios-unsigned.ipa">iPhone app file (IPA)</a> installs only through Xcode on a Mac, with the <a href="https://github.com/Anchit-AI-Hustle/parwah-hq/blob/main/mobile/README.md">install script</a>. <a class="allbuilds" href="https://github.com/Anchit-AI-Hustle/parwah-hq/releases">All app builds</a></p>
       </div>
 
@@ -132,15 +123,6 @@
     // Instagram, WhatsApp and other in-app browsers have no Add to Home Screen.
     if (/FBAN|FBAV|Instagram|WhatsApp|Line\/|GSA\/|Snapchat|Twitter|LinkedInApp/.test(ua)) document.getElementById('ios-inapp').hidden = false;
   }
-  // The signed iPhone build, while it is still signed. Hidden once it
-  // expires, so nobody installs an app that will not open.
-  fetch('../downloads/parwah-ios.json', { cache: 'no-store' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(b){
-    if (!b || !b.signedUntil) return;
-    var until = new Date(b.signedUntil);
-    if (!(until > new Date())) return;
-    document.getElementById('ios-native-until').textContent = until.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-    document.getElementById('ios-native').hidden = false;
-  }).catch(function(){});
   // The newest app build, from the public releases: a signed parwah.apk
   // when there is one, else the test build. The links in the page are the
   // fallback when GitHub cannot be reached.
