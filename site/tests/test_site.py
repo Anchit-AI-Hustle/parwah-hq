@@ -57,6 +57,11 @@ for p in PAGES:
     html = markup_only(p.read_text(encoding="utf-8")); bad = []
     for href in re.findall(r'href="([^"]+)"', html):
         if href.startswith(("http","mailto:","#","tel:","data:")): continue
+        if href.startswith("itms-services:"):
+            # An iPhone install link: its manifest must be one of the site's own files.
+            m = re.search(r"url=https://parwah-hq\.anchit-tandon\.com/([^&\"]+)", href)
+            if not (m and (ROOT / "public" / m.group(1)).exists()): bad.append(href)
+            continue
         # A query string selects a state of the page, not another file.
         target = (p.parent / href.split("#")[0].split("?")[0]).resolve()
         if target.is_dir(): target = target / "index.html"
