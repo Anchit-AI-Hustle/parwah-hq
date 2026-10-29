@@ -2236,7 +2236,11 @@ check("proof: every sample figure and quote lives in one file",
 check("proof: a sample is never shown without saying so on the page",
       "Example figures, to be replaced with live numbers." in _proof
       and "Example figures, to be replaced with live numbers." in _welcome
-      and "show(SAMPLE, false)" in _proof and "QUOTES_ARE_EXAMPLES ? ' ' + NOTE.quotes" in _proof)
+      and "show(SAMPLE, false)" in _proof and "(QUOTES_ARE_EXAMPLES ? NOTE.quotes : '')" in _proof)
+check("proof: a live count too small to mean anything is hidden, never replaced by a sample",
+      "var MIN_LIVE = " in _proof and "if (live && counts[k] < MIN_LIVE) { tile.hidden = true; return; }" in _proof)
+check("proof: one person is a person, not 1 people",
+      "LABEL[k][counts[k] === 1 ? 0 : 1]" in _proof and "'person on the Parwah launch list'" in _proof)
 check("proof: the counts are read from the real tables, and cached at the edge",
       "req.query.stats === 'proof'" in _auth_src and "from waitlist where consent" in _auth_src
       and "count(*)::int as n from users" in _auth_src and "s-maxage=600" in _auth_src

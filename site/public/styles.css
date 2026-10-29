@@ -32,6 +32,16 @@
   --max:1120px;
   /* Surfaces that sit on the day ground; dark mode swaps them below. */
   --card:#fff; --glass:rgba(255,255,255,.66); --glass-line:rgba(255,255,255,.8); --ghost-bg:rgba(255,255,255,.7);
+  /* The app's scales, shared so a page written with them renders as written.
+     /terms/, /get/ and the 404 page used these names and none were defined
+     here, so their spacing, type sizes and corners silently fell away. */
+  --space-4:4px; --space-8:8px; --space-12:12px; --space-16:16px; --space-20:20px;
+  --space-24:24px; --space-32:32px; --space-40:40px; --space-48:48px;
+  --fs-12:.75rem; --fs-14:.875rem; --fs-16:1rem; --fs-18:1.125rem; --fs-20:1.25rem; --fs-24:1.5rem;
+  --radius-8:8px; --radius-12:12px; --radius-16:16px; --radius-20:20px; --radius-24:24px; --radius-pill:999px;
+  --surface:var(--card);
+  /* Emergency red: SOS and safety notices, nothing else. */
+  --sos:#C8102E;
 }
 /* Dark mode: the day sections go to a deep jamun one step lighter than the
    night sections, so the page keeps its rhythm. Only tokens change here. */
