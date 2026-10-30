@@ -63,10 +63,22 @@ for p in PAGES:
             if not (m and (ROOT / "public" / m.group(1)).exists()): bad.append(href)
             continue
         # A query string selects a state of the page, not another file.
-        target = (p.parent / href.split("#")[0].split("?")[0]).resolve()
+        # A path from the root ("/welcome/") is resolved from site/public,
+        # the way the server does: the 404 page is served at any depth, so
+        # its links must not depend on the folder it was asked for from.
+        _path = href.split("#")[0].split("?")[0]
+        target = ((ROOT / "public" / _path.lstrip("/")) if _path.startswith("/")
+                  else (p.parent / _path)).resolve()
         if target.is_dir(): target = target / "index.html"
         if not target.exists(): bad.append(href)
     check(f"internal links: {p.relative_to(ROOT)}", not bad, ", ".join(bad))
+# The 404 page is served for any missing address, one folder deep or five.
+# A relative "styles.css" then points into a folder that does not exist, so
+# the page arrived unstyled and its two links were 404s themselves.
+_nf = (ROOT / "public" / "404.html").read_text(encoding="utf-8")
+_nf_rel = [u for u in re.findall(r'(?:href|src)="([^"]+)"', _nf)
+           if not u.startswith(("/", "http", "mailto:", "#", "tel:", "data:"))]
+check("internal links: the 404 page names every path from the root", not _nf_rel, ", ".join(_nf_rel))
 
 # ---------- 3. Anchor targets exist ----------
 for p in PAGES:
@@ -2100,6 +2112,8 @@ for _p in PAGES:
             if "parwah-hq.anchit-tandon.com" not in _r:
                 continue
             _target = ROOT / "public" / _r.split("parwah-hq.anchit-tandon.com/", 1)[1]
+        elif _r.startswith("/"):
+            _target = ROOT / "public" / _r.split("?")[0].lstrip("/")
         else:
             _target = (_p.parent / _r.split("?")[0]).resolve()
         if not _target.exists():
@@ -2115,13 +2129,29 @@ _app_h = (ROOT / "public" / "index.html").read_text(encoding="utf-8")
 for _t in ("og:title", "og:description", "og:image", "twitter:card"):
     check(f"invite preview: the app carries {_t}", _t in _app_h)
 check("invite preview: and its image is absolute, like every other one",
-      'content="https://parwah-hq.anchit-tandon.com/og.png"' in _app_h)
+      'content="https://parwah-hq.anchit-tandon.com/og-app.png"' in _app_h)
 # Meta tags are not tracking. This must not be read as permission to add any.
 check("invite preview: the app still carries no analytics",
       "analytics.js" not in _app_h and "googletagmanager" not in _app_h)
 
+# EACH PAGE SHARES ITS OWN CARD. og.png was the products card ("Launching
+# soon", "Daily-living essentials", a parked domain), and it was on every
+# page, the app's own invite included, so a link to the app arrived in
+# WhatsApp promising a shop that is not open. The app pages share the app
+# card, the range pages the range card, and each story its own title.
+_CARD_OF = {"index.html": "og-app.png", "welcome/index.html": "og-app.png",
+            "privacy/index.html": "og-app.png", "terms/index.html": "og-app.png",
+            "404.html": "og-app.png", "care/index.html": "og.png",
+            "launch/index.html": "og.png", "story/index.html": "og-story.png",
+            "story/aisle/index.html": "og-aisle.png"}
+for _rel, _card in _CARD_OF.items():
+    _h = (ROOT / "public" / _rel).read_text(encoding="utf-8")
+    _imgs = re.findall(r'(?:property|name)="(?:og|twitter):image"\s+content="([^"]+)"', _h)
+    check(f"share card: {_rel} shares {_card}",
+          len(_imgs) == 2 and all(i == _BASE + "/" + _card for i in _imgs), ", ".join(_imgs))
+
 # The image has to exist, at the size every platform crops to.
-for _card in ("og.png", "og-story.png"):
+for _card in ("og.png", "og-app.png", "og-story.png", "og-aisle.png"):
     _f = ROOT / "public" / _card
     check(f"share card: {_card} is actually shipped", _f.exists())
     if _f.exists():
@@ -2217,7 +2247,7 @@ _priv = (ROOT / "public/privacy/index.html").read_text(encoding="utf-8")
 _priv_ll = _priv[_priv.find('id="launch-list"'):_priv.find('id="analytics"')]
 check("privacy: the launch list says what, why, where, how long, and how to delete",
       all(h in _priv_ll for h in ("What we collect", "Why we collect it", "Where it is kept",
-                                   "How long we keep it", "How to have it deleted", "mailto:care@parwah.in",
+                                   "How long we keep it", "How to have it deleted", "mailto:anchit.tandon@gmail.com",
                                    "at most 24 months", "internet address, for up to one day"))
       and "date and time you gave it" in _priv_ll)
 check("privacy: analytics is explained, and loads only after a yes",
@@ -2239,6 +2269,31 @@ check("proof: a sample is never shown without saying so on the page",
       and "show(SAMPLE, false)" in _proof and "(QUOTES_ARE_EXAMPLES ? NOTE.quotes : '')" in _proof)
 check("proof: a live count too small to mean anything is hidden, never replaced by a sample",
       "var MIN_LIVE = " in _proof and "if (live && counts[k] < MIN_LIVE) { tile.hidden = true; return; }" in _proof)
+# With small live counts hidden, the section was only three quotes tagged
+# Example, under "Who is joining Parwah": that reads as fake social proof.
+# It starts hidden and appears only when there is a number to show.
+check("proof: example quotes alone are never the whole section; it waits for a number",
+      re.search(r'<section[^>]*id="proof"[^>]*\shidden>', _welcome) is not None
+      and "root.hidden = shown === 0 && QUOTES_ARE_EXAMPLES;" in _proof)
+# ONE STORY ON EVERY PAGE. /welcome/ says the care range is not on sale yet;
+# the footer on seven other pages said Parwah "sells daily-living aids", and
+# two pages promised a home-safety guide that does not exist.
+_say = {str(q.relative_to(ROOT / "public")): q.read_text(encoding="utf-8") for q in SITE_PAGES}
+_sells = [k for k, v in _say.items() if re.search(r"\bsells daily-living", v)]
+check("copy: no page says the range is on sale while /welcome/ says it is not", not _sells, ", ".join(_sells))
+_legal = [m for v in _say.values() for m in re.findall(r'<p class="legal"[^>]*>(.*?)</p>', v, re.S)
+          if "not medicines" in m]
+check("copy: every footer legal line says the range is being prepared",
+      len(_legal) >= 8 and all("is preparing a range of daily-living aids" in m for m in _legal))
+_guide = [k for k, v in _say.items() if re.search(r"(?i)home-safety guide|guide to making a parent", v)]
+check("copy: no page promises a home-safety guide that does not exist", not _guide, ", ".join(_guide))
+_story = _say.get("story/index.html", "")
+check("copy: /story/ says what the app does and links to it, and its drop cap is a letter, not a quote mark",
+      'href="../welcome/">See what it does</a>' in _story and "Be first in line." in _story
+      and 'class="lead rv">"' not in _story)
+check("copy: the launch form's example phone is not the real business number",
+      'placeholder="e.g. 9873945238"' not in _say.get("launch/index.html", "")
+      and "98739 45238" not in _say.get("launch/index.html", ""))
 check("proof: one person is a person, not 1 people",
       "LABEL[k][counts[k] === 1 ? 0 : 1]" in _proof and "'person on the Parwah launch list'" in _proof)
 check("proof: the counts are read from the real tables, and cached at the edge",
