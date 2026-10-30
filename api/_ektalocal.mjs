@@ -45,7 +45,7 @@ const RE = {
   // Someone may be in danger right now. Checked before anything else, and
   // answered in fixed words that never cost a coin: a model, a records
   // lookup or a coin balance must never stand between a family and 112.
-  emergency: /\b(chest ?pain|pain in (his|her|my|the) chest|(having|is having|just had|has just had) a heart attack|heart attack (now|right now|just now)|can'?t breathe|cannot breathe|not breathing|breathless|struggling to breathe|trouble breathing|breathing (problem|difficulty)|saans (nahi|nahin|nhi)|unconscious|not responding|can'?t get up|cannot get up|unresponsive|fainted|passed out|collapsed|behosh|(has|have|just|she|he) (fallen|had a fall)|fell (down|over|off|in the)|had a fall|(having|is having|just had) a stroke|stroke (now|right now|just now)|signs of (a )?stroke|face (is )?droop|slurred|paralys|bleeding (a lot|heavily|badly|won'?t stop)|heavy bleeding|khoon (beh|nikal)|seizure|convulsion|mirgi|choking|swallowed (poison|something)|poison|overdose|took too many (tablets|pills)|badly burn(ed|t)|(had|been in|met with) an? accident\b|accident (now|just now|right now))/i,
+  emergency: /\b(chest ?pain|pain in (his|her|my|the) chest|(having|is having|just had|has just had) a heart attack|heart attack (now|right now|just now)|can'?t breathe|cannot breathe|not breathing|breathless|struggling to breathe|trouble breathing|breathing (problem|difficulty)|saans (nahi|nahin|nhi)|saans (lene mein|lene me) (dikkat|taklif|takleef)|unconscious|hosh (nahi|nahin|nhi)|hosh mein nahi|gir (gaye|gayi|gaya|gae|gai|padi|pade|pada)|uth nahi (rahe|rahi|raha|pa rahe|pa rahi|pa raha)|uth nahin (rahe|rahi|raha)|chakkar (aa gaya|aa gaye|aa gayi|aa gai|aake gir)|dil ka daura|khoon (ruk nahi|band nahi)|not responding|can'?t get up|cannot get up|unresponsive|fainted|passed out|collapsed|behosh|(has|have|just|she|he) (fallen|had a fall)|fell (down|over|off|in the)|had a fall|(having|is having|just had) a stroke|stroke (now|right now|just now)|signs of (a )?stroke|face (is )?droop|slurred|paralys|bleeding (a lot|heavily|badly|won'?t stop)|heavy bleeding|khoon (beh|nikal)|seizure|convulsion|mirgi|choking|swallowed (poison|something)|poison|overdose|took too many (tablets|pills)|badly burn(ed|t)|(had|been in|met with) an? accident\b|accident (now|just now|right now))/i,
   // Words about ending one's life get a person to talk to, at once.
   crisis: /\b(kill (my|him|her)self|suicid|end (my|his|her) life|want to die|don'?t want to live|jeena nahi|marna chahta|marna chahti)/i,
   // A question about what to do with a medicine is the doctor's to answer.
@@ -62,8 +62,13 @@ const RE = {
   scam:    /\b(otp|one[- ]time (password|code)|scam|scammer|fraud|phishing|kyc|upi ?pin|atm ?pin|card ?pin|cvv|lottery|you (have )?won|refund|customer care|account (is |has been )?(blocked|suspended|frozen|closed))\b/i,
   // An instruction, not a question: "is there a reminder for Papa" is still
   // a question about the circle.
-  remind:  /^\s*(please\s+)?(set|add|create|make|put|schedule)\b[^?]*\breminder\b|\bremind me\b/i,
-  help:    /\b(ask (the )?(circle|family|everyone|someone)|ask for help)\b/i
+  // "Remind Papa to take his BP tablet at 9pm" is an instruction too, and
+  // was read as a records question because of "tablet".
+  remind:  /^\s*(please\s+)?(set|add|create|make|put|schedule)\b[^?]*\breminder\b|\bremind me\b|^\s*(please\s+|(can|could|will) you\s+)?remind\b/i,
+  help:    /\b(ask (the )?(circle|family|everyone|someone)|ask for help)\b/i,
+  // Questions about the world, not the family. "What is the weather in
+  // Lucknow today?" has "today" in it, so it got the family feed.
+  world:   /\b(weather|temperature|forecast|rain(ing)?|news|headlines?|cricket|match|score|stock|share price|sensex|nifty|recipe|joke|poem|song|lyrics|movie|film|capital of|president|prime minister|translate|meaning of)\b/i
 };
 // Something that already happened ("passed out yesterday", "fell last
 // year") is a question about the past, not a call for 112 - unless the
@@ -174,10 +179,13 @@ export function classify(text) {
   if (RE.crisis.test(t))    return 'crisis';
   if (RE.emergency.test(t) && !(PAST.test(t) && !saysNow(t))) return 'emergency';
   if (RE.scam.test(t))   return 'scam';
+  // Before health and memory: "Can you remind Papa to take his tablet"
+  // names a medicine but asks for a reminder.
+  if (RE.remind.test(t)) return 'remind';
   if (RE.health.test(t)) return 'health';
   if (RE.greet.test(t))  return 'greet';
-  if (RE.remind.test(t)) return 'remind';
   if (RE.help.test(t))   return 'help';
+  if (RE.world.test(t))  return 'unknown';
   if (RE.summary.test(t)) return 'summary';
   if (RE.memory.test(t))  return 'memory';
   if (RE.circle.test(t))  return 'circle';
@@ -230,6 +238,36 @@ export function renderSummary(payload) {
   }
   out.push('This is a record, not medical advice. The doctor decides everything else.');
   return out.join(NL + NL);
+}
+
+// ONE THING ASKED, ONE THING ANSWERED. "What is Papa's blood group?" got
+// every record kept about him. When the question names one of these, the
+// answer is that and nothing else. A visit ("taking Papa to the doctor")
+// still gets the whole summary: that is what a counter needs.
+const FIELDS = [
+  ['blood', /\bblood ?group\b/i, 'Blood group', e => e.kind === 'fact' && e.category === 'blood'],
+  ['allergy', /\ballerg/i, 'Allergies', e => e.kind === 'fact' && e.category === 'allergy'],
+  ['medicines', /\b(medicines?|tablets?|dawa|dawai|dawaai|pills?)\b/i, 'Medicines', e => e.kind === 'med'],
+  ['doctor', /\b(doctor|dr\.?)\b/i, 'Doctor', e => e.kind === 'contact' && /\b(doctor|dr\.?)\b/i.test((e.name || '') + ' ' + (e.forwhat || '') + ' ' + (e.category || ''))]
+];
+const VISIT = /\b(taking|take (him|her|them)|visit|appointment|hospital|clinic|check ?up|admit|surgery|prepare|summary|tomorrow|kal|carry|le ja)\b/i;
+export function askedField(text) {
+  const t = String(text || '');
+  if (VISIT.test(t)) return null;
+  const hits = FIELDS.filter(f => f[1].test(t));
+  return hits.length === 1 ? hits[0][0] : null;
+}
+export function renderField(field, payload, who) {
+  const f = FIELDS.find(x => x[0] === field);
+  if (!f) return null;
+  const rows = ((payload && payload.entries) || []).filter(f[3]).filter(e => !who || !e.about || e.about === who);
+  const label = f[2].toLowerCase();
+  if (!rows.length) {
+    return 'Nothing is recorded under ' + label + (who ? ' for ' + who : '') + ' yet. Open Health & contacts to add it, and it will be here next time.';
+  }
+  // Asked for the whole family: each line says whose it is.
+  const one = rows.map(e => (!who && e.about ? e.about + ': ' : '') + e.name + (e.forwhat ? ' (' + e.forwhat + ')' : e.phone ? ' (' + e.phone + ')' : '') + stalePhrase(e.last_verified_at, e.stale));
+  return (who ? who + "'s " + label : f[2]) + ', as recorded: ' + (one.length === 1 ? one[0] + '.' : NL + bullets(one));
 }
 
 const KIND_LABEL = { med: 'Medicines', fact: 'Health facts', contact: 'Contacts', insurance: 'Insurance', address: 'Addresses' };

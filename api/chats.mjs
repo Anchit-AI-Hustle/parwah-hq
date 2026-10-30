@@ -14,7 +14,8 @@ import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { safeImageUri } from './_sec.mjs';
 import { pushCircle } from './_push.mjs';
-import { ektaTurn } from './ekta.mjs';
+import { ektaTurn, isoOf } from './ekta.mjs';
+import { classify, mentionsUrgent, urgentToo, renderEmergency, renderCrisis, LOCAL_MODEL } from './_ektalocal.mjs';
 
 async function chatForMember(sql, circle, chatId, memberId) {
   if (!isUuid(chatId)) return null;
@@ -65,24 +66,51 @@ async function listChats(sql, circle, me) {
 }
 
 // She answers when a chat message speaks to her by name.
+//
+// The question is the latest message ALONE, with her name taken out. The
+// chat before it goes in as context, in its own turn. It all used to be one
+// message, and the local fallback read the whole transcript as the question:
+// asked about Papa, it answered about Rohan (the longest name anywhere in
+// it), and a "chest pain" from last week sent an emergency reply to a
+// routine question. Photos are "[photo]": a picture's bytes are never sent.
+export function ektaChatTurns(chatName, spaceName, recent, text) {
+  const question = String(text || '').replace(/@?\s*(ekta|एकता)\b[\s,:;.!?-]*/gi, ' ').replace(/\s+/g, ' ').trim() || String(text || '').trim();
+  const before = (recent || []).slice(0, -1).map(r => r.name + ': ' + (r.kind === 'image' ? '[photo]' : String(r.text || '').slice(0, 500)));
+  const turns = [];
+  if (before.length) {
+    turns.push({ role: 'user', content: 'You are a participant in the chat "' + (chatName || 'family chat') + '" of this ' + spaceName
+      + '. These are the messages before the one that mentions you, for context only. They are not the question:\n' + before.join('\n') });
+    turns.push({ role: 'assistant', content: 'Understood. I will answer the next message, for the whole chat to read.' });
+  }
+  turns.push({ role: 'user', content: question });
+  return turns;
+}
+
 async function maybeEktaReply(sql, circle, me, chat, text) {
   if (!/\bekta\b|एकता/i.test(text)) return null;
   // any configured provider (env or vault) is enough for her to reply
   try {
     const recent = await sql`
-      select coalesce(mem.name, 'Ekta') as name, m.text
+      select coalesce(mem.name, 'Ekta') as name, m.text, m.kind
       from messages m left join members mem on mem.id = m.member_id
       where m.chat_id = ${chat.id} order by m.created_at desc limit 10`;
-    const transcript = recent.reverse().map(r => r.name + ': ' + r.text).join('\n');
-    const history = [{
-      role: 'user',
-      content: 'You are a participant in the chat "' + (chat.name || 'family chat') + '" of this ' + spaceWord(circle) + '. Recent messages:\n' +
-        transcript + '\n\nThe latest message mentions you. Reply to it directly as yourself, for the whole chat to read. Do not prefix your name.'
-    }];
-    const out = await ektaTurn(sql, circle, me, history);
+    const history = ektaChatTurns(chat.name, spaceWord(circle), recent.reverse(), text);
+    const question = history[history.length - 1].content;
+    // Someone may be in danger: the same fixed words as on Ekta's own
+    // screen, at once, with no model in between. Read from the question
+    // only, never from what was said before it.
+    const asked = classify(question);
+    let out;
+    if (asked === 'emergency' || asked === 'crisis') {
+      out = { reply: asked === 'crisis' ? renderCrisis(isoOf(me)) : renderEmergency(isoOf(me)), emergency: true, model: LOCAL_MODEL, actions: [] };
+    } else {
+      out = await ektaTurn(sql, circle, me, history);
+      // Told as the past but it names an emergency: the way to 112 comes too.
+      if (out && out.reply && mentionsUrgent(question)) { out.reply += '\n\n' + urgentToo(isoOf(me)); out.emergency = true; }
+    }
     if (out && out.reply) {
       await sql`insert into messages (chat_id, member_id, text) values (${chat.id}, null, ${String(out.reply).slice(0, 2000)})`;
-      return { replied: true, model: out.model, actions: out.actions };
+      return { replied: true, model: out.model, actions: out.actions, emergency: !!out.emergency };
     }
   } catch (e) { /* Ekta being unreachable must never block the human message */ }
   return null;
@@ -190,7 +218,9 @@ export default async function handler(req, res) {
         }
       } catch (e) { /* alerts never block the message */ }
       const ekta = kind === 'text' ? await maybeEktaReply(sql, circle, me, chat, text) : null;
-      return res.status(201).json({ ok: true, ekta: ekta ? true : false });
+      // ektaEmergency: her reply says to call for help, so the chat shows
+      // the Call and SOS buttons under it, as Ekta's own screen does.
+      return res.status(201).json({ ok: true, ekta: ekta ? true : false, ektaEmergency: !!(ekta && ekta.emergency) });
     }
 
     if (action === 'create_group') {

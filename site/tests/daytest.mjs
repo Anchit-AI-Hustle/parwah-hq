@@ -3,7 +3,7 @@
 // Choghadiya is arithmetic, so it can be checked against a published almanac
 // rather than trusted. These three modules import nothing, so this test runs
 // on a fresh clone before npm install, exactly like phonetest.mjs.
-import { sunTimes, panchang, currentPeriod, CHALDEAN, WEEKDAY_LORD, LORD_OF,
+import { sunTimes, panchang, currentPeriod, periodNow, CHALDEAN, WEEKDAY_LORD, LORD_OF,
          derivedDaySeq, derivedNightSeq } from '../../api/_panchang.mjs';
 import { placeOf, CITIES, CAPITALS } from '../../api/_places.mjs';
 import { SIGNS, signOf, fetchSign, ENDPOINT } from '../../api/_horoscope.mjs';
@@ -127,6 +127,22 @@ ok(currentPeriod(del, mid) === del.day[3], 'currentPeriod finds the period aroun
 ok(currentPeriod(del, new Date(+del.day[0].from - 60000)) === null, 'before sunrise nothing is running');
 ok(currentPeriod(del, del.night[7].to) === null, 'after the last night part nothing is running');
 
+// ---- before sunrise it is still last night ---------------------------------
+// 03:00 in Delhi on a Thursday, 2026-09-03: today's sunrise is hours away,
+// so the period running is the end of Wednesday night, by Wednesday's order.
+{
+  const day = new Date('2026-09-03T00:00:00Z');
+  const at3 = new Date('2026-09-02T21:30:00Z');   // 03:00 IST, 3 Sept
+  const pn = periodNow(28.6139, 77.2090, day, at3);
+  const wed = panchang(28.6139, 77.2090, new Date('2026-09-02T00:00:00Z'));
+  ok(pn.current && pn.current.name, 'at 3 am a period is named, not "between windows" -> ' + (pn.current && pn.current.name));
+  ok(pn.lastNight === true && wed.night.some(x => x.name === pn.current.name && +x.from === +pn.current.from), 'and it is one of last night\'s, by Wednesday\'s order');
+  ok(at3 >= pn.current.from && at3 < pn.current.to, 'and it really is running at 3 am');
+  ok(+pn.panchang.sunrise === +panchang(28.6139, 77.2090, day).sunrise, 'the rest of the card is still today\'s');
+  const noon = new Date('2026-09-03T06:30:00Z');
+  ok(periodNow(28.6139, 77.2090, day, noon).current && !periodNow(28.6139, 77.2090, day, noon).lastNight, 'after sunrise it is today\'s as before');
+}
+
 // ---- where a family member lives ----------------------------------------
 ok(placeOf('Delhi').lat === 28.6139 && !placeOf('Delhi').guessed, 'exact city match');
 ok(placeOf('  DELHI ').lat === 28.6139, 'case and spaces do not matter');
@@ -160,6 +176,11 @@ ok(placeOf('Sao Paulo').tz === 'America/Sao_Paulo' && placeOf('Tokyo').tz === 'A
 // ---- rashi from date of birth -------------------------------------------
 ok(SIGNS.length === 12, 'twelve signs');
 ok(SIGNS.every(s => s.hi && s.en && s.k), 'every sign is named in English and Hindi');
+// The database driver returns a date column as a Date. String() of that is
+// "Mon May 14 1990 ...", which matched nothing: every sign was blank.
+ok(signOf(new Date(1990, 4, 14)) && signOf(new Date(1990, 4, 14)).k === 'taurus', 'a Date from the database gives its sign');
+ok(signOf(new Date(1958, 0, 1)).k === 'capricorn' && signOf(new Date(1958, 11, 31)).k === 'capricorn', 'a Date on either side of the year end is Capricorn');
+ok(signOf(new Date('x')) === null && signOf(null) === null, 'a broken date gives no sign rather than a wrong one');
 ok(signOf('1958-03-21').k === 'aries', 'first day of Aries');
 ok(signOf('1958-04-19').k === 'aries', 'last day of Aries');
 ok(signOf('1958-04-20').k === 'taurus', 'the boundary moves on the right day');

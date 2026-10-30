@@ -266,8 +266,12 @@ async function docsApi(req, res, sql, circle, me) {
       where r.circle_id = ${circle.id} and (r.to_member = ${me.id} or r.from_member = ${me.id})
         and (r.status = 'open' or r.answered_at > now() - interval '14 days')
       order by r.created_at desc limit 50`;
+    // familyDocs: papers about someone else in the family that this person
+    // may open, so the vault can say "3 from the family" without counting
+    // the caller's own.
+    const familyDocs = docs.filter(d => d.about_member !== me.id).length;
     return res.status(200).json({ ok: true, docs, grants, log, members, requests, kinds: DOC_KINDS, idShapes: idShapesForClient(), panHolders: PAN_HOLDER,
-      maxFile: MAX_FILE });
+      maxFile: MAX_FILE, familyDocs });
   }
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');

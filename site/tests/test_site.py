@@ -490,7 +490,11 @@ check("rate limit: sign-in attempts are capped", "rateLimit(sql, 'auth'" in auth
 check("rate limit: counted in the database, not per instance",
       "create table if not exists rate_limit" in dbsrc and "make_interval" in dbsrc)
 check("rate limit: a broken limiter never locks the family out",
-      "catch (e) { return true; }" in dbsrc)
+      "catch (e) { return !failClosed; }" in dbsrc and "failClosed = false" in dbsrc)
+# Only the timer fails closed; an SOS alert never waits on a broken limiter.
+check("rate limit: the timer fails closed, SOS alerts do not",
+      "rateLimit(sql, 'tick', 'all', 1, 50, { failClosed: true })" in (API_DIR / "events.mjs").read_text(encoding="utf-8")
+      and "rateLimit(sql, 'sos', me.id, 3, 600))" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
 
 # 10h. COINS - the credit that pays for Ekta.
 coins = (API_DIR / "_coins.mjs").read_text(encoding="utf-8")
@@ -520,8 +524,10 @@ check("circles: the sign-in list leads with the circle that needs you",
 
 # 10j. MEMORY CONSENT - a fact about a person is that person's to share.
 book = (API_DIR / "book.mjs").read_text(encoding="utf-8")
+# The table itself is made in _bookschema.mjs, shared with the care tools.
+_bookschema = (API_DIR / "_bookschema.mjs").read_text(encoding="utf-8")
 check("memory: entries can be private to their subject",
-      "visibility text not null default 'circle'" in book and "book_access" in book)
+      "visibility text not null default 'circle'" in _bookschema and "book_access" in _bookschema and "ensureBookSchema(sql)" in book)
 check("memory: consent belongs to the person it is about, not the author",
       "Only the person this is about can decide who sees it" in book and "subjectOf" in book)
 check("memory: a private entry cannot be read, edited or removed without a grant",
@@ -799,8 +805,13 @@ check("guide: an answer can quietly say a call would be nice",
       "call: true" in pulse and "could do with a call" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
 check("guide: everyone in a circle sees the same question on the same day",
       "derived from the date" in pulse or "same style for everyone" in pulse)
-check("plan: named as the five things, and never sells the removed mood question (Family Pulse)",
-      "Parwah Family Plan" in plan and "'Health & contacts'" in plan and "'The vault'" in plan and "Pulse" not in plan)
+# The paid plan lists what it ADDS, not a shorter copy of the free list,
+# and never a feature that does not exist.
+check("plan: the paid plan says what it adds, and never sells the removed mood question (Family Pulse)",
+      "Parwah Family Plan" in plan and "'Everything in the free plan', 'Priority help', 'Supporting Parwah'" in plan
+      and "'The vault - documents" in plan and "Pulse" not in plan)
+check("plan: the reserved amount is kept to the cent, not rounded",
+      "Math.round(price.amount)" not in plan and "numeric(10,2)" in plan)
 
 # 10p. THE GUIDE'S REMAINING SCREENS - 1, 2 and 4.
 ekta_src = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
@@ -2433,7 +2444,8 @@ check("reminders: a task can ring at its time or before it, once, and is late on
       and "LATE_GRACE_MIN" in _tasksrc and 'id="r-remind"' in _app_src and 'id="alarmsheet"' in _app_src)
 check("reminders: a timer rings them with every phone closed, and says nothing private",
       (REPO / ".github/workflows/tick.yml").exists() and "?tick=1" in (REPO / ".github/workflows/tick.yml").read_text(encoding="utf-8")
-      and "req.query.tick !== undefined" in _evt and "rateLimit(sql, 'tick', 'all', 1, 50)" in _evt)
+      and "req.query.tick !== undefined" in _evt and "rateLimit(sql, 'tick', 'all', 1, 50, { failClosed: true })" in _evt
+      and "x-cron-secret: $CRON_SECRET" in (REPO / ".github/workflows/tick.yml").read_text(encoding="utf-8"))
 _notes = (API_DIR / "_notesapi.mjs").read_text(encoding="utf-8")
 check("notes: shared lists under To do; a private note is private in the query itself",
       'data-sec="notes"' in _app_src and "(not n.private or n.by_member = ${me.id})" in _notes

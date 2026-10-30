@@ -337,7 +337,7 @@ export const VY_CARDS = [
 ];
 
 export function vyStart(people, R, opts = {}) {
-  if (people.length < 2 || people.length > 6) return { error: 'Monopoly is for 2 to 6 players' };
+  if (people.length < 2 || people.length > 6) return { error: 'Vyapar is for 2 to 6 players' };
   return {
     kind: 'vyapar', v: 0,
     players: people.map(p => ({ ...seat(p), money: VY_START_MONEY, pos: 0, out: false, skip: false })),
@@ -507,7 +507,7 @@ export function vyBuild(st, memberId, sq) {
 }
 function vyWinLine(st) {
   if (!st.winner) return null;
-  return '🏠 ' + st.winner + ' won Monopoly' + (st.byWorth ? ' - richest when the game ran its course' : ' - last business standing') + '!';
+  return '🏠 ' + st.winner + ' won Vyapar' + (st.byWorth ? ' - richest when the game ran its course' : ' - last business standing') + '!';
 }
 export function vyEnd(st) {
   const live = alive(st);

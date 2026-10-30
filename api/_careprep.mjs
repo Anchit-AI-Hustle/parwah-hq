@@ -27,6 +27,16 @@ let schemaReady = false;
 
 export async function ensureCarePrepSchema(sql) {
   if (schemaReady) return;
+  // These tables point at circles, members, family_book and vault_docs. On a fresh
+  // database none of those existed yet when refill, bills or biomarkers
+  // was the first thing opened, and each answered 503 until something
+  // else had made them.
+  const { ensureSchema } = await import('./_db.mjs');
+  const { ensureBookSchema } = await import('./_bookschema.mjs');
+  const { ensureVaultSchema } = await import('./_vaultapi.mjs');
+  await ensureSchema(sql);
+  await ensureBookSchema(sql);
+  await ensureVaultSchema(sql);
   try {
     // 1. Medicine Inventory & Refill Tracking
     await sql`create table if not exists medicine_inventory (
@@ -302,7 +312,9 @@ export function parseBiomarkersFromText(reportText) {
   if (/lal\s*path/i.test(text)) labName = 'Dr. Lal PathLabs';
   else if (/srl/i.test(text)) labName = 'SRL Diagnostics';
   else if (/apollo/i.test(text)) labName = 'Apollo Diagnostics';
-  else if (/max/i.test(text)) labName = 'Max Healthcare';
+  // Word-bound, with what follows: "max" alone matched "maximum" and
+  // "Max. value" on any report and named a lab nobody had used.
+  else if (/\bmax\s+(healthcare|hospitals?|labs?|lab\b|path)/i.test(text)) labName = 'Max Healthcare';
   else if (/metropolis/i.test(text)) labName = 'Metropolis Healthcare';
 
   return { biomarkers: results, labName };
@@ -350,37 +362,75 @@ export function buildEmergencyAdmissionPacket(person, policy, tpa, networkHospit
 // 4. VOICE-FIRST AUDIO INGESTION & INTENT EXTRACTION
 // ---------------------------------------------------------------------------
 
+// WHAT WAS SAID, AS A TO-DO. "Papa ki BP tablet subah 9 baje" came back as
+// "The doctor changed a medicine. Should I update the family schedule to
+// subah 9?": nobody had mentioned a doctor, or a change. Every answer now
+// carries a plain task made only of the words that were said, and a time
+// when one was said; a change to a medicine is read only when a change was
+// actually said.
+const VOICE_KIN = /^\s*(papa|pappa|mummy|mumma|mom|mum|maa|dad|daddy|dadi|dadima|dada|dadaji|nani|nanima|nana|nanaji|amma|ammi|abba|abbu|pitaji|mataji|bhaiya|didi)\b/i;
+export function voiceTime(text) {
+  const t = String(text || '');
+  const m = t.match(/\b(\d{1,2})(?:[:.](\d{2}))?\s*(baje|bje|am|pm|a\.m\.|p\.m\.|o'?clock)\b/i)
+         || t.match(/\bat\s+(\d{1,2})(?:[:.](\d{2}))?\b/i);
+  if (!m) return null;
+  let h = +m[1]; const min = m[2] ? +m[2] : 0;
+  if (h > 23 || min > 59) return null;
+  const tag = String(m[3] || '').toLowerCase().replace(/\./g, '');
+  const evening = /\b(shaam|sham|raat|evening|night|tonight)\b/i.test(t);
+  const afternoon = /\b(dopahar|dopehar|afternoon)\b/i.test(t);
+  if (tag === 'pm' && h < 12) h += 12;
+  else if (tag === 'am' && h === 12) h = 0;
+  else if (tag !== 'am' && tag !== 'pm' && h < 12 && (evening || (afternoon && h < 7))) h += 12;
+  const hh = String(h).padStart(2, '0'), mm = String(min).padStart(2, '0');
+  const h12 = h % 12 || 12;
+  return { time: hh + ':' + mm, said: h12 + (min ? ':' + mm : '') + (h < 12 ? ' am' : ' pm') };
+}
+// "Papa ki BP tablet subah 9 baje" -> "Papa: BP tablet at 9 am".
+export function voiceTask(text) {
+  const t = String(text || '').trim().replace(/\s+/g, ' ');
+  if (!t) return null;
+  const when = voiceTime(t);
+  const kin = t.match(VOICE_KIN);
+  let rest = kin ? t.slice(kin[0].length).replace(/^\s*(ki|ka|ke|ko)\b/i, '') : t;
+  // The time is said once, at the end, so its words come out of the rest:
+  // only when a time was actually found, so "Kal sham ko..." keeps "sham".
+  if (when) {
+    rest = rest
+      .replace(/\b(?:at\s+)?\d{1,2}(?:[:.]\d{2})?\s*(?:baje|bje|am|pm|a\.m\.|p\.m\.|o'?clock)(?=\s|$|[,.;!?])/ig, ' ')
+      .replace(/\bat\s+\d{1,2}(?:[:.]\d{2})?\b/ig, ' ')
+      .replace(/\b(subah|sawere|savere|shaam|sham|raat|dopahar|dopehar|morning|evening|night|tonight|afternoon)(\s+(ko|ke|mein|me))?\b/ig, ' ');
+  }
+  rest = rest.replace(/[,;!?]+/g, ' ').replace(/\s+/g, ' ').replace(/\s+(hai|hain|he)\s*\.?$/i, '').replace(/\.$/, '').trim();
+  if (!rest) rest = t;
+  const who = kin ? kin[1].charAt(0).toUpperCase() + kin[1].slice(1).toLowerCase() : null;
+  const title = ((who ? who + ': ' : '') + rest + (when ? ' at ' + when.said : '')).slice(0, 120);
+  return { title, time: when ? when.time : null };
+}
+
 export function extractVoiceIntent(rawTranscript) {
   const t = String(rawTranscript || '').trim();
   if (!t) return null;
+  const task = voiceTask(t);
 
-  // 1. Medication change intent
+  // 1. A change to a medicine, only when a change was said
   // "Doctor ne subah ki goli badal di, ab Telmisartan 40mg deni hai"
-  if (/goli|dawa|tablet|capsule|medicine|dosage|dose|mg/i.test(t) && /badal|change|new|subah|shaam|morning|evening|band|stop/i.test(t)) {
-    let medName = 'Prescribed medicine';
+  if (/goli|dawa|tablet|capsule|medicine|dosage|dose|mg/i.test(t) && /\b(badal|badli|badla|change[ds]?|changed|naya|nayi|new|band kar|stop(ped)?)\b/i.test(t)) {
+    let medName = 'a medicine';
     const doseMatch = t.match(/\b([A-Za-z]{3,25}\s+[0-9]{1,4}\s*(?:mg|mcg|ml)?)\b/i);
-    if (doseMatch) {
-      medName = doseMatch[1].trim();
-    } else {
-      const stopwords = new Set(['doctor', 'subah', 'shaam', 'morning', 'evening', 'night', 'tablet', 'tablets', 'goli', 'medicine', 'badal', 'change', 'deni', 'hai']);
-      const allMatches = t.match(/\b([A-Za-z]{3,25})\b/g) || [];
-      for (const m of allMatches) {
-        if (!stopwords.has(m.toLowerCase())) {
-          medName = m.trim();
-          break;
-        }
-      }
-    }
+    if (doseMatch) medName = doseMatch[1].trim();
+    const byDoctor = /\b(doctor|dr\.?)\b/i.test(t);
     return {
       intent: 'MEDICATION_CHANGE',
       confidence: 0.9,
       extracted_data: { medicine_name: medName, context: t },
-      draft_confirmation: `I understood: The doctor changed a medicine. Should I update the family schedule to ${medName}?`
+      task,
+      draft_confirmation: (byDoctor ? 'I heard: the doctor changed a medicine (' : 'I heard: a change to a medicine (') + medName
+        + '). Add "' + task.title + '" to the family to-do list so someone checks it?'
     };
   }
 
-  // 2. Health status reading intent
-  // "Papa ka BP aaj 130/85 hai" or "sugar fasting 110 aayi hai"
+  // 2. A reading said aloud: "Papa ka BP aaj 130/85 hai", "sugar fasting 110 aayi hai"
   if (/bp|blood\s*pressure|sugar|glucose|creatinine|pulse/i.test(t)) {
     const bpMatch = t.match(/([0-9]{2,3})\s*[\/|\\]\s*([0-9]{2,3})/);
     const sugarMatch = t.match(/(?:sugar|glucose)[^\d]*([0-9]{2,3})/i);
@@ -389,35 +439,31 @@ export function extractVoiceIntent(rawTranscript) {
         intent: 'HEALTH_STATUS',
         confidence: 0.95,
         extracted_data: { type: 'BP', systolic: Number(bpMatch[1]), diastolic: Number(bpMatch[2]), unit: 'mmHg' },
-        draft_confirmation: `I recorded: Blood pressure reading ${bpMatch[1]}/${bpMatch[2]} mmHg. Save to health records?`
+        task: null,
+        draft_confirmation: `I heard a blood pressure reading of ${bpMatch[1]}/${bpMatch[2]} mmHg. Save it to the health records?`
       };
     }
-    if (sugarMatch) {
+    if (sugarMatch && !voiceTime(t)) {
       return {
         intent: 'HEALTH_STATUS',
         confidence: 0.9,
         extracted_data: { type: 'GLUCOSE', value: Number(sugarMatch[1]), unit: 'mg/dL' },
-        draft_confirmation: `I recorded: Blood sugar reading ${sugarMatch[1]} mg/dL. Save to health records?`
+        task: null,
+        draft_confirmation: `I heard a blood sugar reading of ${sugarMatch[1]} mg/dL. Save it to the health records?`
       };
     }
   }
 
-  // 3. Chore or Appointment intent
-  // "Kal sham ko cardiologist ke paas jaana hai"
-  if (/jaana\s*hai|appointment|doctor|visit|hospital|chemist|dawaai|refill|bill/i.test(t)) {
-    return {
-      intent: 'CHORE_OR_APPOINTMENT',
-      confidence: 0.85,
-      extracted_data: { note: t },
-      draft_confirmation: `I understood: "${t}". Add this to the family to-do list?`
-    };
-  }
-
+  // 3. Anything else is a to-do, in the words that were said
+  // "Kal sham ko cardiologist ke paas jaana hai", "Papa ki BP tablet subah 9 baje"
+  const chore = /jaana\s*hai|appointment|doctor|visit|hospital|chemist|dawaai|refill|bill/i.test(t);
+  const routine = /goli|dawa|dawai|tablet|capsule|medicine|syrup|injection/i.test(t) || !!voiceTime(t);
   return {
-    intent: 'NOTE',
-    confidence: 0.7,
+    intent: chore ? 'CHORE_OR_APPOINTMENT' : routine ? 'TASK' : 'NOTE',
+    confidence: chore || routine ? 0.85 : 0.7,
     extracted_data: { note: t },
-    draft_confirmation: `Save voice note: "${t}"?`
+    task,
+    draft_confirmation: 'Add "' + task.title + '" to the family to-do list?'
   };
 }
 
@@ -476,8 +522,12 @@ export function maskAssetIdentifier(rawIdentifier) {
 // - IMMEDIATE: circle members can view.
 // - EMERGENCY_ONLY: revealed only on active SOS.
 // - NOMINEES_ONLY: revealed only to designated recipients.
+// - Whoever wrote it, and the person it is about, can always see it: an
+//   entry its own author cannot read back looks like it was lost.
+export const UNLOCK_POLICIES = ['IMMEDIATE', 'EMERGENCY_ONLY', 'NOMINEES_ONLY'];
 export function canViewAssetLocator(locator, memberId, isEmergencyActive = false) {
   if (!locator) return false;
+  if (memberId && (locator.created_by === memberId || locator.person_id === memberId)) return true;
   const policy = locator.unlock_policy || 'IMMEDIATE';
   if (policy === 'IMMEDIATE') return true;
   if (policy === 'EMERGENCY_ONLY' && isEmergencyActive) return true;
@@ -980,7 +1030,13 @@ export async function biomarkersApi(req, res) {
         if (!(await inCircle(sql, g.circle.id, personId))) {
           return res.status(403).json({ ok: false, error: 'Choose someone in this family' });
         }
+        // A known test and a real number, or nothing is saved.
+        const bad = items.find(it => !it || !BIOMARKER_META[it.biomarker_type] || !Number.isFinite(Number(it.value)) || it.value === '' || it.value == null);
+        if (bad || items.length > 40) {
+          return res.status(400).json({ ok: false, error: 'Each reading needs a known test and a number' });
+        }
         const tDate = testDate ? new Date(testDate) : new Date();
+        if (isNaN(+tDate)) return res.status(400).json({ ok: false, error: 'That test date could not be read' });
 
         const savedIds = [];
         for (const item of items) {
@@ -1089,15 +1145,24 @@ export async function locatorApi(req, res) {
             order by lal.created_at asc
           `;
 
+      // "Only in an emergency" opens while that person has an SOS that is
+      // not yet sorted. Before, nothing ever told this an SOS was on.
+      let inSos = new Set();
+      try {
+        const open = await sql`select distinct member_id from sos where circle_id = ${g.circle.id} and status <> 'resolved'`;
+        inSos = new Set(open.map(x => x.member_id));
+      } catch (e) { /* no SOS table yet: nobody has ever pressed it */ }
       const locators = rows.map(r => {
-        const canView = canViewAssetLocator(r, g.me.id, false);
+        const canView = canViewAssetLocator(r, g.me.id, inSos.has(r.person_id));
         return {
           id: r.id,
           person_id: r.person_id,
           person_name: r.person_name,
           asset_category: r.asset_category,
           institution_or_item: r.institution_or_item,
-          identifier_mask: maskAssetIdentifier(r.identifier_mask),
+          // As the person typed it ("Locker #42"), to anyone allowed to see
+          // the entry. Others get only the last four characters.
+          identifier_mask: canView ? (r.identifier_mask || null) : (r.identifier_mask ? maskAssetIdentifier(r.identifier_mask) : null),
           physical_location_notes: canView ? r.physical_location_notes : 'Restricted (Protected under When I\'m Not Here access policy)',
           unlock_policy: r.unlock_policy,
           can_view: canView,
@@ -1128,8 +1193,16 @@ export async function locatorApi(req, res) {
           return res.status(400).json({ ok: false, error: 'Person, item label, and physical location notes required' });
         }
 
+        if (!(await inCircle(sql, g.circle.id, personId))) {
+          return res.status(403).json({ ok: false, error: 'Choose someone in this family' });
+        }
+        // Who may see it is the whole point of this entry. Anything but the
+        // three choices is refused, never quietly stored as "everyone now".
+        if (!UNLOCK_POLICIES.includes(unlockPolicy)) {
+          return res.status(400).json({ ok: false, error: 'Choose who can see this: everyone now (IMMEDIATE), only in an emergency (EMERGENCY_ONLY), or only the people you name (NOMINEES_ONLY).' });
+        }
         const cat = ASSET_CATEGORIES.includes(category) ? category : 'OTHER';
-        const pol = ['IMMEDIATE', 'EMERGENCY_ONLY', 'NOMINEES_ONLY'].includes(unlockPolicy) ? unlockPolicy : 'IMMEDIATE';
+        const pol = unlockPolicy;
         const recs = Array.isArray(designatedRecipients) ? designatedRecipients.filter(isUuid) : [];
 
         const ins = await sql`
@@ -1138,8 +1211,8 @@ export async function locatorApi(req, res) {
             identifier_mask, physical_location_notes, unlock_policy,
             designated_recipients, created_by
           ) values (
-            ${g.circle.id}, ${personId}, ${cat}, ${institutionOrItem},
-            ${identifierMask || null}, ${physicalLocationNotes}, ${pol},
+            ${g.circle.id}, ${personId}, ${cat}, ${String(institutionOrItem).trim().slice(0, 120)},
+            ${String(identifierMask || '').trim().slice(0, 60) || null}, ${String(physicalLocationNotes).trim().slice(0, 1000)}, ${pol},
             ${JSON.stringify(recs)}, ${g.me.id}
           ) returning id
         `;

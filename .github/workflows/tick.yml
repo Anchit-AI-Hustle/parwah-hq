@@ -24,5 +24,10 @@ jobs:
     timeout-minutes: 3
     steps:
       - name: Send what is due
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          curl -fsS --max-time 60 'https://parwah-hq.anchit-tandon.com/api/events?tick=1'
+          # With CRON_SECRET set on the server, the timer needs it. Sent from
+          # the repository secret of the same name; empty until it is added,
+          # which the server accepts only while it has no secret either.
+          curl -fsS --max-time 60 -H "x-cron-secret: $CRON_SECRET" 'https://parwah-hq.anchit-tandon.com/api/events?tick=1'

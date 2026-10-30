@@ -22,7 +22,7 @@
 // While Lost mode is on, location sharing cannot be stopped, blurred or given
 // an end time, the same way an open SOS holds it.
 import { tokenHash, verifyPin, MAX_TRIES, LOCK_MINUTES, lockMessage } from './_auth.mjs';
-import { rateLimit } from './_db.mjs';
+import { rateLimit, schemaOnce } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 
 export const RING_SECONDS = 120;
@@ -33,6 +33,11 @@ export const LOST_LOCK_MSG = 'Lost mode is on for your phone, so your family can
 let ready = false;
 export async function ensureFindSchema(sql) {
   if (ready) return;
+  // Read on every first location load, which arrive together: see schemaOnce.
+  await schemaOnce(() => findTables(sql));
+  ready = true;
+}
+async function findTables(sql) {
   await sql`create table if not exists find_ring (
     member_id uuid primary key references members(id) on delete cascade,
     circle_id uuid not null references circles(id) on delete cascade,
@@ -44,7 +49,6 @@ export async function ensureFindSchema(sql) {
   await sql`alter table users add column if not exists lost_session text`;
   await sql`alter table users add column if not exists lost_circle uuid`;
   await sql`alter table users add column if not exists lost_call uuid`;
-  ready = true;
 }
 
 // A message for whoever finds the phone: plain words, one short line.
