@@ -20,7 +20,7 @@
 //   - "Area only" is rounded on the server, so an exact position is never
 //     stored for someone who chose the area.
 //   - Stopping deletes the position. Nothing is kept "just in case".
-import { db, ensureSchema, requireMember } from './_db.mjs';
+import { db, ensureSchema, requireMember, schemaOnce } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { PRECISIONS, validPosition, shareable, isStale, shareUntil, placeError, placesAt, placeMoves, batteryOf } from './_geo.mjs';
@@ -29,8 +29,13 @@ import { pushCircle } from './_push.mjs';
 import { findAction, isLost, LOST_LOCK_MSG } from './_findme.mjs';
 
 let ready = false;
+// The first loads arrive together; see schemaOnce for why that can fail.
 export async function ensureLocationSchema(sql) {
   if (ready) return;
+  await schemaOnce(() => locationTables(sql));
+  ready = true;
+}
+async function locationTables(sql) {
   await sql`create table if not exists location_shares (
     circle_id uuid not null references circles(id) on delete cascade,
     member_id uuid not null references members(id) on delete cascade,
@@ -63,7 +68,6 @@ export async function ensureLocationSchema(sql) {
     by_member uuid references members(id) on delete set null,
     created_at timestamptz not null default now()
   )`;
-  ready = true;
 }
 
 // Locked by an SOS that is still open. A lock left by an SOS that is somehow

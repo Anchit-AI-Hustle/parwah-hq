@@ -115,6 +115,17 @@ export async function ensureSchema(sql) {
     created_at timestamptz not null default now(),
     decided_at timestamptz
   )`;
+  // The device that asked holds a one-time secret; only its hash is kept.
+  // An approval lets in THAT device and no other: before this, a yes from
+  // the family cleared the PIN and whoever typed the number next set one.
+  // A request runs out, so a forgotten yes cannot be used weeks later.
+  await sql`alter table pin_resets add column if not exists secret_hash text`;
+  await sql`alter table pin_resets add column if not exists expires_at timestamptz`;
+  // Tapping "ask my family" three times is one request, not three.
+  await sql`update pin_resets p set status = 'replaced'
+            where p.status = 'pending' and exists (select 1 from pin_resets q where q.user_id = p.user_id
+              and q.status = 'pending' and (q.created_at, q.id) > (p.created_at, p.id))`;
+  try { await sql`create unique index if not exists pin_resets_pending on pin_resets (user_id) where status = 'pending'`; } catch (e) {}
 
   await sql`alter table members add column if not exists place text`;
   await sql`alter table members add column if not exists dob date`;
@@ -196,6 +207,10 @@ export async function ensureSchema(sql) {
   )`;
   await sql`create index if not exists join_requests_circle on join_requests (circle_id, status, created_at desc)`;
   try { await sql`create unique index if not exists join_requests_pending on join_requests (circle_id, user_id) where status = 'pending' and user_id is not null`; } catch (e) {}
+  // A join whose number matches a relative added by name (Dadi) asks to
+  // become that row. It is only ever a request: sign-up has no SMS check,
+  // so a matching number proves nothing until someone in the family says yes.
+  await sql`alter table join_requests add column if not exists claim_member uuid references members(id) on delete set null`;
   // THE LAUNCH LIST. This table was being written to by the health probe
   // for weeks and was never in this function, so on any fresh database that
   // probe failed with "relation waitlist does not exist" - a schema that
@@ -275,14 +290,34 @@ export async function ensureSchema(sql) {
 // rate-limit key - never stored against a person.
 export function clientIp(req) {
   const h = (req && req.headers) || {};
-  const fwd = String(h['x-forwarded-for'] || h['x-real-ip'] || '').split(',')[0].trim();
+  // Vercel sets x-vercel-forwarded-for and x-real-ip itself and overwrites
+  // whatever the caller sent; x-forwarded-for keeps what the caller typed
+  // at the front. Reading that first let one device give itself a fresh
+  // address on every request and walk past every limit keyed on it.
+  const fwd = String(h['x-vercel-forwarded-for'] || h['x-real-ip'] || h['x-forwarded-for'] || '').split(',')[0].trim();
   return fwd || 'unknown';
+}
+
+// Two first requests at once on a fresh database both run "create table if
+// not exists", and one can still lose with a duplicate error: the check and
+// the create are not one step. The loser has nothing to fix, so it runs the
+// same statements again, which now find everything there.
+const SCHEMA_RACE = new Set(['23505', '42P07', '42710']);
+export async function schemaOnce(make) {
+  try { await make(); }
+  catch (e) {
+    if (!SCHEMA_RACE.has(e && e.code)) throw e;
+    await make();
+  }
 }
 
 // Fixed-window rate limit, counted in the database so it holds across every
 // serverless instance. Returns true when the call is allowed. A limiter that
-// cannot reach the database never blocks a real family.
-export async function rateLimit(sql, bucket, key, limit, windowSec) {
+// cannot reach the database never blocks a real family signing in.
+// failClosed is for work anyone can start that costs the database or money
+// (the timer): there, a limiter that cannot count says no. SOS alerts stay
+// open (see raiseSos); SOS texts and calls are capped inside dialOut.
+export async function rateLimit(sql, bucket, key, limit, windowSec, { failClosed = false } = {}) {
   try {
     const rows = await sql`
       insert into rate_limit (bucket, k, window_start, n) values (${bucket}, ${key}, now(), 1)
@@ -291,7 +326,7 @@ export async function rateLimit(sql, bucket, key, limit, windowSec) {
         window_start = case when rate_limit.window_start < now() - make_interval(secs => ${windowSec}) then now() else rate_limit.window_start end
       returning n`;
     return rows[0].n <= limit;
-  } catch (e) { return true; }
+  } catch (e) { return !failClosed; }
 }
 
 // Every circle has one default chat with everyone in it, created lazily.
@@ -362,7 +397,12 @@ export async function requireMember(sql, code, memberId, token) {
   if (AUTH_REQUIRED) {
     const u = await sessionUser(sql, token);
     if (!u) return { err: 'Please sign in again', status: 401, signin: true };
-    if (rows[0].user_id && rows[0].user_id !== u.user_id) {
+    // A relative added by name (Dadi, who is not on the app) has no user_id,
+    // and that row used to be accepted for ANY token: an outsider in no
+    // family sent Dadi's id and read the whole family. A row nobody signs in
+    // as is never the caller. Editing Dadi goes through the caller's own
+    // membership plus a separate target id.
+    if (!rows[0].user_id || rows[0].user_id !== u.user_id) {
       return { err: 'That is not your membership', status: 403 };
     }
   }

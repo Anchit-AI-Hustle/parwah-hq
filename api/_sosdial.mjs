@@ -27,6 +27,11 @@
 import { normPhone } from './_phone.mjs';
 export const CALL_MAX = 2;
 export const TEXT_MAX = 8;
+// Texts and calls one family can cost in a day. Each is paid for, and a
+// member's number can be any number in the world, so an account pressing
+// SOS over and over must not run up a bill or ring strangers all night.
+// Several real emergencies in a day still fit with room to spare.
+export const DIAL_DAY_MAX = 40;
 export const DIAL_TIMEOUT_MS = 6000;
 
 export function dialConfig(env = process.env) {
@@ -120,7 +125,14 @@ export async function dialOut(sql, sosId, contacts, { name, text, map, cc }, { e
       }
       if (cfg.voice && i < CALL_MAX) jobs.push({ p, channel: 'call', path: 'Calls.json', form: { To: p.to, From: cfg.voice, Twiml: callScript(name, cc) } });
     });
-    await Promise.allSettled(jobs.map(async j => {
+    const used = await sql`select count(*)::int as n from sos_dial d join sos s on s.id = d.sos_id
+                           where s.circle_id = (select circle_id from sos where id = ${sosId})
+                             and d.created_at > now() - interval '1 day'`;
+    // If this count cannot be read, the catch below sends nothing: a paid
+    // send fails closed.
+    const left = Math.max(0, DIAL_DAY_MAX - ((used[0] && used[0].n) || 0));
+    out.capped = jobs.length > left;
+    await Promise.allSettled(jobs.slice(0, left).map(async j => {
       // Claimed first: a second press, or two servers at once, never sends twice.
       const claim = await sql`insert into sos_dial (sos_id, phone, channel) values (${sosId}, ${j.p.to}, ${j.channel})
                               on conflict do nothing returning phone`;

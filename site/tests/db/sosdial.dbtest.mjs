@@ -60,6 +60,10 @@ await person(fam, 'Kid', '12');                       // not dialable: skipped
 let sent = [];
 const twilioOk = async (u, o) => { sent.push({ url: u, form: Object.fromEntries(new URLSearchParams(o.body)), auth: o.headers.Authorization }); return { ok: true, json: async () => ({ sid: 'SM' + sent.length }) }; };
 async function sos(who) {
+  // Each section here is a separate emergency, minutes apart in real life.
+  // The alert limit (security.dbtest) would otherwise count them as one
+  // person pressing in a loop.
+  await admin.query(`delete from rate_limit where bucket in ('sos', 'sosfam')`).catch(() => {});
   const req = { method: 'POST', headers: { 'x-parwah-token': who.token }, query: {},
                 body: { code: 'SHARMA', memberId: who.id, type: 'sos', text: '', lat: 18.52, lng: 73.85, accuracy: 10 } };
   let status = 200, json = null;

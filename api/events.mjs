@@ -1,5 +1,6 @@
 // GET  /api/events?circle=CODE          - circle state: members + last 50 events
 // POST /api/events {code, memberId, type, text} - record a check-in, SOS, pill or message
+import { timingSafeEqual } from 'node:crypto';
 import { db, ensureSchema, circleByCode, requireMember, isUuid, ensureCircleChat, rateLimit } from './_db.mjs';
 import { ensureSosSchema, sosText, parsePos, sosContacts, mapLink, SOS_AUDIO_MAX, SOS_AUDIO_TYPES } from './_sos.mjs';
 import { lockForSos, unlockSos, ensureLocationSchema } from './_locationapi.mjs';
@@ -21,10 +22,33 @@ const SOS_ESCALATE_MIN = 5;   // nobody answered in this long → shout louder
 
 const TYPES = ['checkin', 'sos', 'pill', 'message'];
 
+// THE TIMER'S KEY. With CRON_SECRET set on the server, ?tick needs it, in
+// x-cron-secret or "Authorization: Bearer"; without one it stays open, as
+// before, so nothing stops before the owner sets it. Compared in constant
+// time.
+function tickAllowed(req) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return true;
+  const h = (req && req.headers) || {};
+  const auth = String(h.authorization || h.Authorization || '');
+  const given = String(h['x-cron-secret'] || (auth.startsWith('Bearer ') ? auth.slice(7) : ''));
+  const a = Buffer.from(given), b = Buffer.from(secret);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 export default async function handler(req, res) {
   let sql;
+  // A tick is refused, or skipped by its limit, BEFORE any table is made:
+  // an anonymous caller used to run the whole schema setup every time.
+  if (req.method === 'GET' && req.query && req.query.tick !== undefined) {
+    if (!tickAllowed(req)) return res.status(401).json({ ok: false, error: 'The timer key is missing or wrong' });
+    try {
+      sql = db();
+      if (!(await rateLimit(sql, 'tick', 'all', 1, 50, { failClosed: true }))) return res.status(200).json({ ok: true, skipped: true });
+    } catch (e) { return failDb(res, e); }
+  }
   try {
-    sql = db(); await ensureSchema(sql);
+    sql = sql || db(); await ensureSchema(sql);
     // An SOS is not an event that scrolls away - it is an open state with
     // someone waiting at the end of it.
     await sql`create table if not exists sos (
@@ -75,7 +99,7 @@ async function escalateStaleSos(sql, circleId) {
     // each alert is claimed in the database, so it is never sent twice;
     // and it runs at most once a minute whoever calls it.
     if (req.method === 'GET' && req.query && req.query.tick !== undefined) {
-      if (!(await rateLimit(sql, 'tick', 'all', 1, 50))) return res.status(200).json({ ok: true, skipped: true });
+      // Allowed and counted above, before the schema.
       await ensureTaskSchema(sql);
       const circles = await sql`select distinct circle_id from requests
                                 where status in ('open','assigned','claimed') and due_at is not null
@@ -351,6 +375,19 @@ async function raiseSos(sql, res, circle, me, said, body) {
   // Location on, exact, held on until the family marks them safe.
   await ensureLocationSchema(sql);
   await lockForSos(sql, circle.id, me.id, sosId, pos);
+  // Pressing again keeps the position fresh, always. What is limited is
+  // the ALERTS: three per person in ten minutes, ten per family in an
+  // hour. Past that the family has already been told, many times, and an
+  // account pressing SOS in a loop was ringing and texting every member's
+  // number with no end.
+  // These two fail OPEN on purpose: a limiter that cannot count must never
+  // be the reason nobody hears an SOS. The paid sends fail closed instead:
+  // dialOut sends nothing when it cannot read the family's daily count.
+  const alertOk = (await rateLimit(sql, 'sos', me.id, 3, 600)) && (await rateLimit(sql, 'sosfam', circle.id, 10, 3600));
+  if (!alertOk) {
+    return res.status(201).json({ ok: true, sosId, again, located: !!pos, map: mapLink(pos), throttled: true,
+      message: 'Your family has already been sent this SOS. Call 112 if you need help now.' });
+  }
   const text = sosText(me.name, pos, Date.now(), body && body.tz) + (said ? ' "' + said + '"' : '');
   // In the family chat, where everyone looks, with the map link.
   try {

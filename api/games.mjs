@@ -6,6 +6,7 @@
 // GET  /api/games?circle=CODE&member=UUID          → { ok, games[], game|null }
 // GET  /api/games?circle=CODE&member=UUID&game=ID  → { ok, game, games[] }
 // POST /api/games {code, memberId, action:'start'|'roll'|'end', gameId?}
+import { randomBytes } from 'node:crypto';
 import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat, requireMember, rateLimit } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
@@ -24,7 +25,7 @@ async function payPlayed(sql, circleId, gameId, st) {
 // the deploy gate can unit-test it on a fresh clone, before npm install.
 import { MAX_ACTIVE, gameName, numberAfter, gameSummary, isBot, isParwah, teamList, currentPlayer } from './_gamelist.mjs';
 export { MAX_ACTIVE, GAME_LABEL, gameName, numberAfter, gameSummary, isBot, currentPlayer } from './_gamelist.mjs';
-// Ludo, Get Away and Monopoly: the rules live in their own dependency-free module.
+// Ludo, Get Away and Vyapar: the rules live in their own dependency-free module.
 import { boardStart, boardMove, runBoardBots, botSeats, bhabhiView, BOARD_SEATS, isOver as boardOver, vyEnd } from './_boardgames.mjs';
 const BOARD_KINDS = ['ludo', 'bhabhi', 'vyapar'];
 
@@ -335,8 +336,10 @@ export function playTurn(st, memberId, rng) {
   return { roll, to, announce, won: to === 100 };
 }
 
-function gameRoomUrl(code) {
-  return 'https://meet.jit.si/parwah-' + String(code).toLowerCase() + '-' + Math.random().toString(36).slice(2, 8);
+// A guessable room is an open room: it carried the family's invite code and
+// six characters of Math.random. Now 128 random bits, nothing about the family.
+function gameRoomUrl() {
+  return 'https://meet.jit.si/parwah-' + randomBytes(16).toString('hex');
 }
 
 // A game between two people is not the family's business. Notify the players
@@ -511,7 +514,7 @@ export default async function handler(req, res) {
       if (await atCap(sql, circle.id)) return res.status(409).json({ ok: false, error: CAP_MSG });
       const kind = body.action === 'start_antakshari' ? 'antakshari' : 'charades';
       const mode = body.mode === 'call' ? 'call' : 'chat';
-      const room = mode === 'call' ? gameRoomUrl(circle.code) : null;
+      const room = mode === 'call' ? gameRoomUrl() : null;
       const state = partyStart(kind, mode, me, room);
       state.n = await nextNumber(sql, circle.id, kind); state.by = me.name; state.byId = me.id;
       const g = await sql`insert into games (circle_id, kind, status, state)
@@ -553,7 +556,7 @@ export default async function handler(req, res) {
       return res.status(201).json({ ok: true, game: g[0] });
     }
 
-    // ---------- Ludo, Get Away, Monopoly ----------
+    // ---------- Ludo, Get Away, Vyapar ----------
     if (body.action === 'start_board') {
       const kind = body.game;
       if (!BOARD_KINDS.includes(kind)) return res.status(400).json({ ok: false, error: 'Pick a game' });
@@ -665,7 +668,7 @@ export default async function handler(req, res) {
           endLine = vyEnd(st);
           await sql`update games set state = ${JSON.stringify(st)}::jsonb where id = ${g.id}`;
         }
-        // Monopoly ended early still has a result (the richest wins), so it
+        // Vyapar ended early still has a result (the richest wins), so it
         // stays readable; any other game ended early simply goes.
         await sql`update games set status = 'done', ended_at = case when ${!!endLine}::boolean then now() else null end where id = ${g.id}`;
         if (endLine && st.players.filter(p => !isParwah(p)).length > 1) await announce(endLine);

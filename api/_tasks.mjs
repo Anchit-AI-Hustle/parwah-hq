@@ -373,9 +373,14 @@ export async function taskAction(sql, circle, me, body) {
       else { const a = await memberIn(sql, circle.id, body.aboutMemberId); if (!a) return no(404, 'That person is not in this family'); aboutId = a.id; }
     }
     const series = rec === 'once' ? null : (t.series_id || randomUUID());
+    // The anchor is what the next one is worked out from. Moving the time
+    // moves the anchor: kept as it was, daily 09:00 edited to 10:30 went
+    // back to 09:00 the next day.
+    const moved = (t.due_at ? new Date(t.due_at).getTime() : null) !== (dueAt ? new Date(dueAt).getTime() : null);
+    const anchor = rec === 'once' ? null : (t.recurrence === rec && t.series_anchor && !moved ? t.series_anchor : dueAt);
     await sql`update requests set title = ${title}, due_at = ${dueAt}, all_day = ${allDay}, due_date = ${dueDate},
                 tz = ${tz}, recurrence = ${rec}, series_id = ${series},
-                series_anchor = ${rec === 'once' ? null : (t.recurrence === rec && t.series_anchor ? t.series_anchor : dueAt)},
+                series_anchor = ${anchor},
                 escalate = ${esc}, done_when = ${doneWhen}, notes = ${notes}, about_member = ${aboutId},
                 remind_before = ${body.remindBefore !== undefined ? (dueAt && !allDay ? remindOf(body.remindBefore) : null) : (dueAt && !allDay ? t.remind_before : null)},
                 reminded_for = case when due_at is distinct from ${dueAt} then null else reminded_for end

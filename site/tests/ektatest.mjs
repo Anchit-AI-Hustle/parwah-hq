@@ -226,6 +226,48 @@ if (typeof _lib.renderScam === 'function' && typeof _lib.renderCannotDo === 'fun
   ok('help: explains that "Anyone" reaches the whole circle', /Anyone/.test(renderCannotDo('help', 'billing')) && /I'm on it/.test(renderCannotDo('help', 'billing')));
   ok('scam answer: no em dash', !otp.includes('\u2014'));
 }
+// ---- Hinglish emergencies, said the way a family says them
+{
+  const { classify: c } = await import('../../api/_ektalocal.mjs');
+  for (const t of ['Papa gir gaye hain', 'Mummy gir gayi bathroom mein', 'Dada gir gaya', 'Papa ko hosh nahi hai',
+                   'Mummy behosh ho gayi', 'Dadi ki saans nahi aa rahi', 'Papa ko saans lene mein dikkat hai',
+                   'bahut khoon beh raha hai', 'khoon ruk nahi raha', 'lagta hai dil ka daura pada hai',
+                   'Papa uth nahi rahe', 'Mummy uth nahi pa rahi', 'Nani ko chakkar aa gaya aur gir gayi']) {
+    ok('emergency in Hinglish: "' + t + '"', c(t) === 'emergency');
+  }
+  ok('a routine question is not an emergency: "Papa ka doctor kaun hai"', c('Papa ka doctor kaun hai') !== 'emergency');
+  ok('nor a blood test: "khoon ki jaanch kab hai"', c('khoon ki jaanch kab hai') !== 'emergency');
+  ok('a fall last year is the past', c('Papa pichhle saal gir gaye the, kya record hai') !== 'emergency');
+}
+
+// ---- what Ekta must not misread with no model
+{
+  const { classify: c, askedField, renderField, renderCannotDo: cannot } = await import('../../api/_ektalocal.mjs');
+  ok('"Remind Papa to take his BP tablet at 9pm" is a reminder, not a records read', c('Remind Papa to take his BP tablet at 9pm') === 'remind');
+  ok('"Can you remind Papa to take his tablet" too', c('Can you remind Papa to take his tablet') === 'remind');
+  ok('"is there a reminder for Papa" is still a question about the family', c('is there a reminder for Papa') === 'circle');
+  ok('and the reply says no reminder was set', /cannot set reminders/.test(cannot('remind', 'none')) && !/\b(I('ve| have) set|reminder (is )?set|done\b)/i.test(cannot('remind', 'none')));
+  ok('"What is the weather in Lucknow today?" is not the family feed', c('What is the weather in Lucknow today?') === 'unknown');
+  ok('nor is the cricket score', c('what is the cricket score today') === 'unknown');
+  ok('"who checked in today" still is', c('who checked in today') === 'circle');
+  ok('a blood group question asks for the blood group', askedField("What is Papa's blood group?") === 'blood');
+  ok('a doctor question asks for the doctor', askedField('Papa ka doctor kaun hai') === 'doctor');
+  ok('allergies, medicines', askedField('any allergies for Mummy?') === 'allergy' && askedField('what medicines is papa on') === 'medicines');
+  ok('a doctor visit is the whole summary, not one field', askedField('Taking Papa to the doctor tomorrow') === null);
+  const P = { entries: [
+    { kind: 'fact', category: 'blood', name: 'B+', about: 'Papa', last_verified_at: '2026-09-01T00:00:00Z' },
+    { kind: 'fact', category: 'allergy', name: 'Penicillin', about: 'Papa', last_verified_at: '2026-09-01T00:00:00Z' },
+    { kind: 'med', name: 'Amlodipine 5mg', forwhat: 'BP', about: 'Papa', last_verified_at: '2026-09-01T00:00:00Z' },
+    { kind: 'contact', category: 'doctor', name: 'Dr Mehta', phone: '+919800000000', about: null, last_verified_at: '2026-09-01T00:00:00Z' }] };
+  const bg = renderField('blood', P, 'Papa');
+  ok('the blood group answer is the blood group', /B\+/.test(bg) && /Papa's blood group/.test(bg));
+  ok('and nothing else', !/Penicillin|Amlodipine|Mehta/.test(bg));
+  const dr = renderField('doctor', P, 'Papa');
+  ok("Papa's doctor includes the family doctor", /Dr Mehta/.test(dr) && !/B\+/.test(dr));
+  ok('a field with nothing saved says so', /Nothing is recorded under allergies for Mummy/.test(renderField('allergy', { entries: [] }, 'Mummy')));
+  ok('no long dashes in a field answer', !/[\u2013\u2014]/.test(bg + dr));
+}
+
 if (fails.length) {
   console.error(`ektatest: ${fails.length} FAILED of ${pass + fails.length}`);
   for (const f of fails) console.error('  - ' + f);

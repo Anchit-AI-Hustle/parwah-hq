@@ -352,9 +352,17 @@ check("routing: the app's old file addresses follow it",
 # Temporary, because browsers cache a permanent redirect for a very long time.
 check("routing: none of those redirects is permanent, so they can be undone",
       all(r.get("permanent") is False for r in vj.get("redirects", [])))
+# Another domain the family may type (parwah.tech, parwah.in) forwards
+# everything to the one live site. Those catch-alls are tied to their own
+# host, so they can never catch this site's API.
+_hostfwd = [r for r in vj.get("redirects", []) if any(h.get("type") == "host" for h in r.get("has", []))]
 check("routing: no redirect can catch the API",
       not any("api" in r.get("source", "") or r.get("source") in ("/(.*)", "/:path*")
-              for r in vj.get("redirects", [])))
+              for r in vj.get("redirects", []) if r not in _hostfwd))
+check("routing: other Parwah domains forward to the live site, and only there",
+      {h["value"] for r in _hostfwd for h in r["has"]} == {"parwah.tech", "parwah.in", "www.parwah.in"}
+      and all(r.get("destination") == "https://parwah-hq.anchit-tandon.com/$1" for r in _hostfwd)
+      and not any(h["value"] == "parwah-hq.anchit-tandon.com" for r in _hostfwd for h in r["has"]))
 # A service worker script cannot be redirected: the browser refuses it. The
 # old /app/sw.js has to stay a real file, and what it does is remove itself.
 _oldsw = (_pub / "app/sw.js")
@@ -390,11 +398,20 @@ check("framing: the app keeps the other security headers",
       _app.get("X-Content-Type-Options") == "nosniff" and "Referrer-Policy" in _app)
 _fa = re.fullmatch(r"frame-ancestors ((?:\S+ ?)+)", _app.get("Content-Security-Policy", ""))
 _fa_list = _fa.group(1).split() if _fa else []
-_FA_ALLOWED = {"'self'", "https://parwah.floot.app", "capacitor://localhost", "https://localhost",
-               "https://floot.com", "https://2fea47ff-4e55-4bdb-ae0a-46d1768aebeb.sandbox.floot.app"}
+# The Floot origins were dropped (owner, 2026-10-30): the Capacitor apps in
+# mobile/ replace the Floot shell, and a hosted builder's domains framing the
+# live app were one more place an overlay could come from. The old Floot
+# shell no longer shows the app.
+_FA_ALLOWED = {"'self'", "capacitor://localhost", "https://localhost"}
 check("framing: the app may be framed only by the Parwah shell",
-      bool(_fa_list) and set(_fa_list) <= _FA_ALLOWED and "https://parwah.floot.app" in _fa_list,
+      bool(_fa_list) and set(_fa_list) <= _FA_ALLOWED and "capacitor://localhost" in _fa_list,
       " ".join(_fa_list))
+check("framing: the app asks only for the camera, microphone and location it uses",
+      _app.get("Permissions-Policy") == _rest.get("Permissions-Policy")
+      == "camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()")
+check("framing: a content policy is reported on, not yet enforced",
+      "Content-Security-Policy-Report-Only" in _app and "Content-Security-Policy-Report-Only" in _rest
+      and "object-src 'none'" in _app.get("Content-Security-Policy-Report-Only", ""))
 check("framing: and never by a wildcard",
       not any("*" in o or o in ("https:", "http:", "data:", "blob:") for o in _fa_list))
 # The shell waits for this before showing the app. It goes to any origin, so
@@ -485,7 +502,11 @@ check("rate limit: sign-in attempts are capped", "rateLimit(sql, 'auth'" in auth
 check("rate limit: counted in the database, not per instance",
       "create table if not exists rate_limit" in dbsrc and "make_interval" in dbsrc)
 check("rate limit: a broken limiter never locks the family out",
-      "catch (e) { return true; }" in dbsrc)
+      "catch (e) { return !failClosed; }" in dbsrc and "failClosed = false" in dbsrc)
+# Only the timer fails closed; an SOS alert never waits on a broken limiter.
+check("rate limit: the timer fails closed, SOS alerts do not",
+      "rateLimit(sql, 'tick', 'all', 1, 50, { failClosed: true })" in (API_DIR / "events.mjs").read_text(encoding="utf-8")
+      and "rateLimit(sql, 'sos', me.id, 3, 600))" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
 
 # 10h. COINS - the credit that pays for Ekta.
 coins = (API_DIR / "_coins.mjs").read_text(encoding="utf-8")
@@ -515,8 +536,10 @@ check("circles: the sign-in list leads with the circle that needs you",
 
 # 10j. MEMORY CONSENT - a fact about a person is that person's to share.
 book = (API_DIR / "book.mjs").read_text(encoding="utf-8")
+# The table itself is made in _bookschema.mjs, shared with the care tools.
+_bookschema = (API_DIR / "_bookschema.mjs").read_text(encoding="utf-8")
 check("memory: entries can be private to their subject",
-      "visibility text not null default 'circle'" in book and "book_access" in book)
+      "visibility text not null default 'circle'" in _bookschema and "book_access" in _bookschema and "ensureBookSchema(sql)" in book)
 check("memory: consent belongs to the person it is about, not the author",
       "Only the person this is about can decide who sees it" in book and "subjectOf" in book)
 check("memory: a private entry cannot be read, edited or removed without a grant",
@@ -799,8 +822,13 @@ check("guide: an answer can quietly say a call would be nice",
       "call: true" in pulse and "could do with a call" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
 check("guide: everyone in a circle sees the same question on the same day",
       "derived from the date" in pulse or "same style for everyone" in pulse)
-check("plan: named as the five things, and never sells the removed mood question (Family Pulse)",
-      "Parwah Family Plan" in plan and "'Health & contacts'" in plan and "'The vault'" in plan and "Pulse" not in plan)
+# The paid plan lists what it ADDS, not a shorter copy of the free list,
+# and never a feature that does not exist.
+check("plan: the paid plan says what it adds, and never sells the removed mood question (Family Pulse)",
+      "Parwah Family Plan" in plan and "'Everything in the free plan', 'Priority help', 'Supporting Parwah'" in plan
+      and "'The vault - documents" in plan and "Pulse" not in plan)
+check("plan: the reserved amount is kept to the cent, not rounded",
+      "Math.round(price.amount)" not in plan and "numeric(10,2)" in plan)
 
 # 10p. THE GUIDE'S REMAINING SCREENS - 1, 2 and 4.
 ekta_src = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
@@ -1269,9 +1297,12 @@ check("signin: a forgotten PIN is recovered by the family, not by SMS",
 check("signin: the person asking cannot approve their own reset",
       "Someone else in the family has to approve this, not you" in _authmjs)
 check("signin: a reset request never reveals whether a number is registered",
-      "Never reveal whether a number is registered" in _authmjs)
-check("signin: approving a reset also kills that person's old sessions",
-      "delete from sessions where user_id = ${r[0].user_id}" in _authmjs)
+      "says nothing about\n      // whether a number is registered" in _authmjs)
+# A yes lets in the device that asked, and no other; once in, the lost
+# phone's sessions end. security.dbtest.mjs tries both for real.
+check("signin: a reset is used with the asking device's secret, and ends old sessions",
+      "secret_hash = ${tokenHash(body.resetSecret)}" in _authmjs
+      and "delete from sessions where user_id = ${user.id}" in _authmjs)
 # The token, not the UUID, says who is calling.
 check("signin: there is one guard, and it checks the token",
       "export async function sessionUser" in _dbs and "AUTH_REQUIRED" in _dbs)
@@ -1327,8 +1358,10 @@ check("leak: with no key configured they stay off rather than open",
       "stay off until PARWAH_DIAG_SECRET is set" in _diag)
 check("leak: the liveness check is open but touches nothing",
       "Liveness only" in _diag and "db_configured" in _diag)
-check("leak: the deploy verifier sends the key",
-      "DIAG_KEY" in _verify and "probe=db&key=$DIAG_KEY" in _verify)
+check("leak: the deploy verifier sends the key, in a header and never the address",
+      '-H "X-Diag-Key: $DIAG_KEY"' in _verify and "key=$DIAG_KEY" not in _verify)
+check("leak: the server reads the key from the header only, in constant time",
+      "req.query && req.query.key" not in _diag and "timingSafeEqual(a, b)" in _diag)
 check("leak: and refuses to run without it, rather than reporting a false red",
       "PARWAH_DIAG_SECRET is not set here" in _verify)
 # Nothing private may ever be served.
@@ -2477,7 +2510,8 @@ check("reminders: a task can ring at its time or before it, once, and is late on
       and "LATE_GRACE_MIN" in _tasksrc and 'id="r-remind"' in _app_src and 'id="alarmsheet"' in _app_src)
 check("reminders: a timer rings them with every phone closed, and says nothing private",
       (REPO / ".github/workflows/tick.yml").exists() and "?tick=1" in (REPO / ".github/workflows/tick.yml").read_text(encoding="utf-8")
-      and "req.query.tick !== undefined" in _evt and "rateLimit(sql, 'tick', 'all', 1, 50)" in _evt)
+      and "req.query.tick !== undefined" in _evt and "rateLimit(sql, 'tick', 'all', 1, 50, { failClosed: true })" in _evt
+      and "x-cron-secret: $CRON_SECRET" in (REPO / ".github/workflows/tick.yml").read_text(encoding="utf-8"))
 _notes = (API_DIR / "_notesapi.mjs").read_text(encoding="utf-8")
 check("notes: shared lists under To do; a private note is private in the query itself",
       'data-sec="notes"' in _app_src and "(not n.private or n.by_member = ${me.id})" in _notes

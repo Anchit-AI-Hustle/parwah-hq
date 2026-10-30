@@ -4,7 +4,7 @@
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
-import { ensurePushSchema, vapidPublicKey } from './_push.mjs';
+import { ensurePushSchema, vapidPublicKey, isPushEndpoint } from './_push.mjs';
 
 export default async function handler(req, res) {
   let sql;
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
     const sub = body.sub || {};
     const endpoint = String(sub.endpoint || '');
-    if (!/^https:\/\//.test(endpoint) || endpoint.length > 500) {
+    if (!isPushEndpoint(endpoint)) {
       return res.status(400).json({ ok: false, error: 'Bad subscription' });
     }
 
@@ -43,11 +43,19 @@ export default async function handler(req, res) {
       }
       await sql`insert into push_subs (member_id, endpoint, p256dh, auth)
                 values (${me[0].id}, ${endpoint}, ${p256dh}, ${auth})
-                on conflict (endpoint) do update set member_id = ${me[0].id}, p256dh = ${p256dh}, auth = ${auth}`;
+                on conflict (endpoint) do update set member_id = ${me[0].id}, p256dh = ${p256dh}, auth = ${auth}
+                where push_subs.member_id in (select id from members where user_id = ${me[0].user_id})`;
+      // A device already registered to someone else stays theirs: taking
+      // it over would send their alerts here. Moving it between your own
+      // families is fine, which is what the clause above allows.
+      const mine = await sql`select 1 as x from push_subs where endpoint = ${endpoint} and member_id = ${me[0].id}`;
+      if (!mine[0]) return res.status(409).json({ ok: false, error: 'This device gets alerts for someone else. They need to turn them off first.' });
       return res.status(200).json({ ok: true });
     }
     if (body.action === 'unsubscribe') {
-      await sql`delete from push_subs where endpoint = ${endpoint}`;
+      // Only your own device: the address alone used to delete anyone's.
+      await sql`delete from push_subs where endpoint = ${endpoint}
+                and member_id in (select id from members where user_id = ${me[0].user_id})`;
       return res.status(200).json({ ok: true });
     }
     return res.status(400).json({ ok: false, error: 'Unknown action' });

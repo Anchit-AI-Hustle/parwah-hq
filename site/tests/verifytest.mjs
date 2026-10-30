@@ -189,6 +189,17 @@ await withServer([{ status: 503, body: '' }], async (port) => {
   ok('and it says which variable to set', /PARWAH_DIAG_SECRET/.test(out));
 }
 
+// 11b. The key travels in the X-Diag-Key header, never in the address.
+{
+  const seen = [];
+  await withServer([{ status: 200, body: (req) => { seen.push({ url: req.url, key: req.headers['x-diag-key'] }); return GREEN_DB.body; } },
+                    { status: 200, body: (req) => { seen.push({ url: req.url, key: req.headers['x-diag-key'] }); return GREEN_DAY.body; } }], async (port) => {
+    await run(port);
+  });
+  ok('the diagnostics key is sent as a header', seen.length > 0 && seen.every(x => x.key === (process.env.PARWAH_DIAG_SECRET || 'test-diag-key')), JSON.stringify(seen));
+  ok('and never in the address', seen.every(x => !/key=/.test(x.url)), JSON.stringify(seen.map(x => x.url)));
+}
+
 // 12. No argument is a usage error, not a silent pass.
 {
   let code = 0;
