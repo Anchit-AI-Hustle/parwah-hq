@@ -17,3 +17,13 @@ node_modules/
 # local deploy cron state
 .deploy-state
 ops/deploy.log
+
+# Build output and machine-local files. public/ is written by `npm run build`
+# from site/public on every deploy; a committed copy only goes stale.
+/public/
+/build/
+/.gradle/
+/.idea/
+/.kotlin/
+/local.properties
+*.iml
