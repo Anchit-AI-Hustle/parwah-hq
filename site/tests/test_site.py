@@ -1252,9 +1252,12 @@ check("signin: a forgotten PIN is recovered by the family, not by SMS",
 check("signin: the person asking cannot approve their own reset",
       "Someone else in the family has to approve this, not you" in _authmjs)
 check("signin: a reset request never reveals whether a number is registered",
-      "Never reveal whether a number is registered" in _authmjs)
-check("signin: approving a reset also kills that person's old sessions",
-      "delete from sessions where user_id = ${r[0].user_id}" in _authmjs)
+      "says nothing about\n      // whether a number is registered" in _authmjs)
+# A yes lets in the device that asked, and no other; once in, the lost
+# phone's sessions end. security.dbtest.mjs tries both for real.
+check("signin: a reset is used with the asking device's secret, and ends old sessions",
+      "secret_hash = ${tokenHash(body.resetSecret)}" in _authmjs
+      and "delete from sessions where user_id = ${user.id}" in _authmjs)
 # The token, not the UUID, says who is calling.
 check("signin: there is one guard, and it checks the token",
       "export async function sessionUser" in _dbs and "AUTH_REQUIRED" in _dbs)

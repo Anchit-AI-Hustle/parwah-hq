@@ -351,6 +351,16 @@ async function raiseSos(sql, res, circle, me, said, body) {
   // Location on, exact, held on until the family marks them safe.
   await ensureLocationSchema(sql);
   await lockForSos(sql, circle.id, me.id, sosId, pos);
+  // Pressing again keeps the position fresh, always. What is limited is
+  // the ALERTS: three per person in ten minutes, ten per family in an
+  // hour. Past that the family has already been told, many times, and an
+  // account pressing SOS in a loop was ringing and texting every member's
+  // number with no end.
+  const alertOk = (await rateLimit(sql, 'sos', me.id, 3, 600)) && (await rateLimit(sql, 'sosfam', circle.id, 10, 3600));
+  if (!alertOk) {
+    return res.status(201).json({ ok: true, sosId, again, located: !!pos, map: mapLink(pos), throttled: true,
+      message: 'Your family has already been sent this SOS. Call 112 if you need help now.' });
+  }
   const text = sosText(me.name, pos, Date.now(), body && body.tz) + (said ? ' "' + said + '"' : '');
   // In the family chat, where everyone looks, with the map link.
   try {

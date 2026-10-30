@@ -47,6 +47,26 @@ async function circlesOf(sql, userId) {
     order by m.created_at desc`;
 }
 
+// HOW LONG A PIN RESET STAYS OPEN, asked or approved: long enough to ring
+// someone in the family, short enough that a yes cannot be found and used
+// later by somebody else.
+const RESET_MINUTES = 15;
+
+// Requests from people in any of my families, waiting for someone to say
+// yes. The same list on sign-in and on the background refresh: the refresh
+// is what a family member's open app actually runs, so a list sent only at
+// sign-in reached nobody.
+async function resetsFor(sql, userId) {
+  try {
+    return await sql`select distinct r.id, u.name from pin_resets r
+                     join users u on u.id = r.user_id
+                     where r.status = 'pending' and r.user_id <> ${userId}
+                       and (r.expires_at is null or r.expires_at > now())
+                       and exists (select 1 from members a join members b on b.circle_id = a.circle_id
+                                   where a.user_id = r.user_id and b.user_id = ${userId})`;
+  } catch (e) { return []; }
+}
+
 // WHAT THE PRIVACY PAGE PROMISES, KEPT IN CODE. A launch list entry goes 24
 // months after it was last joined or changed, and the counters that stop
 // one device flooding the list (they hold its internet address) go after a
@@ -54,6 +74,15 @@ async function circlesOf(sql, userId) {
 async function purgeWaitlist(sql) {
   await sql`delete from waitlist where updated_at < now() - interval '24 months'`;
   await sql`delete from rate_limit where bucket = 'waitlist' and window_start < now() - interval '1 day'`;
+}
+
+// pending, approved, denied or expired: what one reset request is now.
+function resetState(r) {
+  if (!r) return 'expired';
+  if (r.status === 'denied') return 'denied';
+  if (r.status !== 'pending' && r.status !== 'approved') return 'expired';
+  if (r.expires_at && new Date(r.expires_at) <= new Date()) return 'expired';
+  return r.status;
 }
 
 export default async function handler(req, res) {
@@ -204,36 +233,73 @@ export default async function handler(req, res) {
       if (!(await rateLimit(sql, 'pinreset', npr.e164, 3, 3600))) {
         return res.status(429).json({ ok: false, error: 'A request is already waiting. Ask your family to open Parwah and approve it.' });
       }
+      // The secret goes back to this device only. Every reply carries one,
+      // even for a number with no account, so the reply says nothing about
+      // whether a number is registered.
+      const secret = newToken();
       const ur = await sql`select id, name from users where phone = ${npr.e164}`;
-      // Never reveal whether a number is registered.
-      if (!ur[0]) return res.status(200).json({ ok: true, asked: true });
-      const circles = await sql`select circle_id from members where user_id = ${ur[0].id} limit 1`;
+      if (!ur[0]) return res.status(200).json({ ok: true, asked: true, resetSecret: secret, expiresInMinutes: RESET_MINUTES });
+      // Most recent family first, so the same family is always named; but
+      // anyone in ANY of their families can say yes, and all of them hear.
+      const circles = await sql`select circle_id from members where user_id = ${ur[0].id} order by created_at desc`;
       if (!circles[0]) {
         return res.status(200).json({ ok: true, asked: true, noFamily: true });
       }
-      await sql`insert into pin_resets (user_id, circle_id) values (${ur[0].id}, ${circles[0].circle_id})`;
-      await pushCircle(sql, circles[0].circle_id,
-        { title: '🔑 ' + ur[0].name + ' cannot get in', body: 'They have asked the family to let them back in. Open Parwah to approve.' },
-        { except: null });
-      return res.status(200).json({ ok: true, asked: true });
+      const until = new Date(Date.now() + RESET_MINUTES * 60000).toISOString();
+      // One open request per person. Asking again replaces the secret, so
+      // only the device that asked last can use the yes.
+      const again = await sql`update pin_resets set secret_hash = ${tokenHash(secret)}, expires_at = ${until},
+                                circle_id = ${circles[0].circle_id}, created_at = now()
+                              where user_id = ${ur[0].id} and status = 'pending' returning id`;
+      if (!again[0]) {
+        try {
+          await sql`insert into pin_resets (user_id, circle_id, secret_hash, expires_at)
+                    values (${ur[0].id}, ${circles[0].circle_id}, ${tokenHash(secret)}, ${until})`;
+        } catch (e) {
+          // Two taps at once: the other one made the row, so update it.
+          await sql`update pin_resets set secret_hash = ${tokenHash(secret)}, expires_at = ${until}
+                    where user_id = ${ur[0].id} and status = 'pending'`;
+        }
+      }
+      for (const c of circles) {
+        await pushCircle(sql, c.circle_id,
+          { title: '🔑 ' + ur[0].name + ' cannot get in', body: 'They have asked the family to let them back in. Open Parwah to approve.' },
+          { except: null });
+      }
+      return res.status(200).json({ ok: true, asked: true, resetSecret: secret, expiresInMinutes: RESET_MINUTES });
     }
-    // A member of the circle approves, and only then may the PIN be replaced.
+    // The waiting screen asks whether the family has said yes yet.
+    if (body.action === 'reset_status') {
+      const npr = normPhone(body.phone, body.cc);
+      if (!npr || !looksLikeToken(body.resetSecret)) return res.status(400).json({ ok: false, error: 'Bad request' });
+      const r = await sql`select r.status, r.expires_at, r.decided_at from pin_resets r join users u on u.id = r.user_id
+                          where u.phone = ${npr.e164} and r.secret_hash = ${tokenHash(body.resetSecret)}
+                          order by r.created_at desc limit 1`;
+      return res.status(200).json({ ok: true, reset: resetState(r[0]) });
+    }
+    // Someone in one of their families approves, and only then may the
+    // device that asked choose a new PIN.
     if (body.action === 'reset_approve' || body.action === 'reset_deny') {
-      const approver = await sessionUser(sql, body.token);
+      const approver = await sessionUser(sql, body.token || tokenOf(req));
       if (!approver) return res.status(401).json({ ok: false, error: 'Please sign in again' });
       if (!isUuid(body.resetId)) return res.status(400).json({ ok: false, error: 'Bad request' });
-      const r = await sql`select id, user_id, circle_id, status from pin_resets where id = ${body.resetId}`;
+      const r = await sql`select id, user_id, circle_id, status, expires_at from pin_resets where id = ${body.resetId}`;
       if (!r[0] || r[0].status !== 'pending') return res.status(404).json({ ok: false, error: 'That request is already decided' });
-      const mem = await sql`select id from members where circle_id = ${r[0].circle_id} and user_id = ${approver.user_id}`;
-      if (!mem[0]) return res.status(403).json({ ok: false, error: 'Only someone in that family can decide this' });
-      if (r[0].user_id === approver.user_id) return res.status(403).json({ ok: false, error: 'Someone else in the family has to approve this, not you' });
-      const status = body.action === 'reset_approve' ? 'approved' : 'denied';
-      await sql`update pin_resets set status = ${status}, decided_by = ${mem[0].id}, decided_at = now() where id = ${r[0].id}`;
-      if (status === 'approved') {
-        // Clear the lock so they can set a new PIN at the next sign-in.
-        await sql`update users set pin_hash = null, pin_salt = null, pin_tries = 0, locked_until = null where id = ${r[0].user_id}`;
-        await sql`delete from sessions where user_id = ${r[0].user_id}`;
+      if (r[0].expires_at && new Date(r[0].expires_at) <= new Date()) {
+        return res.status(404).json({ ok: false, error: 'That request has run out. They can ask again.' });
       }
+      if (r[0].user_id === approver.user_id) return res.status(403).json({ ok: false, error: 'Someone else in the family has to approve this, not you' });
+      const mem = await sql`select b.id from members a join members b on b.circle_id = a.circle_id
+                            where a.user_id = ${r[0].user_id} and b.user_id = ${approver.user_id}
+                            order by (b.circle_id = ${r[0].circle_id}) desc limit 1`;
+      if (!mem[0]) return res.status(403).json({ ok: false, error: 'Only someone in that family can decide this' });
+      const status = body.action === 'reset_approve' ? 'approved' : 'denied';
+      // The yes opens a fresh window: the device that asked has that long
+      // to choose its new PIN.
+      const until = new Date(Date.now() + RESET_MINUTES * 60000).toISOString();
+      const done = await sql`update pin_resets set status = ${status}, decided_by = ${mem[0].id}, decided_at = now(), expires_at = ${until}
+                             where id = ${r[0].id} and status = 'pending' returning id`;
+      if (!done[0]) return res.status(404).json({ ok: false, error: 'That request is already decided' });
       return res.status(200).json({ ok: true, status });
     }
 
@@ -277,15 +343,42 @@ export default async function handler(req, res) {
         const circles = await circlesOf(sql, user.id);
         return res.status(200).json({ ok: true, exists: true,
           user: { id: user.id, name: user.name, phone: user.phone },
-          toured: !!user.toured_at, circles,
+          toured: !!user.toured_at, circles, pinResets: await resetsFor(sql, user.id),
           // An older PIN or a password: the app asks for a 4-number PIN.
           changeSecret: !user.pin_hash || user.secret_v !== SECRET_V });
       }
     }
 
-    if (!isNew) {
-      // An account made before PINs existed, or one the family has just let
-      // back in. Set one now; there is nothing to check it against yet.
+    // LET BACK IN BY THE FAMILY. The device that asked shows its secret and
+    // the new PIN together. Nothing else gets past the PIN: not the number,
+    // not a yes from the family on its own.
+    if (!isNew && body.resetSecret != null) {
+      const r = looksLikeToken(body.resetSecret)
+        ? await sql`select id, status, expires_at, decided_at from pin_resets
+                    where user_id = ${user.id} and secret_hash = ${tokenHash(body.resetSecret)}
+                    order by created_at desc limit 1`
+        : [];
+      const state = resetState(r[0]);
+      if (state !== 'approved') {
+        return res.status(200).json({ ok: true, exists: true, reset: state,
+          error: state === 'pending' ? 'Your family has not said yes yet.'
+            : state === 'denied' ? 'Your family said no to this request.'
+            : 'That request has run out. Please ask your family again.' });
+      }
+      const perr = pinError(body.newPin);
+      if (perr) return res.status(200).json({ ok: true, exists: true, reset: 'approved', setPin: true, error: body.newPin ? perr : null });
+      // Used once: claimed before the PIN is written, so two devices with
+      // the same secret cannot both get in.
+      const used = await sql`update pin_resets set status = 'used' where id = ${r[0].id} and status = 'approved' returning id`;
+      if (!used[0]) return res.status(200).json({ ok: true, exists: true, reset: 'expired', error: 'That request has run out. Please ask your family again.' });
+      const h = hashPin(body.newPin);
+      await sql`update users set pin_hash = ${h.hash}, pin_salt = ${h.salt}, pin_set_at = now(),
+                pin_tries = 0, locked_until = null, secret_v = ${SECRET_V} where id = ${user.id}`;
+      // A lost phone stays signed in no longer.
+      await sql`delete from sessions where user_id = ${user.id}`;
+    } else if (!isNew) {
+      // An account made before PINs existed. Set one now; there is nothing
+      // to check it against yet.
       if (!user.pin_hash) {
         const perr = pinError(body.pin);
         // Never a name before the secret: anyone can type any number.
@@ -356,13 +449,7 @@ export default async function handler(req, res) {
 
     const circles = await circlesOf(sql, user.id);
     // Anything the family has been asked to approve for someone else.
-    let resets = [];
-    try {
-      resets = await sql`select r.id, u.name from pin_resets r
-                         join users u on u.id = r.user_id
-                         join members m on m.circle_id = r.circle_id and m.user_id = ${user.id}
-                         where r.status = 'pending' and r.user_id <> ${user.id}`;
-    } catch (e) { resets = []; }
+    const resets = await resetsFor(sql, user.id);
     return res.status(200).json({ ok: true, exists: true, token,
       user: { id: user.id, name: user.name, phone: user.phone },
       toured: !!user.toured_at, circles, pinResets: resets });
