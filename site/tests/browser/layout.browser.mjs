@@ -83,8 +83,10 @@ for (const route of ['/welcome/', '/story/', '/story/aisle/', '/care/', '/launch
     window.scrollTo(0, H);
   });
   await pg.waitForTimeout(800);
+  // A section that is hidden on purpose (the proof on /welcome/ waits for a
+  // number) is not on the page at all, so what is inside it is not "left".
   const left = await pg.evaluate(() => [...document.querySelectorAll('.rv')]
-    .filter(e => getComputedStyle(e).opacity === '0')
+    .filter(e => e.getClientRects().length > 0 && getComputedStyle(e).opacity === '0')
     .map(e => (e.textContent || '').trim().slice(0, 32)));
   ok(left.length === 0,
      `${route} has nothing still invisible after scrolling` +

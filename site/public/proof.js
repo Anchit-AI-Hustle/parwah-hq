@@ -11,6 +11,11 @@
 // print. Set QUOTES_ARE_EXAMPLES to false only when every quote below is a
 // real person's words, used with their permission. Never present a sample as
 // a verified figure or a real person's words.
+//
+// The section starts hidden and is shown only when it has a number to show
+// (a live count worth showing, or the marked sample when there is no answer).
+// With no number and only example quotes, it would be three made-up voices
+// under "Who is joining Parwah", which reads as fake proof, so it stays out.
 (function () {
   'use strict';
 
@@ -93,6 +98,7 @@
     });
     var stats = root.querySelector('.pf-stats');
     if (stats) stats.hidden = shown === 0;
+    root.hidden = shown === 0 && QUOTES_ARE_EXAMPLES;
     var note = root.querySelector('[data-proof="note"]');
     if (note) note.textContent = (shown === 0 ? '' : (live ? NOTE.live : NOTE.sample) + ' ') + (QUOTES_ARE_EXAMPLES ? NOTE.quotes : '');
     root.setAttribute('data-proof-source', live ? 'live' : 'sample');

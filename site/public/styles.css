@@ -51,6 +51,9 @@
     --ink:#FFF3E6; --ink-soft:#D2BCD9; --sindoor:#FF7AB6; --marigold-d:#FFC24D;
     --tint-rani:rgba(255,79,154,.18); --tint-marigold:rgba(255,179,26,.16); --dot:rgba(255,190,59,.10);
     --card:#2A1532; --glass:rgba(255,255,255,.06); --glass-line:rgba(255,255,255,.12); --ghost-bg:rgba(255,255,255,.08);
+    /* The day red reads at 2.85:1 on the night card; this one is 6.1:1 on
+       the card and 6.8:1 on the night ground. */
+    --sos:#FF6B7F;
     color-scheme:dark;
   }
 }
@@ -59,6 +62,7 @@
   --ink:#FFF3E6; --ink-soft:#D2BCD9; --sindoor:#FF7AB6; --marigold-d:#FFC24D;
   --tint-rani:rgba(255,79,154,.18); --tint-marigold:rgba(255,179,26,.16); --dot:rgba(255,190,59,.10);
   --card:#2A1532; --glass:rgba(255,255,255,.06); --glass-line:rgba(255,255,255,.12); --ghost-bg:rgba(255,255,255,.08);
+  --sos:#FF6B7F;
   color-scheme:dark;
 }
 *{margin:0;padding:0;box-sizing:border-box}
@@ -66,6 +70,9 @@ html{scroll-behavior:smooth}
 body{font-family:var(--body);color:var(--ink);background:var(--day);line-height:1.6;font-size:16px;-webkit-font-smoothing:antialiased}
 img,svg{display:block;max-width:100%}
 a{color:inherit}
+/* A button does not take the page's type by itself: without this the launch
+   form's submit button was set in Arial. */
+button{font:inherit}
 :focus-visible{outline:3px solid var(--sindoor);outline-offset:3px;border-radius:8px}
 .dusk :focus-visible{outline-color:var(--marigold)}
 
@@ -96,14 +103,21 @@ section{position:relative}
 @media(max-width:760px){.thread{display:none}}
 
 /* ---------- nav ---------- */
-.nav{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 16px;padding:22px 0}
+.nav{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;padding:22px 0}
+/* The mark pushes the links to the right as one group. With space-between, a
+   page with two links put the first one in the middle of the bar. */
+.nav .mark{margin-right:auto}
 /* A single wrapping line, centred in a 44px tap target, keeps the two words on one baseline. */
 .mark{display:flex;flex-wrap:wrap;align-content:center;align-items:baseline;min-height:44px;gap:8px;line-height:1;text-decoration:none}
 .mark .dev{font-family:var(--dev);font-weight:800;font-size:1.3rem;background:var(--grad-mela);-webkit-background-clip:text;background-clip:text;color:transparent;padding-top:4px}
 .mark .latin{font-family:var(--disp);font-weight:800;font-size:1.6rem;letter-spacing:-.03em}
 .nav a.link{display:inline-flex;align-items:center;min-height:44px;font-size:.88rem;font-weight:600;text-decoration:none;color:var(--dim-on-dusk);padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.14);transition:background .2s,color .2s}
 .nav a.link:hover{color:var(--cream-on-dusk);background:rgba(255,255,255,.08)}
-@media(max-width:480px){.nav a.link{padding:6px 11px;font-size:.8rem}}
+@media(max-width:480px){.nav a.link{padding:6px 11px;font-size:.8rem}
+  /* The mark and two links do not fit one phone row, and the second link
+     used to drop onto a line of its own. Give the mark the first row and let
+     the links share the second. */
+  .nav:has(a.link + a.link) .mark{flex-basis:100%}}
 
 /* ---------- hero + the toran ---------- */
 .hero{padding:64px 0 104px;overflow:hidden;position:relative}
@@ -183,7 +197,7 @@ header.dusk .nav{padding-top:30px}
 .launch .lede{margin:0 auto}
 .launch .ctas{margin-top:34px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 .launch .alt{margin-top:18px;font-size:.9rem;color:var(--ink-soft)}
-.launch .alt a{color:var(--sindoor);font-weight:700}
+.launch .alt a,.launch .lede a{color:var(--sindoor);font-weight:700}
 .founder{display:inline-block;margin-top:34px;background:var(--rani);color:#fff;border-radius:999px;padding:9px 18px;font-size:.8rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;transform:rotate(-2deg);box-shadow:0 10px 26px rgba(217,20,111,.3)}
 
 /* ---------- story page ---------- */
@@ -204,7 +218,8 @@ footer{padding:56px 0 40px}
 .f-grid{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;align-items:flex-start}
 .f-grid .mark .latin{font-size:1.3rem}
 .f-links{display:flex;flex-wrap:wrap;gap:0 22px;font-size:.9rem}
-.f-links a{display:inline-flex;align-items:center;min-height:44px;color:var(--dim-on-dusk);text-decoration:none}
+/* Short words like Home and Terms were under 44px wide: a whole tap target either way. */
+.f-links a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;color:var(--dim-on-dusk);text-decoration:none}
 .f-links a:hover{color:var(--marigold)}
 .legal{margin-top:34px;padding-top:22px;border-top:1px solid rgba(255,255,255,.12);font-size:.76rem;color:var(--dim-on-dusk);max-width:72ch;line-height:1.7}
 

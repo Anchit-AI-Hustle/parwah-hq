@@ -11,14 +11,14 @@
 <meta property="og:url" content="https://parwah-hq.anchit-tandon.com/welcome/">
 <meta property="og:title" content="Parwah - Apni family ki parwah karein">
 <meta property="og:description" content="Parwah keeps what your family needs in one safe place: papers in a vault with a permission on each, health records, things to do, the family tree and an emergency card that works offline.">
-<meta property="og:image" content="https://parwah-hq.anchit-tandon.com/og.png">
+<meta property="og:image" content="https://parwah-hq.anchit-tandon.com/og-app.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Parwah brand card, deep jamun with a marigold flower and a toran: They took care of you. Take care back.">
+<meta property="og:image:alt" content="Parwah app card, deep jamun with a marigold flower and a toran: What your family needs, in one safe place.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Parwah - Apni family ki parwah karein">
 <meta name="twitter:description" content="Parwah keeps what your family needs in one safe place: papers in a vault with a permission on each, health records, things to do, the family tree and an emergency card that works offline.">
-<meta name="twitter:image" content="https://parwah-hq.anchit-tandon.com/og.png">
+<meta name="twitter:image" content="https://parwah-hq.anchit-tandon.com/og-app.png">
 <link rel="canonical" href="https://parwah-hq.anchit-tandon.com/welcome/">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -40,8 +40,16 @@
 .pf-tag{padding:3px 10px;border-radius:999px;background:var(--tint-marigold);color:var(--ink);font-size:.75rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
 .pf-note{margin-top:18px;font-size:.85rem;color:var(--ink-soft)}
 .pf-cta{margin-top:24px;display:flex;gap:14px;flex-wrap:wrap}
+/* Five feature cards in the shared three-across grid left an empty slot
+   beside the last two. On a six-column grid the first row holds three cards
+   and the second row two wider ones, so both rows end flush, as /care/ does
+   for its four. */
+@media(min-width:861px){
+  #features .worries{grid-template-columns:repeat(6,1fr)}
+  #features .worry{grid-column:span 2}
+  #features .worry:nth-child(n+4){grid-column:span 3}
+}
 </style>
-<noscript><style>.pf-stats{display:none}</style></noscript>
 </head>
 <body>
 
@@ -72,7 +80,8 @@
 </header>
 
 <!-- ============ PROOF (day): the numbers and words live in /proof.js ============ -->
-<section class="sec on-day" id="proof" aria-labelledby="proof-h" aria-busy="true">
+<!-- Hidden until proof.js has a number to show: example quotes alone are not proof. -->
+<section class="sec on-day" id="proof" aria-labelledby="proof-h" aria-busy="true" hidden>
   <div class="wrap">
     <p class="eyebrow rv">So far</p>
     <h2 class="rv" id="proof-h">Who is joining Parwah.</h2>
@@ -137,7 +146,7 @@
       </div>
       <div class="step rv">
         <h3>Plans, calls and games</h3>
-        <p>Plan a trip or a puja, start a family video call, and play Ludo, Get Away or Snakes &amp; Ladders together across cities.</p>
+        <p>Plan a trip or a puja, start a family video call, and play Ludo, Bhabhi (Get Away) or Snakes &amp; Ladders together across cities.</p>
       </div>
       <div class="step rv">
         <h3>The day and location</h3>
@@ -216,7 +225,7 @@
         <a href="../story/">Our story</a>
         <a href="../privacy/">Privacy</a>
         <a href="../terms/">Terms</a>
-        <a href="mailto:care@parwah.in">Contact</a>
+        <a href="mailto:anchit.tandon@gmail.com">Contact</a>
       </nav>
     </div>
     <p class="legal">Parwah builds family-care tools and, separately, is preparing a range of daily-living aids chosen for safety, comfort and ease of use. Parwah does not give medical advice, and its products are not medicines and are not intended to diagnose or address any medical condition; for health concerns, please consult a qualified doctor. © 2026 Parwah. Made with parwah, in India.</p>
