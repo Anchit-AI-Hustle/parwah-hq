@@ -340,9 +340,17 @@ check("routing: the app's old file addresses follow it",
 # Temporary, because browsers cache a permanent redirect for a very long time.
 check("routing: none of those redirects is permanent, so they can be undone",
       all(r.get("permanent") is False for r in vj.get("redirects", [])))
+# Another domain the family may type (parwah.tech, parwah.in) forwards
+# everything to the one live site. Those catch-alls are tied to their own
+# host, so they can never catch this site's API.
+_hostfwd = [r for r in vj.get("redirects", []) if any(h.get("type") == "host" for h in r.get("has", []))]
 check("routing: no redirect can catch the API",
       not any("api" in r.get("source", "") or r.get("source") in ("/(.*)", "/:path*")
-              for r in vj.get("redirects", [])))
+              for r in vj.get("redirects", []) if r not in _hostfwd))
+check("routing: other Parwah domains forward to the live site, and only there",
+      {h["value"] for r in _hostfwd for h in r["has"]} == {"parwah.tech", "parwah.in", "www.parwah.in"}
+      and all(r.get("destination") == "https://parwah-hq.anchit-tandon.com/$1" for r in _hostfwd)
+      and not any(h["value"] == "parwah-hq.anchit-tandon.com" for r in _hostfwd for h in r["has"]))
 # A service worker script cannot be redirected: the browser refuses it. The
 # old /app/sw.js has to stay a real file, and what it does is remove itself.
 _oldsw = (_pub / "app/sw.js")
@@ -378,11 +386,20 @@ check("framing: the app keeps the other security headers",
       _app.get("X-Content-Type-Options") == "nosniff" and "Referrer-Policy" in _app)
 _fa = re.fullmatch(r"frame-ancestors ((?:\S+ ?)+)", _app.get("Content-Security-Policy", ""))
 _fa_list = _fa.group(1).split() if _fa else []
-_FA_ALLOWED = {"'self'", "https://parwah.floot.app", "capacitor://localhost", "https://localhost",
-               "https://floot.com", "https://2fea47ff-4e55-4bdb-ae0a-46d1768aebeb.sandbox.floot.app"}
+# The Floot origins were dropped (owner, 2026-10-30): the Capacitor apps in
+# mobile/ replace the Floot shell, and a hosted builder's domains framing the
+# live app were one more place an overlay could come from. The old Floot
+# shell no longer shows the app.
+_FA_ALLOWED = {"'self'", "capacitor://localhost", "https://localhost"}
 check("framing: the app may be framed only by the Parwah shell",
-      bool(_fa_list) and set(_fa_list) <= _FA_ALLOWED and "https://parwah.floot.app" in _fa_list,
+      bool(_fa_list) and set(_fa_list) <= _FA_ALLOWED and "capacitor://localhost" in _fa_list,
       " ".join(_fa_list))
+check("framing: the app asks only for the camera, microphone and location it uses",
+      _app.get("Permissions-Policy") == _rest.get("Permissions-Policy")
+      == "camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()")
+check("framing: a content policy is reported on, not yet enforced",
+      "Content-Security-Policy-Report-Only" in _app and "Content-Security-Policy-Report-Only" in _rest
+      and "object-src 'none'" in _app.get("Content-Security-Policy-Report-Only", ""))
 check("framing: and never by a wildcard",
       not any("*" in o or o in ("https:", "http:", "data:", "blob:") for o in _fa_list))
 # The shell waits for this before showing the app. It goes to any origin, so
@@ -1313,8 +1330,10 @@ check("leak: with no key configured they stay off rather than open",
       "stay off until PARWAH_DIAG_SECRET is set" in _diag)
 check("leak: the liveness check is open but touches nothing",
       "Liveness only" in _diag and "db_configured" in _diag)
-check("leak: the deploy verifier sends the key",
-      "DIAG_KEY" in _verify and "probe=db&key=$DIAG_KEY" in _verify)
+check("leak: the deploy verifier sends the key, in a header and never the address",
+      '-H "X-Diag-Key: $DIAG_KEY"' in _verify and "key=$DIAG_KEY" not in _verify)
+check("leak: the server reads the key from the header only, in constant time",
+      "req.query && req.query.key" not in _diag and "timingSafeEqual(a, b)" in _diag)
 check("leak: and refuses to run without it, rather than reporting a false red",
       "PARWAH_DIAG_SECRET is not set here" in _verify)
 # Nothing private may ever be served.

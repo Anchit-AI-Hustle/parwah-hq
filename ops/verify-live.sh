@@ -42,9 +42,11 @@ die() { log "FAILED: $*"; exit 1; }
 # One request, both halves. No -f: an HTTP 500 IS the verdict here and its
 # body is the diagnosis. -L so a trailing-slash redirect cannot pass itself
 # off as a broken self-test.
+# The diagnostics key goes in a header, never the address: an address ends
+# up in access logs, proxies and the shell history of whoever ran this.
 fetch() {                                  # fetch URL timeout -> sets CODE, BODY
   local out
-  out="$(curl -sS -L --max-time "$2" -w '\n%{http_code}' "$1" 2>/dev/null)"
+  out="$(curl -sS -L --max-time "$2" -H "X-Diag-Key: $DIAG_KEY" -w '\n%{http_code}' "$1" 2>/dev/null)"
   CODE="${out##*$'\n'}"
   BODY="${out%$'\n'*}"
   case "$CODE" in ''|*[!0-9]*) CODE=000; BODY='' ;; esac
@@ -66,7 +68,7 @@ snippet() {
 log "verifying $BASE"
 BODY=''; CODE=000; RED=0; VERDICT=none
 for i in $(seq 1 "$TRIES"); do
-  fetch "$BASE/api/diag?probe=db&key=$DIAG_KEY" 60
+  fetch "$BASE/api/diag?probe=db" 60
   case "$BODY" in
     *'"ok":true'*)
       VERDICT=green; break ;;
@@ -110,7 +112,7 @@ esac
 # The day's arithmetic, on the build that is now live. Only an explicit
 # failure is fatal: this probe also reports whether the horoscope source
 # answered, and someone else's uptime is not our deploy's problem.
-fetch "$BASE/api/diag?probe=day&key=$DIAG_KEY" 60
+fetch "$BASE/api/diag?probe=day" 60
 case "$BODY" in
   *'"ok":true'*)  log "muhurat check: $(printf '%s' "$BODY" | sed -n 's/.*"summary":"\([^"]*\)".*/\1/p')" ;;
   *'"ok":false'*) log "$BODY"; die "the muhurat self-test is RED on production" ;;
