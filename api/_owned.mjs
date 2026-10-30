@@ -17,7 +17,9 @@ export async function ownedMember(sql, circleId, memberId, token, cols) {
   if (AUTH_REQUIRED) {
     const u = await sessionUser(sql, token);
     if (!u) return [];
-    if (rows[0].user_id && rows[0].user_id !== u.user_id) return [];
+    // A row with no user_id is a relative who is not on the app. It is
+    // never the caller, whoever holds the token (see requireMember).
+    if (!rows[0].user_id || rows[0].user_id !== u.user_id) return [];
   }
   return rows;
 }

@@ -110,15 +110,31 @@ export default async function handler(req, res) {
         // Already a member of this circle? Sign back into that membership.
         const ex = await sql`select id, role from members where circle_id = ${circle.id} and user_id = ${user.id}`;
         if (ex[0]) return res.status(200).json({ ok: true, code: circle.code, circleName: circle.name, memberId: ex[0].id, role: ex[0].role });
-        // A membership created before phone sign-in existed carries no user
-        // link - claim it by matching phone digits instead of duplicating.
-        const unlinked = await sql`select id, role, phone from members where circle_id = ${circle.id} and user_id is null and phone is not null`;
-        const myDigits = String(user.phone).replace(/\D/g, '').slice(-10);
-        const legacy = unlinked.find(x => String(x.phone).replace(/\D/g, '').slice(-10) === myDigits);
-        if (legacy) {
-          const lp = normPhone(user.phone);
-          await sql`update members set user_id = ${user.id}, phone = ${user.phone}, phone_cc = ${lp ? lp.cc : null}, phone_local = ${lp ? lp.local : null} where id = ${legacy.id}`;
-          return res.status(200).json({ ok: true, code: circle.code, circleName: circle.name, memberId: legacy.id, role: legacy.role });
+        // A relative added by name (Dadi) may carry this person's number.
+        // That used to link them straight to her row, with no one asked:
+        // sign-up has no SMS check, so anyone could type Dadi's number, or
+        // first set it to their own, and become her for good. Now it is a
+        // request like any other, whatever the join policy says, and only a
+        // yes from the family links it. The match is the full number with
+        // its country code: +1 9876543210 is not +91 9876543210.
+        const legacy = await sql`select id, name, role from members
+                                 where circle_id = ${circle.id} and user_id is null and phone = ${user.phone} limit 1`;
+        if (legacy[0]) {
+          const already = await sql`select id from join_requests where circle_id = ${circle.id} and user_id = ${user.id} and status = 'pending'`;
+          let requestId = already[0] ? already[0].id : null;
+          if (!requestId) {
+            const made = await sql`insert into join_requests (circle_id, user_id, name, phone, phone_cc, phone_local, relation, role, claim_member)
+                      values (${circle.id}, ${user.id}, ${legacy[0].name}, ${user.phone}, ${memberCc}, ${memberLocal}, ${relation}, ${legacy[0].role}, ${legacy[0].id}) returning id`;
+            requestId = made[0].id;
+            await sql`insert into events (circle_id, member_id, type, text)
+                      values (${circle.id}, null, 'care', ${legacy[0].name + ' has asked to join - any member can let them in'})`;
+            await pushCircle(sql, circle.id, {
+              title: '🙋 ' + legacy[0].name + ' wants to join ' + circle.name,
+              body: 'Open Parwah to let them in - or say no if it is not really them'
+            }, {});
+          }
+          return res.status(202).json({ ok: true, pending: true, circleName: circle.name, code: circle.code, requestId,
+            message: 'Your request has gone to ' + circle.name + '. Anyone in the family can let you in.' });
         }
       }
       // One person, one seat: a name can appear only once in a circle, and a
@@ -211,6 +227,24 @@ export default async function handler(req, res) {
         return res.status(200).json({ ok: true });
       }
 
+      // A yes to someone who matched a relative's row links them to it, so
+      // the tree, the records and the chats stay that one person's. Only
+      // while the row is still unclaimed.
+      if (q.claim_member && q.user_id) {
+        const linked = await sql`update members set user_id = ${q.user_id}, phone = ${q.phone}, phone_cc = ${q.phone_cc}, phone_local = ${q.phone_local}
+                                 where id = ${q.claim_member} and circle_id = ${circle.id} and user_id is null
+                                   and not exists (select 1 from members x where x.circle_id = ${circle.id} and x.user_id = ${q.user_id})
+                                 returning id`;
+        if (!linked[0]) {
+          await sql`update join_requests set status = 'declined', decided_by = ${mRow[0].id}, decided_at = now() where id = ${q.id}`;
+          return res.status(409).json({ ok: false, error: q.name + ' is already on Parwah in this ' + spaceWord(circle) });
+        }
+        await sql`update join_requests set status = 'approved', decided_by = ${mRow[0].id}, decided_at = now() where id = ${q.id}`;
+        await sql`insert into events (circle_id, member_id, type, text)
+                  values (${circle.id}, ${linked[0].id}, 'join', ${q.name + ' joined the ' + spaceWord(circle) + ' - ' + mRow[0].name + ' let them in'})`;
+        await pushCircle(sql, circle.id, { title: '🧡 You are in - ' + circle.name, body: mRow[0].name + ' let you in. Open Parwah to say hello.' }, { only: linked[0].id });
+        return res.status(200).json({ ok: true, memberId: linked[0].id });
+      }
       const dupName2 = await sql`select id from members where circle_id = ${circle.id} and lower(name) = lower(${q.name})`;
       if (dupName2[0]) {
         await sql`update join_requests set status = 'declined', decided_by = ${mRow[0].id}, decided_at = now() where id = ${q.id}`;
