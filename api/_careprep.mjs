@@ -31,12 +31,14 @@ export async function ensureCarePrepSchema(sql) {
   // database none of those existed yet when refill, bills or biomarkers
   // was the first thing opened, and each answered 503 until something
   // else had made them.
-  const { ensureSchema } = await import('./_db.mjs');
+  const { ensureSchema, schemaOnce } = await import('./_db.mjs');
   const { ensureBookSchema } = await import('./_bookschema.mjs');
   const { ensureVaultSchema } = await import('./_vaultapi.mjs');
   await ensureSchema(sql);
-  await ensureBookSchema(sql);
-  await ensureVaultSchema(sql);
+  // Care tools are often the first thing a fresh family opens, several at
+  // once: the vault tables can lose that race (see schemaOnce).
+  await schemaOnce(() => ensureBookSchema(sql));
+  await schemaOnce(() => ensureVaultSchema(sql));
   try {
     // 1. Medicine Inventory & Refill Tracking
     await sql`create table if not exists medicine_inventory (
