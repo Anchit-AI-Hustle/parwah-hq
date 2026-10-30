@@ -163,6 +163,12 @@
   --grad:linear-gradient(115deg,var(--marigold),var(--flame));
 }
 *{margin:0;padding:0;box-sizing:border-box}
+/* A browser gives buttons its own font (Arial at 13px), not the page's, so a
+   button with no font rule of its own looked like another app. Every button
+   starts from the page's type; a component's own rule still wins. */
+button{font:inherit}
+/* A plain link is in the app's link colour, not the browser's blue. */
+a:not([class]){color:var(--sindoor);font-weight:600}
 body{font-family:var(--body);color:var(--ink);min-height:100vh;min-height:100dvh;line-height:1.5;-webkit-text-size-adjust:100%;
   background:
     radial-gradient(1100px 480px at 88% -120px, var(--glow1), transparent 60%),
@@ -333,7 +339,7 @@ details.giftmore summary{font-weight:700;color:var(--ink)}
 .ev.inaus{border-left-color:var(--alert-line)}
 .ev.bad{border-left-color:var(--alert);background:var(--tint-bad);font-weight:600}
 .members{display:flex;flex-wrap:wrap;gap:var(--space-8)}
-.member{background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-pill);padding:var(--space-8) var(--space-16);font-size:var(--fs-14);font-weight:600}
+.member{display:inline-flex;align-items:center;gap:var(--space-4);min-height:var(--tap-min);background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-pill);padding:0 var(--space-16);font-size:var(--fs-14);font-weight:600}
 .member em{font-style:normal;color:var(--ink-soft);font-weight:400}
 
 /* fixed input bars (chat + Ekta) sit above the tab bar */
@@ -374,9 +380,12 @@ details.giftmore summary{font-weight:700;color:var(--ink)}
 .teamcol{background:var(--day);border:1px solid var(--bone-2);border-radius:var(--radius-16);padding:var(--space-12)}
 .teamcol h4{font-family:var(--body);font-size:var(--fs-12);font-weight:700;margin-bottom:var(--space-8);display:flex;justify-content:space-between}
 .teamcol h4 .tscore{font-family:var(--disp);font-size:var(--fs-16)}
-.pchip{display:flex;align-items:center;gap:var(--space-8);background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-pill);padding:var(--space-4) var(--space-12);font-size:var(--fs-12);font-weight:600;margin-bottom:var(--space-8)}
+/* On a phone two team columns leave each name, score and button about
+   150px: one column each, so nothing is squeezed. */
+@media(max-width:430px){.teams2{grid-template-columns:1fr}}
+.pchip{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-4) var(--space-8);background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-pill);padding:var(--space-4) var(--space-12);font-size:var(--fs-12);font-weight:600;margin-bottom:var(--space-8)}
 .pchip .sc{color:var(--ink-soft);font-weight:400}
-.pchip .mini{border:0;background:var(--bone);border-radius:var(--radius-pill);width:20px;height:20px;font-size:var(--fs-12);cursor:pointer;line-height:1;margin-left:auto}
+.pchip .mini{border:0;background:var(--bone);border-radius:var(--radius-pill);width:var(--tap-min);height:var(--tap-min);font-size:var(--fs-12);cursor:pointer;line-height:1;margin-left:auto}
 .pchip .mini.kick{color:var(--alert)}
 .pchip .mini + .mini{margin-left:var(--space-2)}
 .modeline a{font-weight:700}
@@ -521,7 +530,7 @@ button.pcard:disabled{opacity:.45;cursor:default}
 #sosbar{position:fixed;top:0;left:0;right:0;z-index:var(--z-sos);display:flex;align-items:center;gap:var(--space-12);
   padding:var(--space-12) var(--space-16);background:var(--alert);color:var(--on-accent);font-size:var(--fs-14);font-weight:600;
   box-shadow:0 6px 20px rgba(0,0,0,.3)}
-#sosbar .lc-join,#sosbar .lc-end{white-space:nowrap;display:inline-flex;align-items:center;min-height:40px;border-radius:var(--radius-pill);padding:var(--space-8) var(--space-16);font-family:var(--body);font-size:var(--fs-14);font-weight:700;text-decoration:none;cursor:pointer}
+#sosbar .lc-join,#sosbar .lc-end{white-space:nowrap;display:inline-flex;align-items:center;min-height:var(--tap-min);border-radius:var(--radius-pill);padding:var(--space-8) var(--space-16);font-family:var(--body);font-size:var(--fs-14);font-weight:700;text-decoration:none;cursor:pointer}
 #sosbar .lc-join{background:var(--on-accent);color:var(--alert);border:0}
 #sosbar .lc-end{background:transparent;color:var(--on-accent);border:2px solid var(--on-accent)}
 body.inapp #sosbar{padding-left:var(--space-16)}
@@ -651,7 +660,7 @@ details.more[open]>summary::before{content:"▾ "}
 @media(max-width:430px){.bkw{margin-left:var(--space-4);font-size:var(--fs-12)} #bk-filter button{flex:1 1 30%}}
 .tworow>span{flex:1;min-width:0}
 /* The concept screens, shown before anyone is asked for anything. */
-#demo-step .prow2{display:flex;gap:var(--space-8);flex-wrap:wrap;margin-top:var(--space-16)}
+#demo-step .prow2{display:flex;gap:var(--space-8);flex-wrap:wrap;align-items:center;margin-top:var(--space-16)}
 #demo-step .prow2 .go{flex:1;min-width:150px}
 #demo-step h3{font-family:var(--disp);font-weight:600}
 .trdots i{width:7px;height:7px;border-radius:var(--radius-pill);background:var(--bone-2)}
@@ -794,7 +803,7 @@ details.more[open]>summary::before{content:"▾ "}
 .senior .ec-vital b{font-size:var(--fs-30)}
 .ec-row .stale{color:var(--sindoor);font-size:var(--fs-12)}
 .ec-row.none span{color:var(--dim-day);font-style:italic}
-.ec-row a{color:var(--marigold-d);font-weight:600;text-decoration:none}
+.ec-row a{color:var(--marigold-d);font-weight:600;text-decoration:none;display:inline-flex;align-items:center;min-height:var(--tap-min)}
 @media print{
   body>*{display:none!important}
   #ecard{display:block!important;position:static}
@@ -812,8 +821,8 @@ details.more[open]>summary::before{content:"▾ "}
 #livecall{background:var(--pine);color:var(--cream);display:flex;align-items:center;gap:var(--space-12);padding:var(--space-8) var(--space-16);font-size:var(--fs-14)}
 #livecall .pulse{width:9px;min-width:9px;height:9px;border-radius:var(--radius-pill);background:var(--live);animation:lcpulse 1.4s ease infinite}
 @keyframes lcpulse{0%,100%{box-shadow:0 0 0 0 rgba(124,224,163,.55)}50%{box-shadow:0 0 0 6px rgba(124,224,163,0)}}
-#livecall .lc-join{background:var(--marigold);color:var(--dusk);border-radius:var(--radius-pill);padding:var(--space-8) var(--space-16);font-weight:700;text-decoration:none;font-size:var(--fs-14)}
-#livecall .lc-end{border:1px solid rgba(239,232,216,.4);background:none;color:var(--cream);border-radius:var(--radius-pill);padding:var(--space-4) var(--space-12);font-family:var(--body);font-size:var(--fs-12);cursor:pointer}
+#livecall .lc-join{display:inline-flex;align-items:center;min-height:var(--tap-min);white-space:nowrap;background:var(--marigold);color:var(--dusk);border-radius:var(--radius-pill);padding:var(--space-8) var(--space-16);font-weight:700;text-decoration:none;font-size:var(--fs-14)}
+#livecall .lc-end{min-height:var(--tap-min);border:1px solid rgba(239,232,216,.4);background:none;color:var(--cream);border-radius:var(--radius-pill);padding:var(--space-4) var(--space-12);font-family:var(--body);font-size:var(--fs-12);cursor:pointer}
 @media(prefers-reduced-motion:reduce){#livecall .pulse{animation:none}}
 .sidehead{font-size:var(--fs-12);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);padding:var(--space-16) var(--space-16) var(--space-2)}
 .side-so{border:0;background:none;color:var(--dim);font-family:var(--body);font-size:var(--fs-12);text-align:left;padding:var(--space-8) var(--space-16) var(--space-16);cursor:pointer}
@@ -842,7 +851,7 @@ details.more[open]>summary::before{content:"▾ "}
 .calhead button{border:0;background:var(--bone);border-radius:var(--radius-8);font-size:var(--fs-16);padding:var(--space-2) var(--space-16);cursor:pointer;color:var(--ink);line-height:1.4}
 .calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--space-4);text-align:center}
 .calgrid .dow{font-size:var(--fs-12);color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;padding:var(--space-2) 0}
-.calgrid .day{position:relative;border:1px solid transparent;border-radius:var(--radius-12);padding:var(--space-8) 0 var(--space-4);font-size:var(--fs-14);cursor:pointer;min-height:34px}
+.calgrid .day{position:relative;border:1px solid transparent;border-radius:var(--radius-12);padding:var(--space-8) 0 var(--space-4);font-size:var(--fs-14);cursor:pointer;min-height:var(--tap-min)}
 .calgrid .day:hover{background:var(--bone)}
 .calgrid .day.blank{cursor:default;background:none}
 .calgrid .day.today{border-color:var(--marigold);font-weight:700}
@@ -917,7 +926,7 @@ details.more[open]>summary::before{content:"▾ "}
 .pkind{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-8)}
 .pkind button{flex:1 1 30%;min-width:0;min-height:var(--tap-min);border:1.5px solid var(--bone-2);background:var(--surface);border-radius:var(--radius-12);padding:var(--space-8) var(--space-4);font-family:var(--body);font-weight:600;font-size:var(--fs-12);cursor:pointer;color:var(--ink)}
 .pkind button.sel{border-color:var(--marigold);background:var(--tint-warm)}
-.callbtn{text-decoration:none;margin-left:var(--space-2)}
+.callbtn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center;width:var(--tap-min);height:var(--tap-min);margin:0 calc(-1 * var(--space-12)) 0 0;border-radius:var(--radius-pill)}
 .hero2{display:flex;gap:var(--space-12)}
 .hero2 .go{flex:1}
 .go.callgo{background:var(--pine);color:var(--cream)}
@@ -1050,6 +1059,10 @@ details.more[open]>summary::before{content:"▾ "}
   body:not(.inapp) #onboard > .obpoints{grid-column:1;margin:var(--space-24) 0 0;display:flex;flex-direction:column;gap:var(--space-12)}
   body:not(.inapp) #onboard > div:not(.obpoints){grid-column:2;grid-row:1/span 4;align-self:center;width:100%;margin:0}
   body:not(.inapp) #onboard > .err{grid-column:2;margin-top:var(--space-12)}
+  /* Every step but sign-in hides the pitch, which left the left half empty
+     and the card pushed to the right. With no pitch, one centred column. */
+  body:not(.inapp) #onboard.nopitch{grid-template-columns:minmax(0,560px);justify-content:center}
+  body:not(.inapp) #onboard.nopitch > div:not(.obpoints),body:not(.inapp) #onboard.nopitch > .err{grid-column:1}
   .obpoint{gap:var(--space-12);align-items:flex-start;font-size:var(--fs-14);color:var(--ink-soft)}
   .obpoint b{color:var(--ink);font-weight:600}
   .obpoint .oi{font-size:var(--fs-18);line-height:1}
@@ -1461,6 +1474,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <h1 id="m-title"></h1>
       <p class="herostatus" id="hero-status">…</p>
     </div>
+    <!-- Someone in the family forgot their PIN and asked to be let back in. -->
+    <div id="pinresets"></div>
     <div id="frslot"></div>
     <!-- THE FIVE THINGS. Families talk on WhatsApp; Parwah holds what WhatsApp
          cannot: the papers, the medicines, who does what, who is who, and the
@@ -1558,15 +1573,32 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div id="refill-alerts" hidden class="card alertbox" style="margin-bottom:var(--space-12);border-left:4px solid var(--sindoor);padding:var(--space-12)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <h4 style="margin:0;color:var(--sindoor)">⚠️ Medicine refill needed</h4>
-        <span class="badge" id="refill-alert-badge" style="background:var(--sindoor);color:#fff;font-size:var(--fs-12);padding:var(--space-2) var(--space-8);border-radius:var(--radius-12)">Low</span>
+        <span class="badge" id="refill-alert-badge" style="background:var(--sindoor);color:var(--on-accent);font-size:var(--fs-12);padding:var(--space-2) var(--space-8);border-radius:var(--radius-12)">Low</span>
       </div>
       <p id="refill-alert-text" style="margin:var(--space-8) 0;font-weight:600"></p>
       <div class="prow2" style="margin-top:var(--space-8)">
-        <a id="btn-refill-reorder" class="cbtn" style="text-decoration:none;min-height:48px" target="_blank" rel="noopener">📲 WhatsApp Chemist</a>
-        <button type="button" id="btn-refill-done" class="cbtn ghost" style="min-height:48px">Mark Refilled (+30)</button>
-        <button type="button" id="btn-refill-snooze" class="cbtn ghost" style="min-height:48px">Snooze 2 Days</button>
+        <a id="btn-refill-reorder" class="cbtn" style="text-decoration:none;min-height:48px" target="_blank" rel="noopener">📲 WhatsApp the chemist</a>
+        <button type="button" id="btn-refill-done" class="cbtn ghost" style="min-height:48px">Bought 30 more</button>
+        <button type="button" id="btn-refill-snooze" class="cbtn ghost" style="min-height:48px">Remind me in 2 days</button>
       </div>
     </div>
+    <!-- Medicine stock: how many tablets are left and how many a day, so
+         the family is told before they run out. Without this form there was
+         no way to record stock, so the warning above could never appear. -->
+    <details class="card" id="refill-more" style="margin-bottom:var(--space-12)">
+      <summary style="cursor:pointer;font-weight:700;min-height:var(--tap-min);display:flex;align-items:center">💊 Medicine stock</summary>
+      <p class="hint" style="margin:var(--space-8) 0">Say how many tablets are left. Parwah tells the family a few days before they run out.</p>
+      <div class="feed" id="refill-list"></div>
+      <div class="pickrow" style="margin-top:var(--space-12)">
+        <label class="pick"><span>Whose medicine</span><select id="rf-who"></select></label>
+        <label class="pick"><span>Medicine</span><input type="text" id="rf-name" maxlength="80" placeholder="e.g. Amlopres 5"></label>
+      </div>
+      <div class="pickrow" style="margin-top:var(--space-8)">
+        <label class="pick"><span>Tablets left</span><input type="number" id="rf-left" min="0" max="1000" step="1" inputmode="numeric" placeholder="20"></label>
+        <label class="pick"><span>Tablets a day</span><input type="number" id="rf-rate" min="0.5" max="20" step="0.5" inputmode="decimal" placeholder="1"></label>
+      </div>
+      <button type="button" class="cbtn" id="rf-add" style="min-height:var(--tap-min);margin-top:var(--space-12)">Save stock</button>
+    </details>
     <div class="seg" id="task-filter-seg" role="group" aria-label="Task filter" style="margin-bottom:var(--space-12)">
       <button type="button" data-tfilter="all" class="sel">All tasks</button>
       <button type="button" data-tfilter="me">Assigned to me</button>
@@ -1954,7 +1986,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <div class="feed" id="vd-req-list"></div>
         </div>
         <select id="vd-who" aria-label="Whose documents" style="margin-bottom:var(--space-12)"><option value="">Everyone's documents</option></select>
-        <div class="feed" id="vdlist"><div class="ev">Nothing in the vault yet - add the family's first document below 🔐</div></div>
+        <div class="feed" id="vdlist"><div class="ev">Loading…</div></div>
         <div class="card vcol" id="vd-ask" hidden style="margin-top:var(--space-12)">
           <h3 id="vd-ask-title">Need one of their papers?</h3>
           <p class="hint" id="vd-ask-sub" style="margin:var(--space-4) 0 var(--space-8)"></p>
@@ -2070,13 +2102,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     </div>
 
     <div class="subsec" data-sec="locator" hidden>
-      <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>Physical Asset &amp; Locker Locator</b><small>Where physical keys, passbooks, and original papers are kept. Never tracks bank balances.</small></span></div>
-      <p class="hint" style="margin:var(--space-8) 0 var(--space-12)">A locator for family when you are away or in an emergency. Details stay masked until unlocked under family policy.</p>
-      <div class="feed" id="locator-feed"><div class="ev">Loading locator records...</div></div>
+      <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>When I'm not here</b><small>Where the locker key, passbooks and original papers are kept. Never a bank balance.</small></span></div>
+      <p class="hint" style="margin:var(--space-8) 0 var(--space-12)">So the family can find things when you are away or in an emergency. You choose who can read where each one is kept.</p>
+      <div class="feed" id="locator-feed"><div class="ev">Loading…</div></div>
 
       <div class="card" style="margin-top:var(--space-16)">
-        <h3>Add a physical location</h3>
-        <label for="loc-item">Item or institution</label>
+        <h3>Add where something is kept</h3>
+        <label for="loc-item">What it is, or which bank</label>
         <input type="text" id="loc-item" maxlength="120" placeholder="e.g. SBI Green Park Branch, Master Bedroom Wardrobe Top Shelf">
         <div class="pickrow">
           <label class="pick"><span>Category</span>
@@ -2093,18 +2125,20 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           </label>
           <label class="pick"><span>Whose item</span><select id="loc-about"></select></label>
         </div>
-        <label for="loc-mask" style="margin-top:var(--space-12)">Identifier mask (safe to see)</label>
+        <label for="loc-mask" style="margin-top:var(--space-12)">A short hint anyone may see</label>
         <input type="text" id="loc-mask" maxlength="100" placeholder="e.g. Locker Key #42 or Account ending ...4921">
-        <label for="loc-notes" style="margin-top:var(--space-12)">Where it is kept (restricted notes)</label>
+        <label for="loc-notes" style="margin-top:var(--space-12)">Where it is kept</label>
         <textarea id="loc-notes" rows="2" maxlength="500" placeholder="e.g. In the steel almirah, inside the brown leather folder behind old passports"></textarea>
-        <div class="pick" style="margin-top:var(--space-12)"><span>Who can unlock</span>
+        <!-- The two rules the server applies. A third (named people only)
+             needs a way to pick those people, which this form does not
+             have yet, so it is not offered. -->
+        <label class="pick" style="margin-top:var(--space-12)"><span>Who can read where it is kept</span>
           <select id="loc-policy">
-            <option value="IMMEDIATE">Shared with whole family</option>
-            <option value="EMERGENCY_ONLY">Emergency SOS unlock only</option>
-            <option value="MULTI_SIG_VERIFIED">Requires co-approval</option>
+            <option value="IMMEDIATE">Anyone in the family</option>
+            <option value="EMERGENCY_ONLY">Only during an SOS</option>
           </select>
-        </div>
-        <button type="button" class="go" id="btn-add-locator" style="margin-top:var(--space-16);min-height:48px">Save physical location</button>
+        </label>
+        <button type="button" class="go" id="btn-add-locator" style="margin-top:var(--space-16);min-height:48px">Save where it is kept</button>
       </div>
     </div>
   </section>
@@ -2127,15 +2161,15 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="card" id="pp-biomarkers-card">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-8)">
         <h3 style="margin:0">📊 Lab metrics &amp; trends</h3>
-        <button type="button" class="cbtn ghost" id="btn-add-biomarker" style="padding:var(--space-4) var(--space-8);font-size:var(--fs-12);min-height:var(--tap-min)">+ Record metric</button>
+        <button type="button" class="cbtn ghost" id="btn-add-biomarker" style="padding:var(--space-4) var(--space-8);font-size:var(--fs-12);min-height:var(--tap-min)">+ Add a number</button>
       </div>
-      <p class="hint" style="margin:var(--space-4) 0 var(--space-8)">Chronological trajectory with normal reference range. Extracted from lab reports or entered by family.</p>
+      <p class="hint" style="margin:var(--space-4) 0 var(--space-8)">Each number over time, with the normal range shaded. Typed in by the family, or pasted from a report.</p>
       
-      <div id="biomarker-confirm-banner" hidden class="alertbox" style="margin-bottom:var(--space-12);padding:var(--space-12);background:var(--sand);border-radius:var(--radius-12);border:1px solid var(--border)">
+      <div id="biomarker-confirm-banner" hidden class="alertbox" style="margin-bottom:var(--space-12);padding:var(--space-12);background:var(--bone);border-radius:var(--radius-12);border:1px solid var(--bone-2)">
         <div id="biomarker-confirm-text" style="font-size:var(--fs-14);font-weight:600"></div>
         <div style="display:flex;gap:var(--space-8);margin-top:var(--space-8)">
-          <button type="button" class="cbtn" id="btn-confirm-extracted" style="padding:var(--space-4) var(--space-12);font-size:var(--fs-12);min-height:var(--tap-min)">Confirm &amp; Save</button>
-          <button type="button" class="cbtn ghost" id="btn-dismiss-extracted" style="padding:var(--space-4) var(--space-12);font-size:var(--fs-12);min-height:var(--tap-min)">Dismiss</button>
+          <button type="button" class="cbtn" id="btn-confirm-extracted" style="padding:var(--space-4) var(--space-12);font-size:var(--fs-12);min-height:var(--tap-min)">Save these</button>
+          <button type="button" class="cbtn ghost" id="btn-dismiss-extracted" style="padding:var(--space-4) var(--space-12);font-size:var(--fs-12);min-height:var(--tap-min)">Not now</button>
         </div>
       </div>
 
@@ -2149,11 +2183,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <button type="button" data-bm="HEMOGLOBIN">Hemoglobin</button>
       </div>
 
-      <div id="biomarker-chart-wrap" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-12);padding:var(--space-12);margin-bottom:var(--space-12)">
+      <div id="biomarker-chart-wrap" style="background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-12);margin-bottom:var(--space-12)">
         <div id="biomarker-chart-svg" style="width:100%;min-height:160px;display:flex;align-items:center;justify-content:center"></div>
       </div>
 
-      <div id="biomarker-add-form" hidden style="margin-top:var(--space-12);padding:var(--space-12);border:1px solid var(--border);border-radius:var(--radius-12)">
+      <div id="biomarker-add-form" hidden style="margin-top:var(--space-12);padding:var(--space-12);border:1px solid var(--bone-2);border-radius:var(--radius-12)">
         <h4 style="margin:0 0 var(--space-8)">Record a lab metric</h4>
         <div class="pickrow">
           <label class="pick"><span>Metric</span>
@@ -2184,6 +2218,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <label class="pick"><span>Test date</span><input type="date" id="bm-new-date"></label>
           <label class="pick"><span>Lab name</span><input type="text" id="bm-new-lab" placeholder="e.g. the lab named on the report"></label>
         </div>
+        <!-- Numbers copied from a report are read by the server, then shown
+             here to be checked before anything is saved. Nothing is ever
+             saved that a person did not see and confirm. -->
+        <label for="bm-paste" style="margin-top:var(--space-12)">Or paste the lines from a report</label>
+        <textarea id="bm-paste" rows="3" maxlength="4000" placeholder="e.g. HbA1c: 6.1 %  Creatinine: 0.9 mg/dL"></textarea>
+        <button type="button" class="cbtn ghost" id="btn-parse-biomarker" style="min-height:var(--tap-min);margin-top:var(--space-8)">Read the numbers</button>
         <div style="display:flex;gap:var(--space-8);margin-top:var(--space-12)">
           <button type="button" class="cbtn" id="btn-save-biomarker" style="min-height:48px">Save metric</button>
           <button type="button" class="cbtn ghost" id="btn-cancel-biomarker" style="min-height:48px">Cancel</button>
@@ -2439,6 +2479,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <section id="pane-notifs" hidden>
     <div id="nlist-view">
       <p class="eyebrow" style="margin-top:0">Notifications</p>
+      <div id="npinresets"></div>
       <div class="feed" id="nlist"><div class="ev">Loading…</div></div>
     </div>
     <div id="ndetail" hidden>
@@ -2580,12 +2621,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <p class="hint" style="margin-top:var(--space-8)">Everyone sees only their own cards.</p>
       </div>
       <div class="card" data-bgame="vyapar">
-        <h3>Monopoly 🏠 <small class="hint">property game</small></h3>
+        <h3>Vyapar 🏠 <small class="hint">property game</small></h3>
         <p>Buy Jaipur, Mumbai and Goa, collect rent, build houses - richest family business wins. 2 to 6 players. Play money only.</p>
         <p class="pickhead">Who's playing with you?</p>
         <div class="members bpick" data-for="vyapar"></div>
         <div class="prow2">
-          <button class="go" data-bstart="vyapar">🏠 Start Monopoly</button>
+          <button class="go" data-bstart="vyapar">🏠 Start Vyapar</button>
           <button class="cbtn ghost" data-bsolo="vyapar">🙋 Play alone</button>
         </div>
       </div>
@@ -2655,7 +2696,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <button class="cbtn no" id="b-end" style="margin-top:var(--space-12)">End game</button>
       </div>
       <div class="card" id="g-vyapar" hidden>
-        <h3>Monopoly 🏠</h3>
+        <h3>Vyapar 🏠</h3>
         <p class="hint" style="margin:var(--space-2) 0">Play money only.</p>
         <p class="hint" id="v-status" style="margin:var(--space-4) 0 var(--space-8)" aria-live="polite"></p>
         <div id="vboard" class="vboard"></div>
@@ -2960,20 +3001,21 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <div class="mp">
     <button class="x" id="aud-x" aria-label="Close">✕</button>
     <h3 id="aud-title">👁️ Who can see this?</h3>
-    <p class="hint" style="margin:var(--space-4) 0 var(--space-12)">Your family's records belong to you, wherever you live - in India the Digital Personal Data Protection (DPDP) Act says so in law. You can see who has access, where data is held, and export or revoke at any time.</p>
+    <p class="hint" style="margin:var(--space-4) 0 var(--space-12)">Your family's records belong to your family. In India the Digital Personal Data Protection (DPDP) Act says so in law.</p>
     <div class="card" style="margin-bottom:var(--space-12)">
-      <h4 style="margin:0 0 var(--space-8)">🔒 Access &amp; Permissions</h4>
+      <h4 style="margin:0 0 var(--space-8)">🔒 Who can see what</h4>
       <div class="feed" id="aud-members"></div>
     </div>
     <div class="card" style="margin-bottom:var(--space-12)">
       <h4 style="margin:0 0 var(--space-8)">🔐 Where it is kept</h4>
-      <p class="hint" style="margin:0">Held in Parwah's own cloud database (Neon Postgres), encrypted at rest and in transit, for families in every country alike. Every look is written in the audit trail below, and any access can be taken back.</p>
+      <p class="hint" style="margin:0">In Parwah's own cloud database (Neon Postgres), locked when stored and when sent.</p>
     </div>
     <div class="card" style="margin-bottom:var(--space-12)">
-      <h4 style="margin:0 0 var(--space-8)">📜 Access &amp; Audit Trail</h4>
-      <div class="feed" id="aud-logs" style="max-height:180px;overflow-y:auto"><div class="ev">Loading audit trail...</div></div>
+      <h4 style="margin:0 0 var(--space-8)">📜 Who looked recently</h4>
+      <p class="hint" style="margin:0 0 var(--space-8)">Each time someone opens the lab numbers or the hospital papers for this person, it is written down here.</p>
+      <div class="feed" id="aud-logs" style="max-height:180px;overflow-y:auto"><div class="ev">Loading…</div></div>
     </div>
-    <button type="button" class="cbtn ghost" id="aud-export" style="width:100%;min-height:48px;margin-top:var(--space-8)">📦 Export Family Data (JSON)</button>
+    <button type="button" class="cbtn ghost" id="aud-export" style="width:100%;min-height:48px;margin-top:var(--space-8)">📦 Download what this screen shows</button>
   </div>
 </div>
 
@@ -3176,6 +3218,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   <div class="mp">
     <h3 id="as-q" style="margin-top:0"></h3>
     <p class="hint" id="as-sub" style="margin:var(--space-4) 0 var(--space-16)"></p>
+    <div id="as-inwrap" hidden style="margin-bottom:var(--space-16)">
+      <label for="as-in" id="as-inlbl" style="margin-top:0"></label>
+      <textarea id="as-in" rows="3" maxlength="300"></textarea>
+    </div>
     <button class="go" id="as-yes" type="button"></button>
     <button class="cbtn ghost" id="as-no" type="button" style="width:100%;margin-top:var(--space-8)"></button>
   </div>
@@ -3501,6 +3547,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     return d.toDateString() === now.toDateString() ? 'Today, ' + t : dtf([], { day:'numeric', month:'short' }).format(d) + ', ' + t;
   }
 
+  // A time inside a sentence: "today at 7:29 PM", "on 3 Oct at 7:29 PM".
+  function whenSaid(iso){
+    var d = new Date(iso);
+    if (isNaN(d)) return '';
+    var t = dtf([], { hour:'numeric', minute:'2-digit' }).format(d);
+    return d.toDateString() === new Date().toDateString() ? 'today at ' + t : 'on ' + dtf([], { day:'numeric', month:'short' }).format(d) + ' at ' + t;
+  }
   function evLine(e){
     var who = e.member_name || 'Someone';
     if (e.type === 'checkin') return { cls:'good', text: who + ' checked in - all is well ✅' };
@@ -3560,7 +3613,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var lc = (data.calls || [])[0];
     $('livecall').hidden = !lc;
     if (lc) {
-      $('lc-txt').textContent = (lc.label || '📞 Family call') + ' on now - started by ' + (lc.by_name || 'family') + ' at ' + fmtTime(lc.started_at);
+      $('lc-txt').textContent = (lc.label || '📞 Family call') + ' on now - started by ' + (lc.by_name || 'family') + ' ' + whenSaid(lc.started_at);
       $('lc-join').href = lc.room;
       $('livecall').dataset.cid = lc.id;
     }
@@ -3595,13 +3648,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var hasTree = data.kind !== 'group' && data.members.some(function(m){ return m.gen; });
     data.members.forEach(function(m){
       if (hasTree && m.gen && m.id !== state.memberId) return;
-      if (hasTree && m.gen) { if (m.phone) $('p-phone').textContent = m.phone; $('p-city').textContent = placeLine(m) || '-'; $('p-role').textContent = m.relation ? m.relation.charAt(0).toUpperCase() + m.relation.slice(1) : 'Family'; return; }
+      if (hasTree && m.gen) { if (m.phone) $('p-phone').textContent = fmtPhone(m.phone); $('p-city').textContent = placeLine(m) || '-'; $('p-role').textContent = m.relation ? m.relation.charAt(0).toUpperCase() + m.relation.slice(1) : 'Family'; return; }
       mh += '<span class="member" data-mprof="' + m.id + '" role="button" tabindex="0">' + esc(m.name) + ' <em>· ' + esc(relLabel(m).toLowerCase()) + '</em>' +
-            (m.phone ? ' <a class="callbtn" href="tel:' + encodeURIComponent(m.phone) + '" aria-label="Call ' + esc(m.name) + '">📞</a>' : '') + '</span>';
+            // No call button on your own row: it would ring yourself.
+            (m.phone && m.id !== state.memberId ? ' <a class="callbtn" href="tel:' + encodeURIComponent(m.phone) + '" aria-label="Call ' + esc(m.name) + '">📞</a>' : '') + '</span>';
       // My own member row is the source of truth for the number and place
       // shown on my profile - covers accounts created before phone sign-in.
       if (m.id === state.memberId) {
-        if (m.phone) $('p-phone').textContent = m.phone;
+        if (m.phone) $('p-phone').textContent = fmtPhone(m.phone);
         $('p-city').textContent = placeLine(m) || '-';
         $('p-role').textContent = m.relation ? m.relation.charAt(0).toUpperCase() + m.relation.slice(1) : 'Family';
       }
@@ -3626,10 +3680,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('feed').innerHTML = fh;
 
     // hero status: who checked in today, at a glance
-    var today = new Date().toDateString(), ins = [], sos = false;
+    // An SOS is "now" only while it is open: the same rows that drive the
+    // red bar. One that was closed this morning used to keep saying "call
+    // them now" until midnight.
+    var today = new Date().toDateString(), ins = [], sos = !!so, sosToday = null, closedAt = null;
     data.events.forEach(function(e){
       if (new Date(e.created_at).toDateString() !== today) return;
-      if (e.type === 'sos') sos = true;
+      if (e.type === 'sos' && !sosToday) sosToday = e;
+      if (e.type === 'care' && /SOS is closed|SOS as sorted/.test(e.text || '') && !closedAt) closedAt = e.created_at;
       if (e.type === 'checkin' && e.member_name && ins.indexOf(e.member_name) < 0) ins.push(e.member_name);
     });
     // One line, from the five things: an SOS first, then who said all is
@@ -3642,7 +3700,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var hasTodo = !!(todo && todo !== 'Nothing to do' && todo !== 'Loading…' && !/^(Could not load|Offline|Not available offline)$/.test(todo));
     if (hasTodo) bits.push('To do: ' + todo);
     var hs = $('hero-status');
-    hs.textContent = sos ? '🆘 SOS today - call them now'
+    if (!sos && sosToday && closedAt) {
+      var who = sosToday.member_id === state.memberId ? 'You are' : (sosToday.member_name || 'They') + ' is';
+      bits.unshift('✅ ' + who + ' safe. SOS closed at ' + dtf([], { hour:'numeric', minute:'2-digit' }).format(new Date(closedAt)) + '.');
+    }
+    hs.textContent = sos ? (so.member_id === state.memberId ? '🆘 Your SOS is out. The family has been told.' : '🆘 ' + (so.name || 'Someone') + ' needs help - call them now')
       : bits.length ? bits.join(' · ') : '🧡 All quiet. Everything the family keeps is a tap away.';
     var go = sos ? 'notifs' : hasTodo ? 'care' : '';
     hs.classList.toggle('tappable', !!go);
@@ -3651,6 +3713,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
     notifsCache = data.events;
     renderNotifs();
+    pillFromFeed(data.events);
   }
 
   function heroGo(){
@@ -3671,7 +3734,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var t = (e.text || '');
     if (/reminder/i.test(t)) return '🔔';
     if (/asked the (circle|family|group)|is on it|finished/i.test(t)) return '🤝';
-    if (/Snakes|Antakshari|Song.Chain|Charades|Tic-Tac|Monopoly|Business|game/i.test(t)) return '🎲';
+    if (/Snakes|Antakshari|Song.Chain|Charades|Tic-Tac|Vyapar|Monopoly|Business|game/i.test(t)) return '🎲';
     if (/planned|cancelled|is in for/i.test(t)) return '🗓';
     if (/board/i.test(t)) return '🎨';
     return '🧡';
@@ -3679,12 +3742,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function notifDest(e){
     var t = (e.text || '');
     if (e.type === 'sos' || e.type === 'checkin' || e.type === 'pill') return { tab: 'home', label: 'Open Today' };
+    // The request card is on the Family screen; Today has none.
+    if (/has asked to join/i.test(t)) return { tab: 'people', label: 'Let them in', scroll: 'joinreq-card' };
     if (/vault|document/i.test(t)) return { tab: 'vault', sec: 'docs', label: 'Open the Vault' };
     if (/family memory|medicine/i.test(t)) return { tab: 'memory', label: 'Open Health & contacts' };
     if (/family tree/i.test(t)) return { tab: 'people', label: 'See the family tree' };
     if (/reminder|task|to do/i.test(t)) return { tab: 'care', sec: 'rem', label: 'Open To do' };
     if (/asked the (circle|family|group)|is on it|finished/i.test(t)) return { tab: 'care', sec: 'req', label: 'Open Suggested' };
-    if (/Snakes|Antakshari|Song.Chain|Charades|Tic-Tac|Monopoly|Business|game/i.test(t)) return { tab: 'fun', sec: 'games', label: 'Open Games' };
+    if (/Snakes|Antakshari|Song.Chain|Charades|Tic-Tac|Vyapar|Monopoly|Business|game/i.test(t)) return { tab: 'fun', sec: 'games', label: 'Open Games' };
     if (/planned|cancelled|is in for/i.test(t)) return { tab: 'fun', sec: 'plans', label: 'Open Plans' };
     if (/board/i.test(t)) return { tab: 'fun', sec: 'board', label: 'Open the Board' };
     if (e.type === 'join') return { tab: 'people', label: 'See the family' };
@@ -3729,13 +3794,17 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var e = notifsCache[i]; if (!e) return;
     curNotif = e;
     var l = evLine(e);
-    $('nd-title').textContent = notifIcon(e) + ' ' + (e.member_name || 'Family update');
+    $('nd-title').textContent = notifIcon(e) + ' ' + (/has asked to join/i.test(e.text || '') ? 'Someone is waiting to join'
+      : e.member_name || 'Family update');
     $('nd-time').textContent = fmtTime(e.created_at);
     $('nd-body').textContent = l.text;
     $('nd-meta').textContent = e.member_name ? 'From ' + e.member_name : '';
     var d = notifDest(e);
     $('nd-go').textContent = d.label + ' →';
-    $('nd-go').onclick = function(){ switchTab(d.tab); if (d.sec) setSec(d.tab, d.sec); };
+    $('nd-go').onclick = function(){
+      switchTab(d.tab); if (d.sec) setSec(d.tab, d.sec);
+      if (d.scroll) setTimeout(function(){ var el = $(d.scroll); if (el && !el.hidden) el.scrollIntoView({ block: 'start' }); }, 150);
+    };
     $('nlist-view').hidden = true;
     $('ndetail').hidden = false;
   }
@@ -3913,6 +3982,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // leaving it empty and every save refused with "Say whose document this
     // is". The family list is filled in again the moment it exists.
     vRefillMembers();
+    // The offline emergency card is saved as soon as there is a family to
+    // put on it, not only when the book happens to arrive afterwards.
+    ecSave();
     var sel = $('r-for'), cur = sel.value, h = '<option value="any">Anyone in the family</option><option value="">Myself</option>';
     var dm = $('dm-pick'), dh = '<option value="">Personal chat with…</option>';
     var gm = '';
@@ -3924,6 +3996,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       }
     });
     sel.innerHTML = h; if (cur) sel.value = cur;
+    // The hint says who a task goes to, so it can only be right once the
+    // list of who it can go to exists.
+    try { todoHint(); } catch (e) {}
     var ab = $('r-about'), abCur = ab.value, ah = '<option value="">The whole family</option>';
     members.forEach(function(m){ ah += '<option value="' + m.id + '">' + (m.id === state.memberId ? 'Me' : esc(m.name)) + '</option>'; });
     ab.innerHTML = ah; if (abCur) ab.value = abCur;
@@ -4123,7 +4198,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
           '<div>' +
             '<h4 style="margin:0">' + icon + ' ' + esc(b.biller_name) + '</h4>' +
-            '<small style="color:var(--ink-sub)">' + esc(b.consumer_number ? ('A/C: ' + b.consumer_number) : b.bill_category) + (due ? (' · ' + due) : '') + '</small>' +
+            '<small style="color:var(--ink-soft)">' + esc(b.consumer_number ? ('A/C: ' + b.consumer_number) : b.bill_category) + (due ? (' · ' + due) : '') + '</small>' +
           '</div>' +
           '<div style="text-align:right">' +
             '<b style="font-size:var(--fs-18)">' + esc(moneyFmt(Math.round(Number(b.amount_due) || 0), b.currency === undefined ? 'INR' : b.currency)) + '</b><br>' +
@@ -4190,47 +4265,69 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   var refillAlertData = null;
   function loadRefillInventory(){
     if (!state) return;
+    var who = $('rf-who'), cur = who.value;
+    who.innerHTML = (membersCache || []).map(function(m){
+      return '<option value="' + esc(m.id) + '">' + (m.id === state.memberId ? 'Me' : esc(m.name)) + '</option>';
+    }).join('');
+    if (cur) who.value = cur;
     apiGet(API.refill + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){
         if (!j.ok) return;
-        var items = j.items || [];
-        var low = items.filter(function(it){ return it.stockout_warning; });
+        // The server sends the stock as inventory, each with warning_due and
+        // days_left worked out on its side.
+        var items = j.inventory || [];
+        $('refill-list').innerHTML = items.map(function(it){
+          var d = Math.max(0, Math.round(+it.days_left || 0));
+          return '<div class="ev' + (it.warning_due ? ' inaus' : '') + '"><b>' + esc(it.medicine_name) + '</b>' +
+            '<small>' + esc(it.person_name || 'Family') + ' · ' + esc(it.units_remaining) + ' left · about ' + d + ' day' + (d === 1 ? '' : 's') + '</small></div>';
+        }).join('');
+        var low = items.filter(function(it){ return it.warning_due; });
         if (!low.length) {
           $('refill-alerts').hidden = true;
+          refillAlertData = null;
           return;
         }
         var first = low[0];
         refillAlertData = first;
         $('refill-alerts').hidden = false;
-        var daysLeft = Math.max(0, Math.round(first.days_remaining));
-        $('refill-alert-text').textContent = (first.person_name || 'Family member') + ' has ' + daysLeft + ' day' + (daysLeft === 1 ? '' : 's') + ' of ' + first.medicine_name + ' remaining.';
-        var orderText = 'Hello, please send a refill of ' + first.medicine_name + ' (30 tablets) for ' + (first.person_name || 'our family') + '. Parwah Refill Order.';
-        var waUrl = first.preferred_pharmacy_phone
-          ? ('https://wa.me/' + encodeURIComponent(first.preferred_pharmacy_phone.replace(/[^0-9]/g, '')) + '?text=' + encodeURIComponent(orderText))
-          : ('https://wa.me/?text=' + encodeURIComponent(orderText));
+        var daysLeft = Math.max(0, Math.round(+first.days_left || 0));
+        $('refill-alert-text').textContent = (first.person_name || 'Someone') + ' has ' + daysLeft + ' day' + (daysLeft === 1 ? '' : 's') + ' of ' + first.medicine_name + ' left.';
+        var orderText = 'Hello, please send a refill of ' + first.medicine_name + ' (30 tablets) for ' + (first.person_name || 'our family') + '.';
+        var waUrl = first.order_url || ((first.chemist_phone || first.preferred_pharmacy_phone)
+          ? ('https://wa.me/' + encodeURIComponent(String(first.chemist_phone || first.preferred_pharmacy_phone).replace(/[^0-9]/g, '')) + '?text=' + encodeURIComponent(orderText))
+          : ('https://wa.me/?text=' + encodeURIComponent(orderText)));
         $('btn-refill-reorder').href = waUrl;
       })
       .catch(function(){});
   }
+  function refillPost(body, okMsg, after){
+    post(API.refill, Object.assign({}, body, { code: state.code, memberId: state.memberId }))
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not do that'); return; }
+        toast(okMsg);
+        if (after) after(j);
+        loadRefillInventory();
+      })
+      .catch(function(){ toast('No connection - try again'); });
+  }
   $('btn-refill-done').addEventListener('click', function(){
     if (!refillAlertData) return;
-    post(API.refill, { code: state.code, memberId: state.memberId, action: 'refill', id: refillAlertData.id, units: 30 })
-      .then(function(j){
-        if (j.ok) {
-          toast('Refilled (+30 units) ✅');
-          loadRefillInventory();
-        }
-      });
+    refillPost({ action: 'refill_mark', inventoryId: refillAlertData.id, unitsAdded: 30 }, '30 more added ✅');
   });
   $('btn-refill-snooze').addEventListener('click', function(){
     if (!refillAlertData) return;
-    post(API.refill, { code: state.code, memberId: state.memberId, action: 'snooze', id: refillAlertData.id, days: 2 })
-      .then(function(j){
-        if (j.ok) {
-          toast('Snoozed 2 days');
-          $('refill-alerts').hidden = true;
-        }
-      });
+    refillPost({ action: 'refill_snooze', inventoryId: refillAlertData.id, days: 2 }, 'We will remind you in 2 days',
+      function(){ $('refill-alerts').hidden = true; });
+  });
+  $('rf-add').addEventListener('click', function(){
+    var name = $('rf-name').value.trim(), left = $('rf-left').value, rate = $('rf-rate').value;
+    if (!name) { fieldErr('rf-name', 'Which medicine?'); return; }
+    if (left === '' || +left < 0) { fieldErr('rf-left', 'How many tablets are left? 0 is fine.'); return; }
+    if (!(+rate > 0)) { fieldErr('rf-rate', 'How many tablets a day? For example 1, or 0.5 for half a tablet.'); return; }
+    refillPost({ action: 'refill_add', personId: $('rf-who').value || state.memberId, medicineName: name,
+                 totalUnits: Math.max(+left, 30), unitsRemaining: +left, dailyRate: +rate },
+      'Saved 💊 The family is told before it runs out',
+      function(){ $('rf-name').value = ''; $('rf-left').value = ''; $('rf-rate').value = ''; });
   });
 
   // ---------- Sibling Co-Care Task Filter ----------
@@ -4239,7 +4336,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var b = e.target.closest('button[data-tfilter]'); if (!b) return;
     taskFilter = b.getAttribute('data-tfilter');
     this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); });
-    if (window._lastCareData) renderReminders(window._lastCareData);
+    // renderReminders never existed: every filter tap threw. renderCare draws the list.
+    if (window._lastCareData) renderCare(window._lastCareData);
   });
 
   // ---------- Asset & Locker Locator ("When I'm Not Here") ----------
@@ -4252,84 +4350,73 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (!state) return;
     var aboutSel = $('loc-about');
     if (aboutSel && membersCache) {
+      var was = aboutSel.value;
       aboutSel.innerHTML = membersCache.map(function(m){
         return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>';
       }).join('');
+      if (was) aboutSel.value = was;
     }
     apiGet(API.locator + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){
-        if (!j.ok) { $('locator-feed').innerHTML = '<div class="ev">Could not load locator records.</div>'; return; }
-        locatorsCache = j.records || [];
+        if (!j.ok) { $('locator-feed').innerHTML = '<div class="ev">Could not load this. ' + esc(j.error || 'Try again in a moment.') + '</div>'; return; }
+        locatorsCache = j.locators || [];
         renderLocators();
       })
-      .catch(function(){ $('locator-feed').innerHTML = '<div class="ev">No connection.</div>'; });
+      .catch(function(){ $('locator-feed').innerHTML = '<div class="ev">No connection. Try again in a moment.</div>'; });
   }
+  var LOC_POLICY = { IMMEDIATE: 'Anyone in the family', EMERGENCY_ONLY: 'Only during an SOS', NOMINEES_ONLY: 'Only the people chosen' };
   function renderLocators(){
     if (!locatorsCache.length) {
-      $('locator-feed').innerHTML = '<div class="ev">No physical asset or locker locations recorded yet. Add physical locker keys, passbook shelves, or deeds below.</div>';
+      $('locator-feed').innerHTML = '<div class="ev">Nothing here yet. Add where the locker key, a passbook or the property papers are kept.</div>';
       return;
     }
+    // The server decides who may read the notes and says so in can_view.
+    // There is no unlock button: a button that asks again cannot change the
+    // answer, it only makes a hidden thing look one tap away.
     $('locator-feed').innerHTML = locatorsCache.map(function(loc){
       var icon = LOC_ICONS[loc.asset_category] || '🗝️';
-      var masked = loc.unlocked ? loc.physical_location_notes : '•••••••••••• (Unlock restricted)';
-      var policyLabel = loc.unlock_policy === 'EMERGENCY_ONLY' ? 'Emergency SOS unlock only'
-        : (loc.unlock_policy === 'MULTI_SIG_VERIFIED' ? 'Co-approval required' : 'Whole family');
+      var where = loc.can_view ? loc.physical_location_notes
+        : (loc.unlock_policy === 'EMERGENCY_ONLY' ? 'Shown to the family only during an SOS.' : 'Hidden. Only the people chosen can read this.');
+      var policyLabel = LOC_POLICY[loc.unlock_policy] || LOC_POLICY.IMMEDIATE;
       return '<div class="card" style="margin-bottom:var(--space-12)">' +
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-8);flex-wrap:wrap">' +
           '<div>' +
             '<h4 style="margin:0">' + icon + ' ' + esc(loc.institution_or_item) + '</h4>' +
-            '<small style="color:var(--ink-sub)">' + esc(loc.identifier_mask || loc.asset_category) + ' · For ' + esc(loc.person_name || 'family member') + '</small>' +
+            '<small style="color:var(--ink-soft)">' + esc(loc.identifier_mask || '') + (loc.identifier_mask ? ' · ' : '') + 'For ' + esc(loc.person_name || 'family member') + '</small>' +
           '</div>' +
-          '<span class="badge" style="background:var(--sand);color:var(--ink)">' + esc(policyLabel) + '</span>' +
+          '<span class="badge" style="background:var(--bone);color:var(--ink)">' + esc(policyLabel) + '</span>' +
         '</div>' +
-        '<div style="margin:var(--space-8) 0;padding:var(--space-8);background:var(--tint-warm);border-radius:var(--radius-8)">' +
-          '<small style="font-weight:600;color:var(--ink-sub)">PHYSICAL LOCATION</small>' +
-          '<p style="margin:var(--space-4) 0 0;font-size:var(--fs-14)">' + esc(masked) + '</p>' +
+        '<div style="margin:var(--space-8) 0 0;padding:var(--space-8);background:var(--tint-warm);border-radius:var(--radius-8)">' +
+          '<small style="font-weight:600;color:var(--ink-soft)">Where it is kept</small>' +
+          '<p style="margin:var(--space-4) 0 0;font-size:var(--fs-14);color:var(--ink)"' + (loc.can_view ? ' data-locnotes="1"' : '') + '>' + esc(where) + '</p>' +
         '</div>' +
-        (!loc.unlocked ? (
-          '<button type="button" class="cbtn ghost" data-unlockloc="' + esc(loc.id) + '" style="min-height:48px;width:100%">🔓 Unlock location notes</button>'
-        ) : '') +
       '</div>';
     }).join('');
   }
-  document.addEventListener('click', function(e){
-    var b = e.target.closest('button[data-unlockloc]');
-    if (!b) return;
-    var id = b.getAttribute('data-unlockloc');
-    post(API.locator, { code: state.code, memberId: state.memberId, action: 'unlock', id: id })
-      .then(function(j){
-        if (j.ok) {
-          toast('Unlocked 🔓');
-          locatorsCache.forEach(function(l){ if (l.id === id) { l.unlocked = true; l.physical_location_notes = j.notes; } });
-          renderLocators();
-        } else {
-          toast(j.error || 'Access restricted under policy');
-        }
-      });
-  });
   $('btn-add-locator').addEventListener('click', function(){
     var item = $('loc-item').value.trim();
-    if (!item) { toast('Please enter item or institution'); return; }
+    if (!item) { fieldErr('loc-item', 'Say what it is, or which bank or shelf.'); return; }
     var notes = $('loc-notes').value.trim();
-    if (!notes) { toast('Please enter where it is kept'); return; }
-    var body = {
-      code: state.code, memberId: state.memberId, action: 'create',
-      institution_or_item: item,
-      asset_category: $('loc-cat').value,
-      person_id: $('loc-about').value || state.memberId,
-      identifier_mask: $('loc-mask').value.trim(),
-      physical_location_notes: notes,
-      unlock_policy: $('loc-policy').value
-    };
-    post(API.locator, body).then(function(j){
+    if (!notes) { fieldErr('loc-notes', 'Say where it is kept.'); return; }
+    var btn = this; btn.disabled = true;
+    post(API.locator, {
+      code: state.code, memberId: state.memberId, action: 'locator_add',
+      personId: $('loc-about').value || state.memberId,
+      category: $('loc-cat').value,
+      institutionOrItem: item,
+      identifierMask: $('loc-mask').value.trim(),
+      physicalLocationNotes: notes,
+      unlockPolicy: $('loc-policy').value
+    }).then(function(j){
+      btn.disabled = false;
       if (j.ok) {
-        toast('Location notes saved 🗝️');
+        toast('Saved 🗝️ The family can find it now');
         $('loc-item').value = ''; $('loc-mask').value = ''; $('loc-notes').value = '';
         loadAssetLocators();
       } else {
-        toast(j.error || 'Could not save location');
+        toast(j.error || 'Could not save this');
       }
-    });
+    }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
   });
 
   // ---------- Biomarkers & SVG Trendlines ----------
@@ -4394,7 +4481,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   function loadBiomarkers(pId){
     if (!state || !pId) return;
-    apiGet(API.biomarkers + '&circle=' + encodeURIComponent(state.code) + '&person_id=' + encodeURIComponent(pId))
+    // The server checks who is asking (member) and filters on person.
+    apiGet(API.biomarkers + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + '&person=' + encodeURIComponent(pId))
       .then(function(j){
         if (!j.ok) return;
         biomarkersCache = j.records || [];
@@ -4409,36 +4497,53 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var banner = $('biomarker-confirm-banner');
     if (!banner) return;
     if (pendingExtractedBiomarkers && pendingExtractedBiomarkers.length) {
-      var summary = pendingExtractedBiomarkers.map(function(b){ return b.biomarker_type + ': ' + b.value + ' ' + b.unit; }).join(', ');
-      $('biomarker-confirm-text').textContent = 'Detected from report: ' + summary + '. Save to trends?';
+      var summary = pendingExtractedBiomarkers.map(function(b){ return ((BM_META[b.biomarker_type] || {}).label || b.biomarker_type) + ' ' + b.value + ' ' + b.unit; }).join(', ');
+      $('biomarker-confirm-text').textContent = 'Read from what you pasted: ' + summary + '. Check each number against the report, then save.';
       banner.hidden = false;
     } else {
       banner.hidden = true;
     }
   }
 
+  // One save for all the numbers, and a success message only when the
+  // server said yes. Promise.all over separate posts used to say "saved"
+  // even when every one of them was refused.
+  function bmSave(items, labName, testDate, done){
+    post(API.biomarkers, {
+      code: state.code, memberId: state.memberId, action: 'biomarker_save',
+      personId: personId || state.memberId, labName: labName || null, testDate: testDate || null,
+      items: items
+    }).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not save these numbers'); return; }
+      toast((items.length === 1 ? 'Saved' : items.length + ' numbers saved') + ' 📊');
+      if (done) done();
+      loadBiomarkers(personId || state.memberId);
+    }).catch(function(){ toast('No connection - try again'); });
+  }
   $('btn-confirm-extracted').addEventListener('click', function(){
-    if (!pendingExtractedBiomarkers || !personId) return;
-    var proms = pendingExtractedBiomarkers.map(function(b){
-      return post(API.biomarkers, {
-        code: state.code, memberId: state.memberId, action: 'create',
-        person_id: personId,
-        biomarker_type: b.biomarker_type,
-        value: b.value,
-        unit: b.unit,
-        reference_range_low: b.reference_range_low,
-        reference_range_high: b.reference_range_high,
-        test_date: b.test_date || new Date().toISOString(),
-        lab_name: b.lab_name || 'Lab Report',
-        verified_by_user: true
-      });
+    if (!pendingExtractedBiomarkers || !pendingExtractedBiomarkers.length) return;
+    var items = pendingExtractedBiomarkers.map(function(b){
+      return { biomarker_type: b.biomarker_type, value: b.value, unit: b.unit,
+               reference_range_low: b.reference_range_low, reference_range_high: b.reference_range_high };
     });
-    Promise.all(proms).then(function(){
-      toast('Metrics confirmed and saved to trends 📊');
-      pendingExtractedBiomarkers = null;
+    bmSave(items, pendingLab, $('bm-new-date').value || null, function(){
+      pendingExtractedBiomarkers = null; pendingLab = null; $('bm-paste').value = '';
       checkExtractedBanner();
-      loadBiomarkers(personId);
     });
+  });
+  var pendingLab = null;
+  $('btn-parse-biomarker').addEventListener('click', function(){
+    var t = $('bm-paste').value.trim();
+    if (!t) { fieldErr('bm-paste', 'Paste the lines with the numbers first.'); return; }
+    post(API.biomarkers, { code: state.code, memberId: state.memberId, action: 'biomarker_parse', reportText: t })
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not read that'); return; }
+        if (!j.biomarkers || !j.biomarkers.length) { fieldErr('bm-paste', 'No numbers Parwah knows were found. Type them in above instead.'); return; }
+        pendingExtractedBiomarkers = j.biomarkers; pendingLab = j.labName || null;
+        checkExtractedBanner();
+        try { $('biomarker-confirm-banner').scrollIntoView({ block: 'center' }); } catch (e) {}
+      })
+      .catch(function(){ toast('No connection - try again'); });
   });
 
   $('btn-dismiss-extracted').addEventListener('click', function(){
@@ -4467,7 +4572,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (!recs.length) {
       container.innerHTML = '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;max-width:360px;height:auto">' +
         '<rect x="' + padL + '" y="' + padT + '" width="' + plotW + '" height="' + plotH + '" fill="var(--tint-warm)" rx="6"/>' +
-        '<text x="' + (w / 2) + '" y="' + (h / 2) + '" text-anchor="middle" font-size="13" fill="var(--ink-sub)">No ' + esc(meta.label) + ' records yet. Record above.</text>' +
+        '<text x="' + (w / 2) + '" y="' + (h / 2) + '" text-anchor="middle" font-size="13" fill="var(--ink-soft)">No ' + esc(meta.label) + ' records yet. Record above.</text>' +
         '</svg>';
       return;
     }
@@ -4487,7 +4592,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
     var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;max-width:360px;height:auto">' +
       '<rect x="' + padL + '" y="' + refYTop + '" width="' + plotW + '" height="' + refH + '" fill="rgba(46,125,50,0.12)" stroke="rgba(46,125,50,0.3)" stroke-dasharray="3,3"/>' +
-      '<text x="' + (w - padR) + '" y="' + (refYTop - 3) + '" text-anchor="end" font-size="10" fill="rgba(46,125,50,0.85)">Normal range (' + lowRef + '-' + highRef + ' ' + meta.unit + ')</text>';
+      '<text x="' + (w - padR) + '" y="' + (refYTop - 3) + '" text-anchor="end" font-size="12" fill="var(--ok)">Normal range (' + lowRef + '-' + highRef + ' ' + meta.unit + ')</text>';
 
     if (recs.length > 1) {
       var d = recs.map(function(r, i){ return (i === 0 ? 'M' : 'L') + scaleX(i).toFixed(1) + ',' + scaleY(+r.value).toFixed(1); }).join(' ');
@@ -4498,8 +4603,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       var cx = scaleX(i), cy = scaleY(+r.value);
       var dt = String(r.test_date || '').slice(0, 10);
       svg += '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="5" fill="var(--marigold)" stroke="var(--surface)" stroke-width="2"/>';
-      svg += '<text x="' + cx.toFixed(1) + '" y="' + (cy - 8).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">' + r.value + '</text>';
-      svg += '<text x="' + cx.toFixed(1) + '" y="' + (h - 8) + '" text-anchor="middle" font-size="9" fill="var(--ink-sub)">' + dt.slice(5) + '</text>';
+      svg += '<text x="' + cx.toFixed(1) + '" y="' + (cy - 8).toFixed(1) + '" text-anchor="middle" font-size="12" font-weight="700" fill="var(--ink)">' + r.value + '</text>';
+      svg += '<text x="' + cx.toFixed(1) + '" y="' + (h - 8) + '" text-anchor="middle" font-size="12" fill="var(--ink-soft)">' + esc(dtf([], { day:'numeric', month:'short' }).format(new Date(dt + 'T00:00:00'))) + '</text>';
     });
 
     svg += '</svg>';
@@ -4541,28 +4646,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var meta = BM_META[type] || { unit: '', low: null, high: null };
     var si = BM_SI[type] && !$('bm-unit-wrap').hidden && $('bm-new-unit').value === 'si' ? BM_SI[type] : null;
     var toStored = function(x){ return si ? bmRound(si[1](+x)) : +x; };
-    var body = {
-      code: state.code, memberId: state.memberId, action: 'create',
-      person_id: personId || state.memberId,
+    var item = {
       biomarker_type: type,
       value: toStored(val),
       unit: meta.unit || '',
       reference_range_low: $('bm-new-low').value ? toStored($('bm-new-low').value) : meta.low,
-      reference_range_high: $('bm-new-high').value ? toStored($('bm-new-high').value) : meta.high,
-      test_date: $('bm-new-date').value ? new Date($('bm-new-date').value).toISOString() : new Date().toISOString(),
-      lab_name: $('bm-new-lab').value.trim() || 'Manual Entry',
-      verified_by_user: true
+      reference_range_high: $('bm-new-high').value ? toStored($('bm-new-high').value) : meta.high
     };
-    post(API.biomarkers, body).then(function(j){
-      if (j.ok) {
-        toast('Lab metric saved 📊');
-        $('biomarker-add-form').hidden = true;
-        $('bm-new-val').value = '';
-        loadBiomarkers(personId || state.memberId);
-      } else {
-        toast(j.error || 'Could not save metric');
-      }
-    });
+    bmSave([item], $('bm-new-lab').value.trim() || null,
+      $('bm-new-date').value ? new Date($('bm-new-date').value).toISOString() : null,
+      function(){ $('biomarker-add-form').hidden = true; $('bm-new-val').value = ''; });
   });
 
   // ---------- Voice Intent & Ekta Confirmation Loop ----------
@@ -4570,34 +4663,52 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (!transcript || !state) return;
     post(API.ekta, { code: state.code, memberId: state.memberId, action: 'voice_intent', transcript: transcript })
       .then(function(j){
-        if (j.ok && j.intent && j.intent.intent_type !== 'UNKNOWN' && j.intent.draft_confirmation) {
+        if (j.ok && j.intent && j.intent.intent && j.intent.intent !== 'UNKNOWN') {
           showVoiceDraftCard(j.intent, transcript);
         }
       })
       .catch(function(){});
   }
 
+  // The to-do a voice note becomes, in plain words, from what was parsed.
+  function voiceTitle(intent){
+    var d = (intent && intent.extracted_data) || {};
+    if (intent.intent === 'MEDICATION_CHANGE') return 'Check the medicine schedule: ' + (d.medicine_name || 'a medicine');
+    if (intent.intent === 'HEALTH_STATUS') {
+      if (d.type === 'BP') return 'Add blood pressure ' + d.systolic + '/' + d.diastolic + ' mmHg to the health records';
+      if (d.type === 'GLUCOSE') return 'Add blood sugar ' + d.value + ' mg/dL to the health records';
+    }
+    return String(d.note || d.context || '').slice(0, 200) || 'Voice note';
+  }
   function showVoiceDraftCard(intent, rawText){
     var card = document.createElement('div');
     card.className = 'em a alertbox';
-    card.style.border = '1px solid var(--border)';
+    card.style.border = '1px solid var(--bone-2)';
     card.style.borderRadius = 'var(--radius-12)';
-    card.style.background = 'var(--sand)';
+    card.style.background = 'var(--bone)';
     card.style.padding = 'var(--space-12)';
     card.style.marginTop = 'var(--space-8)';
-    card.innerHTML = '<p style="margin:0 0 var(--space-8);font-weight:700">Ekta understood:</p>' +
-      '<p style="margin:0 0 var(--space-12);font-size:var(--fs-14)">' + esc(intent.draft_confirmation) + '</p>' +
-      '<div style="display:flex;gap:var(--space-8)">' +
-        '<button type="button" class="cbtn" data-vconfirm style="min-height:var(--tap-min);font-size:var(--fs-12)">Confirm &amp; Apply</button>' +
-        '<button type="button" class="cbtn ghost" data-vdismiss style="min-height:var(--tap-min);font-size:var(--fs-12)">Dismiss</button>' +
+    // What Confirm does is add one to-do, so the card says exactly that, with
+    // the to-do's own words. It used to file the whole question ("I
+    // understood... Should I update...?") as the title, and say "Schedule
+    // updated" whatever the server answered.
+    var title = voiceTitle(intent);
+    card.innerHTML = '<p style="margin:0 0 var(--space-8);font-weight:700">Add this to the family to-do list?</p>' +
+      '<p style="margin:0 0 var(--space-12);font-size:var(--fs-14)">' + esc(title) + '</p>' +
+      '<div style="display:flex;gap:var(--space-8);flex-wrap:wrap">' +
+        '<button type="button" class="cbtn" data-vconfirm style="min-height:var(--tap-min);font-size:var(--fs-14)">Add it</button>' +
+        '<button type="button" class="cbtn ghost" data-vdismiss style="min-height:var(--tap-min);font-size:var(--fs-14)">Not now</button>' +
       '</div>';
     card.querySelector('[data-vconfirm]').addEventListener('click', function(){
-      card.remove();
-      post(API.care, { code: state.code, memberId: state.memberId, action: 'task_add', title: intent.draft_confirmation })
-        .then(function(){
-          ektaAppend('assistant', 'Confirmed: Schedule updated for the family ✅');
+      var btn = this; btn.disabled = true;
+      post(API.care, { code: state.code, memberId: state.memberId, action: 'task_create', title: title, tz: homeTz() })
+        .then(function(j){
+          if (!j.ok) { btn.disabled = false; toast(j.error || 'Could not add it'); return; }
+          card.remove();
+          ektaAppend('assistant', 'Added to the family to-do list: ' + title + ' ✅');
           refresh();
-        });
+        })
+        .catch(function(){ btn.disabled = false; toast('No connection - try again'); });
     });
     card.querySelector('[data-vdismiss]').addEventListener('click', function(){
       card.remove();
@@ -4608,59 +4719,82 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
 
   // ---------- DPDP Compliance & Transparency Drawer ----------
+  // What the audit trail records, said as a sentence about a person.
+  var AUD_SAY = {
+    view_biomarkers: 'looked at the lab numbers',
+    record_biomarkers: 'saved new lab numbers',
+    view_emergency_packet: 'opened the hospital papers',
+    view_asset_locators: 'looked at where things are kept',
+    add_asset_locator: 'added where something is kept'
+  };
+  var audFor = null, audEvents = [];
   function openAuditDrawer(pId){
     if (!state) return;
+    audFor = pId; audEvents = [];
     $('audit-drawer').hidden = false;
-    var m = membersCache ? membersCache.filter(function(x){ return x.id === pId; })[0] : null;
-    $('aud-title').textContent = m ? ('👁️ Who can see ' + m.name + '’s records') : '👁️ Who can see this?';
-    $('aud-members').innerHTML = (membersCache || []).map(function(x){
-      var isMe = x.id === state.memberId;
-      var roleName = x.role === 'parent' ? 'Parent (full agency)' : (x.role === 'organizer' ? 'Organizer (caregiver)' : 'Family member');
-      return '<div class="crow">' +
-        '<span class="txt"><b>' + esc(x.name) + (isMe ? ' (You)' : '') + '</b><small>' + esc(roleName) + '</small></span>' +
-        '<span class="badge" style="background:var(--tint-warm);color:var(--ink)">Access active</span>' +
-      '</div>';
-    }).join('');
-    apiGet(API.audit + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + (pId ? ('&person_id=' + encodeURIComponent(pId)) : ''))
-      .then(function(j){
-        if (!j.ok || !j.events || !j.events.length) {
-          $('aud-logs').innerHTML = '<div class="ev">Access logs active. Every view and export is audited.</div>';
-          return;
-        }
-        $('aud-logs').innerHTML = j.events.map(function(ev){
-          return '<div class="crow">' +
-            '<span class="txt"><b>' + esc(ev.event_type) + '</b><small>' + esc(fmtTime(ev.created_at)) + ' · ' + esc(ev.actor_name || 'Family member') + '</small></span>' +
-          '</div>';
-        }).join('');
-      })
-      .catch(function(){ $('aud-logs').innerHTML = '<div class="ev">Audit log protected.</div>'; });
+    var m = (membersCache || []).filter(function(x){ return x.id === pId; })[0];
+    var nm = m ? (m.id === state.memberId ? 'you' : m.name) : 'this person';
+    $('aud-title').textContent = m ? ('👁️ Who can see ' + (m.id === state.memberId ? 'your' : m.name + '’s') + ' records') : '👁️ Who can see this?';
+    // Built from the records this phone can see, not a list of everyone
+    // marked "access active": what is shared with the whole family, what is
+    // private and with whom, and how the vault decides.
+    var mine = (bookCache || []).filter(function(e){ return e.about_member === pId; });
+    var open = mine.filter(function(e){ return e.visibility !== 'private'; }).length;
+    var priv = mine.filter(function(e){ return e.visibility === 'private'; });
+    var h = '<div class="ev">' + (open
+      ? open + ' health detail' + (open === 1 ? '' : 's') + ', contact' + (open === 1 ? '' : 's') + ' or address' + (open === 1 ? ' is' : 'es are') + ' seen by everyone in the family.'
+      : 'Nothing about ' + esc(nm) + ' is shared with the whole family yet.') + '</div>';
+    priv.forEach(function(e){
+      var with_ = bookAccess.filter(function(a){ return a.entry_id === e.id; }).map(function(a){ return a.name; });
+      h += '<div class="ev"><b>' + esc(e.name) + '</b><small>Private' + (with_.length ? ': only ' + esc(with_.join(', ')) + ' and the person it is about' : ': only the person it is about') + '</small></div>';
+    });
+    h += '<div class="ev">Each paper in the vault opens only for the people let in. Open a paper to see who.</div>';
+    $('aud-members').innerHTML = h;
+    $('aud-logs').innerHTML = '<div class="ev">Loading…</div>';
+    // The trail is kept per kind of record; this person's lab numbers and
+    // hospital papers are the two kept against a person.
+    var base = API.audit + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + '&resourceId=' + encodeURIComponent(pId) + '&resource=';
+    Promise.all(['biomarker_records', 'insurance_preauth_packet'].map(function(r){
+      return apiGet(base + r).then(function(j){ return j.ok ? (j.events || []) : null; }, function(){ return null; });
+    })).then(function(lists){
+      if (audFor !== pId) return;
+      if (lists[0] === null && lists[1] === null) { $('aud-logs').innerHTML = '<div class="ev">Could not load this just now. Try again in a moment.</div>'; return; }
+      audEvents = [].concat(lists[0] || [], lists[1] || []).sort(function(a, b){ return new Date(b.timestamp) - new Date(a.timestamp); });
+      $('aud-logs').innerHTML = audEvents.length ? audEvents.map(function(ev){
+        var who = ev.actor_id === state.memberId ? 'You' : (ev.actor_name || 'Someone in the family');
+        return '<div class="ev">' + esc(who) + ' ' + esc(AUD_SAY[ev.action] || 'opened a record') + '<small>' + esc(fmtTime(ev.timestamp)) + '</small></div>';
+      }).join('') : '<div class="ev">Nobody has opened these yet.</div>';
+    });
   }
+  $('pp-audit').addEventListener('click', function(){ if (personId) openAuditDrawer(personId); });
 
   $('aud-x').addEventListener('click', function(){ $('audit-drawer').hidden = true; });
 
+  // A copy of what this screen and this person's page show, from what this
+  // phone has loaded. Named for what it is: not a full export of the family.
   $('aud-export').addEventListener('click', function(){
-    if (!state) return;
-    toast('Preparing family data export…');
-    var exportPayload = {
-      circle: state.circleName || state.code,
-      exported_at: new Date().toISOString(),
-      rights: 'Your records belong to your family. In India: Digital Personal Data Protection Act, 2023.',
-      data_storage: 'Parwah cloud database (Neon Postgres), encrypted at rest and in transit',
-      members: membersCache || [],
-      records: bookCache || [],
-      bills: billsCache || [],
-      biomarkers: biomarkersCache || [],
-      locators: locatorsCache || []
+    if (!state || !audFor) return;
+    var pId = audFor;
+    var m = (membersCache || []).filter(function(x){ return x.id === pId; })[0];
+    var payload = {
+      what: 'What the "Who can see this?" screen showed, for one person, from this phone',
+      person: m ? m.name : null,
+      family: state.circleName || state.code,
+      saved_at: new Date().toISOString(),
+      health_and_contacts: (bookCache || []).filter(function(e){ return e.about_member === pId; }),
+      lab_numbers: (biomarkersCache || []).filter(function(b){ return b.person_id === pId; }),
+      where_things_are_kept: (locatorsCache || []).filter(function(l){ return l.person_id === pId; }),
+      who_looked: audEvents
     };
-    var blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'parwah_family_export_' + (state.code || 'data') + '.json';
+    a.download = 'parwah-' + String((m && m.name) || 'person').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.json';
     document.body.appendChild(a);
     a.click();
     setTimeout(function(){ a.remove(); URL.revokeObjectURL(url); }, 500);
-    toast('Data export downloaded 📦');
+    toast('Saved to this phone 📦');
   });
 
   // ---------- family tasks ----------
@@ -4934,8 +5068,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var k = b.getAttribute('data-ts'), q = tsTask(); if (!q) return;
     if (k === 'tack') tsPost({ action:'task_ack' }, 'Thank you - the family knows you have it 🧡');
     if (k === 'done') { $('ts-done').hidden = false; $('ts-note').focus(); }
-    if (k === 'decline') { if (confirm('Hand this back so someone else can take it?')) tsPost({ action:'task_decline' }, 'Handed back - the family has been told'); }
-    if (k === 'archive') { if (confirm('Put this away? It leaves the list; its history is kept.')) { tsPost({ action:'task_archive' }, 'Put away'); tsClose(); } }
+    if (k === 'decline') askSheet('Hand this back?', 'Someone else in the family can take it. They are told.', 'Hand it back', 'Keep it')
+      .then(function(y){ if (y) tsPost({ action:'task_decline' }, 'Handed back - the family has been told'); });
+    if (k === 'archive') askSheet('Put this away?', 'It leaves the list. Its history is kept.', 'Put it away', 'Keep it')
+      .then(function(y){ if (y) { tsPost({ action:'task_archive' }, 'Put away'); tsClose(); } });
     if (k === 'reopen') tsPost({ action:'task_reopen' }, 'Reopened');
     if (k === 'nudge') tsPost({ action:'task_nudge' }, '🔔 Reminder sent' + (q.claimed_by ? ' to ' + (q.claimed_name || 'them') : ' to the family'));
     if (k === 'give') {
@@ -5158,6 +5294,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     post(API.auth, { action:'enter', phone: authUser.phone, refresh: true })
       .then(function(j){
         if (!j.ok || !j.exists || !Array.isArray(j.circles)) return;
+        takeResets(j);
         // A background refresh must never empty My Groups under someone who
         // is plainly sitting inside a circle right now - show stale over none.
         if (state && !j.circles.some(function(c){ return c.code === state.code; })) return;
@@ -5202,6 +5339,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           // Only a reply that says who this is may replace who this is.
           if (!j.ok || !j.exists || !j.user) return;
           authUser = j.user; saveAuth(authUser); saveGroups(j.circles || []);
+          takeResets(j);
           if (j.changeSecret) { askNewSecret(); return; }
           // First time this person has ever reached a circle: point at the
           // interface once, then never again on any device.
@@ -5210,7 +5348,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         .catch(function(){});
     }
     $('p-name').textContent = state.name;
-    $('p-phone').textContent = (authUser && authUser.phone) || '-';
+    $('p-phone').textContent = fmtPhone(authUser && authUser.phone) || '-';
     $('p-role').textContent = '-';
     $('p-senior').textContent = elderLine();
     try {
@@ -5250,6 +5388,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // askSheet(question, detail, yes, no, danger) -> Promise<boolean>
   var askDone = null;
   function askSheet(q, sub, yes, no, danger){
+    $('as-inwrap').hidden = true;
+    return askOpen(q, sub, yes, no, danger, false);
+  }
+  function askOpen(q, sub, yes, no, danger, typed){
     return new Promise(function(resolve){
       if (askDone) askDone(false);
       askDone = function(v){ askDone = null; $('asksheet').hidden = true; resolve(v); };
@@ -5257,7 +5399,18 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       $('as-yes').textContent = yes || 'Yes'; $('as-no').textContent = no || 'No, go back';
       $('as-yes').classList.toggle('danger', !!danger);
       $('asksheet').hidden = false;
-      try { $('as-no').focus(); } catch (e) {}
+      try { (typed ? $('as-in') : $('as-no')).focus(); } catch (e) {}
+    });
+  }
+  // askText(question, label, yes, no) -> Promise<string|null>: the same sheet
+  // with a box to type in, in place of the browser's own prompt(), which
+  // looks like a warning from the phone and not like Parwah.
+  function askText(q, label, yes, no){
+    $('as-in').value = ''; $('as-inlbl').textContent = label || ''; $('as-inwrap').hidden = false;
+    return askOpen(q, '', yes || 'Send', no || 'Not now', false, true).then(function(y){
+      var v = $('as-in').value.trim();
+      $('as-inwrap').hidden = true;
+      return y && v ? v : null;
     });
   }
   $('as-yes').addEventListener('click', function(){ if (askDone) askDone(true); });
@@ -5309,6 +5462,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     // The pitch belongs to the sign-in screen only; on every other step it
     // pushed the form a person came for below the fold.
     var pitch = which === 'auth';
+    $('onboard').classList.toggle('nopitch', !pitch);
     document.querySelector('#onboard .obpoints').hidden = !pitch;
     document.querySelector('#onboard > h1').hidden = !pitch;
     document.querySelector('#onboard > .lede').hidden = !pitch;
@@ -5698,30 +5852,86 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         secretMode = 'enter'; oldSecret = '';
         authUser = j.user; saveAuth(authUser);
         if (j.token) saveToken(j.token);
-        if (j.pinResets && j.pinResets.length) pendingResets = j.pinResets;
+        takeResets(j);
         routeAfterAuth(j.circles || [], j.toured);
       })
       .catch(function(){ btn.disabled = false; authErr('No connection - try again.'); });
   });
   var pendingResets = [];
+  // A FORGOTTEN PIN IS A DOOR SOMEONE IS WAITING AT. The sign-in reply has
+  // always carried the requests; nothing showed them, so the person who
+  // forgot stayed locked out. Shown on Today and in Notifications, where a
+  // family member will see it, with the two answers as buttons.
+  function takeResets(j){
+    if (!j || !Array.isArray(j.pinResets)) return;   // an older reply says nothing: keep what we have
+    pendingResets = j.pinResets;
+    renderResets();
+  }
+  function renderResets(){
+    var h = pendingResets.map(function(r){
+      return '<div class="card resetcard" data-resetcard="' + esc(r.id) + '">' +
+        '<h3>🔑 ' + esc(r.name) + ' cannot get in. Let them back in?</h3>' +
+        '<p class="hint" style="margin:0 0 var(--space-12)">They forgot their PIN and asked the family. Say yes only if you know it is really them: call them first if you are not sure. They then choose a new PIN.</p>' +
+        '<div class="prow2">' +
+          '<button type="button" class="cbtn" data-resetok="' + esc(r.id) + '">🧡 Let them in</button>' +
+          '<button type="button" class="cbtn ghost" data-resetno="' + esc(r.id) + '">Not now</button>' +
+        '</div></div>';
+    }).join('');
+    if ($('pinresets')) $('pinresets').innerHTML = h;
+    if ($('npinresets')) $('npinresets').innerHTML = h;
+  }
+  function resetDecide(id, yes, btn){
+    var r = pendingResets.filter(function(x){ return x.id === id; })[0];
+    var name = r ? r.name : 'They';
+    document.querySelectorAll('[data-resetcard="' + id + '"] button').forEach(function(b){ b.disabled = true; });
+    // This action reads the session token from the body, not the header.
+    post(API.auth, { action: yes ? 'reset_approve' : 'reset_deny', resetId: id, token: authToken() })
+      .then(function(j){
+        // Already decided by someone else counts as done: the card goes.
+        if (!j.ok && j._status !== 404) {
+          document.querySelectorAll('[data-resetcard="' + id + '"] button').forEach(function(b){ b.disabled = false; });
+          toast(j.error || 'Could not do that'); return;
+        }
+        pendingResets = pendingResets.filter(function(x){ return x.id !== id; });
+        renderResets();
+        toast(!j.ok ? (j.error || 'Already decided') : yes ? name + ' can choose a new PIN now 🧡' : 'Not now. ' + name + ' can ask again.');
+      })
+      .catch(function(){
+        document.querySelectorAll('[data-resetcard="' + id + '"] button').forEach(function(b){ b.disabled = false; });
+        toast('No connection - try again');
+      });
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-resetok],[data-resetno]'); if (!b) return;
+    var ok = b.hasAttribute('data-resetok'), id = b.getAttribute(ok ? 'data-resetok' : 'data-resetno');
+    var r = pendingResets.filter(function(x){ return x.id === id; })[0];
+    if (!ok) { resetDecide(id, false, b); return; }
+    askSheet('Let ' + (r ? r.name : 'them') + ' back in?', 'Anyone who knows their number could have asked. If you are not sure it is them, call them first.', 'Yes, let them in', 'Go back')
+      .then(function(y){ if (y) resetDecide(id, true, b); });
+  });
   // NO SMS TO FALL BACK ON, so the family is the way back in. Someone
   // already in your circle knows your face and your voice, which is a
   // better check than a text to a number that may be the thing you lost.
   $('au-forgot').addEventListener('click', function(){
     var phone = $('au-phone').value.trim(), cc = $('au-cc').value;
     if (phoneCheck(cc, phone)) { authErr('Type your number first, then tap this again.', 'au-phone'); return; }
-    if (!confirm('Ask your family to let you back in?\n\nSomeone already in your family will get a request to approve. Once they do, you can choose a new PIN.')) return;
+    askSheet('Ask your family to let you back in?', 'Someone already in your family gets a request. Once they say yes, you can choose a new PIN.', 'Ask my family', 'Not now')
+      .then(function(y){ if (y) askReset(phone, cc); });
+  });
+  function askReset(phone, cc){
     post(API.auth, { action: 'reset_request', phone: phone, cc: cc })
       .then(function(j){
-        if (!j.ok) { authErr(j.error || 'Could not ask just now.'); return; }
+        // A second try that fails must not leave the first one's "Asked"
+        // on screen, as if this one had worked too.
+        if (!j.ok) { $('au-pinnote').hidden = true; authErr(j.error || 'Could not ask just now.'); return; }
         $('ob-err').textContent = '';
         $('au-pinnote').hidden = false;
         $('au-pinnote').textContent = j.noFamily
-          ? 'You are not in a family yet, so there is nobody to approve this. Write to care@parwah.in and we will help.'
+          ? 'You are not in a family yet, so there is nobody to approve this. Write to anchit.tandon@gmail.com and we will help.'
           : 'Asked. When someone in your family approves it, come back here and you can choose a new PIN.';
       })
-      .catch(function(){ authErr('No connection - try again.'); });
-  });
+      .catch(function(){ $('au-pinnote').hidden = true; authErr('No connection - try again.'); });
+  }
   $('au-pin').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
   $('au-pin2').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
   $('au-phone').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
@@ -5796,36 +6006,43 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   $('c-go').addEventListener('click', function(){
     var name = $('c-name').value.trim();
-    if (newKind === 'family' && !newFamilyType) { $('ob-err').textContent = 'Choose joint family or nuclear family first.'; try { $('c-ftype').querySelector('button').focus(); } catch (e) {} return; }
-    if (!name) { $('ob-err').textContent = 'Please enter your name.'; return; }
-    if (nameCheck(name)) { fieldErr('c-name', nameCheck(name)); return; }
+    if (newKind === 'family' && !newFamilyType) { authErr('Choose joint family or nuclear family first.'); try { $('c-ftype').querySelector('button').focus(); } catch (e) {} return; }
+    if (!name) { authErr('Please enter your name.', 'c-name'); return; }
+    if (nameCheck(name)) { authErr(''); fieldErr('c-name', nameCheck(name)); return; }
     if ($('c-circle').value.trim() && nameCheck($('c-circle').value, newKind === 'group' ? 'group name' : 'family name')) {
-      fieldErr('c-circle', nameCheck($('c-circle').value, newKind === 'group' ? 'group name' : 'family name')); return;
+      authErr(''); fieldErr('c-circle', nameCheck($('c-circle').value, newKind === 'group' ? 'group name' : 'family name')); return;
     }
     this.disabled = true; $('ob-err').textContent = '';
     post(API.circle, { action:'create', kind:newKind, familyType: newKind === 'family' ? newFamilyType : null, memberName:name, circleName:$('c-circle').value.trim(), userId: authUser && authUser.id, role: $('c-senior').checked ? 'parent' : 'family', relation: cRole() })
       .then(function(j){
         $('c-go').disabled = false;
-        if (!j.ok) { $('ob-err').textContent = j.error || 'Could not create the family.'; return; }
+        if (!j.ok) { authErr(j.error || 'Could not create the family.'); return; }
         state = { code:j.code, circleName:j.circleName, memberId:j.memberId, name:name, role:j.role };
         saveState(state);
         upsertGroup({ code:j.code, circleName:j.circleName, kind:j.kind || newKind, memberId:j.memberId, role:j.role, memberName:name });
         enterMain();
         toast((newKind === 'group' ? 'Group' : 'Family') + ' created - share code ' + j.code + ' with ' + (newKind === 'group' ? 'the group' : 'your family'));
       })
-      .catch(function(){ $('c-go').disabled = false; $('ob-err').textContent = 'No connection - try again.'; });
+      .catch(function(){ $('c-go').disabled = false; authErr('No connection - try again.'); });
   });
 
   $('j-go').addEventListener('click', function(){
     var name = $('j-name').value.trim(), code = $('j-code').value.trim().toUpperCase();
-    if (!code || !name) { $('ob-err').textContent = 'Please enter the code and your name.'; return; }
-    if (!/^[A-Z0-9]{4,12}$/.test(code)) { fieldErr('j-code', 'A family code is letters and numbers only, like KJM4PW.'); return; }
-    if (nameCheck(name)) { fieldErr('j-name', nameCheck(name)); return; }
+    if (!code || !name) { authErr('Please enter the code and your name.', !code ? 'j-code' : 'j-name'); return; }
+    // Two different mistakes, two different answers. "AB" is too short, not
+    // made of the wrong things. An earlier answer from the server is cleared
+    // so the screen never shows two reasons at once.
+    var cerr = !/^[A-Z0-9]+$/.test(code) ? 'A family code is letters and numbers only, like KJM4PW.'
+             : code.length < 4 ? 'A family code has at least 4 letters or numbers, like KJM4PW. You typed ' + code.length + '.'
+             : code.length > 12 ? 'A family code has at most 12 letters or numbers. You typed ' + code.length + '.'
+             : null;
+    if (cerr) { authErr(''); fieldErr('j-code', cerr); return; }
+    if (nameCheck(name)) { authErr(''); fieldErr('j-name', nameCheck(name)); return; }
     this.disabled = true; $('ob-err').textContent = '';
     post(API.circle, { action:'join', memberName:name, code:code, userId: authUser && authUser.id, role: $('j-senior').checked ? 'parent' : 'family', relation: jRole() })
       .then(function(j){
         $('j-go').disabled = false;
-        if (!j.ok) { $('ob-err').textContent = j.error || 'Could not join.'; return; }
+        if (!j.ok) { authErr(j.error || 'Could not join.'); return; }
         if (j.pending) {
           // The code opened the door; the family still has to say come in.
           // Kept, with "waiting", so a reload comes back to this screen.
@@ -5842,7 +6059,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         enterMain();
         toast('Welcome to ' + j.circleName);
       })
-      .catch(function(){ $('j-go').disabled = false; $('ob-err').textContent = 'No connection - try again.'; });
+      .catch(function(){ $('j-go').disabled = false; authErr('No connection - try again.'); });
   });
 
   // A different code: this invite is set aside (the request stays with the
@@ -5928,14 +6145,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       return;
     }
     if ((id = b.getAttribute('data-jno'))) {
-      if (!confirm('Say no to this request?')) return;
-      joinAct({ action:'decline_join', requestId:id }, 'Request declined');
+      askSheet('Say no to this request?', 'They are not let in. They can ask again.', 'Say no', 'Go back', true)
+        .then(function(y){ if (y) joinAct({ action:'decline_join', requestId:id }, 'Request declined'); });
     }
   });
   $('jp-toggle').addEventListener('click', function(){
     var next = joinPolicy === 'open' ? 'approve' : 'open';
-    if (next === 'open' && !confirm('Anyone who has the code - or guesses it - will join with no questions asked. The family vault stays permissioned, but they will be inside the family. Are you sure?')) return;
-    joinAct({ action:'set_join_policy', policy: next }, next === 'open' ? 'The code is now enough' : 'Joining needs a yes from the family');
+    var go = function(){ joinAct({ action:'set_join_policy', policy: next }, next === 'open' ? 'The code is now enough' : 'Joining needs a yes from the family'); };
+    if (next !== 'open') { go(); return; }
+    askSheet('Let the code be enough?', 'Anyone who has the code, or guesses it, joins with no questions asked. The vault still asks before it shares, but they will be inside the family.', 'Yes, the code is enough', 'Keep asking', true)
+      .then(function(y){ if (y) go(); });
   });
 
 
@@ -6051,19 +6270,51 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   });
 
   // ---------- one readiness number for the whole family ----------
+  // A gap, said as a plain sentence: "Papa: no doctor recorded".
+  var GAP_MISSING = { doctor: 'no doctor recorded', meds: 'no medicine list', allergies: 'allergies not noted',
+    blood: 'no blood group', emergency: 'no emergency contact', insurance: 'no insurance details',
+    local: 'nobody near them to call' };
+  var GAP_OLD = { doctor: 'check the doctor again', meds: 'check the medicine list again', allergies: 'check the allergies again',
+    blood: 'check the blood group again', emergency: 'check the emergency contact again', insurance: 'check the insurance again',
+    local: 'check who is near them again' };
+  var lastReady = null;
   function renderReady(f){
-    if (!f || !f.total) { $('readycard').hidden = true; return; }
+    lastReady = f;
+    // A new family already has the "Getting Parwah useful" list. Two lists of
+    // things to do and a row of warnings in the first minute is too much, so
+    // this one waits until that one is done or put away.
+    if (!f || !f.total || !$('firstrun').hidden) { $('readycard').hidden = true; return; }
     $('readycard').hidden = false;
     $('rd-pct').textContent = f.pct;
     $('rd-fill').style.width = f.pct + '%';
-    $('rd-gaps').innerHTML = (f.gaps || []).slice(0, 4).map(function(g){
+    // The elders the family looks after come first: their gaps are the ones
+    // that matter in an emergency. Missing still comes before needs a check.
+    var elder = {};
+    (membersCache || []).forEach(function(m){ if (m.role === 'parent') elder[m.id] = 1; });
+    // The server sends only its first 12 gaps, often none of them a
+    // parent's, so the list is built from every person's own checklist
+    // (prep) when that is here.
+    var all = [];
+    (prepCache || []).forEach(function(pp){
+      Object.keys(pp.items || {}).forEach(function(k){
+        if (pp.items[k] !== 'ok') all.push({ memberId: pp.memberId, name: pp.name, key: k, label: k, state: pp.items[k] });
+      });
+    });
+    var gaps = (all.length ? all : (f.gaps || [])).slice().sort(function(a, b){
+      return ((elder[b.memberId] ? 1 : 0) - (elder[a.memberId] ? 1 : 0))
+          || ((a.state === 'missing' ? 0 : 1) - (b.state === 'missing' ? 0 : 1));
+    });
+    var shown = gaps.slice(0, 4);
+    $('rd-gaps').innerHTML = shown.map(function(g){
+      var line = g.state === 'missing' ? (GAP_MISSING[g.key] || 'no ' + g.label) : (GAP_OLD[g.key] || 'check the ' + g.label + ' again');
       return '<div class="rdgap">' + (g.state === 'missing' ? '⚠️' : '🟡') +
-             ' <span><b>' + esc(g.name) + '</b> - <em>' + esc(g.label) +
-             (g.state === 'missing' ? ' missing' : ' needs a re-check') + '</em></span></div>';
+             ' <span><b>' + esc(g.name) + ':</b> ' + esc(line) + '</span></div>';
     }).join('');
-    $('rd-cta').textContent = f.gapCount
-      ? 'Complete ' + Math.min(3, f.gapCount) + ' important item' + (Math.min(3, f.gapCount) === 1 ? '' : 's')
-        + (f.gapCount > 4 ? ' · ' + f.gapCount + ' in total' : '')
+    // The number asked for is the number listed above it.
+    var total = Math.max(f.gapCount || 0, gaps.length), rest = total - shown.length;
+    $('rd-cta').textContent = shown.length
+      ? (shown.length === 1 ? 'Fill in this one' : 'Fill in these ' + shown.length)
+        + (rest > 0 ? '. ' + rest + ' more after that.' : '.')
       : 'Everything important is recorded and current 🧡';
   }
   $('readycard').addEventListener('click', function(){ switchTab('people'); });
@@ -6082,7 +6333,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('sos-ack').addEventListener('click', function(){ sosPost('sos_ack'); });
   $('sos-done').addEventListener('click', function(){
     var mine = $('sosbar').dataset.mine === '1';
-    if (!confirm(mine ? 'Close your SOS? The family will be told you are safe, and your location is yours again.' : 'Mark this SOS as sorted? Everyone will be told.')) return;
+    askSheet(mine ? 'Close your SOS?' : 'Mark this SOS as sorted?',
+             mine ? 'The family is told you are safe, and your location is yours again.' : 'Everyone is told.',
+             mine ? 'I am safe' : 'Yes, it is sorted', 'Not yet')
+      .then(function(y){ if (y) sosDone(mine); });
+  });
+  function sosDone(mine){
     if (mine) {
       var sid = $('sosbar').dataset.sid;
       post(API.events, { code: state.code, memberId: state.memberId, type: 'sos_safe', sosId: sid })
@@ -6094,7 +6350,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       return;
     }
     sosPost('sos_resolve');
-  });
+  }
   // ---------- SOS: one tap, then everything at once ----------
   // The red button is on every screen. A tap starts a 5-second countdown
   // with a big Cancel (pockets press buttons), or Send now. Then, at once:
@@ -6432,7 +6688,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // The checklist is computed from what the family has actually done, never
   // from a "seen it" flag - so it is honest, and it leaves when it is done.
   function frDone(){ try { return localStorage.getItem('parwah-fr-hide') === '1'; } catch (e) { return false; } }
+  // The readiness card waits while this list shows, so each time this list
+  // is drawn or hidden, that card is told.
   function renderFirstRun(){
+    renderFirstRunList();
+    if (lastReady) renderReady(lastReady);
+  }
+  function renderFirstRunList(){
     if ($('frslot') && $('firstrun').parentNode !== $('frslot')) $('frslot').appendChild($('firstrun'));
     if (!state || frDone()) { $('firstrun').hidden = true; return; }
     var members = (membersCache || []).length;
@@ -6473,6 +6735,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('fr-hide').addEventListener('click', function(){
     try { localStorage.setItem('parwah-fr-hide', '1'); } catch (e) {}
     $('firstrun').hidden = true;
+    if (lastReady) renderReady(lastReady);
   });
 
   // Today reaches across every family this number belongs to, so a quiet
@@ -6613,7 +6876,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     return 'I have put our family on Parwah - ' + state.circleName + '.\n\n' +
       'Our papers, everyone\u2019s medicines and blood groups, who is doing what, and an emergency card for each of us - in one private place, only for us. WhatsApp stays for chatting.\n\n' +
       'They took care of us. Our turn now. 🧡\n\n' +
-      'Join in 1 minute - open the link, or use our family code ' + state.code + ':';
+      // Most families ask before letting someone in, so "join in 1 minute"
+      // was a promise the next screen broke. Say what will happen.
+      (joinPolicy === 'open'
+        ? 'Open the link, or use our family code ' + state.code + ', and you are in:'
+        : 'Ask to join, and someone in the family lets you in. Open the link, or use our family code ' + state.code + ':');
   }
   function inviteUrl(){
     return location.origin + '/?join=' + encodeURIComponent(state.code);
@@ -6645,14 +6912,33 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // Pressed today stays pressed today, with the time: a parent can see they
   // already did it.
   function pillKey(){ return 'parwah-pill:' + (state && state.memberId) + ':' + new Date().toDateString(); }
-  function pillShow(){
+  // Taken today: noted on this phone, or in the family feed from any phone.
+  // Kept only in this browser, it said "not yet" on a parent's second phone
+  // after they had already pressed it on the first.
+  var pillFeedAt = null;
+  function pillAt(){
     var at = null; try { at = localStorage.getItem(pillKey()); } catch (e) {}
+    return at ? +at : pillFeedAt;
+  }
+  function pillFromFeed(events){
+    pillFeedAt = null;
+    if (!state) return;
+    var today = new Date().toDateString();
+    (events || []).forEach(function(e){
+      if (pillFeedAt || e.type !== 'pill' || e.member_id !== state.memberId) return;
+      var d = new Date(e.created_at);
+      if (!isNaN(d) && d.toDateString() === today) pillFeedAt = d.getTime();
+    });
+    pillShow();
+  }
+  function pillShow(){
+    var at = pillAt();
     var b = $('btn-pill');
     b.classList.toggle('done', !!at);
     b.textContent = at ? 'Medicines taken ✔ · ' + new Date(+at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'Medicines taken ✔';
   }
   $('btn-pill').addEventListener('click', function(){
-    var at = null; try { at = localStorage.getItem(pillKey()); } catch (e) {}
+    var at = pillAt();
     if (at) { toast('Already noted today at ' + new Date(+at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })); return; }
     sendEvent('pill', '', function(){ try { localStorage.setItem(pillKey(), String(Date.now())); } catch (e) {} pillShow(); toast('Noted - the family can see it'); });
   });
@@ -6708,7 +6994,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // ---------- Family book: contacts, addresses, meds-map ----------
   // Shortcuts that open more than one section at once.
   var BK_GROUPS = { health: ['med', 'fact'], people: ['contact', 'address'] };
-  var bookCache = [], prepCache = [], bookAccess = [], bookConsent = [], bkFilter = 'all', bkAbout = '', bEditId = null, bKind = 'contact', bookStaleDays = 180;
+  var bookLoaded = false, bookCache = [], prepCache = [], bookAccess = [], bookConsent = [], bkFilter = 'all', bkAbout = '', bEditId = null, bKind = 'contact', bookStaleDays = 180;
   var BK_ICON = { contact: '☎️', address: '📍', med: '💊', fact: '🩸', insurance: '🛡' };
   var BK_LABEL = { contact: 'Contact', address: 'Address', med: 'Meds', fact: 'Health fact', insurance: 'Insurance' };
   var FRESH_KINDS = { med: 1, fact: 1, insurance: 1 };
@@ -6763,7 +7049,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function refreshBook(){
     if (!state) return;
     apiGet(API.book + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
-      .then(function(j){ if (j.ok) { bookCache = j.entries || []; prepCache = j.prep || []; bookAccess = j.access || []; bookConsent = j.consent || [];
+      .then(function(j){ if (j.ok) { bookLoaded = true; bookCache = j.entries || []; prepCache = j.prep || []; bookAccess = j.access || []; bookConsent = j.consent || [];
           recordsCache = j.records || []; renderReady(j.family);
           if (personId && curTab === 'person') openPerson(personId); bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); ecSave();
           var openId = $('book-detail').hidden ? null : $('book-detail').dataset.bid;
@@ -7007,13 +7293,15 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   });
   $('bd-remove').addEventListener('click', function(){
     var e = bookEntry($('book-detail').dataset.bid); if (!e) return;
-    if (!confirm('Remove "' + e.name + '" from the family book?')) return;
-    post(API.book, { code: state.code, memberId: state.memberId, action: 'remove', id: e.id })
-      .then(function(j){
-        if (!j.ok) { toast(j.error || 'Could not remove'); return; }
-        toast('Removed'); $('bd-back').click(); refreshBook();
-      })
-      .catch(function(){ toast('No connection - try again'); });
+    askSheet('Remove "' + e.name + '" from the family book?', 'Everyone in the family stops seeing it.', 'Remove', 'Keep it', true).then(function(y){
+      if (!y) return;
+      post(API.book, { code: state.code, memberId: state.memberId, action: 'remove', id: e.id })
+        .then(function(j){
+          if (!j.ok) { toast(j.error || 'Could not remove'); return; }
+          toast('Removed'); $('bd-back').click(); refreshBook();
+        })
+        .catch(function(){ toast('No connection - try again'); });
+    });
   });
 
   // ---------- Emergency card ----------
@@ -7022,10 +7310,18 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // it opens in a hospital corridor with no signal - the moment it matters
   // most is the moment the network is worst.
   function ecSave(){
+    // The family list arrives with the events, the book on its own. Saving
+    // before the family is known used to write an empty card over a good
+    // one, so a phone that went offline lost the very copy it kept for that.
+    if (!state || !membersCache || !membersCache.length) return;
     try {
+      // The same goes for the medicines and numbers: until the book has
+      // loaded, keep the ones already saved rather than an empty list.
+      var was = bookLoaded ? null : ecLoad();
+      var entries = bookLoaded ? bookCache : (was && was.circle === state.code ? was.entries || [] : []);
       localStorage.setItem('parwah-ecard', JSON.stringify({
         at: Date.now(), circle: state.code,
-        members: membersCache, entries: bookCache
+        members: membersCache, entries: entries
       }));
     } catch (e) {}
   }
@@ -7170,13 +7466,15 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('ecard').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });
   $('ec-copy').addEventListener('click', function(){
     var t = ecardText();
-    if (navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ toast('Copied - paste it anywhere 📋'); });
-    else toast('Copy is not available on this device');
+    // A phone can refuse the clipboard (no permission, an old browser): say
+    // so, rather than leave a button that did nothing.
+    if (navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ toast('Copied - paste it anywhere 📋'); }, function(){ toast('Could not copy. Long-press the text to copy it.'); });
+    else toast('Could not copy. Long-press the text to copy it.');
   });
   $('ec-share').addEventListener('click', function(){
     var t = ecardText();
     if (navigator.share) navigator.share({ title: $('ec-name').textContent + ' - emergency card', text: t }).catch(function(){});
-    else if (navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ toast('Copied - paste into WhatsApp 📋'); });
+    else if (navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ toast('Copied - paste into WhatsApp 📋'); }, function(){ toast('Could not copy. Long-press the text to copy it.'); });
     else toast('Sharing is not available on this device');
   });
   $('ec-print').addEventListener('click', function(){ window.print(); });
@@ -7217,10 +7515,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   });
   $('klist').addEventListener('click', function(e){
     var b = e.target.closest('[data-kclear]'); if (!b) return;
-    if (!confirm('Remove this key? Ekta will fall back to any other key that is set.')) return;
-    post(API.keys, { code: state.code, memberId: state.memberId, action: 'clear', provider: b.getAttribute('data-kclear') })
-      .then(function(j){ if (j.ok) { toast('Removed'); refreshKeys(); } else toast(j.error || 'Could not remove'); })
-      .catch(function(){ toast('No connection - try again'); });
+    askSheet('Remove this key?', 'Ekta uses any other key that is set.', 'Remove', 'Keep it', true).then(function(y){
+      if (!y) return;
+      post(API.keys, { code: state.code, memberId: state.memberId, action: 'clear', provider: b.getAttribute('data-kclear') })
+        .then(function(j){ if (j.ok) { toast('Removed'); refreshKeys(); } else toast(j.error || 'Could not remove'); })
+        .catch(function(){ toast('No connection - try again'); });
+    });
   });
 
   // ---------- device alerts (Web Push) ----------
@@ -7563,6 +7863,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     el.insertAdjacentHTML('beforeend', COUNTRIES.slice().sort(function(a, b){ return a[1].localeCompare(b[1]); })
       .map(function(c){ return '<option value="' + c[0] + '">' + flagOf(c[0]) + ' ' + c[1] + '</option>'; }).join(''));
   })();
+  // A number as people read it aloud: +91 98200 00001, not +919820000001.
+  function fmtPhone(v){
+    var sp = splitE164(v);
+    if (!sp) return String(v || '');
+    var l = sp.local;
+    if (sp.cc === '+91' && l.length === 10) l = l.slice(0, 5) + ' ' + l.slice(5);
+    return sp.cc + ' ' + l;
+  }
   function splitE164(v){
     var raw = String(v || '');
     if (raw.charAt(0) !== '+') return null;
@@ -7733,7 +8041,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       rec.lang = speechLang(); rec.interimResults = false; rec.maxAlternatives = 1;
       rec.onresult = function(e){
         var t = e.results && e.results[0] && e.results[0][0] ? e.results[0][0].transcript : '';
-        if (t) { $('msg').value = t; checkVoiceIntent(t); ektaSend(); }
+        if (t) { $('msg').value = t; checkVoiceIntent(t); ektaSend(true); }
       };
       rec.onend = function(){ listening = false; $('emic').classList.remove('rec'); };
       rec.onerror = function(){ listening = false; $('emic').classList.remove('rec'); };
@@ -7783,10 +8091,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('emsgs').appendChild(d);
     $('emsgs').scrollTop = $('emsgs').scrollHeight;
   }
-  function ektaSend(){
+  function ektaSend(intentDone){
     var v = $('msg').value.trim(); if (!v) return;
     $('msg').value = '';
-    if (/\b(goli|tablet|medicine|doctor|bp|badal|subah|shaam|dawa|hospital|appointment|report|creatinine|sugar|glucose)\b/i.test(v)) { checkVoiceIntent(v); }
+    // A voice message has been checked for a to-do already.
+    if (intentDone !== true && /\b(goli|tablet|medicine|doctor|bp|badal|subah|shaam|dawa|hospital|appointment|report|creatinine|sugar|glucose)\b/i.test(v)) { checkVoiceIntent(v); }
     ektaMsgs.push({ role:'user', content:v });
     ektaAppend('user', v);
     var wait = ektaAppend('assistant', 'Ekta soch rahi hai…', 'thinking');
@@ -7806,9 +8115,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           if (j.actions && j.actions.length) refresh();
           if (typeof j.coins === 'number') refreshCoins();
         } else if (j.needCoins) {
+          // Out of coins is its own answer: an older "no AI key" banner
+          // above it would say two different things are wrong.
+          ektaOffline(null);
           ektaAppend('assistant', j.error, 'thinking');
           refreshCoins();
         } else {
+          ektaOffline(null);
           ektaAppend('assistant', j.error || 'Kuch gadbad ho gayi - try again?', 'thinking');
         }
       })
@@ -7866,7 +8179,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   function startCall(){
     var link = ($('call-link').value || '').trim().slice(0, 300);
     if (link && !$('call-link').hidden && linkCheck(link)) { fieldErr('call-link', linkCheck(link)); return; }
-    var room = 'https://meet.jit.si/parwah-' + state.code.toLowerCase() + '-' + Math.random().toString(36).slice(2, 8);
+    // The room is on a public service with no password, so its name is the
+    // only lock. It used to carry the family's invite code and about 31 bits
+    // of Math.random: guessable, and it handed the code to a third party.
+    // Now it is 16 random bytes and nothing about the family.
+    var rb = new Uint8Array(16); crypto.getRandomValues(rb);
+    var room = 'https://meet.jit.si/parwah-' + Array.prototype.map.call(rb, function(x){ return ('0' + x.toString(16)).slice(-2); }).join('');
     if (callMode === 'audio') room += '#config.startAudioOnly=true&config.startWithVideoMuted=true';
     var head = callMode === 'music' ? '🎶 ' + state.name + ' started a MUSIC PARTY'
              : callMode === 'watch' ? '🎬 ' + state.name + ' started a MOVIE/OTT NIGHT'
@@ -7888,8 +8206,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     window.open(room, '_blank');
     toast((callMode === 'talk' ? 'Call room' : 'Party room') + ' opened - the invite is in the family chat 🧡');
   }
-  $('callnow').addEventListener('click', startCall);
-  $('callnow2').addEventListener('click', startCall);
+  // One tap used to ring the whole family at once, often by accident while
+  // scrolling. Ask first; the call itself is still one more tap.
+  function askCall(){
+    askSheet('Start a family video call?', 'Everyone in the family is told.', 'Start the call', 'Not now')
+      .then(function(y){ if (y) startCall(); });
+  }
+  $('callnow').addEventListener('click', askCall);
+  $('callnow2').addEventListener('click', askCall);
 
   // ---------- plans ----------
   $('p-kind').addEventListener('click', function(e){
@@ -8037,12 +8361,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   document.addEventListener('click', function(e){
     var b = e.target.closest('button'); if (!b || !state) return;
     if (b.dataset.rsvp) post(API.plans, { code: state.code, memberId: state.memberId, action: 'rsvp', planId: b.dataset.rsvp }).then(refreshFun).catch(function(){});
-    if (b.dataset.pcancel && confirm('Cancel this plan for everyone?')) post(API.plans, { code: state.code, memberId: state.memberId, action: 'cancel', planId: b.dataset.pcancel }).then(refreshFun).catch(function(){});
+    if (b.dataset.pcancel) {
+      var pid = b.dataset.pcancel;
+      askSheet('Cancel this plan for everyone?', 'Everyone who said they would come is told.', 'Cancel the plan', 'Keep it', true)
+        .then(function(y){ if (y) post(API.plans, { code: state.code, memberId: state.memberId, action: 'cancel', planId: pid }).then(refreshFun).catch(function(){}); });
+    }
   });
 
   // ---------- games: Snakes & Ladders ----------
   var GICON = { snakes: '🐍', ttt: '⭕', antakshari: '🎤', charades: '🎭', ludo: '🎯', bhabhi: '🃏', vyapar: '🏠' };
-  var GNAME = { snakes: 'Snakes & Ladders 🐍🪜', ttt: 'Tic-Tac-Toe ⭕✕', antakshari: 'Antakshari 🎤', charades: 'Dumb Charades 🎭', ludo: 'Ludo 🎯', bhabhi: 'Get Away 🃏', vyapar: 'Monopoly 🏠' };
+  var GNAME = { snakes: 'Snakes & Ladders 🐍🪜', ttt: 'Tic-Tac-Toe ⭕✕', antakshari: 'Antakshari 🎤', charades: 'Dumb Charades 🎭', ludo: 'Ludo 🎯', bhabhi: 'Get Away 🃏', vyapar: 'Vyapar 🏠' };
   var SN = { 99:41, 95:75, 92:88, 89:68, 74:53, 64:60, 62:19, 49:11, 46:25, 16:6 };
   var LD = { 2:38, 7:14, 8:31, 15:26, 21:42, 28:84, 36:44, 51:67, 71:91, 78:98, 87:94 };
   var TOKC = ['#E8A23D', '#24463C', '#A64B2A', '#2F7A4D', '#B3372B', '#4C4437'];
@@ -8607,11 +8935,17 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('ga-start').addEventListener('click', function(){ gamePost({ action: 'start_antakshari', mode: antMode }); });
   $('gc-start').addEventListener('click', function(){ gamePost({ action: 'start_charades', mode: chaMode }); });
   $('pt-join').addEventListener('click', function(){ gamePost({ action: 'join_game' }); });
-  $('pt-leave').addEventListener('click', function(){ if (confirm('Leave the game?')) gamePost({ action: 'leave_game' }, function(){ refreshFun(); }); });
+  $('pt-leave').addEventListener('click', function(){
+    askSheet('Leave the game?', '', 'Leave', 'Stay').then(function(y){ if (y) gamePost({ action: 'leave_game' }, function(){ refreshFun(); }); });
+  });
   $('pt-begin').addEventListener('click', function(){ gamePost({ action: 'begin' }); });
   document.addEventListener('click', function(e){
     var k = e.target.closest('button[data-gkick]');
-    if (k && curGame && confirm('Remove this player from the game?')) { gamePost({ action: 'kick', targetId: k.getAttribute('data-gkick') }); return; }
+    if (k && curGame) {
+      var tid = k.getAttribute('data-gkick');
+      askSheet('Remove this player from the game?', '', 'Remove', 'Keep them', true).then(function(y){ if (y) gamePost({ action: 'kick', targetId: tid }); });
+      return;
+    }
     var pr = e.target.closest('button[data-gpromote]');
     if (pr && curGame) gamePost({ action: 'promote', targetId: pr.getAttribute('data-gpromote') });
   });
@@ -8632,7 +8966,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('c-draw').addEventListener('click', function(){ gamePost({ action: 'draw' }); });
   $('c-guessed').addEventListener('click', function(){ gamePost({ action: 'guessed' }); });
   $('c-flop').addEventListener('click', function(){ gamePost({ action: 'flop' }); });
-  // ---------- Ludo, Get Away, Monopoly ----------
+  // ---------- Ludo, Get Away, Vyapar ----------
   document.addEventListener('click', function(e){
     var b = e.target.closest('[data-bstart],[data-bsolo]'); if (!b || !state) return;
     var kind = b.getAttribute('data-bstart') || b.getAttribute('data-bsolo');
@@ -8806,8 +9140,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   $('l-roll').addEventListener('click', function(){ boardPlay({ do: 'roll' }); });
 
   function endGame(){
-    if (!curGame || !confirm('End the game for everyone?')) return;
-    gamePost({ action: 'end', gameId: curGame.id }, function(){ showGameList(); refreshFun(); });
+    if (!curGame) return;
+    var g = curGame;
+    askSheet('End the game for everyone?', '', 'End the game', 'Keep playing', true).then(function(y){
+      if (y) gamePost({ action: 'end', gameId: g.id }, function(){ showGameList(); refreshFun(); });
+    });
   }
   $('pt-end').addEventListener('click', endGame);
   $('t-end').addEventListener('click', endGame);
@@ -8820,9 +9157,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       .catch(function(){ toast('No connection - try again'); });
   });
   $('g-quit').addEventListener('click', function(){
-    if (!curGame || !confirm('End the game for everyone?')) return;
-    post(API.games, { code: state.code, memberId: state.memberId, action: 'end', gameId: curGame.id })
-      .then(function(){ showGameList(); refreshFun(); }).catch(function(){});
+    if (!curGame) return;
+    var g = curGame;
+    askSheet('End the game for everyone?', '', 'End the game', 'Keep playing', true).then(function(y){
+      if (!y) return;
+      post(API.games, { code: state.code, memberId: state.memberId, action: 'end', gameId: g.id })
+        .then(function(){ showGameList(); refreshFun(); }).catch(function(){});
+    });
   });
   // ---------- @mentions + add members to a group ----------
   var curChatMembers = [];
@@ -8880,10 +9221,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   });
   $('lc-end').addEventListener('click', function(){
     var cid = $('livecall').dataset.cid; if (!cid) return;
-    if (!confirm('End this call for the whole family?')) return;
-    post(API.events, { code: state.code, memberId: state.memberId, type: 'call_end', callId: cid })
-      .then(function(j){ if (j.ok) { $('livecall').hidden = true; toast('Call ended'); refresh(); } else toast(j.error || 'Could not end'); })
-      .catch(function(){ toast('No connection - try again'); });
+    askSheet('End this call for the whole family?', '', 'End the call', 'Keep it going', true).then(function(y){
+      if (!y) return;
+      post(API.events, { code: state.code, memberId: state.memberId, type: 'call_end', callId: cid })
+        .then(function(j){ if (j.ok) { $('livecall').hidden = true; toast('Call ended'); refresh(); } else toast(j.error || 'Could not end'); })
+        .catch(function(){ toast('No connection - try again'); });
+    });
   });
   $('chatback').addEventListener('click', closeChat);
 
@@ -9113,18 +9456,21 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var b = e.target.closest('[data-unlink]'); if (!b) return;
     var who = $('tr-who').value, w = treeMembers.filter(function(m){ return m.id === who; })[0], k = b.getAttribute('data-unlink');
     if (!w) return;
-    var ask = k === 'person'
-      ? 'Remove ' + w.name + ' from the family?\n\nThey were added by name and are not on Parwah. Anyone they were linked to stays in the tree.'
-      : b.textContent.replace(/^Remove: /, 'Remove the link "') + '"?\n\nEveryone else, their children too, stays where they are. You can place them again.';
-    if (!confirm(ask)) return;
-    b.disabled = true;
-    var body = k === 'person' ? { action: 'remove_person', code: state.code, memberId: state.memberId, targetId: who }
-                              : { action: 'unplace', link: k, code: state.code, memberId: state.memberId, targetId: who };
-    post(API.circle, body).then(function(j){
-      b.disabled = false;
-      if (!j.ok) { $('tr-err').textContent = j.error || 'Could not change that'; $('tr-err').hidden = false; return; }
-      toast(k === 'person' ? 'Removed from the family' : 'Link removed'); refresh();
-    }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+    var q = k === 'person' ? 'Remove ' + w.name + ' from the family?'
+          : b.textContent.replace(/^Remove: /, 'Remove the link "') + '"?';
+    var sub = k === 'person' ? 'They were added by name and are not on Parwah. Anyone they were linked to stays in the tree.'
+          : 'Everyone else, their children too, stays where they are. You can place them again.';
+    askSheet(q, sub, 'Remove', 'Keep it', true).then(function(y){
+      if (!y) return;
+      b.disabled = true;
+      var body = k === 'person' ? { action: 'remove_person', code: state.code, memberId: state.memberId, targetId: who }
+                                : { action: 'unplace', link: k, code: state.code, memberId: state.memberId, targetId: who };
+      post(API.circle, body).then(function(j){
+        b.disabled = false;
+        if (!j.ok) { $('tr-err').textContent = j.error || 'Could not change that'; $('tr-err').hidden = false; return; }
+        toast(k === 'person' ? 'Removed from the family' : 'Link removed'); refresh();
+      }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+    });
   });
 
   // ---------- location sharing (consent first) ----------
@@ -9605,7 +9951,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('mp-name').textContent = m.name;
     // Only the family word: "senior mode" and "admin" labelled people.
     $('mp-role').textContent = relLabel(m) + (m.on_app === false ? ' · not on Parwah' : '');
-    $('mp-phone').textContent = m.phone || 'not shared';
+    $('mp-phone').textContent = m.phone ? fmtPhone(m.phone) : 'not shared';
     $('mp-since').textContent = m.created_at ? fmtDue(String(m.created_at).slice(0, 10)) : '-';
     $('mp-place').textContent = placeLine(m) || 'not shared';
     var gl = giftLines(m);
@@ -9748,44 +10094,57 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       var perr = phoneCheck($('e-cc').value, newPhone);
       if (perr) { fieldErr('e-phone', perr); return; }
     }
-    // Phone goes to the member row too, so the 📞 buttons the family sees update.
-    post(API.circle, { action: 'update_member', code: state.code, memberId: state.memberId, memberName: nm, role: role, relation: relation, phone: newPhone || undefined, phoneCc: $('e-cc').value, place: $('e-place').value.trim(), dob: $('e-dob').value || '', country: $('e-country').value || '',
-      giftInfo: { clothes: $('e-clothes').value.trim(), shoe: $('e-shoe').value.trim(), ring: $('e-ring').value.trim(), color: $('e-color').value.trim(), likes: $('e-likes').value.trim(), wishlist: $('e-wish').value.trim() } })
-      .then(function(j){
-        if (!j.ok) { toast(j.error || 'Could not save'); return; }
-        state.name = j.name; state.role = j.role; saveState(state);
-        applyBig();
-        $('seniorui').hidden = state.role !== 'parent';
-        $('p-senior').textContent = elderLine();
-        $('who').textContent = state.name + ' · ' + state.code; setInitials(state.name);
-        $('side-user').textContent = state.name + ' · ' + state.code;
-        $('d-user').textContent = state.name + ' · ' + state.code;
-        $('p-name').textContent = state.name;
-        $('p-role').textContent = j.relation ? j.relation.charAt(0).toUpperCase() + j.relation.slice(1) : 'Family';
-        if (j.phone) $('p-phone').textContent = j.phone;
-        $('p-city').textContent = placeLine({ place: j.place, country: j.country }) || '-';
-        var done = function(){ $('editform').hidden = true; toast('Profile updated 🧡'); refresh(); };
-        // THE COUNTRY CODE HAD TO GO WITH THE NUMBER. This posted the bare
-        // local digits, and the server defaults a bare number to +91, so a
-        // person signed in on a French or Emirati number had their sign-in
-        // number rewritten to an Indian one and was locked out of every
-        // circle. Worse, the guard compared local digits against a stored
-        // E.164 number, so they never matched and the rewrite fired even on
-        // a name-only edit.
-        var e164 = newPhone ? ($('e-cc').value + String(newPhone).replace(/\D/g, '')) : '';
-        var numberChanged = !!(e164 && authUser && e164 !== authUser.phone);
-        if (authUser && (nm !== authUser.name || numberChanged)) {
-          post(API.auth, { action: 'update', userId: authUser.id, name: nm,
-                           phone: numberChanged ? newPhone : undefined,
-                           cc: numberChanged ? $('e-cc').value : undefined })
-            .then(function(a){
-              if (a.ok) { authUser = a.user; saveAuth(authUser); $('p-phone').textContent = authUser.phone; done(); }
-              else toast(a.error || 'Could not update the number');
-            })
-            .catch(function(){ toast('No connection - try again'); });
-        } else done();
-      })
-      .catch(function(){ toast('No connection - try again'); });
+    // THE COUNTRY CODE HAD TO GO WITH THE NUMBER. This posted the bare
+    // local digits, and the server defaults a bare number to +91, so a
+    // person signed in on a French or Emirati number had their sign-in
+    // number rewritten to an Indian one and was locked out of every
+    // circle. Worse, the guard compared local digits against a stored
+    // E.164 number, so they never matched and the rewrite fired even on
+    // a name-only edit.
+    var e164 = newPhone ? ($('e-cc').value + String(newPhone).replace(/\D/g, '')) : '';
+    var numberChanged = !!(e164 && authUser && e164 !== authUser.phone);
+    // THE SIGN-IN NUMBER CHANGES FIRST. The family row used to change before
+    // the account did, so a number the account refused (one that belongs to
+    // somebody else) was already on the 📞 buttons the family taps.
+    function saveMember(){
+      // Phone goes to the member row too, so the 📞 buttons the family sees update.
+      post(API.circle, { action: 'update_member', code: state.code, memberId: state.memberId, memberName: nm, role: role, relation: relation, phone: newPhone || undefined, phoneCc: $('e-cc').value, place: $('e-place').value.trim(), dob: $('e-dob').value || '', country: $('e-country').value || '',
+        giftInfo: { clothes: $('e-clothes').value.trim(), shoe: $('e-shoe').value.trim(), ring: $('e-ring').value.trim(), color: $('e-color').value.trim(), likes: $('e-likes').value.trim(), wishlist: $('e-wish').value.trim() } })
+        .then(function(j){
+          if (!j.ok) { toast(j.error || 'Could not save'); return; }
+          state.name = j.name; state.role = j.role; saveState(state);
+          applyBig();
+          $('seniorui').hidden = state.role !== 'parent';
+          $('p-senior').textContent = elderLine();
+          $('who').textContent = state.name + ' · ' + state.code; setInitials(state.name);
+          $('side-user').textContent = state.name + ' · ' + state.code;
+          $('d-user').textContent = state.name + ' · ' + state.code;
+          $('p-name').textContent = state.name;
+          $('p-role').textContent = j.relation ? j.relation.charAt(0).toUpperCase() + j.relation.slice(1) : 'Family';
+          $('p-phone').textContent = fmtPhone((authUser && authUser.phone) || j.phone) || '-';
+          $('p-city').textContent = placeLine({ place: j.place, country: j.country }) || '-';
+          $('editform').hidden = true; toast('Profile updated 🧡'); refresh();
+        })
+        .catch(function(){ toast('No connection - try again'); });
+    }
+    if (authUser && (nm !== authUser.name || numberChanged)) {
+      post(API.auth, { action: 'update', userId: authUser.id, name: nm,
+                       phone: numberChanged ? newPhone : undefined,
+                       cc: numberChanged ? $('e-cc').value : undefined })
+        .then(function(a){
+          // Refused: the server says why, next to the number, and nothing
+          // else is saved, so the family never sees a number that is not yours.
+          if (!a.ok) {
+            var why = a.error || 'Could not update the number';
+            if (numberChanged) fieldErr('e-phone', why);
+            toast(why);
+            return;
+          }
+          authUser = a.user; saveAuth(authUser);
+          saveMember();
+        })
+        .catch(function(){ toast('No connection - try again'); });
+    } else saveMember();
   });
 
   // ---------- drawing board ----------
@@ -9914,7 +10273,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   });
 
   // ---------- the family vault: documents + payment permissions ----------
-  var vDocs = [], vGrants = [], vLog = [], vKinds = {}, vOpenId = null, vEditId = null, vLevel = 'full';
+  var vFamilyDocs = null, vDocs = [], vGrants = [], vLog = [], vKinds = {}, vOpenId = null, vEditId = null, vLevel = 'full';
   var vPay = [], vPerms = [], vPayLog = [], vPayKinds = {}, vPayEditId = null, vFileData = null;
 
   function vFillSelect(sel, obj, keep){
@@ -9933,9 +10292,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     vMembersInto($('vdd-share-who'), 'Choose a family member', true);
     if (!vEditId && !$('vd-about').value && state) $('vd-about').value = state.memberId;
   }
-  function vMembersInto(sel, firstLabel, appOnly){
+  function vMembersInto(sel, firstLabel, appOnly, leaveOut){
     var h = firstLabel ? '<option value="">' + esc(firstLabel) + '</option>' : '';
-    (membersCache || []).filter(function(m){ return !appOnly || onApp(m); }).forEach(function(m){
+    (membersCache || []).filter(function(m){ return (!appOnly || onApp(m)) && !(leaveOut && leaveOut.indexOf(m.id) >= 0); }).forEach(function(m){
       h += '<option value="' + m.id + '">' + esc(m.name) + (m.id === state.memberId ? ' (you)' : '') + '</option>';
     });
     var cur = sel.value; sel.innerHTML = h; if (cur) sel.value = cur;
@@ -9972,7 +10331,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var qs = '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId);
     apiGet(API.vault + qs).then(function(j){
       if (!j.ok) return;
-      vDocs = j.docs || []; vGrants = j.grants || []; vLog = j.log || []; vKinds = j.kinds || {}; vRequests = j.requests || [];
+      vDocs = j.docs || []; vFamilyDocs = typeof j.familyDocs === 'number' ? j.familyDocs : null; vGrants = j.grants || []; vLog = j.log || []; vKinds = j.kinds || {}; vRequests = j.requests || [];
       vShapes = j.idShapes || vShapes; vPanHolders = j.panHolders || vPanHolders;
       if (!$('vd-kind').options.length) { vFillSelect($('vd-kind'), vKinds); vApplyShape(); }
       vMembersInto($('vd-about'), '');
@@ -10037,6 +10396,19 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       return '<button type="button" class="chip" data-vaskk="' + k + '"' + (asked ? ' disabled' : '') + '>' + vKinds[k].icon + ' ' + esc(vKinds[k].label) + (asked ? ' · asked' : '') + '</button>';
     }).join('');
   }
+  // An empty list means different things to different people. To someone
+  // in a family whose papers are simply not shared with them, "add the
+  // family's first document" was wrong: the family has papers, they are
+  // just private. Only a family with nobody else in it hears that line.
+  // familyDocs (how many papers the family keeps, from the server) decides
+  // when it is sent; until then, more than one person in the family does.
+  function vEmptyLine(){
+    var others = (membersCache || []).filter(function(m){ return m.id !== state.memberId; }).length;
+    var familyHas = vFamilyDocs !== null ? vFamilyDocs > 0 : others > 0;
+    return familyHas
+      ? 'Nothing has been shared with you yet. Ask for a paper by choosing a person above.'
+      : 'Nothing in the vault yet. Add the family\'s first paper below 🔐';
+  }
   function renderDocs(){
     var who = $('vd-who').value;
     renderAsk(who);
@@ -10051,7 +10423,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
            k.icon + ' <b>' + esc(d.label) + '</b>' + vExpiry(d) +
            '<small>' + bits.join(' · ') + '</small></div>';
     });
-    $('vdlist').innerHTML = h || '<div class="ev">' + (who ? (who === state.memberId ? 'Nothing of yours is in the vault yet. Add your first paper below.' : 'Nothing of theirs is shared with you yet. Ask for what you need below.') : 'Nothing in the vault yet - add the family\'s first document below 🔐') + '</div>';
+    $('vdlist').innerHTML = h || '<div class="ev">' + (who ? (who === state.memberId ? 'Nothing of yours is in the vault yet. Add your first paper below.' : 'Nothing of theirs is shared with you yet. Ask for what you need below.') : vEmptyLine()) + '</div>';
   }
 
   function openDoc(id, keepScroll){
@@ -10218,12 +10590,6 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       $('vd-save').disabled = false;
       if (!j.ok) { toast(j.error || 'Could not save'); return; }
       toast(vEditId ? 'Updated 🔐' : 'Safe in the vault 🔐');
-      if (body.kind === 'health' || (body.label && /lab|blood|report|test|sugar|glucose|creatinine/i.test(body.label))) {
-        pendingExtractedBiomarkers = [
-          { biomarker_type: 'HBA1C', value: 6.8, unit: '%', reference_range_low: 4.0, reference_range_high: 5.6, lab_name: 'Lal PathLabs', test_date: new Date().toISOString() },
-          { biomarker_type: 'CREATININE', value: 1.1, unit: 'mg/dL', reference_range_low: 0.7, reference_range_high: 1.3, lab_name: 'Lal PathLabs', test_date: new Date().toISOString() }
-        ];
-      }
       vdReset(); refreshVault();
     }).catch(function(){ $('vd-save').disabled = false; toast('No connection - try again'); });
   });
@@ -10294,14 +10660,17 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     vAct({ action:'verify', id: vOpenId }, 'Marked as checked ✅');
   });
   $('vdd-flag').addEventListener('click', function(){
-    var note = prompt('What is wrong with it?');
-    if (note === null) return;
-    vAct({ action:'reject', id: vOpenId, note: note }, 'Flagged - the owner has been told');
+    var id = vOpenId;
+    askText('Something is wrong with this paper?', 'What is wrong with it? The owner is told.', 'Tell the owner', 'Not now').then(function(note){
+      if (note === null) return;
+      vAct({ action:'reject', id: id, note: note }, 'Flagged - the owner has been told');
+    });
   });
   $('vdd-remove').addEventListener('click', function(){
     var d = vDoc(vOpenId); if (!d) return;
-    if (!confirm('Remove ' + d.label + ' from the vault? The file is deleted for good.')) return;
-    vAct({ action:'remove', id: d.id }, 'Removed from the vault', function(){ closeDoc(); refreshVault(); });
+    askSheet('Remove ' + d.label + ' from the vault?', 'The file is deleted for good.', 'Delete it', 'Keep it', true).then(function(y){
+      if (y) vAct({ action:'remove', id: d.id }, 'Removed from the vault', function(){ closeDoc(); refreshVault(); });
+    });
   });
   $('vdd-share').addEventListener('click', function(){
     var who = $('vdd-share-who').value;
@@ -10354,7 +10723,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('vplist').innerHTML = h || '<div class="ev">No payment methods saved yet. Add your own below - you decide who else may use it.</div>';
     vPay.forEach(function(p){
       var sel = document.querySelector('[data-vpwho="' + p.id + '"]');
-      if (sel) vMembersInto(sel, 'Choose a family member', true);
+      // Asking yourself, or the owner, to use the owner's card makes no sense.
+      if (sel) vMembersInto(sel, 'Choose a family member', true, [state.memberId, p.owner_member]);
     });
     $('vp-log-card').hidden = !vPayLog.length;
     $('vplog').onclick = function(e){
@@ -10431,8 +10801,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }
     if ((id = b.getAttribute('data-vpdel'))) {
       var pm = vMeth(id); if (!pm) return;
-      if (!confirm('Remove ' + pm.label + '? Everyone you allowed loses it.')) return;
-      vPayAct({ action:'remove', id: id }, 'Removed'); return;
+      askSheet('Remove ' + pm.label + '?', 'Everyone you allowed loses it.', 'Remove', 'Keep it', true).then(function(y){
+        if (y) vPayAct({ action:'remove', id: id }, 'Removed');
+      });
+      return;
     }
     if ((id = b.getAttribute('data-vpallow'))) {
       var who = document.querySelector('[data-vpwho="' + id + '"]').value;
@@ -10920,6 +11292,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // guide, with the guide's own example family, so the product can be judged
   // before anything is asked of anyone. Deliberately narrow: no chat, games,
   // gifting or calls here - this screen answers one question only.
+  // Dates in the example family move with the calendar, so a demo opened in
+  // November never says something is "due 30 September".
+  function dDay(n){
+    var d = new Date(); d.setDate(d.getDate() + n);
+    return dtf([], { day:'numeric', month:'long' }).format(d);
+  }
   var DEMO = [
     { k: 'promise', title: 'When your family needs to know,<br>nobody should have to scramble.',
       body:
@@ -10938,7 +11316,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         dsec('📁 Records', ['Latest reports: 6', 'Insurance card: Saved', 'Medical summary: Available']) +
         dsec('📞 People to call', ['Dad', 'Mrs Khanna - neighbour', 'Veena - close friend']) +
         dsec('💡 Useful to know', ['Preferred hospital', 'Regular pharmacy']) +
-        dsec('🕒 Freshness', ['Last checked: 12 August', 'Medicines: Review due']) +
+        dsec('🕒 Freshness', ['Last checked: ' + dDay(-20), 'Medicines: Review due']) +
         '<p class="hint" style="margin-top:var(--space-12)">Records show that a document <b>exists</b> and whether it has been checked - never the document itself. That stays behind its owner’s permission.</p>' },
 
     { k: 'ready', title: 'Your family is 78% ready',
@@ -10957,7 +11335,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       body:
         '<div class="feed" style="margin-top:var(--space-12)">' +
         dqa('What medicines is Mum currently taking?',
-            'Mum has 4 medicines recorded. Last checked 12 August.', 'View list') +
+            'Mum has 4 medicines recorded. Last checked ' + dDay(-20) + '.', 'View list') +
         dqa('I’m taking Mum to a new doctor tomorrow. What do we have?',
             'I can bring together her recorded medicines, allergies, recent reports, doctor details and insurance card.', 'Prepare summary') +
         dqa('Who can I contact if I can’t reach Rohan in Bangalore?',
@@ -10969,7 +11347,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       body:
         '<div class="feed" style="margin-top:var(--space-12)">' +
         dtodo('Book Dad’s eye check-up', 'Rohan has it · by Friday') +
-        dtodo('Renew Mum’s health insurance', 'Nobody has it yet · due 30 September', true) +
+        dtodo('Renew Mum’s health insurance', 'Nobody has it yet · due ' + dDay(12), true) +
         dtodo('Collect Mum’s blood test report', 'Done by Anya · this morning') +
         '</div>' +
         '<p class="hint" style="margin-top:var(--space-12)">Everyone sees who has what, so nothing is forgotten and no one person carries it all.</p>' +
@@ -10977,10 +11355,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
     { k: 'plan', title: 'What it costs',
       body:
-        '<p class="hint" style="margin:var(--space-2) 0 var(--space-12)">One plan, for the whole family. Not per person.</p>' +
-        '<div class="ev"><b>Parwah Family Plan</b><small>The vault · Health &amp; contacts · To do · Family · The emergency card · Ekta</small></div>' +
-        '<p style="margin:var(--space-12) 0 var(--space-2);font-size:var(--fs-24);font-family:var(--disp);font-weight:600">₹2,499 <span style="font-size:var(--fs-16);font-weight:400;color:var(--ink-soft)">per family, per year</span></p>' +
-        '<p class="hint" style="margin:var(--space-2) 0 0">About $29.99 at ₹85 to the dollar. Nothing is charged here - Parwah is not taking payments yet.</p>' +
+        '<p style="margin:var(--space-12) 0 var(--space-2);font-size:var(--fs-24);font-family:var(--disp);font-weight:600;color:var(--ink)">Free <span style="font-size:var(--fs-16);font-weight:400;color:var(--ink-soft)">for families</span></p>' +
+        '<div class="ev"><b>Everything is in the free plan</b><small>The vault · Health &amp; contacts · To do · Family · The emergency card · Ekta</small></div>' +
+        '<p class="hint" style="margin:var(--space-12) 0 0">A Family Plan of ₹2,499 a year is coming, for families who want to support Parwah. One plan for the whole family, not per person. Nothing is charged here.</p>' +
         '<p class="hint" style="margin-top:var(--space-16)">Ready to start? Signing in takes your mobile number and a 4-number PIN you choose, so nobody who knows the number can open your family. Nothing is posted anywhere.</p>' }
   ];
 
@@ -11019,6 +11396,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('dm-next').textContent = demoAt === 0 ? 'View family'
       : (demoAt === DEMO.length - 1 ? 'Sign in and start' : 'Next');
     $('dm-back').hidden = demoAt === 0;
+    // On the last screen the main button already signs in: one way, not two.
+    $('dm-out').hidden = demoAt === DEMO.length - 1;
     window.scrollTo(0, 0);
   }
   $('dm-next').addEventListener('click', function(){
@@ -11463,7 +11842,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     showStep('auth');
     post(API.auth, { action: 'enter', phone: authUser.phone, refresh: true })
       .then(function(j){
-        if (j.ok && j.exists && j.user) { authUser = j.user; saveAuth(authUser); routeAfterAuth(j.circles || [], j.toured); }
+        if (j.ok && j.exists && j.user) { authUser = j.user; saveAuth(authUser); takeResets(j); routeAfterAuth(j.circles || [], j.toured); }
         else {
           // The session ran out: the number is kept, and the PIN is asked.
           var sp = splitE164(authUser && authUser.phone);

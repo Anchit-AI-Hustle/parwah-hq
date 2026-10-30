@@ -196,7 +196,9 @@ ok('Papa\'s screen says Rohan is on it', /Rohan is on it/.test(await P.textConte
 // ---- 9. Rohan marks it sorted: over, and the location is Papa's again
 await R.reload(); await R.waitForTimeout(1500);
 ok('Rohan has Sorted on the SOS bar', await vis(R, '#sos-done'));
-await R.click('#sos-done'); await R.waitForTimeout(1000);
+await R.click('#sos-done'); await R.waitForTimeout(200);
+// Asked in the app's own sheet now, not the browser's confirm().
+await R.click('#as-yes'); await R.waitForTimeout(1000);
 const s9 = await q1('select status, resolved_by from sos where id = $1', [sos.id]);
 ok('the SOS is sorted, by Rohan', s9.status === 'resolved' && s9.resolved_by === rohan.id);
 ok('and the hold on Papa\'s location is lifted', (await q1('select sos_lock from location_shares where member_id = $1', [papa.id])).sos_lock === null);
@@ -216,7 +218,8 @@ ok('and now he can stop sharing', stop2.status === 200 && stop2.sharing === fals
   ok('Papa sees his SOS bar, with I am safe', await vis(P, '#sosbar') && /I am safe/.test(await P.textContent('#sos-done')), await P.textContent('#sos-done').catch(() => ''));
   const lay = await P.evaluate(() => { const b = document.getElementById('sosbar').getBoundingClientRect(), h = document.querySelector('.bar').getBoundingClientRect(); return { barBottom: b.bottom, headTop: h.top }; });
   ok('the red bar sits above the header, never over it', lay.headTop >= lay.barBottom - 1, JSON.stringify(lay));
-  await P.click('#sos-done'); await P.waitForTimeout(1200);
+  await P.click('#sos-done'); await P.waitForTimeout(200);
+  await P.click('#as-yes'); await P.waitForTimeout(1200);
   const s10 = await q1('select status, resolved_by from sos where id = $1', [again.sosId]);
   ok('Papa closes his own SOS', s10.status === 'resolved' && s10.resolved_by === papa.id, JSON.stringify(s10));
   ok('the hold on his location is lifted', (await q1('select sos_lock from location_shares where member_id = $1', [papa.id])).sos_lock === null);

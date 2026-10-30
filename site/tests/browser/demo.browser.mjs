@@ -83,8 +83,9 @@ ok(/To do/.test(seen[4]) && /Nobody has it yet/.test(seen[4]) && /emergency card
    'screen 5 is To do (who has what) and the emergency card');
 ok(!/pulse|sunny|rainy/i.test(seen.join(' ')), 'the removed mood question is not sold anywhere in the demo');
 // the price, last
-ok(/2,499/.test(seen[5]) && /per family/.test(seen[5]), 'the price comes last, per family');
-ok(/29\.99/.test(seen[5]), 'and in dollars too');
+ok(/Free/.test(seen[5]) && /for families/.test(seen[5]), 'the price comes last: free for families');
+ok(/2,499 a year is coming/.test(seen[5]) && !/\$|dollar/.test(seen[5]), 'the Family Plan is coming, with no dollar sum');
+ok(!/30 September/.test(seen.join(' ')), 'no fixed date that goes stale');
 
 // ---- what the guide says must NOT be here ----
 const all=seen.join(' ').toLowerCase();
@@ -92,6 +93,7 @@ const all=seen.join(' ').toLowerCase();
   ok(all.indexOf(w)<0, 'the concept screens never mention '+w));
 
 // ---- the way back ----
+ok(await pg.locator('#dm-out').isHidden(), 'the last screen has one way to sign in, not two');
 await pg.click('#dm-next'); await pg.waitForTimeout(300);
 ok(await pg.locator('#auth-step').isVisible(), 'the last screen leads into signing in');
 await pg.click('#au-see'); await pg.waitForTimeout(200);

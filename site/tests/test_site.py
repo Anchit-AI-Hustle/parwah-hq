@@ -772,8 +772,13 @@ check("selftest: a read cursor belongs to one person",
       "betaStillUnread === 2" in _st)
 check("guide: one readiness number for the FAMILY, not six per-person bars",
       '"Your family is <span id="rd-pct">' in appsrc.replace("'", '"') or 'id="rd-pct"' in appsrc)
-check("guide: the number is backed by named gaps and a complete-N call to action",
-      "gapCount" in book and "rd-gaps" in appsrc and "Complete " in appsrc)
+# The count asked for is the count listed under it: "Complete 3 important
+# items" under four listed gaps did not add up.
+check("guide: the number is backed by named gaps and a fill-in-these-N call to action that matches what is listed",
+      "gapCount" in book and "rd-gaps" in appsrc and "'Fill in these ' + shown.length" in appsrc
+      and "Math.min(3, f.gapCount)" not in appsrc)
+check("guide: each gap is a plain sentence, the elders first, and the card waits while the first-run list shows",
+      "no doctor recorded" in appsrc and "elder[b.memberId]" in appsrc and "!$('firstrun').hidden" in appsrc)
 check("guide: someone near a person living away is a first-class contact",
       "'local'" in book and "someone near them to call" in book)
 check("guide: the pulse question still rotates daily on the server (the app no longer asks it on Today)",
@@ -1571,8 +1576,14 @@ check("guide demo: Ekta retrieves and never diagnoses",
       "Prepare summary" in _demo and "does not diagnose" in _demo)
 check("guide demo: things to do shows who has what (and what nobody has yet), with the offline emergency card",
       "Nobody has it yet" in _demo and "It works with no internet." in _demo)
-check("guide demo: the price comes last, per family, in both currencies",
-      "2,499" in _demo and "per family, per year" in _demo and "29.99" in _demo)
+# Honest about money: the free plan has everything, the paid plan is a way
+# to support Parwah that is not here yet, and no sum in a second currency
+# that did not add up ($29.99 at 85 to the dollar is not 2,499).
+check("guide demo: the price comes last and is honest: free for families, a Family Plan coming, no dollar maths",
+      "Free" in _demo and "for families" in _demo and "2,499 a year is coming" in _demo
+      and "29.99" not in _demo and "to the dollar" not in _demo)
+check("guide demo: dates move with the calendar, never a fixed month that goes stale",
+      "dDay(" in _demo and "30 September" not in _demo and "12 August" not in _demo)
 # "Do NOT show chat, games, gifting, calls or a feature menu here."
 _banned = [w for w in ("chat", "game", "gift", "video call", "Snakes", "Antakshari")
            if w.lower() in _demo.lower()]
@@ -2318,10 +2329,10 @@ check("signout: a returning family is told why, not dropped on a bare login",
 _devanagari = [l.strip()[:60] for l in _app_src.split("\n") if re.search("[\u0900-\u097F]", l)]
 check("words: no Devanagari anywhere in the app", not _devanagari, " | ".join(_devanagari[:3]))
 # The games go by the names families know them by (the owner's call):
-# Antakshari and Monopoly, explained in English on their cards.
+# Antakshari and Vyapar (the owner's call, 2026-10-30), explained in English on their cards.
 check("words: the games go by their proper names",
-      all(w not in _app_src for w in ("Saanp Seedhi", ">Bhabhi", "Vyapar 🏠", "Song Chain", "Business 🏠"))
-      and "Snakes &amp; Ladders" in _app_src and "<h3>Antakshari 🎤</h3>" in _app_src and "<h3>Monopoly 🏠" in _app_src
+      all(w not in _app_src for w in ("Saanp Seedhi", ">Bhabhi", "Monopoly 🏠", "Song Chain", "Business 🏠"))
+      and "Snakes &amp; Ladders" in _app_src and "<h3>Antakshari 🎤</h3>" in _app_src and "<h3>Vyapar 🏠" in _app_src
       and "starts with the last letter" in _app_src)
 check("words: the day's sections are Good times and Horoscope",
       '>Good times</button>' in _app_src and '>Horoscope</button>' in _app_src and '>Rashifal</button>' not in _app_src)
@@ -2451,6 +2462,36 @@ _vj = _json.loads((ROOT.parent / "vercel.json").read_text(encoding="utf-8"))
 _ph = [h for h in _vj.get("headers", []) if h["source"].endswith(".mobileconfig")]
 check("iphone profile: served as a profile, so Safari offers to install it",
       any(x["key"] == "Content-Type" and x["value"] == "application/x-apple-aspen-config" for h in _ph for x in h["headers"]))
+
+# ---------- 10z. The pre-launch repairs (audit of 2026-10-30) ----------
+# Each of these was a real dead end or a false statement in the app. The
+# journeys are run end to end in site/tests/db/repair.e2e.dbtest.mjs; these
+# checks keep the source from drifting back.
+_js = re.sub(r"//[^\n]*", "", _app_src)   # comments may name what was removed
+check("repairs: a forgotten PIN is shown to the family and answered with reset_approve / reset_deny",
+      "data-resetok" in _app_src and "'reset_approve'" in _app_src and "'reset_deny'" in _app_src
+      and 'id="pinresets"' in _app_src and 'id="npinresets"' in _app_src and "takeResets(j)" in _app_src)
+check("repairs: no browser confirm() or prompt(); the app asks in its own sheet",
+      not re.search(r"[^\w.]confirm\(|[^\w.]prompt\(", _js) and "function askText(" in _app_src)
+check("repairs: no invented lab numbers after an upload, and the server's biomarker actions",
+      "Lal PathLabs" not in _app_src and "'biomarker_save'" in _app_src and "'biomarker_parse'" in _app_src
+      and "&person_id=" not in _app_src)
+check("repairs: the locator posts locator_add with the server's fields and no Unlock button",
+      "action: 'locator_add'" in _app_src and "institutionOrItem:" in _app_src and "data-unlockloc" not in _app_src
+      and "MULTI_SIG_VERIFIED" not in _app_src and "j.locators" in _app_src)
+check("repairs: medicine stock uses refill_add / refill_mark / refill_snooze and reads inventory",
+      all(a in _app_src for a in ("'refill_add'", "'refill_mark'", "'refill_snooze'", "j.inventory", "warning_due", "days_left"))
+      and "action: 'refill'," not in _app_src and "action: 'snooze'" not in _app_src)
+check("repairs: a voice note becomes a task through task_create, never task_add",
+      "action: 'task_create', title: title" in _app_src and "'task_add'" not in _app_src)
+check("repairs: the offline emergency card is never overwritten by an empty family",
+      "if (!state || !membersCache || !membersCache.length) return;" in _app_src)
+check("repairs: the family call room is 16 random bytes and carries no family code",
+      "crypto.getRandomValues(rb)" in _app_src and "state.code.toLowerCase() + '-' + Math.random()" not in _app_src)
+check("repairs: every button takes the page's font, and plain links the app's link colour",
+      "button{font:inherit}" in _app_src and "a:not([class]){color:var(--sindoor)" in _app_src)
+check("repairs: the To do filters call the function that exists",
+      "renderReminders(" not in _js)
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
