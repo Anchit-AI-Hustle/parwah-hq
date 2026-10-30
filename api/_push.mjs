@@ -12,6 +12,22 @@ async function lib() {
 
 let vapidReady = null;
 
+// THE ONLY PLACES A PUSH IS EVER SENT. Any https address used to be taken,
+// and every family alert then made this server POST to it: a way to point
+// our server at anything, inside or outside, from a phone. A real browser
+// subscription only ever lives on one of these push services.
+const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^updates\.push\.services\.mozilla\.com$/,
+  /^[a-z0-9-]+(\.[a-z0-9-]+)*\.notify\.windows\.com$/, /^web\.push\.apple\.com$/,
+  /^[a-z0-9-]+(\.[a-z0-9-]+)*\.push\.apple\.com$/];
+export function isPushEndpoint(v) {
+  const s = String(v || '');
+  if (s.length > 500) return false;
+  let u;
+  try { u = new URL(s); } catch (e) { return false; }
+  if (u.protocol !== 'https:' || u.username || u.password || u.port) return false;
+  return PUSH_HOSTS.some(re => re.test(u.hostname.toLowerCase()));
+}
+
 export async function ensurePushSchema(sql) {
   await sql`create table if not exists kv (
     k text primary key,
@@ -71,7 +87,8 @@ export async function pushCircle(sql, circleId, payload, { except = null, only =
     const body = JSON.stringify({ title: payload.title, body: payload.body || '', url: payload.url || '/', urgent, ring });
     const opts = urgent ? { TTL: 86400, urgency: 'high', topic: 'parwah-sos' }
       : ring ? { TTL: 120, urgency: 'high', topic: 'parwah-ring' } : { TTL: 3600 };
-    await Promise.allSettled(subs.map(s =>
+    // A row saved before the host rule is never sent to either.
+    await Promise.allSettled(subs.filter(s => isPushEndpoint(s.endpoint)).map(s =>
       wp.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, opts)
         .catch(async (e) => {
           const sc = e && e.statusCode;

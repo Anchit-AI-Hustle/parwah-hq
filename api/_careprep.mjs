@@ -540,6 +540,13 @@ export async function recordAuditEvent(sql, { circleId, actorId, action, resourc
 // 9. SERVERLESS API HANDLERS (Shared across /api/care and /api/book)
 // ---------------------------------------------------------------------------
 
+// Is this person (not the caller: requireMember checks the caller) in the family?
+async function inCircle(sql, circleId, personId) {
+  if (!isUuid(personId)) return false;
+  const r = await sql`select 1 as x from members where id = ${personId} and circle_id = ${circleId}`;
+  return !!r[0];
+}
+
 async function getDb() {
   const { db, requireMember } = await import('./_db.mjs');
   const { tokenOf } = await import('./_token.mjs');
@@ -968,6 +975,11 @@ export async function biomarkersApi(req, res) {
         if (!personId || !Array.isArray(items) || items.length === 0) {
           return res.status(400).json({ ok: false, error: 'Person and at least one biomarker required' });
         }
+        // The person must be in THIS family: any member id used to be taken,
+        // so a reading could be written onto another family's member.
+        if (!(await inCircle(sql, g.circle.id, personId))) {
+          return res.status(403).json({ ok: false, error: 'Choose someone in this family' });
+        }
         const tDate = testDate ? new Date(testDate) : new Date();
 
         const savedIds = [];
@@ -1020,7 +1032,10 @@ export async function preauthApi(req, res) {
 
     if (req.method === 'GET') {
       const personId = isUuid(q.person) ? q.person : g.me.id;
-      const person = (await sql`select id, name, dob from members where id = ${personId}`)[0];
+      // In this family only: the id alone read any member's name and date
+      // of birth, from any family.
+      const person = (await sql`select id, name, dob from members where id = ${personId} and circle_id = ${g.circle.id}`)[0];
+      if (!person) return res.status(403).json({ ok: false, error: 'Choose someone in this family' });
       const policy = (await sql`select id, name, notes from family_book where kind = 'insurance' and (about_member = ${personId} or about_member is null) and circle_id = ${g.circle.id} limit 1`)[0];
       const tpaContact = (await sql`select id, name, phone, notes from family_book where category = 'emergency' and circle_id = ${g.circle.id} limit 1`)[0];
 
