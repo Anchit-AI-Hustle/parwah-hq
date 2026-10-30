@@ -223,7 +223,9 @@ const tap = (loc) => loc.evaluate(el => el.scrollIntoView({ block: 'center' })).
   ok('vyapar: money moves', s.players.some(p => p.money !== 1500));
   // End it: the richest wins.
   if (!s.winner) {
-    await R.click('#v-end'); await R.waitForTimeout(600);
+    await R.click('#v-end'); await R.waitForTimeout(200);
+    // Asked in the app's own sheet now, not the browser's confirm().
+    await R.click('#as-yes'); await R.waitForTimeout(600);
     const e = (await lastGame('vyapar'));
     ok('vyapar: ending the game names the richest', !!e.state.winner && e.status === 'done', e.state.winner);
   } else ok('vyapar: it ended with a winner', true);
