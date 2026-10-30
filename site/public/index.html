@@ -1310,6 +1310,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       </div>
       <button class="linkbtn" id="au-forgot" hidden type="button">Forgotten your PIN?</button>
     </div>
+    <!-- LET BACK IN BY THE FAMILY: this phone asked, and waits here for the
+         answer. It checks on its own while the screen is open. -->
+    <div id="au-reset" hidden style="margin-top:var(--space-12)">
+      <p class="hint" id="au-rs-msg" role="status" aria-live="polite" style="font-weight:700;color:var(--ink);margin:0 0 var(--space-12)"></p>
+      <div class="prow2">
+        <button type="button" class="cbtn" id="au-rs-check">Check now</button>
+        <button type="button" class="cbtn" id="au-rs-again" hidden>Ask again</button>
+        <button type="button" class="cbtn ghost" id="au-rs-cancel">Back to sign in</button>
+      </div>
+    </div>
     <div id="au-namewrap" hidden>
       <p class="hint" id="au-newnote" hidden style="margin:var(--space-12) 0 var(--space-2);font-weight:700;color:var(--marigold-d)"></p>
       <label for="au-name">Your name</label>
@@ -2451,6 +2461,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       </div>
       <div id="addbox" hidden></div>
       <div class="emsgs" id="cmsgs"></div>
+      <!-- Ekta answered in this chat and said to call for help: the two
+           things to do, as buttons, under the messages. -->
+      <div class="eurgent" id="c-urgent" hidden style="margin-top:var(--space-8)"></div>
     </div>
   </section>
 
@@ -3914,6 +3927,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var c = null;
     chatsCache.forEach(function(x){ if (x.id === id) c = x; });
     if (!c) return;
+    if (!curChat || curChat.id !== c.id) $('c-urgent').hidden = true;
     curChat = c;
     $('chatlist').hidden = true;
     $('chatview').hidden = false;
@@ -4671,16 +4685,23 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
 
   // The to-do a voice note becomes, in plain words, from what was parsed.
+  // The to-do a voice note becomes: the server's own task, made only of the
+  // words that were said. An older server sent none, so the note itself.
   function voiceTitle(intent){
+    if (intent.task && intent.task.title) return String(intent.task.title).slice(0, 200);
     var d = (intent && intent.extracted_data) || {};
-    if (intent.intent === 'MEDICATION_CHANGE') return 'Check the medicine schedule: ' + (d.medicine_name || 'a medicine');
-    if (intent.intent === 'HEALTH_STATUS') {
-      if (d.type === 'BP') return 'Add blood pressure ' + d.systolic + '/' + d.diastolic + ' mmHg to the health records';
-      if (d.type === 'GLUCOSE') return 'Add blood sugar ' + d.value + ' mg/dL to the health records';
-    }
     return String(d.note || d.context || '').slice(0, 200) || 'Voice note';
   }
-  function showVoiceDraftCard(intent, rawText){
+  // A time that was said ("9 am") is the next 9 am on this phone's clock,
+  // or tomorrow's when "kal" or "tomorrow" was said.
+  function voiceDue(time, said){
+    var m = /^(\d{2}):(\d{2})$/.exec(String(time || '')); if (!m) return null;
+    var d = new Date(); d.setHours(+m[1], +m[2], 0, 0);
+    if (/\b(kal|tomorrow)\b/i.test(said || '')) d.setDate(d.getDate() + 1);
+    else if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1);
+    return d.toISOString();
+  }
+  function voiceCard(){
     var card = document.createElement('div');
     card.className = 'em a alertbox';
     card.style.border = '1px solid var(--bone-2)';
@@ -4688,31 +4709,62 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     card.style.background = 'var(--bone)';
     card.style.padding = 'var(--space-12)';
     card.style.marginTop = 'var(--space-8)';
-    // What Confirm does is add one to-do, so the card says exactly that, with
-    // the to-do's own words. It used to file the whole question ("I
-    // understood... Should I update...?") as the title, and say "Schedule
-    // updated" whatever the server answered.
-    var title = voiceTitle(intent);
-    card.innerHTML = '<p style="margin:0 0 var(--space-8);font-weight:700">Add this to the family to-do list?</p>' +
-      '<p style="margin:0 0 var(--space-12);font-size:var(--fs-14)">' + esc(title) + '</p>' +
-      '<div style="display:flex;gap:var(--space-8);flex-wrap:wrap">' +
-        '<button type="button" class="cbtn" data-vconfirm style="min-height:var(--tap-min);font-size:var(--fs-14)">Add it</button>' +
-        '<button type="button" class="cbtn ghost" data-vdismiss style="min-height:var(--tap-min);font-size:var(--fs-14)">Not now</button>' +
-      '</div>';
-    card.querySelector('[data-vconfirm]').addEventListener('click', function(){
-      var btn = this; btn.disabled = true;
-      post(API.care, { code: state.code, memberId: state.memberId, action: 'task_create', title: title, tz: homeTz() })
-        .then(function(j){
-          if (!j.ok) { btn.disabled = false; toast(j.error || 'Could not add it'); return; }
-          card.remove();
-          ektaAppend('assistant', 'Added to the family to-do list: ' + title + ' ✅');
-          refresh();
-        })
-        .catch(function(){ btn.disabled = false; toast('No connection - try again'); });
-    });
+    return card;
+  }
+  function showVoiceDraftCard(intent, rawText){
+    var card = voiceCard();
+    // A reading said aloud is not a to-do. Ekta offers to note it where lab
+    // numbers are kept, and the person checks it there before it is saved.
+    if (intent.intent === 'HEALTH_STATUS' || !intent.task) {
+      var d = intent.extracted_data || {};
+      var said = d.type === 'BP' ? 'Blood pressure ' + d.systolic + '/' + d.diastolic + ' mmHg'
+               : d.type === 'GLUCOSE' ? 'Blood sugar ' + d.value + ' mg/dL' : '';
+      if (!said) return;
+      card.innerHTML = '<p style="margin:0 0 var(--space-8);font-weight:700">Note this reading?</p>' +
+        '<p style="margin:0 0 var(--space-12);font-size:var(--fs-14)">' + esc(said) + '. You can add it to the lab numbers on your page.</p>' +
+        '<div style="display:flex;gap:var(--space-8);flex-wrap:wrap">' +
+          '<button type="button" class="cbtn" data-vnote style="min-height:var(--tap-min);font-size:var(--fs-14)">Open my page</button>' +
+          '<button type="button" class="cbtn ghost" data-vdismiss style="min-height:var(--tap-min);font-size:var(--fs-14)">Not now</button>' +
+        '</div>';
+      card.querySelector('[data-vnote]').addEventListener('click', function(){
+        card.remove();
+        openPerson(state.memberId);
+        setTimeout(function(){
+          try {
+            $('biomarker-add-form').hidden = false; bmUnits();
+            if (d.type === 'BP') { $('bm-new-type').value = 'SYSTOLIC_BP'; $('bm-new-val').value = d.systolic; }
+            else { $('bm-new-type').value = 'FASTING_GLUCOSE'; bmUnits(); $('bm-new-unit').value = 'conv'; $('bm-new-val').value = d.value; }
+            $('bm-new-val').scrollIntoView({ block: 'center' }); $('bm-new-val').focus();
+          } catch (e) {}
+        }, 300);
+      });
+    } else {
+      // What Confirm does is add one to-do, so the card says exactly that,
+      // with the to-do's own words and the time that was said.
+      var title = voiceTitle(intent), dueAt = voiceDue(intent.task.time, rawText);
+      card.innerHTML = '<p style="margin:0 0 var(--space-8);font-weight:700">Add this to the family to-do list?</p>' +
+        '<p style="margin:0 0 var(--space-12);font-size:var(--fs-14)">' + esc(title) + '</p>' +
+        '<div style="display:flex;gap:var(--space-8);flex-wrap:wrap">' +
+          '<button type="button" class="cbtn" data-vconfirm style="min-height:var(--tap-min);font-size:var(--fs-14)">Add it</button>' +
+          '<button type="button" class="cbtn ghost" data-vdismiss style="min-height:var(--tap-min);font-size:var(--fs-14)">Not now</button>' +
+        '</div>';
+      card.querySelector('[data-vconfirm]').addEventListener('click', function(){
+        var btn = this; btn.disabled = true;
+        var body = { code: state.code, memberId: state.memberId, action: 'task_create', title: title, tz: homeTz() };
+        if (dueAt) body.dueAt = dueAt;
+        post(API.care, body)
+          .then(function(j){
+            if (!j.ok) { btn.disabled = false; toast(j.error || 'Could not add it'); return; }
+            card.remove();
+            ektaAppend('assistant', 'Added to the family to-do list: ' + title + ' ✅');
+            refresh();
+          })
+          .catch(function(){ btn.disabled = false; toast('No connection - try again'); });
+      });
+    }
     card.querySelector('[data-vdismiss]').addEventListener('click', function(){
       card.remove();
-      ektaAppend('assistant', 'No changes made. Draft dismissed.');
+      ektaAppend('assistant', 'No changes made.');
     });
     $('emsgs').appendChild(card);
     $('emsgs').scrollTop = $('emsgs').scrollHeight;
@@ -5737,7 +5789,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   // PINs were exactly 4, typed once so it can be replaced.
   var secretMode = 'enter', oldSecret = '';
   function secretBox(mode, note){
-    var choosing = mode === 'choose' || mode === 'change';
+    var choosing = mode === 'choose' || mode === 'change' || mode === 'reset';
     secretMode = mode;
     $('au-pinwrap').hidden = false;
     $('au-pin2wrap').hidden = !choosing;
@@ -5747,7 +5799,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('au-pin').setAttribute('maxlength', mode === 'older' ? '64' : '4');
     if (mode === 'older') $('au-pin').removeAttribute('inputmode'); else $('au-pin').setAttribute('inputmode', 'numeric');
     $('au-pin').setAttribute('placeholder', mode === 'older' ? 'Your current PIN or password' : '● ● ● ●');
-    $('au-pinlabel').textContent = choosing ? 'Choose a 4-number PIN' : mode === 'older' ? 'Your current PIN or password' : 'Your 4-number PIN';
+    $('au-pinlabel').textContent = mode === 'reset' ? 'Choose a new 4-number PIN' : choosing ? 'Choose a 4-number PIN' : mode === 'older' ? 'Your current PIN or password' : 'Your 4-number PIN';
     $('au-pinnote').hidden = !note;
     $('au-pinnote').textContent = note || '';
   }
@@ -5776,6 +5828,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     });
   });
   $('au-go').addEventListener('click', function(){
+    if (secretMode === 'reset') { rsFinish(this); return; }
     var phone = $('au-phone').value.trim(), cc = $('au-cc').value;
     var perr = phoneCheck(cc, phone);
     if (perr) { authErr(perr, 'au-phone'); return; }
@@ -5925,12 +5978,116 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         // on screen, as if this one had worked too.
         if (!j.ok) { $('au-pinnote').hidden = true; authErr(j.error || 'Could not ask just now.'); return; }
         $('ob-err').textContent = '';
-        $('au-pinnote').hidden = false;
-        $('au-pinnote').textContent = j.noFamily
-          ? 'You are not in a family yet, so there is nobody to approve this. Write to anchit.tandon@gmail.com and we will help.'
-          : 'Asked. When someone in your family approves it, come back here and you can choose a new PIN.';
+        if (j.noFamily || !j.resetSecret) {
+          $('au-pinnote').hidden = false;
+          $('au-pinnote').textContent = 'You are not in a family yet, so there is nobody to approve this. Write to anchit.tandon@gmail.com and we will help.';
+          return;
+        }
+        // Asking again replaces the secret: only the newest one works.
+        rsSave({ phone: phone, cc: cc, secret: j.resetSecret, mins: j.expiresInMinutes || 15 });
+        rsShow('pending');
       })
       .catch(function(){ $('au-pinnote').hidden = true; authErr('No connection - try again.'); });
+  }
+  // ---- the phone that asked: wait for the family, then choose a new PIN ----
+  // The secret proves this phone is the one that asked. It lives in memory
+  // and in this tab's sessionStorage (so a reload keeps the waiting screen),
+  // never in localStorage, and is cleared once it is used, refused or old.
+  var rsCur = null, rsTimer = null;
+  function rsSave(r){ rsCur = r; try { sessionStorage.setItem('parwah-reset', JSON.stringify(r)); } catch (e) {} }
+  function rsClear(){
+    rsCur = null; clearInterval(rsTimer); rsTimer = null;
+    try { sessionStorage.removeItem('parwah-reset'); } catch (e) {}
+  }
+  var RS_SAY = {
+    pending: 'Asked. Waiting for someone in your family to say yes. Ask them to open Parwah. This screen checks by itself.',
+    denied: 'Your family said no to this request. If that was a mistake, talk to them, then ask again.',
+    expired: 'That request ran out before anyone said yes. Ask your family again.'
+  };
+  function rsShow(st, msg){
+    var waiting = st === 'pending';
+    $('au-reset').hidden = st === 'approved';
+    $('au-forgot').hidden = true;
+    $('au-namewrap').hidden = true;
+    if (st === 'approved') {
+      secretBox('reset', 'Your family said yes. Choose a new 4-number PIN for ' + fmtPhone(rsCur.cc + String(rsCur.phone).replace(/\D/g, '')) + '.');
+      $('au-go').hidden = false; $('au-go').textContent = 'Save my new PIN';
+      clearInterval(rsTimer); rsTimer = null;
+      try { $('au-pin').focus(); } catch (e) {}
+      return;
+    }
+    $('au-pinwrap').hidden = true;
+    $('au-go').hidden = true;
+    $('au-rs-msg').textContent = msg || RS_SAY[st] || RS_SAY.expired;
+    $('au-rs-check').hidden = !waiting;
+    $('au-rs-again').hidden = waiting;
+    if (waiting) {
+      $('au-rs-msg').textContent += ' The request lasts ' + ((rsCur && rsCur.mins) || 15) + ' minutes.';
+      if (!rsTimer) rsTimer = setInterval(function(){ rsPoll(false); }, 10000);
+    } else {
+      // Refused or run out: this secret is finished with.
+      var keep = rsCur; rsClear(); rsCur = null; rsAgainFor = keep;
+    }
+  }
+  var rsAgainFor = null;
+  function rsPoll(byHand){
+    if (!rsCur) return;
+    // Only while someone can see it: a hidden tab does not ask.
+    if (!byHand && (document.hidden || $('auth-step').hidden || $('onboard').hidden)) return;
+    post(API.auth, { action: 'reset_status', phone: rsCur.phone, cc: rsCur.cc, resetSecret: rsCur.secret })
+      .then(function(j){
+        if (!rsCur) return;
+        if (!j.ok) { if (byHand) toast(j.error || 'Could not check just now'); return; }
+        if (j.reset === 'pending') { if (byHand) toast('Not yet. Nobody has said yes.'); return; }
+        rsShow(j.reset);
+      })
+      .catch(function(){ if (byHand) toast('No connection - try again'); });
+  }
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden && rsCur && rsTimer) rsPoll(false); });
+  $('au-rs-check').addEventListener('click', function(){ rsPoll(true); });
+  $('au-rs-again').addEventListener('click', function(){
+    var r = rsAgainFor || rsCur; if (!r) return;
+    askReset(r.phone, r.cc);
+  });
+  function rsLeave(){
+    rsClear(); rsAgainFor = null;
+    $('au-reset').hidden = true; $('au-go').hidden = false; $('au-go').textContent = 'Continue';
+    $('au-pinwrap').hidden = true; secretMode = 'enter'; $('ob-err').textContent = '';
+  }
+  $('au-rs-cancel').addEventListener('click', rsLeave);
+  function rsFinish(btn){
+    var se = secretCheck();
+    if (se) { authErr(se, /match/.test(se) ? 'au-pin2' : 'au-pin'); return; }
+    if (!rsCur) { rsLeave(); return; }
+    btn.disabled = true; $('ob-err').textContent = '';
+    post(API.auth, { action: 'enter', phone: rsCur.phone, cc: rsCur.cc, resetSecret: rsCur.secret,
+                     newPin: $('au-pin').value, device: (navigator.platform || 'device') })
+      .then(function(j){
+        btn.disabled = false;
+        if (!j.ok) { authErr(j.error || 'Could not save the PIN.'); return; }
+        // A PIN the server will not take: say why, and keep the yes.
+        if (j.setPin) { authErr(j.error || 'Choose a different 4 numbers.', 'au-pin'); return; }
+        if (j.reset && j.reset !== 'approved') { rsShow(j.reset, j.error); return; }
+        if (!j.token || !j.user) { authErr(j.error || 'Could not save the PIN.'); return; }
+        rsClear(); rsAgainFor = null;
+        $('au-go').textContent = 'Continue';
+        secretMode = 'enter'; oldSecret = '';
+        authUser = j.user; saveAuth(authUser);
+        saveToken(j.token);
+        takeResets(j);
+        toast('New PIN saved 🧡');
+        routeAfterAuth(j.circles || [], j.toured);
+      })
+      .catch(function(){ btn.disabled = false; authErr('No connection - try again.'); });
+  }
+  // A reload while waiting comes back to the waiting screen.
+  function rsResume(){
+    var r = null; try { r = JSON.parse(sessionStorage.getItem('parwah-reset') || 'null'); } catch (e) {}
+    if (!r || !r.secret || state || $('auth-step').hidden) return;
+    rsCur = r;
+    var sp = splitE164(r.cc + String(r.phone).replace(/\D/g, ''));
+    if (sp) { setCc('au-cc', sp.cc); $('au-phone').value = sp.local; }
+    rsShow('pending'); rsPoll(false);
   }
   $('au-pin').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
   $('au-pin2').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('au-go').click(); });
@@ -6416,7 +6573,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         if (!j.ok) { $('ss-status').textContent = (j.error || 'The SOS could not be sent') + '. Call ' + myEmergencyNo() + ' or your family now.'; return; }
         sosLive = { id: j.sosId, text: j.text, contacts: j.contacts || [], map: j.map };
         var dl = j.dialed && j.dialed.configured ? j.dialed : null, sent = dl ? dl.sms + dl.whatsapp : 0;
-        $('ss-status').textContent = 'Your family has been alerted' + (j.again ? ' again' : '') + '. The message is in the family chat.' +
+        // Pressed again and again: the server says the family already has
+        // it, and sends nothing more. The calls and the map still work.
+        if (j.throttled) $('ss-status').textContent = j.message || ('Your family has already been sent this SOS. Call ' + myEmergencyNo() + ' if you need help now.');
+        else $('ss-status').textContent = 'Your family has been alerted' + (j.again ? ' again' : '') + '. The message is in the family chat.' +
           (dl && (sent || dl.call) ? ' Parwah also sent ' + (sent ? sent + (sent === 1 ? ' text message' : ' text messages') : '') +
             (sent && dl.call ? ' and ' : '') + (dl.call ? 'is calling ' + dl.call + (dl.call === 1 ? ' person' : ' people') : '') + '.' : '');
         $('ss-loc').textContent = j.located ? '📍 Your exact location is shared with the family' + (pos && pos.accuracy ? ' (within ' + Math.round(pos.accuracy) + ' m)' : '') + '.'
@@ -7981,6 +8141,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       }).then(function(sub){
         return post(API.push, { code: state.code, memberId: state.memberId, action: 'subscribe', sub: sub.toJSON() });
       }).then(function(r2){
+        // 409: this phone's alerts already belong to another account on it.
+        // Nothing to do here, and nothing worth a message.
+        if (r2 && r2._status === 409) return;
         if (r2 && r2.ok) { if (!quiet) toast('Device alerts on 🔔'); $('push-card').hidden = true; pushStatusLine(); }
       });
     }).catch(function(){ if (!quiet) toast('Could not turn on alerts - try again'); });
@@ -8091,6 +8254,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('emsgs').appendChild(d);
     $('emsgs').scrollTop = $('emsgs').scrollHeight;
   }
+  function chatUrgent(said){
+    var d = $('c-urgent');
+    d.innerHTML = '<a class="cbtn urgent" href="tel:' + myEmergencyNo() + '">📞 Call ' + myEmergencyNo() + '</a><button type="button" class="cbtn urgent" data-csos>🆘 Send SOS to the family</button>';
+    d.querySelector('[data-csos]').addEventListener('click', function(){ sosStart(said); });
+    d.hidden = false;
+  }
   function ektaSend(intentDone){
     var v = $('msg').value.trim(); if (!v) return;
     $('msg').value = '';
@@ -8135,7 +8304,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('msg').value = '';
     post(API.chats, { code: state.code, memberId: state.memberId, action: 'send', chatId: curChat.id, text: v })
       .then(function(j){
-        if (j.ok) { loadMsgs(); refreshChats(); }
+        if (j.ok) {
+          loadMsgs(); refreshChats();
+          if (j.ektaEmergency) chatUrgent(v);
+        }
         else toast(j.error || 'Could not send - try again');
       })
       .catch(function(){ toast('No connection - try again'); });
@@ -10273,7 +10445,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   });
 
   // ---------- the family vault: documents + payment permissions ----------
-  var vFamilyDocs = null, vDocs = [], vGrants = [], vLog = [], vKinds = {}, vOpenId = null, vEditId = null, vLevel = 'full';
+  var vDocs = [], vGrants = [], vLog = [], vKinds = {}, vOpenId = null, vEditId = null, vLevel = 'full';
   var vPay = [], vPerms = [], vPayLog = [], vPayKinds = {}, vPayEditId = null, vFileData = null;
 
   function vFillSelect(sel, obj, keep){
@@ -10331,7 +10503,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     var qs = '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId);
     apiGet(API.vault + qs).then(function(j){
       if (!j.ok) return;
-      vDocs = j.docs || []; vFamilyDocs = typeof j.familyDocs === 'number' ? j.familyDocs : null; vGrants = j.grants || []; vLog = j.log || []; vKinds = j.kinds || {}; vRequests = j.requests || [];
+      vDocs = j.docs || []; vGrants = j.grants || []; vLog = j.log || []; vKinds = j.kinds || {}; vRequests = j.requests || [];
       vShapes = j.idShapes || vShapes; vPanHolders = j.panHolders || vPanHolders;
       if (!$('vd-kind').options.length) { vFillSelect($('vd-kind'), vKinds); vApplyShape(); }
       vMembersInto($('vd-about'), '');
@@ -10398,14 +10570,13 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
   // An empty list means different things to different people. To someone
   // in a family whose papers are simply not shared with them, "add the
-  // family's first document" was wrong: the family has papers, they are
-  // just private. Only a family with nobody else in it hears that line.
-  // familyDocs (how many papers the family keeps, from the server) decides
-  // when it is sent; until then, more than one person in the family does.
+  // family's first document" was wrong: the family may have papers, they
+  // are just private. Only a family with nobody else in it hears that line.
+  // (The server's familyDocs counts the papers this person may already
+  // open, so with an empty list it is always 0 and cannot tell these apart.)
   function vEmptyLine(){
     var others = (membersCache || []).filter(function(m){ return m.id !== state.memberId; }).length;
-    var familyHas = vFamilyDocs !== null ? vFamilyDocs > 0 : others > 0;
-    return familyHas
+    return others > 0
       ? 'Nothing has been shared with you yet. Ask for a paper by choosing a person above.'
       : 'Nothing in the vault yet. Add the family\'s first paper below 🔐';
   }
@@ -11249,13 +11420,16 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }
     $('ho-nodob').hidden = !!j.mySign;
     $('ho-mine').hidden = !j.mySign;
+    // None of the twelve came: one plain line, not twelve empty cards.
+    var down = !!h.feedDown;
     if (j.mySign) {
       $('ho-myname').textContent = j.mySign.name + ' (' + j.mySign.hi + ')';
       $('ho-mytext').textContent = (mine && mine.text) ||
-        'Today’s reading hasn’t come through yet. We’d rather leave it blank than make one up.';
+        (down ? 'The horoscope source is down today, so there is no reading. It should be back tomorrow.'
+              : 'Today’s reading hasn’t come through yet. We’d rather leave it blank than make one up.');
     }
 
-    $('ho-all').innerHTML = signs.map(function(s){
+    $('ho-all').innerHTML = down ? '<div class="ev">The horoscope source is down today, so there are no readings. Parwah leaves them blank rather than making one up. They should be back tomorrow.</div>' : signs.map(function(s){
       var isMine = j.mySign && s.key === j.mySign.key;
       return '<div class="ev' + (isMine ? ' good' : '') + '">' +
         '<b>' + esc(s.name) + ' (' + esc(s.hi) + ')</b>' + (isMine ? ' <small style="display:inline;color:var(--sindoor)">· yours</small>' : '') +
@@ -11264,7 +11438,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }).join('') || '<div class="ev">Nothing to show.</div>';
 
     var un = h.unavailable || 0;
-    $('ho-src').textContent = un === 0
+    $('ho-src').textContent = down ? 'Good times above are worked out here, so they still work today.'
+      : un === 0
       ? 'Readings for ' + (h.day || j.day) + ', fetched once for the whole family from a free open horoscope API. Choghadiya above is computed, not fetched.'
       : un + ' of 12 readings could not be fetched today. Parwah leaves those blank rather than inventing one.';
 
@@ -11857,6 +12032,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     demoAt = 0; renderDemo(); showStep('demo');
   } else {
     showStep('auth');
+    rsResume();
   }
   // Inside the iPhone and Android apps this page runs in a frame, and the
   // app shows its own loading screen until it hears this. It says only that

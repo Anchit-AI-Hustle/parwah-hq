@@ -2579,6 +2579,13 @@ check("repairs: the family call room is 16 random bytes and carries no family co
       "crypto.getRandomValues(rb)" in _app_src and "state.code.toLowerCase() + '-' + Math.random()" not in _app_src)
 check("repairs: every button takes the page's font, and plain links the app's link colour",
       "button{font:inherit}" in _app_src and "a:not([class]){color:var(--sindoor)" in _app_src)
+check("repairs: the phone that forgot waits for the family with its secret, then chooses a new PIN with it",
+      "action: 'reset_status'" in _app_src and "resetSecret: rsCur.secret" in _app_src and "newPin: $('au-pin').value" in _app_src
+      and "sessionStorage.setItem('parwah-reset'" in _app_src and "localStorage.setItem('parwah-reset'" not in _app_src
+      and "setInterval(function(){ rsPoll(false); }, 10000)" in _app_src and "document.hidden" in _app_src[_app_src.index("function rsPoll("):_app_src.index("function rsPoll(") + 400])
+check("repairs: the server's newer replies are read: a voice task's own title and time, a throttled SOS, Ekta's emergency in chat, a horoscope feed that is down",
+      "intent.task.title" in _app_src and "voiceDue(intent.task.time" in _app_src and "if (j.throttled)" in _app_src
+      and "if (j.ektaEmergency) chatUrgent(v)" in _app_src and "h.feedDown" in _app_src)
 check("repairs: the To do filters call the function that exists",
       "renderReminders(" not in _js)
 

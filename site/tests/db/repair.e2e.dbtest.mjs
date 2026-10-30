@@ -148,7 +148,7 @@ await S.click('#npinresets [data-resetok]'); await S.waitForTimeout(200);
 ok('"Let them in" asks once more, in the app\'s own sheet', await S.isVisible('#asksheet') && /Let Rahul back in\?/.test(await S.textContent('#as-q')));
 await S.click('#as-yes'); await S.waitForTimeout(900);
 let rr = (await admin.query(`select status from pin_resets r join users u on u.id = r.user_id where u.name = 'Rahul' order by r.created_at desc limit 1`)).rows[0];
-ok('the server records the yes, and the PIN is cleared for Rahul to choose a new one', rr && rr.status === 'approved', JSON.stringify(rr));
+ok('the server records the yes', rr && rr.status === 'approved', JSON.stringify(rr));
 ok('the card goes from both places', !(await S.$('#pinresets [data-resetok]')) && !(await S.$('#npinresets [data-resetok]')));
 
 // "Not now" says no without a second question.
@@ -170,7 +170,9 @@ rr = (await admin.query(`select status from pin_resets r join users u on u.id = 
 ok('"Not now" is a no, recorded by the server', rr && rr.status === 'denied', JSON.stringify(rr));
 await ctxS.close();
 
-// The forgot-PIN note: a later request that fails says so, not "Asked".
+// ---- THE WHOLE WAY BACK IN, from the phone that forgot: ask, wait, the
+// family says yes on another phone, choose a new PIN, signed in. The old PIN
+// stops working. A reload while waiting comes back to the waiting screen.
 const ctxF = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
 const F = await ctxF.newPage(); F.on('pageerror', e => errors.push('F: ' + e.message));
 await F.goto(BASE + '/'); await F.waitForTimeout(700);
@@ -179,14 +181,59 @@ await F.fill('#au-pin', '1111'); await F.click('#au-go'); await F.waitForTimeout
 ok('a wrong PIN offers "Forgotten your PIN?"', await F.isVisible('#au-forgot'));
 await F.click('#au-forgot'); await F.waitForTimeout(200);
 ok('it asks in the app\'s sheet, not the browser\'s confirm()', await F.isVisible('#asksheet'));
-await F.click('#as-yes'); await F.waitForTimeout(800);
-ok('the first request says Asked', await F.isVisible('#au-pinnote') && /^Asked\./.test(await F.textContent('#au-pinnote')));
-await F.route('**/api/auth', r => r.request().postDataJSON().action === 'reset_request'
+await F.click('#as-yes'); await F.waitForTimeout(900);
+ok('the phone waits: "Asked. Waiting for someone in your family to say yes"', await F.isVisible('#au-reset') && /^Asked\. Waiting for someone in your family/.test(await F.textContent('#au-rs-msg')) && await F.isHidden('#au-go'), await F.textContent('#au-rs-msg'));
+const kept1 = await F.evaluate(() => ({ s: sessionStorage.getItem('parwah-reset'), l: Object.keys(localStorage).map(k => localStorage.getItem(k)).join('|') }));
+const secret1 = kept1.s && JSON.parse(kept1.s).secret;
+ok('the secret is kept for this tab only, never in localStorage', !!secret1 && kept1.l.indexOf(secret1) < 0);
+await shotAll(F, 'reset-waiting');
+await F.reload(); await F.waitForTimeout(1200);
+ok('a reload comes back to the waiting screen', await F.isVisible('#au-reset') && /Waiting for someone/.test(await F.textContent('#au-rs-msg')));
+await F.click('#au-rs-check'); await F.waitForTimeout(600);
+ok('"Check now" before anyone answers says not yet, and keeps waiting', await F.isVisible('#au-reset') && /Not yet/.test(await F.textContent('#toast')));
+// Anchit, already signed in on his own phone, sees the question appear.
+const A2 = await phone(as('Anchit'), { hash: '#home' });
+await A2.waitForTimeout(800);
+ok('on another phone, the family sees "Papa cannot get in" (from the background refresh)', /Papa cannot get in/.test(await A2.textContent('#pinresets')), await A2.textContent('#pinresets'));
+await A2.click('#pinresets [data-resetok]'); await A2.click('#as-yes'); await A2.waitForTimeout(900);
+await F.click('#au-rs-check'); await F.waitForTimeout(900);
+ok('the yes reaches the phone that asked: choose a new PIN', await F.isVisible('#au-pin') && await F.isVisible('#au-pin2') && /family said yes/.test(await F.textContent('#au-pinnote')) && /Save my new PIN/.test(await F.textContent('#au-go')));
+await shotAll(F, 'reset-newpin');
+await F.fill('#au-pin', '1234'); await F.fill('#au-pin2', '1234'); await F.click('#au-go'); await F.waitForTimeout(900);
+ok('a PIN the server will not take says why, and the yes is kept', (await F.textContent('#ob-err')).length > 5 && await F.isVisible('#au-pin') && !!(await F.evaluate(() => sessionStorage.getItem('parwah-reset'))), await F.textContent('#ob-err'));
+await F.fill('#au-pin', '5927'); await F.fill('#au-pin2', '5927'); await F.click('#au-go'); await F.waitForTimeout(1500);
+ok('a good PIN signs Papa in', await F.isVisible('#circle-step') && !!(await F.evaluate(() => localStorage.getItem('parwah-token'))));
+ok('and the secret is gone from the phone', !(await F.evaluate(() => sessionStorage.getItem('parwah-reset'))));
+let pe = await call('auth', { action: 'enter', phone: U.Papa.phone.slice(3), cc: '+91', pin: '4819' });
+ok('the old PIN no longer works', !pe.ok && pe.wrongPin, JSON.stringify(pe));
+pe = await call('auth', { action: 'enter', phone: U.Papa.phone.slice(3), cc: '+91', pin: '5927' });
+ok('the new one does', pe.ok && !!pe.token, JSON.stringify(pe).slice(0, 120));
+const reuse = await call('auth', { action: 'enter', phone: U.Papa.phone.slice(3), cc: '+91', resetSecret: secret1, newPin: '6283' });
+ok('the same secret cannot be used twice', !reuse.token, JSON.stringify(reuse));
+U.Papa.token = pe.token;
+await ctxF.close();
+
+// ---- the family says no: the phone that asked is told, and can ask again.
+const ctxG = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+const G = await ctxG.newPage(); G.on('pageerror', e => errors.push('G: ' + e.message));
+await G.goto(BASE + '/'); await G.waitForTimeout(700);
+await G.fill('#au-phone', U.Rahul.phone.slice(3)); await G.click('#au-go'); await G.waitForTimeout(900);
+await G.fill('#au-pin', '1111'); await G.click('#au-go'); await G.waitForTimeout(900);
+await G.click('#au-forgot'); await G.click('#as-yes'); await G.waitForTimeout(900);
+await A2.reload(); await A2.waitForTimeout(1500);
+ok('the family sees Rahul\'s request', /Rahul cannot get in/.test(await A2.textContent('#pinresets')));
+await A2.click('#pinresets [data-resetno]'); await A2.waitForTimeout(900);
+await G.click('#au-rs-check'); await G.waitForTimeout(900);
+ok('"Your family said no", with Ask again', /said no/.test(await G.textContent('#au-rs-msg')) && await G.isVisible('#au-rs-again') && await G.isHidden('#au-rs-check'));
+ok('and the refused secret is cleared', !(await G.evaluate(() => sessionStorage.getItem('parwah-reset'))));
+await shotAll(G, 'reset-denied');
+// Asking again, when the server refuses, shows the error and not "Asked".
+await G.route('**/api/auth', r => r.request().postDataJSON().action === 'reset_request'
   ? r.fulfill({ status: 429, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'A request is already waiting. Ask your family to open Parwah and approve it.' }) })
   : r.continue());
-await F.click('#au-forgot'); await F.click('#as-yes'); await F.waitForTimeout(600);
-ok('a second request that fails shows the error, and no longer says Asked', await F.isHidden('#au-pinnote') && /already waiting/.test(await F.textContent('#ob-err')));
-await ctxF.close();
+await G.click('#au-rs-again'); await G.waitForTimeout(600);
+ok('a request that fails shows the error, and does not say Asked', /already waiting/.test(await G.textContent('#ob-err')) && !/^Asked/.test(await G.textContent('#au-rs-msg')));
+await ctxG.close();
 
 // =====================================================================
 // 3. THE OFFLINE EMERGENCY CARD survives a load where the family list fails
@@ -224,7 +271,12 @@ const locs = (await admin.query(`select institution_or_item, unlock_policy, pers
 ok('both are saved with their policies, for Papa', locs.length === 2 && locs[0].unlock_policy === 'IMMEDIATE' && locs[1].unlock_policy === 'EMERGENCY_ONLY' && locs[0].person_id === U.Papa.memberId && locs[0].identifier_mask === 'Locker 42', JSON.stringify(locs));
 const feed = await L.textContent('#locator-feed');
 ok('the family-wide one shows where it is kept', /steel almirah/.test(feed));
-ok('the SOS-only one says so instead of showing the notes', !/Mr Kapoor/.test(feed) && /only during an SOS/i.test(feed));
+ok('whoever wrote the SOS-only one can still read it, labelled with its rule', /Mr Kapoor/.test(feed) && /Only during an SOS/.test(feed));
+// Rahul did not write it and it is not about him: the server hides it.
+const LR = await phone(as('Rahul'), { hash: '#vault' });
+await LR.click('#vault-seg [data-sec="locator"]'); await LR.waitForTimeout(900);
+const feedR = await LR.textContent('#locator-feed');
+ok('to the rest of the family, the SOS-only one says so instead of showing the notes', /steel almirah/.test(feedR) && !/Mr Kapoor/.test(feedR) && /Shown to the family only during an SOS/.test(feedR), feedR);
 ok('and there is no Unlock button: the server decides', !(await L.$('[data-unlockloc]')) && !/Unlock/.test(feed));
 await shotAll(L, 'locator');
 
