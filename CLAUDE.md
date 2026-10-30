@@ -74,10 +74,9 @@ India never had. `/story/` already argues this - "Elsewhere, this problem has an
 aisle" - so the two halves were never actually separate propositions.
 
 The former public repo `Anchit-AI-Hustle/parwah-site` was deleted from GitHub.
-Its source is preserved at `merge/parwah-site/` and is NOT live: outside
-`site/public` so the build cannot serve it, and in `.vercelignore` so a deploy
-cannot upload it. Checks enforce both. Delete that directory once the copy has
-moved.
+Its copy has moved into `/care/` and `/story/aisle/`, so the staging copy at
+`merge/parwah-site/` was deleted on 2026-10-30. It is still in git history
+(commit be0fe22) if anything from it is ever needed.
 
 Three decisions, so they are not re-litigated:
 
