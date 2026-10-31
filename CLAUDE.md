@@ -128,7 +128,7 @@ Design System artifact (tokens, 23 components, brand book).
 
 ## Backlog (strict order - do not reorder without Anchit)
 1. ~~Replace `91XXXXXXXXXX` in all wa.me links (3×) with the real WhatsApp Business number.~~ DONE - real number live in all 3 links; test suite guards it.
-2. Domain: buy + connect (parwah.in first choice); update care@parwah.in if it differs.
+2. Domain: buy + connect (parwah.in first choice); parwah.in has no mail yet, so every page uses anchit.tandon@gmail.com (owner decision, 2026-10-30); move to a domain address once mail is set up.
 3. Analytics: GA4 + Meta Pixel base events (page_view; WA CTA click as join_waitlist).
 4. OG/social cards per page (1200×630, brand system).
 5. Waitlist backend on **Neon, not Supabase**. Supabase is dropped: the project

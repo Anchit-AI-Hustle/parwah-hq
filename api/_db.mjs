@@ -298,10 +298,26 @@ export function clientIp(req) {
   return fwd || 'unknown';
 }
 
+// Two first requests at once on a fresh database both run "create table if
+// not exists", and one can still lose with a duplicate error: the check and
+// the create are not one step. The loser has nothing to fix, so it runs the
+// same statements again, which now find everything there.
+const SCHEMA_RACE = new Set(['23505', '42P07', '42710']);
+export async function schemaOnce(make) {
+  try { await make(); }
+  catch (e) {
+    if (!SCHEMA_RACE.has(e && e.code)) throw e;
+    await make();
+  }
+}
+
 // Fixed-window rate limit, counted in the database so it holds across every
 // serverless instance. Returns true when the call is allowed. A limiter that
-// cannot reach the database never blocks a real family.
-export async function rateLimit(sql, bucket, key, limit, windowSec) {
+// cannot reach the database never blocks a real family signing in.
+// failClosed is for work anyone can start that costs the database or money
+// (the timer): there, a limiter that cannot count says no. SOS alerts stay
+// open (see raiseSos); SOS texts and calls are capped inside dialOut.
+export async function rateLimit(sql, bucket, key, limit, windowSec, { failClosed = false } = {}) {
   try {
     const rows = await sql`
       insert into rate_limit (bucket, k, window_start, n) values (${bucket}, ${key}, now(), 1)
@@ -310,7 +326,7 @@ export async function rateLimit(sql, bucket, key, limit, windowSec) {
         window_start = case when rate_limit.window_start < now() - make_interval(secs => ${windowSec}) then now() else rate_limit.window_start end
       returning n`;
     return rows[0].n <= limit;
-  } catch (e) { return true; }
+  } catch (e) { return !failClosed; }
 }
 
 // Every circle has one default chat with everyone in it, created lazily.

@@ -63,10 +63,22 @@ for p in PAGES:
             if not (m and (ROOT / "public" / m.group(1)).exists()): bad.append(href)
             continue
         # A query string selects a state of the page, not another file.
-        target = (p.parent / href.split("#")[0].split("?")[0]).resolve()
+        # A path from the root ("/welcome/") is resolved from site/public,
+        # the way the server does: the 404 page is served at any depth, so
+        # its links must not depend on the folder it was asked for from.
+        _path = href.split("#")[0].split("?")[0]
+        target = ((ROOT / "public" / _path.lstrip("/")) if _path.startswith("/")
+                  else (p.parent / _path)).resolve()
         if target.is_dir(): target = target / "index.html"
         if not target.exists(): bad.append(href)
     check(f"internal links: {p.relative_to(ROOT)}", not bad, ", ".join(bad))
+# The 404 page is served for any missing address, one folder deep or five.
+# A relative "styles.css" then points into a folder that does not exist, so
+# the page arrived unstyled and its two links were 404s themselves.
+_nf = (ROOT / "public" / "404.html").read_text(encoding="utf-8")
+_nf_rel = [u for u in re.findall(r'(?:href|src)="([^"]+)"', _nf)
+           if not u.startswith(("/", "http", "mailto:", "#", "tel:", "data:"))]
+check("internal links: the 404 page names every path from the root", not _nf_rel, ", ".join(_nf_rel))
 
 # ---------- 3. Anchor targets exist ----------
 for p in PAGES:
@@ -340,9 +352,17 @@ check("routing: the app's old file addresses follow it",
 # Temporary, because browsers cache a permanent redirect for a very long time.
 check("routing: none of those redirects is permanent, so they can be undone",
       all(r.get("permanent") is False for r in vj.get("redirects", [])))
+# Another domain the family may type (parwah.tech, parwah.in) forwards
+# everything to the one live site. Those catch-alls are tied to their own
+# host, so they can never catch this site's API.
+_hostfwd = [r for r in vj.get("redirects", []) if any(h.get("type") == "host" for h in r.get("has", []))]
 check("routing: no redirect can catch the API",
       not any("api" in r.get("source", "") or r.get("source") in ("/(.*)", "/:path*")
-              for r in vj.get("redirects", [])))
+              for r in vj.get("redirects", []) if r not in _hostfwd))
+check("routing: other Parwah domains forward to the live site, and only there",
+      {h["value"] for r in _hostfwd for h in r["has"]} == {"parwah.tech", "parwah.in", "www.parwah.in"}
+      and all(r.get("destination") == "https://parwah-hq.anchit-tandon.com/$1" for r in _hostfwd)
+      and not any(h["value"] == "parwah-hq.anchit-tandon.com" for r in _hostfwd for h in r["has"]))
 # A service worker script cannot be redirected: the browser refuses it. The
 # old /app/sw.js has to stay a real file, and what it does is remove itself.
 _oldsw = (_pub / "app/sw.js")
@@ -378,11 +398,20 @@ check("framing: the app keeps the other security headers",
       _app.get("X-Content-Type-Options") == "nosniff" and "Referrer-Policy" in _app)
 _fa = re.fullmatch(r"frame-ancestors ((?:\S+ ?)+)", _app.get("Content-Security-Policy", ""))
 _fa_list = _fa.group(1).split() if _fa else []
-_FA_ALLOWED = {"'self'", "https://parwah.floot.app", "capacitor://localhost", "https://localhost",
-               "https://floot.com", "https://2fea47ff-4e55-4bdb-ae0a-46d1768aebeb.sandbox.floot.app"}
+# The Floot origins were dropped (owner, 2026-10-30): the Capacitor apps in
+# mobile/ replace the Floot shell, and a hosted builder's domains framing the
+# live app were one more place an overlay could come from. The old Floot
+# shell no longer shows the app.
+_FA_ALLOWED = {"'self'", "capacitor://localhost", "https://localhost"}
 check("framing: the app may be framed only by the Parwah shell",
-      bool(_fa_list) and set(_fa_list) <= _FA_ALLOWED and "https://parwah.floot.app" in _fa_list,
+      bool(_fa_list) and set(_fa_list) <= _FA_ALLOWED and "capacitor://localhost" in _fa_list,
       " ".join(_fa_list))
+check("framing: the app asks only for the camera, microphone and location it uses",
+      _app.get("Permissions-Policy") == _rest.get("Permissions-Policy")
+      == "camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()")
+check("framing: a content policy is reported on, not yet enforced",
+      "Content-Security-Policy-Report-Only" in _app and "Content-Security-Policy-Report-Only" in _rest
+      and "object-src 'none'" in _app.get("Content-Security-Policy-Report-Only", ""))
 check("framing: and never by a wildcard",
       not any("*" in o or o in ("https:", "http:", "data:", "blob:") for o in _fa_list))
 # The shell waits for this before showing the app. It goes to any origin, so
@@ -473,7 +502,11 @@ check("rate limit: sign-in attempts are capped", "rateLimit(sql, 'auth'" in auth
 check("rate limit: counted in the database, not per instance",
       "create table if not exists rate_limit" in dbsrc and "make_interval" in dbsrc)
 check("rate limit: a broken limiter never locks the family out",
-      "catch (e) { return true; }" in dbsrc)
+      "catch (e) { return !failClosed; }" in dbsrc and "failClosed = false" in dbsrc)
+# Only the timer fails closed; an SOS alert never waits on a broken limiter.
+check("rate limit: the timer fails closed, SOS alerts do not",
+      "rateLimit(sql, 'tick', 'all', 1, 50, { failClosed: true })" in (API_DIR / "events.mjs").read_text(encoding="utf-8")
+      and "rateLimit(sql, 'sos', me.id, 3, 600))" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
 
 # 10h. COINS - the credit that pays for Ekta.
 coins = (API_DIR / "_coins.mjs").read_text(encoding="utf-8")
@@ -503,8 +536,10 @@ check("circles: the sign-in list leads with the circle that needs you",
 
 # 10j. MEMORY CONSENT - a fact about a person is that person's to share.
 book = (API_DIR / "book.mjs").read_text(encoding="utf-8")
+# The table itself is made in _bookschema.mjs, shared with the care tools.
+_bookschema = (API_DIR / "_bookschema.mjs").read_text(encoding="utf-8")
 check("memory: entries can be private to their subject",
-      "visibility text not null default 'circle'" in book and "book_access" in book)
+      "visibility text not null default 'circle'" in _bookschema and "book_access" in _bookschema and "ensureBookSchema(sql)" in book)
 check("memory: consent belongs to the person it is about, not the author",
       "Only the person this is about can decide who sees it" in book and "subjectOf" in book)
 check("memory: a private entry cannot be read, edited or removed without a grant",
@@ -772,8 +807,13 @@ check("selftest: a read cursor belongs to one person",
       "betaStillUnread === 2" in _st)
 check("guide: one readiness number for the FAMILY, not six per-person bars",
       '"Your family is <span id="rd-pct">' in appsrc.replace("'", '"') or 'id="rd-pct"' in appsrc)
-check("guide: the number is backed by named gaps and a complete-N call to action",
-      "gapCount" in book and "rd-gaps" in appsrc and "Complete " in appsrc)
+# The count asked for is the count listed under it: "Complete 3 important
+# items" under four listed gaps did not add up.
+check("guide: the number is backed by named gaps and a fill-in-these-N call to action that matches what is listed",
+      "gapCount" in book and "rd-gaps" in appsrc and "'Fill in these ' + shown.length" in appsrc
+      and "Math.min(3, f.gapCount)" not in appsrc)
+check("guide: each gap is a plain sentence, the elders first, and the card waits while the first-run list shows",
+      "no doctor recorded" in appsrc and "elder[b.memberId]" in appsrc and "!$('firstrun').hidden" in appsrc)
 check("guide: someone near a person living away is a first-class contact",
       "'local'" in book and "someone near them to call" in book)
 check("guide: the pulse question still rotates daily on the server (the app no longer asks it on Today)",
@@ -782,8 +822,13 @@ check("guide: an answer can quietly say a call would be nice",
       "call: true" in pulse and "could do with a call" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
 check("guide: everyone in a circle sees the same question on the same day",
       "derived from the date" in pulse or "same style for everyone" in pulse)
-check("plan: named as the five things, and never sells the removed mood question (Family Pulse)",
-      "Parwah Family Plan" in plan and "'Health & contacts'" in plan and "'The vault'" in plan and "Pulse" not in plan)
+# The paid plan lists what it ADDS, not a shorter copy of the free list,
+# and never a feature that does not exist.
+check("plan: the paid plan says what it adds, and never sells the removed mood question (Family Pulse)",
+      "Parwah Family Plan" in plan and "'Everything in the free plan', 'Priority help', 'Supporting Parwah'" in plan
+      and "'The vault - documents" in plan and "Pulse" not in plan)
+check("plan: the reserved amount is kept to the cent, not rounded",
+      "Math.round(price.amount)" not in plan and "numeric(10,2)" in plan)
 
 # 10p. THE GUIDE'S REMAINING SCREENS - 1, 2 and 4.
 ekta_src = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
@@ -1313,8 +1358,10 @@ check("leak: with no key configured they stay off rather than open",
       "stay off until PARWAH_DIAG_SECRET is set" in _diag)
 check("leak: the liveness check is open but touches nothing",
       "Liveness only" in _diag and "db_configured" in _diag)
-check("leak: the deploy verifier sends the key",
-      "DIAG_KEY" in _verify and "probe=db&key=$DIAG_KEY" in _verify)
+check("leak: the deploy verifier sends the key, in a header and never the address",
+      '-H "X-Diag-Key: $DIAG_KEY"' in _verify and "key=$DIAG_KEY" not in _verify)
+check("leak: the server reads the key from the header only, in constant time",
+      "req.query && req.query.key" not in _diag and "timingSafeEqual(a, b)" in _diag)
 check("leak: and refuses to run without it, rather than reporting a false red",
       "PARWAH_DIAG_SECRET is not set here" in _verify)
 # Nothing private may ever be served.
@@ -1574,8 +1621,14 @@ check("guide demo: Ekta retrieves and never diagnoses",
       "Prepare summary" in _demo and "does not diagnose" in _demo)
 check("guide demo: things to do shows who has what (and what nobody has yet), with the offline emergency card",
       "Nobody has it yet" in _demo and "It works with no internet." in _demo)
-check("guide demo: the price comes last, per family, in both currencies",
-      "2,499" in _demo and "per family, per year" in _demo and "29.99" in _demo)
+# Honest about money: the free plan has everything, the paid plan is a way
+# to support Parwah that is not here yet, and no sum in a second currency
+# that did not add up ($29.99 at 85 to the dollar is not 2,499).
+check("guide demo: the price comes last and is honest: free for families, a Family Plan coming, no dollar maths",
+      "Free" in _demo and "for families" in _demo and "2,499 a year is coming" in _demo
+      and "29.99" not in _demo and "to the dollar" not in _demo)
+check("guide demo: dates move with the calendar, never a fixed month that goes stale",
+      "dDay(" in _demo and "30 September" not in _demo and "12 August" not in _demo)
 # "Do NOT show chat, games, gifting, calls or a feature menu here."
 _banned = [w for w in ("chat", "game", "gift", "video call", "Snakes", "Antakshari")
            if w.lower() in _demo.lower()]
@@ -2103,6 +2156,8 @@ for _p in PAGES:
             if "parwah-hq.anchit-tandon.com" not in _r:
                 continue
             _target = ROOT / "public" / _r.split("parwah-hq.anchit-tandon.com/", 1)[1]
+        elif _r.startswith("/"):
+            _target = ROOT / "public" / _r.split("?")[0].lstrip("/")
         else:
             _target = (_p.parent / _r.split("?")[0]).resolve()
         if not _target.exists():
@@ -2118,13 +2173,29 @@ _app_h = (ROOT / "public" / "index.html").read_text(encoding="utf-8")
 for _t in ("og:title", "og:description", "og:image", "twitter:card"):
     check(f"invite preview: the app carries {_t}", _t in _app_h)
 check("invite preview: and its image is absolute, like every other one",
-      'content="https://parwah-hq.anchit-tandon.com/og.png"' in _app_h)
+      'content="https://parwah-hq.anchit-tandon.com/og-app.png"' in _app_h)
 # Meta tags are not tracking. This must not be read as permission to add any.
 check("invite preview: the app still carries no analytics",
       "analytics.js" not in _app_h and "googletagmanager" not in _app_h)
 
+# EACH PAGE SHARES ITS OWN CARD. og.png was the products card ("Launching
+# soon", "Daily-living essentials", a parked domain), and it was on every
+# page, the app's own invite included, so a link to the app arrived in
+# WhatsApp promising a shop that is not open. The app pages share the app
+# card, the range pages the range card, and each story its own title.
+_CARD_OF = {"index.html": "og-app.png", "welcome/index.html": "og-app.png",
+            "privacy/index.html": "og-app.png", "terms/index.html": "og-app.png",
+            "404.html": "og-app.png", "care/index.html": "og.png",
+            "launch/index.html": "og.png", "story/index.html": "og-story.png",
+            "story/aisle/index.html": "og-aisle.png"}
+for _rel, _card in _CARD_OF.items():
+    _h = (ROOT / "public" / _rel).read_text(encoding="utf-8")
+    _imgs = re.findall(r'(?:property|name)="(?:og|twitter):image"\s+content="([^"]+)"', _h)
+    check(f"share card: {_rel} shares {_card}",
+          len(_imgs) == 2 and all(i == _BASE + "/" + _card for i in _imgs), ", ".join(_imgs))
+
 # The image has to exist, at the size every platform crops to.
-for _card in ("og.png", "og-story.png"):
+for _card in ("og.png", "og-app.png", "og-story.png", "og-aisle.png"):
     _f = ROOT / "public" / _card
     check(f"share card: {_card} is actually shipped", _f.exists())
     if _f.exists():
@@ -2220,7 +2291,7 @@ _priv = (ROOT / "public/privacy/index.html").read_text(encoding="utf-8")
 _priv_ll = _priv[_priv.find('id="launch-list"'):_priv.find('id="analytics"')]
 check("privacy: the launch list says what, why, where, how long, and how to delete",
       all(h in _priv_ll for h in ("What we collect", "Why we collect it", "Where it is kept",
-                                   "How long we keep it", "How to have it deleted", "mailto:care@parwah.in",
+                                   "How long we keep it", "How to have it deleted", "mailto:anchit.tandon@gmail.com",
                                    "at most 24 months", "internet address, for up to one day"))
       and "date and time you gave it" in _priv_ll)
 check("privacy: analytics is explained, and loads only after a yes",
@@ -2239,7 +2310,36 @@ check("proof: every sample figure and quote lives in one file",
 check("proof: a sample is never shown without saying so on the page",
       "Example figures, to be replaced with live numbers." in _proof
       and "Example figures, to be replaced with live numbers." in _welcome
-      and "show(SAMPLE, false)" in _proof and "QUOTES_ARE_EXAMPLES ? ' ' + NOTE.quotes" in _proof)
+      and "show(SAMPLE, false)" in _proof and "(QUOTES_ARE_EXAMPLES ? NOTE.quotes : '')" in _proof)
+check("proof: a live count too small to mean anything is hidden, never replaced by a sample",
+      "var MIN_LIVE = " in _proof and "if (live && counts[k] < MIN_LIVE) { tile.hidden = true; return; }" in _proof)
+# With small live counts hidden, the section was only three quotes tagged
+# Example, under "Who is joining Parwah": that reads as fake social proof.
+# It starts hidden and appears only when there is a number to show.
+check("proof: example quotes alone are never the whole section; it waits for a number",
+      re.search(r'<section[^>]*id="proof"[^>]*\shidden>', _welcome) is not None
+      and "root.hidden = shown === 0 && QUOTES_ARE_EXAMPLES;" in _proof)
+# ONE STORY ON EVERY PAGE. /welcome/ says the care range is not on sale yet;
+# the footer on seven other pages said Parwah "sells daily-living aids", and
+# two pages promised a home-safety guide that does not exist.
+_say = {str(q.relative_to(ROOT / "public")): q.read_text(encoding="utf-8") for q in SITE_PAGES}
+_sells = [k for k, v in _say.items() if re.search(r"\bsells daily-living", v)]
+check("copy: no page says the range is on sale while /welcome/ says it is not", not _sells, ", ".join(_sells))
+_legal = [m for v in _say.values() for m in re.findall(r'<p class="legal"[^>]*>(.*?)</p>', v, re.S)
+          if "not medicines" in m]
+check("copy: every footer legal line says the range is being prepared",
+      len(_legal) >= 8 and all("is preparing a range of daily-living aids" in m for m in _legal))
+_guide = [k for k, v in _say.items() if re.search(r"(?i)home-safety guide|guide to making a parent", v)]
+check("copy: no page promises a home-safety guide that does not exist", not _guide, ", ".join(_guide))
+_story = _say.get("story/index.html", "")
+check("copy: /story/ says what the app does and links to it, and its drop cap is a letter, not a quote mark",
+      'href="../welcome/">See what it does</a>' in _story and "Be first in line." in _story
+      and 'class="lead rv">"' not in _story)
+check("copy: the launch form's example phone is not the real business number",
+      'placeholder="e.g. 9873945238"' not in _say.get("launch/index.html", "")
+      and "98739 45238" not in _say.get("launch/index.html", ""))
+check("proof: one person is a person, not 1 people",
+      "LABEL[k][counts[k] === 1 ? 0 : 1]" in _proof and "'person on the Parwah launch list'" in _proof)
 check("proof: the counts are read from the real tables, and cached at the edge",
       "req.query.stats === 'proof'" in _auth_src and "from waitlist where consent" in _auth_src
       and "count(*)::int as n from users" in _auth_src and "s-maxage=600" in _auth_src
@@ -2317,10 +2417,10 @@ check("signout: a returning family is told why, not dropped on a bare login",
 _devanagari = [l.strip()[:60] for l in _app_src.split("\n") if re.search("[\u0900-\u097F]", l)]
 check("words: no Devanagari anywhere in the app", not _devanagari, " | ".join(_devanagari[:3]))
 # The games go by the names families know them by (the owner's call):
-# Antakshari and Monopoly, explained in English on their cards.
+# Antakshari and Vyapar (the owner's call, 2026-10-30), explained in English on their cards.
 check("words: the games go by their proper names",
-      all(w not in _app_src for w in ("Saanp Seedhi", ">Bhabhi", "Vyapar 🏠", "Song Chain", "Business 🏠"))
-      and "Snakes &amp; Ladders" in _app_src and "<h3>Antakshari 🎤</h3>" in _app_src and "<h3>Monopoly 🏠" in _app_src
+      all(w not in _app_src for w in ("Saanp Seedhi", ">Bhabhi", "Monopoly 🏠", "Song Chain", "Business 🏠"))
+      and "Snakes &amp; Ladders" in _app_src and "<h3>Antakshari 🎤</h3>" in _app_src and "<h3>Vyapar 🏠" in _app_src
       and "starts with the last letter" in _app_src)
 check("words: the day's sections are Good times and Horoscope",
       '>Good times</button>' in _app_src and '>Horoscope</button>' in _app_src and '>Rashifal</button>' not in _app_src)
@@ -2410,7 +2510,8 @@ check("reminders: a task can ring at its time or before it, once, and is late on
       and "LATE_GRACE_MIN" in _tasksrc and 'id="r-remind"' in _app_src and 'id="alarmsheet"' in _app_src)
 check("reminders: a timer rings them with every phone closed, and says nothing private",
       (REPO / ".github/workflows/tick.yml").exists() and "?tick=1" in (REPO / ".github/workflows/tick.yml").read_text(encoding="utf-8")
-      and "req.query.tick !== undefined" in _evt and "rateLimit(sql, 'tick', 'all', 1, 50)" in _evt)
+      and "req.query.tick !== undefined" in _evt and "rateLimit(sql, 'tick', 'all', 1, 50, { failClosed: true })" in _evt
+      and "x-cron-secret: $CRON_SECRET" in (REPO / ".github/workflows/tick.yml").read_text(encoding="utf-8"))
 _notes = (API_DIR / "_notesapi.mjs").read_text(encoding="utf-8")
 check("notes: shared lists under To do; a private note is private in the query itself",
       'data-sec="notes"' in _app_src and "(not n.private or n.by_member = ${me.id})" in _notes
@@ -2450,6 +2551,43 @@ _vj = _json.loads((ROOT.parent / "vercel.json").read_text(encoding="utf-8"))
 _ph = [h for h in _vj.get("headers", []) if h["source"].endswith(".mobileconfig")]
 check("iphone profile: served as a profile, so Safari offers to install it",
       any(x["key"] == "Content-Type" and x["value"] == "application/x-apple-aspen-config" for h in _ph for x in h["headers"]))
+
+# ---------- 10z. The pre-launch repairs (audit of 2026-10-30) ----------
+# Each of these was a real dead end or a false statement in the app. The
+# journeys are run end to end in site/tests/db/repair.e2e.dbtest.mjs; these
+# checks keep the source from drifting back.
+_js = re.sub(r"//[^\n]*", "", _app_src)   # comments may name what was removed
+check("repairs: a forgotten PIN is shown to the family and answered with reset_approve / reset_deny",
+      "data-resetok" in _app_src and "'reset_approve'" in _app_src and "'reset_deny'" in _app_src
+      and 'id="pinresets"' in _app_src and 'id="npinresets"' in _app_src and "takeResets(j)" in _app_src)
+check("repairs: no browser confirm() or prompt(); the app asks in its own sheet",
+      not re.search(r"[^\w.]confirm\(|[^\w.]prompt\(", _js) and "function askText(" in _app_src)
+check("repairs: no invented lab numbers after an upload, and the server's biomarker actions",
+      "Lal PathLabs" not in _app_src and "'biomarker_save'" in _app_src and "'biomarker_parse'" in _app_src
+      and "&person_id=" not in _app_src)
+check("repairs: the locator posts locator_add with the server's fields and no Unlock button",
+      "action: 'locator_add'" in _app_src and "institutionOrItem:" in _app_src and "data-unlockloc" not in _app_src
+      and "MULTI_SIG_VERIFIED" not in _app_src and "j.locators" in _app_src)
+check("repairs: medicine stock uses refill_add / refill_mark / refill_snooze and reads inventory",
+      all(a in _app_src for a in ("'refill_add'", "'refill_mark'", "'refill_snooze'", "j.inventory", "warning_due", "days_left"))
+      and "action: 'refill'," not in _app_src and "action: 'snooze'" not in _app_src)
+check("repairs: a voice note becomes a task through task_create, never task_add",
+      "action: 'task_create', title: title" in _app_src and "'task_add'" not in _app_src)
+check("repairs: the offline emergency card is never overwritten by an empty family",
+      "if (!state || !membersCache || !membersCache.length) return;" in _app_src)
+check("repairs: the family call room is 16 random bytes and carries no family code",
+      "crypto.getRandomValues(rb)" in _app_src and "state.code.toLowerCase() + '-' + Math.random()" not in _app_src)
+check("repairs: every button takes the page's font, and plain links the app's link colour",
+      "button{font:inherit}" in _app_src and "a:not([class]){color:var(--sindoor)" in _app_src)
+check("repairs: the phone that forgot waits for the family with its secret, then chooses a new PIN with it",
+      "action: 'reset_status'" in _app_src and "resetSecret: rsCur.secret" in _app_src and "newPin: $('au-pin').value" in _app_src
+      and "sessionStorage.setItem('parwah-reset'" in _app_src and "localStorage.setItem('parwah-reset'" not in _app_src
+      and "setInterval(function(){ rsPoll(false); }, 10000)" in _app_src and "document.hidden" in _app_src[_app_src.index("function rsPoll("):_app_src.index("function rsPoll(") + 400])
+check("repairs: the server's newer replies are read: a voice task's own title and time, a throttled SOS, Ekta's emergency in chat, a horoscope feed that is down",
+      "intent.task.title" in _app_src and "voiceDue(intent.task.time" in _app_src and "if (j.throttled)" in _app_src
+      and "if (j.ektaEmergency) chatUrgent(v)" in _app_src and "h.feedDown" in _app_src)
+check("repairs: the To do filters call the function that exists",
+      "renderReminders(" not in _js)
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

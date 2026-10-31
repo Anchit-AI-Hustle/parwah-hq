@@ -5,7 +5,7 @@
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
-import { panchang, currentPeriod } from './_panchang.mjs';
+import { periodNow } from './_panchang.mjs';
 import { placeOf } from './_places.mjs';
 import { validTz } from './_recur.mjs';
 import { horoscopeToday, signOf, SIGNS, SIGN_BASIS } from './_horoscope.mjs';
@@ -39,8 +39,7 @@ export default async function handler(req, res) {
     // worse, the wrong weekday, which is a completely different Choghadiya
     // sequence. Ask for the date in the member's own timezone.
     const day = new Intl.DateTimeFormat('en-CA', { timeZone: place.tz }).format(now);
-    const p = panchang(place.lat, place.lon, new Date(day + 'T00:00:00Z'));
-    const cur = p ? currentPeriod(p, now) : null;
+    const { panchang: p, current: cur, lastNight } = periodNow(place.lat, place.lon, new Date(day + 'T00:00:00Z'), now);
 
     // Everyone's sign, so the family can read each other's - and whose
     // birthday is unknown, so it can be filled in.
@@ -55,7 +54,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       ok: true, day, place, tz: place.tz,
-      panchang: p, current: cur,
+      panchang: p, current: cur, currentFromLastNight: !!lastNight,
       mySign: mySign ? { key: mySign.k, name: mySign.en, hi: mySign.hi } : null,
       people, horoscope: horo, signBasis: SIGN_BASIS,
       signs: SIGNS.map(s => ({ key: s.k, name: s.en, hi: s.hi }))

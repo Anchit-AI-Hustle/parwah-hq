@@ -128,6 +128,8 @@ export async function dialOut(sql, sosId, contacts, { name, text, map, cc }, { e
     const used = await sql`select count(*)::int as n from sos_dial d join sos s on s.id = d.sos_id
                            where s.circle_id = (select circle_id from sos where id = ${sosId})
                              and d.created_at > now() - interval '1 day'`;
+    // If this count cannot be read, the catch below sends nothing: a paid
+    // send fails closed.
     const left = Math.max(0, DIAL_DAY_MAX - ((used[0] && used[0].n) || 0));
     out.capped = jobs.length > left;
     await Promise.allSettled(jobs.slice(0, left).map(async j => {

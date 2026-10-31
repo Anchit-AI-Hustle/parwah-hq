@@ -30,8 +30,9 @@ export const PLANS = {
   care: {
     id: 'care', name: 'Parwah Family Plan', inr: 2499,
     tagline: 'One plan for the whole family, wherever each of you lives.',
-    includes: ['The vault', 'Health & contacts', 'To do', 'Family',
-               'The emergency card', 'Ekta']
+    // What it ADDS, and only what is real. It used to list six things the
+    // free plan already has, in fewer words, so paying looked like less.
+    includes: ['Everything in the free plan', 'Priority help', 'Supporting Parwah']
   }
 };
 
@@ -59,6 +60,13 @@ async function ensurePlanSchema(sql) {
     created_at timestamptz not null default now()
   )`;
   try { await sql`create unique index if not exists plan_interest_one on plan_interest (circle_id, member_id)`; } catch (e) {}
+  // The amount was a whole number, so $29.99 was kept as 30 and the
+  // confirmation said $30 under a $29.99 button. Kept exactly, to the cent.
+  const t = await sql`select data_type from information_schema.columns
+                      where table_name = 'plan_interest' and column_name = 'amount'`;
+  if (t[0] && t[0].data_type !== 'numeric') {
+    await sql`alter table plan_interest alter column amount type numeric(10,2)`;
+  }
 }
 
 export default async function handler(req, res) {
@@ -80,7 +88,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'GET') {
       const rows = await sql`
-        select p.id, p.plan, p.currency, p.amount, p.created_at, m.name, m.id as member_id
+        select p.id, p.plan, p.currency, p.amount::float8 as amount, p.created_at, m.name, m.id as member_id
         from plan_interest p join members m on m.id = p.member_id
         where p.circle_id = ${circle.id} order by p.created_at desc limit 20`;
       // Where the family lives decides which currency leads - an NRI child
@@ -111,14 +119,14 @@ export default async function handler(req, res) {
       const price = priceOf(plan, currency);
       const note = String(body.note || '').trim().slice(0, 200) || null;
       await sql`insert into plan_interest (circle_id, member_id, plan, currency, amount, note)
-                values (${circle.id}, ${me.id}, ${plan}, ${currency}, ${Math.round(price.amount)}, ${note})
+                values (${circle.id}, ${me.id}, ${plan}, ${currency}, ${price.amount}, ${note})
                 on conflict (circle_id, member_id)
                 do update set plan = excluded.plan, currency = excluded.currency,
                               amount = excluded.amount, note = excluded.note, created_at = now()`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${me.id}, 'care', ${me.name + ' reserved a place on ' + PLANS[plan].name})`;
       // Deliberately no payment: nothing is charged, and the reservation says so.
-      return res.status(201).json({ ok: true, charged: false, price });
+      return res.status(201).json({ ok: true, charged: false, price, amount: price.amount, currency });
     }
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });

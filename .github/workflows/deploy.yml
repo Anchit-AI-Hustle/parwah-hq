@@ -93,7 +93,9 @@ jobs:
         run: bash ops/vercel-input.sh
 
       - name: Install the Vercel CLI
-        run: npm install --no-save vercel@latest
+        # An exact version: @latest would run whatever was published that
+        # morning, with the deploy token in hand.
+        run: npm install --no-save vercel@64.3.1
 
       # Source, not a prebuilt bundle: the Vercel build runs scripts/checks.sh
       # again, so the gate guards the deployment itself and not just this job.

@@ -22,7 +22,8 @@ import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
 import { LOCAL_MODEL, isDeadKey, isBillingFailure, isAuthFailure, classify, whoIsAsked,
          renderSummary, renderMemory, renderCircle, offlineNote, cannotAnswer,
          renderScam, renderCannotDo, renderEmergency, renderCrisis, renderHealth,
-         kinIsAsked, ABOUT_ME, renderWhoIsIt, renderWhoIsVisit, askedText, mentionsUrgent, urgentToo } from './_ektalocal.mjs';
+         kinIsAsked, ABOUT_ME, renderWhoIsIt, renderWhoIsVisit, askedText, mentionsUrgent, urgentToo,
+         askedField, renderField } from './_ektalocal.mjs';
 import { isCountry, countryName, ambulanceFor } from './_countries.mjs';
 import { reqTz } from './_recur.mjs';
 import { spend, EARN } from './_coins.mjs';
@@ -387,7 +388,7 @@ function textBackups(vault) {
 // all - and a blood group read straight from the row cannot be paraphrased.
 // Where the asker lives, for the emergency number: their country in Parwah,
 // else the region their phone reports, else India.
-function isoOf(me, body) {
+export function isoOf(me, body) {
   if (me && me.iso && isCountry(me.iso)) return me.iso;
   if (me && me.country && isCountry(me.country)) return me.country;
   const hint = body && String(body.iso || '').toUpperCase();
@@ -431,6 +432,13 @@ export async function localTurn(sql, circle, me, history, reason) {
           && /\b(doctor|dr\.?)\b/i.test((e.name || '') + ' ' + (e.forwhat || '') + ' ' + (e.category || '')))
         .sort((a, b) => (b.about === subject) - (a.about === subject))[0] || null;
       if (!mine.error) return say(renderHealth(mine, subject, doctor));
+    }
+    // One field named ("Papa's blood group", "Papa ka doctor"): that field.
+    const field = (intent === 'memory' || intent === 'summary') ? askedField(text) : null;
+    if (field) {
+      const subject = who || (!kin && ABOUT_ME.test(text) ? me.name : null);
+      const payload = JSON.parse(await runTool(sql, circle, me, 'get_family_memory', subject ? { about_name: subject } : {}));
+      if (!payload.error) return say(renderField(field, payload, subject));
     }
     if (intent === 'summary') {
       if (!who) return plain(renderWhoIsVisit(names.filter(n => n !== me.name)));

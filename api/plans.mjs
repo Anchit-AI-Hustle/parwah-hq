@@ -3,6 +3,7 @@
 // room; every plan renders in each member's local timezone client-side.
 // GET  /api/plans?circle=CODE&member=UUID → { ok, plans[] } (upcoming)
 // POST /api/plans {code, memberId, action:'create'|'rsvp'|'cancel', ...}
+import { randomBytes } from 'node:crypto';
 import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { countError } from './_valid.mjs';
@@ -16,9 +17,11 @@ async function feed(sql, circleId, memberId, text) {
   await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'care', ${text})`;
 }
 
-function roomUrl(code) {
-  const rand = Math.random().toString(36).slice(2, 8);
-  return 'https://meet.jit.si/parwah-' + String(code).toLowerCase() + '-' + rand;
+// A room name anyone can guess is a room anyone can walk into: it carried
+// the family's invite code and six characters of Math.random. Now 128 random
+// bits from the system's own generator, and nothing about the family.
+function roomUrl() {
+  return 'https://meet.jit.si/parwah-' + randomBytes(16).toString('hex');
 }
 
 export default async function handler(req, res) {
@@ -79,7 +82,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ ok: false, error: 'Pick a date and time in the future' });
       }
       const place = String(body.place || '').trim().slice(0, 120) || null;
-      const room = (kind === 'call' || kind === 'party') ? roomUrl(circle.code) : null;
+      const room = (kind === 'call' || kind === 'party') ? roomUrl() : null;
       const cntErr = countError(body.expected, 50);
       if (cntErr) return res.status(400).json({ ok: false, error: cntErr });
       let expected = parseInt(body.expected, 10);

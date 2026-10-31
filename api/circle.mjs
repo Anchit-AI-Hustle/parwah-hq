@@ -512,6 +512,14 @@ export default async function handler(req, res) {
         if (derr) return res.status(400).json({ ok: false, error: derr });
         newDob = d || null;
       }
+      // A new number that is someone else's sign-in is refused HERE, before
+      // anything is written. The app saves this first and the profile second,
+      // and the profile refused it: the family saw one number, the sign-in
+      // kept the other.
+      if (cur.user_id && ph !== null && ph !== cur.phone) {
+        const taken = await sql`select id from users where phone = ${ph} and id <> ${cur.user_id}`;
+        if (taken[0]) return res.status(409).json({ ok: false, error: 'That number is already registered to another profile' });
+      }
       const npm = newPhone ? normPhone(newPhone) : null;
       await sql`update members set name = ${newName}, role = ${newRole}, phone = ${newPhone}, phone_cc = ${npm ? npm.cc : null}, phone_local = ${npm ? npm.local : null}, place = ${newPlace}, country = ${newCountry}, relation = ${newRelation}, dob = ${newDob}, gift_info = ${newGift ? JSON.stringify(newGift) : null}::jsonb where id = ${cur.id}`;
       // One person, one home, one number - keep their other family/group

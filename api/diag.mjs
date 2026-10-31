@@ -6,6 +6,7 @@
 //   GET /api/diag?probe=ekta → Ekta provider/cascade selftest
 //   GET /api/diag?probe=day  → muhurat arithmetic vs almanac + horoscope source
 //   GET /api/diag?probe=pin  → PIN-code parser + a live India Post lookup
+import { timingSafeEqual } from 'node:crypto';
 import health from './_health.mjs';
 import selftest from './_selftest.mjs';
 import ektaSelftest from './_ektaselftest.mjs';
@@ -21,12 +22,15 @@ import pinSelftest from './_pinselftest.mjs';
 //
 // They need the deploy secret now. ops/verify-live.sh sends it, and the
 // bare /api/diag stays open as a liveness check that touches nothing.
+// The key comes in the X-Diag-Key header only: in ?key= it was written
+// into every access log on the way. Compared in constant time, so the reply
+// time cannot give it away one character at a time.
 function authorised(req) {
   const secret = process.env.PARWAH_DIAG_SECRET || process.env.CRON_SECRET;
   if (!secret) return false;
-  const given = String((req.query && req.query.key)
-    || (req.headers && (req.headers['x-diag-key'] || req.headers['X-Diag-Key'])) || '');
-  return given.length === secret.length && given === secret;
+  const given = String((req.headers && (req.headers['x-diag-key'] || req.headers['X-Diag-Key'])) || '');
+  const a = Buffer.from(given), b = Buffer.from(secret);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 export default async function handler(req, res) {
@@ -39,7 +43,7 @@ export default async function handler(req, res) {
       service: 'parwah',
       time: new Date().toISOString(),
       db_configured: !!(process.env.DATABASE_URL || process.env.POSTGRES_URL),
-      probes: 'add ?probe=db|day|pin|ekta with the diagnostics key'
+      probes: 'add ?probe=db|day|pin|ekta, with the diagnostics key in the X-Diag-Key header'
     });
   }
   if (!authorised(req)) {

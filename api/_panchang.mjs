@@ -164,3 +164,18 @@ export function currentPeriod(p, now) {
   const all = (p.day || []).concat(p.night || []);
   return all.find(x => now >= x.from && now < x.to) || null;
 }
+
+// Between midnight and today's sunrise it is still last night: the night
+// runs from yesterday's sunset to this sunrise, by yesterday's weekday.
+// Reading only today's periods found nothing then, and the card said
+// "Between today's windows" with no name on it.
+export function periodNow(lat, lon, day, now) {
+  const p = panchang(lat, lon, day);
+  if (!p) return { panchang: p, current: null };
+  if (now < p.sunrise) {
+    const prev = panchang(lat, lon, new Date(+day - 86400000));
+    const cur = prev ? currentPeriod(prev, now) : null;
+    return { panchang: p, current: cur, lastNight: !!cur };
+  }
+  return { panchang: p, current: currentPeriod(p, now) };
+}

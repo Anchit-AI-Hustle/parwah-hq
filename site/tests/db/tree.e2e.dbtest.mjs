@@ -212,17 +212,18 @@ ok('tapping someone opens their profile, with the same word for them', await P2.
 // ---- a mistake is undone one link at a time; nobody else moves
 await P1.selectOption('#tr-who', await idOf('Vihaan'));
 ok('someone in the tree shows their links, each removable', /Remove: Vihaan is Aarav's son/.test(await P1.textContent('#tr-links')), await P1.textContent('#tr-links'));
-let asked = '';
-P1.once('dialog', d => { asked = d.message(); d.accept(); });
-await P1.click('#tr-links [data-unlink="parent"]'); await P1.waitForTimeout(1300);
+// Asked in the app's own sheet now, not the browser's confirm().
+await P1.click('#tr-links [data-unlink="parent"]'); await P1.waitForTimeout(200);
+const asked = (await P1.textContent('#as-q')) + ' ' + (await P1.textContent('#as-sub'));
+await P1.click('#as-yes'); await P1.waitForTimeout(1300);
 ok('it asks first, and says nobody else moves', /Vihaan is Aarav's son/.test(asked) && /children too, stays/.test(asked), asked);
 ok('the link goes', (await admin.query(`select parent_id from members where id = $1`, [await idOf('Vihaan')])).rows[0].parent_id === null);
 ok('and the tree says so: three generations, Vihaan not in it yet', /3 generations/.test(await P1.textContent('#tree-sub')) && /not in the tree yet: Vihaan/.test(await P1.textContent('#tree-sub')), await P1.textContent('#tree-sub'));
 await place(P1, 'Vihaan', 'child', 'Aarav', 'm');
 ok('and they can be placed again', /4 generations/.test(await P1.textContent('#tree-sub')));
 await P1.selectOption('#tr-who', await idOf('Rohan'));
-P1.once('dialog', d => d.accept());
-await P1.click('#tr-links [data-unlink="spouse"]'); await P1.waitForTimeout(1300);
+await P1.click('#tr-links [data-unlink="spouse"]'); await P1.waitForTimeout(200);
+await P1.click('#as-yes'); await P1.waitForTimeout(1300);
 const afterSp = Object.fromEntries((await admin.query(`select name, parent_id, spouse_id from members where circle_id = $1`, [fam.id])).rows.map(r => [r.name, r]));
 ok('removing a wrong wife keeps the children where they are', afterSp.Rohan.spouse_id === null && afterSp.Priya.spouse_id === null && afterSp.Aarav.parent_id === await idOf('Rohan') && afterSp.Rohan.parent_id === papaId);
 await place(P1, 'Priya', 'spouse', 'Rohan', 'f');
@@ -251,8 +252,8 @@ await place(P1, 'new', 'child', 'Usha', 'm');
 await P1.fill('#tr-name', 'Typo Name'); await P1.click('#tr-go'); await P1.waitForTimeout(1300);
 await P1.selectOption('#tr-who', await idOf('Typo Name'));
 ok('someone added by name can be removed again', /Remove Typo Name from the family/.test(await P1.textContent('#tr-links')));
-P1.once('dialog', d => d.accept());
-await P1.click('#tr-links [data-unlink="person"]'); await P1.waitForTimeout(1300);
+await P1.click('#tr-links [data-unlink="person"]'); await P1.waitForTimeout(200);
+await P1.click('#as-yes'); await P1.waitForTimeout(1300);
 ok('and is gone', (await admin.query(`select count(*)::int as n from members where circle_id = $1 and name = 'Typo Name'`, [fam.id])).rows[0].n === 0);
 await P1.selectOption('#tr-who', await idOf('Rohan'));
 ok('someone on Parwah cannot be removed from here', !/from the family/.test(await P1.textContent('#tr-links')));

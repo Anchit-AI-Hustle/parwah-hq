@@ -11,11 +11,28 @@
 // print. Set QUOTES_ARE_EXAMPLES to false only when every quote below is a
 // real person's words, used with their permission. Never present a sample as
 // a verified figure or a real person's words.
+//
+// The section starts hidden and is shown only when it has a number to show
+// (a live count worth showing, or the marked sample when there is no answer).
+// With no number and only example quotes, it would be three made-up voices
+// under "Who is joining Parwah", which reads as fake proof, so it stays out.
 (function () {
   'use strict';
 
   // Plausible, modest, and never shown without the note that says so.
   var SAMPLE = { waitlist: 214, users: 63 };
+
+  // A live count below this is not shown at all: "1 person on the launch
+  // list" reads as an empty room, not as proof. Nothing is put in its place;
+  // the tile simply waits until the real number is worth showing. Set to 0
+  // to always show the live count.
+  var MIN_LIVE = 25;
+
+  // What each number is, in the singular and the plural.
+  var LABEL = {
+    waitlist: ['person on the Parwah launch list', 'people on the Parwah launch list'],
+    users: ['Parwah app account made', 'Parwah app accounts made']
+  };
 
   var QUOTES_ARE_EXAMPLES = true;
   var QUOTES = [
@@ -67,12 +84,23 @@
   function show(counts, live) {
     if (settled) return;
     settled = true;
+    var shown = 0;
     ['waitlist', 'users'].forEach(function (k) {
       var el = root.querySelector('[data-proof="' + k + '"]');
-      if (el) el.textContent = fmt(counts[k]);
+      if (!el) return;
+      var tile = el.parentNode;
+      if (live && counts[k] < MIN_LIVE) { tile.hidden = true; return; }
+      tile.hidden = false;
+      shown++;
+      el.textContent = fmt(counts[k]);
+      var lbl = tile.querySelector('.pf-lbl');
+      if (lbl) lbl.textContent = LABEL[k][counts[k] === 1 ? 0 : 1];
     });
+    var stats = root.querySelector('.pf-stats');
+    if (stats) stats.hidden = shown === 0;
+    root.hidden = shown === 0 && QUOTES_ARE_EXAMPLES;
     var note = root.querySelector('[data-proof="note"]');
-    if (note) note.textContent = (live ? NOTE.live : NOTE.sample) + (QUOTES_ARE_EXAMPLES ? ' ' + NOTE.quotes : '');
+    if (note) note.textContent = (shown === 0 ? '' : (live ? NOTE.live : NOTE.sample) + ' ') + (QUOTES_ARE_EXAMPLES ? NOTE.quotes : '');
     root.setAttribute('data-proof-source', live ? 'live' : 'sample');
     root.removeAttribute('aria-busy');
   }

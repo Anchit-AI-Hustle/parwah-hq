@@ -86,6 +86,11 @@ ok(erPack.tpa_name === 'Medi Assist TPA', 'emergency packet has TPA name');
 ok(erPack.network_hospitals.length === 1, 'empanelled hospital list populated');
 ok(erPack.share_text.indexOf('Medi Assist TPA') >= 0, 'share text contains TPA desk details');
 
+// 3b. A lab is named only when the report names it.
+ok(parseBiomarkersFromText('HbA1c 6.2 %  (max 5.6)').labName === null, '"max" in a range is not Max Healthcare');
+ok(parseBiomarkersFromText('Maximum value noted. HbA1c 6.2 %').labName === null, '"Maximum" is not Max Healthcare');
+ok(parseBiomarkersFromText('Max Healthcare, Saket. HbA1c 6.2 %').labName === 'Max Healthcare', 'the real name still is');
+
 // 4. Voice-First Intent Extraction with Confirmation Loop
 const v1 = extractVoiceIntent('Doctor ne subah ki goli badal di, ab Telmisartan 40mg deni hai');
 ok(v1 && v1.intent === 'MEDICATION_CHANGE', 'detected medication change intent from Hindi');
@@ -97,6 +102,17 @@ ok(v2.extracted_data.systolic === 130 && v2.extracted_data.diastolic === 85, 'pa
 
 const v3 = extractVoiceIntent('Kal sham ko cardiologist ke paas jaana hai');
 ok(v3 && v3.intent === 'CHORE_OR_APPOINTMENT', 'detected appointment intent from Hindi');
+
+// 4b. What was said, as a to-do: never an event nobody mentioned.
+const v4 = extractVoiceIntent('Papa ki BP tablet subah 9 baje');
+ok(v4 && !/doctor|changed/i.test(v4.draft_confirmation), 'a routine tablet is not turned into "the doctor changed a medicine"');
+ok(v4.task && v4.task.title === 'Papa: BP tablet at 9 am' && v4.task.time === '09:00', 'it is a plain task with its time: ' + JSON.stringify(v4.task));
+const v5 = extractVoiceIntent('Mummy ki sugar ki goli raat 8:30 baje');
+ok(v5.task.time === '20:30' && /8:30 pm/.test(v5.task.title), 'raat 8:30 is 8:30 pm');
+ok(extractVoiceIntent('Dadi ko dopahar 2 baje khana dena hai').task.time === '14:00', 'dopahar 2 baje is 2 pm');
+ok(extractVoiceIntent('Kal sham ko cardiologist ke paas jaana hai').task.time === null, 'no time said, no time made up');
+ok(/doctor changed/.test(v1.draft_confirmation) && v1.task && v1.task.title, 'a change the doctor made is still read, and still offered as a task');
+ok(!/doctor/i.test(extractVoiceIntent('Papa ki goli badal gayi, ab Amlodipine 5mg').draft_confirmation), 'a change with no doctor named does not name one');
 
 // 5. Care Wallet & Utility Bill Delegation
 const upiLink = buildUpiDeepLink('BSES Rajdhani', 1450, '100482910', 'ELECTRICITY', 'bses@icici');

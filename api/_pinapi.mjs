@@ -30,8 +30,12 @@ export default async function handler(req, res) {
 
     // Cached PINs cost nothing; only a first-ever lookup reaches out, and a
     // person cannot hammer someone else's free service through us.
-    const gate = await rateLimit(sql, 'pin:' + clientIp(req), 40, 60);
-    if (!gate.ok) return res.status(429).json({ ok: false, error: 'Too many PIN lookups - wait a minute.' });
+    // rateLimit(sql, bucket, key, limit, seconds) answers true or false.
+    // This called it with the address glued to the bucket and read .ok off
+    // the answer, which a boolean does not have: every lookup was refused.
+    if (!(await rateLimit(sql, 'pin', clientIp(req), 40, 60))) {
+      return res.status(429).json({ ok: false, error: 'Too many PIN lookups - wait a minute.' });
+    }
 
     // A PIN India Post has never heard of is a successful answer to a fair
     // question, not a missing endpoint - 200 with unknown:true. A 404 here

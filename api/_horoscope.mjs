@@ -44,11 +44,21 @@ export const SIGNS = [
 
 // Date of birth → sign. Capricorn wraps the year end, which is the one case
 // a naive range check gets wrong.
+//
+// The database driver hands a date column back as a Date, not as text, and
+// String() of a Date is "Mon May 14 1990 ...", which never matched: every
+// sign in every family was blank. A Date is read by its own calendar day
+// (the driver makes it at local midnight), text as YYYY-MM-DD.
 export function signOf(dob) {
-  const s = String(dob || '');
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
-  if (!m) return null;
-  const mo = +m[2], da = +m[3];
+  let mo, da;
+  if (dob instanceof Date) {
+    if (isNaN(+dob)) return null;
+    mo = dob.getMonth() + 1; da = dob.getDate();
+  } else {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dob || ''));
+    if (!m) return null;
+    mo = +m[2]; da = +m[3];
+  }
   if (mo < 1 || mo > 12 || da < 1 || da > 31) return null;
   for (const sg of SIGNS) {
     const [fm, fd] = sg.from, [tm, td] = sg.to;
@@ -134,5 +144,8 @@ export async function horoscopeToday(sql, day) {
     text: bySign[s.k] ? bySign[s.k].text : null,
     source: bySign[s.k] ? bySign[s.k].source : null
   }));
-  return { day, signs, unavailable: signs.filter(s => !s.text).length };
+  // feedDown: none of the twelve came, so the screen says so once instead
+  // of "Not available today." twelve times.
+  const unavailable = signs.filter(s => !s.text).length;
+  return { day, signs, unavailable, feedDown: unavailable === signs.length };
 }

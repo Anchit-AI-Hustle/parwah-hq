@@ -213,18 +213,34 @@ ok('neither failure stored a row', (await admin.query("select count(*)::int n fr
 }
 
 // ---- 7. the proof on the home page: real counts when it can
-await admin.query(`insert into users (phone, name) values ('+919800000001','A'),('+919800000002','B'),('+919800000003','C')`);
+// 7a. Small real counts are not shown at all: "1 person on the launch list"
+// reads as an empty room. Nothing is put in their place, and with no number
+// left the whole section stays hidden: three quotes tagged Example under
+// "Who is joining Parwah" read as fake proof.
+{
+  const page = await open('/welcome/', { width: 1440, height: 900 });
+  await page.waitForSelector('#proof[data-proof-source]', { state: 'attached', timeout: 6000 });
+  ok('the home page reads the live counts', await page.getAttribute('#proof', 'data-proof-source') === 'live');
+  ok('with every live count too small to mean anything, the whole section is hidden', await page.locator('#proof').isHidden());
+  ok('so no sample number and no example quote is on the page', !/214|63|Example/.test(await page.innerText('body')));
+  ok('and it leaves no gap: the features follow the header directly', await page.evaluate(() =>
+    Math.abs(document.getElementById('features').getBoundingClientRect().top - document.querySelector('header').getBoundingClientRect().bottom) < 1));
+  await page.context().close();
+}
+// 7b. Once a count is worth showing, it is the real one, in the right words.
+await admin.query(`insert into users (phone, name) select '+91980' || lpad(g::text, 7, '0'), 'P' || g from generate_series(1, 40) g`);
 {
   const want = (await admin.query('select (select count(*)::int from waitlist where consent) w, (select count(*)::int from users) u')).rows[0];
   const page = await open('/welcome/', { width: 1440, height: 900 });
   await page.waitForSelector('#proof[data-proof-source]', { timeout: 6000 });
-  ok('the home page reads the live counts', await page.getAttribute('#proof', 'data-proof-source') === 'live');
-  ok('the launch list number is the real one', await page.innerText('[data-proof="waitlist"]') === String(want.w), await page.innerText('[data-proof="waitlist"]'));
-  ok('the app users number is the real one', await page.innerText('[data-proof="users"]') === String(want.u), await page.innerText('[data-proof="users"]'));
-  const note = await page.innerText('[data-proof="note"]');
-  ok('and says it is live, while still marking the quotes as examples', /Live counts/.test(note) && /quotes are examples/.test(note), note);
-  ok('every quote carries an Example tag', await page.locator('.pf-quote').count() === 3 && await page.locator('.pf-quote .pf-tag').count() === 3);
+  ok('with a number worth showing, the section is back', await page.locator('#proof').isVisible() && await page.getAttribute('#proof', 'data-proof-source') === 'live');
+  ok('the quotes are still marked as examples', await page.locator('.pf-quote').count() === 3 && await page.locator('.pf-quote .pf-tag').count() === 3
+     && /quotes are examples/.test(await page.innerText('[data-proof="note"]')));
   ok('the proof sits above the features', await page.evaluate(() => document.getElementById('proof').getBoundingClientRect().top < document.getElementById('features').getBoundingClientRect().top));
+  ok('a real count worth showing is shown', await page.locator('[data-proof="users"]').isVisible() && await page.innerText('[data-proof="users"]') === String(want.u), await page.innerText('[data-proof="users"]'));
+  ok('in the plural when it is more than one', await page.innerText('[data-proof="users"] + .pf-lbl') === 'Parwah app accounts made');
+  ok('while the launch list, still small, stays hidden', want.w < 25 && await page.locator('[data-proof="waitlist"]').isHidden());
+  ok('and the note says the count shown is live', /Live counts/.test(await page.innerText('[data-proof="note"]')));
   await page.context().close();
 }
 
