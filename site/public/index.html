@@ -929,6 +929,65 @@ details.more[open]>summary::before{content:"▾ "}
 .em .rr{display:block;font-size:var(--fs-12);opacity:.75;margin-top:var(--space-2);text-align:right}
 .seenline{align-self:flex-end;font-size:var(--fs-12);color:var(--ink-soft);margin-top:calc(var(--space-4) * -1)}
 
+/* ---------- chat bonding: voice notes, reactions, Dekh liya, quick polls ---------- */
+#composer #msg{min-width:0}
+#cmic{border:0;background:var(--bone);color:var(--ink);border-radius:var(--radius-12);padding:0 var(--space-12);font-size:var(--fs-18);cursor:pointer;min-width:var(--tap-min)}
+.inputbar .vnbar{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:var(--space-8);width:100%;min-height:var(--tap-min)}
+.vnbar .vn-live{flex:1;min-width:0;font-weight:700;font-size:var(--fs-14);color:var(--ink);display:flex;align-items:center;gap:var(--space-8)}
+.vnbar .vn-dot{width:12px;height:12px;border-radius:var(--radius-pill);background:var(--alert);flex:none}
+.vnbar .vn{flex:1;min-width:0}
+#vn-prev{flex:1;min-width:0;display:flex}
+.inputbar .vnbar button{min-height:var(--tap-min);min-width:var(--tap-min);padding:0 var(--space-12)}
+.inputbar .vnbar .vn-ghost{background:var(--bone);color:var(--ink)}
+.inputbar .vnbar .vn button{padding:0}
+.inputbar .vnbar .vn .vn-play{background:var(--ink);color:var(--day)}
+.inputbar .vnbar .vn .vn-speed{background:var(--surface);color:var(--ink);padding:0 var(--space-8)}
+.vn{display:flex;align-items:center;gap:var(--space-8);min-width:180px;white-space:normal}
+#vn-prev .vn{min-width:0}
+.vn button{min-width:var(--tap-min);min-height:var(--tap-min);border-radius:var(--radius-pill);cursor:pointer;font-family:var(--body);font-weight:700;flex:none}
+.vn .vn-play{border:0;background:var(--ink);color:var(--day);font-size:var(--fs-16)}
+.vn .vn-speed{border:1px solid var(--bone-2);background:var(--surface);color:var(--ink);font-size:var(--fs-14);padding:0 var(--space-8)}
+.vn .vn-track{flex:1;height:6px;border-radius:var(--radius-pill);background:var(--bone-2);overflow:hidden;min-width:24px}
+.vn .vn-fill{display:block;height:100%;width:0;background:var(--sindoor)}
+.vn .vn-time{font-size:var(--fs-14);font-variant-numeric:tabular-nums;min-width:36px}
+.rx-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--space-4);margin-top:var(--space-4);white-space:normal}
+.rx-chip{border:1px solid var(--bone-2);background:var(--surface);color:var(--ink);border-radius:var(--radius-pill);min-height:var(--tap-min);min-width:var(--tap-min);padding:0 var(--space-8);font-family:var(--body);font-size:var(--fs-14);font-weight:700;cursor:pointer}
+.rx-chip.mine{border-color:var(--sindoor);box-shadow:inset 0 0 0 1px var(--sindoor)}
+.rx-add{border:0;background:none;color:inherit;min-width:var(--tap-min);min-height:var(--tap-min);border-radius:var(--radius-pill);font-size:var(--fs-16);cursor:pointer;margin:calc(-1 * var(--space-8)) calc(-1 * var(--space-8)) calc(-1 * var(--space-8)) 0}
+.rx-add:hover{background:var(--bone)}
+.rx-row{display:flex;flex-wrap:wrap;gap:var(--space-8);justify-content:center;margin:var(--space-8) 0 var(--space-16)}
+.rx-big{border:1.5px solid var(--bone-2);background:var(--surface);color:var(--ink);border-radius:var(--radius-16);min-width:56px;min-height:56px;font-size:var(--fs-24);cursor:pointer}
+.rx-big[aria-pressed="true"]{border-color:var(--sindoor);background:var(--tint-warm)}
+.bond-who{list-style:none;margin:0;padding:0;font-size:var(--fs-16)}
+.bond-who li{padding:var(--space-8) 0;border-bottom:1px solid var(--bone-2)}
+.bond-who li:last-child{border-bottom:0}
+.bondsenior{display:flex;flex-direction:column;gap:var(--space-12);margin-top:var(--space-12)}
+.bondsenior .dekh{border:2px solid var(--sindoor);background:var(--surface);color:var(--ink);border-radius:var(--radius-16);min-height:64px;font-family:var(--body);font-size:var(--fs-20);font-weight:800;cursor:pointer;padding:var(--space-8) var(--space-16)}
+.bondsenior .dekh small{display:block;font-size:var(--fs-14);font-weight:600;color:var(--ink-soft)}
+.bondsenior .dekhdone{font-size:var(--fs-16);color:var(--ink-soft);text-align:center;margin:0}
+.bondsenior .vnhold{border:0;background:var(--grad);color:var(--on-bright);border-radius:var(--radius-16);min-height:72px;font-family:var(--body);font-size:var(--fs-20);font-weight:800;cursor:pointer;padding:var(--space-8) var(--space-16);touch-action:none;-webkit-user-select:none;user-select:none}
+.bondsenior .vnhold.rec{background:var(--dusk);color:var(--cream)}
+.bondsenior .vnhold.away{background:var(--alert);color:var(--on-accent)}
+.pl{display:flex;flex-direction:column;gap:var(--space-8);min-width:180px;white-space:normal}
+.pl-q{font-family:var(--disp);font-size:var(--fs-16)}
+.pl-meta{font-size:var(--fs-12)}
+.pl-opt{position:relative;display:flex;align-items:center;gap:var(--space-8);border:1px solid var(--bone-2);background:var(--surface);color:var(--ink);border-radius:var(--radius-12);min-height:var(--tap-min);padding:var(--space-8) var(--space-12);font-family:var(--body);font-size:var(--fs-14);font-weight:600;text-align:left;overflow:hidden;width:100%}
+button.pl-opt{cursor:pointer}
+.pl-opt.mine{border-color:var(--sindoor);box-shadow:inset 0 0 0 1px var(--sindoor)}
+.pl-opt .pl-fill{position:absolute;left:0;top:0;bottom:0;background:var(--tint-warm);z-index:var(--z-raised)}
+.pl-opt .pl-txt,.pl-opt .pl-n{position:relative;z-index:var(--z-above)}
+.pl-opt .pl-txt{flex:1}
+.pl-opt .pl-n{font-variant-numeric:tabular-nums;font-weight:800}
+.pl-acts{display:flex;flex-wrap:wrap;gap:var(--space-8)}
+.pl-acts .cbtn{min-height:var(--tap-min);background:var(--surface);color:var(--ink);border:1px solid var(--bone-2)}
+.senior .pl-opt{min-height:56px;font-size:var(--fs-18)}
+.senior .pl-q{font-size:var(--fs-20)}
+#pollsheet .plrow{display:flex;gap:var(--space-8);align-items:center;margin-bottom:var(--space-8)}
+#pollsheet .plrow input{flex:1;min-width:0}
+#pollsheet .plrow button{flex:none;min-width:var(--tap-min);min-height:var(--tap-min)}
+#pl-close{width:100%;border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-12);font-family:var(--body);font-size:var(--fs-16);background:var(--day);color:var(--ink)}
+#cv-poll{min-height:var(--tap-min)}
+
 /* member profile sheet */
 #nc-list{display:flex;flex-direction:column;gap:var(--space-8);margin-top:var(--space-8);max-height:44vh;overflow-y:auto}
 .msheet{position:fixed;inset:0;background:rgba(24,38,34,.55);z-index:var(--z-sheet);display:flex;align-items:flex-start;justify-content:center;padding:var(--space-20);overflow-y:auto;overscroll-behavior:contain}
@@ -2731,6 +2790,7 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
         <button class="cbtn ghost" id="chatback" aria-label="Back to chats">←</button>
         <span style="flex:1"><b id="cv-name"></b><small id="cv-sub"></small></span>
         <button class="cbtn ghost" id="cv-add" hidden>➕ Add</button>
+        <button class="cbtn ghost" id="cv-poll" aria-label="Start a poll" aria-haspopup="dialog">📊 Poll</button>
         <a class="cbtn ghost" id="cv-call" hidden>📞</a>
       </div>
       <div id="addbox" hidden></div>
@@ -2738,6 +2798,12 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
       <!-- Ekta answered in this chat and said to call for help: the two
            things to do, as buttons, under the messages. -->
       <div class="eurgent" id="c-urgent" hidden style="margin-top:var(--space-8)"></div>
+      <!-- Senior mode: one big "Dekh liya" for the latest message, and a big
+           bar to hold and talk. Filled by bondAfterRender(). -->
+      <div class="bondsenior" id="bondsenior" hidden>
+        <div id="dekhwrap"></div>
+        <button type="button" class="vnhold" id="vnhold" aria-label="Hold to talk, let go to send">🎙 Hold to talk, let go to send</button>
+      </div>
     </div>
   </section>
 
@@ -3199,10 +3265,19 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
   <div class="inner">
     <button id="emic" hidden aria-label="Speak to Ekta">🎤</button>
     <button id="ecam" hidden aria-label="Send a photo">📷</button>
+    <button id="cmic" hidden aria-label="Record a voice note">🎙</button>
     <input type="file" id="photoin" accept="image/*" capture="environment" hidden>
     <div id="mentionbox" class="mentionbox" hidden></div>
     <input type="text" id="msg" maxlength="500" placeholder="Message…" aria-label="Message">
     <button id="send">Send</button>
+  </div>
+  <!-- a voice note being recorded, then heard before it goes -->
+  <div class="vnbar" id="vnbar" hidden role="group" aria-label="Voice note">
+    <span class="vn-live" id="vn-live"><span class="vn-dot" aria-hidden="true"></span><span id="vn-clock" role="timer">Recording 0:00 of 1:00</span></span>
+    <span id="vn-prev" hidden></span>
+    <button type="button" class="vn-ghost" id="vn-cancel">Cancel</button>
+    <button type="button" id="vn-stop">Stop</button>
+    <button type="button" id="vn-send" hidden>Send</button>
   </div>
 </div>
 
@@ -3756,6 +3831,42 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
 
 <!-- A question with two big answers, in place of the browser's small
      dialog: easier to read, and hard to dismiss by mistake. -->
+<!-- CHAT BONDING sheets: pick a reaction, see who reacted or voted, ask a poll. -->
+<div class="msheet" id="rxsheet" hidden role="dialog" aria-modal="true" aria-labelledby="rx-title">
+  <div class="mp">
+    <button class="x" id="rx-x" aria-label="Close">✕</button>
+    <h3 id="rx-title" style="margin:0 0 var(--space-4)">React to this message</h3>
+    <p class="hint" id="rx-sub" style="margin:0">Tap one. Tap it again to take it back.</p>
+    <div class="rx-row" id="rx-row"></div>
+    <ul class="bond-who" id="rx-who"></ul>
+  </div>
+</div>
+<div class="msheet" id="bondsheet" hidden role="dialog" aria-modal="true" aria-labelledby="bd-title">
+  <div class="mp">
+    <button class="x" id="bd-x" aria-label="Close">✕</button>
+    <h3 id="bd-title" style="margin:0 0 var(--space-12)"></h3>
+    <ul class="bond-who" id="bd-list"></ul>
+  </div>
+</div>
+<div class="msheet" id="pollsheet" hidden role="dialog" aria-modal="true" aria-labelledby="pl-title">
+  <div class="mp">
+    <button class="x" id="pl-x" aria-label="Close">✕</button>
+    <h3 id="pl-title" style="margin:0 0 var(--space-4)">Ask a quick question</h3>
+    <p class="hint" id="pl-sub" style="margin:0">Everyone in this chat can vote and change their vote.</p>
+    <label for="pl-q">Question</label>
+    <input type="text" id="pl-q" maxlength="200" placeholder="e.g. Sunday lunch at whose house?">
+    <label>Choices (2 to 6)</label>
+    <div id="pl-opts"></div>
+    <button type="button" class="cbtn ghost" id="pl-more" style="min-height:var(--tap-min)">＋ Add a choice</button>
+    <label class="seniorchk"><input type="checkbox" id="pl-multi"> People can pick more than one</label>
+    <label for="pl-close">Close it at (optional)</label>
+    <input type="datetime-local" id="pl-close">
+    <p class="fielderr" id="pl-err" hidden></p>
+    <button class="go" id="pl-create" type="button">Send the poll</button>
+    <button class="cbtn ghost" id="pl-cancel" type="button" style="width:100%;margin-top:var(--space-8);min-height:var(--tap-min)">Cancel</button>
+  </div>
+</div>
+
 <div class="msheet" id="asksheet" hidden role="dialog" aria-modal="true" aria-labelledby="as-q">
   <div class="mp">
     <h3 id="as-q" style="margin-top:0"></h3>
@@ -4041,6 +4152,7 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
     $('composer').hidden = !(ekta || chat);
     $('emic').hidden = !(ekta && typeof rec !== 'undefined' && rec);
     $('ecam').hidden = !chat;
+    bondInputMode(chat);
     $('msg').placeholder = ekta ? 'Ask Ekta…' : (chat ? 'Message ' + chatShort(curChat) + '…' : 'Message…');
   }
   $('tabs').addEventListener('click', function(e){
@@ -4501,18 +4613,21 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
             ? '<img src="' + esc(img) + '" alt="Photo" style="max-width:100%;border-radius:var(--radius-12);display:block">'
             : m.kind === 'image'
               ? '<span class="hint">A photo that could not be shown safely.</span>'
+              : m.kind === 'audio' ? bondVoiceHtml(m)
+              : m.kind === 'poll' ? bondPollHtml(m)
               : mentionify(esc(m.text));
           var seenBy = reads.filter(function(r){ return r.member_id !== m.member_id && new Date(r.read_at) >= new Date(m.created_at); });
           var tick = mine ? '<span class="rr">' + (seenBy.length ? '✓✓ seen' : '✓ sent') + '</span>' : '';
-          h += '<div class="em ' + (mine ? 'u' : 'a') + (ekta ? ' ekta' : '') + '">' +
+          h += '<div class="em ' + (mine ? 'u' : 'a') + (ekta ? ' ekta' : '') + '" data-mid="' + esc(m.id) + '">' +
                (mine ? '' : '<span class="from">' + esc(m.name) + '</span>') + body +
-               '<small class="mt">' + esc(fmtTime(m.created_at)) + '</small>' + tick + '</div>';
+               '<small class="mt">' + esc(fmtTime(m.created_at)) + '</small>' + tick + bondFootHtml(m) + '</div>';
           if (mi === j.messages.length - 1 && seenBy.length) {
             h += '<div class="seenline">Seen by ' + esc(seenBy.map(function(r){ return r.name; }).join(', ')) + '</div>';
           }
         });
         $('cmsgs').innerHTML = h || '<div class="em a">Say hello 🧡</div>';
         var box = $('cmsgs'); box.scrollTop = box.scrollHeight;
+        bondAfterRender(j.messages);
       }).catch(function(){});
   }
 
@@ -9865,6 +9980,420 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
     };
     img.onerror = function(){ URL.revokeObjectURL(url); toast('Could not read that photo'); };
     img.src = url;
+  });
+
+  // ---------- chat bonding: voice notes, reactions, Dekh liya, quick polls ----------
+  // Voice: "Nani can't type fast, so she holds a button and talks." Tap the
+  // mic to record, Stop to hear it, then Send or Delete. In senior mode one
+  // big bar: hold to talk, let go to send, slide away to cancel. Up to a
+  // minute. Nothing ever plays by itself.
+  // Reactions are quiet: one per person per message, no push, and the chat
+  // does not move up the list. Senior mode gets one big "Dekh liya".
+  // Polls: a question and 2 to 6 choices; vote, change it, see who.
+  var VN_MAX = 60;
+  var AUDIO_URI = /^data:audio\/(webm|ogg|mp4|mpeg|aac);base64,[A-Za-z0-9+/]+={0,2}$/;
+  function safeAudioUri(t){ return AUDIO_URI.test(String(t || '')) ? String(t) : null; }
+  var RX = [['❤️', 'Love'], ['🙏', 'Thank you'], ['😂', 'Funny'], ['👏', 'Well done'], ['😮', 'Wow']];
+  var bondMsgs = {}, vnSrc = {}, vnSecs = {}, vnNow = null, vnRate = 1, vrec = null, bondKeep = null, rxFor = null;
+
+  function vnFmt(s){ s = Math.max(0, Math.round(s || 0)); return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+  function bondSenior(){ return document.body.classList.contains('senior'); }
+  function vnPlayerHtml(id, secs){
+    var sp = vnRate === 1 ? '1x' : '1.5x';
+    return '<span class="vn" data-vn="' + esc(id) + '">' +
+      '<button type="button" class="vn-play" data-vnplay="' + esc(id) + '" aria-label="Play voice note, ' + vnFmt(secs) + ' long">▶</button>' +
+      '<span class="vn-track" aria-hidden="true"><span class="vn-fill"></span></span>' +
+      '<span class="vn-time">' + vnFmt(secs) + '</span>' +
+      '<button type="button" class="vn-speed" data-vnspeed="1" aria-label="Playback speed ' + sp + '">' + sp + '</button></span>';
+  }
+  function bondVoiceHtml(m){
+    var uri = safeAudioUri(m.text);
+    if (!uri) return '<span class="hint">A voice note that could not be played.</span>';
+    vnSrc[m.id] = uri; vnSecs[m.id] = m.audio_secs || 0;
+    return vnPlayerHtml(m.id, m.audio_secs || 0);
+  }
+  // Draws every player from the one that is playing, so a chat redrawn
+  // every few seconds keeps its place.
+  function vnPaint(){
+    document.querySelectorAll('[data-vn]').forEach(function(el){
+      var id = el.getAttribute('data-vn'), a = vnNow && vnNow.id === id ? vnNow.audio : null, secs = vnSecs[id] || 0;
+      var playing = !!(a && !a.paused && !a.ended), t = a ? a.currentTime : 0;
+      var b = el.querySelector('.vn-play');
+      b.textContent = playing ? '❚❚' : '▶';
+      b.setAttribute('aria-label', (playing ? 'Pause' : 'Play') + ' voice note, ' + vnFmt(secs) + ' long');
+      el.querySelector('.vn-fill').style.width = (a && secs ? Math.min(100, t / secs * 100) : 0) + '%';
+      el.querySelector('.vn-time').textContent = a && t > 0 ? vnFmt(t) : vnFmt(secs);
+      var s = el.querySelector('.vn-speed'); s.textContent = vnRate === 1 ? '1x' : '1.5x';
+      s.setAttribute('aria-label', 'Playback speed ' + s.textContent);
+    });
+  }
+  function vnHalt(){ if (vnNow) { try { vnNow.audio.pause(); } catch (e) {} vnNow = null; vnPaint(); } }
+  function vnToggle(id){
+    if (vnNow && vnNow.id === id) {
+      if (vnNow.audio.paused) vnNow.audio.play().catch(vnCannot); else vnNow.audio.pause();
+      vnPaint(); return;
+    }
+    vnHalt();
+    if (!vnSrc[id]) return;
+    var a = new Audio(vnSrc[id]);
+    a.playbackRate = vnRate;
+    vnNow = { id: id, audio: a };
+    ['timeupdate', 'play', 'pause'].forEach(function(ev){ a.addEventListener(ev, vnPaint); });
+    a.addEventListener('ended', function(){ if (vnNow && vnNow.audio === a) vnNow = null; vnPaint(); });
+    a.play().catch(vnCannot);
+    vnPaint();
+  }
+  function vnCannot(e){ if (e && e.name === 'AbortError') return; vnNow = null; vnPaint(); toast('This phone cannot play that voice note'); }
+  function vnSpeed(){ vnRate = vnRate === 1 ? 1.5 : 1; if (vnNow) vnNow.audio.playbackRate = vnRate; vnPaint(); }
+
+  function vnSupported(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && typeof MediaRecorder !== 'undefined'); }
+  function vnStart(mode){
+    if (!curChat || vrec) return;
+    if (!vnSupported()) { toast('This phone cannot record a voice note here. You can still type.'); return; }
+    vnHalt();
+    var r = vrec = { mode: mode, pending: true, parts: [], chatId: curChat.id };
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+      if (vrec !== r || r.cancelled) { stream.getTracks().forEach(function(t){ t.stop(); }); return; }
+      var types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
+      var mt = types.filter(function(t){ return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t); })[0] || '';
+      var rec;
+      try { rec = mt ? new MediaRecorder(stream, { mimeType: mt, audioBitsPerSecond: 24000 }) : new MediaRecorder(stream); }
+      catch (e) { stream.getTracks().forEach(function(t){ t.stop(); }); vrec = null; vnUi(); toast('This phone cannot record a voice note here. You can still type.'); return; }
+      r.stream = stream; r.rec = rec; r.pending = false; r.started = Date.now();
+      rec.ondataavailable = function(e){ if (e.data && e.data.size) r.parts.push(e.data); };
+      rec.onstop = function(){ vnStopped(r); };
+      rec.start(250);
+      r.timer = setInterval(function(){ if ((Date.now() - r.started) / 1000 >= VN_MAX) vnFinish(r.mode === 'hold'); else vnUi(); }, 250);
+      vnUi();
+    }).catch(function(err){
+      if (vrec === r) vrec = null;
+      vnUi();
+      var denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+      toast(denied ? 'The microphone is off for Parwah. Allow it in your phone settings to send a voice note.'
+                   : 'The microphone could not start. Try again, or type instead.');
+    });
+    vnUi();
+  }
+  // send: true goes at once (hold to talk); false shows it to hear first.
+  function vnFinish(send){
+    var r = vrec; if (!r) return;
+    if (r.pending) { r.cancelled = true; vrec = null; vnUi(); if (r.mode === 'hold') toast('Keep holding the button while you talk.'); return; }
+    if (!r.rec || r.rec.state === 'inactive') return;
+    r.sendOnStop = !!send;
+    r.elapsed = Math.min(VN_MAX, (Date.now() - r.started) / 1000);
+    clearInterval(r.timer);
+    r.rec.stop();
+  }
+  function vnCancel(){
+    var r = vrec; if (!r) return;
+    r.cancelled = true; vrec = null;
+    if (r.timer) clearInterval(r.timer);
+    if (r.rec && r.rec.state !== 'inactive') { try { r.rec.stop(); } catch (e) {} }
+    else if (r.stream) r.stream.getTracks().forEach(function(t){ t.stop(); });
+    if (vnNow && vnNow.id === 'preview') vnHalt();
+    delete vnSrc.preview;
+    vnUi();
+  }
+  function vnStopped(r){
+    if (r.stream) r.stream.getTracks().forEach(function(t){ t.stop(); });
+    if (r.cancelled) return;
+    if ((r.elapsed || 0) < 0.8) {
+      if (vrec === r) vrec = null; vnUi();
+      toast(r.mode === 'hold' ? 'Keep holding the button while you talk.' : 'That was too short to send.');
+      return;
+    }
+    var secs = Math.max(1, Math.min(VN_MAX, Math.round(r.elapsed)));
+    var type = String(r.rec.mimeType || 'audio/webm').split(';')[0];
+    var fr = new FileReader();
+    fr.onload = function(){
+      if (r.cancelled) return;
+      r.uri = 'data:' + type + ';base64,' + (String(fr.result).split(',')[1] || '');
+      r.secs = secs; r.done = true;
+      if (r.sendOnStop) { if (vrec === r) vrec = null; vnUi(); vnSend(r.uri, secs, r.chatId); return; }
+      vnSrc.preview = r.uri; vnSecs.preview = secs;
+      vnUi();
+    };
+    fr.readAsDataURL(new Blob(r.parts, { type: type }));
+  }
+  function vnSend(uri, secs, chatId){
+    post(API.chats, { code: state.code, memberId: state.memberId, action: 'send', chatId: chatId, kind: 'audio', text: uri, secs: secs })
+      .then(function(j){
+        if (j.ok) { loadMsgs(); refreshChats(); toast('Voice note sent'); }
+        else toast(j.error || 'Could not send the voice note');
+      })
+      .catch(function(){ toast('No connection - try again'); });
+  }
+  function vnUi(){
+    var r = vrec, tap = !!(r && r.mode === 'tap'), inner = document.querySelector('#composer .inner');
+    $('vnbar').hidden = !tap; inner.hidden = tap;
+    if (tap) {
+      var done = !!r.done;
+      $('vn-live').hidden = done; $('vn-stop').hidden = done; $('vn-send').hidden = !done; $('vn-prev').hidden = !done;
+      $('vn-cancel').textContent = done ? 'Delete' : 'Cancel';
+      if (done && !$('vn-prev').firstChild) $('vn-prev').innerHTML = vnPlayerHtml('preview', r.secs);
+      if (!done) $('vn-clock').textContent = r.pending ? 'Starting the microphone…'
+        : 'Recording ' + vnFmt(Math.min(VN_MAX, Math.floor((Date.now() - r.started) / 1000))) + ' of 1:00';
+    } else $('vn-prev').innerHTML = '';
+    var hb = $('vnhold'), hold = !!(r && r.mode === 'hold');
+    hb.classList.toggle('rec', hold && !r.away);
+    hb.classList.toggle('away', hold && !!r.away);
+    hb.textContent = !hold ? '🎙 Hold to talk, let go to send'
+      : r.away ? 'Let go to cancel'
+      : r.pending ? '🎙 Starting the microphone…'
+      : '🎙 ' + vnFmt(Math.floor((Date.now() - r.started) / 1000)) + ' of 1:00. Let go to send, slide away to cancel';
+    vnPaint();
+  }
+  // Called from setInputMode: the mic sits beside the camera in a chat; in
+  // senior mode the big hold bar takes its place. Leaving the chat stops
+  // a recording and anything playing.
+  function bondInputMode(chat){
+    if (!$('cmic')) return;
+    $('cmic').hidden = !chat || bondSenior();
+    if (!chat) { if (vrec) vnCancel(); if (vnNow) vnHalt(); }
+    vnUi();
+  }
+  $('cmic').addEventListener('click', function(){ vnStart('tap'); });
+  $('vn-stop').addEventListener('click', function(){ vnFinish(false); });
+  $('vn-cancel').addEventListener('click', vnCancel);
+  $('vn-send').addEventListener('click', function(){
+    var r = vrec; if (!r || !r.done) return;
+    vrec = null; vnHalt(); delete vnSrc.preview; vnUi();
+    vnSend(r.uri, r.secs, r.chatId);
+  });
+  $('vnbar').addEventListener('click', function(e){
+    var b = e.target.closest('[data-vnplay]'); if (b) { vnToggle(b.getAttribute('data-vnplay')); return; }
+    if (e.target.closest('[data-vnspeed]')) vnSpeed();
+  });
+  (function(){
+    var hb = $('vnhold'), sx = 0, sy = 0, pid = null;
+    hb.addEventListener('pointerdown', function(e){
+      if (e.button) return;
+      e.preventDefault();
+      pid = e.pointerId; sx = e.clientX; sy = e.clientY;
+      try { hb.setPointerCapture(pid); } catch (x) {}
+      vnStart('hold');
+    });
+    hb.addEventListener('pointermove', function(e){
+      if (pid !== e.pointerId || !vrec || vrec.mode !== 'hold') return;
+      var away = Math.abs(e.clientX - sx) > 80 || Math.abs(e.clientY - sy) > 80;
+      if (away !== !!vrec.away) { vrec.away = away; vnUi(); }
+    });
+    function up(e){
+      if (pid !== e.pointerId) return;
+      pid = null;
+      if (!vrec || vrec.mode !== 'hold') return;
+      if (vrec.away || e.type === 'pointercancel') vnCancel(); else vnFinish(true);
+    }
+    hb.addEventListener('pointerup', up);
+    hb.addEventListener('pointercancel', up);
+    hb.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+    hb.addEventListener('keydown', function(e){
+      if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); if (!vrec) vnStart('hold'); }
+      else if (e.key === 'Escape' && vrec && vrec.mode === 'hold') { e.preventDefault(); vnCancel(); }
+    });
+    hb.addEventListener('keyup', function(e){
+      if ((e.key === ' ' || e.key === 'Enter') && vrec && vrec.mode === 'hold') { e.preventDefault(); vnFinish(true); }
+    });
+  })();
+
+  // ----- reactions -----
+  function bondFootHtml(m){
+    bondMsgs[m.id] = m;
+    var h = '';
+    (m.reactions || []).forEach(function(g){
+      h += '<button type="button" class="rx-chip' + (g.mine ? ' mine' : '') + '" data-rxwho="' + esc(m.id) + '" aria-label="' +
+           esc(g.emoji + ' ' + g.count + ' from ' + g.names.join(', ')) + '">' + esc(g.emoji) + ' ' + g.count + '</button>';
+    });
+    return '<div class="rx-foot">' + h + '<button type="button" class="rx-add" data-rx="' + esc(m.id) + '" aria-label="React to this message" title="React">🙂</button></div>';
+  }
+  function bondMine(m){ var e = null; ((m && m.reactions) || []).forEach(function(g){ if (g.mine) e = g.emoji; }); return e; }
+  function bondPick(mid){
+    var m = bondMsgs[mid]; if (!m) return;
+    rxFor = mid;
+    var mine = bondMine(m);
+    $('rx-row').innerHTML = RX.map(function(x){
+      return '<button type="button" class="rx-big" data-rxpick="' + x[0] + '" aria-pressed="' + (x[0] === mine) + '" aria-label="' + x[1] + (x[0] === mine ? ', yours, tap to take it back' : '') + '">' + x[0] + '</button>';
+    }).join('');
+    $('rx-who').innerHTML = (m.reactions || []).map(function(g){ return '<li>' + esc(g.emoji) + ' ' + esc(g.names.join(', ')) + '</li>'; }).join('');
+    $('rxsheet').hidden = false;
+    try { ($('rx-row').querySelector('[aria-pressed="true"]') || $('rx-row').firstChild).focus(); } catch (e) {}
+  }
+  function bondReact(mid, emoji){
+    if (!curChat) return;
+    var send = emoji === bondMine(bondMsgs[mid]) ? null : emoji;
+    bondKeep = $('cmsgs').scrollTop;
+    post(API.chats, { code: state.code, memberId: state.memberId, action: 'react', chatId: curChat.id, messageId: mid, emoji: send })
+      .then(function(j){ if (!j.ok) { bondKeep = null; toast(j.error || 'Could not react'); return; } loadMsgs(); })
+      .catch(function(){ bondKeep = null; toast('No connection - try again'); });
+  }
+  function rxClose(){ $('rxsheet').hidden = true; var b = rxFor && document.querySelector('[data-rx="' + rxFor + '"]'); if (b) try { b.focus(); } catch (e) {} rxFor = null; }
+  $('rx-row').addEventListener('click', function(e){
+    var b = e.target.closest('[data-rxpick]'); if (!b || !rxFor) return;
+    var mid = rxFor; rxClose(); bondReact(mid, b.getAttribute('data-rxpick'));
+  });
+  $('rx-x').addEventListener('click', rxClose);
+  $('rxsheet').addEventListener('click', function(e){ if (e.target === this) rxClose(); });
+  // Long-press a message (or right-click) to react.
+  (function(){
+    var box = $('cmsgs'), t = null, sx = 0, sy = 0, fired = false;
+    function clear(){ if (t) { clearTimeout(t); t = null; } }
+    box.addEventListener('pointerdown', function(e){
+      var em = e.target.closest('.em[data-mid]');
+      if (!em || e.target.closest('button, a, input')) return;
+      sx = e.clientX; sy = e.clientY; fired = false; clear();
+      t = setTimeout(function(){ t = null; fired = true; bondPick(em.getAttribute('data-mid')); }, 500);
+    });
+    box.addEventListener('pointermove', function(e){ if (t && (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10)) clear(); });
+    box.addEventListener('pointerup', clear);
+    box.addEventListener('pointercancel', clear);
+    box.addEventListener('scroll', clear);
+    box.addEventListener('contextmenu', function(e){
+      var em = e.target.closest('.em[data-mid]');
+      if (!em || e.target.closest('a')) return;
+      e.preventDefault(); clear();
+      if (!fired) bondPick(em.getAttribute('data-mid'));
+    });
+    box.addEventListener('click', function(e){
+      var b;
+      if ((b = e.target.closest('[data-vnplay]'))) { vnToggle(b.getAttribute('data-vnplay')); return; }
+      if (e.target.closest('[data-vnspeed]')) { vnSpeed(); return; }
+      if ((b = e.target.closest('[data-rx]'))) { bondPick(b.getAttribute('data-rx')); return; }
+      if ((b = e.target.closest('[data-rxwho]'))) { bondPick(b.getAttribute('data-rxwho')); return; }
+      if ((b = e.target.closest('[data-plvote]'))) { bondVote(b.getAttribute('data-plvote'), +b.getAttribute('data-i')); return; }
+      if ((b = e.target.closest('[data-plwho]'))) { bondWhoVoted(b.getAttribute('data-plwho')); return; }
+      if ((b = e.target.closest('[data-plclose]'))) { bondClosePoll(b.getAttribute('data-plclose')); return; }
+    });
+  })();
+  $('dekhwrap').addEventListener('click', function(e){
+    var b = e.target.closest('[data-dekh]'); if (b) { b.disabled = true; bondReact(b.getAttribute('data-dekh'), '❤️'); }
+  });
+  // After every redraw of the open chat.
+  function bondAfterRender(msgs){
+    if (bondKeep !== null) { $('cmsgs').scrollTop = bondKeep; bondKeep = null; }
+    vnPaint();
+    var sen = bondSenior() && !!curChat;
+    $('bondsenior').hidden = !sen;
+    if (!sen) return;
+    var last = null;
+    (msgs || []).forEach(function(m){ if (m.member_id && m.member_id !== state.memberId) last = m; });
+    if (!last) { $('dekhwrap').innerHTML = ''; return; }
+    var first = esc(String(last.name || '').split(' ')[0]);
+    $('dekhwrap').innerHTML = bondMine(last) === '❤️'
+      ? '<p class="dekhdone">❤️ You told ' + first + ' you saw it</p>'
+      : '<button type="button" class="dekh" data-dekh="' + esc(last.id) + '">❤️ Dekh liya<small>Tell ' + first + ' you saw it</small></button>';
+  }
+
+  // ----- polls -----
+  function bondPollHtml(m){
+    var p = m.poll;
+    if (!p) return '<b>📊 ' + esc(m.text) + '</b>';
+    var meta = (p.multi ? 'Pick one or more' : 'Pick one') + ' · ' + p.voters + (p.voters === 1 ? ' person voted' : ' people voted') +
+      (p.closed ? ' · Closed' : p.closeAt ? ' · Closes ' + whenSaid(p.closeAt) : '');
+    var h = '<div class="pl" role="group" aria-label="' + esc('Poll: ' + p.question) + '"><b class="pl-q">📊 ' + esc(p.question) + '</b><small class="pl-meta">' + esc(meta) + '</small>';
+    p.options.forEach(function(o, i){
+      var mine = p.mine.indexOf(i) >= 0, pct = p.voters ? Math.round(o.count / p.voters * 100) : 0;
+      var inner = '<span class="pl-fill" style="width:' + pct + '%"></span><span class="pl-txt">' + (mine ? '✓ ' : '') + esc(o.text) +
+                  '</span><span class="pl-n" aria-label="' + o.count + (o.count === 1 ? ' vote' : ' votes') + '">' + o.count + '</span>';
+      h += p.closed ? '<div class="pl-opt' + (mine ? ' mine' : '') + '">' + inner + '</div>'
+        : '<button type="button" class="pl-opt' + (mine ? ' mine' : '') + '" data-plvote="' + esc(m.id) + '" data-i="' + i + '" aria-pressed="' + mine + '">' + inner + '</button>';
+    });
+    h += '<div class="pl-acts"><button type="button" class="cbtn ghost" data-plwho="' + esc(m.id) + '">👥 Who voted</button>' +
+         (p.canClose ? '<button type="button" class="cbtn ghost" data-plclose="' + esc(m.id) + '">Close poll</button>' : '') + '</div></div>';
+    return h;
+  }
+  function bondVote(mid, i){
+    var m = bondMsgs[mid]; if (!m || !m.poll || m.poll.closed || !curChat) return;
+    var p = m.poll, at = p.mine.indexOf(i);
+    var next = p.multi ? (at >= 0 ? p.mine.filter(function(x){ return x !== i; }) : p.mine.concat([i])) : (at >= 0 ? [] : [i]);
+    bondKeep = $('cmsgs').scrollTop;
+    post(API.chats, { code: state.code, memberId: state.memberId, action: 'poll_vote', chatId: curChat.id, pollId: p.id, choices: next })
+      .then(function(j){ if (!j.ok) toast(j.error || 'Could not vote'); loadMsgs(); })
+      .catch(function(){ bondKeep = null; toast('No connection - try again'); });
+  }
+  function bondWhoVoted(mid){
+    var m = bondMsgs[mid]; if (!m || !m.poll) return;
+    $('bd-title').textContent = 'Who voted';
+    $('bd-list').innerHTML = m.poll.options.map(function(o){
+      return '<li><b>' + esc(o.text) + '</b><br>' + (o.names.length ? esc(o.names.join(', ')) : 'Nobody yet') + '</li>';
+    }).join('');
+    $('bondsheet').hidden = false;
+    try { $('bd-x').focus(); } catch (e) {}
+  }
+  function bondClosePoll(mid){
+    var m = bondMsgs[mid]; if (!m || !m.poll || !curChat) return;
+    var chatId = curChat.id;
+    askSheet('Close this poll?', 'Nobody can vote after this. The results stay in the chat.', 'Close poll', 'Keep it open').then(function(y){
+      if (!y) return;
+      post(API.chats, { code: state.code, memberId: state.memberId, action: 'poll_close', chatId: chatId, pollId: m.poll.id })
+        .then(function(j){ if (!j.ok) toast(j.error || 'Could not close it'); loadMsgs(); })
+        .catch(function(){ toast('No connection - try again'); });
+    });
+  }
+  function bdClose(){ $('bondsheet').hidden = true; }
+  $('bd-x').addEventListener('click', bdClose);
+  $('bondsheet').addEventListener('click', function(e){ if (e.target === this) bdClose(); });
+  function plRow(){ return '<div class="plrow"><input type="text" maxlength="80"><button type="button" class="cbtn ghost" data-plrm="1">✕</button></div>'; }
+  function plSync(){
+    var rows = $('pl-opts').querySelectorAll('.plrow');
+    rows.forEach(function(r, i){
+      var inp = r.querySelector('input'); inp.placeholder = 'Choice ' + (i + 1); inp.setAttribute('aria-label', 'Choice ' + (i + 1));
+      var b = r.querySelector('button'); b.hidden = rows.length <= 2; b.setAttribute('aria-label', 'Remove choice ' + (i + 1));
+    });
+    $('pl-more').hidden = rows.length >= 6;
+  }
+  function plOpen(){
+    if (!curChat) return;
+    $('pl-q').value = ''; $('pl-opts').innerHTML = plRow() + plRow(); plSync();
+    $('pl-multi').checked = false; $('pl-close').value = ''; $('pl-err').hidden = true;
+    var d = new Date(Date.now() + 5 * 60000); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    $('pl-close').min = d.toISOString().slice(0, 16);
+    $('pl-title').textContent = curChat.kind === 'circle' ? 'Ask the ' + spaceWord() : curChat.kind === 'dm' ? 'Ask ' + chatTitle(curChat) : 'Ask the group';
+    $('pollsheet').hidden = false;
+    try { $('pl-q').focus(); } catch (e) {}
+  }
+  function plClose(){ $('pollsheet').hidden = true; try { $('cv-poll').focus(); } catch (e) {} }
+  $('cv-poll').addEventListener('click', plOpen);
+  $('pl-x').addEventListener('click', plClose);
+  $('pl-cancel').addEventListener('click', plClose);
+  $('pollsheet').addEventListener('click', function(e){ if (e.target === this) plClose(); });
+  $('pl-more').addEventListener('click', function(){
+    if ($('pl-opts').querySelectorAll('.plrow').length >= 6) return;
+    $('pl-opts').insertAdjacentHTML('beforeend', plRow()); plSync();
+    var ins = $('pl-opts').querySelectorAll('input'); try { ins[ins.length - 1].focus(); } catch (e) {}
+  });
+  $('pl-opts').addEventListener('click', function(e){
+    var b = e.target.closest('[data-plrm]'); if (!b) return;
+    if ($('pl-opts').querySelectorAll('.plrow').length <= 2) return;
+    b.closest('.plrow').remove(); plSync();
+  });
+  $('pollsheet').addEventListener('input', function(){ $('pl-err').hidden = true; });
+  $('pl-create').addEventListener('click', function(){
+    var q = $('pl-q').value.trim();
+    var opts = [].map.call($('pl-opts').querySelectorAll('input'), function(i){ return i.value.trim(); }).filter(Boolean);
+    var err = !q ? 'Write the question first' : opts.length < 2 ? 'Write at least two choices' : '', closeAt = null;
+    if (!err && $('pl-close').value) {
+      var d = new Date($('pl-close').value);
+      if (isNaN(d) || d.getTime() < Date.now() + 60000) err = 'Pick a closing time in the future';
+      else closeAt = d.toISOString();
+    }
+    if (err) { $('pl-err').textContent = err; $('pl-err').hidden = false; return; }
+    if (!curChat) return;
+    var b = this; b.disabled = true;
+    post(API.chats, { code: state.code, memberId: state.memberId, action: 'poll_create', chatId: curChat.id,
+                      question: q, options: opts, multi: $('pl-multi').checked, closeAt: closeAt })
+      .then(function(j){
+        b.disabled = false;
+        if (!j.ok) { $('pl-err').textContent = j.error || 'Could not ask that'; $('pl-err').hidden = false; return; }
+        plClose(); loadMsgs(); refreshChats(); toast('Poll sent');
+      })
+      .catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    if (!$('rxsheet').hidden) rxClose();
+    else if (!$('bondsheet').hidden) bdClose();
+    else if (!$('pollsheet').hidden) plClose();
+    else if (vrec && vrec.mode === 'tap') vnCancel();
   });
 
   // ---------- family call: instant video room, shared into Everyone chat ----------

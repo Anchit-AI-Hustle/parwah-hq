@@ -475,3 +475,19 @@ Checked at 390 and 1440, light and dark, on the real pages. Screens: /get/ (rebu
 | 109 | 8 Minimalist | /press/ phone layout: four screenshots in one column made a very long page | 2 | Fixed: two columns on a phone, each opening the full-size image |
 
 New pattern: none. "The easy way" label is the existing eyebrow treatment in `--sindoor`.
+
+### Review 12, chat bonding: voice notes, reactions, Dekh liya, quick polls (2026-11-02)
+
+Checked at 320, 390 and 1440, light and dark, normal and senior mode, on the real app with a fake microphone (`site/tests/db/chatbond.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on every new screen). Screens: the recording bar and preview in the message box, the voice note player, the reaction picker, the poll sheet, the poll card, Who voted, and the senior hold bar with Dekh liya. Works the same in a family and in a friends' group; the wording says "family" or "group".
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 110 | 7 Flexibility | Typing is slow for a parent; the only way to say something was the keyboard | 3 | Fixed: a mic beside the camera (tap, see a timer out of 1:00, Stop, hear it, Send or Delete). Senior mode: one big bar, hold to talk, let go to send, slide away to cancel |
+| 111 | 3 User control | A voice note that starts by itself is a surprise in a temple or a meeting | 3 | Fixed: nothing plays until tapped; play and pause, 1x and 1.5x, the length shown |
+| 112 | 9 Error recovery | A phone that refuses the microphone threw an error nobody saw | 2 | Fixed: a plain sentence says how to allow it; typing still works |
+| 113 | 6 Recognition | Saying "I saw it" needed a typed reply | 2 | Fixed: a small 🙂 on every message (and a long press) opens five reactions; tap the count to see who; tap again to take it back. Senior mode: one big "❤️ Dekh liya" for the latest message. A reaction never pings and never moves the chat |
+| 114 | 2 Real-world match | "Whose house for Sunday lunch?" became thirty messages | 2 | Fixed: Poll in the chat header; 2 to 6 choices, one or more, an optional closing time; tap to vote or change; Who voted; the person who asked closes it. Senior mode: choices are 56px buttons |
+| 115 | 4 Consistency | The first dark-mode play button was jamun on a jamun card and nearly vanished | 2 | Fixed: the play button uses --ink on --day, which flips with the theme |
+| 116 | 9 Error recovery | The poll sheet kept "Write the question first" on screen after the question was written | 1 | Fixed: the message clears as soon as anything is typed |
+
+New patterns: the voice note player (`.vn`), the recording bar (`.vnbar`), reaction chips and picker (`.rx-chip`, `.rx-add`, `.rx-big`), the poll card (`.pl`, `.pl-opt`) and the senior bar (`.bondsenior`, `.vnhold`, `.dekh`). All built from existing tokens; no new token.
