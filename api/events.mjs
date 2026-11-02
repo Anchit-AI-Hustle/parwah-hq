@@ -17,6 +17,7 @@ import { reqTz } from './_recur.mjs';
 
 import { index as kinIndex, kinLabel, generations } from './_kin.mjs';
 import { pulseToday, ensurePulseSchema, optionOf, styleFor, today as pulseDay } from './_pulse.mjs';
+import { FC_EVENT_TYPES, familyCarePost, familyCareState, quietSweep, quietSweepAll, rotaSweep, pulseCallNudge } from './_familycare.mjs';
 
 const SOS_ESCALATE_MIN = 5;   // nobody answered in this long → shout louder
 
@@ -118,6 +119,9 @@ async function escalateStaleSos(sql, circleId) {
           await escalateStaleSos(sql, c.circle_id);
         } catch (e) { /* one family's trouble never stops the others */ }
       }
+      // Missed check-ins (api/_familycare.mjs): each push claimed once,
+      // counted with the other alerts so the reply stays counts only.
+      try { events += await quietSweepAll(sql); } catch (e) { /* never stops the timer */ }
       return res.status(200).json({ ok: true, circles: circles.length, reminded, late, events });
     }
     if (req.method === 'GET') {
@@ -172,6 +176,8 @@ async function escalateStaleSos(sql, circleId) {
       // Every open phone looks, so a late task is announced within a poll;
       // the sweep claims each alert, so it is still announced only once.
       try { await ensureTaskSchema(sql); await sweepReminders(sql, circle.id); await sweepOverdue(sql, circle.id); await sweepPlanReminders(sql, circle.id); } catch (e) { /* never break a read */ }
+      // A missed check-in and a call rota's missed day, on the same poll.
+      try { await quietSweep(sql, circle.id); await rotaSweep(sql, circle.id); } catch (e) { /* never break a read */ }
       const pulse = await pulseToday(sql, circle.id, reqTz(req));
       const sosOpen = await sql`
         select s.id, s.member_id, s.status, s.escalated, s.created_at, s.acked_at, s.safe_at,
@@ -200,12 +206,15 @@ async function escalateStaleSos(sql, circleId) {
         joinRequests: joinReqs, joinPolicy: (pol[0] && pol[0].join_policy) || 'approve',
         sos: sosOpen.map(x => ({ ...x, map: mapLink(x.lat === null ? null : { lat: x.lat, lng: x.lng }) })),
         sosEscalateMin: SOS_ESCALATE_MIN, pulse,
-        findme: await findState(sql, circle, g.me, tokenOf(req)).catch(() => null) });
+        findme: await findState(sql, circle, g.me, tokenOf(req)).catch(() => null),
+        familyCare: await familyCareState(sql, circle.id, g.me.id).catch(() => null) });
     }
 
     if (req.method === 'POST') {
       req.body = req.body || {};
       const { code, memberId, type, text } = req.body;
+      // Quiet day, ask family first, the safe word and phone help.
+      if (FC_EVENT_TYPES.includes(type)) return familyCarePost(sql, req, res, reqTz(req));
       const circle = await circleByCode(sql, code);
       if (!circle) return res.status(404).json({ ok: false, error: 'No family found with that code' });
       if (type === 'seen') {
@@ -236,10 +245,9 @@ async function escalateStaleSos(sql, circleId) {
         // No coins for saying how you are: an adult's check-in is not a game.
         // "A call would be nice" is the reason this feature exists - it lets
         // someone say they are not fine without having to say it.
-        if (opt.call) {
-          await pushCircle(sql, circle.id, { title: '🧡 ' + pm[0].name + ' could do with a call',
-            body: opt.e + ' ' + opt.t + (note ? ' - ' + note : '') }, { except: pm[0].id });
-        }
+        // Someone who could do with a call: whoever is on the call rota for
+        // them today hears first, by name (api/_familycare.mjs).
+        if (opt.call) await pulseCallNudge(sql, circle.id, pm[0], opt.e + ' ' + opt.t + (note ? ' - ' + note : ''));
         return res.status(201).json({ ok: true });
       }
 

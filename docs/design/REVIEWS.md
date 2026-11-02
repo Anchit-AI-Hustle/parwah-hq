@@ -378,3 +378,32 @@ On a laptop the sidebar already holds Chat and Ask Ekta. A second pair of floati
 | # | Heuristic | Finding | Sev | Status |
 |---|---|---|---|---|
 | 104 | 8 Minimalist | SOS, New chat and Ekta floated over a page that already has a sidebar. They sat on the to-do list | 3 | Fixed: Chat and Ask Ekta stay in the sidebar. SOS sits at the bottom of the sidebar, above the account line, full width and 64px tall. On a phone the three still float. Supersedes the wide-screen half of #90 |
+
+### Review 11, five family care tools (2026-11-02)
+
+Scope: the daily check-in (quiet day), Ask family first, Help with my phone, the life certificate and the call rota. New screens: the alerts row at the top of Today (`#fcalerts`), the daily check-in card (`#fcquiet`), and four sheets (`#fcafsheet`, `#fcphsheet`, `#fcqsheet`, `#fctsheet`), plus a checklist or rota inside a task (`#ts-tpl`). Screenshots at 390 and 1440, light and dark; the sheets are measured for 44px targets, the 12px floor, AA contrast and 320px width in `caretools.e2e`, and Today's alerts in `design.browser`.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 105 | 1 Visibility | A parent's yes to a check-in time asked by the family sat under five big buttons, below the fold | 3 | Fixed: a question waiting for your own answer is in the alerts row at the top of Today |
+| 106 | 1 Visibility | Today said "All quiet" under "Papa is asking the family first" | 3 | Fixed: the status line names the first alert while one is up |
+| 107 | 2 Real-world match | "Away?" on a check-in row did not say what it does | 2 | Fixed: "Pause" (and "Change" while away), with a label naming the person |
+| 108 | 4 Consistency | Call links in alert rows were underlined, unlike every other button | 1 | Fixed |
+| 109 | 8 Minimalist | The check-in card repeated its explanation above a single "Ask Papa" row | 1 | Fixed: the explanation shows only once someone has a time; an invitation row explains itself, and "Not now" waves it away on this phone |
+| 110 | 5 Error prevention | An Aadhaar number could be typed as the acknowledgement | 3 | Fixed: refused under the box, on the server and in the app; Parwah never takes a face scan or an Aadhaar number |
+| 111 | 9 Error recovery | "Rejected" on a life certificate left the family with nothing to do | 2 | Fixed: three steps that usually sort it (Aadhaar photo, the bank branch, a doorstep banking visit), as a list |
+| 112 | 3 User control | One tap on Ask family first from More could alarm the whole family by accident | 2 | Fixed: the elder's big button sends at once (it says so); from More, the sheet opens first with "Tell the family now" |
+
+Words: calm and dignity-first. "Has not checked in today. Give him a call?", never an emergency; nothing is called monitoring or detection, and Parwah never says it can spot a scam. The how-to cards are static text with a Hinglish line under each title (no Devanagari in the app).
+
+New patterns: the alert row (`.crow.fcrow.urgent`, a 4px status edge with a word, never colour alone), the plain-rules list (`.fcrules`), the how-to card (`details.howto`), the checklist row (`.fcchk`), the rota chips (`.fcrota`).
+
+| | |
+|---|---|
+| Reviewer | Design lead (agent review, feat-a) |
+| Date | 2026-11-02 |
+| Scope | The five screens above |
+| Heuristic scores (0 fine - 4 blocker) | 1 Visibility 1 · 2 Match 0 · 3 Control 1 · 4 Consistency 0 · 5 Errors 0 · 6 Recognition 0 · 7 Flexibility 0 · 8 Minimalist 1 · 9 Recovery 0 · 10 Help 0 |
+| Must fix before release | None open |
+| Follow-ups, with owner | Elder mode now has five big buttons; watch with real parents whether the last two should fold under "More help" (owner: Anchit) |
+| Verdict | Approved with follow-ups |

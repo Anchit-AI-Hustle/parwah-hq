@@ -2589,6 +2589,59 @@ check("repairs: the server's newer replies are read: a voice task's own title an
 check("repairs: the To do filters call the function that exists",
       "renderReminders(" not in _js)
 
+# ---------- Family care tools (2026-11-02): quiet day, ask family first,
+# the life certificate, the call rota, help with the phone ----------
+_fc_api = (API_DIR / "_familycare.mjs").read_text(encoding="utf-8")
+_fc_rules = (API_DIR / "_carerules.mjs").read_text(encoding="utf-8")
+_fc_ev = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_fc_care = (API_DIR / "care.mjs").read_text(encoding="utf-8")
+_fc_js = _app_src[_app_src.index("// ---------- family care tools (api/_familycare.mjs)"):_app_src.index("// Every family-care button, in one place.")]
+_fc_html = "".join(_app_src[_app_src.index(a):_app_src.index(b)] for a, b in (
+    ('<div class="msheet" id="fcafsheet"', '<!-- A question with two big answers'),
+    ('<div id="fcalerts"', '<!-- For an elder'),
+    ('<div class="card fccard" id="fcquiet"', '<div class="widgets" id="widgets">')))
+check("care tools: they live behind existing routes, never a new serverless function",
+      "FC_EVENT_TYPES.includes(type)" in _fc_ev and "FC_CARE_ACTIONS.includes(action)" in _fc_care
+      and not (API_DIR / "familycare.mjs").exists())
+check("care tools: every write goes through requireMember, and the missed check-in is claimed once by a conditional UPDATE",
+      "requireMember(sql, b.code, b.memberId, tokenOf(req))" in _fc_api
+      and "quiet_nudged_for is distinct from ${today}::date returning id" in _fc_api
+      and "quiet_alerted_for is distinct from ${today}::date returning id" in _fc_api)
+check("care tools: the check-in is off until the person says yes on their own screen, and away pauses it",
+      "'quiet_answer'" in _fc_api and "checkin_ask" in _fc_api and "away_until" in _fc_api
+      and "data-fcqyes" in _fc_js and "It stays off unless you say yes" in _fc_js)
+check("care tools: the family alert is calm: a question and a Call button, 30 minutes after a gentle nudge",
+      "has not checked in today. Give " in _fc_rules and "QUIET_GRACE_MIN = 30" in _fc_rules and "Sab theek?" in _fc_rules
+      and "href=\"tel:' + encodeURIComponent(q.phone)" in _fc_js)
+check("care tools: an elder's Today has the two big buttons, after SOS, All is well and Medicines",
+      _app_src.index('id="btn-pill"') < _app_src.index('id="btn-askfirst"') < _app_src.index('id="btn-phonehelp"') < _app_src.index('class="homehero"'))
+check("care tools: ask family first gives the rules, 1930 and cybercrime.gov.in, and needs a family yes",
+      all(x in _fc_html for x in ("Never share an OTP or your UPI PIN", "Police never arrest anyone on a video call",
+                                   "Banks never ask for KYC on a phone call", "Hang up and call us", 'href="tel:1930"', 'href="https://cybercrime.gov.in"'))
+      and "'askfirst_ack'" in _fc_api and "urgent: true" in _fc_api and "data-fcafack" in _fc_js)
+check("care tools: Parwah never claims to spot a scam",
+      not re.search(r"\b(detect|detects|detected|we catch|scam[- ]proof|guarantee)", (_fc_html + _fc_js + _fc_rules).lower()))
+check("care tools: the safe word is for members only and never in the feed or a push",
+      "The word itself never goes in the feed or a push" in _fc_api and "safeWord" in _fc_api)
+check("care tools: the life certificate links only to jeevanpramaan.gov.in, and keeps no face scan or Aadhaar number",
+      set(re.findall(r"https?://[a-z.]*jeevan[a-z.]*", _app_src)) == {"https://jeevanpramaan.gov.in"}
+      and "Only the acknowledgement number is kept" in _fc_js and "looks like an Aadhaar number" in _fc_rules
+      and "as announced each year" in _fc_js and "'-10-01'" in _fc_rules and "'-11-30'" in _fc_rules)
+check("care tools: a yearly repeat, in the form, the edit sheet and the server",
+      "'yearly'" in (API_DIR / "_recur.mjs").read_text(encoding="utf-8") and 'data-rep="yearly"' in _app_src
+      and '<option value="yearly">Yearly</option>' in _app_src and "yearly:'every year'" in _app_src)
+check("care tools: the call rota says Called, passes on with Skip, and the pulse finds today's person first",
+      "'Called ' + about.name" in _fc_api and "'rota_skip'" in _fc_api and "pulseCallNudge(sql, circle.id" in _fc_ev
+      and "it is your turn today" in _fc_api)
+check("care tools: help with the phone posts to the family chat, one person takes it, and offers the family call",
+      "chatSay(sql, circle.id, me.id, img, 'image')" in _fc_api and "'help_claim'" in _fc_api and "askCall()" in _fc_js)
+_howto = re.findall(r'<details class="howto">', _app_src)
+check(f"care tools: 6 to 8 short how-to cards ({len(_howto)})", 6 <= len(_howto) <= 8)
+check("care tools: dignity-first words: never lonely, monitoring, tracking, fall detection or elderly",
+      not re.search(r"\b(lonely|loneliness|monitor\w*|surveil\w*|tracking|fall detection|elderly)\b", (_fc_html + _fc_js + _fc_api + _fc_rules).lower()))
+check("care tools: the forms ask in the app's own sheets, never confirm() or prompt()",
+      "askSheet(" in _fc_js and not re.search(r"[^\w.](confirm|prompt)\(", _fc_js))
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

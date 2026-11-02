@@ -9,6 +9,7 @@ import { award, today } from './_coins.mjs';
 import { reqTz } from './_recur.mjs';
 import { ensureTaskSchema, taskList, taskHistory, taskAction, sweepOverdue, sweepReminders, GAPS, gapTitle } from './_tasks.mjs';
 import { refillApi, billsApi, siblingTasksApi } from './_careprep.mjs';
+import { FC_CARE_ACTIONS, familyTaskAction, rotaSweep } from './_familycare.mjs';
 
 async function feed(sql, circleId, memberId, text) {
   await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'care', ${text})`;
@@ -174,6 +175,7 @@ export default async function handler(req, res) {
       // other phone's next look - whichever comes first.
       await sweepReminders(sql, g.circle.id);
       await sweepOverdue(sql, g.circle.id);
+      try { await rotaSweep(sql, g.circle.id); } catch (e) { /* never break a read */ }
       const state = await careState(sql, g.circle.id);
       // Scoped to the caller: the suggestions used to name private entries.
       const suggestions = await careSuggestions(sql, g.circle.id, g.me.id);
@@ -236,6 +238,12 @@ export default async function handler(req, res) {
         await pushCircle(sql, circle.id, { title: '✔ ' + me.name + ' did it', body: row[0].title }, { only: row[0].by_member });
       }
       return res.status(200).json({ ok: true });
+    }
+
+    // Ready-made tasks: the life certificate and the call rota.
+    if (FC_CARE_ACTIONS.includes(action)) {
+      const out = await familyTaskAction(sql, circle, me, req.body, reqTz(req));
+      return res.status(out.status).json(out.json);
     }
 
     if (action === 'request_create') {

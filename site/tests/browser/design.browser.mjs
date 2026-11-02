@@ -38,7 +38,14 @@ const EV = { ok:true, circleName:'Sharma Family', code:'ABCDEF', seenAt:now, joi
   members:[{ id:ME, name:'Rohan', role:'family', relation:'son', place:'Delhi', country:'IN', gift_info:{}, created_at:now },
            { id:'22222222-2222-2222-2222-222222222222', name:'Papa', role:'parent', relation:'father', place:'Pune', country:'IN', gift_info:{}, created_at:now },
            { id:'33333333-3333-3333-3333-333333333333', name:'Meera', role:'family', relation:'sister', place:'Delhi', country:'IN', gift_info:{}, created_at:now }],
-  events:[{ type:'checkin', member_name:'Papa', text:'', created_at:now }] };
+  events:[{ type:'checkin', member_name:'Papa', text:'', created_at:now }],
+  // The family-care alerts and the daily check-in card are on Today, so
+  // they are measured with it (api/_familycare.mjs).
+  familyCare:{ safeWord:null,
+    askfirst:[{ id:'a1', member_id:'22222222-2222-2222-2222-222222222222', name:'Papa', phone:'+919800000002', status:'open', note:null, created_at:now }],
+    helps:[{ id:'h1', member_id:'22222222-2222-2222-2222-222222222222', name:'Papa', phone:'+919800000002', note:'WhatsApp is asking for a code', has_image:true, status:'open', created_at:now }],
+    quiet:[{ memberId:'22222222-2222-2222-2222-222222222222', name:'Papa', role:'parent', phone:'+919800000002', gender:'m', checkinBy:'11:00', phase:'alert', alerted:true, okAt:null, awayUntil:null, ask:null },
+           { memberId:'33333333-3333-3333-3333-333333333333', name:'Meera', role:'parent', gender:'f', checkinBy:null, phase:'off', alerted:false, ask:null }] } };
 const CARE = { ok:true, reminders:[], suggestions:[{ key:'k', title:"Record Papa's blood group", why:'Not written down anywhere yet', urgent:true }], requests:[
   { id:'t1', title:'Pay the electricity bill', status:'open', due_at:new Date(Date.now() - 3600e3).toISOString(), recurrence:'once', by_member:ME, by_name:'Rohan', created_at:now },
   { id:'t2', title:'Book the gas refill', status:'claimed', due_at:new Date(Date.now() + 86400e3).toISOString(), recurrence:'weekly', by_member:ME, by_name:'Rohan', claimed_by:'33333333-3333-3333-3333-333333333333', claimed_name:'Meera', about_name:'Papa', created_at:now }] };

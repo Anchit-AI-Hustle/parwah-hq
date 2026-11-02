@@ -76,7 +76,16 @@ ok('an unknown repeat is treated as once', nextDue(at(IN, 2026, 10, 1), 'hourly'
 ok('a real time zone is accepted', validTz('Asia/Kolkata') === 'Asia/Kolkata');
 ok('a made-up one is refused', validTz('Mars/Olympus') === null && validTz('') === null && validTz(42) === null);
 ok('a bad zone still gives a sensible next time (India)', home(nextDue(at(IN, 2026, 10, 1), 'daily', 'Nope/Zone', null, before), IN) === '2026-10-02 09:00');
-ok('the four repeats', REPEATS.join() === 'once,daily,weekly,monthly');
+ok('the five repeats', REPEATS.join() === 'once,daily,weekly,monthly,yearly');
+// Yearly: the life certificate every November, on the family's own clock.
+ok('yearly: the same date next year', home(nextDue(at(IN, 2026, 11, 30, 23, 59), 'yearly', IN, null, at(IN, 2026, 11, 30, 23, 59) - 1), IN) === '2027-11-30 23:59');
+{
+  const leapDay = at(IN, 2028, 2, 29);
+  const y1 = nextDue(leapDay, 'yearly', IN, leapDay, leapDay - 1);
+  ok('yearly from 29 February is 28 February in a short year', home(y1, IN) === '2029-02-28 09:00', home(y1, IN));
+  const late = nextDue(at(IN, 2024, 11, 30), 'yearly', IN, at(IN, 2024, 11, 30), at(IN, 2026, 12, 5));
+  ok('yearly finished two years late lands on the next one ahead, not in the past', home(late, IN) === '2027-11-30 09:00', home(late, IN));
+}
 
 if (fails.length) {
   console.error(`recurtest: ${fails.length} FAILED of ${pass + fails.length}`);
