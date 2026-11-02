@@ -71,7 +71,7 @@
       <h1 class="rv">Be first to hear when <em>the range opens.</em></h1>
       <p class="sub rv">The Parwah app is open now. The care range, daily-living aids for bathroom safety, knees on the stairs and small daily tasks, is next. Join the list and you will hear it from us first.</p>
       <div class="ctas rv">
-        <a class="btn btn-wa" href="https://wa.me/919873945238?text=Hi%20Parwah%20-%20add%20me%20to%20the%20care%20range%20launch%20list.%20My%20city%3A%20" rel="noopener">Join the launch list on WhatsApp</a>
+        <a class="btn btn-wa" href="https://wa.me/919873945238?text=Hi%20Parwah%20(LAU)%20-%20add%20me%20to%20the%20care%20range%20launch%20list.%20My%20city%3A%20" rel="noopener">Join the launch list on WhatsApp</a>
         <a class="btn btn-ghost" href="../">Open the Parwah app</a>
       </div>
       <p class="quiet rv"><b>One message when the range opens.</b> First pick of the launch collection, no spam, no daily forwards.</p>
@@ -129,7 +129,7 @@
       </form>
     </div>
 
-    <p class="alt rv" style="margin-top:28px">Prefer WhatsApp? <a href="https://wa.me/919873945238?text=Hi%20Parwah%20-%20add%20me%20to%20the%20care%20range%20launch%20list.%20My%20city%3A%20" rel="noopener">Chat with us directly</a> or email <a href="mailto:anchit.tandon@gmail.com?subject=Add%20me%20to%20the%20Parwah%20launch%20list">anchit.tandon@gmail.com</a></p>
+    <p class="alt rv" style="margin-top:28px">Prefer WhatsApp? <a href="https://wa.me/919873945238?text=Hi%20Parwah%20(LAU)%20-%20add%20me%20to%20the%20care%20range%20launch%20list.%20My%20city%3A%20" rel="noopener">Chat with us directly</a> or email <a href="mailto:anchit.tandon@gmail.com?subject=Add%20me%20to%20the%20Parwah%20launch%20list">anchit.tandon@gmail.com</a></p>
     <div class="ctas rv">
       <a class="btn btn-ghost" href="../welcome/">Back to the home page</a>
     </div>
@@ -176,7 +176,7 @@
   var msg=document.getElementById('wl-msg');
   var btn=document.getElementById('wl-submit');
   var LABEL=btn.textContent;
-  var WA='https://wa.me/919873945238?text=Hi%20Parwah%20-%20add%20me%20to%20the%20care%20range%20launch%20list.%20My%20city%3A%20';
+  var WA='https://wa.me/919873945238?text=Hi%20Parwah%20(LAU)%20-%20add%20me%20to%20the%20care%20range%20launch%20list.%20My%20city%3A%20';
   var busy=false;
   function field(id){return document.getElementById(id);}
   function val(id){return (field(id).value||'').replace(/\s+/g,' ').trim();}
@@ -187,7 +187,9 @@
   function showFail(text){
     showMsg(text+' You can also ',true);
     var a=document.createElement('a');
-    a.href=WA;a.rel='noopener';a.textContent='join on WhatsApp';
+    // The same source code as every other WhatsApp button (attrib.js).
+    var at=window.parwahAttribution;
+    a.href=at&&at.tag?at.tag(WA):WA;a.rel='noopener';a.textContent='join on WhatsApp';
     msg.appendChild(a);
     msg.appendChild(document.createTextNode('.'));
   }
@@ -254,7 +256,13 @@
         interest:field('wl-interest').value||'care',
         consent:field('wl-consent').checked,
         pw_extra:field('wl-extra').value,
-        source:'launch-page'
+        source:'launch-page',
+        // First-touch campaign labels from the landing address (attrib.js),
+        // so a join can be traced to the post or ad that earned it.
+        utm_source:(window.parwahAttribution||{}).utm_source||undefined,
+        utm_medium:(window.parwahAttribution||{}).utm_medium||undefined,
+        utm_campaign:(window.parwahAttribution||{}).utm_campaign||undefined,
+        ref:(window.parwahAttribution||{}).ref||undefined
       })
     }).then(function(r){
       return r.json().then(function(d){return {status:r.status,data:d};},function(){return {status:r.status,data:null};});
@@ -282,6 +290,7 @@
   });
 })();
 </script>
+<script defer src="../attrib.js"></script>
 <script defer src="../analytics.js"></script>
 </body>
 </html>

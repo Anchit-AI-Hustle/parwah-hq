@@ -241,6 +241,13 @@ export async function ensureSchema(sql) {
   // show consent, and a yes with no date cannot be shown. Null for a row
   // that has never consented; set once, by the first yes, and kept.
   await sql`alter table waitlist add column if not exists consent_at timestamptz`;
+  // Which of our own links brought them (first touch, kept on a re-join):
+  // the campaign labels from the landing URL, so a launch post and an ad can
+  // be told apart without a tracking pixel.
+  await sql`alter table waitlist add column if not exists utm_source text`;
+  await sql`alter table waitlist add column if not exists utm_medium text`;
+  await sql`alter table waitlist add column if not exists utm_campaign text`;
+  await sql`alter table waitlist add column if not exists ref text`;
   // ONE PERSON IS ONE ROW, and the join depends on it: the insert uses
   // `on conflict (lower(email))`, which Postgres refuses outright when no
   // matching unique index exists - "there is no unique or exclusion

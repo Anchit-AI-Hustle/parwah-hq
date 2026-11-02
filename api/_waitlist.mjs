@@ -29,7 +29,7 @@ export const INTEREST_LABEL = {
 
 // Long enough for a real name or a real address, short enough that the
 // column is not a place to paste an essay into.
-export const LIMIT = { name: 60, email: 160, city: 60, source: 40 };
+export const LIMIT = { name: 60, email: 160, city: 60, source: 40, utm: 60 };
 
 export function normName(v) {
   return String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
@@ -86,6 +86,16 @@ export function normSource(v) {
   return String(v == null ? '' : v).replace(/[^a-z0-9_-]/gi, '').slice(0, LIMIT.source) || 'site';
 }
 
+// WHERE A PERSON CAME FROM, without a pixel. The page keeps the first
+// utm_source, utm_medium, utm_campaign and ref it was opened with (for this
+// tab, in sessionStorage) and sends them with the join. They are labels we
+// wrote into our own links, so anything that is not a plain label is dropped
+// rather than stored: letters, digits, dot, dash and underscore, and short.
+export function normUtm(v) {
+  const s = String(v == null ? '' : v).trim().replace(/[^A-Za-z0-9._-]/g, '').slice(0, LIMIT.utm);
+  return s || null;
+}
+
 // THE HONEYPOT. A field no person can see or reach - off screen, out of the
 // tab order, hidden from screen readers - that a form-filling bot fills
 // because it fills everything. Named like a real field so it looks worth
@@ -139,6 +149,10 @@ export function joinRow(body) {
     interest: normInterest(b.interest),
     consent: consentGiven(b.consent),
     source: normSource(b.source),
+    utm_source: normUtm(b.utm_source),
+    utm_medium: normUtm(b.utm_medium),
+    utm_campaign: normUtm(b.utm_campaign),
+    ref: normUtm(b.ref),
   };
 }
 
