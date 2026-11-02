@@ -14,6 +14,9 @@
 //      person.
 //   5. Help with the phone: into the family chat, with a picture; one person
 //      takes it.
+//   6. A missed check-in nobody took up reaches the nearest helper who said
+//      yes (api/_ladder.mjs): once, only consented helpers, never after a
+//      check-in, an "I'm calling" or while away, inside the call cap.
 // And for each: nobody outside the family (403), nobody signed out (401).
 const url = process.env.PARWAH_TEST_DATABASE_URL;
 if (!url) { console.log('caretools.dbtest: PARWAH_TEST_DATABASE_URL is not set - skipped.'); process.exit(process.env.CI ? 1 : 0); }
@@ -301,6 +304,128 @@ let lc;
   ok('Papa closes it', fin2.ok && (await state(papa)).helps.length === 0);
   const anon = await ev(papa, 'help_ask', { text: 'x' }, { token: '' });
   ok('signed out: 401', anon.http === 401);
+}
+
+// =====================================================================
+// 6. A MISSED CHECK-IN NOBODY TOOK UP REACHES THE NEAREST HELPER
+// =====================================================================
+// After the family alert, a further 30 minutes with no check-in and nobody
+// saying "I'm calling": the first nearby helper who said yes is reached,
+// once per person per day. Parwah rings them when calls are set up (inside
+// the family's daily cap); otherwise the family sees them with a Call button.
+{
+  const { ensureLadderSchema } = await import('../../../api/_ladder.mjs');
+  const { DIAL_DAY_MAX } = await import('../../../api/_sosdial.mjs');
+  await ensureLadderSchema(sql);
+  // A zone where it is morning now, so every step below is in waking hours.
+  const hr = z => +new Intl.DateTimeFormat('en-GB', { timeZone: z, hour: '2-digit', hourCycle: 'h23' }).format(new Date());
+  const TZ2 = Intl.supportedValuesOf('timeZone').find(z => hr(z) >= 5 && hr(z) <= 13);
+  const p2 = {}; new Intl.DateTimeFormat('en-US', { timeZone: TZ2, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' })
+    .formatToParts(new Date()).forEach(x => { p2[x.type] = +x.value; });
+  const hhmm = (h, mi) => String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0');
+  const cb = hhmm(p2.hour + 2, p2.minute), cbLate = hhmm(p2.hour + 3, p2.minute);
+  const d0 = fromWall({ y: p2.year, m: p2.month, d: p2.day, h: p2.hour + 2, mi: p2.minute, s: 0 }, TZ2);
+  const day2 = dayIn(TZ2);
+  const MIN = 60000;
+
+  const gupta = (await admin.query(`insert into circles (code, name) values ('GUPTA1', 'Gupta Family') returning id`)).rows[0].id;
+  CODE[gupta] = 'GUPTA1';
+  const arjun = await person(gupta, 'Arjun', 'family', 'm');
+  const dadi = await person(gupta, 'Dadi', 'parent', 'f');
+  const nani = await person(gupta, 'Nani', 'parent', 'f');
+  const nanu = await person(gupta, 'Nanu', 'parent', 'm');
+  const tau = await person(gupta, 'Tau', 'parent', 'm');
+  const bua = await person(gupta, 'Bua', 'parent', 'f');
+  const kaka = await person(gupta, 'Kaka', 'parent', 'm');
+  for (const p of [dadi, nanu, tau, bua, kaka]) await admin.query(`update members set checkin_by = $2, tz = $3 where id = $1`, [p.id, cb, TZ2]);
+  await admin.query(`update members set checkin_by = $2, tz = $3 where id = $1`, [nani.id, cbLate, TZ2]);
+  await admin.query(`update members set away_until = $2 where id = $1`, [bua.id, day2]);
+  let hn = 0;
+  const helper = async (circleId, p, name, consent, pos) => (await admin.query(
+    `insert into nearby_ladder (circle_id, person_id, name, phone, distance_note, has_key, position, consent) values ($1,$2,$3,$4,$5,$6,$7,$8) returning id`,
+    [circleId, p.id, name, '+9198111' + String(++hn).padStart(5, '0'), 'two floors down', pos === 2, pos, consent])).rows[0].id;
+  await helper(gupta, dadi, 'Mrs Khanna', 'pending', 1);        // asked, has not said yes
+  const h2 = await helper(gupta, dadi, 'Mr Bose', 'yes', 2);     // the first who said yes
+  await helper(gupta, dadi, 'Guard Ram', 'yes', 3);
+  await helper(gupta, nani, 'Mrs Iyer', 'yes', 1);
+  await helper(gupta, nanu, 'Mr Das', 'yes', 1);
+  await helper(gupta, tau, 'Mr Paul', 'pending', 1);
+  await helper(gupta, tau, 'Mrs Sen', 'no', 2);
+  await helper(gupta, bua, 'Mrs Roy', 'yes', 1);
+  await helper(gupta, kaka, 'Mr Ali', 'yes', 1);
+
+  const calls = [];
+  const twilio = { env: { TWILIO_ACCOUNT_SID: 'AC' + 'a'.repeat(32), TWILIO_AUTH_TOKEN: 'x', TWILIO_VOICE_FROM: '+15550001111' },
+                   fetchImpl: async (u, init) => { calls.push({ u, body: String(init.body) }); return { ok: true, json: async () => ({ sid: 'CA' + calls.length }) }; } };
+  const sweep = (t, o = twilio) => quietSweep(sql, gupta, t, o);
+  const rungs = async () => (await admin.query(`select q.person_id, q.status, l.name from quiet_ladder q left join nearby_ladder l on l.id = q.helper_id where q.circle_id = $1`, [gupta])).rows;
+  const gfeed = async re => (await admin.query(`select text from events where circle_id = $1`, [gupta])).rows.filter(r => re.test(r.text || '')).length;
+
+  await sweep(d0 + MIN); await sweep(d0 + 31 * MIN);
+  ok('ladder: the family alert comes first, as before', (await gfeed(/Dadi has not checked in today/)) === 1 && (await rungs()).length === 0);
+  // Before the escalation window: nobody near is reached, and an alert not
+  // yet up cannot be answered.
+  const early = await ev(arjun, 'quiet_ack', { targetId: nani.id });
+  ok('ladder: "I\'m calling" needs an alert to answer (409)', early.http === 409, JSON.stringify(early));
+  // Nanu checks in late; Arjun says he is calling Kaka.
+  await call(events, nanu, { body: { type: 'checkin', text: '' } });
+  const ack = await ev(arjun, 'quiet_ack', { targetId: kaka.id });
+  ok('ladder: someone in the family can say "I\'m calling"', ack.http === 200 && ack.ok && !ack.already, JSON.stringify(ack));
+  const ack2 = await ev(dadi, 'quiet_ack', { targetId: kaka.id });
+  ok('ladder: a second "I\'m calling" hears who already is', ack2.ok && ack2.already && ack2.ackedName === 'Arjun', JSON.stringify(ack2));
+  ok('ladder: the person cannot say it for themselves (400)', (await ev(kaka, 'quiet_ack', { targetId: kaka.id })).http === 400);
+  ok('ladder: another family cannot answer it (404)', (await ev(vikram, 'quiet_ack', { targetId: kaka.id })).http === 404);
+  ok('ladder: nor with this family\'s code (403)', (await ev(vikram, 'quiet_ack', { targetId: kaka.id }, { body: { code: 'GUPTA1', memberId: vikram.id, type: 'quiet_ack', targetId: kaka.id } })).http === 403);
+  ok('ladder: signed out: 401', (await ev(arjun, 'quiet_ack', { targetId: kaka.id }, { token: '' })).http === 401);
+  await sweep(d0 + 55 * MIN);
+  ok('ladder: not before 30 minutes after the alert', (await rungs()).length === 0 && calls.length === 0);
+
+  // The window passes: five phones polling at once.
+  await Promise.all([1, 2, 3, 4, 5].map(() => sweep(d0 + 62 * MIN)));
+  let r = await rungs();
+  const dadiR = r.filter(x => x.person_id === dadi.id);
+  ok('ladder: fires once for Dadi, five phones polling at once', dadiR.length === 1 && calls.length === 1, JSON.stringify([r, calls.length]));
+  ok('ladder: only a helper who said yes, the first of them (not the one still asked)', dadiR[0] && dadiR[0].name === 'Mr Bose' && dadiR[0].status === 'called', JSON.stringify(dadiR));
+  ok('ladder: the call goes to that helper, and says check-in, never SOS',
+     calls[0] && decodeURIComponent(calls[0].body).includes('+919811100002') && /has not checked in today/.test(decodeURIComponent(calls[0].body.replace(/\+/g, ' '))) && !/S O S|Emergency/.test(decodeURIComponent(calls[0].body.replace(/\+/g, ' '))), calls[0] && calls[0].body.slice(0, 300));
+  ok('ladder: not for someone with no helper who said yes (Tau)', !r.some(x => x.person_id === tau.id));
+  ok('ladder: not when the parent checked in (Nanu)', !r.some(x => x.person_id === nanu.id));
+  ok('ladder: not when the family said "I\'m calling" (Kaka)', !r.some(x => x.person_id === kaka.id));
+  ok('ladder: not when away (Bua): not even a nudge', !r.some(x => x.person_id === bua.id) && (await mrow(bua.id)).nudged === null);
+  ok('ladder: the family hears that Parwah is calling Mr Bose', (await gfeed(/Parwah is calling Mr Bose \(two floors down\)/)) === 1);
+  await sweep(d0 + 80 * MIN); await sweep(d0 + 85 * MIN);
+  ok('ladder: and never again for Dadi today', (await rungs()).filter(x => x.person_id === dadi.id).length === 1 && calls.length === 1 && (await gfeed(/Mr Bose/)) === 1);
+  let fam = (await state(arjun)).quiet.find(q => q.memberId === dadi.id);
+  ok('ladder: the family\'s alert row says who was called', fam.alerted && fam.ladder && fam.ladder.name === 'Mr Bose' && fam.ladder.called === true, JSON.stringify(fam));
+  const kq = (await state(arjun)).quiet.find(q => q.memberId === kaka.id);
+  ok('ladder: and who is calling', kq.ackBy === arjun.id && kq.ackByName === 'Arjun' && kq.ladder === null, JSON.stringify(kq));
+
+  // Without Twilio: nobody is rung; the family sees the helper and a number.
+  await sweep(d0 + 92 * MIN, {});   // Nani's alert (her time is an hour later)
+  const seen = calls.length;
+  await sweep(d0 + 125 * MIN, { env: {}, fetchImpl: twilio.fetchImpl });
+  r = await rungs();
+  const naniR = r.filter(x => x.person_id === nani.id);
+  ok('ladder: without calls set up, the helper is shown, not rung', naniR.length === 1 && naniR[0].status === 'shown' && calls.length === seen, JSON.stringify(naniR));
+  fam = (await state(arjun)).quiet.find(q => q.memberId === nani.id);
+  ok('ladder: with a number for the family\'s Call button', fam.ladder && fam.ladder.name === 'Mrs Iyer' && fam.ladder.called === false && /^\+91/.test(fam.ladder.phone), JSON.stringify(fam));
+  ok('ladder: and the feed says so', (await gfeed(/Mrs Iyer \(two floors down\) said they can help: call \+91/)) === 1);
+  // A helper who deletes their details leaves nothing on the family's screen.
+  await admin.query(`delete from nearby_ladder where id = $1`, [h2]);
+  fam = (await state(arjun)).quiet.find(q => q.memberId === dadi.id);
+  ok('ladder: a helper who stopped is no longer shown', fam.ladder === null, JSON.stringify(fam.ladder));
+
+  // The family's daily cap on paid calls holds here too.
+  const vdadi = await person(verma, 'Vdadi', 'parent', 'f');
+  await admin.query(`update members set checkin_by = $2, tz = $3 where id = $1`, [vdadi.id, cb, TZ2]);
+  await helper(verma, vdadi, 'Mr Jain', 'yes', 1);
+  const { ensureDialSchema } = await import('../../../api/_sosdial.mjs');
+  await ensureDialSchema(sql);
+  for (let i = 0; i < DIAL_DAY_MAX; i++) await admin.query(`insert into care_dial (circle_id, kind, ref, phone, status) values ($1, 'quiet', $2, '+10000000000', 'sent')`, [verma, 'old' + i]);
+  const before = calls.length;
+  await quietSweep(sql, verma, d0 + MIN, twilio); await quietSweep(sql, verma, d0 + 31 * MIN, twilio); await quietSweep(sql, verma, d0 + 62 * MIN, twilio);
+  const vr = (await admin.query(`select status from quiet_ladder where person_id = $1`, [vdadi.id])).rows;
+  ok('ladder: past the family\'s daily call cap, nobody is rung and the helper is shown', vr.length === 1 && vr[0].status === 'capped' && calls.length === before, JSON.stringify(vr));
 }
 
 // The timer tick runs the quiet sweep too, and counts it.

@@ -2690,6 +2690,9 @@ check("care tools: the family alert is calm: a question and a Call button, 30 mi
       and "href=\"tel:' + encodeURIComponent(q.phone)" in _fc_js)
 check("care tools: an elder's Today has the two big buttons, after SOS, All is well and Medicines",
       _app_src.index('id="btn-pill"') < _app_src.index('id="btn-askfirst"') < _app_src.index('id="btn-phonehelp"') < _app_src.index('class="homehero"'))
+check("elder Today, calmest first (TODAY.md): All is well, then the medicine ticks, then SOS, then the rest; SOS also docked in the tab bar",
+      _app_src.index('id="btn-checkin"') < _app_src.index('id="btn-pill"') < _app_src.index('id="dose-elder"') < _app_src.index('id="btn-sos"') < _app_src.index('id="btn-askfirst"')
+      and 'id="sos-fab"' in _app_src)
 check("care tools: ask family first gives the rules, 1930 and cybercrime.gov.in, and needs a family yes",
       all(x in _fc_html for x in ("Never share an OTP or your UPI PIN", "Police never arrest anyone on a video call",
                                    "Banks never ask for KYC on a phone call", "Hang up and call us", 'href="tel:1930"', 'href="https://cybercrime.gov.in"'))
@@ -2716,6 +2719,16 @@ check("care tools: dignity-first words: never lonely, monitoring, tracking, fall
       not re.search(r"\b(lonely|loneliness|monitor\w*|surveil\w*|tracking|fall detection|elderly)\b", (_fc_html + _fc_js + _fc_api + _fc_rules).lower()))
 check("care tools: the forms ask in the app's own sheets, never confirm() or prompt()",
       "askSheet(" in _fc_js and not re.search(r"[^\w.](confirm|prompt)\(", _fc_js))
+# The link between the two: a missed check-in nobody took up (no check-in,
+# nobody said "I'm calling") reaches the first nearby helper who said yes.
+_sd = (API_DIR / "_sosdial.mjs").read_text(encoding="utf-8")
+check("care tools: a missed check-in nobody took up reaches the first helper who said yes, once a day, inside the call cap",
+      "ladderFor(sql, circleId, m.id)" in _fc_api and "primary key (person_id, day)" in _fc_api
+      and "QUIET_LADDER_MIN = 30" in _fc_rules and "m.acked !== today" in _fc_api and "'quiet_ack'" in _fc_api
+      and "sentToday(sql, circleId)) >= DIAL_DAY_MAX" in _sd[_sd.index("export async function dialQuietLadder"):]
+      and "data-fcqack" in _fc_js and "ql.called" in _fc_js)
+check("care tools: the helper's call for a missed check-in is calm, never an SOS or an emergency",
+      not re.search(r"S O S|[Ee]mergency", _sd[_sd.index("export function quietLadderScript"):_sd.index("export async function dialQuietLadder")]))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

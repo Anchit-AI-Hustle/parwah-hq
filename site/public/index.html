@@ -1567,15 +1567,17 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
          first before paying, a missed daily check-in, a parent asking for
          help with the phone. Alerts come first on Today (docs/design/TODAY.md). -->
     <div id="fcalerts" aria-live="polite"></div>
-    <!-- For an elder the family looks after, their three buttons come first:
-         SOS must never be below the fold. -->
+    <!-- For an elder the family looks after, their own buttons come first,
+         calmest first (docs/design/TODAY.md): All is well, then today's
+         medicines, then SOS. SOS is also docked in the tab bar (sidebar on
+         a laptop), so it is never below the fold however many doses there are. -->
     <div id="seniorui" hidden>
-      <button class="big sos" id="btn-sos">🆘 SOS - need help now<span class="sub">Everyone in the family is told at once</span></button>
       <button class="big ok" id="btn-checkin">All is well ✅<span class="sub">One tap - the whole family relaxes</span></button>
       <button class="big pill" id="btn-pill">Medicines taken ✔</button>
       <!-- CARE CYCLE: the parent's own medicine times today, one big tick
            each. When there are times, they stand in for "Medicines taken". -->
       <div id="dose-elder" hidden></div>
+      <button class="big sos" id="btn-sos">🆘 SOS - need help now<span class="sub">Everyone in the family is told at once</span></button>
       <button class="big askfirst" id="btn-askfirst">🛡 Someone is asking for money or an OTP<span class="sub">Ask the family first, in one tap</span></button>
       <button class="big pill" id="btn-phonehelp">📱 Help me with my phone<span class="sub">Send the family a picture of the screen</span></button>
     </div>
@@ -2495,10 +2497,11 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
     <div class="card"><h3>📄 Documents</h3><div class="feed" id="pp-records"></div></div>
     <div class="card"><h3>📞 People to call</h3><div class="feed" id="pp-call"></div></div>
     <!-- THE NEAREST-PERSON LADDER (api/_ladder.mjs): nearby people who said
-         yes themselves, called in order if nobody in the family answers an SOS. -->
+         yes themselves, called in order if nobody in the family answers an SOS,
+         and the first one reached on a missed daily check-in nobody took up. -->
     <div class="card" id="pp-ladder-card">
       <h3>🏠 Nearby helpers for SOS</h3>
-      <p class="hint" id="pp-ladder-why" style="margin:0 0 var(--space-12)">If an SOS gets no answer from the family in 5 minutes, Parwah calls the first person here, then the next. Each person says yes on their own link first.</p>
+      <p class="hint" id="pp-ladder-why" style="margin:0 0 var(--space-12)">If an SOS gets no answer from the family in 5 minutes, Parwah calls the first person here, then the next. A missed daily check-in nobody is calling about reaches the first person too. Each person says yes on their own link first.</p>
       <div class="feed" id="pp-ladder"></div>
       <details class="fmore ftadd" id="ld-addcard">
         <summary>Ask someone nearby</summary>
@@ -5164,7 +5167,7 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
   function ldWa(row, link){
     var abs = location.origin + link;
     var who = ((membersCache || []).filter(function(m){ return m.id === row.person_id; })[0] || {}).name || 'our parent';
-    var msg = 'Namaste ' + ftFirst(row.name) + ', this is ' + state.name + '. Could you be someone nearby who helps ' + ftFirst(who) + ' in an emergency? Parwah would call you only if ' + ftFirst(who) + ' presses SOS and the family cannot be reached. Please read and answer here: ' + abs;
+    var msg = 'Namaste ' + ftFirst(row.name) + ', this is ' + state.name + '. Could you be someone nearby who helps ' + ftFirst(who) + ' in an emergency? Parwah would call you only if ' + ftFirst(who) + ' presses SOS, or misses the daily check-in, and the family cannot be reached. Please read and answer here: ' + abs;
     return 'https://wa.me/' + String(row.phone).replace(/[^\d]/g, '') + '?text=' + encodeURIComponent(msg);
   }
   function renderLadder(){
@@ -5184,7 +5187,7 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
         '</span></span></div>';
     }).join('') : '<div class="ev">Nobody yet. A neighbour, the building guard or a relative in town: someone who could be at the door in minutes.</div>';
     $('pp-ladder-why').textContent = 'If an SOS gets no answer from the family in 5 minutes, ' + (ldData.calls ? 'Parwah calls' : 'the family is shown') +
-      ' the first person who said yes, then the next. Each person says yes on their own link first.' + (ldData.calls ? '' : ' Their numbers appear on the SOS screen with Call buttons.');
+      ' the first person who said yes, then the next. A missed daily check-in that nobody in the family is calling about, 30 minutes after the alert, reaches the first person too. Each person says yes on their own link first.' + (ldData.calls ? '' : ' Their numbers appear on the SOS screen and the check-in alert with Call buttons.');
     var used = {}; rows.forEach(function(r){ if (r.book_entry_id) used[r.book_entry_id] = 1; });
     var pick = (ldData.nearby || []).filter(function(c){ return !used[c.id] && (!c.about_member || c.about_member === ldPerson); });
     $('ld-pick').innerHTML = '<option value="">Someone new</option>' + pick.map(function(c){ return '<option value="' + esc(c.id) + '">' + esc(c.name) + ' · ' + esc(c.phone) + '</option>'; }).join('');
@@ -9958,9 +9961,18 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
         '<small>If you have not said you are okay by then, you get a gentle reminder. 30 minutes later the family is told, so someone can call. It stays off unless you say yes.</small></span>' +
         '<button class="cbtn" data-fcqyes="1">Yes, turn it on</button><button class="cbtn ghost" data-fcqno="1">Not now</button></div>';
       if (q.memberId === me || !q.alerted) return;
+      // 30 minutes on with nobody calling, the first nearby helper who said
+      // yes is reached (api/_familycare.mjs quietLadder): Parwah rang them,
+      // or here is their number.
+      var ql = q.ladder, qlw = ql ? esc(ql.name) + (ql.distance ? ' (' + esc(ql.distance) + ')' : '') + (ql.hasKey ? ', who has a key,' : '') : '';
       h += '<div class="crow fcrow urgent"><span class="txt"><b>🧡 ' + esc(q.name) + ' has not checked in today</b><small>' +
-        esc(fcFirst(q.name)) + '’s check-in time was ' + esc(q.checkinBy) + '. Give ' + fcPron(q.gender) + ' a call?</small></span>' +
-        (q.phone ? '<a class="cbtn" href="tel:' + encodeURIComponent(q.phone) + '">📞 Call ' + esc(fcFirst(q.name)) + '</a>' : '') + '</div>';
+        esc(fcFirst(q.name)) + '’s check-in time was ' + esc(q.checkinBy) + '. Give ' + fcPron(q.gender) + ' a call?' +
+        (q.ackBy ? ' ' + (q.ackBy === me ? 'You said you are calling.' : esc(q.ackByName || 'Someone') + ' is calling.') : '') +
+        (ql ? ' ' + (ql.called ? 'Nobody had answered, so Parwah called ' + qlw + ' who lives nearby.' : 'Nobody has answered yet. ' + qlw + ' lives nearby and said they can help.') : '') +
+        '</small></span>' +
+        (q.phone ? '<a class="cbtn" href="tel:' + encodeURIComponent(q.phone) + '">📞 Call ' + esc(fcFirst(q.name)) + '</a>' : '') +
+        (ql && !ql.called && ql.phone ? '<a class="cbtn ghost" href="tel:' + encodeURIComponent(ql.phone) + '">📞 Call ' + esc(ql.name) + '</a>' : '') +
+        (!q.ackBy ? '<button class="cbtn ghost" data-fcqack="' + esc(q.memberId) + '">I’m calling</button>' : '') + '</div>';
     });
     (fc.helps || []).forEach(function(x){
       if (x.member_id === me) {
@@ -10269,7 +10281,7 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
 
   // Every family-care button, in one place.
   document.addEventListener('click', function(e){
-    var b = e.target.closest('[data-fcafopen],[data-fcafclose],[data-fcafack],[data-fchelpdone],[data-fchelpclaim],[data-fccall],[data-fcqyes],[data-fcqno],[data-fcqok],[data-fcqset],[data-fcqhide],[data-fcwedit],[data-fcrdone],[data-fcrskip],[data-fclcsave],[data-fclcrej]');
+    var b = e.target.closest('[data-fcafopen],[data-fcafclose],[data-fcafack],[data-fchelpdone],[data-fchelpclaim],[data-fccall],[data-fcqyes],[data-fcqno],[data-fcqack],[data-fcqok],[data-fcqset],[data-fcqhide],[data-fcwedit],[data-fcrdone],[data-fcrskip],[data-fclcsave],[data-fclcrej]');
     if (!b || !state) return;
     var d = b.dataset;
     if (d.fcafopen) fcafOpen(false);
@@ -10280,6 +10292,7 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
     if (d.fccall) askCall();
     if (d.fcqyes) fcPost({ type: 'quiet_answer', yes: true }, null, function(j){ toast(j.startsTomorrow ? 'On from tomorrow 🧡' : 'Turned on 🧡'); });
     if (d.fcqno) fcPost({ type: 'quiet_answer', yes: false }, 'Left off. You can turn it on any time.');
+    if (d.fcqack) fcPost({ type: 'quiet_ack', targetId: d.fcqack }, null, function(j){ toast(j.already ? (j.ackedName || 'Someone') + ' is already calling' : 'The family knows you are calling 🧡'); });
     if (d.fcqok) sendEvent('checkin', '', function(){ toast('The whole family knows you are okay'); });
     if (d.fcqset) fcqOpen(d.fcqset);
     if (d.fcqhide) { try { localStorage.setItem('parwah-fcq-hide:' + d.fcqhide, '1'); } catch (x) {} fcQuietRender(); }

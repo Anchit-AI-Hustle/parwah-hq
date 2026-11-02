@@ -15,6 +15,25 @@
 
 export const QUIET_GRACE_MIN = 30;   // nudge the parent at the time, the family this much later
 export const AWAY_MAX_DAYS = 90;
+// After the family alert, how long before the first nearby helper who said
+// yes is reached (api/_ladder.mjs), and the hours a neighbour's phone may
+// ring on the person's own clock (7 am up to 10 pm).
+export const QUIET_LADDER_MIN = 30;
+export const QUIET_CALL_FROM = 7, QUIET_CALL_TO = 22;
+export function quietCallHour(tz, nowMs) {
+  let h;
+  try { h = +new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', hourCycle: 'h23' }).format(new Date(nowMs)); }
+  catch (e) { return false; }
+  return h >= QUIET_CALL_FROM && h < QUIET_CALL_TO;
+}
+// What the family reads when a helper is reached. Calm: a missed check-in,
+// never an emergency.
+export function quietLadderText(name, helper, called) {
+  const where = helper.distance_note ? ' (' + helper.distance_note + ')' : '';
+  return called
+    ? 'Nobody has reached ' + name + ' since the check-in alert, so Parwah is calling ' + helper.name + where + ', who said they can help.'
+    : 'Nobody has reached ' + name + ' since the check-in alert. ' + helper.name + where + ' said they can help: call ' + helper.phone + '.';
+}
 
 // "11:00" or "9:5" -> "11:00" / "09:05"; anything else -> null.
 export function validHHMM(v) {

@@ -14,6 +14,13 @@
 // (GET /api/events) or the timer ticks, and each push is claimed by one
 // conditional UPDATE (quiet_nudged_for / quiet_alerted_for = today), so it
 // is sent once however many phones look at the same moment.
+// If the alert then stands for QUIET_LADDER_MIN more minutes and nobody in
+// the family has said "I'm calling" (and the person still has not checked
+// in), the first nearby helper who said yes on their own consent page
+// (api/_ladder.mjs) is reached: Parwah rings them when calls are set up,
+// inside the family's daily cap and waking hours; otherwise the family's
+// alert row shows that helper with a Call button. Once per person per day,
+// claimed by the quiet_ladder primary key.
 //
 // ASK FAMILY FIRST. A parent being rushed to pay or share an OTP asks the
 // family in one tap. Someone acknowledges ("I've seen it, calling you now");
@@ -36,7 +43,10 @@ import { validTz, fromWall, dayIn, nextDue, localDate } from './_recur.mjs';
 import { ensureTaskSchema, taskAction } from './_tasks.mjs';
 import { safeImageUri } from './_sec.mjs';
 import { tokenOf } from './_token.mjs';
+import { ladderFor, ensureLadderSchema } from './_ladder.mjs';
+import { dialQuietLadder } from './_sosdial.mjs';
 import { validHHMM, validDay, addDays, quietPhase, quietFamilyText, QUIET_NUDGE, QUIET_GRACE_MIN, AWAY_MAX_DAYS,
+         QUIET_LADDER_MIN, quietCallHour, quietLadderText,
          lifecertWindow, ackNoCheck, rotaNext, safeWordCheck, JEEVAN_SITE } from './_carerules.mjs';
 
 const HOME_TZ = 'Asia/Kolkata';
@@ -46,6 +56,7 @@ const first = (name) => String(name || '').split(' ')[0];
 let fcReady = false;
 export async function ensureFamilyCareSchema(sql) {
   if (fcReady) return;
+  await ensureLadderSchema(sql);
   await schemaOnce(async () => {
     await sql`alter table members add column if not exists checkin_by text`;
     await sql`alter table members add column if not exists tz text`;
@@ -54,6 +65,20 @@ export async function ensureFamilyCareSchema(sql) {
     await sql`alter table members add column if not exists away_until date`;
     await sql`alter table members add column if not exists checkin_ask text`;
     await sql`alter table members add column if not exists checkin_ask_by uuid references members(id) on delete set null`;
+    await sql`alter table members add column if not exists quiet_alerted_at timestamptz`;
+    await sql`alter table members add column if not exists quiet_ack_for date`;
+    await sql`alter table members add column if not exists quiet_ack_by uuid references members(id) on delete set null`;
+    // A missed check-in that reached a nearby helper: one row per person per
+    // day is the claim. A helper who deletes their details leaves no name here.
+    await sql`create table if not exists quiet_ladder (
+      circle_id uuid not null references circles(id) on delete cascade,
+      person_id uuid not null references members(id) on delete cascade,
+      day date not null,
+      helper_id uuid references nearby_ladder(id) on delete set null,
+      status text not null default 'claimed',
+      at timestamptz not null default now(),
+      primary key (person_id, day)
+    )`;
     await sql`create table if not exists askfirst (
       id uuid primary key default gen_random_uuid(),
       circle_id uuid not null references circles(id) on delete cascade,
@@ -128,39 +153,66 @@ async function okToday(sql, memberId, today, tz) {
 }
 
 // ---------------- quiet day: the sweep ----------------
-export async function quietSweep(sql, circleId, nowMs = Date.now()) {
+// opts { env, fetchImpl } reach the phone call (tests only).
+export async function quietSweep(sql, circleId, nowMs = Date.now(), opts = {}) {
   await ensureFamilyCareSchema(sql);
-  const ms = await sql`select id, name, gender, phone, checkin_by, tz,
-                              to_char(away_until, 'YYYY-MM-DD') as away_until,
-                              to_char(quiet_nudged_for, 'YYYY-MM-DD') as nudged,
-                              to_char(quiet_alerted_for, 'YYYY-MM-DD') as alerted
-                       from members where circle_id = ${circleId} and checkin_by is not null and user_id is not null`;
+  const ms = await sql`select m.id, m.name, m.gender, m.phone, m.phone_cc, m.checkin_by, m.tz, m.quiet_alerted_at,
+                              to_char(m.away_until, 'YYYY-MM-DD') as away_until,
+                              to_char(m.quiet_nudged_for, 'YYYY-MM-DD') as nudged,
+                              to_char(m.quiet_alerted_for, 'YYYY-MM-DD') as alerted,
+                              to_char(m.quiet_ack_for, 'YYYY-MM-DD') as acked,
+                              (select to_char(max(q.day), 'YYYY-MM-DD') from quiet_ladder q where q.person_id = m.id) as laddered
+                       from members m where m.circle_id = ${circleId} and m.checkin_by is not null and m.user_id is not null`;
   let sent = 0;
   for (const m of ms) {
     const by = validHHMM(m.checkin_by); if (!by) continue;
     const tz = tzOf(m.tz), today = dayIn(tz, nowMs), deadline = deadlineOf(today, by, tz);
     if (m.away_until && m.away_until >= today) continue;
     if (nowMs < deadline) continue;
-    if (m.nudged === today && m.alerted === today) continue;
+    if (m.nudged === today && m.alerted === today && (m.laddered === today || m.acked === today)) continue;
     if (await okToday(sql, m.id, today, tz)) continue;
+    let alertedAt = m.alerted === today && m.quiet_alerted_at ? new Date(m.quiet_alerted_at).getTime() : null;
     if (m.nudged !== today) {
       const c = await sql`update members set quiet_nudged_for = ${today}
                           where id = ${m.id} and checkin_by is not null and quiet_nudged_for is distinct from ${today}::date returning id`;
       if (c[0]) { sent++; await pushCircle(sql, circleId, { ...QUIET_NUDGE, url: '/#home' }, { only: m.id }); }
     }
     if (nowMs >= deadline + QUIET_GRACE_MIN * 60000 && m.alerted !== today) {
-      const c = await sql`update members set quiet_alerted_for = ${today}
+      const c = await sql`update members set quiet_alerted_for = ${today}, quiet_alerted_at = ${new Date(nowMs)}
                           where id = ${m.id} and checkin_by is not null and quiet_alerted_for is distinct from ${today}::date returning id`;
       if (c[0]) {
-        sent++;
+        sent++; alertedAt = nowMs;
         const text = quietFamilyText(m.name, m.gender);
         await feed(sql, circleId, m.id, '🧡 ' + text);
         await pushEach(sql, circleId, { title: '🧡 ' + m.name + ' has not checked in today',
           body: text.slice(m.name.length + 1) + ' Their check-in time was ' + by + '.', url: '/#home' }, [m.id]);
       }
     }
+    // Nobody in the family has said "I'm calling" since the alert: the
+    // first nearby helper who said yes.
+    if (alertedAt && m.laddered !== today && m.acked !== today && nowMs >= alertedAt + QUIET_LADDER_MIN * 60000) {
+      sent += await quietLadder(sql, circleId, m, today, tz, nowMs, opts);
+    }
   }
   return sent;
+}
+
+async function quietLadder(sql, circleId, m, today, tz, nowMs, opts) {
+  const h = (await ladderFor(sql, circleId, m.id))[0];
+  if (!h) return 0;
+  const claim = await sql`insert into quiet_ladder (circle_id, person_id, day, helper_id) values (${circleId}, ${m.id}, ${today}, ${h.id})
+                          on conflict do nothing returning person_id`;
+  if (!claim[0]) return 0;
+  // A neighbour's phone rings only in waking hours on the person's clock.
+  const d = quietCallHour(tz, nowMs)
+    ? await dialQuietLadder(sql, circleId, m.id + ':' + today, h, { name: m.name, cc: m.phone_cc }, opts)
+    : { configured: false };
+  const st = d.called ? 'called' : d.capped ? 'capped' : d.configured && d.failed ? 'failed' : 'shown';
+  await sql`update quiet_ladder set status = ${st} where person_id = ${m.id} and day = ${today}`;
+  const text = quietLadderText(m.name, h, d.called);
+  await feed(sql, circleId, m.id, '📞 ' + text);
+  await pushEach(sql, circleId, { title: '📞 ' + (d.called ? 'Parwah is calling ' : 'Call ') + h.name + ' for ' + m.name, body: text, url: '/#home' }, [m.id]);
+  return 1;
 }
 // The timer's share: every family where someone has a check-in time.
 export async function quietSweepAll(sql) {
@@ -230,8 +282,9 @@ export async function familyCareState(sql, circleId, meId, nowMs = Date.now()) {
   const ms = await sql`select m.id, m.name, m.role, m.phone, m.gender, m.checkin_by, m.tz, m.checkin_ask,
                               a.name as ask_by_name, m.checkin_ask_by,
                               to_char(m.away_until, 'YYYY-MM-DD') as away_until,
-                              to_char(m.quiet_alerted_for, 'YYYY-MM-DD') as alerted
-                       from members m left join members a on a.id = m.checkin_ask_by
+                              to_char(m.quiet_alerted_for, 'YYYY-MM-DD') as alerted,
+                              to_char(m.quiet_ack_for, 'YYYY-MM-DD') as acked, k.name as ack_by_name, m.quiet_ack_by
+                       from members m left join members a on a.id = m.checkin_ask_by left join members k on k.id = m.quiet_ack_by
                        where m.circle_id = ${circleId} and m.user_id is not null
                          and (m.checkin_by is not null or m.checkin_ask is not null or m.role = 'parent' or m.id = ${meId})
                        order by m.created_at`;
@@ -243,7 +296,9 @@ export async function familyCareState(sql, circleId, meId, nowMs = Date.now()) {
     quiet.push({ memberId: m.id, name: m.name, role: m.role, phone: m.phone, gender: m.gender,
       checkinBy: by, tz, awayUntil: m.away_until && m.away_until >= today ? m.away_until : null,
       ask: m.checkin_ask, askBy: m.checkin_ask_by, askByName: m.ask_by_name,
-      okAt, phase, alerted: m.alerted === today && !okAt, today });
+      okAt, phase, alerted: m.alerted === today && !okAt, today,
+      ackBy: m.acked === today ? m.quiet_ack_by : null, ackByName: m.acked === today ? m.ack_by_name : null,
+      ladder: m.alerted === today && !okAt ? await quietLadderShown(sql, m.id, today) : null });
   }
   const askfirst = await sql`select f.id, f.member_id, f.note, f.status, f.created_at, f.acked_at, f.acked_by,
                                     m.name, m.phone, a.name as acked_name
@@ -259,8 +314,16 @@ export async function familyCareState(sql, circleId, meId, nowMs = Date.now()) {
   return { quiet, askfirst, helps, safeWord: fs[0] ? fs[0].safe_word : null };
 }
 
+// The nearby helper reached today, while they are still on the ladder.
+async function quietLadderShown(sql, personId, today) {
+  const r = await sql`select q.status, l.name, l.phone, l.distance_note, l.has_key
+                      from quiet_ladder q join nearby_ladder l on l.id = q.helper_id and l.consent = 'yes'
+                      where q.person_id = ${personId} and q.day = ${today}`;
+  return r[0] ? { name: r[0].name, phone: r[0].phone, distance: r[0].distance_note, hasKey: r[0].has_key, called: r[0].status === 'called' } : null;
+}
+
 // ---------------- writes from /api/events ----------------
-export const FC_EVENT_TYPES = ['quiet_set', 'quiet_off', 'quiet_ask', 'quiet_answer', 'quiet_away',
+export const FC_EVENT_TYPES = ['quiet_set', 'quiet_off', 'quiet_ask', 'quiet_answer', 'quiet_away', 'quiet_ack',
   'askfirst', 'askfirst_ack', 'askfirst_close', 'safeword_set', 'help_ask', 'help_claim', 'help_done'];
 
 const send = (res, status, json) => res.status(status).json(json);
@@ -342,6 +405,26 @@ export async function familyCarePost(sql, req, res, reqTzValue) {
     if (t.id !== me.id) await pushCircle(sql, circle.id, { title: until ? '🧳 ' + me.name + ' paused your daily check-in' : '🏠 Your daily check-in is on again',
       body: until ? 'Until ' + until + '. Change it any time on Today.' : 'Turned back on by ' + me.name, url: '/#home' }, { only: t.id });
     return send(res, 200, { ok: true, awayUntil: until });
+  }
+
+  // "I'm calling": someone in the family has the missed check-in in hand,
+  // so no nearby helper is reached for it today.
+  if (type === 'quiet_ack') {
+    const t = (await sql`select id, name, tz, to_char(quiet_alerted_for, 'YYYY-MM-DD') as alerted,
+                                to_char(quiet_ack_for, 'YYYY-MM-DD') as acked, quiet_ack_by
+                         from members where id = ${isUuid(b.targetId) ? b.targetId : null} and circle_id = ${circle.id}`)[0];
+    if (!t) return no(res, 404, 'That person is not in this family');
+    if (t.id === me.id) return no(res, 400, "Tap I'm okay instead");
+    const tday = dayIn(tzOf(t.tz));
+    if (t.alerted !== tday) return no(res, 409, 'There is nothing to answer for ' + t.name + ' today');
+    const c = await sql`update members set quiet_ack_for = ${tday}::date, quiet_ack_by = ${me.id}
+                        where id = ${t.id} and quiet_ack_for is distinct from ${tday}::date returning id`;
+    if (!c[0]) {
+      const by = t.quiet_ack_by ? (await sql`select name from members where id = ${t.quiet_ack_by}`)[0] : null;
+      return send(res, 200, { ok: true, already: true, ackedName: by ? by.name : null });
+    }
+    await feed(sql, circle.id, me.id, '📞 ' + me.name + ' is calling ' + t.name + " about today's check-in");
+    return send(res, 200, { ok: true });
   }
 
   // ---- ask family first ----

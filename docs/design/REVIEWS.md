@@ -34,6 +34,8 @@ New patterns: the alert row (`.crow.fcrow.urgent`, a 4px status edge with a word
 
 Added at the merge of the three feature branches: when the quiet-day alert has been up for 30 more minutes and nobody in the family has checked in or said "I called", the first nearby helper who said yes is reached, once per person per day: Parwah rings them when calls are switched on (inside the family's daily call cap); otherwise the alert row shows "Nobody has answered yet" with a Call button for that helper. Proved in `site/tests/db/caretools.dbtest.mjs`.
 
+Also at the merge, the elder's Today was put back in the order `TODAY.md` sets, calmest first: All is well, then today's medicine ticks (they replace "Medicines taken" when times exist, so there is never both), then SOS, then Ask family first, Help with my phone and "Who came today?". SOS stays docked in the tab bar (the sidebar on a laptop), so it is in reach without scrolling whatever sits above it. Checked at 320 and 390: no sideways scroll, nothing overlaps.
+
 ## Review 15 - 2026-11-02 - nearby helpers, costs, home staff, renewals
 
 Scope: four new screens built from existing atoms (`.card`, `.crow`, `.ev`, `.pick`, `.seg`, `details.fmore`, `.gchk`, `.ss-btn`): Costs, Home staff and Renewals under To do; Nearby helpers on a person's page; "Who came today?" on an elder's Today; nearby people on the family's SOS alarm; the nearby person's own consent page. Measured by `site/tests/browser/familytools.browser.mjs` at 320, 390 and 1440px in both themes: no sideways scroll, 44px targets, 12px floor, AA contrast.

@@ -4,7 +4,8 @@
 // and the plain rules a parent reads before paying. api/_carerules.mjs
 // imports nothing, so this runs in the deploy gate before npm install.
 import { validHHMM, validDay, addDays, quietPhase, quietFamilyText, pronoun, QUIET_GRACE_MIN,
-         lifecertWindow, ackNoCheck, rotaNext, safeWordCheck, ASK_FIRST_RULES, CYBER_HELPLINE, CYBER_SITE, JEEVAN_SITE } from '../../api/_carerules.mjs';
+         lifecertWindow, ackNoCheck, rotaNext, safeWordCheck, ASK_FIRST_RULES, CYBER_HELPLINE, CYBER_SITE, JEEVAN_SITE,
+         QUIET_LADDER_MIN, quietCallHour, quietLadderText } from '../../api/_carerules.mjs';
 
 let pass = 0; const fails = [];
 const ok = (name, cond, detail) => { if (cond) pass++; else fails.push(name + (detail ? ' -> ' + detail : '')); };
@@ -57,6 +58,19 @@ ok('the rota goes round', rotaNext(['a', 'b', 'c'], 0) === 1 && rotaNext(['a', '
 // Safe word
 ok('a safe word is short and plain', safeWordCheck('Gulab jamun').value === 'Gulab jamun' && safeWordCheck('').value === null
    && !!safeWordCheck('x'.repeat(41)).error && !!safeWordCheck('<script>').error && safeWordCheck('गुलाब').value === 'गुलाब');
+
+// Quiet day, then the nearest helper: 30 more minutes, waking hours only, calm words
+ok('the helper is reached 30 minutes after the family alert', QUIET_LADDER_MIN === 30);
+ok('a neighbour is rung only from 7 am to before 10 pm on the person\'s clock',
+   quietCallHour('Asia/Kolkata', Date.UTC(2026, 10, 2, 1, 30)) === true      // 7:00 IST
+   && quietCallHour('Asia/Kolkata', Date.UTC(2026, 10, 2, 1, 29)) === false  // 6:59
+   && quietCallHour('Asia/Kolkata', Date.UTC(2026, 10, 2, 16, 29)) === true  // 21:59
+   && quietCallHour('Asia/Kolkata', Date.UTC(2026, 10, 2, 16, 30)) === false // 22:00
+   && quietCallHour('Not/AZone', D) === false);
+const lt = quietLadderText('Papa', { name: 'Mr Bose', distance_note: 'next door', phone: '+919811100002' }, false);
+ok('without a call, the family gets the helper\'s number', lt === 'Nobody has reached Papa since the check-in alert. Mr Bose (next door) said they can help: call +919811100002.', lt);
+ok('with a call, it says Parwah is calling, and never "emergency"', /Parwah is calling Mr Bose/.test(quietLadderText('Papa', { name: 'Mr Bose', phone: 'x' }, true))
+   && !/emergency|SOS/i.test(lt + quietLadderText('Papa', { name: 'Mr Bose' }, true)));
 
 // Ask family first: the rules, the helpline, no promise to spot a scam
 ok('the four plain rules', ASK_FIRST_RULES.length === 4 && /OTP/.test(ASK_FIRST_RULES[0]) && /UPI PIN/.test(ASK_FIRST_RULES[0])
