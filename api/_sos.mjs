@@ -22,11 +22,16 @@
 // keep sending a position once the app is closed. The phone does the calling
 // and the messaging, one tap each, with everything already filled in.
 import { validPosition } from './_geo.mjs';
+import { schemaOnce } from './_db.mjs';
 
 export const SOS_AUDIO_MAX = 1600000;       // base64 characters, about 1.2 MB
 export const SOS_AUDIO_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/aac'];
 
 export async function ensureSosSchema(sql) {
+  // First loads race here too: see schemaOnce.
+  await schemaOnce(() => sosTables(sql));
+}
+async function sosTables(sql) {
   await sql`alter table sos add column if not exists lat double precision`;
   await sql`alter table sos add column if not exists lng double precision`;
   await sql`alter table sos add column if not exists accuracy integer`;

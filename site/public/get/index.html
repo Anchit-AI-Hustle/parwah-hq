@@ -151,17 +151,6 @@
     // Instagram, WhatsApp and other in-app browsers have no Add to Home Screen.
     if (/FBAN|FBAV|Instagram|WhatsApp|Line\/|GSA\/|Snapchat|Twitter|LinkedInApp/.test(ua)) document.getElementById('ios-inapp').hidden = false;
   }
-  // The newest app build, from the public releases: a signed parwah.apk
-  // when there is one, else the test build. The links in the page are the
-  // fallback when GitHub cannot be reached.
-  fetch('https://api.github.com/repos/Anchit-AI-Hustle/parwah-hq/releases?per_page=15').then(function(r){ return r.ok ? r.json() : []; }).then(function(list){
-    var rel = (list || []).filter(function(x){ return /^mobile-v/.test(x.tag_name) && !x.draft; })[0];
-    if (!rel) return;
-    var find = function(re){ return (rel.assets || []).filter(function(a){ return re.test(a.name); })[0]; };
-    var apk = find(/^parwah\.apk$/) || find(/^parwah-test\.apk$/), ipa = find(/\.ipa$/);
-    if (apk) { document.getElementById('apk-link').href = apk.browser_download_url; document.getElementById('apk-size').textContent = '(' + Math.max(1, Math.round(apk.size / 1048576)) + ' MB)'; }
-    if (ipa) document.getElementById('ipa-link').href = ipa.browser_download_url;
-  }).catch(function(){});
 })();
 </script>
 <script defer src="../attrib.js"></script>

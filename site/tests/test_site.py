@@ -2768,6 +2768,7 @@ check("attribution: the list stores them, first touch kept on a re-join",
 _get = (ROOT / "public" / "get" / "index.html").read_text(encoding="utf-8")
 _adv = _get.find('id="advanced"')
 check("get: no probe for a download that does not exist", "downloads/parwah.apk" not in _get and "direct-android" not in _get)
+check("get: no call to the GitHub API from the page (rate-limited for visitors, and the repo may go private)", "api.github.com" not in _get)
 check("get: the browser and Add to Home Screen come first, the profile and the test build under Advanced",
       _adv > 0 and 0 < _get.find('id="ios-guide"') < _adv and 0 < _get.find('id="android-open"') < _adv
       and _get.find('id="ios-get"') > _adv and _get.find('id="apk-link"') > _adv
