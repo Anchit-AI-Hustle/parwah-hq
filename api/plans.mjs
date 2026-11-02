@@ -10,6 +10,8 @@ import { countError } from './_valid.mjs';
 import { whenText } from './_plansweep.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
+import { ensureVisitSchema, visitState, visitAction } from './_visits.mjs';
+import { reqTz } from './_recur.mjs';
 
 const KINDS = ['call', 'party', 'meet', 'appointment', 'function', 'trip', 'other'];
 
@@ -57,6 +59,19 @@ export default async function handler(req, res) {
     const circle = _g.circle;
     const meRow = [_g.me];
     const me = meRow[0];
+
+    // After a doctor's visit (api/_visits.mjs): what was asked for, and what next.
+    const area = String(q.area || body.area || '');
+    if (area === 'visit' || (typeof body.action === 'string' && /^visit_/.test(body.action))) {
+      await ensureVisitSchema(sql);
+      if (req.method === 'GET') {
+        if (q.person && !isUuid(q.person)) return res.status(400).json({ ok: false, error: 'Bad person' });
+        return res.status(200).json({ ok: true, ...(await visitState(sql, circle, me, q.person)) });
+      }
+      if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return res.status(405).json({ ok: false, error: 'GET or POST only' }); }
+      const out = await visitAction(sql, circle, me, { ...body, tz: body.tz || reqTz(req) });
+      return res.status(out.status).json(out.json);
+    }
 
     if (req.method === 'GET') {
       const plans = await sql`

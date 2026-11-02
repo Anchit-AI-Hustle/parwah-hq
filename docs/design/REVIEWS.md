@@ -3,6 +3,89 @@
 Newest first. Each review uses `CHECKLIST.md`; severities are Nielsen's:
 0 not a problem, 1 cosmetic, 2 minor, 3 major, 4 blocker.
 
+## Review 16 - 2026-11-02 - five family care tools
+
+Scope: the daily check-in (quiet day), Ask family first, Help with my phone, the life certificate and the call rota. New screens: the alerts row at the top of Today (`#fcalerts`), the daily check-in card (`#fcquiet`), and four sheets (`#fcafsheet`, `#fcphsheet`, `#fcqsheet`, `#fctsheet`), plus a checklist or rota inside a task (`#ts-tpl`). Screenshots at 390 and 1440, light and dark; the sheets are measured for 44px targets, the 12px floor, AA contrast and 320px width in `caretools.e2e`, and Today's alerts in `design.browser`.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 134 | 1 Visibility | A parent's yes to a check-in time asked by the family sat under five big buttons, below the fold | 3 | Fixed: a question waiting for your own answer is in the alerts row at the top of Today |
+| 135 | 1 Visibility | Today said "All quiet" under "Papa is asking the family first" | 3 | Fixed: the status line names the first alert while one is up |
+| 136 | 2 Real-world match | "Away?" on a check-in row did not say what it does | 2 | Fixed: "Pause" (and "Change" while away), with a label naming the person |
+| 137 | 4 Consistency | Call links in alert rows were underlined, unlike every other button | 1 | Fixed |
+| 138 | 8 Minimalist | The check-in card repeated its explanation above a single "Ask Papa" row | 1 | Fixed: the explanation shows only once someone has a time; an invitation row explains itself, and "Not now" waves it away on this phone |
+| 139 | 5 Error prevention | An Aadhaar number could be typed as the acknowledgement | 3 | Fixed: refused under the box, on the server and in the app; Parwah never takes a face scan or an Aadhaar number |
+| 140 | 9 Error recovery | "Rejected" on a life certificate left the family with nothing to do | 2 | Fixed: three steps that usually sort it (Aadhaar photo, the bank branch, a doorstep banking visit), as a list |
+| 141 | 3 User control | One tap on Ask family first from More could alarm the whole family by accident | 2 | Fixed: the elder's big button sends at once (it says so); from More, the sheet opens first with "Tell the family now" |
+
+Words: calm and dignity-first. "Has not checked in today. Give him a call?", never an emergency; nothing is called monitoring or detection, and Parwah never says it can spot a scam. The how-to cards are static text with a Hinglish line under each title (no Devanagari in the app).
+
+New patterns: the alert row (`.crow.fcrow.urgent`, a 4px status edge with a word, never colour alone), the plain-rules list (`.fcrules`), the how-to card (`details.howto`), the checklist row (`.fcchk`), the rota chips (`.fcrota`).
+
+| | |
+|---|---|
+| Reviewer | Design lead (agent review, feat-a) |
+| Date | 2026-11-02 |
+| Scope | The five screens above |
+| Heuristic scores (0 fine - 4 blocker) | 1 Visibility 1 · 2 Match 0 · 3 Control 1 · 4 Consistency 0 · 5 Errors 0 · 6 Recognition 0 · 7 Flexibility 0 · 8 Minimalist 1 · 9 Recovery 0 · 10 Help 0 |
+| Must fix before release | None open |
+| Follow-ups, with owner | Elder mode now has five big buttons; watch with real parents whether the last two should fold under "More help" (owner: Anchit) |
+| Verdict | Approved with follow-ups |
+
+Added at the merge of the three feature branches: when the quiet-day alert has been up for 30 more minutes and nobody in the family has checked in or said "I called", the first nearby helper who said yes is reached, once per person per day: Parwah rings them when calls are switched on (inside the family's daily call cap); otherwise the alert row shows "Nobody has answered yet" with a Call button for that helper. Proved in `site/tests/db/caretools.dbtest.mjs`.
+
+Also at the merge, the elder's Today was put back in the order `TODAY.md` sets, calmest first: All is well, then today's medicine ticks (they replace "Medicines taken" when times exist, so there is never both), then SOS, then Ask family first, Help with my phone and "Who came today?". SOS stays docked in the tab bar (the sidebar on a laptop), so it is in reach without scrolling whatever sits above it. Checked at 320 and 390: no sideways scroll, nothing overlaps.
+
+## Review 15 - 2026-11-02 - nearby helpers, costs, home staff, renewals
+
+Scope: four new screens built from existing atoms (`.card`, `.crow`, `.ev`, `.pick`, `.seg`, `details.fmore`, `.gchk`, `.ss-btn`): Costs, Home staff and Renewals under To do; Nearby helpers on a person's page; "Who came today?" on an elder's Today; nearby people on the family's SOS alarm; the nearby person's own consent page. Measured by `site/tests/browser/familytools.browser.mjs` at 320, 390 and 1440px in both themes: no sideways scroll, 44px targets, 12px floor, AA contrast.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 128 | 1 Visibility | The month total on Costs rendered at body size inside a card | 2 | Fixed: the total is the hero number (`.ftbig`), the label above it is plain text, not a shouting eyebrow |
+| 129 | 8 Minimalist | Every renewal row carried a task picker, even an FD two hundred days away | 2 | Fixed: the picker shows only within 60 days or once expired; a repeated kind name ("Gas connection KYC · Gas connection KYC") is dropped |
+| 130 | 2 Real-world match | "1 paid leave day a month are not cut" | 1 | Fixed: "1 day of leave a month is paid" |
+| 131 | 7 Flexibility | The SOS alarm's helper buttons read "Mrs" (first word of the name) | 2 | Fixed: the name as the family wrote it, with a key mark when they hold one |
+| 132 | 5 Error prevention | An ID box could take a whole Aadhaar number | 3 | Fixed: 4 characters in the box and on the server; the add form tells the family to tell the worker what is kept |
+| 133 | 4 Consistency | Reordering the ladder by drag is hard on a phone and for older hands | 2 | Arrows (44px, labelled "Move X up/down"), focus kept on the moved row |
+
+New patterns: the month stepper (`.ftmonth`), the three-way day mark (`.ftmarks`, bigger in senior mode), the status chip (`.ftchip` ok / warn / bad, always with words). Follow-up (owner: product): a ladder rung on a missed check-in, through `ladderFor`, when the quiet-day alert lands. Done when the three feature branches were merged: see Review 16.
+
+Verdict: Approved with follow-ups.
+
+## Review 14 - 2026-11-02 - dose ticks, the hospital screen, after a visit
+
+**Reviewer:** Claude, acting as senior product designer.
+**Brief:** three stories from family research. "Show me which doses Maa
+marked today, and nudge her and then me if the evening one is missed."
+"When Maa is admitted, everyone sees the same status, and whoever is at the
+counter has every paper." "After Papa's appointment, I can see what the
+doctor asked for and when the next visit is, without a 20-minute call."
+**Scope:** the big dose ticks in elder mode (`#dose-elder`), the Today rows
+(`#cc-today`), the person page cards (medicines today and the week strip,
+doctor visits, hospital stays), and three sheets: medicine times
+(`#dsheet`), the hospital screen (`#admsheet`) and after the visit
+(`#vsheet`). Screens checked at 390 and 1440, light and dark.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 121 | 2 Real-world match | Times read "20:58" in the feed and "8:58" on the tick, which a parent cannot tell from morning | 2 | Fixed: every time is said as the family says it, "8:58 PM", in the app, the feed and the push |
+| 122 | 5 Error prevention | A dose many hours away showed a big "Tap when taken" that the server then refused | 3 | Fixed: a time more than three hours off shows as "Later today" with nothing to tap |
+| 123 | 1 Visibility of status | The counter papers on the hospital screen sat on "Loading…" after the family list refreshed | 3 | Fixed: the papers are kept apart from the refreshing list; insurer, policy ending, TPA and the emergency contact show |
+| 124 | 8 Aesthetic & minimalist | "Undo the last step" was a whole empty step card | 1 | Fixed: a plain link under the steps |
+| 125 | 10 Trust | A tick could be read as proof that a medicine was taken | 3 | Fixed: "A tick is what was marked, not a check that the medicine was taken." on the family card, and "It is a note, not a check." under the parent's ticks; nothing gives dose advice |
+| 126 | 10 Trust | A hospital timeline invites "how long will it take?" | 2 | Fixed: the screen says Parwah does not know hospital or insurer timings; "waiting since 3:10 PM" is a clock, never an estimate; IDs show only their last four |
+| 127 | 4 Consistency | Status on the week strip by colour alone | 2 | Fixed: ✓, !, ↷ and … on every day, the tints only behind them, and each day said in words to a screen reader |
+
+New patterns: the week strip (`.cc-week`, `.cc-day`), the step list
+(`.cc-steps`), the waiting clock (`.cc-wait`), the paper checklist
+(`.cc-papers`) and pressed chips (`.cc-pick button[aria-pressed]`). All
+tokens; 44px targets and no sideways scroll at 390 are measured in
+`site/tests/db/carecycle.e2e.dbtest.mjs`; the rules in `test_site.py`
+("care cycle:" checks).
+
+**Approved.**
+
 ## Review 13 - 2026-10-20 - proof, a real signup, and privacy
 
 **Reviewer:** Claude, acting as senior product designer.

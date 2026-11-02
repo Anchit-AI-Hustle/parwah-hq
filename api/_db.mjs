@@ -10,8 +10,14 @@ export function db() {
   return neon(url);
 }
 
+// Every handler calls this first, so the app's first screens all race here on
+// a fresh database: run it through schemaOnce like the feature tables.
 export async function ensureSchema(sql) {
   if (schemaReady) return;
+  await schemaOnce(() => coreTables(sql));
+  schemaReady = true;
+}
+async function coreTables(sql) {
   await sql`create table if not exists circles (
     id uuid primary key default gen_random_uuid(),
     code text unique not null,
@@ -290,7 +296,6 @@ export async function ensureSchema(sql) {
     n integer not null default 0,
     primary key (bucket, k)
   )`;
-  schemaReady = true;
 }
 
 // The caller's address, as far as the platform will tell us. Used only as a

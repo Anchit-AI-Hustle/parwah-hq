@@ -86,6 +86,11 @@ async function createTaskSchema(sql) {
   // occurrence. Null: no reminder, only the running-late alert.
   await sql`alter table requests add column if not exists remind_before integer`;
   await sql`alter table requests add column if not exists reminded_for timestamptz`;
+  // A ready-made task (the life certificate, a call rota) carries its own
+  // small record: a checklist, an acknowledgement, who calls next. See
+  // api/_familycare.mjs.
+  await sql`alter table requests add column if not exists template text`;
+  await sql`alter table requests add column if not exists template_data jsonb`;
   await sql`create unique index if not exists requests_series_due on requests (series_id, due_at) where series_id is not null`;
   await sql`create table if not exists task_log (
     id uuid primary key default gen_random_uuid(),
@@ -148,7 +153,7 @@ export async function taskList(sql, circleId) {
     select q.id, q.title, q.status, q.created_at, q.due_date, q.due_at, q.all_day, q.tz, q.recurrence,
            q.done_when, q.notes, q.escalate, q.acknowledged_at, q.completed_at, q.completion_note,
            q.about_member, q.by_member, q.claimed_by, q.completed_by,
-           q.remind_before,
+           q.remind_before, q.template, q.template_data,
            (q.due_at is not null and q.due_at < now() and q.status in ('open','assigned','claimed')) as overdue,
            b.name as by_name, c.name as claimed_name, a.name as about_name, d.name as completed_name
     from requests q

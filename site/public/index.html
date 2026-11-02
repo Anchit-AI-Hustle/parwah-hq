@@ -309,6 +309,46 @@ label + select{width:100%}
 .big.ok.done{background:var(--ok);color:var(--on-accent)}
 .big.pill{background:var(--surface);color:var(--ink);border:1.5px solid var(--bone-2);font-size:var(--fs-20)}
 .big.pill.done{background:var(--tint-ok);border-color:var(--ok)}
+/* CARE CYCLE: dose ticks, the week strip, the hospital screen, visits */
+#dose-elder .big .sub{font-weight:600}
+#dose-elder .big.pill.done .sub{color:var(--ink)}
+.cc-elderrow{display:flex;gap:var(--space-8);justify-content:flex-end;margin:calc(-1 * var(--space-8)) 0 var(--space-16)}
+.cc-head{display:flex;justify-content:space-between;align-items:center;gap:var(--space-8);flex-wrap:wrap}
+.cc-head .cbtn{min-height:var(--tap-min)}
+.cc-dose{display:flex;gap:var(--space-12);align-items:center;flex-wrap:wrap}
+.cc-dose .txt{flex:1;min-width:160px}
+.cc-dose .cbtn{min-height:var(--tap-min)}
+.cc-st{font-weight:700}
+.cc-st.ok{color:var(--ok)}
+.cc-st.bad{color:var(--alert)}
+.cc-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--space-4)}
+.cc-day{min-height:56px;border:1px solid var(--bone-2);background:var(--surface);border-radius:var(--radius-8);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-2);font-family:var(--body);font-size:var(--fs-12);font-weight:700;color:var(--ink);cursor:pointer;padding:var(--space-4) 0}
+.cc-day .m{font-size:var(--fs-16);line-height:1}
+.cc-day.ok{background:var(--tint-ok);border-color:var(--ok-line)}
+.cc-day.bad{background:var(--tint-bad);border-color:var(--alert-line)}
+.cc-day.sel{box-shadow:inset 0 0 0 2px var(--marigold)}
+.cc-pick button{min-height:var(--tap-min)}
+.cc-pick button[aria-pressed="true"]{background:var(--tint-warm);border-color:var(--marigold);box-shadow:inset 0 0 0 2px var(--marigold)}
+.cc-addrow{display:flex;gap:var(--space-8);align-items:flex-end;margin-top:var(--space-12)}
+.cc-addrow .pick{flex:1;min-width:0}
+.cc-addrow .cbtn{min-height:var(--tap-min)}
+.msheet .mp.cc-wide{max-width:520px}
+.cc-flat{box-shadow:none;margin-bottom:0;padding:var(--space-12) var(--space-16)}
+.cc-wait{background:var(--tint-warm);border:1px solid var(--bone-2);border-left:4px solid var(--marigold);border-radius:var(--radius-12);padding:var(--space-12) var(--space-16);margin-bottom:var(--space-12);font-size:var(--fs-14)}
+.cc-wait b{display:block;font-family:var(--disp);font-size:var(--fs-18)}
+.cc-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--space-8)}
+.cc-steps li{display:flex;gap:var(--space-12);align-items:center;background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-8) var(--space-12);font-size:var(--fs-14);min-height:var(--tap-min)}
+.cc-steps li .dot{flex:none;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;border:2px solid var(--bone-2);color:var(--ink-soft)}
+.cc-steps li.done .dot{background:var(--tint-ok);border-color:var(--ok);color:var(--ok)}
+.cc-steps li .txt{flex:1;min-width:0}
+.cc-steps li small{display:block;color:var(--ink-soft);font-size:var(--fs-12)}
+.cc-steps li.later{opacity:.7}
+.cc-steps li .cbtn{min-height:var(--tap-min);flex:none}
+.cc-papers label{display:flex;gap:var(--space-12);align-items:flex-start;font-weight:600;margin:0 0 var(--space-8);min-height:var(--tap-min);padding:var(--space-8) var(--space-12);background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-12)}
+.cc-papers input{width:22px;height:22px;flex:none;margin-top:var(--space-2)}
+.cc-papers small{display:block;font-weight:400;color:var(--ink-soft);font-size:var(--fs-12)}
+.crow.cc-alert{border-left:4px solid var(--alert)}
+.crow .cbtn{min-height:var(--tap-min)}
 .big.sos{background:var(--alert);color:var(--on-accent);font-family:var(--body);font-size:var(--fs-20);letter-spacing:.05em}
 html:has(body.senior){font-size:112.5%}
 .senior .widget b{font-size:var(--fs-18)}
@@ -1186,7 +1226,57 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   .bar{gap:var(--space-8);padding-left:calc(var(--space-12) + env(safe-area-inset-left));padding-right:calc(var(--space-12) + env(safe-area-inset-right))}
 }
 @media (max-width:430px){.relpick{grid-template-columns:repeat(2,minmax(0,1fr))}.relpick button[data-role="family"]{grid-column:auto}.relpick button{white-space:nowrap;font-size:var(--fs-14)}}
+/* Family tools: Costs, Home staff, Renewals and the nearby helpers
+   (api/_expenses.mjs, _staff.mjs, _renewals.mjs, _ladder.mjs). */
+.ftmonth{display:flex;align-items:center;justify-content:space-between;gap:var(--space-8);margin:0 0 var(--space-12);max-width:420px}
+.ftmonth .cbtn{min-width:var(--tap-min);min-height:var(--tap-min);font-size:var(--fs-18)}
+.ftbig{font-family:var(--disp);font-size:var(--fs-30);font-weight:800;margin:0;line-height:1.1}
+.ftline{display:flex;justify-content:space-between;gap:var(--space-12);padding:var(--space-8) 0;border-top:1px solid var(--bone-2);font-size:var(--fs-14)}
+.ftline:first-child{border-top:0}
+.ftbal{margin:var(--space-8) 0 0;padding:var(--space-8) var(--space-12);background:var(--tint-warm-2);border-radius:var(--radius-12);font-size:var(--fs-14);font-weight:600}
+.ftmarks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-8);margin-top:var(--space-8);width:100%}
+.ftmarks button{min-height:48px;border:1.5px solid var(--bone-2);background:var(--surface);color:var(--ink);border-radius:var(--radius-12);font-family:var(--body);font-weight:700;font-size:var(--fs-14);cursor:pointer;padding:var(--space-8)}
+.ftmarks button.sel{background:var(--tint-ok);border-color:var(--ok);color:var(--ink)}
+.senior .ftmarks button{min-height:56px;font-size:var(--fs-16)}
+.ftchip{display:inline-block;font-size:var(--fs-12);font-weight:700;border-radius:var(--radius-pill);padding:var(--space-2) var(--space-8);background:var(--bone);color:var(--ink);white-space:nowrap}
+.ftchip.ok{background:var(--tint-ok)}.ftchip.warn{background:var(--tint-warm)}.ftchip.bad{background:var(--tint-bad)}
+.ftacts{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-8)}
+.ftacts .cbtn,.ftacts a.cbtn{min-height:var(--tap-min);min-width:var(--tap-min);justify-content:center;text-decoration:none;display:inline-flex;align-items:center}
+.ftsum{font-size:var(--fs-14);background:var(--surface-2);border-radius:var(--radius-12);padding:var(--space-12);margin-top:var(--space-8)}
+.ftsplit{display:flex;align-items:center;justify-content:space-between;gap:var(--space-12);margin-bottom:var(--space-8)}
+.ftsplit input[type=number]{max-width:96px}
 .native-app #getapp,.native-app .ditem[href="get/"]{display:none}
+/* ---- Family care tools: quiet day, ask family first, phone help, the
+   life certificate and the call rota (see api/_familycare.mjs). Tokens only. ---- */
+.big.askfirst{background:var(--dusk);color:var(--cream);font-family:var(--body);font-size:var(--fs-20);border:2px solid var(--marigold)}
+.fcrow{border-left-width:4px;margin-bottom:var(--space-8)}
+.fcrow .txt b{display:block}
+.fcrow a.cbtn,.fcstack a,.fcrow a.cbtn:hover{text-decoration:none}
+.fcsteps{margin:var(--space-4) 0 0;padding-left:var(--space-20);font-size:var(--fs-14);color:var(--ink-soft)}
+.fccard{margin:var(--space-12) 0}
+.fccard h3{margin:0 0 var(--space-4)}
+.fcrules{margin:var(--space-8) 0 var(--space-16);padding-left:var(--space-20);font-size:var(--fs-16);line-height:1.5}
+.fcrules li{margin-bottom:var(--space-8)}
+.fcstack{display:flex;flex-direction:column;gap:var(--space-8);margin-top:var(--space-12)}
+.fcstack .go{margin-top:0}
+.fcstack a.go,.fcstack a.cbtn{display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;box-sizing:border-box;width:100%}
+.fcstack .cbtn{width:100%}
+.fcsafe{background:var(--tint-warm);color:var(--ink);border-radius:var(--radius-12);padding:var(--space-12) var(--space-16);font-size:var(--fs-14);margin-top:var(--space-16)}
+.fcsafe b{font-size:var(--fs-18)}
+.fcshot{display:block;max-width:100%;max-height:220px;border-radius:var(--radius-12);margin-top:var(--space-8);border:1px solid var(--bone-2)}
+details.howto{background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:0 var(--space-16);margin-bottom:var(--space-8)}
+details.howto summary{display:flex;align-items:center;font-weight:700;font-size:var(--fs-16)}
+details.howto ol{margin:0 0 var(--space-12);padding-left:var(--space-20);font-size:var(--fs-16);line-height:1.5}
+details.howto li{margin-bottom:var(--space-4)}
+details.howto .hi{color:var(--ink-soft);font-size:var(--fs-14);margin:0 0 var(--space-12)}
+.fcchk{display:flex;align-items:flex-start;gap:var(--space-12);min-height:var(--tap-min);font-size:var(--fs-16);margin:var(--space-8) 0;cursor:pointer;font-weight:400}
+.fcchk input{width:24px;height:24px;flex:none;accent-color:var(--marigold);margin-top:var(--space-2)}
+.fcrota{display:flex;flex-wrap:wrap;gap:var(--space-8);margin:var(--space-8) 0}
+.fcrota span{background:var(--bone);border-radius:var(--radius-pill);padding:var(--space-4) var(--space-12);font-size:var(--fs-14);font-weight:600}
+.fcrota span.now{background:var(--tint-warm);color:var(--ink);outline:2px solid var(--marigold)}
+.fctpl{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-8)}
+.fctpl .cbtn{flex:1 1 220px;min-height:var(--tap-min)}
+body.senior .fcrow .txt b{font-size:var(--fs-18)}
 </style>
 </head>
 <body>
@@ -1473,13 +1563,26 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <span class="txt"><b>Could not reach Parwah</b><small>This is the last thing we saw, not what is happening now. It will retry on its own.</small></span>
       <button class="cbtn" data-retryload="1">Try now</button>
     </div>
-    <!-- For an elder the family looks after, their three buttons come first:
-         SOS must never be below the fold. -->
+    <!-- Family care alerts (api/_familycare.mjs): someone asking the family
+         first before paying, a missed daily check-in, a parent asking for
+         help with the phone. Alerts come first on Today (docs/design/TODAY.md). -->
+    <div id="fcalerts" aria-live="polite"></div>
+    <!-- For an elder the family looks after, their own buttons come first,
+         calmest first (docs/design/TODAY.md): All is well, then today's
+         medicines, then SOS. SOS is also docked in the tab bar (sidebar on
+         a laptop), so it is never below the fold however many doses there are. -->
     <div id="seniorui" hidden>
-      <button class="big sos" id="btn-sos">🆘 SOS - need help now<span class="sub">Everyone in the family is told at once</span></button>
       <button class="big ok" id="btn-checkin">All is well ✅<span class="sub">One tap - the whole family relaxes</span></button>
       <button class="big pill" id="btn-pill">Medicines taken ✔</button>
+      <!-- CARE CYCLE: the parent's own medicine times today, one big tick
+           each. When there are times, they stand in for "Medicines taken". -->
+      <div id="dose-elder" hidden></div>
+      <button class="big sos" id="btn-sos">🆘 SOS - need help now<span class="sub">Everyone in the family is told at once</span></button>
+      <button class="big askfirst" id="btn-askfirst">🛡 Someone is asking for money or an OTP<span class="sub">Ask the family first, in one tap</span></button>
+      <button class="big pill" id="btn-phonehelp">📱 Help me with my phone<span class="sub">Send the family a picture of the screen</span></button>
     </div>
+    <!-- Home staff, one tap each a day (api/_staff.mjs). -->
+    <div class="card" id="staff-today" hidden></div>
     <div class="homehero">
       <h1 id="m-title"></h1>
       <p class="herostatus" id="hero-status">…</p>
@@ -1487,6 +1590,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <!-- Someone in the family forgot their PIN and asked to be let back in. -->
     <div id="pinresets"></div>
     <div id="frslot"></div>
+    <!-- CARE CYCLE: someone in hospital, a visit to note, my own medicine times. -->
+    <div id="cc-today"></div>
+    <!-- The daily check-in: off until the person it is about says yes. -->
+    <div class="card fccard" id="fcquiet" hidden>
+      <h3>🕚 Daily check-in</h3>
+      <p class="hint" id="fcq-hint" style="margin:0 0 var(--space-12)">If someone has not said they are okay by their time, they get a gentle reminder. 30 minutes later the family is told, so someone can call.</p>
+      <div id="fcq-rows"></div>
+    </div>
     <!-- THE FIVE THINGS. Families talk on WhatsApp; Parwah holds what WhatsApp
          cannot: the papers, the medicines, who does what, who is who, and the
          card for an emergency. Ranked by utility in docs/design/TODAY.md; the
@@ -1529,6 +1640,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-spark"/></svg></span><b>Ekta</b><small>Reminders, help, scam check - just ask</small></button>
       <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-sun"/></svg></span><b>Good times</b><small id="w-day">Good hours for your city</small></button>
       <button class="widget" data-goto="vault" data-sec="pay"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-card"/></svg></span><b>Payments</b><small id="w-pay">Who may use which way of paying</small></button>
+      <button class="widget" id="w-askfirst"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg></span><b>Ask family first</b><small>Asked for money or an OTP? Check with the family</small></button>
+      <button class="widget" id="w-phonehelp"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span><b>Phone help</b><small>Ask the family, and short how-to cards</small></button>
       <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-dice"/></svg></span><b>Games</b><small id="w-game">Seven games, play together</small></button>
       </div>
       <button class="card coincard" id="coincard" hidden style="margin-bottom:var(--space-16);width:100%;text-align:left">
@@ -1577,6 +1690,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button data-sec="bills">🧾 Bills</button>
       <button data-sec="req">💡 Suggested<i class="dot" id="sugg-dot" hidden></i></button>
       <button data-sec="notes">📝 Notes &amp; lists</button>
+      <button data-sec="expenses">💸 Costs</button>
+      <button data-sec="staff">🧹 Home staff</button>
+      <button data-sec="renewals">📅 Renewals</button>
     </div>
     <div class="subsec" data-sec="rem">
     <p class="hint" style="margin:0 0 var(--space-12)">What needs doing, who is handling it, and when it is done - the whole family sees the same list.</p>
@@ -1631,6 +1747,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <button type="button" data-rep="daily">Daily</button>
           <button type="button" data-rep="weekly">Weekly</button>
           <button type="button" data-rep="monthly">Monthly</button>
+          <button type="button" data-rep="yearly">Yearly</button>
         </div>
       </div>
       <details class="fmore" id="r-more">
@@ -1647,6 +1764,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="go" id="r-add" style="margin-top:var(--space-16)">Add it</button>
       <p class="hint" id="r-hint">Nobody is given it yet - the first person to tap "I'm on it" takes it.</p>
       <p class="hint">No medical details needed here - "Papa's 9 pm tablets" is enough.</p>
+    </div>
+    <div class="card" id="fc-ready" style="margin-top:var(--space-16)">
+      <h3>Ready-made</h3>
+      <p class="hint" style="margin:0">Set up in one tap, with the steps already written in.</p>
+      <div class="fctpl">
+        <button type="button" class="cbtn ghost" id="fc-lc-open">🪪 Life certificate (Jeevan Pramaan)</button>
+        <button type="button" class="cbtn ghost" id="fc-rota-open">📞 Call rota: who calls today</button>
+      </div>
     </div>
     </div>
 
@@ -1706,6 +1831,113 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <label class="pick" id="bill-upi-wrap"><span>Biller's UPI ID (optional)</span><input type="text" id="bill-upi" placeholder="e.g. bses@icici"></label>
         </div>
         <button type="button" class="go" id="btn-add-bill" style="margin-top:var(--space-16);min-height:48px">Save bill</button>
+      </div>
+    </div>
+
+    <!-- SHARED CARE COSTS (api/_expenses.mjs): who paid what for care this
+         month. A record only: Parwah never moves money here. -->
+    <div class="subsec" data-sec="expenses" hidden>
+      <p class="hint" style="margin:0 0 var(--space-12)">Who paid what for care this month, so nobody keeps a spreadsheet. A record only: Parwah never moves money.</p>
+      <div class="ftmonth" role="group" aria-label="Month">
+        <button type="button" class="cbtn ghost" id="ex-prev" aria-label="Previous month">‹</button>
+        <b id="ex-month" aria-live="polite">This month</b>
+        <button type="button" class="cbtn ghost" id="ex-next" aria-label="Next month">›</button>
+      </div>
+      <div id="ex-sum"><div class="ev">Loading…</div></div>
+      <div id="ex-bills"></div>
+      <div class="feed" id="ex-list"></div>
+      <div class="card" style="margin-top:var(--space-16)">
+        <h3>Note a cost</h3>
+        <div class="pickrow">
+          <label class="pick"><span>Amount</span><input type="number" id="ex-amt" min="1" step="1" inputmode="decimal" placeholder="1800"></label>
+          <label class="pick"><span>Currency</span><select id="ex-cur"><option>INR</option><option>USD</option><option>AED</option><option>GBP</option><option>CAD</option></select></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>For</span><select id="ex-cat"></select></label>
+          <label class="pick"><span>For whom</span><select id="ex-for"></select></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>Paid by</span><select id="ex-by"></select></label>
+          <label class="pick"><span>Date</span><input type="date" id="ex-date"></label>
+        </div>
+        <details class="fmore" id="ex-more">
+          <summary>More options: a note, a receipt from the vault</summary>
+          <label class="pick" style="display:block"><span>Note</span><input type="text" id="ex-note" maxlength="140" placeholder="e.g. Dr Mehta, monthly visit"></label>
+          <label class="pick" style="display:block;margin-top:var(--space-12)"><span>Receipt</span><select id="ex-receipt"><option value="">No receipt</option></select></label>
+          <p class="hint">Put the receipt in the Vault first, then pick it here.</p>
+        </details>
+        <button type="button" class="go" id="ex-add" style="margin-top:var(--space-16)">Save the cost</button>
+      </div>
+      <details class="card fmore" id="ex-split">
+        <summary>How the family shares costs</summary>
+        <p class="hint">Optional. With a split, the month shows how far each person is from their share.</p>
+        <div class="seg" id="ex-split-seg" role="group" aria-label="How costs are shared">
+          <button type="button" data-split="none" class="sel">No split</button>
+          <button type="button" data-split="equal">Equal</button>
+          <button type="button" data-split="shares">Set shares</button>
+        </div>
+        <div id="ex-split-rows" style="margin-top:var(--space-12)"></div>
+        <button type="button" class="cbtn" id="ex-split-save" style="margin-top:var(--space-12)">Save the split</button>
+      </details>
+    </div>
+
+    <!-- HOME STAFF (api/_staff.mjs): days, leave, advances and month-end pay,
+         with the sum shown openly. Private to the family. -->
+    <div class="subsec" data-sec="staff" hidden>
+      <p class="hint" style="margin:0 0 var(--space-12)">The people who help at home: who came, leave, advances, and what is due at month-end. Only your family sees this.</p>
+      <div class="ftmonth" role="group" aria-label="Month">
+        <button type="button" class="cbtn ghost" id="st-prev" aria-label="Previous month">‹</button>
+        <b id="st-month" aria-live="polite">This month</b>
+        <button type="button" class="cbtn ghost" id="st-next" aria-label="Next month">›</button>
+      </div>
+      <div class="feed" id="st-list"><div class="ev">Loading…</div></div>
+      <details class="card fmore" id="st-addcard">
+        <summary>Add someone who helps at home</summary>
+        <p class="hint" id="st-dpdp">Tell them what you record here: their name, phone, days and pay. Only your family sees it, and you can delete it any time.</p>
+        <div class="pickrow">
+          <label class="pick"><span>Name</span><input type="text" id="st-name" maxlength="60" placeholder="e.g. Sunita"></label>
+          <label class="pick"><span>Work</span><select id="st-role"><option value="attendant">Attendant</option><option value="cook">Cook</option><option value="cleaner">Cleaner</option><option value="driver">Driver</option><option value="other">Other</option></select></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>Monthly salary</span><input type="number" id="st-salary" min="0" step="100" inputmode="numeric" placeholder="12000"></label>
+          <label class="pick"><span>Pay day</span><input type="number" id="st-payday" min="1" max="31" inputmode="numeric" placeholder="1"></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>Usually comes at</span><input type="time" id="st-time"></label>
+          <label class="pick"><span>Phone</span><input type="tel" id="st-phone" maxlength="16" placeholder="98100 12345"></label>
+        </div>
+        <div class="pick" style="margin-top:var(--space-12)"><span>Working days</span>
+          <div class="members" id="st-days" role="group" aria-label="Working days"></div>
+        </div>
+        <details class="fmore" id="st-more">
+          <summary>More options: paid leave, ID</summary>
+          <div class="pickrow">
+            <label class="pick"><span>Paid leave days a month</span><input type="number" id="st-leave" min="0" max="10" inputmode="numeric" placeholder="0"></label>
+            <label class="pick"><span>ID, last 4 digits only</span><input type="text" id="st-last4" maxlength="4" inputmode="numeric" placeholder="4321" autocomplete="off"></label>
+          </div>
+        </details>
+        <p class="hint">If nobody marks them by an hour after their time on a working day, the family gets one alert.</p>
+        <button type="button" class="go" id="st-add" style="margin-top:var(--space-12)">Add to the register</button>
+      </details>
+    </div>
+
+    <!-- RENEWALS (api/_renewals.mjs): every date that runs out, soonest
+         first, reminded 30 and 7 days ahead. -->
+    <div class="subsec" data-sec="renewals" hidden>
+      <p class="hint" style="margin:0 0 var(--space-12)">Insurance, licences, passports, tax, FDs: soonest first. The family is reminded 30 and 7 days before each runs out.</p>
+      <div class="feed" id="rn-list"><div class="ev">Loading…</div></div>
+      <div class="card" style="margin-top:var(--space-16)">
+        <h3>Add a renewal</h3>
+        <div class="pickrow">
+          <label class="pick"><span>What</span><select id="rn-kind"></select></label>
+          <label class="pick"><span>Runs out on</span><input type="date" id="rn-date"></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>Name it</span><input type="text" id="rn-label" maxlength="100" placeholder="e.g. Maa's health policy"></label>
+          <label class="pick"><span>Whose</span><select id="rn-about"></select></label>
+        </div>
+        <button type="button" class="go" id="rn-add" style="margin-top:var(--space-16)">Add it</button>
+        <p class="hint">Papers in the Vault with an expiry date show here on their own.</p>
       </div>
     </div>
 
@@ -2166,8 +2398,27 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="cbtn ghost" id="pp-docs">📄 Their documents</button>
       <button class="cbtn ghost" id="pp-add">＋ Add something</button>
       <button class="cbtn ghost" id="pp-audit" style="grid-column:1/-1;min-height:48px">👁️ Who can see this?</button>
+      <button class="cbtn ghost cc-admit" id="pp-admit" style="grid-column:1/-1;min-height:48px">🏥 Admitted to hospital</button>
     </div>
     <div class="card" id="pp-todo-card" hidden><h3 id="pp-todo-title">To complete</h3><div class="feed" id="pp-todo"></div></div>
+    <!-- CARE CYCLE: medicine times and ticks, doctor visits, hospital stays. -->
+    <div class="card" id="pp-doses-card">
+      <h3>💊 Medicines today</h3>
+      <p class="hint" style="margin:0 0 var(--space-12)">A tick is what was marked, not a check that the medicine was taken.</p>
+      <div class="feed" id="pp-doses"><div class="ev">Loading…</div></div>
+      <p class="eyebrow" id="pp-week-h" style="margin:var(--space-16) 0 var(--space-8)">This week</p>
+      <div class="cc-week" id="pp-week" role="group" aria-label="This week, day by day"></div>
+      <div class="feed" id="pp-weekday" style="margin-top:var(--space-8)"></div>
+      <p class="eyebrow" style="margin:var(--space-16) 0 var(--space-8)">Times for each medicine</p>
+      <div class="feed" id="pp-medtimes"></div>
+    </div>
+    <div class="card" id="pp-visits-card">
+      <div class="cc-head"><h3 style="margin:0">🩺 Doctor visits</h3>
+        <button type="button" class="cbtn ghost" id="pp-visit-add">＋ After a visit</button></div>
+      <p class="hint" style="margin:var(--space-4) 0 var(--space-12)">What the doctor asked for, as the family wrote it down. Parwah does not read or explain prescriptions.</p>
+      <div class="feed" id="pp-visits"></div>
+    </div>
+    <div class="card" id="pp-adm-card" hidden><h3>🏥 Hospital stays</h3><div class="feed" id="pp-adm-hist"></div></div>
     <div class="card" id="pp-biomarkers-card">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-8)">
         <h3 style="margin:0">📊 Lab metrics &amp; trends</h3>
@@ -2245,6 +2496,29 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="card"><h3>🩺 Health</h3><div class="feed" id="pp-health"></div></div>
     <div class="card"><h3>📄 Documents</h3><div class="feed" id="pp-records"></div></div>
     <div class="card"><h3>📞 People to call</h3><div class="feed" id="pp-call"></div></div>
+    <!-- THE NEAREST-PERSON LADDER (api/_ladder.mjs): nearby people who said
+         yes themselves, called in order if nobody in the family answers an SOS,
+         and the first one reached on a missed daily check-in nobody took up. -->
+    <div class="card" id="pp-ladder-card">
+      <h3>🏠 Nearby helpers for SOS</h3>
+      <p class="hint" id="pp-ladder-why" style="margin:0 0 var(--space-12)">If an SOS gets no answer from the family in 5 minutes, Parwah calls the first person here, then the next. A missed daily check-in nobody is calling about reaches the first person too. Each person says yes on their own link first.</p>
+      <div class="feed" id="pp-ladder"></div>
+      <details class="fmore ftadd" id="ld-addcard">
+        <summary>Ask someone nearby</summary>
+        <label class="pick" style="display:block" id="ld-pickwrap"><span>From your contacts</span><select id="ld-pick"><option value="">Someone new</option></select></label>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>Name</span><input type="text" id="ld-name" maxlength="80" placeholder="e.g. Mrs Khanna"></label>
+          <label class="pick"><span>Phone</span><input type="tel" id="ld-phone" maxlength="16" placeholder="98100 12345"></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>How near</span><input type="text" id="ld-dist" maxlength="80" placeholder="e.g. two floors down"></label>
+          <label class="pick"><span>Usually free</span><input type="text" id="ld-hours" maxlength="80" placeholder="e.g. evenings, all night"></label>
+        </div>
+        <label class="gchk" style="margin-top:var(--space-12);width:fit-content"><input type="checkbox" id="ld-key"> Has a house key</label>
+        <button type="button" class="go" id="ld-add" style="margin-top:var(--space-12)">Make their link</button>
+        <p class="hint">They see what Parwah will do, what is kept and how to remove it, and answer themselves.</p>
+      </details>
+    </div>
     <div class="card"><h3>💡 Useful to know</h3><div class="feed" id="pp-useful"></div>
       <p class="hint" style="margin-top:var(--space-12)">🟡 means it is due a re-check: nothing here is assumed current.</p></div>
   </section>
@@ -2956,6 +3230,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button data-tab="care" data-sec="rem">To do</button>
       <button data-tab="care" data-sec="req">Suggested</button>
       <button data-tab="care" data-sec="notes">Notes &amp; lists</button>
+      <button data-tab="care" data-sec="expenses">Costs</button>
+      <button data-tab="care" data-sec="staff">Home staff</button>
+      <button data-tab="care" data-sec="renewals">Renewals</button>
     </div>
     <button data-tab="people" id="tab-people"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-users"/></svg></span><span id="tab-people-l">Family</span></button>
     <p class="side-more side-only">More</p>
@@ -3060,6 +3337,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <button class="ditem sub" data-tab="care" data-sec="rem">To do</button>
         <button class="ditem sub" data-tab="care" data-sec="req">Suggested</button>
         <button class="ditem sub" data-tab="care" data-sec="notes">Notes &amp; lists</button>
+        <button class="ditem sub" data-tab="care" data-sec="expenses">Costs</button>
+        <button class="ditem sub" data-tab="care" data-sec="staff">Home staff</button>
+        <button class="ditem sub" data-tab="care" data-sec="renewals">Renewals</button>
       </div>
     </div>
     <button class="ditem" data-tab="people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg> Family</button>
@@ -3131,6 +3411,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <p id="sa-sub"></p>
     <a class="ss-btn solid" id="sa-call">📞 Call</a>
     <button type="button" class="ss-btn solid" id="sa-ack">🧡 I am on it</button>
+    <p class="ss-label" id="sa-ladder-l" hidden>Nearby, said they can help</p>
+    <div class="ss-row" id="sa-ladder" hidden></div>
     <button type="button" class="ss-btn" id="sa-map">📍 See where they are</button>
     <button type="button" class="ss-btn" id="sa-play" hidden>▶ Listen to the recording</button>
     <button type="button" class="ss-btn" id="sa-quiet">Silence the alarm</button>
@@ -3163,6 +3445,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <h3 id="ts-title" style="margin:0 var(--space-32) var(--space-12) 0"></h3>
     <div class="crow late" id="ts-late" hidden style="margin-bottom:var(--space-12)"><span class="txt"><b>Running late</b><small id="ts-late-next"></small></span></div>
     <div id="ts-facts" class="feed"></div>
+    <div id="ts-tpl"></div>
     <div id="ts-done" hidden style="margin-top:var(--space-12)">
       <label for="ts-note">Anything the family should know? (optional)</label>
       <input type="text" id="ts-note" maxlength="280" placeholder="e.g. receipt is in the blue folder">
@@ -3179,7 +3462,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <div class="pickrow">
         <label class="pick"><span>Date</span><input type="date" id="ts-e-date"></label>
         <label class="pick"><span>Time</span><input type="time" id="ts-e-time"></label>
-        <label class="pick"><span>Repeat</span><select id="ts-e-rep"><option value="once">Once</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></label>
+        <label class="pick"><span>Repeat</span><select id="ts-e-rep"><option value="once">Once</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>
         <label class="pick"><span>For whom</span><select id="ts-e-about" aria-label="For whom"></select></label>
         <label class="pick"><span>Remind</span><select id="ts-e-remind"><option value="0">At the time</option><option value="10">10 minutes before</option><option value="30">30 minutes before</option><option value="60">1 hour before</option><option value="1440">1 day before</option><option value="none">No reminder</option></select></label>
         <label class="pick"><span>If late, tell</span><select id="ts-e-esc"><option value="people">Whoever has it, and me</option><option value="everyone">Everyone in the family</option></select></label>
@@ -3205,6 +3488,126 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   </div>
 </div>
 
+<!-- CARE CYCLE sheets: medicine times, the hospital screen, after a visit. -->
+<div class="msheet" id="dsheet" hidden role="dialog" aria-modal="true" aria-labelledby="ds-title">
+  <div class="mp">
+    <button class="x" id="ds-x" aria-label="Close">✕</button>
+    <h3 id="ds-title" style="margin:0 var(--space-32) var(--space-4) 0">Medicine times</h3>
+    <p class="hint" style="margin:0 0 var(--space-12)">When this medicine is usually had. Parwah only reminds; it never says what or how much to take.</p>
+    <p class="eyebrow" style="margin:var(--space-8) 0 0">Times</p>
+    <div class="chips cc-pick" id="ds-slots" role="group" aria-label="Usual times">
+      <button type="button" data-t="08:00">Morning 8:00</button>
+      <button type="button" data-t="14:00">Afternoon 2:00</button>
+      <button type="button" data-t="21:00">Night 9:00</button>
+    </div>
+    <div class="cc-addrow">
+      <label class="pick" style="margin:0"><span>Another time</span><input type="time" id="ds-custom"></label>
+      <button type="button" class="cbtn ghost" id="ds-addt">Add time</button>
+    </div>
+    <div class="chips cc-pick" id="ds-extra" aria-label="Other times"></div>
+    <p class="eyebrow" style="margin:var(--space-16) 0 0">Days</p>
+    <div class="chips cc-pick" id="ds-days" role="group" aria-label="Days">
+      <button type="button" data-d="1">Mon</button><button type="button" data-d="2">Tue</button><button type="button" data-d="3">Wed</button>
+      <button type="button" data-d="4">Thu</button><button type="button" data-d="5">Fri</button><button type="button" data-d="6">Sat</button><button type="button" data-d="0">Sun</button>
+    </div>
+    <p class="hint" id="ds-dayhint">Every day</p>
+    <button class="go" id="ds-save" type="button">Save times</button>
+    <button class="cbtn ghost" id="ds-off" type="button" style="width:100%;margin-top:var(--space-8);min-height:var(--tap-min)" hidden>Stop the times for this medicine</button>
+    <p class="hint">If a time is not marked within an hour, the person gets one gentle reminder. After two hours, the family is told once. Nothing is sent between 10:30 at night and 7 in the morning.</p>
+  </div>
+</div>
+
+<div class="msheet" id="admsheet" hidden role="dialog" aria-modal="true" aria-labelledby="ad-title">
+  <div class="mp cc-wide">
+    <button class="x" id="ad-x" aria-label="Close">✕</button>
+    <p class="eyebrow" style="margin:0 0 var(--space-4)">Hospital</p>
+    <h3 id="ad-title" style="margin:0 var(--space-32) var(--space-4) 0"></h3>
+    <p class="hint" id="ad-sub" style="margin:0 0 var(--space-12)"></p>
+    <div id="ad-new" hidden>
+      <label for="ad-n-hosp">Hospital</label><input type="text" id="ad-n-hosp" maxlength="120" placeholder="e.g. City Hospital, Lajpat Nagar">
+      <div class="pickrow">
+        <label class="pick"><span>Ward or room</span><input type="text" id="ad-n-ward" maxlength="60" placeholder="e.g. Ward 3, bed 12"></label>
+        <label class="pick"><span>Doctor in charge</span><input type="text" id="ad-n-doc" maxlength="80" placeholder="e.g. Dr Mehta"></label>
+      </div>
+      <label class="seniorchk" style="margin-top:var(--space-12)"><input type="checkbox" id="ad-n-with" checked> I am with them now</label>
+      <button class="go" id="ad-n-go" type="button">Open the hospital screen</button>
+      <p class="hint">Everyone in the family sees the same screen and gets a message at each step.</p>
+    </div>
+    <div id="ad-live" hidden>
+      <div class="cc-wait" id="ad-wait" hidden role="status"></div>
+      <div class="card cc-flat">
+        <div id="ad-facts"></div>
+        <button type="button" class="linkbtn" id="ad-edit" style="margin-top:var(--space-8);min-height:var(--tap-min)">Change these details</button>
+        <div id="ad-editbox" hidden>
+          <label for="ad-e-hosp">Hospital</label><input type="text" id="ad-e-hosp" maxlength="120">
+          <div class="pickrow">
+            <label class="pick"><span>Ward or room</span><input type="text" id="ad-e-ward" maxlength="60"></label>
+            <label class="pick"><span>Doctor in charge</span><input type="text" id="ad-e-doc" maxlength="80"></label>
+            <label class="pick"><span>Insurer</span><input type="text" id="ad-e-ins" maxlength="80"></label>
+            <label class="pick"><span>TPA</span><input type="text" id="ad-e-tpa" maxlength="80"></label>
+            <label class="pick"><span>Policy number</span><input type="text" id="ad-e-pol" maxlength="40" autocomplete="off" placeholder="Only the last 4 are kept"></label>
+            <label class="pick"><span>Claim number</span><input type="text" id="ad-e-clm" maxlength="40" autocomplete="off" placeholder="Only the last 4 are kept"></label>
+          </div>
+          <button class="go" id="ad-e-save" type="button">Save details</button>
+        </div>
+      </div>
+      <p class="eyebrow" style="margin:var(--space-16) 0 var(--space-8)">With them now</p>
+      <div class="chips" id="ad-with" style="margin-top:0"></div>
+      <button type="button" class="cbtn ghost" id="ad-here" style="margin-top:var(--space-8);min-height:var(--tap-min)"></button>
+      <p class="eyebrow" style="margin:var(--space-16) 0 var(--space-8)">Steps</p>
+      <ol class="cc-steps" id="ad-steps"></ol>
+      <div id="ad-undo"></div>
+      <p class="hint">Each step is what someone in the family tapped, with the time. Parwah does not know how long a hospital or an insurer will take.</p>
+      <p class="eyebrow" style="margin:var(--space-16) 0 var(--space-8)">Papers to carry</p>
+      <div id="ad-papers" class="cc-papers"></div>
+      <p class="eyebrow" style="margin:var(--space-16) 0 var(--space-8)">At the counter</p>
+      <div id="ad-packet" class="feed"></div>
+      <div class="prow2" style="margin-top:var(--space-12)">
+        <button class="cbtn ecard-btn" id="ad-ecard" type="button">🚨 Emergency card</button>
+        <button class="cbtn ghost" id="ad-docs" type="button">📄 Their documents</button>
+      </div>
+      <button class="cbtn ghost" id="ad-close" type="button" style="width:100%;margin-top:var(--space-16);min-height:48px">Home again: close this screen</button>
+    </div>
+  </div>
+</div>
+
+<div class="msheet" id="vsheet" hidden role="dialog" aria-modal="true" aria-labelledby="vs-title">
+  <div class="mp cc-wide">
+    <button class="x" id="vs-x" aria-label="Close">✕</button>
+    <p class="eyebrow" style="margin:0 0 var(--space-4)">After the visit</p>
+    <h3 id="vs-title" style="margin:0 var(--space-32) var(--space-4) 0">How did the visit go?</h3>
+    <p class="hint" id="vs-sub" style="margin:0 0 var(--space-12)"></p>
+    <div class="pickrow" style="margin-top:0">
+      <label class="pick"><span>Whose visit</span><select id="vs-who"></select></label>
+      <label class="pick"><span>Doctor (optional)</span><input type="text" id="vs-doc" maxlength="80" placeholder="e.g. Dr Mehta"></label>
+    </div>
+    <label for="vs-photo">Photo of the prescription or notes</label>
+    <input type="file" id="vs-photo" accept="image/*,application/pdf" capture="environment">
+    <p class="hint" id="vs-fname" style="margin-top:var(--space-4)">Goes into the family vault, for this person. Up to 2 MB.</p>
+    <p class="eyebrow" style="margin:var(--space-16) 0 0">Next visit</p>
+    <div class="chips cc-pick" id="vs-next" role="group" aria-label="Next visit">
+      <button type="button" data-w="0">None</button><button type="button" data-w="2">2 weeks</button><button type="button" data-w="4">4 weeks</button>
+      <button type="button" data-w="6">6 weeks</button><button type="button" data-w="12">3 months</button>
+    </div>
+    <div class="pickrow">
+      <label class="pick"><span>Or in weeks</span><input type="number" id="vs-weeks" min="1" max="52" inputmode="numeric"></label>
+      <label class="pick"><span>Who books it</span><select id="vs-bookby"></select></label>
+    </div>
+    <p class="eyebrow" style="margin:var(--space-16) 0 0">Tests to do</p>
+    <div class="cc-addrow">
+      <label class="pick" style="margin:0"><span>A test the doctor asked for</span><input type="text" id="vs-test" maxlength="60" placeholder="e.g. Blood sugar"></label>
+      <button type="button" class="cbtn ghost" id="vs-addtest">Add</button>
+    </div>
+    <div class="chips" id="vs-tests"></div>
+    <label class="pick" style="margin-top:var(--space-12)"><span>Who gets the tests done</span><select id="vs-testby"></select></label>
+    <label for="vs-new">Anything new?</label>
+    <textarea id="vs-new" rows="2" maxlength="500" placeholder="In your words, e.g. walk 20 minutes a day"></textarea>
+    <button class="go" id="vs-save" type="button">Tell the family</button>
+    <button class="cbtn ghost" id="vs-skip" type="button" style="width:100%;margin-top:var(--space-8);min-height:var(--tap-min)" hidden>Skip this visit</button>
+    <p class="hint">Written down as you type it. Parwah and Ekta never read or explain a prescription or a report.</p>
+  </div>
+</div>
+
 <div class="msheet" id="ecard" hidden>
   <div class="mp ecard-mp">
     <button class="x" id="ec-x" aria-label="Close">✕</button>
@@ -3222,6 +3625,132 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="cbtn ghost" id="ec-print">🖨 Print</button>
     </div>
     <p class="hint" style="margin-top:var(--space-12)">Everything here comes from Health &amp; contacts. Blank rows mean nobody has recorded it yet - fill them in before you need them.</p>
+  </div>
+</div>
+
+<!-- ============ FAMILY CARE TOOLS (api/_familycare.mjs) ============ -->
+<!-- Ask family first: the plain rules, 1930, and the family on one tap.
+     Parwah never says it can spot a scam; these rules are simply true. -->
+<div class="msheet" id="fcafsheet" hidden role="dialog" aria-modal="true" aria-labelledby="fcaf-title">
+  <div class="mp" style="max-width:460px">
+    <button class="x" id="fcaf-x" aria-label="Close">✕</button>
+    <h3 id="fcaf-title" style="margin:0 var(--space-32) var(--space-8) 0">🛡 Stop. Ask the family first.</h3>
+    <div class="crow fcrow urgent" id="fcaf-status" hidden><span class="txt"><b id="fcaf-st-b"></b><small id="fcaf-st-s"></small></span></div>
+    <button type="button" class="go" id="fcaf-send" hidden>Tell the family now</button>
+    <ul class="fcrules" id="fcaf-rules">
+      <li>Never share an OTP or your UPI PIN. Nobody real needs them.</li>
+      <li>Police never arrest anyone on a video call.</li>
+      <li>Banks never ask for KYC on a phone call.</li>
+      <li>Hang up and call us. Your family is always the first call.</li>
+    </ul>
+    <div class="fcstack" id="fcaf-calls"></div>
+    <div class="fcstack">
+      <a class="go" id="fcaf-1930" href="tel:1930">📞 Call 1930, the Cyber Crime Helpline</a>
+      <a class="cbtn ghost" href="https://cybercrime.gov.in" target="_blank" rel="noopener">Report it at cybercrime.gov.in</a>
+      <button type="button" class="cbtn ghost" id="fcaf-ekta">Check the message with Ekta (free)</button>
+    </div>
+    <div class="fcsafe" id="fcaf-safe"></div>
+    <div id="fcaf-safeedit" hidden style="margin-top:var(--space-12)">
+      <label for="fcaf-word" style="margin-top:0">Family safe word</label>
+      <input type="text" id="fcaf-word" maxlength="40" autocomplete="off" placeholder="e.g. a sweet, a pet's name, a place">
+      <button type="button" class="cbtn" id="fcaf-wsave" style="margin-top:var(--space-8);width:100%">Save the safe word</button>
+    </div>
+    <p class="hint" style="margin-top:var(--space-16)">Parwah does not listen to calls or read messages. These rules are always true, whoever is calling.</p>
+    <button type="button" class="cbtn ghost" id="fcaf-sorted" hidden style="width:100%;margin-top:var(--space-8)">All sorted, close this</button>
+  </div>
+</div>
+
+<!-- Help me with my phone: a picture and a few words to the family chat,
+     a family video call, and short how-to cards. -->
+<div class="msheet" id="fcphsheet" hidden role="dialog" aria-modal="true" aria-labelledby="fcph-title">
+  <div class="mp" style="max-width:460px">
+    <button class="x" id="fcph-x" aria-label="Close">✕</button>
+    <h3 id="fcph-title" style="margin:0 var(--space-32) var(--space-8) 0">📱 Help with my phone</h3>
+    <div class="crow fcrow" id="fcph-status" hidden><span class="txt"><b id="fcph-st-b"></b><small id="fcph-st-s"></small></span></div>
+    <p class="hint" style="margin:0">Send the family a picture of the screen and a few words. Someone will say "I'm on it".</p>
+    <label for="fcph-file">📷 A picture of the screen (optional)</label>
+    <input type="file" id="fcph-file" accept="image/*">
+    <img id="fcph-prev" class="fcshot" alt="The picture you are sending" hidden>
+    <label for="fcph-note">What is the trouble?</label>
+    <textarea id="fcph-note" rows="3" maxlength="300" placeholder="e.g. WhatsApp is asking for a code"></textarea>
+    <button type="button" class="cbtn ghost" id="fcph-mic" hidden style="margin-top:var(--space-8);width:100%">🎙 Say it instead</button>
+    <div class="fcstack">
+      <button type="button" class="go" id="fcph-send">Send to the family</button>
+      <button type="button" class="cbtn ghost" id="fcph-call">📹 Video call the family</button>
+    </div>
+    <p class="eyebrow" style="margin:var(--space-24) 0 var(--space-8)">How to</p>
+    <div id="fcph-howto">
+      <details class="howto"><summary>Start a video call</summary>
+        <p class="hi">Video call kaise karein</p>
+        <ol><li>On Today, tap More, then Family call.</li><li>Tap Start the call. Everyone in the family gets a message.</li><li>If the phone asks, tap Allow for the camera and the microphone.</li><li>To end the call, tap the red phone button.</li></ol></details>
+      <details class="howto"><summary>Share a photo on WhatsApp</summary>
+        <p class="hi">WhatsApp par photo bhejein</p>
+        <ol><li>Open WhatsApp and tap the person's chat.</li><li>Tap the paperclip 📎 next to where you type. On an iPhone, tap +.</li><li>Tap Gallery (Photos on an iPhone) and pick the photo.</li><li>Tap the green arrow to send.</li></ol></details>
+      <details class="howto"><summary>PhonePe or Google Pay looks different: where is Pay?</summary>
+        <p class="hi">App ka look badla hai, paise wahi hain</p>
+        <ol><li>Apps change their look sometimes. Your money stays the same.</li><li>Look for Scan &amp; Pay, or a small QR code picture, near the top or the bottom middle.</li><li>To pay a person, tap To Contact (or Pay contacts) and pick the name.</li><li>Your UPI PIN is only for sending money. You never need it to receive money.</li><li>Not sure? Do not pay. Send us a picture of the screen first.</li></ol></details>
+      <details class="howto"><summary>Spot a fake KYC message</summary>
+        <p class="hi">Nakli KYC message pehchanein</p>
+        <ol><li>Banks do not ask for KYC on a call, an SMS or a WhatsApp link.</li><li>"Your account will be blocked today" is said to rush you.</li><li>Do not tap the link. Do not share an OTP or your PIN.</li><li>Call the number on the back of your bank card, or call us.</li><li>To report it, call 1930 or visit cybercrime.gov.in.</li></ol></details>
+      <details class="howto"><summary>Life certificate with the face app</summary>
+        <p class="hi">Jeevan Pramaan, ghar baithe</p>
+        <ol><li>From the Play Store, install the official Jeevan Pramaan app and the AadhaarFaceRD app.</li><li>Keep ready your PPO number (on the pension book) and the phone linked to Aadhaar.</li><li>Sit in good light and look at the phone. Take off your glasses if it asks.</li><li>Follow the steps. Write down the acknowledgement number at the end.</li><li>Dates and steps are as announced each year. Check on <a href="https://jeevanpramaan.gov.in" target="_blank" rel="noopener">jeevanpramaan.gov.in</a>.</li></ol></details>
+      <details class="howto"><summary>Make the text bigger on Android</summary>
+        <p class="hi">Android par akshar bade karein</p>
+        <ol><li>Open Settings (the gear ⚙️).</li><li>Tap Display, then Font size. On some phones it is Display size and text.</li><li>Slide to the right. The text gets bigger everywhere.</li></ol></details>
+      <details class="howto"><summary>Make the text bigger on an iPhone</summary>
+        <p class="hi">iPhone par akshar bade karein</p>
+        <ol><li>Open Settings.</li><li>Tap Display &amp; Brightness, then Text Size.</li><li>Drag the slider to the right.</li><li>Bigger still: Settings, Accessibility, Display &amp; Text Size, Larger Text.</li></ol></details>
+    </div>
+  </div>
+</div>
+
+<!-- The daily check-in: set your own time, say yes to one the family asked
+     for, ask someone else, or pause it while away. -->
+<div class="msheet" id="fcqsheet" hidden role="dialog" aria-modal="true" aria-labelledby="fcq-title">
+  <div class="mp" style="max-width:420px">
+    <button class="x" id="fcq-x" aria-label="Close">✕</button>
+    <h3 id="fcq-title" style="margin:0 var(--space-32) var(--space-8) 0"></h3>
+    <p class="hint" id="fcq-sub" style="margin:0 0 var(--space-8)"></p>
+    <div id="fcq-timewrap">
+      <label for="fcq-time">Check in by</label>
+      <input type="time" id="fcq-time" value="11:00">
+      <button type="button" class="go" id="fcq-save"></button>
+    </div>
+    <div id="fcq-awaywrap">
+      <label for="fcq-away">Away until (it is paused till then)</label>
+      <input type="date" id="fcq-away">
+      <div class="fcstack">
+        <button type="button" class="cbtn" id="fcq-awaygo">🧳 Pause until then</button>
+        <button type="button" class="cbtn ghost" id="fcq-back" hidden>🏠 Back home: turn it on again</button>
+      </div>
+    </div>
+    <button type="button" class="cbtn ghost" id="fcq-off" hidden style="width:100%;margin-top:var(--space-16)">Turn off my daily check-in</button>
+  </div>
+</div>
+
+<!-- Ready-made tasks: the life certificate and the call rota. -->
+<div class="msheet" id="fctsheet" hidden role="dialog" aria-modal="true" aria-labelledby="fct-title">
+  <div class="mp" style="max-width:440px">
+    <button class="x" id="fct-x" aria-label="Close">✕</button>
+    <h3 id="fct-title" style="margin:0 var(--space-32) var(--space-8) 0"></h3>
+    <div id="fct-lc" hidden>
+      <p class="hint" style="margin:0">A yearly task with a checklist. At 80 and over it can be given from 1 October, otherwise from 1 to 30 November. Dates are as announced each year: confirm on <a href="https://jeevanpramaan.gov.in" target="_blank" rel="noopener">jeevanpramaan.gov.in</a>.</p>
+      <label for="fct-lc-who">Whose pension</label>
+      <select id="fct-lc-who"></select>
+      <p class="hint">Parwah never takes a face scan or an Aadhaar number. It keeps the checklist and the acknowledgement number.</p>
+      <button type="button" class="go" id="fct-lc-go">Add to To do</button>
+    </div>
+    <div id="fct-rota" hidden>
+      <p class="hint" style="margin:0">One person a day, taking turns. Skip passes your day to the next person.</p>
+      <label for="fct-r-who">Calls for</label>
+      <select id="fct-r-who"></select>
+      <p class="eyebrow" style="margin:var(--space-16) 0 var(--space-8)">Who takes turns</p>
+      <div class="members" id="fct-r-people" role="group" aria-label="Who takes turns"></div>
+      <label for="fct-r-time">Around what time</label>
+      <input type="time" id="fct-r-time" value="19:00">
+      <button type="button" class="go" id="fct-r-go">Start the rota</button>
+    </div>
   </div>
 </div>
 
@@ -3496,6 +4025,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     });
     if (pane === 'care' && sec === 'notes') refreshNotes();
     if (pane === 'care' && sec === 'bills') loadBills();
+    if (pane === 'care' && sec === 'expenses') loadExpenses();
+    if (pane === 'care' && sec === 'staff') loadStaff();
+    if (pane === 'care' && sec === 'renewals') loadRenewals();
     if (pane === 'vault' && sec === 'locator') loadAssetLocators();
   }
   ['care', 'fun', 'vault', 'day'].forEach(function(pane){
@@ -3724,9 +4256,11 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (go) { hs.setAttribute('role', 'button'); hs.tabIndex = 0; hs.setAttribute('data-go', go); hs.setAttribute('aria-label', hs.textContent + (go === 'care' ? '. Open To do' : '. Open alerts')); }
     else { hs.removeAttribute('role'); hs.removeAttribute('tabindex'); hs.removeAttribute('data-go'); hs.removeAttribute('aria-label'); }
 
+    staffTodayMaybe();
     notifsCache = data.events;
     renderNotifs();
     pillFromFeed(data.events);
+    fcRender(data.familyCare);
   }
 
   function heroGo(){
@@ -3889,6 +4423,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     refreshBook();
     refreshCoins();
     refreshPlan();
+    ccRefresh();
     refreshChats();
     refreshGroups();
     renderFirstRun();
@@ -4274,6 +4809,445 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       }
     });
   });
+
+  // ---------- Family tools: Costs, Home staff, Renewals, Nearby helpers ----------
+  // Server: api/_expenses.mjs, _staff.mjs, _renewals.mjs, _ladder.mjs, all
+  // behind /api/care?area=... Records only: nothing here moves money.
+  function ftQs(extra){ return '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + (extra || ''); }
+  function ftGet(area, extra){ return apiGet(API.care + '?area=' + area + ftQs(extra)); }
+  function ftPost(action, body){ var b = body || {}; b.code = state.code; b.memberId = state.memberId; b.action = action; return post(API.care, b); }
+  function ftThisMonth(){ var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+  function ftToday(){ var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function ftMonthShift(m, k){ var d = new Date(Date.UTC(+m.slice(0, 4), +m.slice(5, 7) - 1 + k, 1)); return d.toISOString().slice(0, 7); }
+  function ftMonthName(m){ try { return new Date(m + '-15T12:00:00Z').toLocaleDateString([], { month: 'long', year: 'numeric' }); } catch (e) { return m; } }
+  function ftFirst(n){ return String(n || '').split(' ')[0]; }
+  function ftMembers(onlyApp){ return (membersCache || []).filter(function(m){ return !onlyApp || onApp(m); }); }
+  function ftFill(sel, list, keep, first){
+    var cur = keep !== undefined ? keep : sel.value;
+    sel.innerHTML = (first ? '<option value="">' + esc(first) + '</option>' : '') + list.map(function(m){
+      return '<option value="' + esc(m.id) + '">' + (m.id === state.memberId ? 'Me' : esc(m.name)) + '</option>';
+    }).join('');
+    if (cur && sel.querySelector('option[value="' + cur + '"]')) sel.value = cur;
+  }
+  function ftOffline(el, what){ $(el).innerHTML = '<div class="ev">No connection. ' + what + ' will load when you are back online.</div>'; }
+  function ftFail(el, j, what){ $(el).innerHTML = '<div class="ev">Could not load ' + what + '. ' + esc((j && j.error) || 'Try again in a minute.') + '</div>'; }
+
+  // ---- Costs
+  var FT_CAT = { medicines: '💊 Medicines', doctor: '🩺 Doctor', tests: '🧪 Tests', staff: '🧹 Home staff', bills: '🧾 Bills', groceries: '🛒 Groceries', travel: '🚕 Travel', other: '📦 Other' };
+  var exMonth = null, exData = null, exSplit = 'none';
+  function loadExpenses(){
+    if (!state) return;
+    exMonth = exMonth || ftThisMonth();
+    $('ex-month').textContent = ftMonthName(exMonth);
+    $('ex-next').disabled = exMonth >= ftThisMonth();
+    if (!$('ex-cat').options.length) $('ex-cat').innerHTML = Object.keys(FT_CAT).map(function(k){ return '<option value="' + k + '">' + FT_CAT[k] + '</option>'; }).join('');
+    ftFill($('ex-for'), ftMembers(false), undefined, 'The whole family');
+    ftFill($('ex-by'), ftMembers(false), $('ex-by').value || state.memberId);
+    if (!$('ex-date').value) $('ex-date').value = ftToday();
+    if (!$('ex-cur').getAttribute('data-set')) { var c = myCurrency(); if (['INR', 'USD', 'AED', 'GBP', 'CAD'].indexOf(c) >= 0) $('ex-cur').value = c; $('ex-cur').setAttribute('data-set', '1'); }
+    foldSync('ex-more');
+    if (!exData) $('ex-sum').innerHTML = '<div class="ev">Loading…</div>';
+    ftGet('expenses', '&month=' + exMonth).then(function(j){
+      if (!j.ok) { ftFail('ex-sum', j, 'the costs'); return; }
+      exData = j; renderExpenses();
+    }).catch(function(){ ftOffline('ex-sum', 'The costs'); });
+    exReceipts();
+  }
+  function exReceipts(){
+    apiGet(API.vault + ftQs()).then(function(j){
+      if (!j.ok) return;
+      var keep = $('ex-receipt').value;
+      $('ex-receipt').innerHTML = '<option value="">No receipt</option>' + (j.docs || []).filter(function(d){ return d.my_level === 'full'; }).map(function(d){
+        return '<option value="' + esc(d.id) + '">' + esc(d.label) + (d.about_name ? ' · ' + esc(d.about_name) : '') + '</option>';
+      }).join('');
+      if (keep) $('ex-receipt').value = keep;
+    }).catch(function(){});
+  }
+  function renderExpenses(){
+    var j = exData, name = ftMonthName(j.month);
+    var sum = (j.summary || []).map(function(t){
+      return '<div class="card" style="margin-bottom:var(--space-12)">' +
+        '<p class="hint" style="margin:0">Total for ' + esc(name) + (j.summary.length > 1 ? ', in ' + esc(t.currency) : '') + '</p>' +
+        '<div class="ftbig">' + esc(moneyFmt(t.total, t.currency)) + '</div>' +
+        '<div class="ftsum"><b>Paid by</b>' + t.byPayer.map(function(p){ return '<div class="ftline"><span>' + esc(p.memberId === state.memberId ? 'You' : p.name) + '</span><b>' + esc(moneyFmt(p.amount, t.currency)) + '</b></div>'; }).join('') + '</div>' +
+        '<div class="ftsum"><b>On what</b>' + t.byCategory.map(function(c){ return '<div class="ftline"><span>' + esc(FT_CAT[c.category] || c.category) + '</span><b>' + esc(moneyFmt(c.amount, t.currency)) + '</b></div>'; }).join('') + '</div>' +
+        (t.balance && t.balance.length ? '<p class="eyebrow" style="margin:var(--space-12) 0 0">Balance this month</p>' + t.balance.map(function(b){ return '<p class="ftbal">' + esc(b.line) + '</p>'; }).join('') : '') +
+        '</div>';
+    }).join('');
+    $('ex-sum').innerHTML = sum || '<div class="ev">Nothing noted for ' + esc(name) + ' yet. Add the first cost below, or turn a paid bill into one.</div>';
+    var bills = j.settledBills || [];
+    $('ex-bills').innerHTML = bills.length ? '<p class="eyebrow">Paid bills not in Costs yet</p><div class="feed">' + bills.map(function(b){
+      return '<div class="crow"><span class="txt"><b>🧾 ' + esc(b.biller_name) + ' · ' + esc(moneyFmt(b.amount, b.currency)) + '</b><small>Paid by ' + esc(b.settled_name || 'the family') + '</small></span>' +
+        '<button type="button" class="cbtn" data-exbill="' + esc(b.id) + '">Add to costs</button></div>';
+    }).join('') + '</div>' : '';
+    $('ex-list').innerHTML = (j.expenses || []).map(function(e){
+      var mine = e.created_by === state.memberId || e.paid_by === state.memberId;
+      return '<div class="crow"><span class="txt"><b>' + esc(FT_CAT[e.category] || e.category) + ' · ' + esc(moneyFmt(e.amount, e.currency)) + '</b>' +
+        '<small>' + esc((e.paid_by === state.memberId ? 'You' : (e.paid_name || 'Someone')) + ' paid' + (e.for_name ? ', for ' + e.for_name : '') + ' · ' + vDate(e.spent_on) + (e.note ? ' · ' + e.note : '')) + (e.receipt_doc_id ? ' · 📎 receipt in the vault' : '') + '</small></span>' +
+        (mine ? '<button type="button" class="cbtn ghost" data-exdel="' + esc(e.id) + '" aria-label="Remove this cost">Remove</button>' : '') + '</div>';
+    }).join('');
+    exSplit = (j.split && j.split.mode) || 'none';
+    renderSplit();
+  }
+  function renderSplit(){
+    var sh = (exData && exData.split && exData.split.shares) || {};
+    $('ex-split-seg').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-split') === exSplit); });
+    pressSync($('ex-split-seg'));
+    var ms = ftMembers(false);
+    $('ex-split-rows').innerHTML = exSplit === 'none' ? '<p class="hint">Costs are only listed, with no shares.</p>'
+      : exSplit === 'equal' ? '<div class="members">' + ms.map(function(m){
+          return '<label class="gchk"><input type="checkbox" data-exsh="' + esc(m.id) + '"' + (sh[m.id] || !Object.keys(sh).length ? ' checked' : '') + '> ' + esc(m.id === state.memberId ? 'Me' : m.name) + '</label>';
+        }).join('') + '</div><p class="hint">Ticked people share every cost equally.</p>'
+      : ms.map(function(m){
+          return '<label class="ftsplit"><span>' + esc(m.id === state.memberId ? 'Me' : m.name) + '</span><input type="number" min="0" max="100" step="1" inputmode="numeric" data-exsh="' + esc(m.id) + '" value="' + esc(sh[m.id] || 0) + '" aria-label="Share for ' + esc(m.name) + '"></label>';
+        }).join('') + '<p class="hint">Shares are parts: 2 and 1 means one pays two thirds.</p>';
+  }
+  $('ex-split-seg').addEventListener('click', function(e){ var b = e.target.closest('button[data-split]'); if (!b) return; exSplit = b.getAttribute('data-split'); renderSplit(); });
+  $('ex-split-save').addEventListener('click', function(){
+    var shares = {};
+    $('ex-split-rows').querySelectorAll('[data-exsh]').forEach(function(x){ shares[x.getAttribute('data-exsh')] = x.type === 'checkbox' ? x.checked : +x.value || 0; });
+    ftPost('split_set', { mode: exSplit, shares: shares }).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not save the split'); return; }
+      toast('Split saved'); loadExpenses();
+    }).catch(function(){ toast('No connection - try again'); });
+  });
+  $('ex-prev').addEventListener('click', function(){ exMonth = ftMonthShift(exMonth || ftThisMonth(), -1); exData = null; loadExpenses(); });
+  $('ex-next').addEventListener('click', function(){ if ((exMonth || '') >= ftThisMonth()) return; exMonth = ftMonthShift(exMonth, 1); exData = null; loadExpenses(); });
+  $('ex-add').addEventListener('click', function(){
+    var amt = +$('ex-amt').value;
+    if (!(amt > 0)) { fieldErr('ex-amt', 'Write the amount as a number above 0'); return; }
+    var b = $('ex-add'); b.disabled = true;
+    ftPost('expense_add', { amount: amt, currency: $('ex-cur').value, category: $('ex-cat').value, forMemberId: $('ex-for').value || null,
+      paidById: $('ex-by').value || state.memberId, spentOn: $('ex-date').value, note: $('ex-note').value.trim(), receiptDocId: $('ex-receipt').value || null })
+      .then(function(j){
+        b.disabled = false;
+        if (!j.ok) { toast(j.error || 'Could not save the cost'); return; }
+        toast('Cost noted'); $('ex-amt').value = ''; $('ex-note').value = ''; $('ex-receipt').value = '';
+        var d = $('ex-date').value; if (d && d.slice(0, 7) !== exMonth) exMonth = d.slice(0, 7);
+        loadExpenses();
+      }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  $('pane-care').addEventListener('click', function(e){
+    var b = e.target.closest('[data-exbill]');
+    if (b) {
+      b.disabled = true;
+      ftPost('expense_from_bill', { billId: b.getAttribute('data-exbill') }).then(function(j){ toast(j.ok ? 'Added to costs' : (j.error || 'Could not add it')); loadExpenses(); })
+        .catch(function(){ b.disabled = false; toast('No connection - try again'); });
+      return;
+    }
+    b = e.target.closest('[data-exdel]');
+    if (b) {
+      var id = b.getAttribute('data-exdel');
+      askSheet('Remove this cost?', 'It comes off the month for everyone.', 'Remove', 'Keep it', true).then(function(y){
+        if (!y) return;
+        ftPost('expense_remove', { id: id }).then(function(j){ toast(j.ok ? 'Removed' : (j.error || 'Could not remove it')); loadExpenses(); });
+      });
+    }
+  });
+
+  // ---- Home staff
+  var FT_ROLE = { attendant: 'Attendant', cook: 'Cook', cleaner: 'Cleaner', driver: 'Driver', other: 'Helps at home' };
+  var FT_MARK = { came: 'Came', half: 'Half day', leave: 'Leave' };
+  var FT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var stMonth = null, stData = null, stTodayAt = 0;
+  function stMarks(s){
+    return '<div class="ftmarks" role="group" aria-label="' + esc(s.name) + ' today">' + Object.keys(FT_MARK).map(function(k){
+      return '<button type="button" data-stmark="' + esc(s.id) + '" data-st="' + k + '" aria-pressed="' + (s.todayStatus === k) + '"' + (s.todayStatus === k ? ' class="sel"' : '') + '>' + (s.todayStatus === k ? '✓ ' : '') + FT_MARK[k] + '</button>';
+    }).join('') + '</div>';
+  }
+  function loadStaff(){
+    if (!state) return;
+    stMonth = stMonth || ftThisMonth();
+    $('st-month').textContent = ftMonthName(stMonth);
+    $('st-next').disabled = stMonth >= ftThisMonth();
+    if (!$('st-days').children.length) $('st-days').innerHTML = FT_DAYS.map(function(d, i){ return '<label class="gchk"><input type="checkbox" data-stday="' + i + '"' + (i ? ' checked' : '') + '> ' + d + '</label>'; }).join('');
+    foldSync('st-more');
+    if (!stData) $('st-list').innerHTML = '<div class="ev">Loading…</div>';
+    ftGet('staff', '&month=' + stMonth).then(function(j){
+      if (!j.ok) { ftFail('st-list', j, 'the register'); return; }
+      stData = j; renderStaff(); renderStaffToday();
+    }).catch(function(){ ftOffline('st-list', 'The register'); });
+  }
+  function renderStaff(){
+    var j = stData, cur = j.month === ftThisMonth();
+    $('st-addcard').open = !j.staff.length || $('st-addcard').open;
+    $('st-list').innerHTML = j.staff.length ? j.staff.map(function(s){
+      var p = s.pay, m = ftMonthName(j.month);
+      return '<div class="card" style="margin-bottom:var(--space-12)">' +
+        '<h3 style="margin:0">' + esc(s.name) + ' <span class="ftchip">' + esc(FT_ROLE[s.role] || s.role) + '</span></h3>' +
+        '<p class="hint" style="margin:var(--space-4) 0 0">' + esc((s.arrive_time ? 'Comes at ' + s.arrive_time + ' · ' : '') + String(s.work_days).split('').map(function(d){ return FT_DAYS[+d]; }).join(', ') + (s.id_last4 ? ' · ID ending ' + s.id_last4 : '')) + '</p>' +
+        (cur ? '<p style="margin:var(--space-12) 0 0;font-weight:700">Today: ' + (s.todayStatus ? esc(FT_MARK[s.todayStatus]) + ' ✓' : s.workingToday ? 'not marked yet' : 'a day off') + '</p>' + stMarks(s) : '') +
+        '<div class="ftsum"><b>' + esc(m) + '</b>' +
+          '<div class="ftline"><span>Came</span><b>' + p.came + ' day' + (p.came === 1 ? '' : 's') + '</b></div>' +
+          '<div class="ftline"><span>Half days</span><b>' + p.half + '</b></div>' +
+          '<div class="ftline"><span>Leave</span><b>' + p.leave + '</b></div>' +
+          '<div class="ftline"><span>Advances</span><b>' + esc(moneyFmt(p.advances, s.currency)) + '</b></div>' +
+          '<div class="ftline"><span>Due</span><b>' + esc(moneyFmt(p.payable, s.currency)) + '</b></div>' +
+          '<p style="margin:var(--space-8) 0 0">' + esc(p.formula) + '</p><p class="hint" style="margin:var(--space-4) 0 0">' + esc(p.note) + '</p>' +
+          s.advanceList.map(function(a){ return '<div class="ftline"><span>Advance ' + esc(vDate(a.on_date)) + (a.note ? ' · ' + esc(a.note) : '') + '</span><button type="button" class="linkbtn" data-stadvdel="' + esc(a.id) + '">Remove</button></div>'; }).join('') +
+        '</div>' +
+        (s.paid ? '<p class="ftbal">✅ Paid ' + esc(moneyFmt(s.paid.amount, s.currency)) + ' by ' + esc(s.paid.paid_name || 'the family') + '</p>' : '') +
+        '<div class="ftacts">' +
+          (s.paid ? '<button type="button" class="cbtn ghost" data-stunpay="' + esc(s.id) + '">Undo paid</button>'
+                  : '<button type="button" class="cbtn" data-stpay="' + esc(s.id) + '">Mark paid</button>') +
+          '<button type="button" class="cbtn ghost" data-stadv="' + esc(s.id) + '">Note an advance</button>' +
+          (s.phone ? '<a class="cbtn ghost" href="tel:' + esc(s.phone) + '">📞 Call</a>' : '') +
+          '<button type="button" class="cbtn ghost" data-stdel="' + esc(s.id) + '">Remove</button>' +
+        '</div></div>';
+    }).join('') : '<div class="ev">Nobody in the register yet. Add the people who help at home below: a tap a day keeps the month-end sum right.</div>';
+  }
+  // On an elder's Today: one tap each, for the people expected today.
+  function renderStaffToday(){
+    var el = $('staff-today'); if (!el || !stData) return;
+    var list = stData.staff.filter(function(s){ return s.workingToday || s.todayStatus; });
+    el.hidden = !(state && state.role === 'parent' && list.length);
+    if (el.hidden) return;
+    el.innerHTML = '<h3 style="margin:0 0 var(--space-4)">Who came today?</h3><p class="hint" style="margin:0">One tap each. The family sees it.</p>' +
+      list.map(function(s){ return '<p style="margin:var(--space-12) 0 0;font-weight:700">' + esc(s.name) + ' <small class="hint">' + esc(FT_ROLE[s.role] || '') + '</small></p>' + stMarks(s); }).join('');
+  }
+  function staffTodayMaybe(){
+    if (!state || state.role !== 'parent' || Date.now() - stTodayAt < 300000) return;
+    stTodayAt = Date.now();
+    ftGet('staff').then(function(j){ if (j.ok) { if (!stMonth || stMonth === j.month) stData = j; renderStaffToday(); } }).catch(function(){});
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-stmark]'); if (!b) return;
+    var id = b.getAttribute('data-stmark'), st = b.getAttribute('data-st');
+    var s = stData && stData.staff.filter(function(x){ return x.id === id; })[0];
+    var clear = s && s.todayStatus === st;
+    b.disabled = true;
+    ftPost('staff_mark', { staffId: id, status: clear ? 'clear' : st }).then(function(j){
+      b.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not save that'); return; }
+      toast(clear ? 'Cleared for today' : (s ? s.name : 'Marked') + ': ' + FT_MARK[st] + ' ✓');
+      stTodayAt = 0; loadStaff();
+    }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  $('st-list').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b || !stData) return;
+    var sid = b.getAttribute('data-stpay') || b.getAttribute('data-stunpay') || b.getAttribute('data-stadv') || b.getAttribute('data-stdel');
+    var s = sid && stData.staff.filter(function(x){ return x.id === sid; })[0];
+    if (b.hasAttribute('data-stpay') && s) {
+      askSheet('Mark ' + ftMonthName(stData.month) + ' paid for ' + s.name + '?', s.pay.formula + '. It is also added to Costs.', 'Mark paid', 'Not now').then(function(y){
+        if (!y) return;
+        ftPost('staff_pay', { staffId: s.id, month: stData.month }).then(function(j){ toast(j.ok ? 'Marked paid ✓' : (j.error || 'Could not mark it paid')); exData = null; loadStaff(); });
+      });
+    } else if (b.hasAttribute('data-stunpay') && s) {
+      ftPost('staff_pay_undo', { staffId: s.id, month: stData.month }).then(function(j){ toast(j.ok ? 'Not paid yet, as before' : (j.error || 'Could not undo')); loadStaff(); });
+    } else if (b.hasAttribute('data-stadv') && s) {
+      askText('An advance to ' + s.name, 'Amount (' + curSym(s.currency) + ')', 'Save', 'Cancel').then(function(v){
+        if (!v) return;
+        var amt = +String(v).replace(/[^\d.]/g, '');
+        if (!(amt > 0)) { toast('Write the advance as a number above 0'); return; }
+        ftPost('staff_advance', { staffId: s.id, amount: amt }).then(function(j){ toast(j.ok ? 'Advance noted' : (j.error || 'Could not save it')); loadStaff(); });
+      });
+    } else if (b.hasAttribute('data-stdel') && s) {
+      askSheet('Remove ' + s.name + ' from the register?', 'Their days, advances and pay records are deleted. Costs already noted stay.', 'Remove', 'Keep', true).then(function(y){
+        if (!y) return;
+        ftPost('staff_remove', { staffId: s.id }).then(function(j){ toast(j.ok ? 'Removed' : (j.error || 'Could not remove')); loadStaff(); });
+      });
+    } else if (b.hasAttribute('data-stadvdel')) {
+      ftPost('staff_advance_remove', { id: b.getAttribute('data-stadvdel') }).then(function(j){ toast(j.ok ? 'Advance removed' : (j.error || 'Could not remove it')); loadStaff(); });
+    }
+  });
+  $('st-prev').addEventListener('click', function(){ stMonth = ftMonthShift(stMonth || ftThisMonth(), -1); stData = null; loadStaff(); });
+  $('st-next').addEventListener('click', function(){ if ((stMonth || '') >= ftThisMonth()) return; stMonth = ftMonthShift(stMonth, 1); stData = null; loadStaff(); });
+  $('st-add').addEventListener('click', function(){
+    var name = $('st-name').value.trim();
+    if (!name) { fieldErr('st-name', 'Write their name'); return; }
+    var l4 = $('st-last4').value.trim();
+    if (l4 && !/^[A-Za-z0-9]{4}$/.test(l4)) { fieldErr('st-last4', 'Only the last 4 digits of an ID, nothing more'); return; }
+    var days = []; $('st-days').querySelectorAll('[data-stday]').forEach(function(x){ if (x.checked) days.push(+x.getAttribute('data-stday')); });
+    ftPost('staff_add', { name: name, role: $('st-role').value, salary: $('st-salary').value, payDay: $('st-payday').value, arriveTime: $('st-time').value,
+      phone: $('st-phone').value.trim(), workDays: days, paidLeave: $('st-leave').value, idLast4: l4 }).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not add them'); return; }
+      toast(name + ' is in the register');
+      ['st-name', 'st-salary', 'st-payday', 'st-time', 'st-phone', 'st-leave', 'st-last4'].forEach(function(x){ $(x).value = ''; });
+      $('st-addcard').open = false; loadStaff();
+    }).catch(function(){ toast('No connection - try again'); });
+  });
+
+  // ---- Renewals
+  var rnData = null;
+  function rnWhen(d){ return d < 0 ? 'Ran out ' + (-d) + ' day' + (d === -1 ? '' : 's') + ' ago' : d === 0 ? 'Runs out today' : d === 1 ? 'Runs out tomorrow' : 'In ' + d + ' days'; }
+  function loadRenewals(){
+    if (!state) return;
+    ftFill($('rn-about'), ftMembers(false), undefined, 'The household');
+    if (!rnData) $('rn-list').innerHTML = '<div class="ev">Loading…</div>';
+    ftGet('renewals').then(function(j){
+      if (!j.ok) { ftFail('rn-list', j, 'renewals'); return; }
+      rnData = j;
+      if (!$('rn-kind').options.length) $('rn-kind').innerHTML = Object.keys(j.kinds).map(function(k){ return '<option value="' + k + '">' + j.kinds[k].icon + ' ' + esc(j.kinds[k].label) + '</option>'; }).join('');
+      renderRenewals();
+    }).catch(function(){ ftOffline('rn-list', 'Renewals'); });
+  }
+  function renderRenewals(){
+    var ms = ftMembers(true);
+    $('rn-list').innerHTML = rnData.renewals.length ? rnData.renewals.map(function(r){
+      var chip = r.days < 0 ? 'bad' : r.days <= 30 ? 'warn' : 'ok';
+      var months = Math.round((Date.now() - new Date(r.last_verified_at)) / 2592000000);
+      var key = r.source + ':' + r.id;
+      return '<div class="crow"><span class="txt"><b>' + r.icon + ' ' + esc(r.label) + '</b> <span class="ftchip ' + chip + '">' + rnWhen(r.days) + '</span>' +
+        '<small>' + esc([r.kindLabel !== r.label ? r.kindLabel : null, r.about_name, vDate(r.expires_on)].filter(Boolean).join(' · ')) +
+        (r.task_open ? ' · ✅ a task is open' + (r.task_name ? ' (' + esc(r.task_name) + ' has it)' : '') : r.owner_name ? ' · ' + esc(r.owner_name) + ' looks after it' : '') +
+        (r.stale ? ' · 🟡 checked ' + months + ' months ago' : '') + '</small>' +
+        // A task picker only where it is near: a date months away is listed, not pushed.
+        (!r.task_open && r.days <= 60 ? '<span class="ftacts"><label class="pick" style="margin:0;flex:1 1 140px"><span>Who renews it</span><select data-rnowner="' + esc(key) + '"><option value="">Anyone who takes it</option>' +
+           ms.map(function(m){ return '<option value="' + esc(m.id) + '"' + (m.id === (r.owner_member || '') ? ' selected' : '') + '>' + (m.id === state.memberId ? 'Me' : esc(m.name)) + '</option>'; }).join('') +
+           '</select></label><button type="button" class="cbtn" data-rntask="' + esc(key) + '">Make it a task</button></span>' : '') +
+        '<span class="ftacts">' + (r.source === 'vault'
+          ? '<button type="button" class="cbtn ghost" data-rnvault="' + esc(r.id) + '" data-about="' + esc(r.about_member) + '">Open in the vault</button>'
+          : (r.stale ? '<button type="button" class="cbtn ghost" data-rnok="' + esc(r.id) + '">Still right</button>' : '') +
+            '<button type="button" class="cbtn ghost" data-rnnew="' + esc(r.id) + '">Renewed: new date</button>' +
+            '<button type="button" class="cbtn ghost" data-rndel="' + esc(r.id) + '">Remove</button>') +
+        '</span></span></div>';
+    }).join('') : '<div class="ev">Nothing to renew yet. Add the dates that run out, and the family is reminded a month and a week before.</div>';
+  }
+  $('rn-list').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b || !rnData) return;
+    if (b.hasAttribute('data-rnvault')) {
+      var vid = b.getAttribute('data-rnvault');
+      openVaultFor(b.getAttribute('data-about'));
+      var tries = 0, go = function(){ if (vDoc(vid)) openDoc(vid); else if (tries++ < 20) setTimeout(go, 150); };
+      go(); return;
+    }
+    var k = b.getAttribute('data-rntask');
+    if (k) {
+      var sel = $('rn-list').querySelector('select[data-rnowner="' + k + '"]'), parts = k.split(':');
+      b.disabled = true;
+      ftPost('renewal_task', { id: parts[1], source: parts[0], ownerId: sel && sel.value ? sel.value : null }).then(function(j){
+        b.disabled = false;
+        toast(j.ok ? 'Task made. It is in To do.' : (j.error || 'Could not make the task'));
+        if (j.ok) { loadRenewals(); try { refresh(); } catch (x) {} }
+      }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+      return;
+    }
+    if (b.hasAttribute('data-rnok')) { ftPost('renewal_verify', { id: b.getAttribute('data-rnok') }).then(function(j){ toast(j.ok ? 'Marked as checked ✓' : (j.error || 'Could not save')); loadRenewals(); }); return; }
+    if (b.hasAttribute('data-rnnew')) {
+      var r = rnData.renewals.filter(function(x){ return x.id === b.getAttribute('data-rnnew'); })[0]; if (!r) return;
+      askText('Renewed ' + r.label + '? Write the new date it runs out', 'New date, like 2027-03-31', 'Save', 'Cancel').then(function(v){
+        if (!v) return;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { toast('Write the date like 2027-03-31'); return; }
+        ftPost('renewal_update', { id: r.id, kind: r.kind, label: r.label, aboutMemberId: r.about_member, ownerId: r.owner_member, expiresOn: v, notes: r.notes })
+          .then(function(j){ toast(j.ok ? 'New date saved ✓' : (j.error || 'Could not save')); loadRenewals(); });
+      });
+      return;
+    }
+    if (b.hasAttribute('data-rndel')) {
+      var id = b.getAttribute('data-rndel');
+      askSheet('Remove this renewal?', 'Its reminders stop.', 'Remove', 'Keep it', true).then(function(y){
+        if (y) ftPost('renewal_remove', { id: id }).then(function(j){ toast(j.ok ? 'Removed' : (j.error || 'Could not remove')); loadRenewals(); });
+      });
+    }
+  });
+  $('rn-add').addEventListener('click', function(){
+    var d = $('rn-date').value;
+    if (!d) { fieldErr('rn-date', 'Pick the date it runs out'); return; }
+    if ($('rn-kind').value === 'other' && !$('rn-label').value.trim()) { fieldErr('rn-label', 'Say what needs renewing'); return; }
+    ftPost('renewal_add', { kind: $('rn-kind').value, label: $('rn-label').value.trim(), expiresOn: d, aboutMemberId: $('rn-about').value || null }).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not add it'); return; }
+      toast('Added. The family is reminded a month and a week before.');
+      $('rn-date').value = ''; $('rn-label').value = ''; loadRenewals();
+    }).catch(function(){ toast('No connection - try again'); });
+  });
+
+  // ---- Nearby helpers for SOS (on a person's page)
+  var ldData = null, ldPerson = null, ldLinks = {};
+  var LD_STATE = { yes: ['ok', 'Said yes ✓'], no: ['bad', 'Said no'], pending: ['warn', 'Waiting for their answer'] };
+  function loadLadder(pid){
+    if (!state) return;
+    ldPerson = pid;
+    var nm = ((membersCache || []).filter(function(m){ return m.id === pid; })[0] || {}).name || 'them';
+    $('pp-ladder-card').querySelector('h3').textContent = '🏠 Nearby helpers for ' + ftFirst(nm);
+    ftGet('ladder').then(function(j){
+      if (!j.ok) { ftFail('pp-ladder', j, 'nearby helpers'); return; }
+      ldData = j; renderLadder();
+    }).catch(function(){ ftOffline('pp-ladder', 'Nearby helpers'); });
+  }
+  function ldWa(row, link){
+    var abs = location.origin + link;
+    var who = ((membersCache || []).filter(function(m){ return m.id === row.person_id; })[0] || {}).name || 'our parent';
+    var msg = 'Namaste ' + ftFirst(row.name) + ', this is ' + state.name + '. Could you be someone nearby who helps ' + ftFirst(who) + ' in an emergency? Parwah would call you only if ' + ftFirst(who) + ' presses SOS, or misses the daily check-in, and the family cannot be reached. Please read and answer here: ' + abs;
+    return 'https://wa.me/' + String(row.phone).replace(/[^\d]/g, '') + '?text=' + encodeURIComponent(msg);
+  }
+  function renderLadder(){
+    var rows = ldData.ladder.filter(function(x){ return x.person_id === ldPerson; });
+    var yes = 0;
+    $('pp-ladder').innerHTML = rows.length ? rows.map(function(r, i){
+      var st = LD_STATE[r.consent] || LD_STATE.pending, link = ldLinks[r.id];
+      if (r.consent === 'yes') yes++;
+      return '<div class="crow"><span class="txt"><b>' + (r.consent === 'yes' ? yes + '. ' : '') + esc(r.name) + '</b> <span class="ftchip ' + st[0] + '">' + st[1] + '</span>' +
+        '<small>' + esc([r.distance_note, r.has_key ? '🔑 has a key' : null, r.hours ? 'free ' + r.hours : null, r.phone].filter(Boolean).join(' · ')) + '</small>' +
+        '<span class="ftacts">' +
+          '<button type="button" class="cbtn ghost" data-ldmove="' + esc(r.id) + '" data-dir="-1" aria-label="Move ' + esc(r.name) + ' up"' + (i ? '' : ' disabled') + '>↑</button>' +
+          '<button type="button" class="cbtn ghost" data-ldmove="' + esc(r.id) + '" data-dir="1" aria-label="Move ' + esc(r.name) + ' down"' + (i < rows.length - 1 ? '' : ' disabled') + '>↓</button>' +
+          (link ? '<a class="cbtn" href="' + esc(ldWa(r, link)) + '" target="_blank" rel="noopener">Send on WhatsApp</a><button type="button" class="cbtn ghost" data-ldcopy="' + esc(r.id) + '">Copy link</button>'
+                : '<button type="button" class="cbtn ghost" data-ldlink="' + esc(r.id) + '">' + (r.consent === 'pending' ? 'Get their link' : 'New link') + '</button>') +
+          '<button type="button" class="cbtn ghost" data-lddel="' + esc(r.id) + '">Remove</button>' +
+        '</span></span></div>';
+    }).join('') : '<div class="ev">Nobody yet. A neighbour, the building guard or a relative in town: someone who could be at the door in minutes.</div>';
+    $('pp-ladder-why').textContent = 'If an SOS gets no answer from the family in 5 minutes, ' + (ldData.calls ? 'Parwah calls' : 'the family is shown') +
+      ' the first person who said yes, then the next. A missed daily check-in that nobody in the family is calling about, 30 minutes after the alert, reaches the first person too. Each person says yes on their own link first.' + (ldData.calls ? '' : ' Their numbers appear on the SOS screen and the check-in alert with Call buttons.');
+    var used = {}; rows.forEach(function(r){ if (r.book_entry_id) used[r.book_entry_id] = 1; });
+    var pick = (ldData.nearby || []).filter(function(c){ return !used[c.id] && (!c.about_member || c.about_member === ldPerson); });
+    $('ld-pick').innerHTML = '<option value="">Someone new</option>' + pick.map(function(c){ return '<option value="' + esc(c.id) + '">' + esc(c.name) + ' · ' + esc(c.phone) + '</option>'; }).join('');
+    $('ld-pickwrap').hidden = !pick.length;
+  }
+  $('ld-pick').addEventListener('change', function(){
+    var c = ldData && (ldData.nearby || []).filter(function(x){ return x.id === $('ld-pick').value; })[0];
+    if (c) { $('ld-name').value = c.name; $('ld-phone').value = c.phone; }
+  });
+  $('ld-add').addEventListener('click', function(){
+    var name = $('ld-name').value.trim(), phone = $('ld-phone').value.trim();
+    if (!name) { fieldErr('ld-name', 'Write their name'); return; }
+    if (phone.replace(/[^\d]/g, '').length < 8) { fieldErr('ld-phone', 'Write a phone number they answer'); return; }
+    ftPost('ladder_add', { personId: ldPerson, name: name, phone: phone, distance: $('ld-dist').value.trim(), hours: $('ld-hours').value.trim(),
+      hasKey: $('ld-key').checked, bookEntryId: $('ld-pick').value || null }).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not add them'); return; }
+      ldLinks[j.id] = j.link;
+      ['ld-name', 'ld-phone', 'ld-dist', 'ld-hours'].forEach(function(x){ $(x).value = ''; }); $('ld-key').checked = false;
+      $('ld-addcard').open = false;
+      toast('Link ready. Send it to ' + ftFirst(name) + ' so they can answer.');
+      loadLadder(ldPerson);
+    }).catch(function(){ toast('No connection - try again'); });
+  });
+  $('pp-ladder').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b || !ldData) return;
+    var rows = ldData.ladder.filter(function(x){ return x.person_id === ldPerson; });
+    if (b.hasAttribute('data-ldmove')) {
+      var id = b.getAttribute('data-ldmove'), dir = +b.getAttribute('data-dir'), ids = rows.map(function(r){ return r.id; }), i = ids.indexOf(id), k = i + dir;
+      if (i < 0 || k < 0 || k >= ids.length) return;
+      ids[i] = ids[k]; ids[k] = id;
+      ftPost('ladder_order', { personId: ldPerson, ids: ids }).then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not move them'); return; }
+        loadLadder(ldPerson);
+        setTimeout(function(){ var nb = $('pp-ladder').querySelector('[data-ldmove="' + id + '"][data-dir="' + dir + '"]'); if (nb && !nb.disabled) nb.focus(); }, 400);
+      });
+    } else if (b.hasAttribute('data-ldlink')) {
+      ftPost('ladder_link', { id: b.getAttribute('data-ldlink') }).then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not make a link'); return; }
+        ldLinks[b.getAttribute('data-ldlink')] = j.link; renderLadder();
+        toast('A new link. Any older link has stopped working.');
+      });
+    } else if (b.hasAttribute('data-ldcopy')) {
+      var t = location.origin + ldLinks[b.getAttribute('data-ldcopy')];
+      try { navigator.clipboard.writeText(t).then(function(){ toast('Link copied'); }, function(){ toast(t); }); } catch (x) { toast(t); }
+    } else if (b.hasAttribute('data-lddel')) {
+      var rid = b.getAttribute('data-lddel');
+      askSheet('Remove them from the nearby helpers?', 'Parwah stops calling them and deletes what was kept about them.', 'Remove', 'Keep', true).then(function(y){
+        if (y) ftPost('ladder_remove', { id: rid }).then(function(j){ toast(j.ok ? 'Removed' : (j.error || 'Could not remove')); loadLadder(ldPerson); });
+      });
+    }
+  });
+  // On the family's SOS alarm: the nearby people who said yes, one tap to call.
+  function sosLadder(other){
+    var lad = (other && other.ladder) || [];
+    $('sa-ladder').innerHTML = lad.slice(0, 4).map(function(h){
+      return '<a class="ss-btn" href="tel:' + encodeURIComponent(h.phone) + '">📞 ' + esc(String(h.name).slice(0, 16)) + (h.hasKey ? ' 🔑' : '') + '</a>';
+    }).join('');
+    $('sa-ladder-l').textContent = other && other.ladderCalls ? 'Nearby helpers (Parwah calls them if nobody answers)' : 'Nearby, said they can help';
+    $('sa-ladder').hidden = $('sa-ladder-l').hidden = !lad.length;
+  }
 
   // ---------- Medicine Refill & Stockout Tracking ----------
   var refillAlertData = null;
@@ -4851,7 +5825,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   // ---------- family tasks ----------
   var taskCache = [], tsId = null;
-  var REP_WORD = { daily:'every day', weekly:'every week', monthly:'every month' };
+  var REP_WORD = { daily:'every day', weekly:'every week', monthly:'every month', yearly:'every year' };
   function REM_WORD(m){ m = +m; return !m ? 'at the time' : m === 1440 ? '1 day before' : m === 60 ? '1 hour before' : m + ' min before'; }
 
   // THE ALARM, when Parwah is open: at a task's reminder time it takes the
@@ -5013,6 +5987,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     else if (q.status === 'claimed' && q.claimed_by === me) right = '<button class="cbtn ghost" data-tdone="' + q.id + '">Done ✔</button>';
     else if (late && q.by_member === me) right = '<button class="cbtn" data-topen="' + q.id + '">Sort it out</button>';
     else if (q.status === 'done') right = '<span class="badge on">Done</span>';
+    // A call rota's turn is done by calling: the button says so.
+    if (q.template === 'callrota' && taskOpen(q) && q.claimed_by === me) right = '<button class="cbtn ghost" data-fcrdone="' + q.id + '">Called ' + esc(fcFirst(q.about_name || '')) + ' ✔</button>';
     return '<div class="crow' + (late ? ' late urgent' : '') + '" data-task="' + q.id + '"><span class="txt">' +
            '<button class="tlink" data-topen="' + q.id + '">' + esc(q.title) + '</button>' +
            '<small>' + esc(bits.join(' · ')) + (late ? ' · running late' : '') + '</small></span>' + taskGoButton(q, 'cbtn go-now') + right + '</div>';
@@ -5107,6 +6083,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }).join('');
     $('ts-done').hidden = mode !== 'done' || !open;
     $('ts-give').hidden = true; $('ts-edit').hidden = true;
+    fcTaskExtra(q);
   }
   function tsPost(body, msg){
     body.taskId = tsId;
@@ -5374,6 +6351,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('metile').title = state.name + ' · ' + state.circleName;
     applyBig();
     $('seniorui').hidden = state.role !== 'parent';
+    staffTodayMaybe();
     pillShow();
     document.body.classList.add('inapp');
     $('who').textContent = state.name + ' · ' + state.code; setInitials(state.name);
@@ -6380,6 +7358,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('pp-back').textContent = '← ' + ({ people: 'Family', home: 'Today', memory: 'Health & contacts', vault: 'Vault', care: 'To do' }[personFrom] || 'Back');
     switchTab('person');
     loadBiomarkers(id);
+    ccPerson(id);
+    loadLadder(id);
     window.scrollTo(0, 0);
   }
   var personFrom = 'people';
@@ -6425,6 +7405,552 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   document.addEventListener('click', function(e){
     var b = e.target.closest('[data-person]'); if (b) openPerson(b.getAttribute('data-person'));
   });
+
+  // ================= CARE CYCLE =================
+  // Medicine times and ticks (api/_doses.mjs), the hospital screen
+  // (api/_admission.mjs) and notes after a doctor's visit (api/_visits.mjs).
+  // A tick is a record of what was marked, never proof, and nothing here
+  // reads, explains or advises on a medicine, a dose or a prescription.
+  var CC_API = { doses: '/api/care?area=doses', admission: '/api/book?area=admission', visit: '/api/plans?area=visit' };
+  var CC_STEPS = [['admitted', 'Admitted'], ['preauth_sent', 'Pre-auth sent'], ['preauth_approved', 'Pre-auth approved'],
+                  ['discharge_advised', 'Discharge advised'], ['final_bill', 'Final bill'], ['discharge_done', 'Discharge done']];
+  var CC_PAPERS = [['id', 'ID proof (Aadhaar or another photo ID)'], ['policy', 'Insurance policy or health card'],
+                   ['prescriptions', 'Previous prescriptions'], ['reports', 'Recent reports and scans'], ['medlist', 'List of medicines (from Health & contacts)']];
+  var ccDoses = { doses: [], schedules: [] }, ccAdm = { open: [], history: [] }, ccVis = { pending: [], visits: [] };
+  var ccPacket = { for: null, data: null };
+  var ccAt = 0, ccLoaded = false, ccAdmFor = null, ccAdmTimer = null, ccWeekSel = null;
+  function ccQ(base, extra){ return base + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + (extra || ''); }
+  function ccTz(){ try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } }
+  function ccPost(url, body){ return post(url, Object.assign({}, body, { code: state.code, memberId: state.memberId, tz: ccTz() })); }
+  function ccClock(slot){ var h = +slot.slice(0, 2); return (h % 12 || 12) + ':' + slot.slice(3, 5) + (h < 12 ? ' AM' : ' PM'); }
+  function ccSlotName(slot){ var h = +slot.slice(0, 2); return h < 4 ? 'Night' : h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : h < 20 ? 'Evening' : 'Night'; }
+  function ccHM(iso){ var d = new Date(iso); return isNaN(d) ? '' : dtf([], { hour: 'numeric', minute: '2-digit' }).format(d); }
+  function ccDay(iso){ var d = new Date(iso); return isNaN(d) ? '' : dtf([], { day: 'numeric', month: 'short' }).format(d); }
+  function ccMember(id){ return (membersCache || []).filter(function(m){ return m.id === id; })[0] || null; }
+  function ccName(id){ var m = ccMember(id); return id === state.memberId ? 'You' : (m ? m.name : 'Someone'); }
+  function ccLocalDay(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function ccSince(iso){
+    var m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min';
+  }
+
+  function ccRefresh(force){
+    if (!state) return;
+    if (!force && Date.now() - ccAt < 25000) { ccRender(); return; }
+    ccAt = Date.now();
+    var pq = personId ? '&person=' + encodeURIComponent(personId) : '';
+    Promise.all([
+      apiGet(ccQ(CC_API.doses)).catch(function(){ return null; }),
+      apiGet(ccQ(CC_API.admission, pq)).catch(function(){ return null; }),
+      apiGet(ccQ(CC_API.visit, pq)).catch(function(){ return null; })
+    ]).then(function(r){
+      if (r[0] && r[0].ok) ccDoses = r[0];
+      if (r[1] && r[1].ok) ccAdm = r[1];
+      if (r[2] && r[2].ok) ccVis = r[2];
+      ccLoaded = !!(r[0] && r[0].ok);
+      ccRender();
+    });
+  }
+  function ccRender(){
+    ccRenderElder(); ccRenderToday();
+    if (personId && curTab === 'person') ccRenderPerson(personId);
+    if (ccAdmFor && !$('admsheet').hidden && !$('ad-live').hidden) ccAdmRender();
+  }
+
+  // Doses today for one person, grouped by time.
+  function ccSlots(pid){
+    var g = {};
+    (ccDoses.doses || []).filter(function(d){ return d.person_id === pid && d.today; }).forEach(function(d){ (g[d.slot] = g[d.slot] || []).push(d); });
+    return Object.keys(g).sort().map(function(k){ return { slot: k, doses: g[k] }; });
+  }
+  function ccSlotState(s){
+    var due = s.doses.filter(function(d){ return d.status === 'due'; });
+    var last = s.doses.filter(function(d){ return d.status !== 'due'; }).sort(function(a, b){ return new Date(b.taken_at) - new Date(a.taken_at); })[0];
+    return { due: due, last: last, done: !due.length, skipped: !due.length && s.doses.every(function(d){ return d.status === 'skipped'; }) };
+  }
+  function ccMarkedBy(d){
+    if (!d.marked_by) return '';
+    return d.marked_by === state.memberId ? 'you' : (d.marked_by === d.person_id ? (d.person_name || 'them') : (d.marked_by_name || 'someone'));
+  }
+
+  // The parent's own big ticks, in elder mode. They stand in for the
+  // one-a-day "Medicines taken" button whenever times are set.
+  function ccRenderElder(){
+    var box = $('dose-elder'), pill = $('btn-pill');
+    if (!state || state.role !== 'parent') { box.hidden = true; box.innerHTML = ''; pill.hidden = false; return; }
+    var slots = ccSlots(state.memberId);
+    box.hidden = !slots.length; pill.hidden = !!slots.length;
+    if (!slots.length) { box.innerHTML = ''; return; }
+    box.innerHTML = slots.map(function(s){
+      var st = ccSlotState(s), name = ccSlotName(s.slot) + ' medicines, ' + ccClock(s.slot);
+      if (st.done) {
+        var by = st.last ? ccMarkedBy(st.last) : '';
+        return '<button class="big pill done" type="button" data-ccundo="' + esc(s.doses.map(function(d){ return d.id; }).join(',')) + '" aria-label="' + esc(name + (st.skipped ? ', marked skipped' : ', marked') + '. Tap to undo') + '">' +
+               (st.skipped ? '↷ ' : '✔ ') + esc(name) + '<span class="sub">' + (st.skipped ? 'Marked skipped' : 'Marked') +
+               (st.last ? ' at ' + esc(ccHM(st.last.taken_at)) + (by && by !== 'you' ? ' by ' + esc(by) : '') : '') + '. Tap to undo.</span></button>';
+      }
+      if (new Date(st.due[0].due_at).getTime() > Date.now() + 3 * 3600000) {
+        return '<div class="crow" style="margin-bottom:var(--space-16)"><span class="txt"><b>' + esc(name) + '</b><small>Later today. The tick comes here nearer the time.</small></span></div>';
+      }
+      return '<button class="big pill" type="button" data-ccmark="' + esc(st.due.map(function(d){ return d.id; }).join(',')) + '">' + esc(name) +
+             '<span class="sub">Tap when taken</span></button>' +
+             '<div class="cc-elderrow"><button type="button" class="cbtn ghost" style="min-height:var(--tap-min)" data-ccskip="' + esc(st.due.map(function(d){ return d.id; }).join(',')) + '">Skipped this time</button></div>';
+    }).join('') + '<p class="hint" style="margin:0 0 var(--space-16)">A tick tells the family you marked it. It is a note, not a check.</p>';
+  }
+
+  // Today, for everyone: someone in hospital, a visit to note, my own times.
+  function ccRenderToday(){
+    var box = $('cc-today'); if (!box || !state) return;
+    var h = '';
+    (ccAdm.open || []).forEach(function(a){
+      var adv = ccStep(a, 'discharge_advised'), done = ccStep(a, 'discharge_done');
+      var line = [a.hospital, a.ward].filter(Boolean).join(' · ');
+      if (adv && !done) line = (line ? line + ' · ' : '') + 'waiting since ' + ccHM(adv.at);
+      h += '<div class="crow cc-alert" style="margin-bottom:var(--space-12)"><span class="txt"><b>🏥 ' + esc(a.person_id === state.memberId ? 'You are in hospital' : a.person_name + ' is in hospital') + '</b><small>' +
+           esc(line || 'Opened ' + fmtTime(a.opened_at)) + '</small></span><button class="cbtn" type="button" data-ccadm="' + esc(a.person_id) + '">Open</button></div>';
+    });
+    (ccVis.pending || []).forEach(function(p){
+      h += '<div class="crow" style="margin-bottom:var(--space-12)"><span class="txt"><b>🩺 How did the visit go?</b><small>' + esc(p.title) + ' · ' + esc(fmtTime(p.at)) +
+           '</small></span><button class="cbtn" type="button" data-ccvisit="' + esc(p.id) + '">Tell the family</button>' +
+           '<button class="cbtn ghost" type="button" data-ccvskip="' + esc(p.id) + '">Skip</button></div>';
+    });
+    // Someone who is not in elder mode sees their own times here, smaller.
+    if (state.role !== 'parent') {
+      ccSlots(state.memberId).forEach(function(s){
+        var st = ccSlotState(s);
+        if (!st.done && new Date(st.due[0].due_at).getTime() > Date.now() + 3 * 3600000) return;   // later today: nothing to tap yet
+        h += '<div class="crow" style="margin-bottom:var(--space-12)"><span class="txt"><b>💊 Your ' + esc(ccClock(s.slot)) + ' medicines</b><small>' +
+             (st.done ? (st.skipped ? 'Marked skipped' : '✓ Marked') + (st.last ? ' at ' + esc(ccHM(st.last.taken_at)) : '') : 'Tap when taken') + '</small></span>' +
+             (st.done ? '<button class="cbtn ghost" type="button" data-ccundo="' + esc(s.doses.map(function(d){ return d.id; }).join(',')) + '">Undo</button>'
+                      : '<button class="cbtn" type="button" data-ccmark="' + esc(st.due.map(function(d){ return d.id; }).join(',')) + '">Mark taken</button>') + '</div>';
+      });
+    }
+    box.innerHTML = h;
+  }
+  function ccStep(a, key){ return (a.steps || []).filter(function(s){ return s.key === key; })[0] || null; }
+
+  // ---- marking ----
+  function ccMark(ids, status, reason, btn){
+    if (!ids.length) return;
+    if (btn) btn.disabled = true;
+    ccPost(CC_API.doses, { action: 'dose_mark', doseIds: ids, status: status, reason: reason || '' }).then(function(j){
+      if (btn) btn.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not mark that'); return; }
+      toast(status === 'skipped' ? 'Noted as skipped' : 'Marked. The family can see it.');
+      ccRefresh(true);
+    }).catch(function(){ if (btn) btn.disabled = false; toast('No connection - try again'); });
+  }
+  // askText returns null both for "Go back" and for an empty box, so the
+  // skip asks in two steps: the reason (optional), then the mark.
+  function ccSkipAsk(ids, btn){
+    $('as-in').value = ''; $('as-inlbl').textContent = 'Why, if you want to say (optional). For example: doctor said to stop, felt unwell, ran out.'; $('as-inwrap').hidden = false;
+    askOpen('Skipped this time?', '', 'Mark skipped', 'Go back', false, true).then(function(yes){
+      var v = $('as-in').value.trim(); $('as-inwrap').hidden = true;
+      if (yes) ccMark(ids, 'skipped', v, btn);
+    });
+  }
+  function ccUndo(ids, btn){
+    var mine = (ccDoses.doses || []).filter(function(d){ return ids.indexOf(d.id) >= 0 && d.status !== 'due' && (d.marked_by === state.memberId || d.person_id === state.memberId); });
+    if (!mine.length) { toast('Only whoever marked it, or the person it is for, can undo it'); return; }
+    askSheet('Undo this mark?', 'It goes back to not marked.', 'Undo it', 'Keep it').then(function(y){
+      if (!y) return;
+      if (btn) btn.disabled = true;
+      Promise.all(mine.map(function(d){ return ccPost(CC_API.doses, { action: 'dose_undo', doseId: d.id }); })).then(function(){ if (btn) btn.disabled = false; toast('Undone'); ccRefresh(true); })
+        .catch(function(){ if (btn) btn.disabled = false; toast('No connection - try again'); });
+    });
+  }
+  document.addEventListener('click', function(e){
+    var b;
+    if ((b = e.target.closest('[data-ccmark]'))) { ccMark(b.getAttribute('data-ccmark').split(',').filter(Boolean), 'taken', '', b); return; }
+    if ((b = e.target.closest('[data-ccskip]'))) { ccSkipAsk(b.getAttribute('data-ccskip').split(',').filter(Boolean), b); return; }
+    if ((b = e.target.closest('[data-ccundo]'))) { ccUndo(b.getAttribute('data-ccundo').split(',').filter(Boolean), b); return; }
+    if ((b = e.target.closest('[data-ccadm]'))) { ccAdmShow(b.getAttribute('data-ccadm')); return; }
+    if ((b = e.target.closest('[data-ccvisit]'))) { ccVisitShow(b.getAttribute('data-ccvisit'), null); return; }
+    if ((b = e.target.closest('[data-ccvskip]'))) {
+      var pid = b.getAttribute('data-ccvskip');
+      ccPost(CC_API.visit, { action: 'visit_skip', planId: pid }).then(function(j){ if (!j.ok) { toast(j.error || 'Could not do that'); return; } toast('Put away'); ccRefresh(true); });
+      return;
+    }
+    if ((b = e.target.closest('[data-ccsched]'))) { ccSchedShow(b.getAttribute('data-ccsched')); return; }
+    if ((b = e.target.closest('[data-ccwday]'))) { ccWeekSel = b.getAttribute('data-ccwday') === ccWeekSel ? null : b.getAttribute('data-ccwday'); ccRenderPerson(personId); return; }
+  });
+
+  // ---- one person's page ----
+  function ccPerson(id){ ccWeekSel = null; ccRenderPerson(id); ccRefresh(true); }
+  function ccDoseRow(d, act){
+    var st, cls = '';
+    if (d.status === 'taken') { st = '✓ Marked by ' + ccMarkedBy(d) + ', ' + ccHM(d.taken_at); cls = 'ok'; }
+    else if (d.status === 'skipped') { st = '↷ Skipped' + (d.skip_reason ? ': ' + d.skip_reason : '') + ' (marked by ' + ccMarkedBy(d) + ')'; }
+    else if (d.passed) { st = '! Not marked yet'; cls = 'bad'; }
+    else st = 'Later today';
+    var btns = '';
+    if (act) {
+      var soon = new Date(d.due_at).getTime() <= Date.now() + 3 * 3600000;
+      if (d.status === 'due' && soon) {
+        btns = '<button type="button" class="cbtn" data-ccmark="' + d.id + '">' + (d.person_id === state.memberId ? 'Mark taken' : 'Mark for ' + esc(d.person_name)) + '</button>' +
+               '<button type="button" class="cbtn ghost" data-ccskip="' + d.id + '">Skipped</button>';
+      } else if (d.status !== 'due' && (d.marked_by === state.memberId || d.person_id === state.memberId)) {
+        btns = '<button type="button" class="cbtn ghost" data-ccundo="' + d.id + '">Undo</button>';
+      }
+    }
+    return '<div class="ev cc-dose"><span class="txt"><b>' + esc(ccClock(d.slot)) + ' · ' + esc(d.name) + '</b><small class="cc-st ' + cls + '">' + esc(st) + '</small></span>' + btns + '</div>';
+  }
+  function ccRenderPerson(id){
+    if (!id || !state || !$('pp-doses')) return;
+    var who = ccMember(id), nm = who ? who.name : 'them';
+    var mine = (ccDoses.doses || []).filter(function(d){ return d.person_id === id; });
+    var scheds = (ccDoses.schedules || []).filter(function(s){ return s.person_id === id; });
+    var today = mine.filter(function(d){ return d.today; });
+    $('pp-doses').innerHTML = !ccLoaded ? '<div class="ev">Could not load medicine times just now. They will try again on their own.</div>'
+      : today.length ? today.map(function(d){ return ccDoseRow(d, true); }).join('')
+      : '<div class="ev">' + (scheds.length ? 'No medicine times today.' : 'No times set yet. Set the usual times for a medicine below, and ' + esc(id === state.memberId ? 'you' : nm) + ' get a big tick on Today.') + '</div>';
+    // The week, oldest first, ending today.
+    var cells = '', base = new Date();
+    for (var k = 6; k >= 0; k--) {
+      var dd = new Date(base.getFullYear(), base.getMonth(), base.getDate() - k), key = ccLocalDay(dd);
+      var ds = mine.filter(function(d){ return d.day === key; });
+      var miss = ds.filter(function(d){ return d.status === 'due' && d.passed; }).length;
+      var took = ds.filter(function(d){ return d.status === 'taken'; }).length;
+      var skip = ds.filter(function(d){ return d.status === 'skipped'; }).length;
+      var later = ds.filter(function(d){ return d.status === 'due' && !d.passed; }).length;
+      var mark = !ds.length ? '·' : miss ? '!' : skip ? '↷' : later ? '…' : '✓';
+      var cls = !ds.length ? '' : miss ? 'bad' : (!skip && !later) ? 'ok' : '';
+      var wd = dtf([], { weekday: 'short' }).format(dd);
+      var lab = wd + ' ' + dd.getDate() + ': ' + (!ds.length ? 'no times' : took + ' marked taken' + (skip ? ', ' + skip + ' skipped' : '') + (miss ? ', ' + miss + ' not marked' : '') + (later ? ', ' + later + ' later' : ''));
+      cells += '<button type="button" class="cc-day ' + cls + (ccWeekSel === key ? ' sel' : '') + '" data-ccwday="' + key + '" aria-label="' + esc(lab) + '" aria-pressed="' + (ccWeekSel === key) + '">' +
+               '<span>' + esc(wd.slice(0, 2)) + '</span><span class="m" aria-hidden="true">' + mark + '</span></button>';
+    }
+    $('pp-week').innerHTML = cells;
+    $('pp-week-h').hidden = $('pp-week').hidden = !scheds.length && !mine.length;
+    var sel = ccWeekSel ? mine.filter(function(d){ return d.day === ccWeekSel; }) : [];
+    $('pp-weekday').innerHTML = ccWeekSel ? (sel.length ? sel.map(function(d){ return ccDoseRow(d, false); }).join('') : '<div class="ev">No medicine times that day.</div>') : '';
+    // Each medicine in the book, with its times.
+    var meds = (bookCache || []).filter(function(e){ return e.kind === 'med' && e.about_member === id; });
+    $('pp-medtimes').innerHTML = meds.length ? meds.map(function(e){
+      var s = scheds.filter(function(x){ return x.medicine_id === e.id; })[0];
+      var when = s ? s.times.map(ccClock).join(', ') + ' · ' + ccDaysText(s.days) : 'No times set';
+      return '<div class="ev cc-dose"><span class="txt"><b>💊 ' + esc(e.name) + '</b><small>' + esc(when) + '</small></span>' +
+             '<button type="button" class="cbtn ghost" data-ccsched="' + e.id + '">' + (s ? 'Change times' : 'Set times') + '</button></div>';
+    }).join('') : '<div class="ev">No medicines in Health &amp; contacts for ' + esc(id === state.memberId ? 'you' : nm) + ' yet. Add one with "＋ Add something", then set its times here.</div>';
+    // Visits, newest first.
+    var vs = (ccVis.visits || []).filter(function(v){ return v.person_id === id; });
+    $('pp-visits').innerHTML = vs.length ? vs.map(function(v){
+      var ai = v.action_items || {}, bits = [];
+      if (v.next_due) bits.push('Next visit around ' + ccDay(v.next_due));
+      else if (ai.nextWeeks === null || ai.nextWeeks === undefined) bits.push('No next visit noted');
+      if (ai.tests && ai.tests.length) bits.push('Tests: ' + ai.tests.join(', '));
+      if (v.new_notes) bits.push('New: ' + v.new_notes);
+      bits.push('Noted by ' + (v.by_name || 'someone'));
+      return '<div class="ev cc-dose"><span class="txt"><b>' + esc(ccDay(v.recorded_at) + (ai.doctor ? ' · ' + ai.doctor : v.plan_title ? ' · ' + v.plan_title : '')) + '</b><small>' + esc(bits.join(' · ')) + '</small></span>' +
+             (v.vault_doc_id ? '<button type="button" class="cbtn ghost" data-vdocgo="' + esc(v.vault_doc_id) + '">📄 Photo</button>' : '') + '</div>';
+    }).join('') : '<div class="ev">Nothing written down yet. After a visit, a photo and three taps save everyone a long call.</div>';
+    // Hospital: the button, and stays that are closed.
+    var open = (ccAdm.open || []).filter(function(a){ return a.person_id === id; })[0];
+    $('pp-admit').textContent = open ? '🏥 In hospital now: open the screen' : '🏥 Admitted to hospital';
+    var hist = (ccAdm.history || []).filter(function(a){ return a.person_id === id; });
+    $('pp-adm-card').hidden = !hist.length;
+    $('pp-adm-hist').innerHTML = hist.map(function(a){
+      var steps = (a.steps || []).map(function(s){ var l = CC_STEPS.filter(function(x){ return x[0] === s.key; })[0]; return (l ? l[1] : s.key) + ' ' + ccDay(s.at) + ', ' + ccHM(s.at); });
+      return '<div class="ev"><b>' + esc((a.hospital || 'Hospital') + ' · ' + ccDay(a.opened_at) + (a.closed_at ? ' to ' + ccDay(a.closed_at) : '')) + '</b><small>' + esc(steps.join(' · ')) + '</small></div>';
+    }).join('');
+  }
+  function ccDaysText(days){
+    if (!days || !days.length) return 'every day';
+    var n = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return days.map(function(d){ return n[d]; }).join(', ');
+  }
+
+  // ---- the medicine times sheet ----
+  var ccSchedMed = null, ccExtra = [];
+  function ccPress(box, on){ box.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  function ccSchedShow(medId){
+    var e = (bookCache || []).filter(function(x){ return x.id === medId; })[0]; if (!e) return;
+    ccSchedMed = medId;
+    var s = (ccDoses.schedules || []).filter(function(x){ return x.medicine_id === medId; })[0];
+    var who = ccMember(e.about_member);
+    $('ds-title').textContent = 'When ' + (e.about_member === state.memberId ? 'do you' : 'does ' + (who ? who.name : 'they')) + ' have ' + e.name + '?';
+    var times = s ? s.times.slice() : ['08:00'];
+    $('ds-slots').querySelectorAll('button').forEach(function(b){ ccPress(b, times.indexOf(b.getAttribute('data-t')) >= 0); });
+    ccExtra = times.filter(function(t){ return ['08:00', '14:00', '21:00'].indexOf(t) < 0; });
+    ccExtraRender();
+    var days = s && s.days && s.days.length ? s.days : [0, 1, 2, 3, 4, 5, 6];
+    $('ds-days').querySelectorAll('button').forEach(function(b){ ccPress(b, days.indexOf(+b.getAttribute('data-d')) >= 0); });
+    ccDayHint();
+    $('ds-custom').value = '';
+    $('ds-off').hidden = !s;
+    $('dsheet').hidden = false;
+    try { $('ds-x').focus(); } catch (x) {}
+  }
+  function ccExtraRender(){
+    $('ds-extra').innerHTML = ccExtra.map(function(t){ return '<button type="button" aria-pressed="true" data-xt="' + t + '" aria-label="Remove ' + ccClock(t) + '">' + ccClock(t) + ' ✕</button>'; }).join('');
+  }
+  function ccDayHint(){
+    var on = $('ds-days').querySelectorAll('button[aria-pressed="true"]').length;
+    $('ds-dayhint').textContent = on === 7 ? 'Every day' : on ? on + ' day' + (on === 1 ? '' : 's') + ' a week' : 'Pick at least one day';
+  }
+  $('ds-slots').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) ccPress(b, b.getAttribute('aria-pressed') !== 'true'); });
+  $('ds-days').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) { ccPress(b, b.getAttribute('aria-pressed') !== 'true'); ccDayHint(); } });
+  $('ds-extra').addEventListener('click', function(e){ var b = e.target.closest('[data-xt]'); if (!b) return; ccExtra = ccExtra.filter(function(t){ return t !== b.getAttribute('data-xt'); }); ccExtraRender(); });
+  $('ds-addt').addEventListener('click', function(){
+    var v = $('ds-custom').value;
+    if (!/^\d\d:\d\d$/.test(v)) { fieldErr('ds-custom', 'Pick a time first'); return; }
+    if (ccExtra.indexOf(v) < 0 && ['08:00', '14:00', '21:00'].indexOf(v) < 0) ccExtra.push(v);
+    else $('ds-slots').querySelectorAll('button').forEach(function(b){ if (b.getAttribute('data-t') === v) ccPress(b, true); });
+    ccExtra.sort(); ccExtraRender(); $('ds-custom').value = '';
+  });
+  $('ds-x').addEventListener('click', function(){ $('dsheet').hidden = true; });
+  $('dsheet').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });
+  $('ds-save').addEventListener('click', function(){
+    var times = [].map.call($('ds-slots').querySelectorAll('button[aria-pressed="true"]'), function(b){ return b.getAttribute('data-t'); }).concat(ccExtra);
+    var days = [].map.call($('ds-days').querySelectorAll('button[aria-pressed="true"]'), function(b){ return +b.getAttribute('data-d'); });
+    if (!times.length) { toast('Pick at least one time'); return; }
+    if (!days.length) { toast('Pick at least one day'); return; }
+    var b = this; b.disabled = true;
+    ccPost(CC_API.doses, { action: 'dose_schedule_set', medicineId: ccSchedMed, times: times, days: days }).then(function(j){
+      b.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not save the times'); return; }
+      $('dsheet').hidden = true; toast('Times saved'); ccRefresh(true);
+    }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  $('ds-off').addEventListener('click', function(){
+    askSheet('Stop the times for this medicine?', 'What was already marked stays in the history.', 'Stop the times', 'Keep them').then(function(y){
+      if (!y) return;
+      ccPost(CC_API.doses, { action: 'dose_schedule_off', medicineId: ccSchedMed }).then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not do that'); return; }
+        $('dsheet').hidden = true; toast('Times stopped'); ccRefresh(true);
+      });
+    });
+  });
+
+  // ---- the hospital screen ----
+  $('pp-admit').addEventListener('click', function(){ if (personId) ccAdmShow(personId); });
+  function ccAdmOpenFor(pid){ return (ccAdm.open || []).filter(function(a){ return a.person_id === pid; })[0] || null; }
+  function ccAdmShow(pid){
+    ccAdmFor = pid;
+    var who = ccMember(pid), nm = who ? who.name : 'Them';
+    var a = ccAdmOpenFor(pid);
+    $('ad-title').textContent = pid === state.memberId ? 'You are in hospital' : nm + ' is in hospital';
+    $('ad-new').hidden = !!a; $('ad-live').hidden = !a;
+    if (!a) {
+      $('ad-sub').textContent = 'Write down where. Everything else can be added at the counter.';
+      ['ad-n-hosp', 'ad-n-ward', 'ad-n-doc'].forEach(function(i){ $(i).value = ''; });
+      $('ad-n-with').checked = true;
+    } else {
+      ccAdmRender();
+      // The papers at the counter: read with the person's "who looked" trail.
+      apiGet(ccQ(CC_API.admission, '&person=' + encodeURIComponent(pid) + '&packet=1')).then(function(j){
+        if (!j.ok || ccAdmFor !== pid) return;
+        ccPacket = { for: pid, data: j.packet }; ccAdmPacket();
+      }).catch(function(){ $('ad-packet').innerHTML = '<div class="ev">Could not load the papers just now.</div>'; });
+    }
+    $('admsheet').hidden = false;
+    try { $('ad-x').focus(); } catch (x) {}
+    clearInterval(ccAdmTimer);
+    ccAdmTimer = setInterval(function(){ if ($('admsheet').hidden) { clearInterval(ccAdmTimer); return; } ccAdmWait(); }, 30000);
+  }
+  function ccAdmWait(){
+    var a = ccAdmOpenFor(ccAdmFor); if (!a) return;
+    var adv = ccStep(a, 'discharge_advised'), done = ccStep(a, 'discharge_done');
+    $('ad-wait').hidden = !(adv && !done);
+    if (adv && !done) $('ad-wait').innerHTML = '<b>Waiting since ' + esc(ccHM(adv.at)) + '</b>' + esc(ccSince(adv.at)) + ' since discharge was advised';
+  }
+  function ccAdmRender(){
+    var a = ccAdmOpenFor(ccAdmFor); if (!a) return;
+    $('ad-sub').textContent = 'Since ' + fmtTime(a.opened_at) + (a.opened_by_name ? ' · opened by ' + a.opened_by_name : '');
+    ccAdmWait();
+    var kv = function(k, v){ return '<div class="kv"><b>' + esc(k) + '</b><span>' + (v ? esc(v) : '<span class="hint" style="margin:0">Not written yet</span>') + '</span></div>'; };
+    $('ad-facts').innerHTML = kv('Hospital', a.hospital) + kv('Ward or room', a.ward) + kv('Doctor in charge', a.doctor) + kv('Insurer', a.insurer) + kv('TPA', a.tpa) +
+      kv('Policy number', a.policy_last4 ? 'ending ' + a.policy_last4 : '') + kv('Claim number', a.claim_last4 ? 'ending ' + a.claim_last4 : '');
+    var withIds = (a.with_names || []).map(function(w){ return w.id; });
+    $('ad-with').innerHTML = (a.with_names || []).length ? a.with_names.map(function(w){ return '<button type="button" disabled>' + esc(w.id === state.memberId ? 'You' : w.name) + '</button>'; }).join('')
+      : '<p class="hint" style="margin:0">Nobody has said they are there.</p>';
+    var here = withIds.indexOf(state.memberId) >= 0;
+    $('ad-here').textContent = here ? 'I have left the hospital' : 'I am at the hospital now';
+    $('ad-here').setAttribute('data-on', here ? '0' : '1');
+    var nextDone = false;
+    $('ad-steps').innerHTML = CC_STEPS.map(function(st, i){
+      var s = ccStep(a, st[0]);
+      if (s) return '<li class="done"><span class="dot" aria-hidden="true">✓</span><span class="txt"><b>' + esc(st[1]) + '</b><small>' + esc(ccHM(s.at) + ' · ' + (s.by === state.memberId ? 'you' : s.byName || 'someone')) + '</small></span></li>';
+      var isNext = !nextDone; nextDone = true;
+      return '<li class="' + (isNext ? 'next' : 'later') + '"><span class="dot" aria-hidden="true">' + (i + 1) + '</span><span class="txt"><b>' + esc(st[1]) + '</b><small>' + (isNext ? 'Tap when it happens' : 'Not yet') + '</small></span>' +
+             (isNext ? '<button type="button" class="cbtn" data-ccstep="' + st[0] + '">Mark now</button>' : '') + '</li>';
+    }).join('');
+    var last = (a.steps || [])[(a.steps || []).length - 1];
+    $('ad-undo').innerHTML = last && last.key !== 'admitted' ? '<button type="button" class="linkbtn" data-ccstepundo="' + last.key + '" style="min-height:var(--tap-min)">Undo the last step</button>' : '';
+    var meds = (bookCache || []).filter(function(e){ return e.kind === 'med' && e.about_member === ccAdmFor; }).map(function(e){ return e.name + (e.forwhat ? ' (' + e.forwhat + ')' : ''); });
+    $('ad-papers').innerHTML = CC_PAPERS.map(function(p){
+      var on = a.papers && a.papers[p[0]] === true;
+      return '<label><input type="checkbox" data-ccpaper="' + p[0] + '"' + (on ? ' checked' : '') + '><span>' + esc(p[1]) +
+             (p[0] === 'medlist' ? '<small>' + esc(meds.length ? meds.join(', ') : 'None in Health & contacts yet') + '</small>' : '') + '</span></label>';
+    }).join('');
+    ccAdmPacket();
+  }
+  function ccAdmPacket(){
+    var p = ccPacket.for === ccAdmFor ? ccPacket.data : null;
+    if (!p) { $('ad-packet').innerHTML = '<div class="ev">Loading…</div>'; return; }
+    var rows = [];
+    if (p.insurer || p.policyLast4) rows.push('<div class="ev"><b>🛡 ' + esc(p.insurer || 'Insurance') + '</b><small>' + esc(p.policyLast4 ? 'Policy ending ' + p.policyLast4 + '. The full number is in the vault.' : 'No policy number recorded') + '</small></div>');
+    if (p.tpa || p.tpaPhone) rows.push('<div class="ev"><b>TPA: ' + esc(p.tpa || 'help desk') + '</b><small>' + (p.tpaPhone ? '<a href="tel:' + esc(p.tpaPhone) + '">' + esc(p.tpaPhone) + '</a>' : '') + (p.tpaEmail ? ' · ' + esc(p.tpaEmail) : '') + '</small></div>');
+    if (p.emergencyName) rows.push('<div class="ev"><b>☎️ ' + esc(p.emergencyName) + '</b><small>Emergency contact' + (p.emergencyPhone ? ' · <a href="tel:' + esc(p.emergencyPhone) + '">' + esc(p.emergencyPhone) + '</a>' : '') + '</small></div>');
+    $('ad-packet').innerHTML = rows.length ? rows.join('') : '<div class="ev">No insurance or emergency contact recorded yet. Add them in Health &amp; contacts and they show here.</div>';
+  }
+  function ccAdmAct(body, msg){
+    var a = ccAdmOpenFor(ccAdmFor); if (!a) return Promise.resolve(null);
+    return ccPost(CC_API.admission, Object.assign({ admissionId: a.id }, body)).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not do that'); return j; }
+      if (msg) toast(msg);
+      ccRefresh(true); return j;
+    }).catch(function(){ toast('No connection - try again'); });
+  }
+  $('ad-n-go').addEventListener('click', function(){
+    var b = this; b.disabled = true;
+    ccPost(CC_API.admission, { action: 'admission_open', personId: ccAdmFor, hospital: $('ad-n-hosp').value, ward: $('ad-n-ward').value, doctor: $('ad-n-doc').value, withMe: $('ad-n-with').checked }).then(function(j){
+      b.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not open it'); return; }
+      toast('Everyone in the family has been told');
+      ccAt = 0;
+      apiGet(ccQ(CC_API.admission, '&person=' + encodeURIComponent(ccAdmFor))).then(function(r){ if (r.ok) { ccAdm = r; ccAdmShow(ccAdmFor); ccRender(); } });
+    }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  $('ad-undo').addEventListener('click', function(e){
+    var u = e.target.closest('[data-ccstepundo]');
+    if (u) askSheet('Undo the last step?', 'Use this if it was tapped by mistake.', 'Undo it', 'Keep it').then(function(y){ if (y) ccAdmAct({ action: 'admission_undo', step: u.getAttribute('data-ccstepundo') }, 'Undone'); });
+  });
+  $('ad-steps').addEventListener('click', function(e){
+    var b = e.target.closest('[data-ccstep]');
+    if (b) { b.disabled = true; ccAdmAct({ action: 'admission_step', step: b.getAttribute('data-ccstep') }, 'Marked. The family has been told.'); }
+  });
+  $('ad-papers').addEventListener('change', function(e){
+    var c = e.target.closest('[data-ccpaper]'); if (!c) return;
+    ccAdmAct({ action: 'admission_paper', key: c.getAttribute('data-ccpaper'), have: c.checked });
+  });
+  $('ad-here').addEventListener('click', function(){ ccAdmAct({ action: 'admission_with', on: this.getAttribute('data-on') === '1' }, this.getAttribute('data-on') === '1' ? 'The family can see you are there' : 'Noted'); });
+  $('ad-edit').addEventListener('click', function(){
+    var a = ccAdmOpenFor(ccAdmFor); if (!a) return;
+    var box = $('ad-editbox'); box.hidden = !box.hidden;
+    $('ad-e-hosp').value = a.hospital || ''; $('ad-e-ward').value = a.ward || ''; $('ad-e-doc').value = a.doctor || '';
+    $('ad-e-ins').value = a.insurer || ''; $('ad-e-tpa').value = a.tpa || ''; $('ad-e-pol').value = ''; $('ad-e-clm').value = '';
+    $('ad-e-pol').placeholder = a.policy_last4 ? 'Ending ' + a.policy_last4 + '. Only the last 4 are kept' : 'Only the last 4 are kept';
+    $('ad-e-clm').placeholder = a.claim_last4 ? 'Ending ' + a.claim_last4 + '. Only the last 4 are kept' : 'Only the last 4 are kept';
+  });
+  $('ad-e-save').addEventListener('click', function(){
+    var body = { action: 'admission_update', hospital: $('ad-e-hosp').value, ward: $('ad-e-ward').value, doctor: $('ad-e-doc').value, insurer: $('ad-e-ins').value, tpa: $('ad-e-tpa').value };
+    if ($('ad-e-pol').value.trim()) body.policyNumber = $('ad-e-pol').value;
+    if ($('ad-e-clm').value.trim()) body.claimNumber = $('ad-e-clm').value;
+    ccAdmAct(body, 'Saved').then(function(j){ if (j && j.ok) $('ad-editbox').hidden = true; });
+  });
+  $('ad-ecard').addEventListener('click', function(){ if (ccAdmFor) openEcard(ccAdmFor); });
+  $('ad-docs').addEventListener('click', function(){ if (ccAdmFor) { $('admsheet').hidden = true; openVaultFor(ccAdmFor); } });
+  $('ad-close').addEventListener('click', function(){
+    var who = ccMember(ccAdmFor);
+    askSheet('Close the hospital screen?', 'It is kept in ' + (who ? who.name + '\u2019s' : 'their') + ' history, and everyone is told.', 'Close it', 'Not yet').then(function(y){
+      if (!y) return;
+      ccAdmAct({ action: 'admission_close' }, 'Closed and kept in the history').then(function(j){ if (j && j.ok) $('admsheet').hidden = true; });
+    });
+  });
+  $('ad-x').addEventListener('click', function(){ $('admsheet').hidden = true; clearInterval(ccAdmTimer); });
+  $('admsheet').addEventListener('click', function(e){ if (e.target === this) { this.hidden = true; clearInterval(ccAdmTimer); } });
+
+  // ---- after a visit ----
+  var ccVPlan = null, ccVTests = [], ccVFile = null;
+  $('pp-visit-add').addEventListener('click', function(){ if (personId) ccVisitShow(null, personId); });
+  function ccVisitShow(planId, pid){
+    ccVPlan = planId ? (ccVis.pending || []).filter(function(p){ return p.id === planId; })[0] || null : null;
+    ccVTests = []; ccVFile = null;
+    var ms = membersCache || [];
+    if (!pid && ccVPlan) {
+      var parent = ms.filter(function(m){ return (ccVPlan.going || []).indexOf(m.id) >= 0 && m.role === 'parent'; })[0];
+      pid = parent ? parent.id : state.memberId;
+    }
+    pid = pid || state.memberId;
+    $('vs-who').innerHTML = ms.map(function(m){ return '<option value="' + m.id + '"' + (m.id === pid ? ' selected' : '') + '>' + esc(m.id === state.memberId ? m.name + ' (me)' : m.name) + '</option>'; }).join('');
+    var owners = ms.filter(function(m){ return m.on_app !== false; });
+    var opt = owners.map(function(m){ return '<option value="' + m.id + '"' + (m.id === state.memberId ? ' selected' : '') + '>' + esc(m.id === state.memberId ? 'Me' : m.name) + '</option>'; }).join('');
+    $('vs-bookby').innerHTML = opt; $('vs-testby').innerHTML = opt;
+    ccVisitTitle();
+    $('vs-sub').textContent = ccVPlan ? ccVPlan.title + ' · ' + fmtTime(ccVPlan.at) : 'Write down what the doctor asked for, so nobody has to ring round.';
+    $('vs-doc').value = ''; $('vs-new').value = ''; $('vs-test').value = ''; $('vs-weeks').value = ''; $('vs-photo').value = '';
+    $('vs-fname').textContent = 'Goes into the family vault, for this person. Up to 2 MB.';
+    $('vs-next').querySelectorAll('button').forEach(function(b){ ccPress(b, false); });
+    ccVTestsRender();
+    $('vs-skip').hidden = !ccVPlan;
+    $('vsheet').hidden = false;
+    try { $('vs-x').focus(); } catch (x) {}
+  }
+  function ccVisitTitle(){
+    var pid = $('vs-who').value, m = ccMember(pid);
+    $('vs-title').textContent = pid === state.memberId ? 'How did your visit go?' : 'How did ' + (m ? m.name + '\u2019s' : 'the') + ' visit go?';
+  }
+  $('vs-who').addEventListener('change', ccVisitTitle);
+  function ccVTestsRender(){
+    $('vs-tests').innerHTML = ccVTests.map(function(t, i){ return '<button type="button" data-vt="' + i + '" aria-label="Remove ' + esc(t) + '">' + esc(t) + ' ✕</button>'; }).join('');
+  }
+  $('vs-addtest').addEventListener('click', function(){
+    var v = $('vs-test').value.trim(); if (!v) { fieldErr('vs-test', 'Type the test first'); return; }
+    if (ccVTests.length >= 8) { toast('Up to 8 tests'); return; }
+    if (!ccVTests.some(function(t){ return t.toLowerCase() === v.toLowerCase(); })) ccVTests.push(v);
+    $('vs-test').value = ''; ccVTestsRender(); $('vs-test').focus();
+  });
+  $('vs-test').addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); $('vs-addtest').click(); } });
+  $('vs-tests').addEventListener('click', function(e){ var b = e.target.closest('[data-vt]'); if (!b) return; ccVTests.splice(+b.getAttribute('data-vt'), 1); ccVTestsRender(); });
+  $('vs-next').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    $('vs-next').querySelectorAll('button').forEach(function(x){ ccPress(x, x === b); });
+    $('vs-weeks').value = '';
+  });
+  $('vs-weeks').addEventListener('input', function(){ if (this.value) $('vs-next').querySelectorAll('button').forEach(function(x){ ccPress(x, false); }); });
+  $('vs-photo').addEventListener('change', function(){
+    var f = this.files && this.files[0], inp = this; ccVFile = null;
+    if (!f) return;
+    var name = f.name || 'prescription.jpg';
+    var keep = function(data, mime){
+      if (!data || data.length * 3 / 4 > 2 * 1024 * 1024) { $('vs-fname').textContent = 'That file is larger than 2 MB. For a PDF, save it smaller; a photo is made smaller automatically.'; inp.value = ''; return; }
+      ccVFile = { data: data, name: name, mime: mime }; $('vs-fname').textContent = '📎 ' + name + ' - goes into the vault when you save';
+    };
+    if (/^image\/(jpeg|png|webp)$/.test(f.type) && f.size > 900 * 1024) {
+      $('vs-fname').textContent = 'Making the photo smaller…';
+      vShrink(f, function(d){ if (d) { name = name.replace(/\.[a-z0-9]+$/i, '') + '.jpg'; keep(d, 'image/jpeg'); } else keep(null); });
+      return;
+    }
+    var fr = new FileReader(); fr.onload = function(){ keep(String(fr.result), f.type || 'image/jpeg'); }; fr.readAsDataURL(f);
+  });
+  $('vs-save').addEventListener('click', function(){
+    var b = this, pid = $('vs-who').value, m = ccMember(pid);
+    var pressed = $('vs-next').querySelector('button[aria-pressed="true"]');
+    var weeks = $('vs-weeks').value ? parseInt($('vs-weeks').value, 10) : (pressed ? +pressed.getAttribute('data-w') : 0);
+    if ($('vs-weeks').value && !(weeks >= 1 && weeks <= 52)) { fieldErr('vs-weeks', 'Pick 1 to 52 weeks, or None'); return; }
+    if ($('vs-test').value.trim()) $('vs-addtest').click();
+    b.disabled = true;
+    var send = function(docId){
+      ccPost(CC_API.visit, { action: 'visit_save', planId: ccVPlan ? ccVPlan.id : null, personId: pid, doctor: $('vs-doc').value, vaultDocId: docId || null,
+                             nextWeeks: weeks, tests: ccVTests, newNotes: $('vs-new').value, bookOwnerId: $('vs-bookby').value, testsOwnerId: $('vs-testby').value })
+        .then(function(j){
+          b.disabled = false;
+          if (!j.ok) { toast(j.error || 'Could not save'); return; }
+          $('vsheet').hidden = true;
+          toast(j.tasks ? 'Saved. ' + j.tasks + ' follow-up' + (j.tasks === 1 ? ' is' : 's are') + ' in To do.' : 'Saved for the family');
+          ccRefresh(true); try { refresh(); } catch (x) {}
+        }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+    };
+    if (!ccVFile) { send(null); return; }
+    // The photo goes in through the vault's own door, with its permissions.
+    post(API.vault, { area: 'vault', action: 'add', kind: 'health', aboutId: pid, code: state.code, memberId: state.memberId,
+                      label: ((m ? m.name + '\u2019s' : 'Visit') + ' prescription, ' + ccDay(ccVPlan ? ccVPlan.at : new Date().toISOString())).slice(0, 90),
+                      file: ccVFile.data, fileName: ccVFile.name, fileMime: ccVFile.mime })
+      .then(function(j){ if (!j.ok) { b.disabled = false; toast(j.error || 'The photo could not be saved'); return; } send(j.id); })
+      .catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  $('vs-skip').addEventListener('click', function(){
+    if (!ccVPlan) return;
+    ccPost(CC_API.visit, { action: 'visit_skip', planId: ccVPlan.id }).then(function(j){ if (!j.ok) { toast(j.error || 'Could not do that'); return; } $('vsheet').hidden = true; toast('Put away'); ccRefresh(true); });
+  });
+  $('vs-x').addEventListener('click', function(){ $('vsheet').hidden = true; });
+  $('vsheet').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape' || askDone) return;
+    ['dsheet', 'admsheet', 'vsheet'].forEach(function(id){ if (!$(id).hidden) $(id).hidden = true; });
+  });
+  // ================= /CARE CYCLE =================
 
   // ---------- one readiness number for the whole family ----------
   // A gap, said as a plain sentence: "Papa: no doctor recorded".
@@ -6735,6 +8261,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       (other.safe_at ? '. They say they are safe now - check, then mark it sorted.' : '.') + (other.map ? ' Their location is shared with the family.' : '');
     $('sa-call').href = other.phone ? 'tel:' + encodeURIComponent(other.phone) : 'tel:' + myEmergencyNo();
     $('sa-call').textContent = other.phone ? '📞 Call ' + String(other.name).split(' ')[0] : '📞 Call ' + myEmergencyNo();
+    sosLadder(other);
     $('sa-map').hidden = !other.map;
     $('sa-play').hidden = !other.audio_id;
     $('sa-play').setAttribute('data-audio', other.audio_id || '');
@@ -8386,6 +9913,404 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
   $('callnow').addEventListener('click', askCall);
   $('callnow2').addEventListener('click', askCall);
+
+  // ---------- family care tools (api/_familycare.mjs) ----------
+  // Quiet day (the daily check-in), ask family first, help with the phone,
+  // the life certificate and the call rota. What they show comes from
+  // GET /api/events (familyCare) and the To do list; this phone keeps only
+  // which "Ask" rows its person waved away.
+  var fcCache = null, fcqFor = null, fcphImg = null, fcRec = null, fcListening = false, fcSending = false;
+  function fcFirst(n){ return String(n || '').split(' ')[0]; }
+  function fcPron(g){ return g === 'm' ? 'him' : g === 'f' ? 'her' : 'them'; }
+  function fcPoss(g){ return g === 'm' ? 'his' : g === 'f' ? 'her' : 'their'; }
+  function fcHidden(id){ try { return localStorage.getItem('parwah-fcq-hide:' + id) === '1'; } catch (e) { return false; } }
+  function fcDay(d){ try { return dtf([], { day:'numeric', month:'short' }).format(new Date(String(d).slice(0, 10) + 'T12:00:00')); } catch (e) { return String(d || ''); } }
+  function fcClock(iso){ return iso ? clockOf(new Date(iso)) : ''; }
+  function fcPost(body, okMsg, after){
+    body.code = state.code; body.memberId = state.memberId;
+    if (!body.tz) body.tz = homeTz() || undefined;
+    return post(API.events, body).then(function(j){
+      if (j.ok) { if (okMsg) toast(okMsg); refresh(); if (after) after(j); }
+      else toast(j.error || 'Could not send - try again');
+      return j;
+    }).catch(function(){ toast('No connection - try again'); return { ok: false }; });
+  }
+  function fcRender(fc){
+    fcCache = fc || null;
+    var al = $('fcalerts');
+    if (!fc) { al.innerHTML = ''; $('fcquiet').hidden = true; return; }
+    var me = state.memberId, h = '';
+    (fc.askfirst || []).forEach(function(a){
+      if (a.member_id === me) {
+        h += '<div class="crow fcrow urgent"><span class="txt"><b>🛡 You asked the family first</b><small>' +
+          (a.status === 'acked' ? '🧡 ' + esc(a.acked_name || 'Someone') + ' has seen it, calling you now. Do not pay or share any code until you talk.'
+            : 'The family has been told. Do not pay or share any code until someone calls you.') +
+          '</small></span><button class="cbtn" data-fcafopen="1">See the rules</button><button class="cbtn ghost" data-fcafclose="' + a.id + '">All sorted</button></div>';
+        return;
+      }
+      h += '<div class="crow fcrow urgent"><span class="txt"><b>🛡 ' + esc(a.name) + ' is asking the family first</b><small>' +
+        (a.status === 'acked' ? esc(a.acked_name || 'Someone') + ' has seen it and is calling.'
+          : 'Someone wants money or an OTP from ' + esc(fcFirst(a.name)) + '. Call before anything is paid.') +
+        (a.note ? ' “' + esc(a.note) + '”' : '') + '</small></span>' +
+        (a.phone ? '<a class="cbtn" href="tel:' + encodeURIComponent(a.phone) + '">📞 Call ' + esc(fcFirst(a.name)) + '</a>' : '') +
+        (a.status === 'open' ? '<button class="cbtn ghost" data-fcafack="' + a.id + '">I’ve seen it, calling now</button>' : '') + '</div>';
+    });
+    (fc.quiet || []).forEach(function(q){
+      // A question waiting for MY yes comes first: it is mine to answer.
+      if (q.memberId === me && q.ask) h += '<div class="crow fcrow urgent"><span class="txt"><b>🕚 ' + esc(q.askByName || 'The family') + ' asks: a daily check-in by ' + esc(q.ask) + '?</b>' +
+        '<small>If you have not said you are okay by then, you get a gentle reminder. 30 minutes later the family is told, so someone can call. It stays off unless you say yes.</small></span>' +
+        '<button class="cbtn" data-fcqyes="1">Yes, turn it on</button><button class="cbtn ghost" data-fcqno="1">Not now</button></div>';
+      if (q.memberId === me || !q.alerted) return;
+      // 30 minutes on with nobody calling, the first nearby helper who said
+      // yes is reached (api/_familycare.mjs quietLadder): Parwah rang them,
+      // or here is their number.
+      var ql = q.ladder, qlw = ql ? esc(ql.name) + (ql.distance ? ' (' + esc(ql.distance) + ')' : '') + (ql.hasKey ? ', who has a key,' : '') : '';
+      h += '<div class="crow fcrow urgent"><span class="txt"><b>🧡 ' + esc(q.name) + ' has not checked in today</b><small>' +
+        esc(fcFirst(q.name)) + '’s check-in time was ' + esc(q.checkinBy) + '. Give ' + fcPron(q.gender) + ' a call?' +
+        (q.ackBy ? ' ' + (q.ackBy === me ? 'You said you are calling.' : esc(q.ackByName || 'Someone') + ' is calling.') : '') +
+        (ql ? ' ' + (ql.called ? 'Nobody had answered, so Parwah called ' + qlw + ' who lives nearby.' : 'Nobody has answered yet. ' + qlw + ' lives nearby and said they can help.') : '') +
+        '</small></span>' +
+        (q.phone ? '<a class="cbtn" href="tel:' + encodeURIComponent(q.phone) + '">📞 Call ' + esc(fcFirst(q.name)) + '</a>' : '') +
+        (ql && !ql.called && ql.phone ? '<a class="cbtn ghost" href="tel:' + encodeURIComponent(ql.phone) + '">📞 Call ' + esc(ql.name) + '</a>' : '') +
+        (!q.ackBy ? '<button class="cbtn ghost" data-fcqack="' + esc(q.memberId) + '">I’m calling</button>' : '') + '</div>';
+    });
+    (fc.helps || []).forEach(function(x){
+      if (x.member_id === me) {
+        h += '<div class="crow fcrow"><span class="txt"><b>📱 You asked for help with the phone</b><small>' +
+          (x.status === 'claimed' ? '🙋 ' + esc(x.claimed_name || 'Someone') + ' is on it' : 'It is in the family chat. Waiting for someone to say “I’m on it”.') +
+          '</small></span><button class="cbtn ghost" data-fchelpdone="' + x.id + '">All sorted</button></div>';
+        return;
+      }
+      h += '<div class="crow fcrow"><span class="txt"><b>📱 ' + esc(x.name) + ' needs help with the phone</b><small>' +
+        (x.note ? '“' + esc(x.note) + '”' : 'Sent a picture of the screen') + (x.has_image && x.note ? ' · picture in the family chat' : '') +
+        (x.status === 'claimed' ? ' · ' + (x.claimed_by === me ? 'You are on it' : esc(x.claimed_name || 'Someone') + ' is on it') : '') + '</small></span>' +
+        (x.status === 'open' ? '<button class="cbtn" data-fchelpclaim="' + x.id + '">I’m on it</button>'
+          : x.claimed_by === me ? '<button class="cbtn ghost" data-fchelpdone="' + x.id + '">Done</button>' : '') +
+        '<button class="cbtn ghost" data-fccall="1">📹 Video call</button></div>';
+    });
+    al.innerHTML = h;
+    // "All quiet" must not sit under an alert.
+    var hs = $('hero-status'), first = al.querySelector('.fcrow.urgent b');
+    if (first && /^🧡 All quiet/.test(hs.textContent)) hs.textContent = first.textContent + '. See above.';
+    fcQuietRender();
+    if (!$('fcafsheet').hidden) fcafSync();
+    if (!$('fcphsheet').hidden) fcphSync();
+  }
+  // The daily check-in card: your own, then each person who has one, or a
+  // parent who could be asked. The person it is about says yes first.
+  function fcQuietRender(){
+    var rows = '', me = state.memberId;
+    (fcCache.quiet || []).forEach(function(q){
+      if (q.memberId === me) {
+        if (q.checkinBy) {
+          var st = q.phase === 'away' ? 'Paused: away until ' + fcDay(q.awayUntil)
+            : q.phase === 'ok' ? '✅ Done for today, at ' + fcClock(q.okAt)
+            : 'Tap I’m okay before ' + q.checkinBy + '.';
+          rows += '<div class="crow fcrow"><span class="txt"><b>You: by ' + esc(q.checkinBy) + ' each day</b><small>' + esc(st) + '</small></span>' +
+            (q.phase !== 'ok' && q.phase !== 'away' ? '<button class="cbtn" data-fcqok="1">I’m okay ✅</button>' : '') +
+            '<button class="cbtn ghost" data-fcqset="' + me + '">Change</button></div>';
+        } else if (!q.ask && state.role === 'parent' && !fcHidden(me)) {
+          rows += '<div class="crow fcrow"><span class="txt"><b>Your daily check-in is off</b><small>Pick a time. If you have not said you are okay by then, the family will know to call.</small></span>' +
+            '<button class="cbtn" data-fcqset="' + me + '">Turn on</button><button class="cbtn ghost" data-fcqhide="' + me + '">Not now</button></div>';
+        }
+        return;
+      }
+      if (q.checkinBy) {
+        var s2 = q.phase === 'away' ? 'Away until ' + fcDay(q.awayUntil) + '. Paused till then.'
+          : q.phase === 'ok' ? '✅ Said okay at ' + fcClock(q.okAt)
+          : q.phase === 'alert' ? 'Not yet today. The family has been told.'
+          : q.phase === 'nudge' ? 'Not yet today. A gentle reminder went to ' + fcPron(q.gender) + '.'
+          : 'Not yet today. The time is ' + q.checkinBy + '.';
+        rows += '<div class="crow fcrow' + (q.phase === 'alert' ? ' urgent' : '') + '"><span class="txt"><b>' + esc(q.name) + ': by ' + esc(q.checkinBy) + '</b><small>' + esc(s2) + '</small></span>' +
+          '<button class="cbtn ghost" data-fcqset="' + q.memberId + '" aria-label="Pause or change ' + esc(q.name) + '’s check-in">' + (q.phase === 'away' ? 'Change' : 'Pause') + '</button></div>';
+      } else if (q.ask) {
+        rows += '<div class="crow fcrow"><span class="txt"><b>' + esc(q.name) + ': asked for ' + esc(q.ask) + '</b><small>Waiting for ' + fcPron(q.gender) + ' to say yes on ' + fcPoss(q.gender) + ' own phone.</small></span></div>';
+      } else if (q.role === 'parent' && !fcHidden(q.memberId)) {
+        rows += '<div class="crow fcrow"><span class="txt"><b>' + esc(q.name) + ': off</b><small>Ask ' + esc(fcFirst(q.name)) + ' to pick a time. It turns on only when ' + esc(fcFirst(q.name)) + ' says yes.</small></span>' +
+          '<button class="cbtn" data-fcqset="' + q.memberId + '">Ask ' + esc(fcFirst(q.name)) + '</button><button class="cbtn ghost" data-fcqhide="' + q.memberId + '">Not now</button></div>';
+      }
+    });
+    $('fcq-rows').innerHTML = rows;
+    $('fcquiet').hidden = !rows;
+    // The explanation is for a card with a check-in on it; an invitation
+    // row explains itself.
+    $('fcq-hint').hidden = !(fcCache.quiet || []).some(function(q){ return q.checkinBy; });
+  }
+  function fcSheet(id, on){
+    $(id).hidden = !on;
+    if (on) setTimeout(function(){ var x = $(id).querySelector('.x'); if (x) x.focus(); }, 30);
+  }
+  ['fcafsheet', 'fcphsheet', 'fcqsheet', 'fctsheet'].forEach(function(id){
+    $(id).addEventListener('click', function(e){ if (e.target === this) fcSheet(id, false); });
+    $(id).addEventListener('keydown', function(e){ if (e.key === 'Escape') fcSheet(id, false); });
+    $(id).querySelector('.x').addEventListener('click', function(){ fcSheet(id, false); });
+  });
+
+  // ---- the daily check-in sheet ----
+  function fcqOpen(id){
+    var q = fcCache && (fcCache.quiet || []).filter(function(x){ return x.memberId === id; })[0]; if (!q) return;
+    fcqFor = q;
+    var mine = id === state.memberId, f = fcFirst(q.name);
+    $('fcq-title').textContent = mine ? (q.checkinBy ? 'Your daily check-in' : 'Turn on your daily check-in')
+      : (q.checkinBy ? f + '’s daily check-in' : 'Ask ' + f + ' for a daily check-in');
+    $('fcq-sub').textContent = mine
+      ? 'If you have not tapped I’m okay or All is well by this time, you get a gentle reminder. 30 minutes later the family is told, so someone can call.'
+      : q.checkinBy ? 'Pause it while ' + f + ' is away or travelling. Only ' + f + ' can change the time.'
+      : f + ' gets the question on ' + fcPoss(q.gender) + ' own phone. Nothing turns on until ' + f + ' says yes.';
+    $('fcq-timewrap').hidden = !mine && !!q.checkinBy;
+    $('fcq-time').value = q.checkinBy || q.ask || '11:00';
+    $('fcq-save').textContent = mine ? (q.checkinBy ? 'Save the time' : 'Turn it on') : 'Ask ' + f;
+    $('fcq-awaywrap').hidden = !q.checkinBy;
+    $('fcq-away').value = q.awayUntil || '';
+    $('fcq-away').min = localDay(new Date());
+    $('fcq-back').hidden = !q.awayUntil;
+    $('fcq-off').hidden = !(mine && q.checkinBy);
+    fcSheet('fcqsheet', true);
+  }
+  $('fcq-save').addEventListener('click', function(){
+    var q = fcqFor; if (!q) return;
+    var t = $('fcq-time').value;
+    if (!/^\d{2}:\d{2}$/.test(t)) { fieldErr('fcq-time', 'Pick a time, like 11:00'); return; }
+    if (q.memberId === state.memberId) fcPost({ type: 'quiet_set', checkinBy: t }, null, function(j){ fcSheet('fcqsheet', false); toast(j.startsTomorrow ? 'On from tomorrow, by ' + t + ' 🧡' : 'On: by ' + t + ' each day 🧡'); });
+    else fcPost({ type: 'quiet_ask', targetId: q.memberId, checkinBy: t }, 'Asked. It turns on when ' + fcFirst(q.name) + ' says yes', function(){ fcSheet('fcqsheet', false); });
+  });
+  $('fcq-awaygo').addEventListener('click', function(){
+    var q = fcqFor; if (!q) return;
+    var d = $('fcq-away').value;
+    if (!d) { fieldErr('fcq-away', 'Pick the day ' + (q.memberId === state.memberId ? 'you are' : fcFirst(q.name) + ' is') + ' back'); return; }
+    fcPost({ type: 'quiet_away', targetId: q.memberId, until: d }, 'Paused until ' + fcDay(d), function(){ fcSheet('fcqsheet', false); });
+  });
+  $('fcq-back').addEventListener('click', function(){
+    var q = fcqFor; if (!q) return;
+    fcPost({ type: 'quiet_away', targetId: q.memberId, until: null }, 'On again 🧡', function(){ fcSheet('fcqsheet', false); });
+  });
+  $('fcq-off').addEventListener('click', function(){
+    askSheet('Turn off your daily check-in?', 'The family will no longer be told if you have not checked in.', 'Turn it off', 'Keep it on')
+      .then(function(y){ if (y) fcPost({ type: 'quiet_off' }, 'Turned off', function(){ fcSheet('fcqsheet', false); }); });
+  });
+
+  // ---- ask family first ----
+  function fcafMine(){ return fcCache && (fcCache.askfirst || []).filter(function(a){ return a.member_id === state.memberId; })[0]; }
+  function fcafSync(){
+    var a = fcafMine();
+    $('fcaf-status').hidden = !a; $('fcaf-send').hidden = !!a; $('fcaf-sorted').hidden = !a;
+    if (a) {
+      $('fcaf-st-b').textContent = a.status === 'acked' ? '🧡 ' + (a.acked_name || 'Someone') + ' has seen it, calling you now' : '✅ The family has been told';
+      $('fcaf-st-s').textContent = a.status === 'acked' ? 'Do not pay or share any code until you talk.' : 'Someone will call you. Do not pay or share any code until then.';
+    }
+    var calls = (membersCache || []).filter(function(m){ return m.id !== state.memberId && m.phone && onApp(m); }).slice(0, 3);
+    $('fcaf-calls').innerHTML = calls.map(function(m){ return '<a class="cbtn" href="tel:' + encodeURIComponent(m.phone) + '">📞 Call ' + esc(m.name) + '</a>'; }).join('');
+    var w = fcCache && fcCache.safeWord;
+    $('fcaf-safe').innerHTML = w
+      ? '🔑 Your family safe word: <b>' + esc(w) + '</b><br>Someone who is really family will know it. Ask for it before you do anything. <button type="button" class="linkbtn" data-fcwedit="1">Change it</button>'
+      : '🔑 No family safe word yet. Pick one only the family knows, and ask any caller for it. <button type="button" class="linkbtn" data-fcwedit="1">Set one</button>';
+  }
+  function fcafOpen(sendNow){
+    fcafSync();
+    $('fcaf-safeedit').hidden = true;
+    fcSheet('fcafsheet', true);
+    if (sendNow) fcafSend();
+  }
+  function fcafSend(){
+    if (fcSending) return;
+    fcSending = true;
+    fcPost({ type: 'askfirst' }, null, function(){ toast('The family has been told 🧡 Someone will call you'); })
+      .then(function(){ fcSending = false; });
+  }
+  $('fcaf-send').addEventListener('click', fcafSend);
+  $('fcaf-sorted').addEventListener('click', function(){ var a = fcafMine(); if (a) fcPost({ type: 'askfirst_close', askId: a.id }, 'Glad it is sorted 🧡', function(){ fcSheet('fcafsheet', false); }); });
+  $('fcaf-ekta').addEventListener('click', function(){
+    fcSheet('fcafsheet', false);
+    switchTab('ekta');
+    $('msg').value = 'I got a message asking for an OTP for a payment. Is it a scam?';
+    ektaSend();
+  });
+  $('fcaf-wsave').addEventListener('click', function(){
+    var w = $('fcaf-word').value.trim();
+    fcPost({ type: 'safeword_set', word: w }, w ? 'Saved. Tell the family on a call, never in a message.' : 'Safe word removed', function(){ $('fcaf-safeedit').hidden = true; });
+  });
+  $('btn-askfirst').addEventListener('click', function(){ fcafOpen(true); });
+  $('w-askfirst').addEventListener('click', function(){ fcafOpen(false); });
+
+  // ---- help me with my phone ----
+  function fcphMine(){ return fcCache && (fcCache.helps || []).filter(function(x){ return x.member_id === state.memberId; })[0]; }
+  function fcphSync(){
+    var x = fcphMine();
+    $('fcph-status').hidden = !x;
+    if (x) {
+      $('fcph-st-b').textContent = x.status === 'claimed' ? '🙋 ' + (x.claimed_name || 'Someone') + ' is on it' : '✅ Sent to the family chat';
+      $('fcph-st-s').textContent = x.status === 'claimed' ? 'They will call or message you soon.' : 'Waiting for someone to say “I’m on it”.';
+    }
+  }
+  function fcphOpen(){
+    fcphSync();
+    $('fcph-mic').hidden = !SR;
+    fcSheet('fcphsheet', true);
+  }
+  function fcShrink(f, done){
+    var url = URL.createObjectURL(f), img = new Image();
+    img.onload = function(){
+      var k = Math.min(1, 1000 / Math.max(img.naturalWidth, img.naturalHeight));
+      var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      done(c.toDataURL('image/jpeg', 0.72));
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); done(null); };
+    img.src = url;
+  }
+  $('fcph-file').addEventListener('change', function(){
+    var f = this.files && this.files[0];
+    fcphImg = null; $('fcph-prev').hidden = true;
+    if (!f) return;
+    fcShrink(f, function(d){
+      if (!d || d.length > 790000) { fieldErr('fcph-file', 'That picture could not be read. Try another one.'); return; }
+      fcphImg = d; $('fcph-prev').src = d; $('fcph-prev').hidden = false;
+    });
+  });
+  $('fcph-mic').addEventListener('click', function(){
+    if (!SR) return;
+    if (fcListening && fcRec) { try { fcRec.stop(); } catch (e) {} return; }
+    try {
+      fcRec = new SR(); fcRec.lang = speechLang(); fcRec.interimResults = false; fcRec.maxAlternatives = 1;
+      fcRec.onresult = function(e){
+        var t = e.results && e.results[0] && e.results[0][0] ? e.results[0][0].transcript : '';
+        if (t) $('fcph-note').value = ($('fcph-note').value ? $('fcph-note').value + ' ' : '') + t;
+      };
+      fcRec.onend = fcRec.onerror = function(){ fcListening = false; $('fcph-mic').textContent = '🎙 Say it instead'; };
+      fcRec.start(); fcListening = true; $('fcph-mic').textContent = '🎙 Listening… tap to stop';
+    } catch (e) { fcListening = false; }
+  });
+  $('fcph-send').addEventListener('click', function(){
+    var note = $('fcph-note').value.trim();
+    if (!note && !fcphImg) { fieldErr('fcph-note', 'Add a few words or a picture of the screen'); return; }
+    var b = this; b.disabled = true;
+    fcPost({ type: 'help_ask', text: note || undefined, image: fcphImg || undefined }, 'Sent to the family chat 🧡', function(){
+      $('fcph-note').value = ''; $('fcph-file').value = ''; fcphImg = null; $('fcph-prev').hidden = true;
+    }).then(function(){ b.disabled = false; });
+  });
+  $('fcph-call').addEventListener('click', function(){ fcSheet('fcphsheet', false); askCall(); });
+  $('btn-phonehelp').addEventListener('click', fcphOpen);
+  $('w-phonehelp').addEventListener('click', fcphOpen);
+
+  // ---- ready-made tasks: the life certificate and the call rota ----
+  function fcParentsFirst(){
+    var ms = (membersCache || []).slice();
+    return ms.filter(function(m){ return m.role === 'parent'; }).concat(ms.filter(function(m){ return m.role !== 'parent'; }));
+  }
+  function fcRotaPeople(){
+    var about = $('fct-r-who').value;
+    $('fct-r-people').innerHTML = (membersCache || []).filter(function(m){ return onApp(m) && m.id !== about; }).map(function(m){
+      return '<label class="gchk"><input type="checkbox" value="' + m.id + '"' + (m.role !== 'parent' ? ' checked' : '') + '> ' + esc(m.id === state.memberId ? 'Me' : m.name) + '</label>';
+    }).join('') || '<p class="hint" style="margin:0">Nobody else is on Parwah yet. Invite the family first.</p>';
+  }
+  function fctOpen(kind){
+    var opts = fcParentsFirst().map(function(m){ return '<option value="' + m.id + '">' + esc(m.id === state.memberId ? 'Me' : m.name) + '</option>'; }).join('');
+    $('fct-lc').hidden = kind !== 'lc'; $('fct-rota').hidden = kind !== 'rota';
+    $('fct-title').textContent = kind === 'lc' ? '🪪 Life certificate (Jeevan Pramaan)' : '📞 Call rota: who calls today';
+    if (kind === 'lc') $('fct-lc-who').innerHTML = opts;
+    else { $('fct-r-who').innerHTML = opts; fcRotaPeople(); }
+    fcSheet('fctsheet', true);
+  }
+  $('fc-lc-open').addEventListener('click', function(){ fctOpen('lc'); });
+  $('fc-rota-open').addEventListener('click', function(){ fctOpen('rota'); });
+  $('fct-r-who').addEventListener('change', fcRotaPeople);
+  $('fct-lc-go').addEventListener('click', function(){
+    carePost({ action: 'lifecert_create', aboutMemberId: $('fct-lc-who').value, tz: homeTz() || undefined }, function(j){
+      fcSheet('fctsheet', false);
+      toast('Added to To do: ' + (j.window && j.window.superSenior ? 'from 1 October' : 'from 1 November') + ' to 30 November');
+    });
+  });
+  $('fct-r-go').addEventListener('click', function(){
+    var ids = []; $('fct-r-people').querySelectorAll('input:checked').forEach(function(x){ ids.push(x.value); });
+    if (!ids.length) { fieldErr('fct-r-people', 'Pick at least one person to take turns'); return; }
+    carePost({ action: 'rota_create', aboutMemberId: $('fct-r-who').value, memberIds: ids, time: $('fct-r-time').value || '19:00', tz: homeTz() || undefined }, function(){
+      fcSheet('fctsheet', false);
+      toast('Rota started. Each day one person calls 🧡');
+    });
+  });
+  // Inside one task: the checklist, or the rota.
+  function fcTaskExtra(q){
+    var box = $('ts-tpl'), d = q.template_data || {}, me = state.memberId, open = taskOpen(q);
+    if (q.template === 'lifecert') {
+      var ch = d.checks || {};
+      var h = '<div class="card fccard"><p class="eyebrow" style="margin:0 0 var(--space-8)">Life certificate checklist</p>' +
+        '<p class="hint" style="margin:0 0 var(--space-8)">Can be given from ' + esc(d.opens ? fcDay(d.opens) : '1 Nov') + ' to ' + esc(d.closes ? fcDay(d.closes) : '30 Nov') + '. ' +
+        (d.dobKnown ? '' : 'Add a date of birth to the profile: at 80 and over it opens on 1 October. ') +
+        'Dates are as announced each year: confirm on <a href="https://jeevanpramaan.gov.in" target="_blank" rel="noopener">jeevanpramaan.gov.in</a>.</p>';
+      [['ppo', 'PPO number ready (it is on the pension book or letter)'],
+       ['aadhaar', 'Aadhaar is linked (seeded) with the pension bank account'],
+       ['face', 'Face check done in the official Jeevan Pramaan and AadhaarFaceRD apps']].forEach(function(c){
+        h += '<label class="fcchk"><input type="checkbox" data-fclc="' + c[0] + '"' + (ch[c[0]] ? ' checked' : '') + (open ? '' : ' disabled') + '><span>' + c[1] + '</span></label>';
+      });
+      if (d.result === 'rejected' && open) {
+        h += '<div class="crow fcrow urgent"><span class="txt"><b>Not accepted this time. What usually sorts it:</b>' +
+          '<ol class="fcsteps"><li>Update the Aadhaar photo at an Aadhaar centre.</li><li>Try at the pension bank branch.</li><li>Ask the bank for a doorstep banking visit at home.</li></ol><small>Then try again.</small></span></div>';
+      }
+      if (open) {
+        h += '<label for="fclc-ack">Acknowledgement number</label><input type="text" id="fclc-ack" maxlength="40" autocomplete="off" placeholder="From the app or the bank">' +
+          '<div class="fcstack"><button type="button" class="go" id="fclc-save" data-fclcsave="' + q.id + '">Save it: the certificate is done</button>' +
+          '<button type="button" class="cbtn ghost" data-fclcrej="' + q.id + '">It was rejected</button></div>';
+      } else if (d.ackNo) h += '<p class="hint">Acknowledgement: <b>' + esc(d.ackNo) + '</b></p>';
+      box.innerHTML = h + '<p class="hint">Parwah never takes a face scan or an Aadhaar number. Only the acknowledgement number is kept.</p></div>';
+      $('ts-done').hidden = true;
+      $('ts-actions').querySelectorAll('[data-ts="done"]').forEach(function(b){ b.remove(); });
+      return;
+    }
+    if (q.template === 'callrota') {
+      var rota = d.rota || [], name = fcFirst(q.about_name || 'them'), ms = membersCache || [];
+      var nm = function(id){ var m = ms.filter(function(x){ return x.id === id; })[0]; return id === me ? 'You' : m ? m.name : 'Someone'; };
+      var nextId = rota.length ? rota[((d.idx || 0) + 1) % rota.length] : null;
+      var h2 = '<div class="card fccard"><p class="eyebrow" style="margin:0 0 var(--space-8)">Who calls ' + esc(name) + '</p><div class="fcrota">' +
+        rota.map(function(id){ var now = id === q.claimed_by && open; return '<span' + (now ? ' class="now"' : '') + '>' + (now ? 'Today: ' : '') + esc(nm(id)) + '</span>'; }).join('') + '</div>' +
+        '<p class="hint" style="margin:0">One person a day, in this order. Skip passes today to the next person.</p>';
+      if (open) h2 += '<div class="fcstack"><button type="button" class="go" data-fcrdone="' + q.id + '">Called ' + esc(name) + ' ✔</button>' +
+        ((q.claimed_by === me || q.by_member === me) && rota.length > 1 ? '<button type="button" class="cbtn ghost" data-fcrskip="' + q.id + '">Skip today: pass to ' + esc(nm(nextId)) + '</button>' : '') + '</div>';
+      box.innerHTML = h2 + '</div>';
+      $('ts-done').hidden = true;
+      $('ts-actions').querySelectorAll('[data-ts="done"],[data-ts="decline"],[data-ts="give"]').forEach(function(b){ b.remove(); });
+      return;
+    }
+    box.innerHTML = '';
+  }
+  $('ts-tpl').addEventListener('change', function(e){
+    var c = e.target.closest('[data-fclc]'); if (!c || !tsId) return;
+    var o = {}; o[c.getAttribute('data-fclc')] = c.checked;
+    carePost({ action: 'lifecert_update', taskId: tsId, check: o });
+  });
+
+  // Every family-care button, in one place.
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-fcafopen],[data-fcafclose],[data-fcafack],[data-fchelpdone],[data-fchelpclaim],[data-fccall],[data-fcqyes],[data-fcqno],[data-fcqack],[data-fcqok],[data-fcqset],[data-fcqhide],[data-fcwedit],[data-fcrdone],[data-fcrskip],[data-fclcsave],[data-fclcrej]');
+    if (!b || !state) return;
+    var d = b.dataset;
+    if (d.fcafopen) fcafOpen(false);
+    if (d.fcafclose) fcPost({ type: 'askfirst_close', askId: d.fcafclose }, 'Glad it is sorted 🧡');
+    if (d.fcafack) fcPost({ type: 'askfirst_ack', askId: d.fcafack }, null, function(j){ toast(j.already ? (j.ackedName || 'Someone') + ' is already calling' : 'They have been told you are calling. Call now 🧡'); });
+    if (d.fchelpclaim) fcPost({ type: 'help_claim', helpId: d.fchelpclaim }, 'They know you are on it 🧡');
+    if (d.fchelpdone) fcPost({ type: 'help_done', helpId: d.fchelpdone }, 'Marked as sorted');
+    if (d.fccall) askCall();
+    if (d.fcqyes) fcPost({ type: 'quiet_answer', yes: true }, null, function(j){ toast(j.startsTomorrow ? 'On from tomorrow 🧡' : 'Turned on 🧡'); });
+    if (d.fcqno) fcPost({ type: 'quiet_answer', yes: false }, 'Left off. You can turn it on any time.');
+    if (d.fcqack) fcPost({ type: 'quiet_ack', targetId: d.fcqack }, null, function(j){ toast(j.already ? (j.ackedName || 'Someone') + ' is already calling' : 'The family knows you are calling 🧡'); });
+    if (d.fcqok) sendEvent('checkin', '', function(){ toast('The whole family knows you are okay'); });
+    if (d.fcqset) fcqOpen(d.fcqset);
+    if (d.fcqhide) { try { localStorage.setItem('parwah-fcq-hide:' + d.fcqhide, '1'); } catch (x) {} fcQuietRender(); }
+    if (d.fcwedit) { $('fcaf-safeedit').hidden = false; $('fcaf-word').value = (fcCache && fcCache.safeWord) || ''; $('fcaf-word').focus(); }
+    if (d.fcrdone) carePost({ action: 'rota_done', taskId: d.fcrdone }, function(j){ toast('Called ✔ ' + (j.nextBy ? 'Tomorrow is ' + (j.nextBy === state.memberId ? 'your' : (((membersCache || []).filter(function(m){ return m.id === j.nextBy; })[0] || {}).name || 'the next person') + '’s') + ' turn' : '')); });
+    if (d.fcrskip) carePost({ action: 'rota_skip', taskId: d.fcrskip }, function(){ toast('Passed on. They have been told 🧡'); });
+    if (d.fclcrej) carePost({ action: 'lifecert_update', taskId: d.fclcrej, result: 'rejected' }, function(){ toast('Noted. The steps to sort it are in the task.'); });
+    if (d.fclcsave) {
+      var v = ($('fclc-ack') && $('fclc-ack').value || '').trim();
+      if (!v) { fieldErr('fclc-ack', 'Type the acknowledgement number, or tap "It was rejected"'); return; }
+      // A refused number is said under its box, not in a toast.
+      post(API.care, { code: state.code, memberId: state.memberId, action: 'lifecert_update', taskId: d.fclcsave, result: 'ack', ackNo: v })
+        .then(function(j){
+          if (!j.ok) { fieldErr('fclc-ack', j.error || 'That could not be saved'); return; }
+          refresh(); toast(j.done ? 'Done ✔ Next year’s is on the list' : 'Saved. Mark the task done when you are ready');
+        }).catch(function(){ toast('No connection - try again'); });
+    }
+  });
 
   // ---------- plans ----------
   $('p-kind').addEventListener('click', function(e){

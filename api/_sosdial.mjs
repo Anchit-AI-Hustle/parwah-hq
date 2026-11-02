@@ -85,6 +85,29 @@ export async function ensureDialSchema(sql) {
     created_at timestamptz not null default now(),
     primary key (sos_id, phone, channel)
   )`;
+  // Calls that are not for an SOS (a missed daily check-in reaching a nearby
+  // helper, api/_familycare.mjs). Kept apart because they have no sos row,
+  // but counted in the same daily cap.
+  await sql`create table if not exists care_dial (
+    circle_id uuid not null references circles(id) on delete cascade,
+    kind text not null,
+    ref text not null,
+    phone text not null,
+    status text not null default 'sending',
+    detail text,
+    created_at timestamptz not null default now(),
+    primary key (kind, ref, phone)
+  )`;
+}
+
+// Everything this family has been sent in the last day: SOS texts and calls,
+// ladder calls, and the calls made for a missed check-in. One cap for all.
+async function sentToday(sql, circleId) {
+  const r = await sql`select (select count(*)::int from sos_dial d join sos s on s.id = d.sos_id
+                                where s.circle_id = ${circleId} and d.created_at > now() - interval '1 day')
+                           + (select count(*)::int from care_dial c
+                                where c.circle_id = ${circleId} and c.created_at > now() - interval '1 day') as n`;
+  return (r[0] && r[0].n) || 0;
 }
 
 async function twilio(cfg, path, form, fetchImpl) {
@@ -125,12 +148,10 @@ export async function dialOut(sql, sosId, contacts, { name, text, map, cc }, { e
       }
       if (cfg.voice && i < CALL_MAX) jobs.push({ p, channel: 'call', path: 'Calls.json', form: { To: p.to, From: cfg.voice, Twiml: callScript(name, cc) } });
     });
-    const used = await sql`select count(*)::int as n from sos_dial d join sos s on s.id = d.sos_id
-                           where s.circle_id = (select circle_id from sos where id = ${sosId})
-                             and d.created_at > now() - interval '1 day'`;
+    const sc = await sql`select circle_id from sos where id = ${sosId}`;
     // If this count cannot be read, the catch below sends nothing: a paid
     // send fails closed.
-    const left = Math.max(0, DIAL_DAY_MAX - ((used[0] && used[0].n) || 0));
+    const left = Math.max(0, DIAL_DAY_MAX - (sc[0] ? await sentToday(sql, sc[0].circle_id) : DIAL_DAY_MAX));
     out.capped = jobs.length > left;
     await Promise.allSettled(jobs.slice(0, left).map(async j => {
       // Claimed first: a second press, or two servers at once, never sends twice.
@@ -143,5 +164,78 @@ export async function dialOut(sql, sosId, contacts, { name, text, map, cc }, { e
       if (r.ok) out[j.channel]++; else out.failed++;
     }));
   } catch (e) { /* the SOS has already gone to the family */ }
+  return out;
+}
+
+// THE NEAREST-PERSON LADDER (api/_ladder.mjs): one call to someone near the
+// person, who said yes on their own consent page, when nobody in the family
+// has answered. What it says: who it is from, who needs help, and that the
+// family could not be reached.
+export function ladderScript(helper, name, cc) {
+  const voice = !cc || cc === '+91' ? 'voice="Polly.Aditi" language="en-IN"' : 'voice="Polly.Joanna" language="en-US"';
+  const clean = (s, d) => String(s || d).replace(/[<>&"']/g, ' ').trim();
+  const line = 'Hello ' + clean(helper, 'there') + '. This is Parwah, calling for ' + clean(name, 'your neighbour') + "'s family. " +
+    clean(name, 'They') + ' pressed S O S and nobody in the family has answered yet. ' +
+    'You said you could help. Please go and check on them, or call them now. Thank you.';
+  return '<Response><Say ' + voice + '>' + line + '</Say><Pause length="1"/>' +
+         '<Say ' + voice + '>' + line + '</Say></Response>';
+}
+
+// Same account, same daily cap and the same claim-first rule as dialOut:
+// a rung is called once, and never past DIAL_DAY_MAX for the family.
+// → { configured, called, capped, failed, detail }
+export async function dialLadder(sql, sosId, helper, { name, cc }, { env = process.env, fetchImpl = globalThis.fetch } = {}) {
+  const cfg = dialConfig(env);
+  const out = { configured: !!(cfg.on && cfg.voice), called: false, capped: false, failed: false };
+  if (!out.configured || !sosId || !helper) return out;
+  try {
+    await ensureDialSchema(sql);
+    const to = e164(helper.phone, cc);
+    if (!to) { out.failed = true; out.detail = 'not a dialable number'; return out; }
+    const sc = await sql`select circle_id from sos where id = ${sosId}`;
+    if (!sc[0] || (await sentToday(sql, sc[0].circle_id)) >= DIAL_DAY_MAX) { out.capped = true; return out; }
+    const claim = await sql`insert into sos_dial (sos_id, phone, channel) values (${sosId}, ${to}, 'ladder')
+                            on conflict do nothing returning phone`;
+    if (!claim[0]) return out;
+    const r = await twilio(cfg, 'Calls.json', { To: to, From: cfg.voice, Twiml: ladderScript(helper.name, name, cc) }, fetchImpl);
+    await sql`update sos_dial set status = ${r.ok ? 'sent' : 'failed'}, detail = ${r.ok ? (r.id || null) : String(r.detail).slice(0, 200)}
+              where sos_id = ${sosId} and phone = ${to} and channel = 'ladder'`;
+    if (r.ok) out.called = true; else { out.failed = true; out.detail = r.detail; }
+  } catch (e) { out.failed = true; }
+  return out;
+}
+
+// A MISSED DAILY CHECK-IN, after the family alert went unanswered: one gentle
+// call to the first nearby helper who said yes. Not an emergency, so it
+// does not say one.
+export function quietLadderScript(helper, name, cc) {
+  const voice = !cc || cc === '+91' ? 'voice="Polly.Aditi" language="en-IN"' : 'voice="Polly.Joanna" language="en-US"';
+  const clean = (s, d) => String(s || d).replace(/[<>&"']/g, ' ').trim();
+  const line = 'Hello ' + clean(helper, 'there') + '. This is Parwah, calling for ' + clean(name, 'your neighbour') + "'s family. " +
+    clean(name, 'They') + ' has not checked in today, and the family has not been able to reach them yet. ' +
+    'You said you could help. When you can, please check on them or give them a call. Thank you.';
+  return '<Response><Say ' + voice + '>' + line + '</Say><Pause length="1"/>' +
+         '<Say ' + voice + '>' + line + '</Say></Response>';
+}
+
+// The same claim-first rule and the same daily cap as dialLadder, keyed on
+// the person and the day instead of an SOS. → { configured, called, capped, failed, detail }
+export async function dialQuietLadder(sql, circleId, ref, helper, { name, cc }, { env = process.env, fetchImpl = globalThis.fetch } = {}) {
+  const cfg = dialConfig(env);
+  const out = { configured: !!(cfg.on && cfg.voice), called: false, capped: false, failed: false };
+  if (!out.configured || !circleId || !ref || !helper) return out;
+  try {
+    await ensureDialSchema(sql);
+    const to = e164(helper.phone, cc);
+    if (!to) { out.failed = true; out.detail = 'not a dialable number'; return out; }
+    if ((await sentToday(sql, circleId)) >= DIAL_DAY_MAX) { out.capped = true; return out; }
+    const claim = await sql`insert into care_dial (circle_id, kind, ref, phone) values (${circleId}, 'quiet', ${ref}, ${to})
+                            on conflict do nothing returning phone`;
+    if (!claim[0]) return out;
+    const r = await twilio(cfg, 'Calls.json', { To: to, From: cfg.voice, Twiml: quietLadderScript(helper.name, name, cc) }, fetchImpl);
+    await sql`update care_dial set status = ${r.ok ? 'sent' : 'failed'}, detail = ${r.ok ? (r.id || null) : String(r.detail).slice(0, 200)}
+              where kind = 'quiet' and ref = ${ref} and phone = ${to}`;
+    if (r.ok) out.called = true; else { out.failed = true; out.detail = r.detail; }
+  } catch (e) { out.failed = true; }
   return out;
 }

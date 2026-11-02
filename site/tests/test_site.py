@@ -867,6 +867,9 @@ CIRCLE_WIDE_OK = {
     ("_tasks.mjs", "Nobody has it yet - first to tap"): "its time has come and nobody has it: anyone may take it",
     ("plans.mjs",  ""):                   "a plan invites the whole circle",
     ("games.mjs",  "lobby is open"):      "an open lobby invites everyone",
+    ("_ladder.mjs", "Calling "):          "nobody answered an SOS: everyone sees who is being called next",
+    ("_staff.mjs", "not marked in yet"):  "anyone in the family may be the one who can check at home",
+    ("_renewals.mjs", "payload, {})"):    "a household date nobody looks after yet: anyone may take it",
 }
 def _push_calls(src):
     out = []
@@ -2073,7 +2076,7 @@ check("order: on a parent's phone nothing covers All is well, Pills or SOS",
 # something in it is set or refused (proved in vault.e2e, care.e2e, plans.e2e).
 _folds = re.findall(r'<details class="fmore" id="([a-z-]+)">\s*<summary>([^<]*)</summary>', _appt)
 check("options: the busy forms fold their extras under More options, each named",
-      sorted(f[0] for f in _folds) == ["b-more", "p-more", "r-more", "vd-more", "vp-more"]
+      sorted(f[0] for f in _folds) == ["b-more", "ex-more", "p-more", "r-more", "st-more", "vd-more", "vp-more"]
       and all(f[1].startswith("More options: ") for f in _folds)
       and "for (var d = el.closest('details'); d;" in _appt
       and all(("foldSync('" + f[0] + "')") in _appt for f in _folds))
@@ -2590,6 +2593,143 @@ check("repairs: the server's newer replies are read: a voice task's own title an
 check("repairs: the To do filters call the function that exists",
       "renderReminders(" not in _js)
 
+# ---------- 10cc. Care cycle: dose ticks, the hospital screen, after a visit ----------
+# The journeys run end to end in site/tests/db/carecycle.e2e.dbtest.mjs and
+# against the database in carecycle.dbtest.mjs; these keep the source honest.
+_dz = (API_DIR / "_doses.mjs").read_text(encoding="utf-8")
+_ad = (API_DIR / "_admission.mjs").read_text(encoding="utf-8")
+_vz = (API_DIR / "_visits.mjs").read_text(encoding="utf-8")
+_strip = lambda t: re.sub(r"//[^\n]*", "", t)
+check("care cycle: doses, the hospital screen and visits ride on existing routes, no new function",
+      "area === 'doses'" in (API_DIR / "care.mjs").read_text(encoding="utf-8")
+      and "area === 'admission'" in (API_DIR / "book.mjs").read_text(encoding="utf-8")
+      and "area === 'visit'" in (API_DIR / "plans.mjs").read_text(encoding="utf-8")
+      and not any((API_DIR / f).exists() for f in ("doses.mjs", "admission.mjs", "visits.mjs")))
+check("care cycle: the nudge and the family alert are each claimed once, inside waking hours",
+      "d.nudged_at is null" in _dz and "d.alerted_at is null" in _dz and "update medicine_doses d set nudged_at = now()" in _dz
+      and "update medicine_doses d set alerted_at = now()" in _dz and _dz.count("between ${WAKE_FROM} and ${WAKE_TO}") == 2
+      and "sweepDoses(sql, circle.id)" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
+check("care cycle: every dose read and the alert respect who may see a private medicine",
+      _strip(_dz).count("from book_access ba where ba.entry_id = b.id") >= 4)
+check("care cycle: a tick is a record, said in the app's own words",
+      "A tick is what was marked, not a check that the medicine was taken." in _app_src
+      and "It is a note, not a check." in _app_src)
+check("care cycle: no dose advice and no therapeutic words in the new modules",
+      not re.search(r"\b(dosage|overdose|double the dose|cure|treat|therapy)\b", _strip(_dz + _ad + _vz), re.I))
+check("care cycle: the hospital screen keeps IDs as their last four and quotes no insurer timings",
+      "policy_last4 text" in _ad and "claim_last4 text" in _ad and "policy_number" not in _strip(_ad).split("create table if not exists admissions")[1].split(")`;")[0]
+      and not re.search(r"IRDAI|turnaround|within \d+ (hours|minutes)", _strip(_ad) + _app_src[_app_src.index('id="admsheet"'):_app_src.index('id="vsheet"')], re.I))
+check("care cycle: visit notes are record-only; nothing in that path calls Ekta or a model",
+      not re.search(r"anthropic|ekta|_ektalocal", _strip(_vz), re.I)
+      and "Parwah and Ekta never read or explain a prescription or a report." in _app_src)
+check("care cycle: the old one-a-day button stays, and gives way only when times are set",
+      'id="btn-pill"' in _app_src and "pill.hidden = !!slots.length" in _app_src and "'pill'" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
+
+# ---------- Family tools: nearby helpers, costs, home staff, renewals ----------
+# The nearest-person ladder, shared care costs, the home staff register and
+# renewal radar (api/_ladder.mjs, _expenses.mjs, _staff.mjs, _renewals.mjs).
+# Behaviour is proved against a real database in familytools.dbtest; these
+# are the promises that must never quietly change.
+_ft = {n: (API_DIR / n).read_text(encoding="utf-8") for n in ("_ladder.mjs", "_expenses.mjs", "_staff.mjs", "_renewals.mjs", "care.mjs", "events.mjs", "circle.mjs", "_sosdial.mjs")}
+check("family tools: each lives behind /api/care, never a new function",
+      all(f"area === '{a}'" in _ft["care.mjs"] for a in ("ladder", "expenses", "staff", "renewals")))
+check("ladder: a nearby person joins only on their own yes, from a link nobody signs in for",
+      "consent = 'yes'" in _ft["_ladder.mjs"] and "req.query.consent !== undefined) return consentPage" in _ft["circle.mjs"]
+      and "token_hash" in _ft["_ladder.mjs"] and "randomBytes(24)" in _ft["_ladder.mjs"])
+check("ladder: the consent page says what is done, what is kept and how to remove it (DPDP)",
+      all(t in _ft["_ladder.mjs"] for t in ("What Parwah will do", "What is kept about you", "How to remove it", "Stop and delete my details", "noindex")))
+check("ladder: other features read it through ladderFor(sql, circleId, personId)",
+      "export async function ladderFor(sql, circleId, personId)" in _ft["_ladder.mjs"])
+check("ladder: an unanswered SOS calls rung by rung, claimed once, inside the family's daily cap",
+      "ladderEscalate(sql, circle.id, SOS_ESCALATE_MIN)" in _ft["events.mjs"] and "primary key (sos_id, rung)" in _ft["_ladder.mjs"]
+      and "DIAL_DAY_MAX" in _ft["_sosdial.mjs"][_ft["_sosdial.mjs"].index("export async function dialLadder"):])
+check("ladder: without Twilio the family's SOS alarm shows the helpers with Call buttons",
+      "function sosLadder(other)" in _appt and 'id="sa-ladder"' in _appt and "sosLadder(other);" in _appt)
+check("costs: a record only - no payment link, no transfer, amounts kept in their own currency",
+      not re.search(r"upi://|upi_link|checkout|payment_link", _ft["_expenses.mjs"]) and "EXPENSE_CURS = ['INR', 'USD', 'AED', 'GBP', 'CAD']" in _ft["_expenses.mjs"]
+      and "A record only: Parwah never moves money" in _appt)
+check("costs: the balance line is neutral words, never blame",
+      "' than their share'" in _ft["_expenses.mjs"] and not re.search(r"owes|debt|defaulter", _ft["_expenses.mjs"], re.I))
+check("staff: only the last 4 of an ID, and the add form tells the family to tell them (DPDP)",
+      "/^[A-Za-z0-9]{4}$/" in _ft["_staff.mjs"] and "Tell them what you record here" in _appt)
+check("staff: the month's pay is a sum written out in words",
+      "' salary'" in _ft["_staff.mjs"] and "divided by" in _ft["_staff.mjs"] and "p.formula" in _appt)
+check("staff: a late arrival alerts once a day, on working days only",
+      "primary key (staff_id, day)" in _ft["_staff.mjs"].split("staff_late_alert")[1] and "work_days" in _ft["_staff.mjs"]
+      and "sweepStaffLate(sql, circle.id)" in _ft["events.mjs"])
+check("staff: respectful words about the people who help",
+      not re.search(r"\b(servant|naukar|bai|absconded|no-show)\b", _ft["_staff.mjs"] + _appt[_appt.index('data-sec="staff" hidden'):_appt.index('data-sec="renewals" hidden')], re.I))
+check("renewals: 30 and 7 days ahead, each once per expiry date",
+      "STAGES = [30, 7]" in _ft["_renewals.mjs"] and "primary key (ref_id, stage, for_date)" in _ft["_renewals.mjs"]
+      and "sweepRenewals(sql, circle.id)" in _ft["events.mjs"])
+check("renewals: freshness like the family book, and a private vault paper only for who may see it",
+      "last_verified_at" in _ft["_renewals.mjs"] and "va.member_id is not null" in _ft["_renewals.mjs"])
+
+# ---------- Family care tools (2026-11-02): quiet day, ask family first,
+# the life certificate, the call rota, help with the phone ----------
+_fc_api = (API_DIR / "_familycare.mjs").read_text(encoding="utf-8")
+_fc_rules = (API_DIR / "_carerules.mjs").read_text(encoding="utf-8")
+_fc_ev = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_fc_care = (API_DIR / "care.mjs").read_text(encoding="utf-8")
+_fc_js = _app_src[_app_src.index("// ---------- family care tools (api/_familycare.mjs)"):_app_src.index("// Every family-care button, in one place.")]
+_fc_html = "".join(_app_src[_app_src.index(a):_app_src.index(b)] for a, b in (
+    ('<div class="msheet" id="fcafsheet"', '<!-- A question with two big answers'),
+    ('<div id="fcalerts"', '<!-- For an elder'),
+    ('<div class="card fccard" id="fcquiet"', '<div class="widgets" id="widgets">')))
+check("care tools: they live behind existing routes, never a new serverless function",
+      "FC_EVENT_TYPES.includes(type)" in _fc_ev and "FC_CARE_ACTIONS.includes(action)" in _fc_care
+      and not (API_DIR / "familycare.mjs").exists())
+check("care tools: every write goes through requireMember, and the missed check-in is claimed once by a conditional UPDATE",
+      "requireMember(sql, b.code, b.memberId, tokenOf(req))" in _fc_api
+      and "quiet_nudged_for is distinct from ${today}::date returning id" in _fc_api
+      and "quiet_alerted_for is distinct from ${today}::date returning id" in _fc_api)
+check("care tools: the check-in is off until the person says yes on their own screen, and away pauses it",
+      "'quiet_answer'" in _fc_api and "checkin_ask" in _fc_api and "away_until" in _fc_api
+      and "data-fcqyes" in _fc_js and "It stays off unless you say yes" in _fc_js)
+check("care tools: the family alert is calm: a question and a Call button, 30 minutes after a gentle nudge",
+      "has not checked in today. Give " in _fc_rules and "QUIET_GRACE_MIN = 30" in _fc_rules and "Sab theek?" in _fc_rules
+      and "href=\"tel:' + encodeURIComponent(q.phone)" in _fc_js)
+check("care tools: an elder's Today has the two big buttons, after SOS, All is well and Medicines",
+      _app_src.index('id="btn-pill"') < _app_src.index('id="btn-askfirst"') < _app_src.index('id="btn-phonehelp"') < _app_src.index('class="homehero"'))
+check("elder Today, calmest first (TODAY.md): All is well, then the medicine ticks, then SOS, then the rest; SOS also docked in the tab bar",
+      _app_src.index('id="btn-checkin"') < _app_src.index('id="btn-pill"') < _app_src.index('id="dose-elder"') < _app_src.index('id="btn-sos"') < _app_src.index('id="btn-askfirst"')
+      and 'id="sos-fab"' in _app_src)
+check("care tools: ask family first gives the rules, 1930 and cybercrime.gov.in, and needs a family yes",
+      all(x in _fc_html for x in ("Never share an OTP or your UPI PIN", "Police never arrest anyone on a video call",
+                                   "Banks never ask for KYC on a phone call", "Hang up and call us", 'href="tel:1930"', 'href="https://cybercrime.gov.in"'))
+      and "'askfirst_ack'" in _fc_api and "urgent: true" in _fc_api and "data-fcafack" in _fc_js)
+check("care tools: Parwah never claims to spot a scam",
+      not re.search(r"\b(detect|detects|detected|we catch|scam[- ]proof|guarantee)", (_fc_html + _fc_js + _fc_rules).lower()))
+check("care tools: the safe word is for members only and never in the feed or a push",
+      "The word itself never goes in the feed or a push" in _fc_api and "safeWord" in _fc_api)
+check("care tools: the life certificate links only to jeevanpramaan.gov.in, and keeps no face scan or Aadhaar number",
+      set(re.findall(r"https?://[a-z.]*jeevan[a-z.]*", _app_src)) == {"https://jeevanpramaan.gov.in"}
+      and "Only the acknowledgement number is kept" in _fc_js and "looks like an Aadhaar number" in _fc_rules
+      and "as announced each year" in _fc_js and "'-10-01'" in _fc_rules and "'-11-30'" in _fc_rules)
+check("care tools: a yearly repeat, in the form, the edit sheet and the server",
+      "'yearly'" in (API_DIR / "_recur.mjs").read_text(encoding="utf-8") and 'data-rep="yearly"' in _app_src
+      and '<option value="yearly">Yearly</option>' in _app_src and "yearly:'every year'" in _app_src)
+check("care tools: the call rota says Called, passes on with Skip, and the pulse finds today's person first",
+      "'Called ' + about.name" in _fc_api and "'rota_skip'" in _fc_api and "pulseCallNudge(sql, circle.id" in _fc_ev
+      and "it is your turn today" in _fc_api)
+check("care tools: help with the phone posts to the family chat, one person takes it, and offers the family call",
+      "chatSay(sql, circle.id, me.id, img, 'image')" in _fc_api and "'help_claim'" in _fc_api and "askCall()" in _fc_js)
+_howto = re.findall(r'<details class="howto">', _app_src)
+check(f"care tools: 6 to 8 short how-to cards ({len(_howto)})", 6 <= len(_howto) <= 8)
+check("care tools: dignity-first words: never lonely, monitoring, tracking, fall detection or elderly",
+      not re.search(r"\b(lonely|loneliness|monitor\w*|surveil\w*|tracking|fall detection|elderly)\b", (_fc_html + _fc_js + _fc_api + _fc_rules).lower()))
+check("care tools: the forms ask in the app's own sheets, never confirm() or prompt()",
+      "askSheet(" in _fc_js and not re.search(r"[^\w.](confirm|prompt)\(", _fc_js))
+# The link between the two: a missed check-in nobody took up (no check-in,
+# nobody said "I'm calling") reaches the first nearby helper who said yes.
+_sd = (API_DIR / "_sosdial.mjs").read_text(encoding="utf-8")
+check("care tools: a missed check-in nobody took up reaches the first helper who said yes, once a day, inside the call cap",
+      "ladderFor(sql, circleId, m.id)" in _fc_api and "primary key (person_id, day)" in _fc_api
+      and "QUIET_LADDER_MIN = 30" in _fc_rules and "m.acked !== today" in _fc_api and "'quiet_ack'" in _fc_api
+      and "sentToday(sql, circleId)) >= DIAL_DAY_MAX" in _sd[_sd.index("export async function dialQuietLadder"):]
+      and "data-fcqack" in _fc_js and "ql.called" in _fc_js)
+check("care tools: the helper's call for a missed check-in is calm, never an SOS or an emergency",
+      not re.search(r"S O S|[Ee]mergency", _sd[_sd.index("export function quietLadderScript"):_sd.index("export async function dialQuietLadder")]))
 
 # ---------- 10g. Launch growth: attribution, install trust, press kit, marketing copy ----------
 # ATTRIBUTION WITHOUT A PIXEL. Every WhatsApp button on a public page carries
@@ -2628,6 +2768,7 @@ check("attribution: the list stores them, first touch kept on a re-join",
 _get = (ROOT / "public" / "get" / "index.html").read_text(encoding="utf-8")
 _adv = _get.find('id="advanced"')
 check("get: no probe for a download that does not exist", "downloads/parwah.apk" not in _get and "direct-android" not in _get)
+check("get: no call to the GitHub API from the page (rate-limited for visitors, and the repo may go private)", "api.github.com" not in _get)
 check("get: the browser and Add to Home Screen come first, the profile and the test build under Advanced",
       _adv > 0 and 0 < _get.find('id="ios-guide"') < _adv and 0 < _get.find('id="android-open"') < _adv
       and _get.find('id="ios-get"') > _adv and _get.find('id="apk-link"') > _adv

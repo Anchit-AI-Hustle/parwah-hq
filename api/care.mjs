@@ -9,6 +9,12 @@ import { award, today } from './_coins.mjs';
 import { reqTz } from './_recur.mjs';
 import { ensureTaskSchema, taskList, taskHistory, taskAction, sweepOverdue, sweepReminders, GAPS, gapTitle } from './_tasks.mjs';
 import { refillApi, billsApi, siblingTasksApi } from './_careprep.mjs';
+import dosesApi from './_doses.mjs';
+import { ladderApi } from './_ladder.mjs';
+import { expensesApi } from './_expenses.mjs';
+import { staffApi } from './_staff.mjs';
+import { renewalsApi } from './_renewals.mjs';
+import { FC_CARE_ACTIONS, familyTaskAction, rotaSweep } from './_familycare.mjs';
 
 async function feed(sql, circleId, memberId, text) {
   await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'care', ${text})`;
@@ -152,6 +158,15 @@ export default async function handler(req, res) {
   if (area === 'refill' || (req.body && typeof req.body.action === 'string' && /^refill_/.test(req.body.action))) return refillApi(req, res);
   if (area === 'bills' || (req.body && typeof req.body.action === 'string' && /^bill_/.test(req.body.action))) return billsApi(req, res);
   if (area === 'tasks' || (req.body && typeof req.body.action === 'string' && /^sibling_task_/.test(req.body.action))) return siblingTasksApi(req, res);
+  // Dose times and ticks (api/_doses.mjs).
+  if (area === 'doses' || (req.body && typeof req.body.action === 'string' && /^dose_/.test(req.body.action))) return dosesApi(req, res);
+  // The nearby-person ladder, shared care costs, the home staff register
+  // and renewals: each in its own module, each behind its own area.
+  const act = req.body && typeof req.body.action === 'string' ? req.body.action : '';
+  if (area === 'ladder' || /^ladder_/.test(act)) return ladderApi(req, res);
+  if (area === 'expenses' || /^(expense_|split_)/.test(act)) return expensesApi(req, res);
+  if (area === 'staff' || /^staff_/.test(act)) return staffApi(req, res);
+  if (area === 'renewals' || /^renewal_/.test(act)) return renewalsApi(req, res);
 
   let sql;
   try {
@@ -174,6 +189,7 @@ export default async function handler(req, res) {
       // other phone's next look - whichever comes first.
       await sweepReminders(sql, g.circle.id);
       await sweepOverdue(sql, g.circle.id);
+      try { await rotaSweep(sql, g.circle.id); } catch (e) { /* never break a read */ }
       const state = await careState(sql, g.circle.id);
       // Scoped to the caller: the suggestions used to name private entries.
       const suggestions = await careSuggestions(sql, g.circle.id, g.me.id);
@@ -236,6 +252,12 @@ export default async function handler(req, res) {
         await pushCircle(sql, circle.id, { title: '✔ ' + me.name + ' did it', body: row[0].title }, { only: row[0].by_member });
       }
       return res.status(200).json({ ok: true });
+    }
+
+    // Ready-made tasks: the life certificate and the call rota.
+    if (FC_CARE_ACTIONS.includes(action)) {
+      const out = await familyTaskAction(sql, circle, me, req.body, reqTz(req));
+      return res.status(out.status).json(out.json);
     }
 
     if (action === 'request_create') {

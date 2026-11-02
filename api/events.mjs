@@ -5,18 +5,24 @@ import { db, ensureSchema, circleByCode, requireMember, isUuid, ensureCircleChat
 import { ensureSosSchema, sosText, parsePos, sosContacts, mapLink, SOS_AUDIO_MAX, SOS_AUDIO_TYPES } from './_sos.mjs';
 import { lockForSos, unlockSos, ensureLocationSchema } from './_locationapi.mjs';
 import { findState } from './_findme.mjs';
-import { dialOut } from './_sosdial.mjs';
+import { dialOut, dialConfig } from './_sosdial.mjs';
+import { ladderFor, ladderEscalate } from './_ladder.mjs';
+import { sweepStaffLate } from './_staff.mjs';
+import { sweepRenewals } from './_renewals.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
 import { pushCircle } from './_push.mjs';
 import { ensureTaskSchema, sweepOverdue, sweepReminders } from './_tasks.mjs';
 import { sweepPlanReminders } from './_plansweep.mjs';
+import { sweepDoses } from './_doses.mjs';
+import { sweepVisitAsk } from './_visits.mjs';
 import { award, today } from './_coins.mjs';
 import { reqTz } from './_recur.mjs';
 
 import { index as kinIndex, kinLabel, generations } from './_kin.mjs';
 import { pulseToday, ensurePulseSchema, optionOf, styleFor, today as pulseDay } from './_pulse.mjs';
+import { FC_EVENT_TYPES, familyCarePost, familyCareState, quietSweep, quietSweepAll, rotaSweep, pulseCallNudge } from './_familycare.mjs';
 
 const SOS_ESCALATE_MIN = 5;   // nobody answered in this long → shout louder
 
@@ -109,6 +115,11 @@ async function escalateStaleSos(sql, circleId) {
                                 limit 500`.catch(async () => sql`select distinct circle_id from requests
                                 where status in ('open','assigned','claimed') and due_at is not null
                                   and due_at between now() - interval '2 days' and now() + interval '2 days' limit 500`);
+      // Families with medicine times set: their nudges ride on the timer too.
+      try {
+        const dc = await sql`select distinct circle_id from medicine_schedules where active limit 500`;
+        for (const d of dc) if (!circles.some(c => c.circle_id === d.circle_id)) circles.push(d);
+      } catch (e) { /* no medicine times anywhere yet */ }
       let reminded = 0, late = 0, events = 0;
       for (const c of circles) {
         try {
@@ -116,8 +127,13 @@ async function escalateStaleSos(sql, circleId) {
           late += await sweepOverdue(sql, c.circle_id);
           events += await sweepPlanReminders(sql, c.circle_id);
           await escalateStaleSos(sql, c.circle_id);
+          await ladderEscalate(sql, c.circle_id, SOS_ESCALATE_MIN);
+          try { await sweepDoses(sql, c.circle_id); await sweepVisitAsk(sql, c.circle_id); } catch (e) { /* never stops the SOS check */ }
         } catch (e) { /* one family's trouble never stops the others */ }
       }
+      // Missed check-ins (api/_familycare.mjs): each push claimed once,
+      // counted with the other alerts so the reply stays counts only.
+      try { events += await quietSweepAll(sql); } catch (e) { /* never stops the timer */ }
       return res.status(200).json({ ok: true, circles: circles.length, reminded, late, events });
     }
     if (req.method === 'GET') {
@@ -169,9 +185,20 @@ async function escalateStaleSos(sql, circleId) {
         order by created_at limit 20`;
       const pol = await sql`select join_policy from circles where id = ${circle.id}`;
       await escalateStaleSos(sql, circle.id);
+      // Nobody in the family answered: the nearby people who said yes, in
+      // order (api/_ladder.mjs). Then the home staff and renewal alerts,
+      // each claimed once in the database.
+      await ladderEscalate(sql, circle.id, SOS_ESCALATE_MIN);
+      await sweepStaffLate(sql, circle.id).catch(() => 0);
+      await sweepRenewals(sql, circle.id).catch(() => 0);
       // Every open phone looks, so a late task is announced within a poll;
       // the sweep claims each alert, so it is still announced only once.
       try { await ensureTaskSchema(sql); await sweepReminders(sql, circle.id); await sweepOverdue(sql, circle.id); await sweepPlanReminders(sql, circle.id); } catch (e) { /* never break a read */ }
+      // Medicine nudges and "how did the visit go?", each sent once.
+      try { await sweepDoses(sql, circle.id); } catch (e) { /* never break a read */ }
+      try { await sweepVisitAsk(sql, circle.id); } catch (e) { /* never break a read */ }
+      // A missed check-in and a call rota's missed day, on the same poll.
+      try { await quietSweep(sql, circle.id); await rotaSweep(sql, circle.id); } catch (e) { /* never break a read */ }
       const pulse = await pulseToday(sql, circle.id, reqTz(req));
       const sosOpen = await sql`
         select s.id, s.member_id, s.status, s.escalated, s.created_at, s.acked_at, s.safe_at,
@@ -198,14 +225,21 @@ async function escalateStaleSos(sql, circleId) {
         counts: docsN && docsN[0] ? { docs: docsN[0].n } : undefined,
         kind: ck[0] ? ck[0].kind : 'family', familyType: ck[0] ? ck[0].family_type : null, members, events, seenAt, calls,
         joinRequests: joinReqs, joinPolicy: (pol[0] && pol[0].join_policy) || 'approve',
-        sos: sosOpen.map(x => ({ ...x, map: mapLink(x.lat === null ? null : { lat: x.lat, lng: x.lng }) })),
+        sos: await Promise.all(sosOpen.map(async x => ({ ...x, map: mapLink(x.lat === null ? null : { lat: x.lat, lng: x.lng }),
+          // The nearby people who said yes, with Call buttons on the family's
+          // alarm; ladderCalls says Parwah rings them itself.
+          ladder: (await ladderFor(sql, circle.id, x.member_id)).map(h => ({ name: h.name, phone: h.phone, distance: h.distance_note, hasKey: h.has_key, hours: h.hours })),
+          ladderCalls: (() => { const c = dialConfig(); return !!(c.on && c.voice); })() }))),
         sosEscalateMin: SOS_ESCALATE_MIN, pulse,
-        findme: await findState(sql, circle, g.me, tokenOf(req)).catch(() => null) });
+        findme: await findState(sql, circle, g.me, tokenOf(req)).catch(() => null),
+        familyCare: await familyCareState(sql, circle.id, g.me.id).catch(() => null) });
     }
 
     if (req.method === 'POST') {
       req.body = req.body || {};
       const { code, memberId, type, text } = req.body;
+      // Quiet day, ask family first, the safe word and phone help.
+      if (FC_EVENT_TYPES.includes(type)) return familyCarePost(sql, req, res, reqTz(req));
       const circle = await circleByCode(sql, code);
       if (!circle) return res.status(404).json({ ok: false, error: 'No family found with that code' });
       if (type === 'seen') {
@@ -236,10 +270,9 @@ async function escalateStaleSos(sql, circleId) {
         // No coins for saying how you are: an adult's check-in is not a game.
         // "A call would be nice" is the reason this feature exists - it lets
         // someone say they are not fine without having to say it.
-        if (opt.call) {
-          await pushCircle(sql, circle.id, { title: '🧡 ' + pm[0].name + ' could do with a call',
-            body: opt.e + ' ' + opt.t + (note ? ' - ' + note : '') }, { except: pm[0].id });
-        }
+        // Someone who could do with a call: whoever is on the call rota for
+        // them today hears first, by name (api/_familycare.mjs).
+        if (opt.call) await pulseCallNudge(sql, circle.id, pm[0], opt.e + ' ' + opt.t + (note ? ' - ' + note : ''));
         return res.status(201).json({ ok: true });
       }
 

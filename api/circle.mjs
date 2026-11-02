@@ -6,10 +6,14 @@ import { cleanName, nameError, dobError } from './_valid.mjs';
 import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
 import { pushCircle } from './_push.mjs';
+import { consentPage } from './_ladder.mjs';
 import { award } from './_coins.mjs';
 import { index as kinIndex, placement, PLACES, GENDERS, FAMILY_TYPES, genderFromRelation } from './_kin.mjs';
 
 export default async function handler(req, res) {
+  // A nearby person's own consent page for the SOS ladder: the link is the
+  // key, no sign-in (api/_ladder.mjs).
+  if (req.query && req.query.consent !== undefined) return consentPage(req, res);
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ ok: false, error: 'POST only' });
