@@ -132,5 +132,11 @@
   ],
   "git": {
     "deploymentEnabled": false
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/events?tick=1",
+      "schedule": "30 2 * * *"
+    }
+  ]
 }

@@ -226,7 +226,7 @@ export async function quietSweepAll(sql) {
 // ---------------- call rota: a day nobody marked moves on ----------------
 export async function rotaSweep(sql, circleId, nowMs = Date.now()) {
   await ensureTaskSchema(sql);
-  const ts = await sql`select id, circle_id, due_at, tz, series_anchor, template_data, claimed_by from requests
+  const ts = await sql`select id, circle_id, series_id, due_at, tz, series_anchor, template_data, claimed_by from requests
                        where circle_id = ${circleId} and template = 'callrota' and status in ('open','assigned','claimed') and due_at is not null`;
   let n = 0;
   for (const t of ts) {
@@ -238,6 +238,13 @@ export async function rotaSweep(sql, circleId, nowMs = Date.now()) {
     let at = next;
     const prev = next - 86400000;
     if (localDate(prev, tz) === dayIn(tz, nowMs)) at = prev;
+    // A day the rota already has (a call marked done today, say) is taken:
+    // move on to the next free day, never onto it.
+    if (t.series_id) {
+      const taken = new Set((await sql`select due_at from requests where series_id = ${t.series_id} and id <> ${t.id}`)
+        .map(x => new Date(x.due_at).getTime()));
+      while (taken.has(at)) at += 86400000;
+    }
     const d = t.template_data || {}, rota = Array.isArray(d.rota) ? d.rota : [];
     const idx = rotaNext(rota, d.idx);
     // Rolled onto a time already gone today: shown as late, but nobody is

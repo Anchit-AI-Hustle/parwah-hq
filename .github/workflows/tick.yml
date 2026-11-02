@@ -1,8 +1,13 @@
 # THE TIMER: reminders and alarms ring at their time even when nobody in the
 # family has Parwah open.
 #
-# There is no scheduler on the Vercel plan Parwah runs on (one cron a day),
-# so this asks the live site every 10 minutes to send whatever is due. The
+# There is no every-minute scheduler on the Vercel plan Parwah runs on (one
+# cron a day, used as a backstop in vercel.json), so this asks the live site
+# every 10 minutes to send whatever is due. GitHub starts scheduled runs on
+# a free account hours late (runs 123-152 came 3 to 7 hours apart), so this
+# is a fallback, not the clock: every signed-in phone's first poll of a
+# minute runs the same timer (api/events.mjs runTick), and an outside
+# every-minute caller with the CRON_SECRET header is the real clock. The
 # endpoint reads nothing private and returns only counts; each alert is
 # claimed in the database, so a late or doubled run never sends twice; and
 # it runs at most once a minute whoever calls it. GitHub may start a
