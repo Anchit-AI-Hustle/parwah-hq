@@ -13,6 +13,9 @@ node_modules/
 !mobile/assets/*.png
 !mobile/android/app/src/main/res/**/*.png
 !mobile/ios/App/App/Assets.xcassets/**/*.png
+# Launch assets: ad creatives, carousel slides, store screenshots. Never
+# deployed (.vercelignore), but they are the deliverable, so they are kept.
+!marketing/**/*.png
 
 # local deploy cron state
 .deploy-state

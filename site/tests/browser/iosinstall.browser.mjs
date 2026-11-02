@@ -49,8 +49,13 @@ async function page(ua, url, { standalone = false, scheme = 'light' } = {}) {
   const p = await page(SAFARI, '/get/');
   const order = await p.$$eval('.platform', ps => ps.map(x => x.id));
   ok(order[0] === 'p-ios', 'on an iPhone the iPhone section comes first', order.join());
-  ok(await p.isVisible('#ios-get') && (await p.getAttribute('#ios-get', 'href')) === '../install/parwah.mobileconfig', 'it leads with Install the iPhone app, which installs Parwah from Safari');
-  ok(await p.isVisible('#ios-guide') && (await p.getAttribute('#ios-guide', 'href')) === '../?install=ios', 'the guided Add to Home Screen stays as the other way');
+  ok(await p.isVisible('#ios-guide') && (await p.getAttribute('#ios-guide', 'href')) === '../?install=ios', 'it leads with Open in Safari, then Add to Home Screen');
+  ok(/Add to Home Screen/.test(await p.textContent('#p-ios')), 'with the Share and Add to Home Screen steps in the main card');
+  ok(await p.isVisible('#ios-get') && (await p.getAttribute('#ios-get', 'href')) === '../install/parwah.mobileconfig'
+     && await p.$eval('#ios-get', el => !!el.closest('#advanced')), 'the profile stays, under Advanced options, never as the main button');
+  ok(/not signed/.test(await p.textContent('#adv-ios')), 'and it says honestly that iPhone will call the profile not signed');
+  ok(await p.$eval('#apk-link', el => !!el.closest('#advanced')) && /test build/i.test(await p.textContent('#adv-android')), 'the Android test build is under Advanced too, named as a test build');
+  ok(await p.$$eval('.getbtn', bs => bs.every(b => !b.closest('#advanced'))), 'no main-path button sits in Advanced');
   ok(!(await p.isVisible('#ipa-dev')) && !(await p.isVisible('#ipa-link')), 'an iPhone is never offered the IPA it cannot open');
   ok(!(await p.isVisible('#ios-inapp')), 'in Safari there is no "open in Safari" warning');
   ok(await p.evaluate(() => document.documentElement.scrollWidth <= 390), 'nothing scrolls sideways');
