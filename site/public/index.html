@@ -1277,6 +1277,70 @@ details.howto .hi{color:var(--ink-soft);font-size:var(--fs-14);margin:0 0 var(--
 .fctpl{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-8)}
 .fctpl .cbtn{flex:1 1 220px;min-height:var(--tap-min)}
 body.senior .fcrow .txt b{font-size:var(--fs-18)}
+/* ---- Family Memory, the bonding half: stories, yaadein, recipes and the
+   reach-out nudge (api/_memorybond.mjs). Tokens only. ---- */
+.mbswitch{margin:0 0 var(--space-16)}
+.mbswitch button{flex:1 1 40%}
+@media(min-width:700px){.mbswitch button{flex:1 1 0}}
+.mbcard{background:var(--surface);border:1px solid var(--bone-2);border-left:4px solid var(--marigold);border-radius:var(--radius-16);padding:var(--space-16);margin:var(--space-12) 0;box-shadow:var(--sh-1)}
+.mbcard.yaad{border-left-color:var(--rani)}
+.mbcard.nudge{border-left-color:var(--peacock)}
+.mbcard .mbeye{font-size:var(--fs-12);letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--sindoor);margin:0 0 var(--space-4)}
+.mbcard .mbq{font-family:var(--disp);font-size:var(--fs-20);line-height:1.3;margin:0 0 var(--space-8);color:var(--ink)}
+.mbcard p{font-size:var(--fs-14);color:var(--ink-soft);margin:0 0 var(--space-8)}
+.mbacts{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-8)}
+.mbacts .cbtn{flex:1 1 140px;min-height:var(--tap-min);text-decoration:none}
+.mbacts .linkbtn{min-height:var(--tap-min);display:inline-flex;align-items:center}
+.mbside{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--space-8);margin:var(--space-8) 0}
+.mbside div{background:var(--tint-warm-2);border-radius:var(--radius-12);padding:var(--space-8) var(--space-12);font-size:var(--fs-14);color:var(--ink)}
+.mbside b{display:block;font-size:var(--fs-12);color:var(--ink-soft)}
+.mbphoto{display:block;max-width:100%;max-height:240px;border-radius:var(--radius-12);margin:var(--space-8) 0;border:1px solid var(--bone-2)}
+.mbperson{margin:var(--space-20) 0 var(--space-8);font-family:var(--disp);font-size:var(--fs-18)}
+.mbstory{background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-12) var(--space-16);margin-bottom:var(--space-8);box-shadow:var(--sh-sm)}
+.mbstory h4{font-size:var(--fs-16);margin:0 0 var(--space-4);color:var(--ink)}
+.mbstory p{font-size:var(--fs-14);color:var(--ink);margin:0 0 var(--space-4);white-space:pre-wrap}
+.mbstory small{display:block;font-size:var(--fs-12);color:var(--ink-soft)}
+.mbstory audio,.mbmp audio{width:100%;margin-top:var(--space-8)}
+.mbtools{display:flex;flex-wrap:wrap;gap:var(--space-8);margin:var(--space-12) 0}
+.mbtools .cbtn{flex:1 1 160px;min-height:var(--tap-min)}
+.mbrow{display:flex;align-items:center;gap:var(--space-8);flex-wrap:wrap;padding:var(--space-8) 0;border-bottom:1px solid var(--bone-2);font-size:var(--fs-14)}
+.mbrow span{flex:1 1 160px}
+.mbrow .cbtn{min-height:var(--tap-min)}
+.mbrow small{display:block;font-size:var(--fs-12);color:var(--ink-soft)}
+.mbchk{display:flex;align-items:center;gap:var(--space-12);min-height:var(--tap-min);font-size:var(--fs-14);font-weight:400;margin:var(--space-4) 0;cursor:pointer}
+.mbchk input{width:22px;height:22px;flex:none;accent-color:var(--marigold)}
+.mbmp{max-width:480px;max-height:90vh;overflow-y:auto}
+.mbs-title{margin:0 var(--space-48) var(--space-12) 0}
+.mbrec{display:flex;flex-wrap:wrap;gap:var(--space-8);align-items:center;margin:var(--space-8) 0}
+.mbrec .cbtn{flex:1 1 180px;min-height:var(--tap-min)}
+.mbrec .mbrecst{flex:1 1 100%;font-size:var(--fs-14);color:var(--ink-soft)}
+.mbrecipe{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-12) var(--space-16);margin-bottom:var(--space-8);cursor:pointer;color:var(--ink);box-shadow:var(--sh-sm)}
+.mbrecipe b{display:block;font-size:var(--fs-16)}
+.mbrecipe small{display:block;font-size:var(--fs-12);color:var(--ink-soft);margin-top:var(--space-2)}
+.mbsteps{white-space:pre-wrap;font-size:var(--fs-14);color:var(--ink);margin:0 0 var(--space-12)}
+.mberr{color:var(--alert);font-size:var(--fs-14);font-weight:600;margin:var(--space-8) 0 0}
+body.senior .mbcard .mbq{font-size:var(--fs-24)}
+body.senior .mbcard .cbtn{min-height:56px;font-size:var(--fs-18);flex-basis:100%}
+body.senior .mbcard p{font-size:var(--fs-16)}
+#mb-book{position:fixed;inset:0;z-index:var(--z-sheet);background:var(--day);overflow-y:auto;padding:var(--space-16)}
+.mbbook-bar{display:flex;gap:var(--space-8);flex-wrap:wrap;max-width:720px;margin:0 auto var(--space-16)}
+.mbbook-bar .cbtn{flex:1 1 180px;min-height:var(--tap-min)}
+.mbbook{max-width:720px;margin:0 auto;background:var(--surface);color:var(--ink);border-radius:var(--radius-16);padding:var(--space-32) var(--space-24);box-shadow:var(--sh-1)}
+.mbbook h1{font-family:var(--disp);font-size:var(--fs-30);margin:0 0 var(--space-4)}
+.mbbook .mbbsub{font-size:var(--fs-14);color:var(--ink-soft);margin:0 0 var(--space-24)}
+.mbbook h2{font-family:var(--disp);font-size:var(--fs-24);margin:var(--space-32) 0 var(--space-12);border-bottom:2px solid var(--marigold);padding-bottom:var(--space-4)}
+.mbbook h3{font-size:var(--fs-18);margin:var(--space-20) 0 var(--space-4)}
+.mbbook p{font-size:var(--fs-16);line-height:1.6;white-space:pre-wrap;margin:0}
+.mbbook small{display:block;font-size:var(--fs-12);color:var(--ink-soft);margin-top:var(--space-4)}
+@media print{
+  body.mbprint{background:none}
+  body.mbprint > *:not(#mb-book){display:none!important}
+  body.mbprint #mb-book{display:block!important;position:static;padding:0;overflow:visible;background:none}
+  body.mbprint .mbbook-bar{display:none}
+  body.mbprint .mbbook{box-shadow:none;max-width:none;padding:0;color:var(--card-ink);background:none}
+  body.mbprint .mbbook h2{break-after:avoid}
+  body.mbprint .mbbook section{break-inside:avoid}
+}
 </style>
 </head>
 <body>
@@ -1598,6 +1662,10 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
       <p class="hint" id="fcq-hint" style="margin:0 0 var(--space-12)">If someone has not said they are okay by their time, they get a gentle reminder. 30 minutes later the family is told, so someone can call.</p>
       <div id="fcq-rows"></div>
     </div>
+    <!-- FAMILY MEMORY on Today (api/_memorybond.mjs): an ask to be a
+         storyteller, this week's question, a group's throwback, Yaadein,
+         and a private reach-out nudge. Each one only when there is one. -->
+    <div id="mb-today" aria-live="polite"></div>
     <!-- THE FIVE THINGS. Families talk on WhatsApp; Parwah holds what WhatsApp
          cannot: the papers, the medicines, who does what, who is who, and the
          card for an emergency. Ranked by utility in docs/design/TODAY.md; the
@@ -1634,6 +1702,7 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
       <div class="widgets" id="morewidgets">
       <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span><b>Chats</b><small id="w-chat">Family + personal</small></button>
       <button class="widget callgo" id="callnow"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-cam"/></svg></span><b>Family call</b><small>Everyone joins with one tap</small></button>
+      <button class="widget" data-goto="memory" data-mbv="stories"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-book"/></svg></span><b>Stories &amp; recipes</b><small id="w-mb">One question a week, and the family's recipes</small></button>
       <button class="widget" data-goto="memory" data-bk="people"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-book"/></svg></span><b>Contacts &amp; addresses</b><small id="w-book">Doctors, neighbours, addresses</small></button>
       <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-bulb"/></svg></span><b>Suggested</b><small id="w-req">Loading…</small></button>
       <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-cal"/></svg></span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
@@ -2086,6 +2155,19 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
   <!-- HEALTH & CONTACTS - medicines, facts, doctors, addresses -->
   <section id="pane-memory" hidden>
     <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-health"/></svg></span><span><b>Health &amp; contacts</b><small>Medicines, blood groups, allergies, doctors and addresses</small></span></div>
+    <!-- FAMILY MEMORY: the family's health and contacts, and its stories and
+         recipes (api/_memorybond.mjs). -->
+    <div class="seg mbswitch" id="mb-switch" role="group" aria-label="Family Memory sections">
+      <button type="button" data-mbv="health" class="sel">🩺 Health &amp; contacts</button>
+      <button type="button" data-mbv="stories">📖 Stories</button>
+      <button type="button" data-mbv="recipes">🍲 Recipes</button>
+      <button type="button" data-mbv="settings">⚙️ Settings</button>
+    </div>
+    <div id="mb-root" hidden>
+      <div id="mb-stories" hidden></div>
+      <div id="mb-recipes" hidden></div>
+      <div id="mb-settings" hidden></div>
+    </div>
     <div id="book-list-view">
       <div class="addrow" style="margin-top:0">
         <input type="search" id="b-search" maxlength="60" placeholder="Search health and contacts…" aria-label="Search health and contacts">
@@ -3754,6 +3836,25 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
   </div>
 </div>
 
+<!-- FAMILY MEMORY sheets (api/_memorybond.mjs): answer a story, pick a
+     storyteller, who can hear it, a recipe. One sheet, filled by mbSheet(). -->
+<div class="msheet" id="mbsheet" hidden role="dialog" aria-modal="true" aria-labelledby="mbs-title">
+  <div class="mp mbmp">
+    <button class="x" id="mbs-x" type="button" aria-label="Close">✕</button>
+    <h3 id="mbs-title" class="mbs-title"></h3>
+    <div id="mbs-body"></div>
+  </div>
+</div>
+<!-- The family book: every story the reader may see, laid out to print.
+     window.print() with a print stylesheet; nothing leaves the phone. -->
+<div id="mb-book" hidden role="dialog" aria-modal="true" aria-labelledby="mbb-title">
+  <div class="mbbook-bar">
+    <button class="cbtn" id="mbb-print" type="button">🖨 Print or save as PDF</button>
+    <button class="cbtn ghost" id="mbb-close" type="button">Close</button>
+  </div>
+  <article class="mbbook" id="mbb-body"><h1 id="mbb-title">Family book</h1></article>
+</div>
+
 <!-- A question with two big answers, in place of the browser's small
      dialog: easier to read, and hard to dismiss by mistake. -->
 <div class="msheet" id="asksheet" hidden role="dialog" aria-modal="true" aria-labelledby="as-q">
@@ -4424,6 +4525,7 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
     refreshCoins();
     refreshPlan();
     ccRefresh();
+    mbTodayLoad();
     refreshChats();
     refreshGroups();
     renderFirstRun();
@@ -10311,6 +10413,542 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
         }).catch(function(){ toast('No connection - try again'); });
     }
   });
+
+  // ---------- family memory: stories, yaadein, recipes, nudges (api/_memorybond.mjs) ----------
+  // Ek sawaal (one question a week for each storyteller who said yes),
+  // Yaadein (this day in past years, once a day), Rasoi (the family's
+  // recipes) and the private reach-out nudge. Today shows what is due;
+  // Family Memory keeps the rest. Voice is recorded here, small and capped,
+  // and never plays by itself.
+  var MB_API = '/api/book?area=bond';
+  var mbTodayData = null, mbMem = null, mbTodayAt = 0, mbView = 'health', mbRecQ = '', mbRec = null, mbSheetRec = null, mbPhotoNew = null;
+  var MB_MAX_SECS = 180;
+  var MB_TYPES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+  function mbQs(){ return '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId); }
+  function mbGet(view, extra){ return apiGet(MB_API + '&view=' + view + mbQs() + (extra || '')); }
+  function mbPost(body){
+    body.area = 'bond'; body.code = state.code; body.memberId = state.memberId;
+    return post(MB_API, body).catch(function(){ return { ok: false, error: 'No connection - try again' }; });
+  }
+  function mbGroup(){ return mbMem ? mbMem.kind === 'group' : spaceWord() === 'group'; }
+  function mbWord(){ return mbGroup() ? 'group' : 'family'; }
+  function mbFirst(n){ return String(n || '').split(' ')[0]; }
+  function mbDate(iso){ try { return dtf([], { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(iso)); } catch (e) { return ''; } }
+  function mbSecs(s){ s = Math.max(0, Math.round(+s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+  function mbVisLabel(v){ return v === 'private' ? 'Only you' : v === 'some' ? 'Some people' : 'The whole ' + mbWord(); }
+
+  // ---- Today
+  function mbTodayLoad(force){
+    if (!state) return;
+    if (!force && Date.now() - mbTodayAt < 60000) return;
+    mbTodayAt = Date.now();
+    mbGet('today').then(function(j){ if (j && j.ok) { mbTodayData = j; mbTodayRender(); } }).catch(function(){});
+  }
+  function mbCard(cls, eye, q, p, acts, mid){
+    return '<div class="mbcard ' + cls + '"><p class="mbeye">' + eye + '</p><p class="mbq">' + q + '</p>' + (p ? '<p>' + p + '</p>' : '') + (mid || '') +
+      '<div class="mbacts">' + acts + '</div></div>';
+  }
+  function mbTodayRender(){
+    var t = mbTodayData, box = $('mb-today'); if (!t || !box) return;
+    var word = t.kind === 'group' ? 'group' : 'family', h = '';
+    if (t.teller && t.teller.status === 'asked') {
+      h += mbCard('', '📖 Ek sawaal', esc(t.teller.askedBy ? mbFirst(t.teller.askedBy) : 'The ' + word) + ' asks: will you tell the ' + word + ' one story a week?',
+        'One question each Sunday, like “How did you meet?”. Answer by voice or by typing, or skip it. You choose who hears each answer. It stays off unless you say yes.',
+        '<button class="cbtn" type="button" data-mbteller="yes">Yes, ask me</button><button class="cbtn ghost" type="button" data-mbteller="no">Not now</button>');
+    }
+    if (t.ask) {
+      h += mbCard('', '📖 This week’s question', esc(t.ask.question), 'Answer in your own words, whenever you like.',
+        '<button class="cbtn" type="button" data-mbans="voice">🎙 Answer by voice</button><button class="cbtn ghost" type="button" data-mbans="type">⌨️ Type it</button><button class="cbtn no" type="button" data-mbskip="' + esc(t.ask.id) + '">Skip</button>');
+    }
+    if (t.throwback) {
+      var mine = (t.throwback.answers || []).filter(function(a){ return a.mine; })[0];
+      var side = (t.throwback.answers || []).map(function(a){ return '<div><b>' + esc(mbFirst(a.name)) + '</b>' + esc(a.text) + '</div>'; }).join('');
+      h += mbCard('', '🎒 Throwback question', esc(t.throwback.question), side ? '' : 'One question to the whole group this week. Anyone can answer.',
+        '<button class="cbtn" type="button" data-mbtb="1">' + (mine ? 'Change my answer' : 'Answer') + '</button>', side ? '<div class="mbside">' + side + '</div>' : '');
+    }
+    if (t.yaad) {
+      var y = t.yaad;
+      h += mbCard('yaad', '🌼 Yaadein: ' + y.years + (y.years === 1 ? ' year' : ' years') + ' ago today', esc(y.title),
+        y.text ? esc(y.text) : '',
+        '<button class="cbtn" type="button" data-mbyaad="send">Send to everyone who was there</button><button class="cbtn ghost" type="button" data-mbyaad="hide">Not this one</button>',
+        y.kind === 'photo' ? '<img class="mbphoto" id="mb-yaadimg" alt="' + esc(y.title) + '" hidden>' : '');
+    }
+    if (t.nudge) {
+      var nd = t.nudge, nm = esc(mbFirst(nd.name));
+      h += mbCard('nudge', '🧡 Just for you', 'It has been a while with ' + nm + '.', 'Call, send a voice note, or later. Only you see this.',
+        (nd.phone ? '<a class="cbtn" href="tel:' + encodeURIComponent(nd.phone) + '" data-mbnudge="call">📞 Call ' + nm + '</a>' : '') +
+        (nd.onApp ? '<button class="cbtn' + (nd.phone ? ' ghost' : '') + '" type="button" data-mbnudge="voice">🎙 Voice note</button>' : '') +
+        '<button class="cbtn no" type="button" data-mbnudge="later">Later</button>' +
+        '<button class="linkbtn" type="button" data-mbnudge="never">Don’t nudge me about ' + nm + '</button>');
+    }
+    box.innerHTML = h;
+    if (t.yaad && t.yaad.kind === 'photo') {
+      mbGet('yaadphoto', '&key=' + encodeURIComponent(t.yaad.key)).then(function(j){
+        var im = $('mb-yaadimg');
+        if (im && j && j.ok && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/]+=*$/.test(j.photo || '')) { im.src = j.photo; im.hidden = false; }
+      }).catch(function(){});
+    }
+  }
+
+  // ---- the recorder: one small helper, 3 minutes at most, an allow-listed type
+  function mbRecorder(box, onDone){
+    var st = { result: null, rec: null, timer: null, stream: null, url: null };
+    box.innerHTML = '<button type="button" class="cbtn" data-mbrec="1">🎙 Start recording</button><span class="mbrecst" aria-live="polite">Up to 3 minutes. It never plays by itself.</span><div class="mbrecout"></div>';
+    var btn = box.querySelector('[data-mbrec]'), say = box.querySelector('.mbrecst'), out = box.querySelector('.mbrecout');
+    function done(){ clearInterval(st.timer); if (st.stream) st.stream.getTracks().forEach(function(x){ x.stop(); }); st.stream = null; }
+    function start(){
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') { say.textContent = 'This phone cannot record here. You can type instead.'; return; }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+        var mt = MB_TYPES.filter(function(x){ return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(x); })[0];
+        if (!mt) { stream.getTracks().forEach(function(x){ x.stop(); }); say.textContent = 'This phone records in a type Parwah cannot keep. You can type instead.'; return; }
+        var rec = new MediaRecorder(stream, { mimeType: mt, audioBitsPerSecond: 24000 }), parts = [], t0 = Date.now();
+        st.rec = rec; st.stream = stream; st.result = null; out.innerHTML = '';
+        rec.ondataavailable = function(e){ if (e.data && e.data.size) parts.push(e.data); };
+        rec.onstop = function(){
+          done();
+          var secs = Math.max(1, Math.min(MB_MAX_SECS, Math.round((Date.now() - t0) / 1000)));
+          var blob = new Blob(parts, { type: mt.split(';')[0] });
+          btn.textContent = '🎙 Record again';
+          say.textContent = 'Recorded ' + mbSecs(secs) + '. Listen before you save, if you like.';
+          try { if (st.url) URL.revokeObjectURL(st.url); st.url = URL.createObjectURL(blob); out.innerHTML = '<audio controls preload="none" src="' + st.url + '"></audio>'; } catch (e) {}
+          var fr = new FileReader();
+          fr.onload = function(){ st.result = { mime: blob.type, data: String(fr.result).split(',')[1] || '', secs: secs }; if (onDone) onDone(st.result); };
+          fr.readAsDataURL(blob);
+        };
+        rec.start(1000);
+        btn.textContent = '⏹ Stop';
+        say.textContent = 'Recording… 0:00';
+        st.timer = setInterval(function(){
+          var s = Math.round((Date.now() - t0) / 1000);
+          say.textContent = 'Recording… ' + mbSecs(s) + ' (stops by itself at 3:00)';
+          if (s >= MB_MAX_SECS && rec.state === 'recording') rec.stop();
+        }, 500);
+      }).catch(function(){ say.textContent = 'The microphone is not allowed, so nothing was recorded. You can type instead.'; });
+    }
+    btn.addEventListener('click', function(){ if (st.rec && st.rec.state === 'recording') st.rec.stop(); else start(); });
+    st.busy = function(){ return !!(st.rec && st.rec.state === 'recording'); };
+    st.stop = function(){ if (st.busy()) { st.rec.onstop = null; st.rec.stop(); } done(); };
+    return st;
+  }
+
+  // ---- one sheet for every form here
+  function mbSheet(title, html){
+    if (mbSheetRec) { mbSheetRec.stop(); mbSheetRec = null; }
+    $('mbs-title').textContent = title; $('mbs-body').innerHTML = html; $('mbsheet').hidden = false;
+    try { $('mbs-x').focus(); } catch (e) {}
+    return $('mbs-body');
+  }
+  function mbSheetClose(){ if (mbSheetRec) { mbSheetRec.stop(); mbSheetRec = null; } $('mbsheet').hidden = true; }
+  $('mbs-x').addEventListener('click', mbSheetClose);
+  $('mbsheet').addEventListener('click', function(e){ if (e.target === this) mbSheetClose(); });
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    if (!$('asksheet').hidden) return;
+    if (!$('mbsheet').hidden) mbSheetClose(); else if (!$('mb-book').hidden) mbBookClose();
+  });
+  function mbErr(msg){ var el = $('mbs-err'); if (el) { el.textContent = msg; el.hidden = !msg; } else if (msg) toast(msg); }
+  // Who can hear it: the whole family, only me, or the people I pick.
+  function mbVisHtml(cur, share){
+    var others = ((mbMem && mbMem.members) || []).filter(function(m){ return m.id !== state.memberId && m.on_app && !m.remembered; });
+    return '<label for="mbs-vis">Who can hear it</label><select id="mbs-vis">' +
+      ['circle', 'some', 'private'].map(function(v){ return '<option value="' + v + '"' + (v === (cur || 'circle') ? ' selected' : '') + '>' + mbVisLabel(v) + (v === 'some' ? ': I will pick' : '') + '</option>'; }).join('') +
+      '</select><div id="mbs-some"' + (cur === 'some' ? '' : ' hidden') + '>' +
+      (others.length ? others.map(function(m){ return '<label class="mbchk"><input type="checkbox" value="' + esc(m.id) + '"' + ((share || []).indexOf(m.id) >= 0 ? ' checked' : '') + '> ' + esc(m.name) + '</label>'; }).join('')
+        : '<p class="hint">Nobody else here is on Parwah yet.</p>') + '</div>';
+  }
+  function mbVisWire(){ var s = $('mbs-vis'); if (s) s.addEventListener('change', function(){ $('mbs-some').hidden = s.value !== 'some'; }); }
+  function mbVisRead(){
+    var v = $('mbs-vis') ? $('mbs-vis').value : 'circle', ids = [];
+    if (v === 'some') $('mbs-some').querySelectorAll('input:checked').forEach(function(i){ ids.push(i.value); });
+    return { visibility: v, shareWith: ids };
+  }
+  function mbMemLoad(cb){
+    if (!state) return;
+    return mbGet('memory').then(function(j){
+      if (!j || !j.ok) { ['stories', 'recipes', 'settings'].forEach(function(k){ var el = $('mb-' + k); if (el && !el.hidden && !mbMem) el.innerHTML = '<div class="ev">Could not load this. Pull to refresh or try again.</div>'; }); return; }
+      mbMem = j; mbRenderView(); if (cb) cb();
+    }).catch(function(){ var el = $('mb-' + mbView); if (el && !mbMem) el.innerHTML = '<div class="ev">You are offline. This shows again when you are back.</div>'; });
+  }
+  function mbShow(v){
+    mbView = v || 'health';
+    var health = mbView === 'health';
+    document.querySelectorAll('#mb-switch [data-mbv]').forEach(function(b){ var on = b.getAttribute('data-mbv') === mbView; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+    $('mb-root').hidden = health;
+    $('book-list-view').hidden = !health; $('book-detail').hidden = true;
+    ['stories', 'recipes', 'settings'].forEach(function(k){ $('mb-' + k).hidden = k !== mbView; });
+    document.querySelector('#pane-memory .ektahead b').textContent = health ? 'Health & contacts' : 'Family Memory';
+    document.querySelector('#pane-memory .ektahead small').textContent = health ? 'Medicines, blood groups, allergies, doctors and addresses'
+      : mbView === 'recipes' ? (mbGroup() ? 'The group cookbook' : 'The family’s recipes, in their own words')
+      : mbView === 'settings' ? 'Nudges, Yaadein and who is remembered' : 'One question a week, answers kept by person';
+    if (!health) {
+      if (!mbMem) $('mb-' + mbView).innerHTML = '<div class="ev">Loading…</div>';
+      else mbRenderView();
+      mbMemLoad();
+    }
+  }
+  function mbRenderView(){
+    if (!mbMem) return;
+    if (mbView === 'stories') mbStoriesRender();
+    if (mbView === 'recipes') mbRecipesRender();
+    if (mbView === 'settings') mbSettingsRender();
+  }
+
+  // ---- Stories
+  function mbStoryHtml(s){
+    return '<div class="mbstory"><h4>' + esc(s.question) + '</h4>' + (s.answer_text ? '<p>' + esc(s.answer_text) + '</p>' : '') +
+      (s.has_audio ? '<div data-mbaudio="story:' + esc(s.id) + '"><button class="cbtn ghost" type="button" data-mblisten="story:' + esc(s.id) + '">🎧 Listen (' + mbSecs(s.audio_secs) + ')</button></div>' : '') +
+      '<small>' + mbDate(s.answered_at) + (s.mine ? ' · ' + mbVisLabel(s.visibility) : '') + '</small>' +
+      (s.mine ? '<div class="mbacts"><button class="cbtn ghost" type="button" data-mbvis="' + esc(s.id) + '">Who can hear it</button><button class="cbtn no" type="button" data-mbdel="' + esc(s.id) + '">Remove</button></div>' : '') + '</div>';
+  }
+  function mbStoriesRender(){
+    var m = mbMem, grp = m.kind === 'group', me = state.memberId, h = '';
+    h += '<p class="hint">' + (grp ? 'Stories from the group, and the weekly throwback answers.' : 'Each storyteller gets one question a week, like “How did you meet?”. Their answers stay here, by person, newest first.') + '</p>';
+    h += '<div class="mbtools"><button class="cbtn" type="button" data-mbtool="book">📕 Family book</button>' +
+         '<button class="cbtn ghost" type="button" data-mbtool="teller">🎙 Pick a storyteller</button>' +
+         '<button class="cbtn ghost" type="button" data-mbtool="suggest">💡 Suggest a question</button></div>';
+    if (m.tellers.length) {
+      h += '<p class="eyebrow">Storytellers</p>' + m.tellers.map(function(t){
+        var st = t.status === 'yes' ? 'Says yes: one question a week' : t.status === 'asked' ? 'Asked' + (t.askedBy ? ' by ' + esc(mbFirst(t.askedBy)) : '') + '. Waiting for their yes.' : 'Not now';
+        return '<div class="mbrow"><span><b>' + esc(t.memberId === me ? 'You' : t.name) + '</b><br><small>' + st + '</small></span>' +
+          (t.memberId === me && t.status === 'yes' ? '<button class="cbtn no" type="button" data-mbtool="stop">Stop my questions</button>' : '') + '</div>';
+      }).join('');
+    }
+    var stories = m.stories.filter(function(s){ return s.kind === 'story'; }), byP = {}, order = [];
+    stories.forEach(function(s){ if (!byP[s.about_member]) { byP[s.about_member] = []; order.push(s.about_member); } byP[s.about_member].push(s); });
+    order.forEach(function(pid){
+      var list = byP[pid];
+      h += '<h3 class="mbperson">' + esc(pid === me ? 'You' : list[0].about_name) + ' · ' + list.length + (list.length === 1 ? ' story' : ' stories') + '</h3>' + list.map(mbStoryHtml).join('');
+    });
+    var tbs = m.stories.filter(function(s){ return s.kind === 'throwback'; }), byQ = {}, qo = [];
+    tbs.forEach(function(s){ var k = s.ask_week + '|' + s.question; if (!byQ[k]) { byQ[k] = []; qo.push(k); } byQ[k].push(s); });
+    if (qo.length) {
+      h += '<p class="eyebrow">Throwback answers</p>' + qo.map(function(k){
+        var l = byQ[k];
+        return '<div class="mbstory"><h4>' + esc(l[0].question) + '</h4><div class="mbside">' + l.map(function(s){ return '<div><b>' + esc(mbFirst(s.about_name)) + '</b>' + esc(s.answer_text || '') + '</div>'; }).join('') + '</div></div>';
+      }).join('');
+    }
+    if (!order.length && !qo.length) {
+      h += '<div class="ev">No stories yet. Pick a storyteller, like ' + (grp ? 'a friend with the best college stories' : 'Papa or Nani') + ', and the first question comes this week.</div>';
+    }
+    $('mb-stories').innerHTML = h;
+  }
+  function mbAnswerSheet(mode){
+    var t = mbTodayData && mbTodayData.ask; if (!t) return;
+    var go = function(){
+      var b = mbSheet('This week’s question',
+        '<p class="mbq">' + esc(t.question) + '</p>' +
+        (mode === 'voice' ? '<div class="mbrec" id="mbs-rec"></div><label for="mbs-text">A few words too (optional)</label>' : '<label for="mbs-text">Your answer</label>') +
+        '<textarea id="mbs-text" rows="' + (mode === 'voice' ? 3 : 6) + '" maxlength="4000" placeholder="' + (mode === 'voice' ? 'e.g. names or a date' : 'Write it the way you would tell it') + '"></textarea>' +
+        mbVisHtml('circle') + '<p class="mberr" id="mbs-err" role="alert" hidden></p>' +
+        '<button class="go" type="button" id="mbs-save">Save my answer</button>');
+      if (mode === 'voice') mbSheetRec = mbRecorder($('mbs-rec'));
+      mbVisWire();
+      $('mbs-save').addEventListener('click', function(){
+        var r = mbSheetRec, txt = $('mbs-text').value.trim();
+        if (r && r.busy()) { mbErr('Tap Stop first, then save.'); return; }
+        if (mode === 'voice' && !(r && r.result) && !txt) { mbErr('Record your answer first, or type it.'); return; }
+        if (mode !== 'voice' && !txt) { mbErr('Write your answer first.'); return; }
+        var v = mbVisRead();
+        if (v.visibility === 'some' && !v.shareWith.length) { mbErr('Pick who can hear it.'); return; }
+        var body = { action: 'story_answer', id: t.id, text: txt, visibility: v.visibility, shareWith: v.shareWith };
+        if (r && r.result) { body.audio = r.result.data; body.mime = r.result.mime; body.secs = r.result.secs; }
+        this.disabled = true; var self = this;
+        mbPost(body).then(function(j){
+          self.disabled = false;
+          if (!j.ok) { mbErr(j.error || 'Could not save - try again'); return; }
+          mbSheetClose(); toast('Saved in Family Memory 📖'); mbTodayLoad(true); mbMem = null; if (mbView !== 'health') mbMemLoad();
+        });
+      });
+    };
+    if (mbMem) go(); else mbMemLoad(go);
+  }
+  function mbTellerSheet(){
+    var m = mbMem, me = state.memberId, tel = {};
+    m.tellers.forEach(function(t){ tel[t.memberId] = t.status; });
+    var rows = m.members.filter(function(x){ return !x.remembered; }).map(function(x){
+      var st = tel[x.id], mine = x.id === me;
+      var right = st === 'yes' ? '<small>Says yes ✓</small>' : st === 'asked' ? '<small>Asked, waiting</small>'
+        : !x.on_app ? '<small>Not on Parwah yet</small>'
+        : '<button class="cbtn' + (mine ? '' : ' ghost') + '" type="button" data-mbinvite="' + esc(x.id) + '">' + (mine ? 'Ask me' : 'Ask ' + esc(mbFirst(x.name))) + '</button>';
+      return '<div class="mbrow"><span><b>' + esc(mine ? 'You' : x.name) + '</b></span>' + right + '</div>';
+    }).join('');
+    mbSheet('Pick a storyteller', '<p class="hint">They get the ask on their own screen and say yes or not now. Nothing is asked until they say yes. One question a week, never more.</p>' + rows +
+      '<p class="mberr" id="mbs-err" role="alert" hidden></p>');
+  }
+  function mbVisSheet(id){
+    var s = (mbMem.stories || []).filter(function(x){ return x.id === id; })[0]; if (!s) return;
+    mbSheet('Who can hear it', '<p class="mbq">' + esc(s.question) + '</p>' + mbVisHtml(s.visibility, s.share_with) +
+      '<p class="hint">This is your story, so it is yours to decide.</p><p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="mbs-save">Save</button>');
+    mbVisWire();
+    $('mbs-save').addEventListener('click', function(){
+      var v = mbVisRead();
+      if (v.visibility === 'some' && !v.shareWith.length) { mbErr('Pick who can hear it.'); return; }
+      mbPost({ action: 'story_visibility', id: id, visibility: v.visibility, shareWith: v.shareWith }).then(function(j){
+        if (!j.ok) { mbErr(j.error || 'Could not save'); return; }
+        mbSheetClose(); toast('Saved'); mbMemLoad();
+      });
+    });
+  }
+  // The family book: every story this person may read, by storyteller.
+  function mbBookOpen(){
+    var m = mbMem, stories = m.stories.filter(function(s){ return s.kind === 'story'; }), byP = {}, order = [];
+    stories.slice().reverse().forEach(function(s){ if (!byP[s.about_member]) { byP[s.about_member] = []; order.push(s.about_member); } byP[s.about_member].push(s); });
+    var name = (state.circleName || ('Our ' + mbWord())), h = '<h1 id="mbb-title">' + esc(name) + ': our book of stories</h1>' +
+      '<p class="mbbsub">' + stories.length + (stories.length === 1 ? ' story' : ' stories') + ', told in our own words. Made with Parwah on ' + mbDate(new Date().toISOString()) + '.</p>';
+    order.forEach(function(pid){
+      h += '<section><h2>' + esc(byP[pid][0].about_name) + '</h2>' + byP[pid].map(function(s){
+        return '<h3>' + esc(s.question) + '</h3>' + (s.answer_text ? '<p>' + esc(s.answer_text) + '</p>' : '<p>(Told by voice. Listen in Parwah.)</p>') + '<small>' + mbDate(s.answered_at) + '</small>';
+      }).join('') + '</section>';
+    });
+    if (!order.length) h += '<p>No stories yet. When the first answer comes in, it will be here.</p>';
+    $('mbb-body').innerHTML = h;
+    $('mb-book').hidden = false; document.body.classList.add('mbprint');
+    try { $('mbb-print').focus(); } catch (e) {}
+  }
+  function mbBookClose(){ $('mb-book').hidden = true; document.body.classList.remove('mbprint'); }
+  $('mbb-print').addEventListener('click', function(){ try { window.print(); } catch (e) {} });
+  $('mbb-close').addEventListener('click', mbBookClose);
+
+  // ---- Recipes
+  function mbRecipeMatch(r, q){
+    if (!q) return true;
+    return [r.title, r.from_whom, r.memory, r.ingredients, r.steps].join(' ').toLowerCase().indexOf(q.toLowerCase()) >= 0;
+  }
+  function mbRecipeList(){
+    var list = (mbMem.recipes || []).filter(function(r){ return mbRecipeMatch(r, mbRecQ); });
+    $('mb-rlist').innerHTML = list.map(function(r){
+      return '<button class="mbrecipe" type="button" data-mbrecipe="' + esc(r.id) + '"><b>🍲 ' + esc(r.title) + '</b><small>' +
+        esc([r.from_whom ? 'From ' + r.from_whom : '', r.memory || ''].filter(Boolean).join(' · ') || 'Added by ' + (r.by_name || 'someone')) +
+        (r.has_audio ? ' · 🎙 voice note' : '') + (r.has_photo ? ' · 📷' : '') + '</small></button>';
+    }).join('') || '<div class="ev">' + (mbRecQ ? 'No recipe matches “' + esc(mbRecQ) + '”.' : (mbGroup() ? 'No recipes yet. Add the hostel classic everyone still talks about.' : 'No recipes yet. Add the dish everyone asks for, like Mummy’s rajma.')) + '</div>';
+  }
+  function mbRecipesRender(){
+    var grp = mbGroup();
+    $('mb-recipes').innerHTML = '<p class="hint">' + (grp ? 'The group cookbook: the dishes from hostel nights and college trips.' : 'The dishes your family loves, in the words of the person who made them.') + '</p>' +
+      '<div class="addrow mbsearch"><input type="search" id="mb-rsearch" maxlength="60" placeholder="Search recipes…" aria-label="Search recipes" value="' + esc(mbRecQ) + '"></div>' +
+      '<div class="mbtools"><button class="cbtn" type="button" data-mbtool="recipe">➕ Add a recipe</button></div><div id="mb-rlist"></div>';
+    $('mb-rsearch').addEventListener('input', function(){ mbRecQ = this.value.trim(); mbRecipeList(); });
+    mbRecipeList();
+  }
+  // One small photo: resized here so it stays under the server's cap.
+  function mbPhotoPick(file, cb){
+    var fr = new FileReader();
+    fr.onload = function(){
+      var img = new Image();
+      img.onload = function(){
+        var tries = [[640, 0.72], [480, 0.6], [360, 0.5]], out = null;
+        for (var i = 0; i < tries.length && !out; i++) {
+          var k = Math.min(1, tries[i][0] / Math.max(img.width, img.height)), c = document.createElement('canvas');
+          c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          var d = c.toDataURL('image/jpeg', tries[i][1]);
+          if (d.length <= 150000) out = d;
+        }
+        cb(out);
+      };
+      img.onerror = function(){ cb(null); };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  }
+  function mbRecipeForm(r){
+    r = r || {};
+    mbPhotoNew = null;
+    mbSheet(r.id ? 'Edit the recipe' : 'Add a recipe',
+      '<p class="hint">Recipes here are for food: the dish, who made it, and how to make it.</p>' +
+      '<label for="mbr-title">Name of the dish</label><input type="text" id="mbr-title" maxlength="80" placeholder="e.g. Rajma chawal" value="' + esc(r.title || '') + '">' +
+      '<label for="mbr-from">Whose recipe</label><input type="text" id="mbr-from" maxlength="60" placeholder="e.g. Mummy" value="' + esc(r.from_whom || '') + '">' +
+      '<label for="mbr-mem">A memory with it (optional)</label><input type="text" id="mbr-mem" maxlength="160" placeholder="e.g. Mummy made this every Sunday" value="' + esc(r.memory || '') + '">' +
+      '<label for="mbr-ing">Ingredients</label><textarea id="mbr-ing" rows="4" maxlength="2000" placeholder="One per line">' + esc(r.ingredients || '') + '</textarea>' +
+      '<label for="mbr-steps">How to make it</label><textarea id="mbr-steps" rows="5" maxlength="4000" placeholder="Step by step, the way they make it">' + esc(r.steps || '') + '</textarea>' +
+      '<p class="eyebrow">Or tell it as a voice note</p><div class="mbrec" id="mbr-rec"></div>' +
+      (r.has_audio ? '<label class="mbchk"><input type="checkbox" id="mbr-dropaudio"> Remove the saved voice note</label>' : '') +
+      '<label for="mbr-photo">One photo (optional)</label><input type="file" id="mbr-photo" accept="image/jpeg,image/png,image/webp">' +
+      '<img class="mbphoto" id="mbr-prev" alt="The photo you picked" hidden>' +
+      (r.has_photo ? '<label class="mbchk"><input type="checkbox" id="mbr-dropphoto"> Remove the saved photo</label>' : '') +
+      '<p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="mbs-save">' + (r.id ? 'Save changes' : 'Save the recipe') + '</button>');
+    mbSheetRec = mbRecorder($('mbr-rec'));
+    $('mbr-photo').addEventListener('change', function(){
+      var f = this.files && this.files[0]; if (!f) return;
+      mbPhotoPick(f, function(d){
+        if (!d) { mbErr('That photo could not be used. Try another one.'); return; }
+        mbPhotoNew = d; $('mbr-prev').src = d; $('mbr-prev').hidden = false; mbErr('');
+      });
+    });
+    $('mbs-save').addEventListener('click', function(){
+      var rec = mbSheetRec;
+      if (rec && rec.busy()) { mbErr('Tap Stop first, then save.'); return; }
+      var body = { action: r.id ? 'recipe_edit' : 'recipe_add', id: r.id, title: $('mbr-title').value, fromWhom: $('mbr-from').value, memory: $('mbr-mem').value,
+                   ingredients: $('mbr-ing').value, steps: $('mbr-steps').value,
+                   dropAudio: !!($('mbr-dropaudio') && $('mbr-dropaudio').checked), dropPhoto: !!($('mbr-dropphoto') && $('mbr-dropphoto').checked) };
+      if (!body.title.trim()) { mbErr('Give the dish a name, like Rajma chawal.'); return; }
+      if (rec && rec.result) { body.audio = rec.result.data; body.mime = rec.result.mime; body.secs = rec.result.secs; }
+      if (mbPhotoNew) body.photo = mbPhotoNew;
+      var self = this; self.disabled = true;
+      mbPost(body).then(function(j){
+        self.disabled = false;
+        if (!j.ok) { mbErr(j.error || 'Could not save - try again'); return; }
+        mbSheetClose(); toast(r.id ? 'Recipe saved 🍲' : 'Added to the ' + mbWord() + ' recipes 🍲'); mbMemLoad();
+      });
+    });
+  }
+  function mbRecipeOpen(id){
+    mbSheet('Recipe', '<div class="ev">Loading…</div>');
+    mbGet('recipe', '&id=' + encodeURIComponent(id)).then(function(j){
+      if (!j || !j.ok) { $('mbs-body').innerHTML = '<div class="ev">' + esc((j && j.error) || 'Could not open it') + '</div>'; return; }
+      var r = j.recipe;
+      $('mbs-title').textContent = r.title;
+      $('mbs-body').innerHTML =
+        (r.photo && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/]+=*$/.test(r.photo) ? '<img class="mbphoto" src="' + r.photo + '" alt="' + esc(r.title) + '">' : '') +
+        (r.from_whom || r.memory ? '<p class="hint">' + esc([r.from_whom ? 'From ' + r.from_whom : '', r.memory || ''].filter(Boolean).join(' · ')) + '</p>' : '') +
+        (r.ingredients ? '<p class="eyebrow">Ingredients</p><p class="mbsteps">' + esc(r.ingredients) + '</p>' : '') +
+        (r.steps ? '<p class="eyebrow">How to make it</p><p class="mbsteps">' + esc(r.steps) + '</p>' : '') +
+        (r.audio && /^data:audio\/(webm|ogg|mp4);base64,/.test(r.audio) ? '<p class="eyebrow">Voice note</p><audio controls preload="none" src="' + r.audio + '"></audio>' : '') +
+        '<p class="hint">Added by ' + esc(r.by_name || 'someone') + '</p>' +
+        (r.mine ? '<div class="mbacts"><button class="cbtn ghost" type="button" data-mbredit="' + esc(r.id) + '">✏️ Edit</button><button class="cbtn no" type="button" data-mbrdel="' + esc(r.id) + '">Remove</button></div>' : '');
+    });
+  }
+
+  // ---- Memory settings: nudges, Yaadein, remembered
+  function mbSettingsRender(){
+    var m = mbMem, p = m.prefs, me = state.memberId, word = mbWord();
+    var others = m.members.filter(function(x){ return x.id !== me; });
+    var chk = function(cls, list){ return others.map(function(x){ return '<label class="mbchk"><input type="checkbox" class="' + cls + '" value="' + esc(x.id) + '"' + (list.indexOf(x.id) >= 0 ? ' checked' : '') + '> ' + esc(x.name) + '</label>'; }).join(''); };
+    var h = '<div class="card"><h3>🧡 Reach-out nudges</h3><p>Now and then, a quiet nudge on your Today to call someone you have not talked to in a while. Only you see it. Nobody is told, and there are no scores.</p>' +
+      '<label class="mbchk"><input type="checkbox" id="mb-n-on"' + (p.nudgesOn ? ' checked' : '') + '> Nudge me, at most once a week</label>' +
+      '<label for="mb-n-weeks">Nudge me after</label><select id="mb-n-weeks">' + [2, 3, 4].map(function(w){ return '<option value="' + w + '"' + (w === p.nudgeWeeks ? ' selected' : '') + '>' + w + ' weeks</option>'; }).join('') + '</select>' +
+      '<p class="hint">with no 1:1 message, call or voice note between you.</p>' +
+      (others.length ? '<p class="eyebrow">Never nudge me about</p>' + chk('mb-n-skip', p.nudgeSkip) : '') +
+      '<button class="go" type="button" id="mb-n-save">Save nudges</button></div>';
+    h += '<div class="card"><h3>🌼 Yaadein</h3><p>Once a day at most, Today brings back something from this date in past years: a story, a ' + (word === 'group' ? 'trip' : 'family function') + ' or a photo from the ' + word + ' chat. Leave out what you would rather not see.</p>' +
+      (others.length ? '<p class="eyebrow">Leave these people out</p>' + chk('mb-y-hide', p.hidePeople) : '') +
+      '<p class="eyebrow">Leave out these dates</p><div id="mb-y-ranges">' + (p.hideRanges.length ? p.hideRanges.map(function(r, i){
+        return '<div class="mbrow"><span>' + mbDate(r.from + 'T12:00:00') + ' to ' + mbDate(r.to + 'T12:00:00') + '</span><button class="cbtn no" type="button" data-mbrange="' + i + '">Remove</button></div>';
+      }).join('') : '<p class="hint">None.</p>') + '</div>' +
+      '<div class="tworow"><span><label for="mb-y-from">From</label><input type="date" id="mb-y-from"></span><span><label for="mb-y-to">To</label><input type="date" id="mb-y-to"></span></div>' +
+      '<button class="go" type="button" id="mb-y-save">Save Yaadein</button></div>';
+    h += '<div class="card"><h3>🪔 Remembered</h3><p>For someone who has passed away. Parwah never brings up memories about them by itself, and never asks them a question. Their stories stay, for anyone to read.</p>' +
+      (others.length ? others.map(function(x){
+        return '<div class="mbrow"><span><b>' + esc(x.name) + '</b>' + (x.remembered ? '<br><small>Remembered</small>' : '') + '</span>' +
+          '<button class="cbtn ' + (x.remembered ? 'ghost' : 'no') + '" type="button" data-mbremember="' + esc(x.id) + '" data-on="' + (x.remembered ? '0' : '1') + '">' + (x.remembered ? 'Undo' : 'Mark remembered') + '</button></div>';
+      }).join('') : '<p class="hint">Nobody else here yet.</p>') + '</div>';
+    $('mb-settings').innerHTML = h;
+    $('mb-n-save').addEventListener('click', function(){
+      var skip = []; document.querySelectorAll('.mb-n-skip:checked').forEach(function(i){ skip.push(i.value); });
+      mbPost({ action: 'prefs', nudgesOn: $('mb-n-on').checked, nudgeWeeks: +$('mb-n-weeks').value, nudgeSkip: skip }).then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not save'); return; }
+        toast($('mb-n-on').checked ? 'Nudges on. Only you will see them 🧡' : 'Nudges off'); mbTodayLoad(true); mbMemLoad();
+      });
+    });
+    $('mb-y-save').addEventListener('click', function(){
+      var hide = []; document.querySelectorAll('.mb-y-hide:checked').forEach(function(i){ hide.push(i.value); });
+      var ranges = (mbMem.prefs.hideRanges || []).slice(), f = $('mb-y-from').value, t = $('mb-y-to').value;
+      if (f || t) {
+        if (!f || !t) { fieldErr(f ? 'mb-y-to' : 'mb-y-from', 'Pick both dates, or neither'); return; }
+        ranges.push({ from: f, to: t });
+      }
+      mbPost({ action: 'prefs', hidePeople: hide, hideRanges: ranges }).then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not save'); return; }
+        toast('Saved'); mbTodayLoad(true); mbMemLoad();
+      });
+    });
+  }
+
+  // Every Family Memory button, in one place.
+  document.addEventListener('click', function(e){
+    if (!state) return;
+    var v = e.target.closest('[data-mbv]');
+    if (v) { mbShow(v.getAttribute('data-mbv')); return; }
+    if (e.target.closest('[data-bk][data-goto="memory"]')) { mbShow('health'); return; }
+    var b = e.target.closest('[data-mbteller],[data-mbans],[data-mbskip],[data-mbtb],[data-mbyaad],[data-mbnudge],[data-mbtool],[data-mbinvite],[data-mblisten],[data-mbvis],[data-mbdel],[data-mbrecipe],[data-mbredit],[data-mbrdel],[data-mbrange],[data-mbremember]');
+    if (!b) return;
+    var d = b.dataset;
+    if (d.mbteller) mbPost({ action: 'teller_answer', yes: d.mbteller === 'yes' }).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not send'); return; }
+      toast(d.mbteller === 'yes' ? 'Thank you 🧡 Your first question is on Today' : 'Left off. You can say yes any time in Family Memory.'); mbTodayLoad(true);
+    });
+    if (d.mbans) mbAnswerSheet(d.mbans);
+    if (d.mbskip) askSheet('Skip this question?', 'It will not be asked again for 8 weeks. Nobody is told.', 'Skip it', 'Keep it').then(function(y){
+      if (!y) return;
+      mbPost({ action: 'story_skip', id: d.mbskip }).then(function(j){ if (!j.ok) { toast(j.error || 'Could not skip'); return; } toast('Skipped. See you next week 🧡'); mbTodayLoad(true); });
+    });
+    if (d.mbtb) {
+      var tb = mbTodayData && mbTodayData.throwback;
+      if (tb) askText(tb.question, 'Your answer', 'Share it', 'Not now').then(function(txt){
+        if (!txt) return;
+        mbPost({ action: 'throwback_answer', text: txt }).then(function(j){ if (!j.ok) { toast(j.error || 'Could not send'); return; } toast('Shared with the group 🎒'); mbTodayLoad(true); });
+      });
+    }
+    if (d.mbyaad) {
+      var y = mbTodayData && mbTodayData.yaad; if (!y) return;
+      mbPost({ action: d.mbyaad === 'send' ? 'yaad_send' : 'yaad_hide', key: y.key }).then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not do that'); return; }
+        toast(d.mbyaad === 'send' ? 'Sent to the ' + (mbTodayData.kind === 'group' ? 'group' : 'family') + ' chat 🌼' : 'It will not come back'); mbTodayLoad(true);
+        if (d.mbyaad === 'send') refreshChats();
+      });
+    }
+    if (d.mbnudge) {
+      var nd = mbTodayData && mbTodayData.nudge; if (!nd) return;
+      if (d.mbnudge === 'never') {
+        askSheet('Stop nudges about ' + mbFirst(nd.name) + '?', 'You can change this any time in Family Memory, Settings.', 'Yes, stop', 'Keep them').then(function(ok2){
+          if (ok2) mbPost({ action: 'nudge_act', act: 'never' }).then(function(){ toast('No more nudges about ' + mbFirst(nd.name)); mbTodayLoad(true); });
+        });
+        return;
+      }
+      mbPost({ action: 'nudge_act', act: d.mbnudge }).then(function(){ mbTodayLoad(true); });
+      if (d.mbnudge === 'voice') {
+        post(API.chats, { code: state.code, memberId: state.memberId, action: 'open_dm', otherId: nd.targetId }).then(function(j){
+          if (!j.ok) { toast(j.error || 'Could not open the chat'); return; }
+          switchTab('chat'); refreshChats(function(){ openChat(j.chatId); });
+        }).catch(function(){ toast('No connection - try again'); });
+      }
+    }
+    if (d.mbtool === 'book') mbBookOpen();
+    if (d.mbtool === 'teller') mbTellerSheet();
+    if (d.mbtool === 'recipe') mbRecipeForm();
+    if (d.mbtool === 'stop') askSheet('Stop your weekly question?', 'Your stories stay. You can start again any time.', 'Stop', 'Keep going').then(function(y){
+      if (y) mbPost({ action: 'teller_stop' }).then(function(){ toast('Stopped. Your stories stay 🧡'); mbMemLoad(); mbTodayLoad(true); });
+    });
+    if (d.mbtool === 'suggest') {
+      var grp = mbGroup();
+      askText(grp ? 'Suggest a throwback question for the group' : 'Suggest a question for the storytellers', grp ? 'e.g. Who cried at the farewell?' : 'e.g. Which was your first scooter?', 'Add it', 'Not now').then(function(txt){
+        if (!txt) return;
+        mbPost({ action: 'question_suggest', text: txt }).then(function(j){ if (!j.ok) { toast(j.error || 'Could not add it'); return; } toast('Added. It will be asked soon 💡'); });
+      });
+    }
+    if (d.mbinvite) mbPost({ action: 'teller_invite', targetId: d.mbinvite }).then(function(j){
+      if (!j.ok) { mbErr(j.error || 'Could not ask'); return; }
+      mbSheetClose(); toast(j.status === 'yes' ? 'You are a storyteller now. Your question is on Today 📖' : 'Asked. They say yes on their own screen 🧡'); mbMemLoad(); mbTodayLoad(true);
+    });
+    if (d.mblisten) {
+      var parts = d.mblisten.split(':'), holder = b.parentNode;
+      b.disabled = true; b.textContent = 'Loading…';
+      mbGet('audio', '&kind=' + parts[0] + '&id=' + encodeURIComponent(parts[1])).then(function(j){
+        if (!j || !j.ok || !/^data:audio\/(webm|ogg|mp4);base64,/.test(j.audio || '')) { b.disabled = false; b.textContent = '🎧 Could not load. Try again'; return; }
+        holder.innerHTML = '<audio controls preload="none" src="' + j.audio + '"></audio>';
+      });
+    }
+    if (d.mbvis) mbVisSheet(d.mbvis);
+    if (d.mbdel) askSheet('Remove this story?', 'It goes for everyone. This cannot be undone.', 'Remove', 'Keep it', true).then(function(y){
+      if (y) mbPost({ action: 'story_remove', id: d.mbdel }).then(function(j){ if (!j.ok) { toast(j.error || 'Could not remove'); return; } toast('Removed'); mbMemLoad(); });
+    });
+    if (d.mbrecipe) mbRecipeOpen(d.mbrecipe);
+    if (d.mbredit) { var rr = (mbMem.recipes || []).filter(function(x){ return x.id === d.mbredit; })[0]; if (rr) mbRecipeForm(rr); }
+    if (d.mbrdel) askSheet('Remove this recipe?', 'It goes for everyone. This cannot be undone.', 'Remove', 'Keep it', true).then(function(y){
+      if (y) mbPost({ action: 'recipe_remove', id: d.mbrdel }).then(function(j){ if (!j.ok) { toast(j.error || 'Could not remove'); return; } mbSheetClose(); toast('Removed'); mbMemLoad(); });
+    });
+    if (d.mbrange) {
+      var rg = (mbMem.prefs.hideRanges || []).slice(); rg.splice(+d.mbrange, 1);
+      mbPost({ action: 'prefs', hideRanges: rg }).then(function(){ toast('Removed'); mbMemLoad(); });
+    }
+    if (d.mbremember) {
+      var on = d.on === '1', who = (mbMem.members || []).filter(function(x){ return x.id === d.mbremember; })[0] || {};
+      (on ? askSheet('Mark ' + (who.name || 'them') + ' as remembered?', 'Parwah will never bring up memories about them by itself, and never ask them a question. Their stories stay.', 'Yes', 'Not now') : Promise.resolve(true)).then(function(y){
+        if (y) mbPost({ action: 'remembered', targetId: d.mbremember, on: on }).then(function(j){ if (!j.ok) { toast(j.error || 'Could not save'); return; } toast(on ? 'Remembered 🪔' : 'Undone'); mbMemLoad(); mbTodayLoad(true); });
+      });
+    }
+  });
+  // ---------- end of family memory (api/_memorybond.mjs) ----------
 
   // ---------- plans ----------
   $('p-kind').addEventListener('click', function(e){

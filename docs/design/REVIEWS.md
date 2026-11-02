@@ -3,6 +3,33 @@
 Newest first. Each review uses `CHECKLIST.md`; severities are Nielsen's:
 0 not a problem, 1 cosmetic, 2 minor, 3 major, 4 blocker.
 
+## Review 17 - 2026-11-02 - Family Memory: stories, Yaadein, recipes, nudges
+
+Scope: the bonding half of Family Memory (`api/_memorybond.mjs`). New screens: the Family Memory switch (`#mb-switch`) with Stories (`#mb-stories`), Recipes (`#mb-recipes`) and Settings (`#mb-settings`); the cards on Today (`#mb-today`: the storyteller ask, this week's question, a group's throwback, Yaadein, the private nudge); one sheet for every form (`#mbsheet`: pick a storyteller, answer by voice or typing, who can hear it, add or open a recipe); and the printable family book (`#mb-book`). Screenshots at 390 and 1440, light and dark, family and group, normal and elder mode; each screen is measured for 44px targets, the 12px floor, AA contrast in both themes and nothing sideways at 320 and 390 in `memorybond.e2e`.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 142 | 2 Real-world match | The nudge's "a while" choice read "3 weeks with no 1:1 message, call or v..." cut off on a phone | 2 | Fixed: the choice is "2 / 3 / 4 weeks"; what counts is said once under it |
+| 143 | 4 Consistency | The storyteller's status line under each name rendered at 11.6px | 2 | Fixed: 12px, from the ramp |
+| 144 | 1 Visibility | Printing the family book printed a blank page: the emergency card's print rule hides everything | 3 | Fixed: while the book is open, the print stylesheet shows only the book, without its buttons |
+| 145 | 5 Error prevention | "Don't nudge me about Papa" was an inline link, under 44px | 2 | Fixed: a 44px target, still quieter than Call and Later |
+| 146 | 3 User control | Skip on this week's question could be read as "tell the family I skipped" | 2 | Fixed: a sheet says "It will not be asked again for 8 weeks. Nobody is told." |
+| 147 | 8 Minimalist | Voice and photos in the lists made Stories and Recipes slow to open | 2 | Fixed: lists carry text only; a voice note loads on Listen and a photo when the recipe opens. Nothing plays by itself |
+| 148 | 1 Visibility | A tiny photo in Yaadein shows tiny | 1 | Open: real photos are fine; no upscaling, to keep it honest |
+
+Words: warm and grade-6, about half Hinglish in the questions; never morbid ("before it is too late" is turned away by the server); the nudge says "It has been a while with Papa. Call, send a voice note, or later. Only you see this." and never a score or a feeling. Recipes say they are for food, and a home cure is refused kindly. "Remembered" is for someone who has passed away: no automatic memories about them, and no questions.
+
+Elder mode: the question card's text goes to 24px and each button to a full-width 56px row; the storyteller says yes on their own screen, as with the daily check-in.
+
+New patterns: the memory card (`.mbcard`, a 4px edge: marigold for a question, rani for Yaadein, peacock for the private nudge), side-by-side answers (`.mbside`), the story row (`.mbstory`), the recorder (`.mbrec`: start, stop, a player that never auto-plays), the recipe row (`.mbrecipe`), and the print book (`.mbbook`).
+
+| | |
+|---|---|
+| Reviewer | Design lead (agent review, bond-c) |
+| Date | 2026-11-02 |
+| Scope | The screens above |
+| Heuristic scores (0 fine - 4 blocker) | 1 Visibility 1 · 2 Match 0 · 3 Control 0 · 4 Consistency 0 · 5 Errors 0 · 6 Recognition 0 · 7 Flexibility 0 · 8 Minimalist 0 · 9 Recovery 0 · 10 Help 0 |
+
 ## Review 16 - 2026-11-02 - five family care tools
 
 Scope: the daily check-in (quiet day), Ask family first, Help with my phone, the life certificate and the call rota. New screens: the alerts row at the top of Today (`#fcalerts`), the daily check-in card (`#fcquiet`), and four sheets (`#fcafsheet`, `#fcphsheet`, `#fcqsheet`, `#fctsheet`), plus a checklist or rota inside a task (`#ts-tpl`). Screenshots at 390 and 1440, light and dark; the sheets are measured for 44px targets, the 12px floor, AA contrast and 320px width in `caretools.e2e`, and Today's alerts in `design.browser`.

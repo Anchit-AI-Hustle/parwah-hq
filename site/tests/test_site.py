@@ -2835,6 +2835,79 @@ if _mk.exists() and any(f.is_file() for f in _mk.rglob("*.md")):
 else:
     print("SKIP  marketing: not in this build input (.vercelignore keeps it out) - checked on a full checkout")
 
+# ---------- Family Memory, the bonding half (Nov 2026): Ek sawaal, Yaadein,
+# Rasoi and the private reach-out nudge (api/_memorybond.mjs) ----------
+_mb_api = (API_DIR / "_memorybond.mjs").read_text(encoding="utf-8")
+_mb_seed_src = (API_DIR / "_bondseed.mjs").read_text(encoding="utf-8")
+_mb_js = _app_src[_app_src.index("// ---------- family memory: stories, yaadein, recipes, nudges (api/_memorybond.mjs)"):_app_src.index("// ---------- end of family memory (api/_memorybond.mjs)")]
+_mb_html = _app_src[_app_src.index('<div class="seg mbswitch" id="mb-switch"'):_app_src.index('<div id="book-list-view">')] \
+    + _app_src[_app_src.index('<div class="msheet" id="mbsheet"'):_app_src.index('<!-- A question with two big answers')]
+def _mb_list(name):
+    _blk = _mb_seed_src[_mb_seed_src.index("export const " + name):]
+    _blk = _blk[:min(i for i in (_blk.find("\n];"), _blk.find("\n};")) if i >= 0)]
+    return [v for v in re.findall(r"'((?:[^'\\]|\\.)*)'", _blk) if " " in v]
+_mb_story, _mb_tb, _mb_rc = _mb_list("STORY_SEED"), _mb_list("THROWBACK_SEED"), _mb_list("RECIPE_COPY")
+_mb_copy = " ".join(_mb_story + _mb_tb + _mb_rc)
+check("memory bond: it lives behind /api/book?area=bond, never a new serverless function",
+      "if (area === 'bond') return bondApi(req, res);" in (API_DIR / "book.mjs").read_text(encoding="utf-8")
+      and not (API_DIR / "memorybond.mjs").exists() and "MB_API = '/api/book?area=bond'" in _mb_js)
+check("memory bond: every call goes through requireMember, and another family's id is a 403",
+      "requireMember(sql, code, memberId, tokenOf(req))" in _mb_api and "'That is not in your ' + word" in _mb_api)
+check("ek sawaal: off until the storyteller says yes on their own screen, like the daily check-in",
+      "action === 'teller_answer'" in _mb_api and "t.status = 'yes'" in _mb_api and "It stays off unless you say yes" in _mb_js
+      and "data-mbteller=\"yes\"" in _mb_js)
+check("ek sawaal: one question a week, claimed once by the (person, week) index, pushed only when the claim wins",
+      "create unique index if not exists stories_week_once on stories (about_member, ask_week) where kind = 'story'" in _mb_api
+      and "on conflict (about_member, ask_week) where kind = 'story' do nothing returning id" in _mb_api
+      and "if (ins[0])" in _mb_api and "export function weekOf" in _mb_api)
+check("ek sawaal: Skip is quiet and a skipped question rests for 8 weeks",
+      "skipWeeks: 8" in _mb_api and "s.skipped_at > ${restSince}::date" in _mb_api and "It will not be asked again for 8 weeks. Nobody is told." in _mb_js)
+check(f"ek sawaal: about 52 warm questions, about half Hinglish ({len(_mb_story)}), plus group throwbacks ({len(_mb_tb)})",
+      48 <= len(_mb_story) <= 60 and len([q for q in _mb_story if re.search(r"\b(aap|kya|kaise|kab|kaun|kaunsa|kaunsi|mein|tha|thi|the)\b", q, re.I)]) >= len(_mb_story) * 0.4
+      and len(_mb_tb) >= 15)
+check("ek sawaal: never morbid, and the server turns a morbid suggestion away",
+      not re.search(r"too late|\bdeath\b|\bdie\b|dying|funeral|last wish|illness|disease", _mb_copy, re.I) and "MORBID.test(text)" in _mb_api)
+_mb_hits = sorted({k for k, pat in BANNED.items() if re.search(pat, (_mb_copy + " " + _mb_html).lower())})
+_mb_dash = [lab for nd, lab in EM_FORMS + EN_FORMS if nd.lower() in (_mb_seed_src + _mb_html + _mb_js).lower()]
+check("memory bond: the questions, recipe help and screens pass the banned-words scan, with no dashes",
+      not _mb_hits and not _mb_dash, ", ".join(_mb_hits + _mb_dash))
+check("rasoi: recipes are for food: the form says so, nothing invites a home remedy, and the server refuses one",
+      "Recipes here are for food: the dish, who made it, and how to make it." in _mb_js
+      and all(x in _mb_js for x in _mb_rc)
+      and not re.search(r"nuskh|remed|ilaaj|upchar|gharelu|kadha", (_mb_js + _mb_html + " ".join(_mb_rc)), re.I)
+      and "NOT_FOOD.test(" in _mb_api)
+check("stories: the storyteller decides who hears each answer (the whole family, some people, only me)",
+      "if (r.about_member !== me.id) return { s: 403, e: 'Only the storyteller can do that' };" in _mb_api
+      and "(s.visibility = 'circle' or s.about_member = ${me.id} or (s.visibility = 'some' and ${me.id} = any(s.share_with)))" in _mb_api
+      and "data-mbvis" in _mb_js)
+check("voice: our own recorder, 3 minutes at most, an allow-listed type, a byte cap on the server, never auto-played",
+      "MB_MAX_SECS = 180" in _mb_js and "audioBitsPerSecond: 24000" in _mb_js
+      and "audioTypes: ['audio/webm', 'audio/ogg', 'audio/mp4']" in _mb_api and "audioMaxBytes: 720000" in _mb_api
+      and "autoplay" not in (_mb_js + _mb_html) and ".play(" not in _mb_js and 'preload="none"' in _mb_js)
+check("voice and photos stay out of the lists: fetched only when someone taps, and a recipe photo is small and never SVG",
+      "(s.audio is not null) as has_audio" in _mb_api and "view === 'audio'" in _mb_api and "safeImageUri(body.photo)" in _mb_api
+      and "photoMaxChars: 160000" in _mb_api)
+check("family book: every story the reader may see, printed with window.print and a print stylesheet, no vendor",
+      "window.print()" in _mb_js and "body.mbprint > *:not(#mb-book){display:none!important}" in _app_src and 'id="mb-book"' in _mb_html)
+check("yaadein: at most once a day, hide for good, hide a person or dates, never about someone remembered",
+      "primary key (member_id, day)" in _mb_api and "yaad_hidden" in _mb_api and "inRanges(c.day, prefs.hide_ranges)" in _mb_api
+      and "add column if not exists remembered boolean not null default false" in _mb_api and "not m.remembered" in _mb_api
+      and "Send to everyone who was there" in _mb_js and "Not this one" in _mb_js)
+check("nudges: opt-in, at most weekly, private, a per-person and a global off, never a score or a feeling",
+      "nudges_on boolean not null default false" in _mb_api and "primary key (member_id, week)" in _mb_api
+      and "if (!prefs.nudges_on) return null;" in _mb_api and "nudgeWeeks: [2, 3, 4]" in _mb_api and "'never'" in _mb_api
+      and "It has been a while with" in _mb_js and "Only you see this." in _mb_js
+      and not re.search(r"\b(lonely|loneliness|streak|leaderboard|monitor\w*|surveil\w*)\b", (_mb_js + _mb_html + _mb_copy).lower()))
+check("nudges: a family's call rota comes first; a group suggests a friend not talked to 1:1",
+      "template = 'callrota'" in _mb_api and "c.kind = 'dm'" in _mb_api and "kind = 'call'" in _mb_api)
+check("memory bond: families and groups both, with a throwback question and a group cookbook",
+      "throwback_weeks" in _mb_api and "primary key (circle_id, week)" in _mb_api and "The group cookbook" in _mb_js
+      and "Throwback question" in _mb_js)
+check("memory bond: elder mode gets bigger, calmer cards",
+      "body.senior .mbcard .mbq{font-size:var(--fs-24)}" in _app_src and "body.senior .mbcard .cbtn{min-height:56px" in _app_src)
+check("memory bond: the forms ask in the app's own sheets, never confirm() or prompt()",
+      "askSheet(" in _mb_js and "askText(" in _mb_js and not re.search(r"[^\w.](confirm|prompt)\(", _mb_js))
+
 # ---------- 10t. The timer rings without waiting for GitHub ----------
 # GitHub's scheduled runs came 3 to 7 hours apart, so every alert that must
 # ring when nobody in that family has Parwah open runs in one place
