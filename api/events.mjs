@@ -42,6 +42,54 @@ function tickAllowed(req) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+// THE TIMER, in one place: what is due anywhere, sent once. Called by the
+// scheduled tick (an outside every-minute caller, or the GitHub fallback)
+// and by the first signed-in poll of each minute. It stops starting new
+// families once its budget is spent; the next run picks up the rest, and
+// every alert is claimed in the database, so a repeat never sends twice.
+const TICK_BUDGET_MS = 45000;
+const PIGGYBACK_BUDGET_MS = 3000;
+async function dueCircles(sql) {
+  const ids = new Set();
+  const add = rows => { for (const r of rows || []) if (r && r.circle_id) ids.add(r.circle_id); };
+  const q = async f => { try { add(await f()); } catch (e) { /* that feature has no table yet */ } };
+  await q(() => sql`select distinct circle_id from requests
+                    where status in ('open','assigned','claimed') and due_at is not null
+                      and due_at between now() - interval '2 days' and now() + interval '2 days' limit 500`);
+  await q(() => sql`select distinct circle_id from sos where status = 'open' limit 500`);
+  await q(() => sql`select distinct circle_id from plans where at between now() - interval '1 day' and now() + interval '2 hours' limit 500`);
+  await q(() => sql`select distinct circle_id from medicine_schedules where active limit 500`);
+  await q(() => sql`select distinct circle_id from home_staff where arrive_time is not null limit 500`);
+  await q(() => sql`select distinct circle_id from renewals where expires_on <= current_date + 31 limit 500`);
+  return [...ids];
+}
+export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
+  const t0 = Date.now();
+  await ensureTaskSchema(sql);
+  const circles = await dueCircles(sql);
+  let reminded = 0, late = 0, events = 0, done = 0;
+  // Missed check-ins first: the alert families most need on time.
+  try { events += await quietSweepAll(sql); } catch (e) { /* never stops the timer */ }
+  // Each sweep on its own: a family that never opened one feature (no table
+  // yet, or a bad row) must not stop the other alerts for that family.
+  const one = async f => { try { return (await f()) || 0; } catch (e) { return 0; } };
+  for (const id of circles) {
+    if (Date.now() - t0 > budgetMs) break;
+    await one(() => escalateStaleSos(sql, id));
+    await one(() => ladderEscalate(sql, id, SOS_ESCALATE_MIN));
+    reminded += await one(() => sweepReminders(sql, id));
+    late += await one(() => sweepOverdue(sql, id));
+    events += await one(() => sweepPlanReminders(sql, id));
+    await one(() => sweepDoses(sql, id));
+    await one(() => sweepVisitAsk(sql, id));
+    await one(() => sweepStaffLate(sql, id));
+    await one(() => sweepRenewals(sql, id));
+    await one(() => rotaSweep(sql, id));
+    done++;
+  }
+  return { circles: done, reminded, late, events };
+}
+
 export default async function handler(req, res) {
   let sql;
   // A tick is refused, or skipped by its limit, BEFORE any table is made:
@@ -106,35 +154,8 @@ async function escalateStaleSos(sql, circleId) {
     // and it runs at most once a minute whoever calls it.
     if (req.method === 'GET' && req.query && req.query.tick !== undefined) {
       // Allowed and counted above, before the schema.
-      await ensureTaskSchema(sql);
-      const circles = await sql`select distinct circle_id from requests
-                                where status in ('open','assigned','claimed') and due_at is not null
-                                  and due_at between now() - interval '2 days' and now() + interval '2 days'
-                                union select distinct circle_id from sos where status = 'open'
-                                union select distinct circle_id from plans where at between now() and now() + interval '2 hours'
-                                limit 500`.catch(async () => sql`select distinct circle_id from requests
-                                where status in ('open','assigned','claimed') and due_at is not null
-                                  and due_at between now() - interval '2 days' and now() + interval '2 days' limit 500`);
-      // Families with medicine times set: their nudges ride on the timer too.
-      try {
-        const dc = await sql`select distinct circle_id from medicine_schedules where active limit 500`;
-        for (const d of dc) if (!circles.some(c => c.circle_id === d.circle_id)) circles.push(d);
-      } catch (e) { /* no medicine times anywhere yet */ }
-      let reminded = 0, late = 0, events = 0;
-      for (const c of circles) {
-        try {
-          reminded += await sweepReminders(sql, c.circle_id);
-          late += await sweepOverdue(sql, c.circle_id);
-          events += await sweepPlanReminders(sql, c.circle_id);
-          await escalateStaleSos(sql, c.circle_id);
-          await ladderEscalate(sql, c.circle_id, SOS_ESCALATE_MIN);
-          try { await sweepDoses(sql, c.circle_id); await sweepVisitAsk(sql, c.circle_id); } catch (e) { /* never stops the SOS check */ }
-        } catch (e) { /* one family's trouble never stops the others */ }
-      }
-      // Missed check-ins (api/_familycare.mjs): each push claimed once,
-      // counted with the other alerts so the reply stays counts only.
-      try { events += await quietSweepAll(sql); } catch (e) { /* never stops the timer */ }
-      return res.status(200).json({ ok: true, circles: circles.length, reminded, late, events });
+      const t = await runTick(sql, TICK_BUDGET_MS);
+      return res.status(200).json({ ok: true, circles: t.circles, reminded: t.reminded, late: t.late, events: t.events });
     }
     if (req.method === 'GET') {
       // An invite code alone used to read this: every member's phone, date of
@@ -184,6 +205,13 @@ async function escalateStaleSos(sql, circleId) {
         where circle_id = ${circle.id} and status = 'pending'
         order by created_at limit 20`;
       const pol = await sql`select join_policy from circles where id = ${circle.id}`;
+      // EVERY OPEN PHONE IS ALSO THE TIMER. GitHub's scheduled timer runs
+      // hours late on a free account, so whichever signed-in phone polls
+      // first each minute (any family) runs the whole timer, under a time
+      // budget so this read stays quick. Claimed per alert, never doubled.
+      try {
+        if (await rateLimit(sql, 'tick', 'all', 1, 50, { failClosed: true })) await runTick(sql, PIGGYBACK_BUDGET_MS);
+      } catch (e) { /* the timer never breaks a read */ }
       await escalateStaleSos(sql, circle.id);
       // Nobody in the family answered: the nearby people who said yes, in
       // order (api/_ladder.mjs). Then the home staff and renewal alerts,

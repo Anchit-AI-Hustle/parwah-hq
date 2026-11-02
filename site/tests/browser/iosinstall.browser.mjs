@@ -54,9 +54,9 @@ async function page(ua, url, { standalone = false, scheme = 'light' } = {}) {
   ok(await p.isVisible('#ios-get') && (await p.getAttribute('#ios-get', 'href')) === '../install/parwah.mobileconfig'
      && await p.$eval('#ios-get', el => !!el.closest('#advanced')), 'the profile stays, under Advanced options, never as the main button');
   ok(/not signed/.test(await p.textContent('#adv-ios')), 'and it says honestly that iPhone will call the profile not signed');
-  ok(await p.$eval('#apk-link', el => !!el.closest('#advanced')) && /test build/i.test(await p.textContent('#adv-android')), 'the Android test build is under Advanced too, named as a test build');
+  ok(/Play Store/.test(await p.textContent('#adv-android')) && !(await p.$('#apk-link')), 'Android says Play Store soon, and offers no test file');
   ok(await p.$$eval('.getbtn', bs => bs.every(b => !b.closest('#advanced'))), 'no main-path button sits in Advanced');
-  ok(!(await p.isVisible('#ipa-dev')) && !(await p.isVisible('#ipa-link')), 'an iPhone is never offered the IPA it cannot open');
+  ok(!(await p.$('#ipa-link')), 'no IPA is offered to anyone');
   ok(!(await p.isVisible('#ios-inapp')), 'in Safari there is no "open in Safari" warning');
   ok(await p.evaluate(() => document.documentElement.scrollWidth <= 390), 'nothing scrolls sideways');
 }
@@ -66,8 +66,8 @@ async function page(ua, url, { standalone = false, scheme = 'light' } = {}) {
 }
 {
   const p = await page(DESK, '/get/');
-  ok(await p.isVisible('#ipa-dev') && await p.isVisible('#ipa-link'), 'on a computer the IPA stays, as a link for developers');
-  ok(await p.isVisible('#apk-link'), 'and the Android download is there');
+  ok(!(await p.$('#ipa-link')) && !(await p.$('#apk-link')), 'on a computer too, no test files: the browser way is the app');
+  ok(await p.isVisible('#android-open'), 'and the Android browser steps are there');
 }
 
 // ---- the app, arriving from Get the iPhone app

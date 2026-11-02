@@ -342,6 +342,9 @@ let given;
   const t = await act(meera, 'task_create', { title: 'Timer test', ownerId: 'me', dueAt: new Date(Date.now() + 60000).toISOString(), tz: IN, remindBefore: 10 });
   const tick = async () => { let st = 200, js = null; await events({ method: 'GET', headers: {}, query: { tick: '1' }, body: {} },
     { status(x) { st = x; return this; }, json(j) { js = j; return this; }, setHeader() {} }); return { st, ...js }; };
+  // Phones and the timer share one run a minute (api/events.mjs runTick):
+  // the polls above already took this minute's, so start a fresh one.
+  await admin.query(`delete from rate_limit where bucket = 'tick'`);
   const a = await tick();
   ok('the timer needs no sign-in, and sends what is due', a.st === 200 && a.ok && a.reminded === 1 && (await row(t.id)).reminded_for !== null, JSON.stringify(a));
   ok('it says only counts, nothing about any family', Object.keys(a).sort().join() === 'circles,events,late,ok,reminded,st', Object.keys(a).sort().join());

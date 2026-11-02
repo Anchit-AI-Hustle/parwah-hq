@@ -41,7 +41,6 @@
 .adv .platform{box-shadow:none;background:transparent}
 .adv .platform h3{font-family:var(--disp);font-size:1.05rem;margin-bottom:6px}
 .adv a.quiet-link{display:inline-block;padding:11px 0;min-height:44px;font-weight:700;color:var(--sindoor)}
-.allbuilds{display:inline-block;margin-top:10px}
 </style>
 </head>
 <body>
@@ -113,12 +112,9 @@
     </div>
 
     <div class="platform" id="adv-android">
-      <h3>Android: the test build</h3>
-      <p class="getnote">This is an early test build, not from the Play Store. Android will ask you to allow installs from your browser. The browser way above is the same app and always up to date.</p>
-      <a class="quiet-link" id="apk-link" href="https://github.com/Anchit-AI-Hustle/parwah-hq/releases/download/mobile-v1.0.0-build15/parwah-test.apk" download>Download the Android test build <span id="apk-size">(7 MB)</span></a>
+      <h3>Android: from the Play Store, soon</h3>
+      <p class="getnote">Parwah is coming to the Google Play Store. Until then, the browser way above is the full app, always up to date, with nothing extra to allow.</p>
     </div>
-
-    <p class="getnote" id="ipa-dev">For developers: the <a id="ipa-link" href="https://github.com/Anchit-AI-Hustle/parwah-hq/releases/download/mobile-v1.0.0-build15/parwah-ios-unsigned.ipa">iPhone app file (IPA)</a> installs only through Xcode on a Mac, with the <a href="https://github.com/Anchit-AI-Hustle/parwah-hq/blob/main/mobile/README.md">install script</a>. <a class="allbuilds" href="https://github.com/Anchit-AI-Hustle/parwah-hq/releases">All app builds</a></p>
   </section>
 </div>
 
@@ -146,8 +142,6 @@
   if (isIOS) {
     var ios = document.getElementById('p-ios');
     ios.parentNode.insertBefore(ios, document.getElementById('p-android'));
-    // An IPA cannot be opened on the phone itself; only a computer can use it.
-    document.getElementById('ipa-dev').hidden = true;
     // Instagram, WhatsApp and other in-app browsers have no Add to Home Screen.
     if (/FBAN|FBAV|Instagram|WhatsApp|Line\/|GSA\/|Snapchat|Twitter|LinkedInApp/.test(ua)) document.getElementById('ios-inapp').hidden = false;
   }

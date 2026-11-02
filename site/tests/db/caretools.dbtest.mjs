@@ -433,6 +433,8 @@ let lc;
   const early = String(Math.max(0, w.hour - 1)).padStart(2, '0') + ':00';
   await admin.query(`update members set checkin_by = $2, tz = $3, quiet_nudged_for = null, quiet_alerted_for = null, away_until = null where id = $1`, [maa.id, early, TZ]);
   await admin.query(`delete from events where member_id = $1 and type = 'checkin'`, [maa.id]);
+  // Phones and the timer share one run a minute: start a fresh one.
+  await admin.query(`delete from rate_limit where bucket = 'tick'`);
   const r = await call(events, rohan, { method: 'GET', query: { tick: '1' } });
   ok('the timer sweeps missed check-ins too, with every phone closed', r.ok && r.events >= 1 && (await mrow(maa.id)).nudged === today, JSON.stringify(r));
 }

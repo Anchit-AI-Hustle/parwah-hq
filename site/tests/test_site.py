@@ -2769,12 +2769,15 @@ _get = (ROOT / "public" / "get" / "index.html").read_text(encoding="utf-8")
 _adv = _get.find('id="advanced"')
 check("get: no probe for a download that does not exist", "downloads/parwah.apk" not in _get and "direct-android" not in _get)
 check("get: no call to the GitHub API from the page (rate-limited for visitors, and the repo may go private)", "api.github.com" not in _get)
-check("get: the browser and Add to Home Screen come first, the profile and the test build under Advanced",
+check("get: the browser and Add to Home Screen come first, the profile under Advanced",
       _adv > 0 and 0 < _get.find('id="ios-guide"') < _adv and 0 < _get.find('id="android-open"') < _adv
-      and _get.find('id="ios-get"') > _adv and _get.find('id="apk-link"') > _adv
-      and "Add to Home Screen" in _get[:_adv])
+      and _get.find('id="ios-get"') > _adv and "Add to Home Screen" in _get[:_adv])
 check("get: the advanced options say plainly what they are",
-      "not signed" in _get[_adv:] and "test build" in _get[_adv:])
+      "not signed" in _get[_adv:] and "Play Store" in _get[_adv:])
+# The repo goes private and its test releases are deleted, so the page links
+# to nothing on GitHub: a debug-signed build is not offered to families.
+check("get: no download or link from GitHub (no test APK, no IPA, no releases page)",
+      "github.com" not in _get and ".apk" not in _get and ".ipa" not in _get)
 
 # THE PRESS KIT. Facts that are true today, files a journalist can use.
 _press_dir = ROOT / "public" / "press"
@@ -2831,6 +2834,22 @@ if _mk.exists() and any(f.is_file() for f in _mk.rglob("*.md")):
           any("Paid partnership with Parwah" in f.read_text(encoding="utf-8") for f in _cp))
 else:
     print("SKIP  marketing: not in this build input (.vercelignore keeps it out) - checked on a full checkout")
+
+# ---------- 10t. The timer rings without waiting for GitHub ----------
+# GitHub's scheduled runs came 3 to 7 hours apart, so every alert that must
+# ring when nobody in that family has Parwah open runs in one place
+# (runTick), from the tick AND from the first signed-in poll of each minute.
+_evs = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_rt = _evs[_evs.index("export async function runTick"):_evs.index("export default async function handler")]
+check("timer: one runTick covers every timed alert (tasks, plans, SOS, ladder, doses, visits, staff, renewals, rota, check-ins)",
+      all(f in _rt for f in ("sweepReminders", "sweepOverdue", "sweepPlanReminders", "escalateStaleSos", "ladderEscalate",
+                              "sweepDoses", "sweepVisitAsk", "sweepStaffLate", "sweepRenewals", "rotaSweep", "quietSweepAll")))
+check("timer: each sweep runs on its own, so one feature's trouble never silences another",
+      "const one = async f =>" in _rt and "await one(() => sweepRenewals(sql, id))" in _rt)
+check("timer: the first signed-in poll of each minute runs it, under a short time budget",
+      "await runTick(sql, PIGGYBACK_BUDGET_MS)" in _evs and "rateLimit(sql, 'tick', 'all', 1, 50, { failClosed: true })" in _evs)
+check("timer: Vercel's once-a-day cron is the backstop",
+      any(c.get("path", "").startswith("/api/events?tick") for c in _json.loads((REPO / "vercel.json").read_text(encoding="utf-8")).get("crons", [])))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
