@@ -3,6 +3,54 @@
 Newest first. Each review uses `CHECKLIST.md`; severities are Nielsen's:
 0 not a problem, 1 cosmetic, 2 minor, 3 major, 4 blocker.
 
+## Review 16 - 2026-11-02 - five family care tools
+
+Scope: the daily check-in (quiet day), Ask family first, Help with my phone, the life certificate and the call rota. New screens: the alerts row at the top of Today (`#fcalerts`), the daily check-in card (`#fcquiet`), and four sheets (`#fcafsheet`, `#fcphsheet`, `#fcqsheet`, `#fctsheet`), plus a checklist or rota inside a task (`#ts-tpl`). Screenshots at 390 and 1440, light and dark; the sheets are measured for 44px targets, the 12px floor, AA contrast and 320px width in `caretools.e2e`, and Today's alerts in `design.browser`.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 134 | 1 Visibility | A parent's yes to a check-in time asked by the family sat under five big buttons, below the fold | 3 | Fixed: a question waiting for your own answer is in the alerts row at the top of Today |
+| 135 | 1 Visibility | Today said "All quiet" under "Papa is asking the family first" | 3 | Fixed: the status line names the first alert while one is up |
+| 136 | 2 Real-world match | "Away?" on a check-in row did not say what it does | 2 | Fixed: "Pause" (and "Change" while away), with a label naming the person |
+| 137 | 4 Consistency | Call links in alert rows were underlined, unlike every other button | 1 | Fixed |
+| 138 | 8 Minimalist | The check-in card repeated its explanation above a single "Ask Papa" row | 1 | Fixed: the explanation shows only once someone has a time; an invitation row explains itself, and "Not now" waves it away on this phone |
+| 139 | 5 Error prevention | An Aadhaar number could be typed as the acknowledgement | 3 | Fixed: refused under the box, on the server and in the app; Parwah never takes a face scan or an Aadhaar number |
+| 140 | 9 Error recovery | "Rejected" on a life certificate left the family with nothing to do | 2 | Fixed: three steps that usually sort it (Aadhaar photo, the bank branch, a doorstep banking visit), as a list |
+| 141 | 3 User control | One tap on Ask family first from More could alarm the whole family by accident | 2 | Fixed: the elder's big button sends at once (it says so); from More, the sheet opens first with "Tell the family now" |
+
+Words: calm and dignity-first. "Has not checked in today. Give him a call?", never an emergency; nothing is called monitoring or detection, and Parwah never says it can spot a scam. The how-to cards are static text with a Hinglish line under each title (no Devanagari in the app).
+
+New patterns: the alert row (`.crow.fcrow.urgent`, a 4px status edge with a word, never colour alone), the plain-rules list (`.fcrules`), the how-to card (`details.howto`), the checklist row (`.fcchk`), the rota chips (`.fcrota`).
+
+| | |
+|---|---|
+| Reviewer | Design lead (agent review, feat-a) |
+| Date | 2026-11-02 |
+| Scope | The five screens above |
+| Heuristic scores (0 fine - 4 blocker) | 1 Visibility 1 · 2 Match 0 · 3 Control 1 · 4 Consistency 0 · 5 Errors 0 · 6 Recognition 0 · 7 Flexibility 0 · 8 Minimalist 1 · 9 Recovery 0 · 10 Help 0 |
+| Must fix before release | None open |
+| Follow-ups, with owner | Elder mode now has five big buttons; watch with real parents whether the last two should fold under "More help" (owner: Anchit) |
+| Verdict | Approved with follow-ups |
+
+Added at the merge of the three feature branches: when the quiet-day alert has been up for 30 more minutes and nobody in the family has checked in or said "I called", the first nearby helper who said yes is reached, once per person per day: Parwah rings them when calls are switched on (inside the family's daily call cap); otherwise the alert row shows "Nobody has answered yet" with a Call button for that helper. Proved in `site/tests/db/caretools.dbtest.mjs`.
+
+## Review 15 - 2026-11-02 - nearby helpers, costs, home staff, renewals
+
+Scope: four new screens built from existing atoms (`.card`, `.crow`, `.ev`, `.pick`, `.seg`, `details.fmore`, `.gchk`, `.ss-btn`): Costs, Home staff and Renewals under To do; Nearby helpers on a person's page; "Who came today?" on an elder's Today; nearby people on the family's SOS alarm; the nearby person's own consent page. Measured by `site/tests/browser/familytools.browser.mjs` at 320, 390 and 1440px in both themes: no sideways scroll, 44px targets, 12px floor, AA contrast.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 128 | 1 Visibility | The month total on Costs rendered at body size inside a card | 2 | Fixed: the total is the hero number (`.ftbig`), the label above it is plain text, not a shouting eyebrow |
+| 129 | 8 Minimalist | Every renewal row carried a task picker, even an FD two hundred days away | 2 | Fixed: the picker shows only within 60 days or once expired; a repeated kind name ("Gas connection KYC · Gas connection KYC") is dropped |
+| 130 | 2 Real-world match | "1 paid leave day a month are not cut" | 1 | Fixed: "1 day of leave a month is paid" |
+| 131 | 7 Flexibility | The SOS alarm's helper buttons read "Mrs" (first word of the name) | 2 | Fixed: the name as the family wrote it, with a key mark when they hold one |
+| 132 | 5 Error prevention | An ID box could take a whole Aadhaar number | 3 | Fixed: 4 characters in the box and on the server; the add form tells the family to tell the worker what is kept |
+| 133 | 4 Consistency | Reordering the ladder by drag is hard on a phone and for older hands | 2 | Arrows (44px, labelled "Move X up/down"), focus kept on the moved row |
+
+New patterns: the month stepper (`.ftmonth`), the three-way day mark (`.ftmarks`, bigger in senior mode), the status chip (`.ftchip` ok / warn / bad, always with words). Follow-up (owner: product): a ladder rung on a missed check-in, through `ladderFor`, when the quiet-day alert lands. Done when the three feature branches were merged: see Review 16.
+
+Verdict: Approved with follow-ups.
+
 ## Review 14 - 2026-11-02 - dose ticks, the hospital screen, after a visit
 
 **Reviewer:** Claude, acting as senior product designer.
@@ -411,20 +459,3 @@ On a laptop the sidebar already holds Chat and Ask Ekta. A second pair of floati
 | # | Heuristic | Finding | Sev | Status |
 |---|---|---|---|---|
 | 104 | 8 Minimalist | SOS, New chat and Ekta floated over a page that already has a sidebar. They sat on the to-do list | 3 | Fixed: Chat and Ask Ekta stay in the sidebar. SOS sits at the bottom of the sidebar, above the account line, full width and 64px tall. On a phone the three still float. Supersedes the wide-screen half of #90 |
-
-### Review 11, nearby helpers, costs, home staff, renewals (leader review, 2026-11-02)
-
-Scope: four new screens built from existing atoms (`.card`, `.crow`, `.ev`, `.pick`, `.seg`, `details.fmore`, `.gchk`, `.ss-btn`): Costs, Home staff and Renewals under To do; Nearby helpers on a person's page; "Who came today?" on an elder's Today; nearby people on the family's SOS alarm; the nearby person's own consent page. Measured by `site/tests/browser/familytools.browser.mjs` at 320, 390 and 1440px in both themes: no sideways scroll, 44px targets, 12px floor, AA contrast.
-
-| # | Heuristic | Finding | Sev | Status |
-|---|---|---|---|---|
-| 105 | 1 Visibility | The month total on Costs rendered at body size inside a card | 2 | Fixed: the total is the hero number (`.ftbig`), the label above it is plain text, not a shouting eyebrow |
-| 106 | 8 Minimalist | Every renewal row carried a task picker, even an FD two hundred days away | 2 | Fixed: the picker shows only within 60 days or once expired; a repeated kind name ("Gas connection KYC · Gas connection KYC") is dropped |
-| 107 | 2 Real-world match | "1 paid leave day a month are not cut" | 1 | Fixed: "1 day of leave a month is paid" |
-| 108 | 7 Flexibility | The SOS alarm's helper buttons read "Mrs" (first word of the name) | 2 | Fixed: the name as the family wrote it, with a key mark when they hold one |
-| 109 | 5 Error prevention | An ID box could take a whole Aadhaar number | 3 | Fixed: 4 characters in the box and on the server; the add form tells the family to tell the worker what is kept |
-| 110 | 4 Consistency | Reordering the ladder by drag is hard on a phone and for older hands | 2 | Arrows (44px, labelled "Move X up/down"), focus kept on the moved row |
-
-New patterns: the month stepper (`.ftmonth`), the three-way day mark (`.ftmarks`, bigger in senior mode), the status chip (`.ftchip` ok / warn / bad, always with words). Follow-up (owner: product): a ladder rung on a missed check-in, through `ladderFor`, when the quiet-day alert lands.
-
-Verdict: Approved with follow-ups.

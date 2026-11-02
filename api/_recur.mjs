@@ -4,7 +4,7 @@
 // (site/tests/recurtest.mjs). Everything is computed on the family's own
 // wall clock in their time zone and handed back as a UTC instant, so "every
 // day at 9" stays 9 at home even where the clocks change twice a year.
-export const REPEATS = ['once', 'daily', 'weekly', 'monthly'];
+export const REPEATS = ['once', 'daily', 'weekly', 'monthly', 'yearly'];
 export function validTz(tz) {
   if (typeof tz !== 'string' || !tz || tz.length > 64) return null;
   try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return tz; } catch (e) { return null; }
@@ -44,7 +44,9 @@ function addPeriod(w, rec, k) {
     return { ...w, y: n.getUTCFullYear(), m: n.getUTCMonth() + 1, d: n.getUTCDate() };
   }
   // Monthly keeps its day: the 31st becomes the 30th or 28th in shorter
-  // months, and comes back to the 31st when the month has one.
+  // months, and comes back to the 31st when the month has one. Yearly is
+  // twelve months at a time, so 29 February is the 28th in other years.
+  if (rec === 'yearly') k = k * 12;
   const mm = (w.m - 1) + k, y = w.y + Math.floor(mm / 12), m = ((mm % 12) + 12) % 12 + 1;
   const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
   return { ...w, y, m, d: Math.min(w.d, last) };
@@ -56,7 +58,7 @@ export function nextDue(dueAtMs, rec, tz, anchorMs, nowMs = Date.now()) {
   const zone = validTz(tz) || 'UTC';
   const w0 = wall(anchorMs || dueAtMs, zone);
   const after = Math.max(dueAtMs, nowMs);
-  const per = rec === 'daily' ? 86400000 : rec === 'weekly' ? 7 * 86400000 : 31 * 86400000;
+  const per = rec === 'daily' ? 86400000 : rec === 'weekly' ? 7 * 86400000 : rec === 'yearly' ? 366 * 86400000 : 31 * 86400000;
   let k = Math.max(1, Math.floor((after - (anchorMs || dueAtMs)) / per) - 1);
   for (let i = 0; i < 500; i++, k++) {
     const t = fromWall(addPeriod(w0, rec, k), zone);

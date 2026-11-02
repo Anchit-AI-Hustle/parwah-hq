@@ -1246,6 +1246,37 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 .ftsplit{display:flex;align-items:center;justify-content:space-between;gap:var(--space-12);margin-bottom:var(--space-8)}
 .ftsplit input[type=number]{max-width:96px}
 .native-app #getapp,.native-app .ditem[href="get/"]{display:none}
+/* ---- Family care tools: quiet day, ask family first, phone help, the
+   life certificate and the call rota (see api/_familycare.mjs). Tokens only. ---- */
+.big.askfirst{background:var(--dusk);color:var(--cream);font-family:var(--body);font-size:var(--fs-20);border:2px solid var(--marigold)}
+.fcrow{border-left-width:4px;margin-bottom:var(--space-8)}
+.fcrow .txt b{display:block}
+.fcrow a.cbtn,.fcstack a,.fcrow a.cbtn:hover{text-decoration:none}
+.fcsteps{margin:var(--space-4) 0 0;padding-left:var(--space-20);font-size:var(--fs-14);color:var(--ink-soft)}
+.fccard{margin:var(--space-12) 0}
+.fccard h3{margin:0 0 var(--space-4)}
+.fcrules{margin:var(--space-8) 0 var(--space-16);padding-left:var(--space-20);font-size:var(--fs-16);line-height:1.5}
+.fcrules li{margin-bottom:var(--space-8)}
+.fcstack{display:flex;flex-direction:column;gap:var(--space-8);margin-top:var(--space-12)}
+.fcstack .go{margin-top:0}
+.fcstack a.go,.fcstack a.cbtn{display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;box-sizing:border-box;width:100%}
+.fcstack .cbtn{width:100%}
+.fcsafe{background:var(--tint-warm);color:var(--ink);border-radius:var(--radius-12);padding:var(--space-12) var(--space-16);font-size:var(--fs-14);margin-top:var(--space-16)}
+.fcsafe b{font-size:var(--fs-18)}
+.fcshot{display:block;max-width:100%;max-height:220px;border-radius:var(--radius-12);margin-top:var(--space-8);border:1px solid var(--bone-2)}
+details.howto{background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:0 var(--space-16);margin-bottom:var(--space-8)}
+details.howto summary{display:flex;align-items:center;font-weight:700;font-size:var(--fs-16)}
+details.howto ol{margin:0 0 var(--space-12);padding-left:var(--space-20);font-size:var(--fs-16);line-height:1.5}
+details.howto li{margin-bottom:var(--space-4)}
+details.howto .hi{color:var(--ink-soft);font-size:var(--fs-14);margin:0 0 var(--space-12)}
+.fcchk{display:flex;align-items:flex-start;gap:var(--space-12);min-height:var(--tap-min);font-size:var(--fs-16);margin:var(--space-8) 0;cursor:pointer;font-weight:400}
+.fcchk input{width:24px;height:24px;flex:none;accent-color:var(--marigold);margin-top:var(--space-2)}
+.fcrota{display:flex;flex-wrap:wrap;gap:var(--space-8);margin:var(--space-8) 0}
+.fcrota span{background:var(--bone);border-radius:var(--radius-pill);padding:var(--space-4) var(--space-12);font-size:var(--fs-14);font-weight:600}
+.fcrota span.now{background:var(--tint-warm);color:var(--ink);outline:2px solid var(--marigold)}
+.fctpl{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-8)}
+.fctpl .cbtn{flex:1 1 220px;min-height:var(--tap-min)}
+body.senior .fcrow .txt b{font-size:var(--fs-18)}
 </style>
 </head>
 <body>
@@ -1532,6 +1563,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <span class="txt"><b>Could not reach Parwah</b><small>This is the last thing we saw, not what is happening now. It will retry on its own.</small></span>
       <button class="cbtn" data-retryload="1">Try now</button>
     </div>
+    <!-- Family care alerts (api/_familycare.mjs): someone asking the family
+         first before paying, a missed daily check-in, a parent asking for
+         help with the phone. Alerts come first on Today (docs/design/TODAY.md). -->
+    <div id="fcalerts" aria-live="polite"></div>
     <!-- For an elder the family looks after, their three buttons come first:
          SOS must never be below the fold. -->
     <div id="seniorui" hidden>
@@ -1541,6 +1576,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <!-- CARE CYCLE: the parent's own medicine times today, one big tick
            each. When there are times, they stand in for "Medicines taken". -->
       <div id="dose-elder" hidden></div>
+      <button class="big askfirst" id="btn-askfirst">🛡 Someone is asking for money or an OTP<span class="sub">Ask the family first, in one tap</span></button>
+      <button class="big pill" id="btn-phonehelp">📱 Help me with my phone<span class="sub">Send the family a picture of the screen</span></button>
     </div>
     <!-- Home staff, one tap each a day (api/_staff.mjs). -->
     <div class="card" id="staff-today" hidden></div>
@@ -1553,6 +1590,12 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div id="frslot"></div>
     <!-- CARE CYCLE: someone in hospital, a visit to note, my own medicine times. -->
     <div id="cc-today"></div>
+    <!-- The daily check-in: off until the person it is about says yes. -->
+    <div class="card fccard" id="fcquiet" hidden>
+      <h3>🕚 Daily check-in</h3>
+      <p class="hint" id="fcq-hint" style="margin:0 0 var(--space-12)">If someone has not said they are okay by their time, they get a gentle reminder. 30 minutes later the family is told, so someone can call.</p>
+      <div id="fcq-rows"></div>
+    </div>
     <!-- THE FIVE THINGS. Families talk on WhatsApp; Parwah holds what WhatsApp
          cannot: the papers, the medicines, who does what, who is who, and the
          card for an emergency. Ranked by utility in docs/design/TODAY.md; the
@@ -1595,6 +1638,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-spark"/></svg></span><b>Ekta</b><small>Reminders, help, scam check - just ask</small></button>
       <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-sun"/></svg></span><b>Good times</b><small id="w-day">Good hours for your city</small></button>
       <button class="widget" data-goto="vault" data-sec="pay"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-card"/></svg></span><b>Payments</b><small id="w-pay">Who may use which way of paying</small></button>
+      <button class="widget" id="w-askfirst"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg></span><b>Ask family first</b><small>Asked for money or an OTP? Check with the family</small></button>
+      <button class="widget" id="w-phonehelp"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span><b>Phone help</b><small>Ask the family, and short how-to cards</small></button>
       <button class="widget" data-goto="fun" data-sec="games"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-dice"/></svg></span><b>Games</b><small id="w-game">Seven games, play together</small></button>
       </div>
       <button class="card coincard" id="coincard" hidden style="margin-bottom:var(--space-16);width:100%;text-align:left">
@@ -1700,6 +1745,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <button type="button" data-rep="daily">Daily</button>
           <button type="button" data-rep="weekly">Weekly</button>
           <button type="button" data-rep="monthly">Monthly</button>
+          <button type="button" data-rep="yearly">Yearly</button>
         </div>
       </div>
       <details class="fmore" id="r-more">
@@ -1716,6 +1762,14 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="go" id="r-add" style="margin-top:var(--space-16)">Add it</button>
       <p class="hint" id="r-hint">Nobody is given it yet - the first person to tap "I'm on it" takes it.</p>
       <p class="hint">No medical details needed here - "Papa's 9 pm tablets" is enough.</p>
+    </div>
+    <div class="card" id="fc-ready" style="margin-top:var(--space-16)">
+      <h3>Ready-made</h3>
+      <p class="hint" style="margin:0">Set up in one tap, with the steps already written in.</p>
+      <div class="fctpl">
+        <button type="button" class="cbtn ghost" id="fc-lc-open">🪪 Life certificate (Jeevan Pramaan)</button>
+        <button type="button" class="cbtn ghost" id="fc-rota-open">📞 Call rota: who calls today</button>
+      </div>
     </div>
     </div>
 
@@ -3388,6 +3442,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <h3 id="ts-title" style="margin:0 var(--space-32) var(--space-12) 0"></h3>
     <div class="crow late" id="ts-late" hidden style="margin-bottom:var(--space-12)"><span class="txt"><b>Running late</b><small id="ts-late-next"></small></span></div>
     <div id="ts-facts" class="feed"></div>
+    <div id="ts-tpl"></div>
     <div id="ts-done" hidden style="margin-top:var(--space-12)">
       <label for="ts-note">Anything the family should know? (optional)</label>
       <input type="text" id="ts-note" maxlength="280" placeholder="e.g. receipt is in the blue folder">
@@ -3404,7 +3459,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <div class="pickrow">
         <label class="pick"><span>Date</span><input type="date" id="ts-e-date"></label>
         <label class="pick"><span>Time</span><input type="time" id="ts-e-time"></label>
-        <label class="pick"><span>Repeat</span><select id="ts-e-rep"><option value="once">Once</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></label>
+        <label class="pick"><span>Repeat</span><select id="ts-e-rep"><option value="once">Once</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select></label>
         <label class="pick"><span>For whom</span><select id="ts-e-about" aria-label="For whom"></select></label>
         <label class="pick"><span>Remind</span><select id="ts-e-remind"><option value="0">At the time</option><option value="10">10 minutes before</option><option value="30">30 minutes before</option><option value="60">1 hour before</option><option value="1440">1 day before</option><option value="none">No reminder</option></select></label>
         <label class="pick"><span>If late, tell</span><select id="ts-e-esc"><option value="people">Whoever has it, and me</option><option value="everyone">Everyone in the family</option></select></label>
@@ -3567,6 +3622,132 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="cbtn ghost" id="ec-print">🖨 Print</button>
     </div>
     <p class="hint" style="margin-top:var(--space-12)">Everything here comes from Health &amp; contacts. Blank rows mean nobody has recorded it yet - fill them in before you need them.</p>
+  </div>
+</div>
+
+<!-- ============ FAMILY CARE TOOLS (api/_familycare.mjs) ============ -->
+<!-- Ask family first: the plain rules, 1930, and the family on one tap.
+     Parwah never says it can spot a scam; these rules are simply true. -->
+<div class="msheet" id="fcafsheet" hidden role="dialog" aria-modal="true" aria-labelledby="fcaf-title">
+  <div class="mp" style="max-width:460px">
+    <button class="x" id="fcaf-x" aria-label="Close">✕</button>
+    <h3 id="fcaf-title" style="margin:0 var(--space-32) var(--space-8) 0">🛡 Stop. Ask the family first.</h3>
+    <div class="crow fcrow urgent" id="fcaf-status" hidden><span class="txt"><b id="fcaf-st-b"></b><small id="fcaf-st-s"></small></span></div>
+    <button type="button" class="go" id="fcaf-send" hidden>Tell the family now</button>
+    <ul class="fcrules" id="fcaf-rules">
+      <li>Never share an OTP or your UPI PIN. Nobody real needs them.</li>
+      <li>Police never arrest anyone on a video call.</li>
+      <li>Banks never ask for KYC on a phone call.</li>
+      <li>Hang up and call us. Your family is always the first call.</li>
+    </ul>
+    <div class="fcstack" id="fcaf-calls"></div>
+    <div class="fcstack">
+      <a class="go" id="fcaf-1930" href="tel:1930">📞 Call 1930, the Cyber Crime Helpline</a>
+      <a class="cbtn ghost" href="https://cybercrime.gov.in" target="_blank" rel="noopener">Report it at cybercrime.gov.in</a>
+      <button type="button" class="cbtn ghost" id="fcaf-ekta">Check the message with Ekta (free)</button>
+    </div>
+    <div class="fcsafe" id="fcaf-safe"></div>
+    <div id="fcaf-safeedit" hidden style="margin-top:var(--space-12)">
+      <label for="fcaf-word" style="margin-top:0">Family safe word</label>
+      <input type="text" id="fcaf-word" maxlength="40" autocomplete="off" placeholder="e.g. a sweet, a pet's name, a place">
+      <button type="button" class="cbtn" id="fcaf-wsave" style="margin-top:var(--space-8);width:100%">Save the safe word</button>
+    </div>
+    <p class="hint" style="margin-top:var(--space-16)">Parwah does not listen to calls or read messages. These rules are always true, whoever is calling.</p>
+    <button type="button" class="cbtn ghost" id="fcaf-sorted" hidden style="width:100%;margin-top:var(--space-8)">All sorted, close this</button>
+  </div>
+</div>
+
+<!-- Help me with my phone: a picture and a few words to the family chat,
+     a family video call, and short how-to cards. -->
+<div class="msheet" id="fcphsheet" hidden role="dialog" aria-modal="true" aria-labelledby="fcph-title">
+  <div class="mp" style="max-width:460px">
+    <button class="x" id="fcph-x" aria-label="Close">✕</button>
+    <h3 id="fcph-title" style="margin:0 var(--space-32) var(--space-8) 0">📱 Help with my phone</h3>
+    <div class="crow fcrow" id="fcph-status" hidden><span class="txt"><b id="fcph-st-b"></b><small id="fcph-st-s"></small></span></div>
+    <p class="hint" style="margin:0">Send the family a picture of the screen and a few words. Someone will say "I'm on it".</p>
+    <label for="fcph-file">📷 A picture of the screen (optional)</label>
+    <input type="file" id="fcph-file" accept="image/*">
+    <img id="fcph-prev" class="fcshot" alt="The picture you are sending" hidden>
+    <label for="fcph-note">What is the trouble?</label>
+    <textarea id="fcph-note" rows="3" maxlength="300" placeholder="e.g. WhatsApp is asking for a code"></textarea>
+    <button type="button" class="cbtn ghost" id="fcph-mic" hidden style="margin-top:var(--space-8);width:100%">🎙 Say it instead</button>
+    <div class="fcstack">
+      <button type="button" class="go" id="fcph-send">Send to the family</button>
+      <button type="button" class="cbtn ghost" id="fcph-call">📹 Video call the family</button>
+    </div>
+    <p class="eyebrow" style="margin:var(--space-24) 0 var(--space-8)">How to</p>
+    <div id="fcph-howto">
+      <details class="howto"><summary>Start a video call</summary>
+        <p class="hi">Video call kaise karein</p>
+        <ol><li>On Today, tap More, then Family call.</li><li>Tap Start the call. Everyone in the family gets a message.</li><li>If the phone asks, tap Allow for the camera and the microphone.</li><li>To end the call, tap the red phone button.</li></ol></details>
+      <details class="howto"><summary>Share a photo on WhatsApp</summary>
+        <p class="hi">WhatsApp par photo bhejein</p>
+        <ol><li>Open WhatsApp and tap the person's chat.</li><li>Tap the paperclip 📎 next to where you type. On an iPhone, tap +.</li><li>Tap Gallery (Photos on an iPhone) and pick the photo.</li><li>Tap the green arrow to send.</li></ol></details>
+      <details class="howto"><summary>PhonePe or Google Pay looks different: where is Pay?</summary>
+        <p class="hi">App ka look badla hai, paise wahi hain</p>
+        <ol><li>Apps change their look sometimes. Your money stays the same.</li><li>Look for Scan &amp; Pay, or a small QR code picture, near the top or the bottom middle.</li><li>To pay a person, tap To Contact (or Pay contacts) and pick the name.</li><li>Your UPI PIN is only for sending money. You never need it to receive money.</li><li>Not sure? Do not pay. Send us a picture of the screen first.</li></ol></details>
+      <details class="howto"><summary>Spot a fake KYC message</summary>
+        <p class="hi">Nakli KYC message pehchanein</p>
+        <ol><li>Banks do not ask for KYC on a call, an SMS or a WhatsApp link.</li><li>"Your account will be blocked today" is said to rush you.</li><li>Do not tap the link. Do not share an OTP or your PIN.</li><li>Call the number on the back of your bank card, or call us.</li><li>To report it, call 1930 or visit cybercrime.gov.in.</li></ol></details>
+      <details class="howto"><summary>Life certificate with the face app</summary>
+        <p class="hi">Jeevan Pramaan, ghar baithe</p>
+        <ol><li>From the Play Store, install the official Jeevan Pramaan app and the AadhaarFaceRD app.</li><li>Keep ready your PPO number (on the pension book) and the phone linked to Aadhaar.</li><li>Sit in good light and look at the phone. Take off your glasses if it asks.</li><li>Follow the steps. Write down the acknowledgement number at the end.</li><li>Dates and steps are as announced each year. Check on <a href="https://jeevanpramaan.gov.in" target="_blank" rel="noopener">jeevanpramaan.gov.in</a>.</li></ol></details>
+      <details class="howto"><summary>Make the text bigger on Android</summary>
+        <p class="hi">Android par akshar bade karein</p>
+        <ol><li>Open Settings (the gear ⚙️).</li><li>Tap Display, then Font size. On some phones it is Display size and text.</li><li>Slide to the right. The text gets bigger everywhere.</li></ol></details>
+      <details class="howto"><summary>Make the text bigger on an iPhone</summary>
+        <p class="hi">iPhone par akshar bade karein</p>
+        <ol><li>Open Settings.</li><li>Tap Display &amp; Brightness, then Text Size.</li><li>Drag the slider to the right.</li><li>Bigger still: Settings, Accessibility, Display &amp; Text Size, Larger Text.</li></ol></details>
+    </div>
+  </div>
+</div>
+
+<!-- The daily check-in: set your own time, say yes to one the family asked
+     for, ask someone else, or pause it while away. -->
+<div class="msheet" id="fcqsheet" hidden role="dialog" aria-modal="true" aria-labelledby="fcq-title">
+  <div class="mp" style="max-width:420px">
+    <button class="x" id="fcq-x" aria-label="Close">✕</button>
+    <h3 id="fcq-title" style="margin:0 var(--space-32) var(--space-8) 0"></h3>
+    <p class="hint" id="fcq-sub" style="margin:0 0 var(--space-8)"></p>
+    <div id="fcq-timewrap">
+      <label for="fcq-time">Check in by</label>
+      <input type="time" id="fcq-time" value="11:00">
+      <button type="button" class="go" id="fcq-save"></button>
+    </div>
+    <div id="fcq-awaywrap">
+      <label for="fcq-away">Away until (it is paused till then)</label>
+      <input type="date" id="fcq-away">
+      <div class="fcstack">
+        <button type="button" class="cbtn" id="fcq-awaygo">🧳 Pause until then</button>
+        <button type="button" class="cbtn ghost" id="fcq-back" hidden>🏠 Back home: turn it on again</button>
+      </div>
+    </div>
+    <button type="button" class="cbtn ghost" id="fcq-off" hidden style="width:100%;margin-top:var(--space-16)">Turn off my daily check-in</button>
+  </div>
+</div>
+
+<!-- Ready-made tasks: the life certificate and the call rota. -->
+<div class="msheet" id="fctsheet" hidden role="dialog" aria-modal="true" aria-labelledby="fct-title">
+  <div class="mp" style="max-width:440px">
+    <button class="x" id="fct-x" aria-label="Close">✕</button>
+    <h3 id="fct-title" style="margin:0 var(--space-32) var(--space-8) 0"></h3>
+    <div id="fct-lc" hidden>
+      <p class="hint" style="margin:0">A yearly task with a checklist. At 80 and over it can be given from 1 October, otherwise from 1 to 30 November. Dates are as announced each year: confirm on <a href="https://jeevanpramaan.gov.in" target="_blank" rel="noopener">jeevanpramaan.gov.in</a>.</p>
+      <label for="fct-lc-who">Whose pension</label>
+      <select id="fct-lc-who"></select>
+      <p class="hint">Parwah never takes a face scan or an Aadhaar number. It keeps the checklist and the acknowledgement number.</p>
+      <button type="button" class="go" id="fct-lc-go">Add to To do</button>
+    </div>
+    <div id="fct-rota" hidden>
+      <p class="hint" style="margin:0">One person a day, taking turns. Skip passes your day to the next person.</p>
+      <label for="fct-r-who">Calls for</label>
+      <select id="fct-r-who"></select>
+      <p class="eyebrow" style="margin:var(--space-16) 0 var(--space-8)">Who takes turns</p>
+      <div class="members" id="fct-r-people" role="group" aria-label="Who takes turns"></div>
+      <label for="fct-r-time">Around what time</label>
+      <input type="time" id="fct-r-time" value="19:00">
+      <button type="button" class="go" id="fct-r-go">Start the rota</button>
+    </div>
   </div>
 </div>
 
@@ -4076,6 +4257,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     notifsCache = data.events;
     renderNotifs();
     pillFromFeed(data.events);
+    fcRender(data.familyCare);
   }
 
   function heroGo(){
@@ -5640,7 +5822,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
 
   // ---------- family tasks ----------
   var taskCache = [], tsId = null;
-  var REP_WORD = { daily:'every day', weekly:'every week', monthly:'every month' };
+  var REP_WORD = { daily:'every day', weekly:'every week', monthly:'every month', yearly:'every year' };
   function REM_WORD(m){ m = +m; return !m ? 'at the time' : m === 1440 ? '1 day before' : m === 60 ? '1 hour before' : m + ' min before'; }
 
   // THE ALARM, when Parwah is open: at a task's reminder time it takes the
@@ -5802,6 +5984,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     else if (q.status === 'claimed' && q.claimed_by === me) right = '<button class="cbtn ghost" data-tdone="' + q.id + '">Done ✔</button>';
     else if (late && q.by_member === me) right = '<button class="cbtn" data-topen="' + q.id + '">Sort it out</button>';
     else if (q.status === 'done') right = '<span class="badge on">Done</span>';
+    // A call rota's turn is done by calling: the button says so.
+    if (q.template === 'callrota' && taskOpen(q) && q.claimed_by === me) right = '<button class="cbtn ghost" data-fcrdone="' + q.id + '">Called ' + esc(fcFirst(q.about_name || '')) + ' ✔</button>';
     return '<div class="crow' + (late ? ' late urgent' : '') + '" data-task="' + q.id + '"><span class="txt">' +
            '<button class="tlink" data-topen="' + q.id + '">' + esc(q.title) + '</button>' +
            '<small>' + esc(bits.join(' · ')) + (late ? ' · running late' : '') + '</small></span>' + taskGoButton(q, 'cbtn go-now') + right + '</div>';
@@ -5896,6 +6080,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     }).join('');
     $('ts-done').hidden = mode !== 'done' || !open;
     $('ts-give').hidden = true; $('ts-edit').hidden = true;
+    fcTaskExtra(q);
   }
   function tsPost(body, msg){
     body.taskId = tsId;
@@ -9725,6 +9910,394 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   }
   $('callnow').addEventListener('click', askCall);
   $('callnow2').addEventListener('click', askCall);
+
+  // ---------- family care tools (api/_familycare.mjs) ----------
+  // Quiet day (the daily check-in), ask family first, help with the phone,
+  // the life certificate and the call rota. What they show comes from
+  // GET /api/events (familyCare) and the To do list; this phone keeps only
+  // which "Ask" rows its person waved away.
+  var fcCache = null, fcqFor = null, fcphImg = null, fcRec = null, fcListening = false, fcSending = false;
+  function fcFirst(n){ return String(n || '').split(' ')[0]; }
+  function fcPron(g){ return g === 'm' ? 'him' : g === 'f' ? 'her' : 'them'; }
+  function fcPoss(g){ return g === 'm' ? 'his' : g === 'f' ? 'her' : 'their'; }
+  function fcHidden(id){ try { return localStorage.getItem('parwah-fcq-hide:' + id) === '1'; } catch (e) { return false; } }
+  function fcDay(d){ try { return dtf([], { day:'numeric', month:'short' }).format(new Date(String(d).slice(0, 10) + 'T12:00:00')); } catch (e) { return String(d || ''); } }
+  function fcClock(iso){ return iso ? clockOf(new Date(iso)) : ''; }
+  function fcPost(body, okMsg, after){
+    body.code = state.code; body.memberId = state.memberId;
+    if (!body.tz) body.tz = homeTz() || undefined;
+    return post(API.events, body).then(function(j){
+      if (j.ok) { if (okMsg) toast(okMsg); refresh(); if (after) after(j); }
+      else toast(j.error || 'Could not send - try again');
+      return j;
+    }).catch(function(){ toast('No connection - try again'); return { ok: false }; });
+  }
+  function fcRender(fc){
+    fcCache = fc || null;
+    var al = $('fcalerts');
+    if (!fc) { al.innerHTML = ''; $('fcquiet').hidden = true; return; }
+    var me = state.memberId, h = '';
+    (fc.askfirst || []).forEach(function(a){
+      if (a.member_id === me) {
+        h += '<div class="crow fcrow urgent"><span class="txt"><b>🛡 You asked the family first</b><small>' +
+          (a.status === 'acked' ? '🧡 ' + esc(a.acked_name || 'Someone') + ' has seen it, calling you now. Do not pay or share any code until you talk.'
+            : 'The family has been told. Do not pay or share any code until someone calls you.') +
+          '</small></span><button class="cbtn" data-fcafopen="1">See the rules</button><button class="cbtn ghost" data-fcafclose="' + a.id + '">All sorted</button></div>';
+        return;
+      }
+      h += '<div class="crow fcrow urgent"><span class="txt"><b>🛡 ' + esc(a.name) + ' is asking the family first</b><small>' +
+        (a.status === 'acked' ? esc(a.acked_name || 'Someone') + ' has seen it and is calling.'
+          : 'Someone wants money or an OTP from ' + esc(fcFirst(a.name)) + '. Call before anything is paid.') +
+        (a.note ? ' “' + esc(a.note) + '”' : '') + '</small></span>' +
+        (a.phone ? '<a class="cbtn" href="tel:' + encodeURIComponent(a.phone) + '">📞 Call ' + esc(fcFirst(a.name)) + '</a>' : '') +
+        (a.status === 'open' ? '<button class="cbtn ghost" data-fcafack="' + a.id + '">I’ve seen it, calling now</button>' : '') + '</div>';
+    });
+    (fc.quiet || []).forEach(function(q){
+      // A question waiting for MY yes comes first: it is mine to answer.
+      if (q.memberId === me && q.ask) h += '<div class="crow fcrow urgent"><span class="txt"><b>🕚 ' + esc(q.askByName || 'The family') + ' asks: a daily check-in by ' + esc(q.ask) + '?</b>' +
+        '<small>If you have not said you are okay by then, you get a gentle reminder. 30 minutes later the family is told, so someone can call. It stays off unless you say yes.</small></span>' +
+        '<button class="cbtn" data-fcqyes="1">Yes, turn it on</button><button class="cbtn ghost" data-fcqno="1">Not now</button></div>';
+      if (q.memberId === me || !q.alerted) return;
+      h += '<div class="crow fcrow urgent"><span class="txt"><b>🧡 ' + esc(q.name) + ' has not checked in today</b><small>' +
+        esc(fcFirst(q.name)) + '’s check-in time was ' + esc(q.checkinBy) + '. Give ' + fcPron(q.gender) + ' a call?</small></span>' +
+        (q.phone ? '<a class="cbtn" href="tel:' + encodeURIComponent(q.phone) + '">📞 Call ' + esc(fcFirst(q.name)) + '</a>' : '') + '</div>';
+    });
+    (fc.helps || []).forEach(function(x){
+      if (x.member_id === me) {
+        h += '<div class="crow fcrow"><span class="txt"><b>📱 You asked for help with the phone</b><small>' +
+          (x.status === 'claimed' ? '🙋 ' + esc(x.claimed_name || 'Someone') + ' is on it' : 'It is in the family chat. Waiting for someone to say “I’m on it”.') +
+          '</small></span><button class="cbtn ghost" data-fchelpdone="' + x.id + '">All sorted</button></div>';
+        return;
+      }
+      h += '<div class="crow fcrow"><span class="txt"><b>📱 ' + esc(x.name) + ' needs help with the phone</b><small>' +
+        (x.note ? '“' + esc(x.note) + '”' : 'Sent a picture of the screen') + (x.has_image && x.note ? ' · picture in the family chat' : '') +
+        (x.status === 'claimed' ? ' · ' + (x.claimed_by === me ? 'You are on it' : esc(x.claimed_name || 'Someone') + ' is on it') : '') + '</small></span>' +
+        (x.status === 'open' ? '<button class="cbtn" data-fchelpclaim="' + x.id + '">I’m on it</button>'
+          : x.claimed_by === me ? '<button class="cbtn ghost" data-fchelpdone="' + x.id + '">Done</button>' : '') +
+        '<button class="cbtn ghost" data-fccall="1">📹 Video call</button></div>';
+    });
+    al.innerHTML = h;
+    // "All quiet" must not sit under an alert.
+    var hs = $('hero-status'), first = al.querySelector('.fcrow.urgent b');
+    if (first && /^🧡 All quiet/.test(hs.textContent)) hs.textContent = first.textContent + '. See above.';
+    fcQuietRender();
+    if (!$('fcafsheet').hidden) fcafSync();
+    if (!$('fcphsheet').hidden) fcphSync();
+  }
+  // The daily check-in card: your own, then each person who has one, or a
+  // parent who could be asked. The person it is about says yes first.
+  function fcQuietRender(){
+    var rows = '', me = state.memberId;
+    (fcCache.quiet || []).forEach(function(q){
+      if (q.memberId === me) {
+        if (q.checkinBy) {
+          var st = q.phase === 'away' ? 'Paused: away until ' + fcDay(q.awayUntil)
+            : q.phase === 'ok' ? '✅ Done for today, at ' + fcClock(q.okAt)
+            : 'Tap I’m okay before ' + q.checkinBy + '.';
+          rows += '<div class="crow fcrow"><span class="txt"><b>You: by ' + esc(q.checkinBy) + ' each day</b><small>' + esc(st) + '</small></span>' +
+            (q.phase !== 'ok' && q.phase !== 'away' ? '<button class="cbtn" data-fcqok="1">I’m okay ✅</button>' : '') +
+            '<button class="cbtn ghost" data-fcqset="' + me + '">Change</button></div>';
+        } else if (!q.ask && state.role === 'parent' && !fcHidden(me)) {
+          rows += '<div class="crow fcrow"><span class="txt"><b>Your daily check-in is off</b><small>Pick a time. If you have not said you are okay by then, the family will know to call.</small></span>' +
+            '<button class="cbtn" data-fcqset="' + me + '">Turn on</button><button class="cbtn ghost" data-fcqhide="' + me + '">Not now</button></div>';
+        }
+        return;
+      }
+      if (q.checkinBy) {
+        var s2 = q.phase === 'away' ? 'Away until ' + fcDay(q.awayUntil) + '. Paused till then.'
+          : q.phase === 'ok' ? '✅ Said okay at ' + fcClock(q.okAt)
+          : q.phase === 'alert' ? 'Not yet today. The family has been told.'
+          : q.phase === 'nudge' ? 'Not yet today. A gentle reminder went to ' + fcPron(q.gender) + '.'
+          : 'Not yet today. The time is ' + q.checkinBy + '.';
+        rows += '<div class="crow fcrow' + (q.phase === 'alert' ? ' urgent' : '') + '"><span class="txt"><b>' + esc(q.name) + ': by ' + esc(q.checkinBy) + '</b><small>' + esc(s2) + '</small></span>' +
+          '<button class="cbtn ghost" data-fcqset="' + q.memberId + '" aria-label="Pause or change ' + esc(q.name) + '’s check-in">' + (q.phase === 'away' ? 'Change' : 'Pause') + '</button></div>';
+      } else if (q.ask) {
+        rows += '<div class="crow fcrow"><span class="txt"><b>' + esc(q.name) + ': asked for ' + esc(q.ask) + '</b><small>Waiting for ' + fcPron(q.gender) + ' to say yes on ' + fcPoss(q.gender) + ' own phone.</small></span></div>';
+      } else if (q.role === 'parent' && !fcHidden(q.memberId)) {
+        rows += '<div class="crow fcrow"><span class="txt"><b>' + esc(q.name) + ': off</b><small>Ask ' + esc(fcFirst(q.name)) + ' to pick a time. It turns on only when ' + esc(fcFirst(q.name)) + ' says yes.</small></span>' +
+          '<button class="cbtn" data-fcqset="' + q.memberId + '">Ask ' + esc(fcFirst(q.name)) + '</button><button class="cbtn ghost" data-fcqhide="' + q.memberId + '">Not now</button></div>';
+      }
+    });
+    $('fcq-rows').innerHTML = rows;
+    $('fcquiet').hidden = !rows;
+    // The explanation is for a card with a check-in on it; an invitation
+    // row explains itself.
+    $('fcq-hint').hidden = !(fcCache.quiet || []).some(function(q){ return q.checkinBy; });
+  }
+  function fcSheet(id, on){
+    $(id).hidden = !on;
+    if (on) setTimeout(function(){ var x = $(id).querySelector('.x'); if (x) x.focus(); }, 30);
+  }
+  ['fcafsheet', 'fcphsheet', 'fcqsheet', 'fctsheet'].forEach(function(id){
+    $(id).addEventListener('click', function(e){ if (e.target === this) fcSheet(id, false); });
+    $(id).addEventListener('keydown', function(e){ if (e.key === 'Escape') fcSheet(id, false); });
+    $(id).querySelector('.x').addEventListener('click', function(){ fcSheet(id, false); });
+  });
+
+  // ---- the daily check-in sheet ----
+  function fcqOpen(id){
+    var q = fcCache && (fcCache.quiet || []).filter(function(x){ return x.memberId === id; })[0]; if (!q) return;
+    fcqFor = q;
+    var mine = id === state.memberId, f = fcFirst(q.name);
+    $('fcq-title').textContent = mine ? (q.checkinBy ? 'Your daily check-in' : 'Turn on your daily check-in')
+      : (q.checkinBy ? f + '’s daily check-in' : 'Ask ' + f + ' for a daily check-in');
+    $('fcq-sub').textContent = mine
+      ? 'If you have not tapped I’m okay or All is well by this time, you get a gentle reminder. 30 minutes later the family is told, so someone can call.'
+      : q.checkinBy ? 'Pause it while ' + f + ' is away or travelling. Only ' + f + ' can change the time.'
+      : f + ' gets the question on ' + fcPoss(q.gender) + ' own phone. Nothing turns on until ' + f + ' says yes.';
+    $('fcq-timewrap').hidden = !mine && !!q.checkinBy;
+    $('fcq-time').value = q.checkinBy || q.ask || '11:00';
+    $('fcq-save').textContent = mine ? (q.checkinBy ? 'Save the time' : 'Turn it on') : 'Ask ' + f;
+    $('fcq-awaywrap').hidden = !q.checkinBy;
+    $('fcq-away').value = q.awayUntil || '';
+    $('fcq-away').min = localDay(new Date());
+    $('fcq-back').hidden = !q.awayUntil;
+    $('fcq-off').hidden = !(mine && q.checkinBy);
+    fcSheet('fcqsheet', true);
+  }
+  $('fcq-save').addEventListener('click', function(){
+    var q = fcqFor; if (!q) return;
+    var t = $('fcq-time').value;
+    if (!/^\d{2}:\d{2}$/.test(t)) { fieldErr('fcq-time', 'Pick a time, like 11:00'); return; }
+    if (q.memberId === state.memberId) fcPost({ type: 'quiet_set', checkinBy: t }, null, function(j){ fcSheet('fcqsheet', false); toast(j.startsTomorrow ? 'On from tomorrow, by ' + t + ' 🧡' : 'On: by ' + t + ' each day 🧡'); });
+    else fcPost({ type: 'quiet_ask', targetId: q.memberId, checkinBy: t }, 'Asked. It turns on when ' + fcFirst(q.name) + ' says yes', function(){ fcSheet('fcqsheet', false); });
+  });
+  $('fcq-awaygo').addEventListener('click', function(){
+    var q = fcqFor; if (!q) return;
+    var d = $('fcq-away').value;
+    if (!d) { fieldErr('fcq-away', 'Pick the day ' + (q.memberId === state.memberId ? 'you are' : fcFirst(q.name) + ' is') + ' back'); return; }
+    fcPost({ type: 'quiet_away', targetId: q.memberId, until: d }, 'Paused until ' + fcDay(d), function(){ fcSheet('fcqsheet', false); });
+  });
+  $('fcq-back').addEventListener('click', function(){
+    var q = fcqFor; if (!q) return;
+    fcPost({ type: 'quiet_away', targetId: q.memberId, until: null }, 'On again 🧡', function(){ fcSheet('fcqsheet', false); });
+  });
+  $('fcq-off').addEventListener('click', function(){
+    askSheet('Turn off your daily check-in?', 'The family will no longer be told if you have not checked in.', 'Turn it off', 'Keep it on')
+      .then(function(y){ if (y) fcPost({ type: 'quiet_off' }, 'Turned off', function(){ fcSheet('fcqsheet', false); }); });
+  });
+
+  // ---- ask family first ----
+  function fcafMine(){ return fcCache && (fcCache.askfirst || []).filter(function(a){ return a.member_id === state.memberId; })[0]; }
+  function fcafSync(){
+    var a = fcafMine();
+    $('fcaf-status').hidden = !a; $('fcaf-send').hidden = !!a; $('fcaf-sorted').hidden = !a;
+    if (a) {
+      $('fcaf-st-b').textContent = a.status === 'acked' ? '🧡 ' + (a.acked_name || 'Someone') + ' has seen it, calling you now' : '✅ The family has been told';
+      $('fcaf-st-s').textContent = a.status === 'acked' ? 'Do not pay or share any code until you talk.' : 'Someone will call you. Do not pay or share any code until then.';
+    }
+    var calls = (membersCache || []).filter(function(m){ return m.id !== state.memberId && m.phone && onApp(m); }).slice(0, 3);
+    $('fcaf-calls').innerHTML = calls.map(function(m){ return '<a class="cbtn" href="tel:' + encodeURIComponent(m.phone) + '">📞 Call ' + esc(m.name) + '</a>'; }).join('');
+    var w = fcCache && fcCache.safeWord;
+    $('fcaf-safe').innerHTML = w
+      ? '🔑 Your family safe word: <b>' + esc(w) + '</b><br>Someone who is really family will know it. Ask for it before you do anything. <button type="button" class="linkbtn" data-fcwedit="1">Change it</button>'
+      : '🔑 No family safe word yet. Pick one only the family knows, and ask any caller for it. <button type="button" class="linkbtn" data-fcwedit="1">Set one</button>';
+  }
+  function fcafOpen(sendNow){
+    fcafSync();
+    $('fcaf-safeedit').hidden = true;
+    fcSheet('fcafsheet', true);
+    if (sendNow) fcafSend();
+  }
+  function fcafSend(){
+    if (fcSending) return;
+    fcSending = true;
+    fcPost({ type: 'askfirst' }, null, function(){ toast('The family has been told 🧡 Someone will call you'); })
+      .then(function(){ fcSending = false; });
+  }
+  $('fcaf-send').addEventListener('click', fcafSend);
+  $('fcaf-sorted').addEventListener('click', function(){ var a = fcafMine(); if (a) fcPost({ type: 'askfirst_close', askId: a.id }, 'Glad it is sorted 🧡', function(){ fcSheet('fcafsheet', false); }); });
+  $('fcaf-ekta').addEventListener('click', function(){
+    fcSheet('fcafsheet', false);
+    switchTab('ekta');
+    $('msg').value = 'I got a message asking for an OTP for a payment. Is it a scam?';
+    ektaSend();
+  });
+  $('fcaf-wsave').addEventListener('click', function(){
+    var w = $('fcaf-word').value.trim();
+    fcPost({ type: 'safeword_set', word: w }, w ? 'Saved. Tell the family on a call, never in a message.' : 'Safe word removed', function(){ $('fcaf-safeedit').hidden = true; });
+  });
+  $('btn-askfirst').addEventListener('click', function(){ fcafOpen(true); });
+  $('w-askfirst').addEventListener('click', function(){ fcafOpen(false); });
+
+  // ---- help me with my phone ----
+  function fcphMine(){ return fcCache && (fcCache.helps || []).filter(function(x){ return x.member_id === state.memberId; })[0]; }
+  function fcphSync(){
+    var x = fcphMine();
+    $('fcph-status').hidden = !x;
+    if (x) {
+      $('fcph-st-b').textContent = x.status === 'claimed' ? '🙋 ' + (x.claimed_name || 'Someone') + ' is on it' : '✅ Sent to the family chat';
+      $('fcph-st-s').textContent = x.status === 'claimed' ? 'They will call or message you soon.' : 'Waiting for someone to say “I’m on it”.';
+    }
+  }
+  function fcphOpen(){
+    fcphSync();
+    $('fcph-mic').hidden = !SR;
+    fcSheet('fcphsheet', true);
+  }
+  function fcShrink(f, done){
+    var url = URL.createObjectURL(f), img = new Image();
+    img.onload = function(){
+      var k = Math.min(1, 1000 / Math.max(img.naturalWidth, img.naturalHeight));
+      var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      done(c.toDataURL('image/jpeg', 0.72));
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); done(null); };
+    img.src = url;
+  }
+  $('fcph-file').addEventListener('change', function(){
+    var f = this.files && this.files[0];
+    fcphImg = null; $('fcph-prev').hidden = true;
+    if (!f) return;
+    fcShrink(f, function(d){
+      if (!d || d.length > 790000) { fieldErr('fcph-file', 'That picture could not be read. Try another one.'); return; }
+      fcphImg = d; $('fcph-prev').src = d; $('fcph-prev').hidden = false;
+    });
+  });
+  $('fcph-mic').addEventListener('click', function(){
+    if (!SR) return;
+    if (fcListening && fcRec) { try { fcRec.stop(); } catch (e) {} return; }
+    try {
+      fcRec = new SR(); fcRec.lang = speechLang(); fcRec.interimResults = false; fcRec.maxAlternatives = 1;
+      fcRec.onresult = function(e){
+        var t = e.results && e.results[0] && e.results[0][0] ? e.results[0][0].transcript : '';
+        if (t) $('fcph-note').value = ($('fcph-note').value ? $('fcph-note').value + ' ' : '') + t;
+      };
+      fcRec.onend = fcRec.onerror = function(){ fcListening = false; $('fcph-mic').textContent = '🎙 Say it instead'; };
+      fcRec.start(); fcListening = true; $('fcph-mic').textContent = '🎙 Listening… tap to stop';
+    } catch (e) { fcListening = false; }
+  });
+  $('fcph-send').addEventListener('click', function(){
+    var note = $('fcph-note').value.trim();
+    if (!note && !fcphImg) { fieldErr('fcph-note', 'Add a few words or a picture of the screen'); return; }
+    var b = this; b.disabled = true;
+    fcPost({ type: 'help_ask', text: note || undefined, image: fcphImg || undefined }, 'Sent to the family chat 🧡', function(){
+      $('fcph-note').value = ''; $('fcph-file').value = ''; fcphImg = null; $('fcph-prev').hidden = true;
+    }).then(function(){ b.disabled = false; });
+  });
+  $('fcph-call').addEventListener('click', function(){ fcSheet('fcphsheet', false); askCall(); });
+  $('btn-phonehelp').addEventListener('click', fcphOpen);
+  $('w-phonehelp').addEventListener('click', fcphOpen);
+
+  // ---- ready-made tasks: the life certificate and the call rota ----
+  function fcParentsFirst(){
+    var ms = (membersCache || []).slice();
+    return ms.filter(function(m){ return m.role === 'parent'; }).concat(ms.filter(function(m){ return m.role !== 'parent'; }));
+  }
+  function fcRotaPeople(){
+    var about = $('fct-r-who').value;
+    $('fct-r-people').innerHTML = (membersCache || []).filter(function(m){ return onApp(m) && m.id !== about; }).map(function(m){
+      return '<label class="gchk"><input type="checkbox" value="' + m.id + '"' + (m.role !== 'parent' ? ' checked' : '') + '> ' + esc(m.id === state.memberId ? 'Me' : m.name) + '</label>';
+    }).join('') || '<p class="hint" style="margin:0">Nobody else is on Parwah yet. Invite the family first.</p>';
+  }
+  function fctOpen(kind){
+    var opts = fcParentsFirst().map(function(m){ return '<option value="' + m.id + '">' + esc(m.id === state.memberId ? 'Me' : m.name) + '</option>'; }).join('');
+    $('fct-lc').hidden = kind !== 'lc'; $('fct-rota').hidden = kind !== 'rota';
+    $('fct-title').textContent = kind === 'lc' ? '🪪 Life certificate (Jeevan Pramaan)' : '📞 Call rota: who calls today';
+    if (kind === 'lc') $('fct-lc-who').innerHTML = opts;
+    else { $('fct-r-who').innerHTML = opts; fcRotaPeople(); }
+    fcSheet('fctsheet', true);
+  }
+  $('fc-lc-open').addEventListener('click', function(){ fctOpen('lc'); });
+  $('fc-rota-open').addEventListener('click', function(){ fctOpen('rota'); });
+  $('fct-r-who').addEventListener('change', fcRotaPeople);
+  $('fct-lc-go').addEventListener('click', function(){
+    carePost({ action: 'lifecert_create', aboutMemberId: $('fct-lc-who').value, tz: homeTz() || undefined }, function(j){
+      fcSheet('fctsheet', false);
+      toast('Added to To do: ' + (j.window && j.window.superSenior ? 'from 1 October' : 'from 1 November') + ' to 30 November');
+    });
+  });
+  $('fct-r-go').addEventListener('click', function(){
+    var ids = []; $('fct-r-people').querySelectorAll('input:checked').forEach(function(x){ ids.push(x.value); });
+    if (!ids.length) { fieldErr('fct-r-people', 'Pick at least one person to take turns'); return; }
+    carePost({ action: 'rota_create', aboutMemberId: $('fct-r-who').value, memberIds: ids, time: $('fct-r-time').value || '19:00', tz: homeTz() || undefined }, function(){
+      fcSheet('fctsheet', false);
+      toast('Rota started. Each day one person calls 🧡');
+    });
+  });
+  // Inside one task: the checklist, or the rota.
+  function fcTaskExtra(q){
+    var box = $('ts-tpl'), d = q.template_data || {}, me = state.memberId, open = taskOpen(q);
+    if (q.template === 'lifecert') {
+      var ch = d.checks || {};
+      var h = '<div class="card fccard"><p class="eyebrow" style="margin:0 0 var(--space-8)">Life certificate checklist</p>' +
+        '<p class="hint" style="margin:0 0 var(--space-8)">Can be given from ' + esc(d.opens ? fcDay(d.opens) : '1 Nov') + ' to ' + esc(d.closes ? fcDay(d.closes) : '30 Nov') + '. ' +
+        (d.dobKnown ? '' : 'Add a date of birth to the profile: at 80 and over it opens on 1 October. ') +
+        'Dates are as announced each year: confirm on <a href="https://jeevanpramaan.gov.in" target="_blank" rel="noopener">jeevanpramaan.gov.in</a>.</p>';
+      [['ppo', 'PPO number ready (it is on the pension book or letter)'],
+       ['aadhaar', 'Aadhaar is linked (seeded) with the pension bank account'],
+       ['face', 'Face check done in the official Jeevan Pramaan and AadhaarFaceRD apps']].forEach(function(c){
+        h += '<label class="fcchk"><input type="checkbox" data-fclc="' + c[0] + '"' + (ch[c[0]] ? ' checked' : '') + (open ? '' : ' disabled') + '><span>' + c[1] + '</span></label>';
+      });
+      if (d.result === 'rejected' && open) {
+        h += '<div class="crow fcrow urgent"><span class="txt"><b>Not accepted this time. What usually sorts it:</b>' +
+          '<ol class="fcsteps"><li>Update the Aadhaar photo at an Aadhaar centre.</li><li>Try at the pension bank branch.</li><li>Ask the bank for a doorstep banking visit at home.</li></ol><small>Then try again.</small></span></div>';
+      }
+      if (open) {
+        h += '<label for="fclc-ack">Acknowledgement number</label><input type="text" id="fclc-ack" maxlength="40" autocomplete="off" placeholder="From the app or the bank">' +
+          '<div class="fcstack"><button type="button" class="go" id="fclc-save" data-fclcsave="' + q.id + '">Save it: the certificate is done</button>' +
+          '<button type="button" class="cbtn ghost" data-fclcrej="' + q.id + '">It was rejected</button></div>';
+      } else if (d.ackNo) h += '<p class="hint">Acknowledgement: <b>' + esc(d.ackNo) + '</b></p>';
+      box.innerHTML = h + '<p class="hint">Parwah never takes a face scan or an Aadhaar number. Only the acknowledgement number is kept.</p></div>';
+      $('ts-done').hidden = true;
+      $('ts-actions').querySelectorAll('[data-ts="done"]').forEach(function(b){ b.remove(); });
+      return;
+    }
+    if (q.template === 'callrota') {
+      var rota = d.rota || [], name = fcFirst(q.about_name || 'them'), ms = membersCache || [];
+      var nm = function(id){ var m = ms.filter(function(x){ return x.id === id; })[0]; return id === me ? 'You' : m ? m.name : 'Someone'; };
+      var nextId = rota.length ? rota[((d.idx || 0) + 1) % rota.length] : null;
+      var h2 = '<div class="card fccard"><p class="eyebrow" style="margin:0 0 var(--space-8)">Who calls ' + esc(name) + '</p><div class="fcrota">' +
+        rota.map(function(id){ var now = id === q.claimed_by && open; return '<span' + (now ? ' class="now"' : '') + '>' + (now ? 'Today: ' : '') + esc(nm(id)) + '</span>'; }).join('') + '</div>' +
+        '<p class="hint" style="margin:0">One person a day, in this order. Skip passes today to the next person.</p>';
+      if (open) h2 += '<div class="fcstack"><button type="button" class="go" data-fcrdone="' + q.id + '">Called ' + esc(name) + ' ✔</button>' +
+        ((q.claimed_by === me || q.by_member === me) && rota.length > 1 ? '<button type="button" class="cbtn ghost" data-fcrskip="' + q.id + '">Skip today: pass to ' + esc(nm(nextId)) + '</button>' : '') + '</div>';
+      box.innerHTML = h2 + '</div>';
+      $('ts-done').hidden = true;
+      $('ts-actions').querySelectorAll('[data-ts="done"],[data-ts="decline"],[data-ts="give"]').forEach(function(b){ b.remove(); });
+      return;
+    }
+    box.innerHTML = '';
+  }
+  $('ts-tpl').addEventListener('change', function(e){
+    var c = e.target.closest('[data-fclc]'); if (!c || !tsId) return;
+    var o = {}; o[c.getAttribute('data-fclc')] = c.checked;
+    carePost({ action: 'lifecert_update', taskId: tsId, check: o });
+  });
+
+  // Every family-care button, in one place.
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-fcafopen],[data-fcafclose],[data-fcafack],[data-fchelpdone],[data-fchelpclaim],[data-fccall],[data-fcqyes],[data-fcqno],[data-fcqok],[data-fcqset],[data-fcqhide],[data-fcwedit],[data-fcrdone],[data-fcrskip],[data-fclcsave],[data-fclcrej]');
+    if (!b || !state) return;
+    var d = b.dataset;
+    if (d.fcafopen) fcafOpen(false);
+    if (d.fcafclose) fcPost({ type: 'askfirst_close', askId: d.fcafclose }, 'Glad it is sorted 🧡');
+    if (d.fcafack) fcPost({ type: 'askfirst_ack', askId: d.fcafack }, null, function(j){ toast(j.already ? (j.ackedName || 'Someone') + ' is already calling' : 'They have been told you are calling. Call now 🧡'); });
+    if (d.fchelpclaim) fcPost({ type: 'help_claim', helpId: d.fchelpclaim }, 'They know you are on it 🧡');
+    if (d.fchelpdone) fcPost({ type: 'help_done', helpId: d.fchelpdone }, 'Marked as sorted');
+    if (d.fccall) askCall();
+    if (d.fcqyes) fcPost({ type: 'quiet_answer', yes: true }, null, function(j){ toast(j.startsTomorrow ? 'On from tomorrow 🧡' : 'Turned on 🧡'); });
+    if (d.fcqno) fcPost({ type: 'quiet_answer', yes: false }, 'Left off. You can turn it on any time.');
+    if (d.fcqok) sendEvent('checkin', '', function(){ toast('The whole family knows you are okay'); });
+    if (d.fcqset) fcqOpen(d.fcqset);
+    if (d.fcqhide) { try { localStorage.setItem('parwah-fcq-hide:' + d.fcqhide, '1'); } catch (x) {} fcQuietRender(); }
+    if (d.fcwedit) { $('fcaf-safeedit').hidden = false; $('fcaf-word').value = (fcCache && fcCache.safeWord) || ''; $('fcaf-word').focus(); }
+    if (d.fcrdone) carePost({ action: 'rota_done', taskId: d.fcrdone }, function(j){ toast('Called ✔ ' + (j.nextBy ? 'Tomorrow is ' + (j.nextBy === state.memberId ? 'your' : (((membersCache || []).filter(function(m){ return m.id === j.nextBy; })[0] || {}).name || 'the next person') + '’s') + ' turn' : '')); });
+    if (d.fcrskip) carePost({ action: 'rota_skip', taskId: d.fcrskip }, function(){ toast('Passed on. They have been told 🧡'); });
+    if (d.fclcrej) carePost({ action: 'lifecert_update', taskId: d.fclcrej, result: 'rejected' }, function(){ toast('Noted. The steps to sort it are in the task.'); });
+    if (d.fclcsave) {
+      var v = ($('fclc-ack') && $('fclc-ack').value || '').trim();
+      if (!v) { fieldErr('fclc-ack', 'Type the acknowledgement number, or tap "It was rejected"'); return; }
+      // A refused number is said under its box, not in a toast.
+      post(API.care, { code: state.code, memberId: state.memberId, action: 'lifecert_update', taskId: d.fclcsave, result: 'ack', ackNo: v })
+        .then(function(j){
+          if (!j.ok) { fieldErr('fclc-ack', j.error || 'That could not be saved'); return; }
+          refresh(); toast(j.done ? 'Done ✔ Next year’s is on the list' : 'Saved. Mark the task done when you are ready');
+        }).catch(function(){ toast('No connection - try again'); });
+    }
+  });
 
   // ---------- plans ----------
   $('p-kind').addEventListener('click', function(e){
