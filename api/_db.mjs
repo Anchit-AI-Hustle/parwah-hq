@@ -310,11 +310,16 @@ export function clientIp(req) {
 // the create are not one step. The loser has nothing to fix, so it runs the
 // same statements again, which now find everything there.
 const SCHEMA_RACE = new Set(['23505', '42P07', '42710']);
-export async function schemaOnce(make) {
-  try { await make(); }
-  catch (e) {
-    if (!SCHEMA_RACE.has(e && e.code)) throw e;
-    await make();
+// One retry was not enough: six first loads at once can collide on one
+// table, retry, and collide again on the next. Retry a few times with a short
+// random pause so the racers fall out of step.
+export async function schemaOnce(make, tries = 5) {
+  for (let i = 1; ; i++) {
+    try { return await make(); }
+    catch (e) {
+      if (!SCHEMA_RACE.has(e && e.code) || i >= tries) throw e;
+      await new Promise(r => setTimeout(r, 15 + Math.floor(Math.random() * 60)));
+    }
   }
 }
 
