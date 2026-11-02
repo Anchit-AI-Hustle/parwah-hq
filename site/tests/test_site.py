@@ -2655,6 +2655,7 @@ check("press: linked from the welcome footer and listed in the sitemap",
 
 # MARKETING COPY OBEYS THE SAME RULES AS THE SITE. marketing/ is never
 # deployed (.vercelignore), so it is checked where it exists: every .md, the
+# render script (whose strings are copy too),
 # render sources, and the alt text of every image. A creator brief has to
 # list the words a creator must never say; that list sits between
 # <!-- never-say --> and <!-- /never-say --> and is the only exemption.
@@ -2662,7 +2663,7 @@ _mk = REPO / "marketing"
 _vignore = (REPO / ".vercelignore").read_text(encoding="utf-8")
 check("marketing: the folder is kept out of every Vercel upload", "\nmarketing/" in _vignore)
 if _mk.exists():
-    _mk_files = [f for f in _mk.rglob("*") if f.is_file() and f.suffix in (".md", ".html", ".json", ".txt")]
+    _mk_files = [f for f in _mk.rglob("*") if f.is_file() and f.suffix in (".md", ".html", ".json", ".txt", ".mjs")]
     _MON = r"\b(monitor|track|watch over|keep an eye on)(s|ed|ing)?\s+(your\s+|their\s+|my\s+)?(parents?|mum|mom|dad|papa|mummy|maa|elders?)\b"
     _mk_bad = []
     for _f in _mk_files:
