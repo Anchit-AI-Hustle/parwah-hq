@@ -146,14 +146,22 @@ export default async function handler(req, res) {
       // except consent, which can be given but never silently withdrawn by
       // a later form - withdrawing is a request to a person, not a checkbox.
       await sql`
-        insert into waitlist (name, email, phone, city, interest, consent, consent_at, source)
+        insert into waitlist (name, email, phone, city, interest, consent, consent_at, source,
+                              utm_source, utm_medium, utm_campaign, ref)
         values (${row.name}, ${row.email}, ${row.phone}, ${row.city}, ${row.interest}, ${row.consent},
-                case when ${row.consent} then now() end, ${row.source})
+                case when ${row.consent} then now() end, ${row.source},
+                ${row.utm_source}, ${row.utm_medium}, ${row.utm_campaign}, ${row.ref})
         on conflict (lower(email)) do update set
           name = excluded.name,
           phone = coalesce(excluded.phone, waitlist.phone),
           city = coalesce(excluded.city, waitlist.city),
           interest = excluded.interest,
+          -- First touch is kept: the link that first brought a person here
+          -- is the one that earned the join, not the one they came back by.
+          utm_source = coalesce(waitlist.utm_source, excluded.utm_source),
+          utm_medium = coalesce(waitlist.utm_medium, excluded.utm_medium),
+          utm_campaign = coalesce(waitlist.utm_campaign, excluded.utm_campaign),
+          ref = coalesce(waitlist.ref, excluded.ref),
           consent = waitlist.consent or excluded.consent,
           -- A row that said yes before the time was recorded keeps no time
           -- rather than gaining today's, which would misstate when it said yes.

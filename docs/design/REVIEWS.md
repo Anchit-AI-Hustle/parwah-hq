@@ -378,3 +378,17 @@ On a laptop the sidebar already holds Chat and Ask Ekta. A second pair of floati
 | # | Heuristic | Finding | Sev | Status |
 |---|---|---|---|---|
 | 104 | 8 Minimalist | SOS, New chat and Ekta floated over a page that already has a sidebar. They sat on the to-do list | 3 | Fixed: Chat and Ask Ekta stay in the sidebar. SOS sits at the bottom of the sidebar, above the account line, full width and 64px tall. On a phone the three still float. Supersedes the wide-screen half of #90 |
+
+### Review 11, launch pages: /get/ and /press/ (2026-11-02)
+
+Checked at 390 and 1440, light and dark, on the real pages. Screens: /get/ (rebuilt), /press/ (new). Both are built from the shared tokens in `site/public/styles.css`; nothing new was added to the design system.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 105 | 2 Real-world match | /get/ led with a profile download that iPhone calls "not signed" and an Android test build, before the way most families should use: the browser and Add to Home Screen | 3 | Fixed: each phone's card leads with "The easy way", one gradient button and four steps; the profile and the test build sit under Advanced options, with an honest line on each |
+| 106 | 9 Error recovery | Every visit to /get/ logged a 404 in the console from a probe for a download that does not exist | 2 | Fixed: the probe is gone; the gate checks it never comes back |
+| 107 | 4 Consistency | The download links in Advanced were gradient buttons, as loud as the main path | 2 | Fixed: plain rani links, 44px tall, so only the main path wears the gradient |
+| 108 | 1 Visibility | /press/ dark mode: the jamun and ink colour swatches vanished into the night ground | 2 | Fixed: every swatch has a --bone-2 border, visible in both themes |
+| 109 | 8 Minimalist | /press/ phone layout: four screenshots in one column made a very long page | 2 | Fixed: two columns on a phone, each opening the full-size image |
+
+New pattern: none. "The easy way" label is the existing eyebrow treatment in `--sindoor`.

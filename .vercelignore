@@ -17,3 +17,4 @@ mobile/
 
 # The native apps are built by their own workflow; the website never serves them.
 native/
+marketing/

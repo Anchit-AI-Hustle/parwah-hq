@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Get Parwah on your phone</title>
-<meta name="description" content="Install Parwah on your phone from the browser, on Android and iPhone. What your family needs, one tap away.">
+<meta name="description" content="Open Parwah in your phone browser and add it to your Home Screen, on Android and iPhone. Free, no store needed.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Parwah">
 <meta property="og:locale" content="en_IN">
@@ -27,15 +27,20 @@
 <link rel="stylesheet" href="../styles.css">
 <style>
 .getwrap{max-width:660px;margin:0 auto;padding:40px 20px 80px}
-.platform{background:var(--card,#fff);border:1px solid var(--bone-2,#F0DCC8);border-radius:24px;padding:22px;margin:16px 0;box-shadow:0 8px 24px rgba(36,31,23,.06)}
+.platform{background:var(--card);border:1px solid var(--bone-2);border-radius:var(--radius-24);padding:22px;margin:16px 0;box-shadow:var(--sh-1)}
 .platform h2{font-family:var(--disp);font-size:1.2rem;margin-bottom:8px}
-.platform ol{margin:10px 0 0 20px}
+.platform ol{margin:10px 0 0 22px}
 .platform li{margin-bottom:8px;color:var(--ink-soft)}
-.getbtn{display:inline-block;background:var(--grad);color:var(--on-bright);box-shadow:0 10px 26px rgba(255,120,30,.3);font-weight:700;border-radius:999px;padding:14px 26px;text-decoration:none;margin-top:12px}
-.getbtn.dark{background:#2A1235;color:#FFB31A}
-#direct-android{display:none}
+.platform li b{color:var(--ink)}
+.getbtn{display:inline-flex;align-items:center;min-height:44px;background:var(--grad);color:var(--on-bright);box-shadow:0 10px 26px rgba(255,120,30,.3);font-weight:700;border-radius:var(--radius-pill);padding:12px 24px;text-decoration:none;margin-top:12px}
 .getnote{font-size:.92rem;color:var(--ink-soft);margin-top:10px}
-.getor{margin-top:18px;font-weight:700}
+.getpath{display:inline-block;font-size:var(--fs-12);font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--sindoor);margin-bottom:6px}
+.adv{margin-top:40px;padding-top:24px;border-top:2px dashed var(--bone-2)}
+.adv>h2{font-family:var(--disp);font-size:1.15rem}
+.adv>p{color:var(--ink-soft);margin-top:6px}
+.adv .platform{box-shadow:none;background:transparent}
+.adv .platform h3{font-family:var(--disp);font-size:1.05rem;margin-bottom:6px}
+.adv a.quiet-link{display:inline-block;padding:11px 0;min-height:44px;font-weight:700;color:var(--sindoor)}
 .allbuilds{display:inline-block;margin-top:10px}
 </style>
 </head>
@@ -53,45 +58,68 @@
   <section class="hero" style="padding-bottom:30px">
     <div class="wrap">
       <h1 class="rv in">Put Parwah on your phone.</h1>
-      <p class="sub rv in">Installs in under a minute from the browser: its own icon, full screen, on Android and iPhone. No store needed, and it keeps itself up to date.</p>
+      <p class="sub rv in">Open it in your phone's browser, then tap <b>Add to Home Screen</b>. Under a minute, its own icon, full screen, on Android and iPhone. No store needed, and it keeps itself up to date.</p>
     </div>
   </section>
 </header>
 
 <div class="getwrap">
   <div class="platform" id="p-android">
-    <h2>🤖 Android</h2>
-    <p>Download the Parwah app for Android 7 and later:</p>
-    <a class="getbtn" id="apk-link" href="https://github.com/Anchit-AI-Hustle/parwah-hq/releases/download/mobile-v1.0.0-build15/parwah-test.apk" download>⬇ Download the Android app <span id="apk-size">(7 MB)</span></a>
-    <a class="getbtn dark" id="direct-android" href="#">⬇ Direct APK download</a>
-    <p class="getnote">Open the downloaded file. If Android asks, allow your browser to install apps, then tap Install.</p>
-    <p class="getor">Or install it from the browser, no download:</p>
+    <span class="getpath">The easy way</span>
+    <h2>Android phone</h2>
+    <p>Open Parwah in Chrome, then add it to your Home Screen. It gets its own icon and opens full screen.</p>
+    <a class="getbtn" id="android-open" href="../">Open Parwah in Chrome</a>
     <ol>
-      <li>Open <a href="../">the Parwah app</a> in <b>Chrome</b></li>
-      <li>Tap the <b>⋮ menu</b> (top-right)</li>
-      <li>Tap <b>“Install app”</b> (or “Add to Home screen”)</li>
-    </ol>
-      </div>
-
-  <div class="platform" id="p-ios">
-    <h2>🍎 iPhone &amp; iPad</h2>
-    <p>Install Parwah on your iPhone straight from this page: its own icon, full screen, and always up to date. Works on every iPhone and iPad, no App Store needed.</p>
-    <a class="getbtn" id="ios-get" href="../install/parwah.mobileconfig">⬇ Install the iPhone app</a>
-    <ol>
-      <li>Open this page in <b>Safari</b> and tap <b>Install the iPhone app</b>, then tap <b>Allow</b></li>
-      <li>Open <b>Settings</b> and tap <b>Profile Downloaded</b> near the top (or <b>General</b>, <b>VPN &amp; Device Management</b>)</li>
-      <li>Tap <b>Install</b>, enter your passcode, and tap <b>Install</b> again</li>
+      <li>Open <b>parwah-hq.anchit-tandon.com</b> in <b>Chrome</b></li>
+      <li>Tap the <b>&#8942; menu</b> at the top right</li>
+      <li>Tap <b>Add to Home screen</b> (or <b>Install app</b>), then <b>Install</b></li>
       <li>Parwah is on your Home Screen. Tap it and sign in</li>
     </ol>
-    <p class="getor">Or add it yourself: <a id="ios-guide" href="../?install=ios">open Parwah in Safari</a>, tap <b>Share</b>, then <b>Add to Home Screen</b>.</p>
-    <p class="getnote" id="ios-inapp" hidden>This page is open inside another app. Tap <b>•••</b> and choose <b>Open in Safari</b> first: only Safari can install Parwah on your iPhone.</p>
-    <p class="getnote" id="ipa-dev">For developers: the <a id="ipa-link" href="https://github.com/Anchit-AI-Hustle/parwah-hq/releases/download/mobile-v1.0.0-build15/parwah-ios-unsigned.ipa">iPhone app file (IPA)</a> installs only through Xcode on a Mac, with the <a href="https://github.com/Anchit-AI-Hustle/parwah-hq/blob/main/mobile/README.md">install script</a>. <a class="allbuilds" href="https://github.com/Anchit-AI-Hustle/parwah-hq/releases">All app builds</a></p>
-      </div>
-
-  <div class="platform">
-    <h2>💻 Desktop</h2>
-    <p>Just open <a href="../">parwah-hq.anchit-tandon.com</a> - the full experience with a sidebar, or install it from Chrome's address-bar install icon.</p>
   </div>
+
+  <div class="platform" id="p-ios">
+    <span class="getpath">The easy way</span>
+    <h2>iPhone and iPad</h2>
+    <p>Open Parwah in Safari, then add it to your Home Screen. It gets its own icon and opens full screen.</p>
+    <a class="getbtn" id="ios-guide" href="../?install=ios">Open Parwah in Safari</a>
+    <ol>
+      <li>Open <b>parwah-hq.anchit-tandon.com</b> in <b>Safari</b></li>
+      <li>Tap <b>Share</b> (the square with an arrow pointing up)</li>
+      <li>Scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b></li>
+      <li>Parwah is on your Home Screen. Tap it and sign in</li>
+    </ol>
+    <p class="getnote" id="ios-inapp" hidden>This page is open inside another app. Tap <b>&#8226;&#8226;&#8226;</b> and choose <b>Open in Safari</b> first: only Safari can add Parwah to your iPhone.</p>
+  </div>
+
+  <div class="platform" id="p-desk">
+    <h2>Laptop or computer</h2>
+    <p>Just open <a href="../">parwah-hq.anchit-tandon.com</a>. You get the full app with a sidebar. In Chrome or Edge you can also tap the install icon in the address bar.</p>
+  </div>
+  <p class="getnote">Why the browser? Parwah is the same app on every phone, always the newest version, with nothing to download. It is not in the Play Store or App Store yet.</p>
+
+  <section class="adv" id="advanced" aria-labelledby="adv-h">
+    <h2 id="adv-h">Advanced options</h2>
+    <p>Most families never need these. Use them only if the easy way above does not work for you.</p>
+
+    <div class="platform" id="adv-ios">
+      <h3>iPhone: install with a settings profile</h3>
+      <p class="getnote">This adds the same Parwah icon through a profile. iPhone will say the profile is <b>not signed</b>. That is expected, because Parwah is not in the App Store yet. You can remove it any time in Settings, General, VPN and Device Management.</p>
+      <a class="quiet-link" id="ios-get" href="../install/parwah.mobileconfig">Download the iPhone profile</a>
+      <ol>
+        <li>Open this page in <b>Safari</b>, tap <b>Download the iPhone profile</b>, then <b>Allow</b></li>
+        <li>Open <b>Settings</b> and tap <b>Profile Downloaded</b> near the top</li>
+        <li>Tap <b>Install</b>, enter your passcode, and tap <b>Install</b> again</li>
+      </ol>
+    </div>
+
+    <div class="platform" id="adv-android">
+      <h3>Android: the test build</h3>
+      <p class="getnote">This is an early test build, not from the Play Store. Android will ask you to allow installs from your browser. The browser way above is the same app and always up to date.</p>
+      <a class="quiet-link" id="apk-link" href="https://github.com/Anchit-AI-Hustle/parwah-hq/releases/download/mobile-v1.0.0-build15/parwah-test.apk" download>Download the Android test build <span id="apk-size">(7 MB)</span></a>
+    </div>
+
+    <p class="getnote" id="ipa-dev">For developers: the <a id="ipa-link" href="https://github.com/Anchit-AI-Hustle/parwah-hq/releases/download/mobile-v1.0.0-build15/parwah-ios-unsigned.ipa">iPhone app file (IPA)</a> installs only through Xcode on a Mac, with the <a href="https://github.com/Anchit-AI-Hustle/parwah-hq/blob/main/mobile/README.md">install script</a>. <a class="allbuilds" href="https://github.com/Anchit-AI-Hustle/parwah-hq/releases">All app builds</a></p>
+  </section>
 </div>
 
 <footer class="dusk">
@@ -106,7 +134,7 @@
         <a href="mailto:anchit.tandon@gmail.com">Contact</a>
       </nav>
     </div>
-    <p class="legal">One version everywhere: the phone apps and the website are always the same, always current - updates reach every device the moment they ship. © 2026 Parwah. Made with parwah, in India.</p>
+    <p class="legal">One version everywhere: the Home Screen app and the website are always the same and always current. Updates reach every device the moment they ship. © 2026 Parwah. Made with parwah, in India.</p>
   </div>
 </footer>
 
@@ -134,12 +162,9 @@
     if (apk) { document.getElementById('apk-link').href = apk.browser_download_url; document.getElementById('apk-size').textContent = '(' + Math.max(1, Math.round(apk.size / 1048576)) + ' MB)'; }
     if (ipa) document.getElementById('ipa-link').href = ipa.browser_download_url;
   }).catch(function(){});
-  // If a signed APK is ever hosted at /downloads/parwah.apk, the direct button appears automatically.
-  fetch('../downloads/parwah.apk', { method: 'HEAD' }).then(function(r){
-    if (r.ok) { var a = document.getElementById('direct-android'); a.href = '../downloads/parwah.apk'; a.style.display = 'inline-block'; }
-  }).catch(function(){});
 })();
 </script>
+<script defer src="../attrib.js"></script>
 <script defer src="../analytics.js"></script>
 </body>
 </html>

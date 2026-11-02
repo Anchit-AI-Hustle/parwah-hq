@@ -81,7 +81,8 @@
     if (!a) return;
     var href = a.getAttribute('href') || '';
     if (href.indexOf('https://wa.me/') === 0) {
-      track('join_waitlist', { method: 'whatsapp', page: location.pathname });
+      track('join_waitlist', { method: 'whatsapp', page: location.pathname,
+        src: (window.parwahAttribution || {}).code || '' });
     } else if (href.indexOf('mailto:') === 0) {
       track('join_waitlist', { method: 'email', page: location.pathname });
     } else if (opensDemo(href)) {

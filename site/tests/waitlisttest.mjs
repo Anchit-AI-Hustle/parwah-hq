@@ -4,7 +4,7 @@
 // deploy gate runs this on a fresh clone before npm install.
 import { joinError, joinRow, joinedMessage, normEmail, normInterest,
          consentGiven, emailError, nameError, normSource, INTERESTS,
-         LIMIT, HONEYPOT, isBot, proofCounts } from '../../api/_waitlist.mjs';
+         LIMIT, HONEYPOT, isBot, proofCounts, normUtm } from '../../api/_waitlist.mjs';
 
 let pass = 0; const fails = [];
 const ok = (name, cond) => cond ? pass++ : fails.push(name);
@@ -98,7 +98,7 @@ ok('and it never says whether they were already there',
 // ---- THE ROW IS SHAPED, AND NOTHING ELSE RIDES ALONG.
 const row = joinRow({ name: 'Anchit', email: 'A@B.com', consent: true, admin: true, id: 'x' });
 ok('only the columns we asked for are in the row',
-   Object.keys(row).sort().join(',') === 'city,consent,email,interest,name,phone,source');
+   Object.keys(row).sort().join(',') === 'city,consent,email,interest,name,phone,ref,source,utm_campaign,utm_medium,utm_source');
 ok('an extra field in the body cannot become a column', row.admin === undefined && row.id === undefined);
 
 // ---- THE HONEYPOT. A person never sees the field, so only a bot fills it.
@@ -118,6 +118,20 @@ ok('a missing count means no proof, so the page shows its marked sample', proofC
 ok('a negative count is not a count', proofCounts(-1, 4) === null);
 ok('a fraction is not a count', proofCounts(1.5, 4) === null);
 ok('nonsense is not a count', proofCounts('lots', 4) === null);
+
+// ---- WHERE THEY CAME FROM: our own link labels, nothing else.
+{
+  const r = joinRow({ name: 'A B', email: 'a@b.com', consent: true,
+    utm_source: 'linkedin', utm_medium: 'social', utm_campaign: 'launch-1', ref: 'LI1' });
+  ok('the campaign labels ride along with the join',
+     r.utm_source === 'linkedin' && r.utm_medium === 'social' && r.utm_campaign === 'launch-1' && r.ref === 'LI1');
+  const e = joinRow({ name: 'A B', email: 'a@b.com', consent: true });
+  ok('no labels is a null, not an empty string or the word undefined',
+     e.utm_source === null && e.utm_medium === null && e.utm_campaign === null && e.ref === null);
+}
+ok('markup in a label is stripped, not stored', normUtm('<script>x</script>') === 'scriptxscript');
+ok('a label longer than the column is cut', normUtm('a'.repeat(200)).length === LIMIT.utm);
+ok('spaces and quotes are not part of a label', normUtm(" li 'nk\"ed ") === 'linked');
 
 console.log(`waitlisttest: ${pass}/${pass + fails.length} checks pass`);
 if (fails.length) { fails.forEach(f => console.log('  FAIL ' + f)); process.exit(1); }

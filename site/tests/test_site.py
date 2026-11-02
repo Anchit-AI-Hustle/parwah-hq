@@ -2187,7 +2187,8 @@ _CARD_OF = {"index.html": "og-app.png", "welcome/index.html": "og-app.png",
             "privacy/index.html": "og-app.png", "terms/index.html": "og-app.png",
             "404.html": "og-app.png", "care/index.html": "og.png",
             "launch/index.html": "og.png", "story/index.html": "og-story.png",
-            "story/aisle/index.html": "og-aisle.png"}
+            "story/aisle/index.html": "og-aisle.png", "get/index.html": "og-app.png",
+            "press/index.html": "og-app.png"}
 for _rel, _card in _CARD_OF.items():
     _h = (ROOT / "public" / _rel).read_text(encoding="utf-8")
     _imgs = re.findall(r'(?:property|name)="(?:og|twitter):image"\s+content="([^"]+)"', _h)
@@ -2588,6 +2589,105 @@ check("repairs: the server's newer replies are read: a voice task's own title an
       and "if (j.ektaEmergency) chatUrgent(v)" in _app_src and "h.feedDown" in _app_src)
 check("repairs: the To do filters call the function that exists",
       "renderReminders(" not in _js)
+
+
+# ---------- 10g. Launch growth: attribution, install trust, press kit, marketing copy ----------
+# ATTRIBUTION WITHOUT A PIXEL. Every WhatsApp button on a public page carries
+# a short source code in the words it pre-fills ("Hi Parwah (LI1) - ..."),
+# so the first message says which post or ad brought the person. attrib.js
+# swaps in the first-touch code from ?ref= / ?utm_source=&utm_campaign=; the
+# code written into the page is that page's own, so it works without script.
+_attrib = (ROOT / "public" / "attrib.js").read_text(encoding="utf-8") if (ROOT / "public" / "attrib.js").exists() else ""
+check("attribution: the source-code script exists and keeps first touch for the tab",
+      "sessionStorage" in _attrib and "utm_source" in _attrib and "utm_campaign" in _attrib and "ref" in _attrib
+      and "if (!first || !first.code)" in _attrib)
+check("attribution: it sends nothing anywhere (no fetch, no beacon, no cookie)",
+      _attrib and not re.search(r"fetch\(|sendBeacon|document\.cookie|XMLHttpRequest", _attrib))
+_wa_untagged, _wa_noscript = [], []
+for _p in SITE_PAGES:
+    _h = _p.read_text(encoding="utf-8")
+    _links = re.findall(r"https://wa\.me/\d+\?text=([^\"']*)", _h)
+    if not _links: continue
+    _rel = str(_p.relative_to(ROOT / "public"))
+    if "attrib.js" not in _h: _wa_noscript.append(_rel)
+    _wa_untagged += [_rel for t in _links if not re.match(r"(Hi|Hello|Namaste)%20Parwah(%21)?%20\([A-Z0-9]{2,12}\)", t)]
+check("attribution: every public page with a WhatsApp button loads attrib.js", not _wa_noscript, ", ".join(_wa_noscript))
+check("attribution: every WhatsApp button pre-fills a source code after the greeting", not _wa_untagged, ", ".join(sorted(set(_wa_untagged))))
+_launch = (ROOT / "public" / "launch" / "index.html").read_text(encoding="utf-8")
+check("attribution: the launch form sends the campaign labels with the join",
+      all(f"{k}:(window.parwahAttribution||{{}}).{k}" in _launch for k in ("utm_source", "utm_medium", "utm_campaign", "ref")))
+check("attribution: the list stores them, first touch kept on a re-join",
+      all(f"add column if not exists {k} text" in _dbsrc for k in ("utm_source", "utm_medium", "utm_campaign", "ref"))
+      and "utm_source = coalesce(waitlist.utm_source, excluded.utm_source)" in _auth_src
+      and "normUtm" in _wl)
+
+# INSTALL TRUST. /get/ leads with the browser and Add to Home Screen; the
+# unsigned iPhone profile and the Android test build are Advanced, said
+# honestly. It used to probe /downloads/parwah.apk, which does not exist, and
+# every visit logged a 404 in the console.
+_get = (ROOT / "public" / "get" / "index.html").read_text(encoding="utf-8")
+_adv = _get.find('id="advanced"')
+check("get: no probe for a download that does not exist", "downloads/parwah.apk" not in _get and "direct-android" not in _get)
+check("get: the browser and Add to Home Screen come first, the profile and the test build under Advanced",
+      _adv > 0 and 0 < _get.find('id="ios-guide"') < _adv and 0 < _get.find('id="android-open"') < _adv
+      and _get.find('id="ios-get"') > _adv and _get.find('id="apk-link"') > _adv
+      and "Add to Home Screen" in _get[:_adv])
+check("get: the advanced options say plainly what they are",
+      "not signed" in _get[_adv:] and "test build" in _get[_adv:])
+
+# THE PRESS KIT. Facts that are true today, files a journalist can use.
+_press_dir = ROOT / "public" / "press"
+_press = (_press_dir / "index.html").read_text(encoding="utf-8") if (_press_dir / "index.html").exists() else ""
+check("press: the kit exists and names the founder and the contact address",
+      "Anchit Tandon, founder" in _press and "mailto:anchit.tandon@gmail.com" in _press)
+_press_files = ["parwah-wordmark", "parwah-wordmark-on-dark", "parwah-lockup", "parwah-mark", "parwah-app-icon"]
+_press_missing = [f + e for f in _press_files for e in (".svg", ".png") if not (_press_dir / (f + e)).exists()]
+check("press: every logo ships as SVG and PNG", not _press_missing, ", ".join(_press_missing))
+check("press: the SVG logos are outlines, so they look right without the fonts installed",
+      all("<text" not in (_press_dir / (f + ".svg")).read_text(encoding="utf-8") for f in _press_files if (_press_dir / (f + ".svg")).exists()))
+check("press: real app screenshots, each with alt text",
+      len(re.findall(r'<img src="screen-[a-z-]+\.png"[^>]*alt="[^"]{30,}"', _press)) >= 4)
+check("press: it says the price as it is (free now, a plan later) and never promises an emergency service",
+      "Free for families" in _press and "coming later" in _press and "not an emergency service" in _press)
+check("press: linked from the welcome footer and listed in the sitemap",
+      "../press/" in (ROOT / "public" / "welcome" / "index.html").read_text(encoding="utf-8").split('class="f-links"')[1].split("</nav>")[0]
+      and "/press/</loc>" in (ROOT / "public" / "sitemap.xml").read_text(encoding="utf-8"))
+
+# MARKETING COPY OBEYS THE SAME RULES AS THE SITE. marketing/ is never
+# deployed (.vercelignore), so it is checked where it exists: every .md, the
+# render script (whose strings are copy too),
+# render sources, and the alt text of every image. A creator brief has to
+# list the words a creator must never say; that list sits between
+# <!-- never-say --> and <!-- /never-say --> and is the only exemption.
+_mk = REPO / "marketing"
+_vignore = (REPO / ".vercelignore").read_text(encoding="utf-8")
+check("marketing: the folder is kept out of every Vercel upload", "\nmarketing/" in _vignore)
+if _mk.exists():
+    _mk_files = [f for f in _mk.rglob("*") if f.is_file() and f.suffix in (".md", ".html", ".json", ".txt", ".mjs")]
+    _MON = r"\b(monitor|track|watch over|keep an eye on)(s|ed|ing)?\s+(your\s+|their\s+|my\s+)?(parents?|mum|mom|dad|papa|mummy|maa|elders?)\b"
+    _mk_bad = []
+    for _f in _mk_files:
+        _t = _f.read_text(encoding="utf-8")
+        _t = re.sub(r"<!-- never-say -->.*?<!-- /never-say -->", " ", _t, flags=re.S)
+        _t = re.sub(r"<(script|style)\b[^>]*>.*?</\1>", " ", _t, flags=re.S | re.I)
+        _low = _t.lower()
+        _hits = sorted({k for k, pat in BANNED.items() if re.search(pat, _low)})
+        if re.search(_MON, _low): _hits.append("monitor/track the parent")
+        for _needle, _label in EM_FORMS + EN_FORMS:
+            if _needle.lower() in _low: _hits.append(_label)
+        if _hits: _mk_bad.append(f"{_f.relative_to(REPO)}: {', '.join(_hits)}")
+    check("marketing: no banned claim, condition, voice word, monitoring phrase or dash in any copy",
+          not _mk_bad, "; ".join(_mk_bad[:4]))
+    _alt_path = _mk / "alt.json"
+    _alts = _json.loads(_alt_path.read_text(encoding="utf-8")) if _alt_path.exists() else {}
+    _imgs = sorted(str(f.relative_to(_mk)) for f in _mk.rglob("*.png") if "_render" not in f.parts)
+    _no_alt = [i for i in _imgs if len(str(_alts.get(i, ""))) < 20]
+    check("marketing: every image has alt text (marketing/alt.json)", _imgs and not _no_alt, ", ".join(_no_alt[:5]))
+    _cp = [f for f in _mk_files if "creators" in f.parts]
+    check("marketing: creator posts carry the ASCI disclosure in the caption itself",
+          any("Paid partnership with Parwah" in f.read_text(encoding="utf-8") for f in _cp))
+else:
+    print("SKIP  marketing: not in this build input (.vercelignore keeps it out) - checked on a full checkout")
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
