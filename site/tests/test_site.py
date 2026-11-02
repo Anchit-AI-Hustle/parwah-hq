@@ -870,6 +870,7 @@ CIRCLE_WIDE_OK = {
     ("_ladder.mjs", "Calling "):          "nobody answered an SOS: everyone sees who is being called next",
     ("_staff.mjs", "not marked in yet"):  "anyone in the family may be the one who can check at home",
     ("_renewals.mjs", "payload, {})"):    "a household date nobody looks after yet: anyone may take it",
+    ("_bond.mjs", "Plan it together on Parwah"): "a festival the circle itself chose, once, 14 days ahead",
 }
 def _push_calls(src):
     out = []
@@ -2850,6 +2851,60 @@ check("timer: the first signed-in poll of each minute runs it, under a short tim
       "await runTick(sql, PIGGYBACK_BUDGET_MS)" in _evs and "rateLimit(sql, 'tick', 'all', 1, 50, { failClosed: true })" in _evs)
 check("timer: Vercel's once-a-day cron is the backstop",
       any(c.get("path", "").startswith("/api/events?tick") for c in _json.loads((REPO / "vercel.json").read_text(encoding="utf-8")).get("crons", [])))
+
+# ---------- 10u. Closer together (bonding round, Nov 2026) ----------
+# Date polls and who brings what, the shared card and its secret,
+# anniversaries, the tyohaar kit, things to do on a call, "I'm in town".
+_bd = (API_DIR / "_bond.mjs").read_text(encoding="utf-8")
+_ty = (API_DIR / "_tyohaar.mjs").read_text(encoding="utf-8")
+_pl = (API_DIR / "plans.mjs").read_text(encoding="utf-8")
+_bjs = _appt[_appt.index("// ================= CLOSER TOGETHER ================="):_appt.index("// ---------- games: Snakes & Ladders ----------")]
+check("together: behind the plans route, no new function, one membership guard",
+      "area === 'bond'" in _pl and "/^bond_/" in _pl and "bondAction(sql, circle, me" in _pl
+      and _pl.index("requireMember(") < _pl.index("area === 'bond'"))
+check("together: tables made once, raced safely (schemaOnce)",
+      "schemaOnce(async () =>" in _bd and all(t in _bd for t in ("plan_polls", "plan_options", "plan_votes", "plan_items", "cards (", "card_entries", "circle_festivals", "festival_kits", "in_town")))
+check("together: a poll has 2 to 5 dates, one answer per person, and only the host locks it, once",
+      "POLL_MIN = 2, POLL_MAX = 5" in _bd and "primary key (option_id, member_id)" in _bd
+      and "Only the person who asked can lock the date" in _bd and "status = 'locked', locked_at = now() where id = ${p.id} and status = 'open' returning id" in _bd)
+check("together: an item is claimed by one person at a time",
+      "set claimed_by = ${me.id} where id = ${i.id} and claimed_by is null returning id" in _bd)
+check("together: THE CARD'S SECRET is kept by the server, on the list, the card and every voice note",
+      "export function sealedTo" in _bd and _bd.count("sealedTo(") >= 4
+      and "cardsAll.filter(c => !sealedTo(c, me))" in _bd and "This card is a surprise until the day" in _bd
+      and "placeOf(m && m.place, m && m.country, null).tz" in _bd)
+check("together: the person celebrated is never told in the feed, and cannot add to their own card",
+      "No feed line" in _bd and "This card is for you, so it is a surprise" in _bd)
+check("together: each card, hand-over and festival alert is claimed once in the database",
+      "on conflict (circle_id, auto_key) where auto_key is not null do nothing returning id" in _bd
+      and "set delivered_at = now() where id = ${c.id} and delivered_at is null returning id" in _bd
+      and "insert into festival_kits (circle_id, fkey, fdate) values (${circle.id}, ${f.key}, ${f.date})\n                            on conflict do nothing returning fkey" in _bd
+      and "kit_at is null returning fkey" in _bd)
+check("together: voice notes are small: 60 s, a byte cap, a MIME allow-list; photos are capped data URIs",
+      "VOICE_MAX_SEC = 60" in _bd and "VOICE_MAX_B64 = 340000" in _bd and "VOICE_TYPES.includes(mime)" in _bd
+      and "PHOTO_MAX = 220000" in _bd and "audioBitsPerSecond: 24000" in _bjs and "s2 >= 60" in _bjs)
+check("together: nothing plays or speaks by itself (a tap starts every voice note and every read-aloud)",
+      "autoplay" not in _bjs and "data-bcplay" in _bjs and "data-bspeak" in _bjs and "speechSynthesis.speak" in _bjs)
+check("together: festivals are off until the circle picks them, with the region note and no muhurat claim",
+      "festivalsDue(keys" in _bd and "if (keys.length)" in _bd and "Nothing is chosen for you" in _appt
+      and "differ by a day by region" in _ty and not re.search(r"muhurat|auspicious", (_ty[_ty.index("export const FESTIVALS"):] + _bjs).lower()))
+check("together: the kit makes one plan with a video room, a list, and a greeting card",
+      "roomUrl()" in _bd[_bd.index("bond_fest_kit"):] and "'Sweets', 'Plates and cups'" in _bd and "'Our ' + f.name + ' greeting'" in _bd)
+check("together: I'm in town is for groups only, a city and two dates, never a location, and expires",
+      "circle.kind !== 'group'" in _bd and "kind === 'group' ? await sql`" in _bd and "t.to_date >= ${today}::date" in _bd
+      and not re.search(r"\b(lat|lng|latitude|longitude)\b", _bd[_bd.index("I'm in town (groups only)\n"):]))
+check("together: quiz night and watch together are for groups",
+      "GROUP_ONLY_ACTIVITIES = ['quiz', 'watch']" in _bd and "bondIsGroup() ? ['quiz', 'watch'] : []" in _bjs)
+_bseed = " ".join(re.findall(r"'((?:[^'\\]|\\.)*)'", _bjs[_bjs.index("var BOND_STORIES"):_bjs.index("var BOND_ACTS")])).lower()
+_bhits = sorted({k for k, pat in BANNED.items() if re.search(pat, _bseed)})
+check(f"together: 6 to 10 stories and 3 quiz rounds of 10, all clear of banned words ({_bjs.count(chr(10) + '    { k: ')} stories)",
+      6 <= _bjs.count("\n    { k: ") <= 10 and _bjs.count("\n    [['") == 3 and not _bhits
+      and chr(0x2014) not in _bjs and chr(0x2013) not in _bjs, ", ".join(_bhits))
+check("together: forms ask in the app's own sheets, never confirm() or prompt(), and never say lonely",
+      "askSheet(" in _bjs and "askText(" in _bjs and not re.search(r"[^\w.](confirm|prompt)\(", _bjs)
+      and not re.search(r"\blonel", (_bjs + _bd).lower()))
+check("together: the anniversary is one date shared by both of a couple",
+      "anniv_with = ${w.id} where id = ${p.id}" in _bd and "anniv_with = ${p.id} where id = ${w.id}" in _bd and 'id="pp-anniv-card"' in _appt)
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

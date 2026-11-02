@@ -966,6 +966,40 @@ details.more[open]>summary::before{content:"▾ "}
 .pkind{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-8)}
 .pkind button{flex:1 1 30%;min-width:0;min-height:var(--tap-min);border:1.5px solid var(--bone-2);background:var(--surface);border-radius:var(--radius-12);padding:var(--space-8) var(--space-4);font-family:var(--body);font-weight:600;font-size:var(--fs-12);cursor:pointer;color:var(--ink)}
 .pkind button.sel{border-color:var(--marigold);background:var(--tint-warm)}
+/* CLOSER TOGETHER (api/_bond.mjs): polls, who brings what, cards, festivals */
+.bondwide{width:100%;min-height:var(--tap-min);margin-top:var(--space-12)}
+.bondmp{max-width:520px}
+.bondpoll .opt{display:grid;gap:var(--space-8);padding:var(--space-12) 0;border-top:1px solid var(--bone-2)}
+.bondpoll .opt:first-of-type{border-top:0}
+.bondpoll .opt b{font-size:var(--fs-14)}
+.bondpoll .cnt{font-size:var(--fs-12);color:var(--ink-soft)}
+.bondpoll .pkind{margin-top:0}
+.bondpoll .pkind button{flex:1 1 0;font-size:var(--fs-14)}
+.bonditems{list-style:none;margin:var(--space-12) 0 0;padding:0;display:grid;gap:var(--space-8)}
+.bonditems li{display:flex;align-items:center;gap:var(--space-8);flex-wrap:wrap;font-size:var(--fs-14);background:var(--surface-2);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-4) var(--space-4) var(--space-4) var(--space-12)}
+.bonditems li span{flex:1;min-width:120px}
+.bonditems li small{display:block;color:var(--ink-soft);font-size:var(--fs-12)}
+.bonditems .cbtn{min-height:var(--tap-min)}
+.bondact{margin-top:var(--space-12);border-left:3px solid var(--peacock);padding-left:var(--space-12);font-size:var(--fs-14)}
+.bondtext{font-size:var(--fs-18);line-height:1.6;color:var(--ink)}
+.bondtext p{margin:0 0 var(--space-12)}
+.bondline{background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-16);padding:var(--space-12) var(--space-16);font-size:var(--fs-16);box-shadow:var(--sh-sm)}
+.bondline small{display:block;color:var(--ink-soft);font-size:var(--fs-12);margin-top:var(--space-4)}
+.bondline img{max-width:100%;border-radius:var(--radius-12);display:block}
+.bondline .cbtn{min-height:var(--tap-min);margin-top:var(--space-8)}
+.bondquiz details{border-top:1px solid var(--bone-2);padding:var(--space-8) 0}
+.bondquiz summary{min-height:var(--tap-min);display:flex;align-items:center;cursor:pointer;font-weight:600;font-size:var(--fs-16)}
+.bondquiz p{margin:0 0 var(--space-8);color:var(--ok);font-weight:700}
+.bondfest button{flex:1 1 40%;font-size:var(--fs-14)}
+.bondfest button small{font-size:var(--fs-12);font-weight:500;color:var(--ink-soft)}
+.bondtoday .crow{margin-bottom:var(--space-12);border-left:4px solid var(--marigold)}
+.bondtoday .crow .cbtn{min-height:var(--tap-min)}
+.bondrec{font-size:var(--fs-14);color:var(--ink-soft);margin:var(--space-8) 0}
+.bonderr{color:var(--alert);font-size:var(--fs-14);margin:var(--space-8) 0 0}
+.senior .bondtext{font-size:var(--fs-24)}
+.senior .bondline{font-size:var(--fs-20)}
+.senior .bondtoday .crow .txt b{font-size:var(--fs-18)}
+.senior .bonditems li{font-size:var(--fs-16)}
 .callbtn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center;width:var(--tap-min);height:var(--tap-min);margin:0 calc(-1 * var(--space-12)) 0 0;border-radius:var(--radius-pill)}
 .hero2{display:flex;gap:var(--space-12)}
 .hero2 .go{flex:1}
@@ -1592,6 +1626,9 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
     <div id="frslot"></div>
     <!-- CARE CYCLE: someone in hospital, a visit to note, my own medicine times. -->
     <div id="cc-today"></div>
+    <!-- CLOSER TOGETHER (api/_bond.mjs): a card to add to, a date to answer,
+         a festival to plan, a friend in town. Only when one applies. -->
+    <div id="bond-today"></div>
     <!-- The daily check-in: off until the person it is about says yes. -->
     <div class="card fccard" id="fcquiet" hidden>
       <h3>🕚 Daily check-in</h3>
@@ -2519,6 +2556,21 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
         <p class="hint">They see what Parwah will do, what is kept and how to remove it, and answer themselves.</p>
       </details>
     </div>
+    <!-- Anniversary (api/_bond.mjs): one date shared by a couple. -->
+    <div class="card" id="pp-anniv-card">
+      <h3>💍 Anniversary</h3>
+      <p class="hint" id="pa-now" style="margin:0 0 var(--space-8)"></p>
+      <details class="fmore bondfold" id="pa-edit">
+        <summary>Add or change the anniversary</summary>
+        <div class="pickrow">
+          <label class="pick"><span>Married to</span><select id="pa-with"></select></label>
+          <label class="pick"><span>Wedding day</span><input type="date" id="pa-date"></label>
+        </div>
+        <p class="hint bad" id="pa-err" role="alert" hidden></p>
+        <button type="button" class="go" id="pa-save">Save for both of them</button>
+        <button type="button" class="cbtn ghost bondwide" id="pa-clear" hidden>Remove the anniversary</button>
+      </details>
+    </div>
     <div class="card"><h3>💡 Useful to know</h3><div class="feed" id="pp-useful"></div>
       <p class="hint" style="margin-top:var(--space-12)">🟡 means it is due a re-check: nothing here is assumed current.</p></div>
   </section>
@@ -2815,6 +2867,8 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
 
     <p class="eyebrow">Plans, events and birthdays</p>
     <div class="feed" id="plist"><div class="ev">Loading…</div></div>
+    <!-- Date polls (api/_bond.mjs): not sure of the date, ask everyone. -->
+    <div class="feed" id="bond-polls" style="margin-top:var(--space-12)"></div>
     <div class="card" style="margin-top:var(--space-16)">
       <h3>Add a plan or event 🎈</h3>
       <input type="text" id="p-title" maxlength="100" placeholder="What's the plan? e.g. Sunday video call, Diwali dinner" aria-label="Plan title">
@@ -2839,6 +2893,35 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
       </details>
       <button class="go" id="p-add" style="margin-top:var(--space-16)">Set the plan</button>
       <p class="hint">Everyone sees it in their own time zone, and whoever is going is reminded an hour before. Add it to Google Calendar in one tap.</p>
+      <button type="button" class="cbtn ghost bondwide" id="bp-open">🗳 Not sure of the date? Ask the family</button>
+    </div>
+
+    <!-- CLOSER TOGETHER (api/_bond.mjs): cards everyone adds to, the
+         festivals this family or group keeps, and (groups) who is in town. -->
+    <div class="card" id="bond-town" hidden style="margin-top:var(--space-16)">
+      <h3>📍 I'm in town</h3>
+      <p class="hint" style="margin:0 0 var(--space-8)">Say which city and which days. Only the city is shared, never where you are. It goes away after the last day.</p>
+      <div id="bt-list" class="feed"></div>
+      <label class="pick" style="display:block;margin-top:var(--space-12)"><span>City</span><input type="text" id="bt-city" maxlength="60" placeholder="e.g. Pune"></label>
+      <div class="pickrow">
+        <label class="pick"><span>From</span><input type="date" id="bt-from"></label>
+        <label class="pick"><span>To</span><input type="date" id="bt-to"></label>
+      </div>
+      <p class="hint bad" id="bt-err" role="alert" hidden></p>
+      <button type="button" class="go" id="bt-post">Tell the group</button>
+    </div>
+    <div class="card" id="bond-cards" style="margin-top:var(--space-16)">
+      <h3>💌 Cards: sab milke</h3>
+      <p class="hint" style="margin:0 0 var(--space-8)">One card, from everyone: a line, a photo or a voice note. Birthdays and anniversaries start on their own 3 days before. The person it is for sees it on the day, never before.</p>
+      <div id="bc-list" class="feed"></div>
+      <button type="button" class="cbtn ghost bondwide" id="bc-start">＋ Start a card for any day</button>
+    </div>
+    <div class="card" id="bond-fests" style="margin-top:var(--space-16)">
+      <h3>🪔 Festivals we celebrate</h3>
+      <p class="hint" style="margin:0 0 var(--space-8)" id="bf-sub">Nothing is chosen for you. Pick the ones you keep, and 14 days before each, Parwah offers one plan for everyone, with a call for anyone away.</p>
+      <div class="pkind bondfest" id="bf-chips" role="group" aria-label="Festivals"></div>
+      <p class="hint" id="bf-note"></p>
+      <button type="button" class="go" id="bf-save">Save our festivals</button>
     </div>
     </div>
 
@@ -3662,6 +3745,15 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
 
 <!-- Help me with my phone: a picture and a few words to the family chat,
      a family video call, and short how-to cards. -->
+<!-- CLOSER TOGETHER: one sheet for a date poll, a card, a festival and
+     something to do on a call (api/_bond.mjs). Filled by bondSheet(). -->
+<div class="msheet" id="bondsheet" hidden role="dialog" aria-modal="true" aria-labelledby="bs-title">
+  <div class="mp bondmp">
+    <button class="x" id="bs-x" aria-label="Close">✕</button>
+    <h3 id="bs-title" style="margin:0 var(--space-32) var(--space-8) 0"></h3>
+    <div id="bs-body"></div>
+  </div>
+</div>
 <div class="msheet" id="fcphsheet" hidden role="dialog" aria-modal="true" aria-labelledby="fcph-title">
   <div class="mp" style="max-width:460px">
     <button class="x" id="fcph-x" aria-label="Close">✕</button>
@@ -4424,6 +4516,7 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
     refreshCoins();
     refreshPlan();
     ccRefresh();
+    bondRefresh();
     refreshChats();
     refreshGroups();
     renderFirstRun();
@@ -7357,6 +7450,7 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
     if (curTab !== 'person') personFrom = curTab;
     $('pp-back').textContent = '← ' + ({ people: 'Family', home: 'Today', memory: 'Health & contacts', vault: 'Vault', care: 'To do' }[personFrom] || 'Back');
     switchTab('person');
+    bondPersonRender(id);
     loadBiomarkers(id);
     ccPerson(id);
     loadLadder(id);
@@ -10415,7 +10509,7 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
         '<button class="cbtn ' + (mine ? 'ghost' : '') + '" data-rsvp="' + p.id + '">' + (mine ? 'Going ✔' : 'I\'m in 🙌') + '</button>' +
         '<a class="cbtn ghost" href="' + esc(gcalLink(p)) + '" target="_blank" rel="noopener">🗓 Calendar</a>' +
         '<button class="cbtn no" data-pcancel="' + p.id + '">Cancel</button>' +
-        '</div></div>';
+        '</div>' + bondPlanExtra(p) + '</div>';
     });
     $('plist').innerHTML = h || (calSel
       ? '<div class="ev">No plans on ' + esc(fmtDue(calSel)) + ' yet - the date is set below, make one 🎈</div>'
@@ -10462,6 +10556,595 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
       var pid = b.dataset.pcancel;
       askSheet('Cancel this plan for everyone?', 'Everyone who said they would come is told.', 'Cancel the plan', 'Keep it', true)
         .then(function(y){ if (y) post(API.plans, { code: state.code, memberId: state.memberId, action: 'cancel', planId: pid }).then(refreshFun).catch(function(){}); });
+    }
+  });
+
+  // ================= CLOSER TOGETHER =================
+  // Date polls and who brings what, the shared card (sab milke) and
+  // anniversaries, the tyohaar kit, things to do together on a call, and
+  // "I'm in town" for groups. Server: api/_bond.mjs behind
+  // /api/plans?area=bond. Every function here starts with "bond".
+  var BOND_API = '/api/plans?area=bond';
+  var bondData = null, bondAt = 0, bondFestSel = null;
+  // Short stories to read aloud on a call: retold for Parwah in plain words,
+  // from the Panchatantra and other old tales everyone knows.
+  var BOND_STORIES = [
+    { k: 'crow', t: 'The thirsty crow', p: [
+      'It was a hot day. A crow was very thirsty. He flew far, looking for water.',
+      'At last he saw a pot in a garden. There was a little water at the bottom, but his beak could not reach it.',
+      'The crow did not give up. He looked around and saw small stones on the ground.',
+      'One by one, he dropped the stones into the pot. Slowly, the water came up.',
+      'Soon the water was at the top. The crow drank and drank, and flew away happy.',
+      'Small steps, one after another, can get a big job done.'] },
+    { k: 'monkey', t: 'The monkey and the crocodile', p: [
+      'A monkey lived in a jamun tree by a river. Every day he shared sweet jamuns with a crocodile, and they became friends.',
+      'One day the crocodile said, "Come to my home across the river. Sit on my back." The monkey jumped on.',
+      'In the middle of the river the crocodile said, "My wife wants to eat your heart!"',
+      'The monkey stayed calm. "Oh no, I left my heart in the tree. Take me back and I will get it."',
+      'The crocodile swam back. The monkey jumped up the tree and laughed. "Nobody keeps a heart in a tree, my friend!"',
+      'A calm mind finds a way out of trouble.'] },
+    { k: 'mouse', t: 'The lion and the mouse', p: [
+      'A lion was sleeping under a tree. A little mouse ran over his nose and woke him up.',
+      'The lion caught the mouse in his big paw. "Please let me go," said the mouse. "One day I will help you."',
+      'The lion laughed. "How can a tiny mouse help me?" But he let the mouse go.',
+      'A few days later, the lion was caught in a hunter\'s net. He roared and roared, but he could not get out.',
+      'The mouse heard him. She ran to the net and cut the ropes with her sharp teeth. The lion was free.',
+      'No friend is too small to help.'] },
+    { k: 'friends', t: 'The four friends', p: [
+      'A crow, a mouse, a tortoise and a deer were best friends in the forest.',
+      'One day the deer was caught in a net. The crow flew up high and saw it. He told the others.',
+      'The mouse ran to the net and cut it with his teeth. The deer was free.',
+      'But the slow tortoise was caught by the hunter on the way. The friends made a plan.',
+      'The deer lay down near the river as if asleep. The hunter put down the tortoise and ran to the deer. The mouse cut the tortoise free, and everyone ran away.',
+      'When friends work together, they are stronger than any trouble.'] },
+    { k: 'rabbit', t: 'The clever rabbit', p: [
+      'A big lion lived in a forest. Every day, one animal had to go to him for his dinner.',
+      'One day it was a little rabbit\'s turn. He walked very slowly and reached the lion late.',
+      'The lion was angry. The rabbit said, "On the way, another lion stopped me. He says he is the king of this forest."',
+      '"Show me this lion!" roared the lion. The rabbit took him to a deep well.',
+      'The lion looked in and saw his own face in the water. He roared, and the face roared back. He jumped in to fight it, and he never came out.',
+      'A clever idea can be stronger than big muscles.'] },
+    { k: 'cave', t: 'The talking cave', p: [
+      'A hungry lion found an empty cave. "A fox lives here," he thought. "I will hide inside and wait."',
+      'In the evening the fox came home. He saw big paw marks going in, but none coming out.',
+      'The fox stood outside and called, "Hello, cave! Every day you say hello to me. Why are you quiet today?"',
+      'The lion thought, "The cave must talk to him." So he roared, "Hello, fox! Come in!"',
+      'The fox laughed and ran away. "A cave does not talk. I know who is inside!"',
+      'Look carefully, and think before you walk in.'] },
+    { k: 'elephant', t: 'The elephants and the mice', p: [
+      'Many mice lived in an old village. Every day, a herd of elephants walked through it to the lake, and many mice were hurt.',
+      'The king of the mice went to the king of the elephants. "Please take another path," he said. "One day we will help you."',
+      'The elephant king was kind. He took a new path.',
+      'Some time later, hunters caught the elephants in strong nets. The elephant king sent a message to the mice.',
+      'Hundreds of mice came running. They cut every rope, and all the elephants were free.',
+      'Be kind to everyone. You never know who will help you one day.'] }
+  ];
+  // Quiz night (groups): three rounds of ten simple questions, written for Parwah.
+  var BOND_QUIZ = [
+    [['How many days are in a leap year?', '366'], ['Which planet is called the Red Planet?', 'Mars'], ['What is the national bird of India?', 'The peacock'],
+     ['How many players does one cricket team have on the field?', '11'], ['Which river flows past Varanasi?', 'The Ganga'], ['What do bees make?', 'Honey'],
+     ['How many colours are in a rainbow?', '7'], ['What is the capital of Japan?', 'Tokyo'], ['Which is the biggest ocean?', 'The Pacific Ocean'], ['How many legs does a spider have?', '8']],
+    [['Who wrote Jana Gana Mana?', 'Rabindranath Tagore'], ['What is frozen water called?', 'Ice'], ['Which is the tallest mountain in the world?', 'Mount Everest'],
+     ['How many hours are in one day?', '24'], ['Which animal is called the ship of the desert?', 'The camel'], ['In which city is the Gateway of India?', 'Mumbai'],
+     ['How many sides does a hexagon have?', '6'], ['Which gas do plants take in from the air?', 'Carbon dioxide'], ['Which is the biggest planet?', 'Jupiter'], ['Which game is played with a shuttlecock?', 'Badminton']],
+    [['How many minutes are in an hour?', '60'], ['What is the capital of Australia?', 'Canberra'], ['Which instrument has black and white keys?', 'The piano'],
+     ['Which country gave the Statue of Liberty to the USA?', 'France'], ['What colour do blue and yellow make?', 'Green'], ['Which bird is a sign of peace?', 'The dove'],
+     ['In which city is the Taj Mahal?', 'Agra'], ['How many continents are there?', '7'], ['At what temperature does water boil, in Celsius, at sea level?', '100 degrees'], ['How many strings does a usual guitar have?', '6']]
+  ];
+  var BOND_ACTS = {
+    story: ['📖', 'Read a story aloud'], cook: ['🍳', 'Cook together'], antakshari: ['🎤', 'Antakshari'],
+    photos: ['📷', 'Show your photos'], quiz: ['❓', 'Quiz night'], watch: ['🎬', 'Watch together']
+  };
+  var BOND_OCC = { birthday: '🎂', anniversary: '💍', festival: '🪔', farewell: '👋', wedding: '💐', other: '💌' };
+  function bondIsGroup(){ return bondData ? bondData.kind === 'group' : spaceWord() === 'group'; }
+  function bondWord(){ return bondIsGroup() ? 'group' : 'family'; }
+  function bondQ(extra){ return BOND_API + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + (extra || ''); }
+  function bondName(id){
+    if (id === state.memberId) return 'You';
+    var m = (membersCache || []).filter(function(x){ return x.id === id; })[0];
+    return m ? m.name : 'Someone';
+  }
+  function bondDay(d){ try { return new Date(String(d).slice(0, 10) + 'T12:00:00').toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }); } catch (e) { return d; } }
+  function bondWhen(at){ return new Date(at).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); }
+  function bondIn(n){ return n === 0 ? 'today' : n === 1 ? 'tomorrow' : 'in ' + n + ' days'; }
+  function bondYmd(d){ return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function bondRefresh(force){
+    if (!state) return;
+    if (!force && Date.now() - bondAt < 20000) return;
+    bondAt = Date.now();
+    apiGet(bondQ()).then(function(j){ if (j && j.ok) { bondData = j; bondRender(); } }).catch(function(){});
+  }
+  // A POST; a refusal is said under the form when there is one, otherwise in a toast.
+  function bondPost(body, errEl){
+    body.code = state.code; body.memberId = state.memberId; body.tz = homeTz();
+    if (errEl) errEl.hidden = true;
+    return post(API.plans, body).then(function(j){
+      if (!j.ok) {
+        if (errEl) { errEl.textContent = j.error || 'That did not work. Try again.'; errEl.hidden = false; }
+        else toast(j.error || 'That did not work. Try again.');
+        return j;
+      }
+      bondRefresh(true);
+      return j;
+    }).catch(function(){
+      if (errEl) { errEl.textContent = 'No connection. Try again.'; errEl.hidden = false; } else toast('No connection - try again');
+      return { ok: false };
+    });
+  }
+  function bondRender(){
+    bondRenderToday(); bondRenderPolls(); bondRenderCards(); bondRenderFests(); bondRenderTown();
+    $('bp-open').textContent = '🗳 Not sure of the date? Ask the ' + bondWord();
+    if (curTab === 'fun' && plansCache) renderPlans(plansCache);
+    if (curTab === 'person' && personId) bondPersonRender(personId);
+  }
+  function bondRow(icon, title, sub, btns){
+    return '<div class="crow"><span class="txt"><b>' + icon + ' ' + esc(title) + '</b><small>' + esc(sub) + '</small></span>' + btns + '</div>';
+  }
+  function bondHidden(k){ try { return localStorage.getItem('parwah-bond-hide:' + k) === '1'; } catch (e) { return false; } }
+
+  // ---- Today: only what applies to this person now
+  function bondRenderToday(){
+    var box = $('bond-today'); if (!box) return;
+    var d = bondData; if (!d) { box.innerHTML = ''; return; }
+    var h = '';
+    (d.cards || []).forEach(function(c){
+      if (c.forMe) {
+        if (c.inDays <= 0 && c.n) h += bondRow('💌', 'Your ' + bondWord() + ' made you a card', c.n + (c.n === 1 ? ' message' : ' messages') + ' for you, from everyone.', '<button type="button" class="cbtn" data-bcopen="' + c.id + '">Open my card</button>');
+        return;
+      }
+      if (c.inDays < 0 || c.inDays > 3) return;
+      var label = c.occasion === 'festival' ? 'Add to ' + c.title.replace(/^Our /, 'our ') : 'Add to ' + c.title + ' card';
+      var sub = c.title + ' ' + bondIn(c.inDays) + '. ' + (c.mine ? 'You added ' + c.mine + '.' : (c.n ? c.n + ' added so far.' : 'Be the first.')) + (c.for_member ? ' It stays a surprise.' : '');
+      h += bondRow(BOND_OCC[c.occasion] || '💌', label, sub, '<button type="button" class="cbtn" data-bcopen="' + c.id + '">' + (c.mine ? 'Open the card' : 'Add to the card') + '</button>');
+    });
+    ((d.festivals && d.festivals.due) || []).forEach(function(f){
+      var k = f.key + '|' + f.date;
+      if (f.started) { h += bondRow(f.icon, f.name + ' together is planned', f.name + ' ' + bondIn(f.inDays) + '. Say you are in, and pick what you bring.', '<button type="button" class="cbtn" data-bfgo="1">Open the plan</button>'); return; }
+      if (bondHidden(k)) return;
+      h += bondRow(f.icon, 'Plan ' + f.name + ' together', f.name + ' is ' + bondIn(f.inDays) + '. One plan, a call for anyone away, who brings what, and one greeting from everyone.',
+        '<button type="button" class="cbtn" data-bfkit="' + esc(k) + '">Plan it together</button><button type="button" class="cbtn ghost" data-bfhide="' + esc(k) + '">Not this time</button>');
+    });
+    (d.polls || []).forEach(function(p){
+      if (p.status !== 'open' || p.by_member === state.memberId) return;
+      if (!p.options.some(function(o){ return !o.mine; })) return;
+      h += bondRow('🗳', (p.by_name || 'Someone') + ' asks: which date?', p.title + '. Answer Yes, Maybe or No for each date.', '<button type="button" class="cbtn" data-bpgo="' + p.id + '">Answer</button>');
+    });
+    if (d.kind === 'group') (d.inTown || []).forEach(function(t){
+      if (t.member_id === state.memberId) return;
+      h += bondRow('📍', t.name + ' is in ' + t.city, bondDay(t.from_date) + ' to ' + bondDay(t.to_date), '<button type="button" class="cbtn" data-btmeet="' + t.id + '">Let\'s meet</button>');
+    });
+    box.innerHTML = h ? '<div class="bondtoday">' + h + '</div>' : '';
+  }
+
+  // ---- 1. date polls
+  function bondRenderPolls(){
+    var box = $('bond-polls'); if (!box || !bondData) return;
+    var me = state.memberId, h = '';
+    (bondData.polls || []).forEach(function(p){
+      if (p.status === 'cancelled') return;
+      if (p.status === 'locked') { h += '<div class="plan bondpoll"><b>🗓 ' + esc(p.title) + '</b><small>The date is locked. It is in the plans above.</small></div>'; return; }
+      var host = p.by_member === me;
+      h += '<div class="plan bondpoll" id="bpoll-' + p.id + '"><b>🗳 ' + esc(p.title) + '</b><small>' + (host ? 'You asked' : 'Asked by ' + esc(p.by_name || 'someone')) + '. Times are in your time.' + (p.items && p.items.length ? ' To bring: ' + esc(p.items.join(', ')) + '.' : '') + '</small>';
+      p.options.forEach(function(o){
+        h += '<div class="opt"><b>' + esc(bondWhen(o.at)) + '</b><span class="cnt">' + o.yes.length + ' yes' + (o.yes.length ? ' (' + esc((o.yesNames || []).join(', ')) + ')' : '') + ' · ' + o.maybe.length + ' maybe · ' + o.no.length + ' no</span>' +
+          '<div class="pkind" role="group" aria-label="Your answer for ' + esc(bondWhen(o.at)) + '">' +
+          [['yes', 'Yes'], ['maybe', 'Maybe'], ['no', 'No']].map(function(a){ var on = o.mine === a[0]; return '<button type="button" class="' + (on ? 'sel' : '') + '" aria-pressed="' + on + '" data-bpv="' + o.id + '|' + a[0] + '">' + a[1] + '</button>'; }).join('') + '</div>' +
+          (host ? '<button type="button" class="cbtn" data-bplock="' + p.id + '|' + o.id + '">Lock this date</button>' : '') + '</div>';
+      });
+      if (host) h += '<div class="prow"><button type="button" class="cbtn no" data-bpcancel="' + p.id + '">Close the poll</button></div>';
+      h += '</div>';
+    });
+    box.innerHTML = h;
+  }
+  function bondPollSheet(pre){
+    pre = pre || {};
+    var dates = pre.dates || [], rows = '';
+    var n = Math.max(2, dates.length);
+    for (var i = 0; i < n; i++) rows += bondPollRow(i, dates[i] || '', pre.time || '19:00');
+    bondSheet('🗳 Ask the ' + bondWord() + ' for a date',
+      '<p class="hint" style="margin:0 0 var(--space-12)">Give 2 to 5 dates. Everyone answers Yes, Maybe or No, each in their own time. You lock the one that suits most.</p>' +
+      '<label for="bp-title">What is the plan?</label><input type="text" id="bp-title" maxlength="100" value="' + esc(pre.title || '') + '" placeholder="e.g. Sunday lunch at Nani\'s">' +
+      '<div class="pkind" id="bp-kind" role="group" aria-label="What kind of plan">' +
+      [['meet', '🤗 Meet up'], ['call', '📹 Call'], ['party', '🎶 Watch/listen'], ['function', '🪔 Function']].map(function(k, i){ return '<button type="button" data-bpk="' + k[0] + '" class="' + (i === 0 ? 'sel' : '') + '" aria-pressed="' + (i === 0) + '">' + k[1] + '</button>'; }).join('') + '</div>' +
+      '<div id="bp-opts">' + rows + '</div>' +
+      '<button type="button" class="cbtn ghost bondwide" id="bp-more">＋ Another date</button>' +
+      '<label for="bp-items">Who brings what (optional)</label><input type="text" id="bp-items" maxlength="300" placeholder="e.g. sweets, plates, a speaker">' +
+      '<p class="bonderr" id="bp-err" role="alert" hidden></p>' +
+      '<button type="button" class="go" id="bp-send">Ask the ' + bondWord() + '</button>');
+    try { $('bp-title').focus(); } catch (e) {}
+  }
+  function bondPollRow(i, d, t){
+    return '<div class="pickrow"><label class="pick"><span>Date ' + (i + 1) + '</span><input type="date" class="bp-d" value="' + esc(d) + '"></label>' +
+      '<label class="pick"><span>Time</span><input type="time" class="bp-t" value="' + esc(t) + '"></label></div>';
+  }
+  function bondPollSend(){
+    var err = $('bp-err'), say = function(m){ err.textContent = m; err.hidden = false; };
+    var title = $('bp-title').value.trim();
+    if (!title) { say('Give the plan a name.'); return; }
+    var ds = document.querySelectorAll('#bp-opts .bp-d'), ts = document.querySelectorAll('#bp-opts .bp-t'), opts = [];
+    for (var i = 0; i < ds.length; i++) {
+      if (!ds[i].value) continue;
+      var at = new Date(ds[i].value + 'T' + (ts[i].value || '19:00'));
+      if (isNaN(at) || at < new Date()) { say('Date ' + (i + 1) + ' has already gone. Pick a time from now on.'); return; }
+      opts.push(at.toISOString());
+    }
+    if (opts.length < 2) { say('Give at least 2 dates to choose from.'); return; }
+    var kb = document.querySelector('#bp-kind .sel');
+    var items = $('bp-items').value.split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+    bondPost({ action: 'bond_poll_create', title: title, kind: kb ? kb.getAttribute('data-bpk') : 'meet', options: opts, items: items }, err).then(function(j){
+      if (!j.ok) return;
+      bondSheetClose(); toast('Asked. Everyone can answer now 🗳');
+      if (curTab !== 'fun') { switchTab('fun'); setSec('fun', 'plans'); }
+    });
+  }
+
+  // ---- who brings what, and something to do together, on each plan
+  function bondPlanExtra(p){
+    if (!bondData) return '';
+    var me = state.memberId, h = '';
+    var x = (bondData.plans || []).filter(function(r){ return r.id === p.id; })[0];
+    if (x && x.activity && BOND_ACTS[x.activity]) {
+      var a = BOND_ACTS[x.activity], note = x.activity === 'story' ? ((BOND_STORIES.filter(function(s){ return s.k === x.activity_note; })[0] || {}).t || '') : x.activity === 'quiz' ? 'Round ' + (x.activity_note || '1') : (x.activity_note || '');
+      h += '<div class="bondact"><b>' + a[0] + ' Together: ' + esc(a[1]) + '</b>' + (note ? '<small>' + esc(note) + '</small>' : '') +
+        '<div class="prow"><button type="button" class="cbtn" data-baview="' + p.id + '">Open it</button><button type="button" class="cbtn ghost" data-baset="' + p.id + '">Change</button></div></div>';
+    }
+    var items = (bondData.items || []).filter(function(i){ return i.plan_id === p.id; });
+    if (items.length) {
+      var open = items.filter(function(i){ return !i.claimed_by; }).length;
+      h += '<small>Who brings what' + (open ? ' · ' + open + ' still open' : ' · all covered') + '</small><ul class="bonditems">' + items.map(function(i){
+        var who = i.claimed_by ? (i.claimed_by === me ? 'You bring it' : esc(i.claimed_name || 'Someone') + ' brings it') : 'Still open';
+        var btn = i.claimed_by === me ? '<button type="button" class="cbtn ghost" data-biclaim="' + i.id + '">I can\'t now</button>'
+          : !i.claimed_by ? '<button type="button" class="cbtn" data-biclaim="' + i.id + '">I\'ll bring it</button>' : '';
+        return '<li><span>' + esc(i.label) + '<small>' + who + '</small></span>' + btn + '</li>';
+      }).join('') + '</ul>';
+    }
+    var together = ['call', 'party', 'meet', 'function'].indexOf(p.kind) >= 0;
+    h += '<div class="prow"><button type="button" class="cbtn ghost" data-biadd="' + p.id + '">＋ Something to bring</button>' +
+      (together && !(x && x.activity) ? '<button type="button" class="cbtn ghost" data-baset="' + p.id + '">🎲 Do something together</button>' : '') + '</div>';
+    return h;
+  }
+  function bondActSheet(planId){
+    var x = ((bondData && bondData.plans) || []).filter(function(r){ return r.id === planId; })[0] || {};
+    var kinds = ['story', 'cook', 'antakshari', 'photos'].concat(bondIsGroup() ? ['quiz', 'watch'] : []);
+    bondSheet('🎲 Do something together',
+      '<p class="hint" style="margin:0 0 var(--space-8)">Pick one thing for the call. Everyone sees it on the plan.</p>' +
+      '<div class="pkind" id="ba-kinds" role="group" aria-label="Something to do">' + kinds.map(function(k){ var on = x.activity === k; return '<button type="button" data-bak="' + k + '" class="' + (on ? 'sel' : '') + '" aria-pressed="' + on + '">' + BOND_ACTS[k][0] + ' ' + BOND_ACTS[k][1] + '</button>'; }).join('') + '</div>' +
+      '<div id="ba-more"></div><p class="bonderr" id="ba-err" role="alert" hidden></p>' +
+      '<button type="button" class="go" id="ba-save" data-plan="' + planId + '">Save</button>' +
+      (x.activity ? '<button type="button" class="cbtn ghost bondwide" id="ba-none" data-plan="' + planId + '">Nothing for now</button>' : ''));
+    if (x.activity) bondActMore(x.activity, x.activity_note);
+  }
+  function bondActMore(k, note){
+    var h = '';
+    if (k === 'story') h = '<label class="pick" style="display:block;margin-top:var(--space-12)"><span>Which story?</span><select id="ba-note">' + BOND_STORIES.map(function(s){ return '<option value="' + s.k + '"' + (note === s.k ? ' selected' : '') + '>' + esc(s.t) + '</option>'; }).join('') + '</select></label>';
+    if (k === 'quiz') h = '<label class="pick" style="display:block;margin-top:var(--space-12)"><span>Which round?</span><select id="ba-note">' + BOND_QUIZ.map(function(r, i){ return '<option value="' + (i + 1) + '"' + (String(note) === String(i + 1) ? ' selected' : '') + '>Round ' + (i + 1) + ': 10 questions</option>'; }).join('') + '</select></label>';
+    if (k === 'cook') {
+      var rec = typeof window.parwahRasoiList === 'function' ? (window.parwahRasoiList() || []) : [];
+      h = '<label for="ba-note" style="margin-top:var(--space-12)">What will you cook?</label><input type="text" id="ba-note" maxlength="120" list="ba-recipes" value="' + esc(note || '') + '" placeholder="e.g. Rajma chawal, from Nani\'s way">' +
+        (rec.length ? '<datalist id="ba-recipes">' + rec.map(function(r){ return '<option value="' + esc(r.name || r) + '">'; }).join('') + '</datalist>' : '');
+    }
+    if (k === 'watch') h = '<label for="ba-note" style="margin-top:var(--space-12)">What to watch (a name or a link)</label><input type="text" id="ba-note" maxlength="300" value="' + esc(note || '') + '" placeholder="e.g. the match, or https://...">' +
+      '<p class="hint">Each person watches on their own screen or subscription; talk on the call.</p>';
+    if (k === 'antakshari') h = '<p class="hint">Start Antakshari from Games when the call begins. Everyone plays on their own phone.</p>';
+    if (k === 'photos') h = '<p class="hint">Everyone shares a few photos in the ' + bondWord() + ' chat, and you talk about them on the call.</p>';
+    $('ba-more').innerHTML = h;
+  }
+  function bondActView(planId){
+    var x = ((bondData && bondData.plans) || []).filter(function(r){ return r.id === planId; })[0];
+    if (!x || !BOND_ACTS[x.activity]) return;
+    var a = BOND_ACTS[x.activity], h = '';
+    if (x.activity === 'story') {
+      var s = BOND_STORIES.filter(function(z){ return z.k === x.activity_note; })[0] || BOND_STORIES[0];
+      h = '<div class="bondtext" id="ba-story"><p><b>' + esc(s.t) + '</b></p>' + s.p.map(function(t){ return '<p>' + esc(t) + '</p>'; }).join('') + '</div>' +
+        '<button type="button" class="cbtn ghost bondwide" data-bspeak="story">🔊 Read it aloud</button>';
+    } else if (x.activity === 'quiz') {
+      var r = BOND_QUIZ[(parseInt(x.activity_note, 10) || 1) - 1] || BOND_QUIZ[0];
+      h = '<p class="hint" style="margin:0 0 var(--space-8)">Read a question out on the call. Tap it to see the answer.</p><div class="bondquiz">' +
+        r.map(function(q, i){ return '<details><summary>' + (i + 1) + '. ' + esc(q[0]) + '</summary><p>' + esc(q[1]) + '</p></details>'; }).join('') + '</div>';
+    } else if (x.activity === 'cook') {
+      h = '<p class="bondtext">' + esc(x.activity_note || 'Pick a dish together on the call.') + '</p><p class="hint">Everyone cooks in their own kitchen with the camera on, and you eat together.</p>';
+    } else if (x.activity === 'antakshari') {
+      h = '<p class="hint">Antakshari is in Games. Start it when the call begins.</p><button type="button" class="go" data-bago="games">🎤 Open Games</button>';
+    } else if (x.activity === 'photos') {
+      h = '<p class="hint">Share a few photos in the ' + bondWord() + ' chat and talk about them.</p><button type="button" class="go" data-bago="chat">📷 Open the ' + bondWord() + ' chat</button>';
+    } else if (x.activity === 'watch') {
+      var link = /^https:\/\/[^\s"'<>]+$/.test(x.activity_note || '') ? x.activity_note : null;
+      h = '<p class="bondtext">' + esc(x.activity_note || 'Pick something on the call.') + '</p>' + (link ? '<a class="cbtn" href="' + esc(link) + '" target="_blank" rel="noopener">Open the link</a>' : '') +
+        '<p class="hint">Each person watches on their own screen or subscription.</p>';
+    }
+    bondSheet(a[0] + ' ' + a[1], h);
+  }
+
+  // ---- 2. cards: sab milke
+  function bondRenderCards(){
+    var box = $('bc-list'); if (!box || !bondData) return;
+    var h = '';
+    (bondData.cards || []).forEach(function(c){
+      if (c.forMe && c.inDays > 0) return;
+      h += '<div class="crow"><span class="txt"><b>' + (BOND_OCC[c.occasion] || '💌') + ' ' + esc(c.title) + '</b><small>' + esc(bondDay(c.date)) + ' · ' + c.n + (c.n === 1 ? ' entry' : ' entries') + (c.for_member && !c.forMe ? ' · a surprise for them' : '') + '</small></span>' +
+        '<button type="button" class="cbtn" data-bcopen="' + c.id + '">Open</button></div>';
+    });
+    box.innerHTML = h || '<div class="ev">No cards right now. One starts on its own 3 days before a birthday or an anniversary.</div>';
+  }
+  var bondCardNow = null;
+  function bondCardOpen(id){
+    bondSheet('💌 Loading…', '<div class="ev">Loading…</div>');
+    apiGet(bondQ('&card=' + encodeURIComponent(id))).then(function(j){
+      if (!j.ok) { bondSheet('💌 A card', '<p class="bonderr" role="alert">' + esc(j.error || 'This card could not be opened.') + '</p>'); return; }
+      bondCardNow = j; bondCardRender();
+    }).catch(function(){ bondSheet('💌 A card', '<p class="bonderr" role="alert">No connection. Try again.</p>'); });
+  }
+  function bondCardRender(){
+    var j = bondCardNow, c = j.card, me = state.memberId;
+    var forMe = c.for_member === me || c.for_member2 === me;
+    var today = bondYmd(new Date()), past = c.date < bondYmd(new Date(Date.now() - 3 * 86400000));
+    var lines = j.entries.map(function(e){
+      var del = e.member_id === me ? '<button type="button" class="cbtn no" data-bcdel="' + e.id + '">Take mine off</button>' : '';
+      var from = '<small>From ' + esc(e.member_id === me ? 'you' : e.name) + '</small>';
+      if (e.kind === 'photo') { var src = safeImageUri(e.data); return '<div class="bondline">' + (src ? '<img src="' + esc(src) + '" alt="A photo from ' + esc(e.name) + '">' : '') + (e.text ? esc(e.text) : '') + from + del + '</div>'; }
+      if (e.kind === 'voice') return '<div class="bondline" id="bcv-v-' + e.id + '">🎙 A voice note, ' + (e.seconds || 1) + ' seconds' + from + '<button type="button" class="cbtn" data-bcplay="' + e.id + '">▶ Play it</button>' + del + '</div>';
+      return '<div class="bondline">' + esc(e.text) + from + del + '</div>';
+    }).join('');
+    var anyText = j.entries.some(function(e){ return e.kind === 'text'; });
+    var h = '<p class="hint" style="margin:0 0 var(--space-12)">' + esc(bondDay(c.date)) + (c.for_member && !forMe ? '. ' + esc(bondName(c.for_member)) + (c.for_member2 ? ' and ' + esc(bondName(c.for_member2)) : '') + ' will see it on the day, not before.' : '') + '</p>' +
+      '<div class="feed" id="bcv-entries">' + (lines || '<div class="ev">Nothing yet. Be the first.</div>') + '</div>' +
+      (anyText ? '<button type="button" class="cbtn ghost bondwide" data-bspeak="card">🔊 Read the lines aloud</button>' : '');
+    if (!forMe && !past) {
+      h += '<label for="bcv-text" style="margin-top:var(--space-16)">Write a line</label><textarea id="bcv-text" rows="3" maxlength="300" placeholder="e.g. Thank you for always being there"></textarea>' +
+        '<button type="button" class="go" id="bcv-send">Add my line</button>' +
+        '<button type="button" class="cbtn ghost bondwide" id="bcv-photo-btn">📷 Add a photo</button><input type="file" id="bcv-photo" accept="image/*" hidden>' +
+        '<button type="button" class="cbtn ghost bondwide" id="bcv-rec">🎙 Record a voice note (up to 60 s)</button>' +
+        '<p class="bondrec" id="bcv-recst" role="status"></p><p class="bonderr" id="bcv-err" role="alert" hidden></p>';
+    }
+    bondSheet((BOND_OCC[c.occasion] || '💌') + ' ' + c.title, h);
+  }
+  function bondCardAdd(body){
+    body.action = 'bond_card_add'; body.cardId = bondCardNow.card.id;
+    return bondPost(body, $('bcv-err')).then(function(j){ if (j.ok) { toast('Added to the card 💌'); bondCardOpen(bondCardNow.card.id); } return j; });
+  }
+  function bondShrink(f, done){
+    var url = URL.createObjectURL(f), img = new Image();
+    img.onload = function(){
+      var k = Math.min(1, 640 / Math.max(img.naturalWidth, img.naturalHeight));
+      var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      var q = 0.72, out = c.toDataURL('image/jpeg', q);
+      while (out.length > 200000 && q > 0.3) { q -= 0.15; out = c.toDataURL('image/jpeg', q); }
+      done(out.length <= 200000 ? out : null);
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); done(null); };
+    img.src = url;
+  }
+  // A voice note: up to 60 seconds, small (about 24 kbps), never played until tapped.
+  var bondRec = null, bondRecStream = null;
+  function bondRecord(stEl, btn, done){
+    if (bondRec) { if (bondRec.state === 'recording') bondRec.stop(); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') { stEl.textContent = 'This phone cannot record here. Write a line instead.'; return; }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+      var types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
+      var mt = types.filter(function(t){ return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t); })[0] || '';
+      var rec = mt ? new MediaRecorder(stream, { mimeType: mt, audioBitsPerSecond: 24000 }) : new MediaRecorder(stream);
+      var parts = [], started = Date.now(), timer = null;
+      bondRec = rec; bondRecStream = stream;
+      rec.ondataavailable = function(e){ if (e.data && e.data.size) parts.push(e.data); };
+      rec.onstop = function(){
+        stream.getTracks().forEach(function(t){ t.stop(); });
+        clearInterval(timer); bondRec = null; bondRecStream = null;
+        btn.textContent = '🎙 Record a voice note (up to 60 s)';
+        var secs = Math.max(1, Math.min(60, Math.round((Date.now() - started) / 1000)));
+        var blob = new Blob(parts, { type: (rec.mimeType || 'audio/webm').split(';')[0] });
+        stEl.textContent = 'Sending your ' + secs + '-second voice note…';
+        var fr = new FileReader();
+        fr.onload = function(){ done({ mime: blob.type, data: String(fr.result).split(',')[1] || '', seconds: secs }); };
+        fr.readAsDataURL(blob);
+      };
+      rec.start(1000);
+      btn.textContent = '■ Stop and add it';
+      stEl.textContent = 'Recording… 0 s';
+      timer = setInterval(function(){
+        var s2 = Math.round((Date.now() - started) / 1000);
+        stEl.textContent = 'Recording… ' + s2 + ' s (stops by itself at 60)';
+        if (s2 >= 60 && rec.state === 'recording') rec.stop();
+      }, 1000);
+    }).catch(function(){ stEl.textContent = 'The microphone is not allowed, so nothing was recorded.'; });
+  }
+  function bondSpeak(lines){
+    if (!window.speechSynthesis) { toast('This phone cannot read aloud'); return; }
+    try {
+      speechSynthesis.cancel();
+      lines.forEach(function(t){ var u = new SpeechSynthesisUtterance(t); u.lang = 'en-IN'; u.rate = 0.9; speechSynthesis.speak(u); });
+    } catch (e) {}
+  }
+  function bondCardStart(){
+    var ms = (membersCache || []).filter(function(m){ return m.id !== state.memberId; });
+    bondSheet('💌 Start a card',
+      '<p class="hint" style="margin:0 0 var(--space-8)">For a birthday, a farewell, a wedding or any day. Everyone in the ' + bondWord() + ' can add to it.</p>' +
+      '<div class="pkind" id="bcs-occ" role="group" aria-label="What is it for">' + [['birthday', '🎂 Birthday'], ['farewell', '👋 Farewell'], ['wedding', '💐 Wedding'], ['anniversary', '💍 Anniversary'], ['other', '💌 Any day']].map(function(o, i){ return '<button type="button" data-bco="' + o[0] + '" class="' + (i === 4 ? 'sel' : '') + '" aria-pressed="' + (i === 4) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
+      '<div class="pickrow"><label class="pick"><span>Who is it for?</span><select id="bcs-for"><option value="">Someone not on Parwah</option>' + ms.map(function(m){ return '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="pick"><span>The day</span><input type="date" id="bcs-date"></label></div>' +
+      '<label class="pick" style="display:block;margin-top:var(--space-12)" id="bcs-namewrap"><span>Their name</span><input type="text" id="bcs-name" maxlength="60" placeholder="e.g. Meera"></label>' +
+      '<p class="bonderr" id="bcs-err" role="alert" hidden></p><button type="button" class="go" id="bcs-go">Start the card</button>');
+  }
+
+  // ---- 3. festivals
+  function bondRenderFests(){
+    var box = $('bf-chips'); if (!box || !bondData) return;
+    var f = bondData.festivals; if (!f) return;
+    if (!bondFestSel) bondFestSel = f.chosen.slice();
+    var today = bondData.today;
+    box.innerHTML = f.list.map(function(x){
+      var next = x.dates.filter(function(d){ return d >= today; })[0];
+      var on = bondFestSel.indexOf(x.key) >= 0;
+      return '<button type="button" data-bfk="' + x.key + '" class="' + (on ? 'sel' : '') + '" aria-pressed="' + on + '">' + x.icon + ' ' + esc(x.name) + (next ? '<br><small>' + esc(bondDay(next)) + '</small>' : '') + '</button>';
+    }).join('');
+    $('bf-note').textContent = f.note;
+    $('bf-sub').textContent = 'Nothing is chosen for you. Pick the ones your ' + bondWord() + ' keeps, and ' + f.days + ' days before each, Parwah offers one plan for everyone, with a call for anyone away.';
+  }
+
+  // ---- 5. I'm in town (groups only)
+  function bondRenderTown(){
+    var card = $('bond-town'); if (!card || !bondData) return;
+    card.hidden = bondData.kind !== 'group';
+    if (card.hidden) return;
+    $('bt-list').innerHTML = (bondData.inTown || []).map(function(t){
+      var mine = t.member_id === state.memberId;
+      return '<div class="crow"><span class="txt"><b>📍 ' + esc(mine ? 'You are' : t.name + ' is') + ' in ' + esc(t.city) + '</b><small>' + esc(bondDay(t.from_date)) + ' to ' + esc(bondDay(t.to_date)) + '</small></span>' +
+        (mine ? '<button type="button" class="cbtn no" data-btend="' + t.id + '">Take it down</button>' : '<button type="button" class="cbtn" data-btmeet="' + t.id + '">Let\'s meet</button>') + '</div>';
+    }).join('');
+  }
+  function bondMeet(id){
+    var t = ((bondData && bondData.inTown) || []).filter(function(x){ return x.id === id; })[0]; if (!t) return;
+    var today = bondYmd(new Date()), d = new Date((t.from_date > today ? t.from_date : today) + 'T12:00:00'), dates = [];
+    while (dates.length < 3 && bondYmd(d) <= t.to_date) { dates.push(bondYmd(d)); d.setDate(d.getDate() + 1); }
+    bondPollSheet({ title: 'Meet ' + t.name + ' in ' + t.city, dates: dates, time: '19:00' });
+  }
+
+  // ---- 2b. the anniversary, on a person's page
+  function bondPersonRender(id){
+    var card = $('pp-anniv-card'); if (!card) return;
+    if (!bondData) { bondRefresh(true); $('pa-now').textContent = 'Loading…'; return; }
+    var a = (bondData.anniv || []).filter(function(x){ return x.id === id; })[0];
+    var m = (membersCache || []).filter(function(x){ return x.id === id; })[0] || {};
+    $('pa-now').textContent = a ? 'Married to ' + bondName(a.with) + ', on ' + new Date(a.date + 'T12:00:00').toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' }) + '. Everyone else gets a card to add to, 3 days before.'
+      : 'Not added. Add it once and it shows for both of them.';
+    var pick = (a && a.with) || m.spouse_id || '';
+    $('pa-with').innerHTML = '<option value="">Pick a person</option>' + (membersCache || []).filter(function(x){ return x.id !== id; }).map(function(x){ return '<option value="' + x.id + '"' + (x.id === pick ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('');
+    $('pa-date').value = a ? a.date : '';
+    $('pa-date').max = bondYmd(new Date());
+    $('pa-clear').hidden = !a;
+    $('pa-err').hidden = true;
+  }
+
+  // ---- the one sheet
+  function bondSheet(title, html){
+    $('bs-title').textContent = title; $('bs-body').innerHTML = html;
+    var was = $('bondsheet').hidden;
+    $('bondsheet').hidden = false;
+    if (was) setTimeout(function(){ try { $('bs-x').focus(); } catch (e) {} }, 30);
+  }
+  function bondSheetClose(){
+    $('bondsheet').hidden = true;
+    // Closing the sheet throws a recording away and lets go of the microphone.
+    if (bondRec) { bondRec.onstop = null; try { if (bondRec.state === 'recording') bondRec.stop(); } catch (e) {} bondRec = null; }
+    if (bondRecStream) { try { bondRecStream.getTracks().forEach(function(t){ t.stop(); }); } catch (e) {} bondRecStream = null; }
+    if (window.speechSynthesis) try { speechSynthesis.cancel(); } catch (e) {}
+  }
+  $('bs-x').addEventListener('click', bondSheetClose);
+  $('bondsheet').addEventListener('click', function(e){ if (e.target === this) bondSheetClose(); });
+  $('bondsheet').addEventListener('keydown', function(e){ if (e.key === 'Escape') bondSheetClose(); });
+  $('bp-open').addEventListener('click', function(){ bondPollSheet(); });
+  $('bc-start').addEventListener('click', bondCardStart);
+  $('bf-save').addEventListener('click', function(){
+    bondPost({ action: 'bond_fest_set', keys: bondFestSel || [] }).then(function(j){
+      if (j.ok) { bondFestSel = null; toast(j.chosen.length ? 'Saved. ' + j.chosen.length + ' festivals, 14 days ahead 🪔' : 'Saved. No festivals chosen.'); }
+    });
+  });
+  $('bt-post').addEventListener('click', function(){
+    var err = $('bt-err'), city = $('bt-city').value.trim(), f = $('bt-from').value, t = $('bt-to').value;
+    err.hidden = true;
+    if (!city) { err.textContent = 'Which city?'; err.hidden = false; return; }
+    if (!f || !t) { err.textContent = 'Pick the first and the last day.'; err.hidden = false; return; }
+    if (t < f) { err.textContent = 'The last day is before the first.'; err.hidden = false; return; }
+    bondPost({ action: 'bond_intown', city: city, from: f, to: t }, err).then(function(j){
+      if (j.ok) { $('bt-city').value = ''; $('bt-from').value = ''; $('bt-to').value = ''; toast('The group can see it 📍'); }
+    });
+  });
+  $('pa-save').addEventListener('click', function(){
+    var err = $('pa-err');
+    if (!$('pa-with').value) { err.textContent = 'Pick who they are married to.'; err.hidden = false; return; }
+    if (!$('pa-date').value) { err.textContent = 'Pick the wedding day.'; err.hidden = false; return; }
+    bondPost({ action: 'bond_anniv', personId: personId, withId: $('pa-with').value, date: $('pa-date').value }, err).then(function(j){
+      if (j.ok) { $('pa-edit').open = false; toast('Saved for both of them 💍'); }
+    });
+  });
+  $('pa-clear').addEventListener('click', function(){
+    askSheet('Remove this anniversary?', 'It is removed for both of them.', 'Remove it', 'Keep it', true).then(function(y){
+      if (y) bondPost({ action: 'bond_anniv', personId: personId, date: '' }).then(function(j){ if (j.ok) toast('Removed'); });
+    });
+  });
+  $('bs-body').addEventListener('change', function(e){
+    if (e.target.id === 'bcs-for') $('bcs-namewrap').hidden = !!e.target.value;
+    if (e.target.id === 'bcv-photo' && e.target.files && e.target.files[0]) {
+      var st = $('bcv-recst'); st.textContent = 'Getting the photo ready…';
+      bondShrink(e.target.files[0], function(data){
+        if (!data) { st.textContent = 'That photo could not be used. Try another.'; return; }
+        st.textContent = '';
+        bondCardAdd({ kind: 'photo', data: data });
+      });
+    }
+  });
+  // Every button in this section, in one place.
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-bcopen],[data-bcplay],[data-bcdel],[data-bpv],[data-bplock],[data-bpcancel],[data-bpgo],[data-bpk],[data-biclaim],[data-biadd],[data-baset],[data-baview],[data-bak],[data-bago],[data-bspeak],[data-bfk],[data-bfkit],[data-bfhide],[data-bfgo],[data-btmeet],[data-btend],[data-bco],#bp-more,#bp-send,#ba-save,#ba-none,#bcv-send,#bcv-photo-btn,#bcv-rec,#bcs-go');
+    if (!b || !state) return;
+    var d = b.dataset;
+    var pickIn = function(box){ box.querySelectorAll('button').forEach(function(x){ var on = x === b; x.classList.toggle('sel', on); x.setAttribute('aria-pressed', on); }); };
+    if (d.bcopen) bondCardOpen(d.bcopen);
+    if (d.bcplay) {
+      b.disabled = true; b.textContent = 'Loading…';
+      apiGet(bondQ('&entry=' + encodeURIComponent(d.bcplay))).then(function(j){
+        if (!j.ok) { b.disabled = false; b.textContent = '▶ Play it'; toast(j.error || 'It could not be played'); return; }
+        var au = document.createElement('audio'); au.controls = true; au.src = 'data:' + j.mime + ';base64,' + j.data; au.style.width = '100%';
+        b.replaceWith(au);
+        try { au.play().catch(function(){}); } catch (x) {}
+      }).catch(function(){ b.disabled = false; b.textContent = '▶ Play it'; toast('No connection - try again'); });
+    }
+    if (d.bcdel) bondPost({ action: 'bond_card_remove', entryId: d.bcdel }).then(function(j){ if (j.ok && bondCardNow) bondCardOpen(bondCardNow.card.id); });
+    if (d.bpv) { var pv = d.bpv.split('|'); bondPost({ action: 'bond_poll_vote', optionId: pv[0], answer: pv[1] }); }
+    if (d.bplock) {
+      var pl = d.bplock.split('|'), opt = b.closest('.opt'), when = opt ? opt.querySelector('b').textContent : 'this date';
+      askSheet('Lock ' + when + '?', 'It becomes the plan, everyone who said Yes is going, and the ' + bondWord() + ' is told once.', 'Lock this date', 'Not yet').then(function(y){
+        if (y) bondPost({ action: 'bond_poll_lock', pollId: pl[0], optionId: pl[1] }).then(function(j){ if (j.ok) { toast('Locked. The plan is set 🗓'); refreshFun(); } });
+      });
+    }
+    if (d.bpcancel) askSheet('Close this poll?', 'Nobody can answer it after this.', 'Close it', 'Keep it open', true).then(function(y){ if (y) bondPost({ action: 'bond_poll_cancel', pollId: d.bpcancel }); });
+    if (d.bpgo) { switchTab('fun'); setSec('fun', 'plans'); setTimeout(function(){ var el = $('bpoll-' + d.bpgo); if (el) try { el.scrollIntoView({ block: 'start' }); } catch (x) {} }, 400); }
+    if (d.bpk || d.bak || d.bco) { pickIn(b.parentNode); if (d.bak) bondActMore(d.bak, ''); }
+    if (d.bfk) {
+      // Festivals are many at once, unlike the other chips.
+      bondFestSel = bondFestSel || [];
+      var fi = bondFestSel.indexOf(d.bfk);
+      if (fi >= 0) bondFestSel.splice(fi, 1); else bondFestSel.push(d.bfk);
+      b.classList.toggle('sel', fi < 0); b.setAttribute('aria-pressed', fi < 0);
+    }
+    if (b.id === 'bp-more') { var rows = document.querySelectorAll('#bp-opts .pickrow').length; if (rows >= 5) { b.hidden = true; return; } $('bp-opts').insertAdjacentHTML('beforeend', bondPollRow(rows, '', '19:00')); if (rows + 1 >= 5) b.hidden = true; }
+    if (b.id === 'bp-send') bondPollSend();
+    if (d.biclaim) bondPost({ action: 'bond_item_claim', itemId: d.biclaim }).then(function(j){ if (j.ok) toast(j.claimed ? 'Thank you! Everyone can see you bring it' : 'Let go. It is open again.'); });
+    if (d.biadd) { var pid = d.biadd; askText('What is needed?', 'e.g. sweets, plates, a speaker', 'Add it').then(function(v){ if (v) bondPost({ action: 'bond_item_add', planId: pid, label: v }); }); }
+    if (d.baset) bondActSheet(d.baset);
+    if (d.baview) bondActView(d.baview);
+    if (b.id === 'ba-save') {
+      var kb = document.querySelector('#ba-kinds .sel');
+      if (!kb) { $('ba-err').textContent = 'Pick one thing to do.'; $('ba-err').hidden = false; return; }
+      var nt = $('ba-note');
+      bondPost({ action: 'bond_activity', planId: d.plan, activity: kb.getAttribute('data-bak'), note: nt ? nt.value : '' }, $('ba-err')).then(function(j){ if (j.ok) { bondSheetClose(); toast('Saved. Everyone sees it on the plan'); } });
+    }
+    if (b.id === 'ba-none') bondPost({ action: 'bond_activity', planId: d.plan, activity: '' }).then(function(j){ if (j.ok) bondSheetClose(); });
+    if (d.bago === 'games') { bondSheetClose(); switchTab('fun'); setSec('fun', 'games'); }
+    if (d.bago === 'chat') { bondSheetClose(); var fam = null; (chatsCache || []).forEach(function(x){ if (x.kind === 'circle') fam = x; }); if (fam) openChat(fam.id); else switchTab('chat'); }
+    if (d.bspeak === 'story') { var st = $('ba-story'); if (st) bondSpeak([].map.call(st.querySelectorAll('p'), function(p){ return p.textContent; })); }
+    if (d.bspeak === 'card' && bondCardNow) bondSpeak(bondCardNow.entries.filter(function(x){ return x.kind === 'text'; }).map(function(x){ return 'From ' + x.name + '. ' + x.text; }));
+    if (d.bfkit) {
+      var fk = d.bfkit.split('|');
+      bondPost({ action: 'bond_fest_kit', key: fk[0], date: fk[1] }).then(function(j){
+        if (!j.ok) return;
+        toast(j.already ? 'Already planned. Here it is.' : 'Planned. Everyone can say they are in 🪔');
+        switchTab('fun'); setSec('fun', 'plans');
+      });
+    }
+    if (d.bfhide) { try { localStorage.setItem('parwah-bond-hide:' + d.bfhide, '1'); } catch (x) {} bondRenderToday(); }
+    if (d.bfgo) { switchTab('fun'); setSec('fun', 'plans'); }
+    if (d.btmeet) bondMeet(d.btmeet);
+    if (d.btend) askSheet('Take it down?', 'The group will stop seeing it.', 'Take it down', 'Keep it').then(function(y){ if (y) bondPost({ action: 'bond_intown_end', id: d.btend }); });
+    if (b.id === 'bcv-send') { var tx = $('bcv-text').value.trim(); if (!tx) { $('bcv-err').textContent = 'Write a line first.'; $('bcv-err').hidden = false; return; } bondCardAdd({ kind: 'text', text: tx }); }
+    if (b.id === 'bcv-photo-btn') $('bcv-photo').click();
+    if (b.id === 'bcv-rec') bondRecord($('bcv-recst'), b, function(v){ bondCardAdd({ kind: 'voice', mime: v.mime, data: v.data, seconds: v.seconds }); });
+    if (b.id === 'bcs-go') {
+      var ob = document.querySelector('#bcs-occ .sel'), fm = $('bcs-for').value, dt = $('bcs-date').value, nm = $('bcs-name').value.trim(), er = $('bcs-err');
+      if (!dt) { er.textContent = 'Pick the day.'; er.hidden = false; return; }
+      if (!fm && !nm) { er.textContent = 'Say who the card is for.'; er.hidden = false; return; }
+      bondPost({ action: 'bond_card_start', occasion: ob ? ob.getAttribute('data-bco') : 'other', forMember: fm || null, forName: nm, date: dt }, er).then(function(j){ if (j.ok) bondCardOpen(j.id); });
     }
   });
 
@@ -10958,6 +11641,7 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
       }).catch(function(){});
     apiGet(API.plans + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){ if (j.ok) renderPlans(j.plans); }).catch(function(){});
+    bondRefresh();
   }
   function gamePost(body, after){
     body.code = state.code; body.memberId = state.memberId;

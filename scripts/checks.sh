@@ -62,6 +62,10 @@ node site/tests/carepreptest.mjs
 # acknowledgement that is never an Aadhaar number. _carerules.mjs imports
 # nothing, so this runs before npm install too.
 node site/tests/caretoolstest.mjs
+# Closer together: the festivals a circle may pick (dates Nov 2026 to Dec
+# 2027), 14 days ahead, and the yearly date behind birthday and anniversary
+# cards. _tyohaar.mjs imports nothing, so this runs before npm install.
+node site/tests/bondtest.mjs
 # The native apps' copy of the server's rules (PINs, for now) is written by
 # the server itself. If a rule changes in api/ and the contract is not
 # regenerated, the phones would accept what the server then refuses. Vercel's
