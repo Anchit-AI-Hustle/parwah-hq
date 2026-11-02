@@ -2662,7 +2662,9 @@ check("press: linked from the welcome footer and listed in the sitemap",
 _mk = REPO / "marketing"
 _vignore = (REPO / ".vercelignore").read_text(encoding="utf-8")
 check("marketing: the folder is kept out of every Vercel upload", "\nmarketing/" in _vignore)
-if _mk.exists():
+# Vercel keeps the folder itself but strips every file in it, so "exists" is
+# not enough: check only where the copy is actually present.
+if _mk.exists() and any(f.is_file() for f in _mk.rglob("*.md")):
     _mk_files = [f for f in _mk.rglob("*") if f.is_file() and f.suffix in (".md", ".html", ".json", ".txt", ".mjs")]
     _MON = r"\b(monitor|track|watch over|keep an eye on)(s|ed|ing)?\s+(your\s+|their\s+|my\s+)?(parents?|mum|mom|dad|papa|mummy|maa|elders?)\b"
     _mk_bad = []
