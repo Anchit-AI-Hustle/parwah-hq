@@ -4,7 +4,7 @@
 // GET  /api/plans?circle=CODE&member=UUID → { ok, plans[] } (upcoming)
 // POST /api/plans {code, memberId, action:'create'|'rsvp'|'cancel', ...}
 import { randomBytes } from 'node:crypto';
-import { db, ensureSchema, circleByCode, isUuid , requireMember} from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid , requireMember, schemaOnce } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { countError } from './_valid.mjs';
 import { whenText } from './_plansweep.mjs';
@@ -12,6 +12,7 @@ import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 import { ensureVisitSchema, visitState, visitAction } from './_visits.mjs';
 import { reqTz } from './_recur.mjs';
+import { ensureBondSchema, bondState, bondAction, cardRead, entryAudio } from './_bond.mjs';
 
 const KINDS = ['call', 'party', 'meet', 'appointment', 'function', 'trip', 'other'];
 
@@ -26,10 +27,15 @@ function roomUrl() {
   return 'https://meet.jit.si/parwah-' + randomBytes(16).toString('hex');
 }
 
+let plansReady = false;
 export default async function handler(req, res) {
   let sql;
   try {
     sql = db(); await ensureSchema(sql);
+    // Through schemaOnce: Today now opens two plans reads at once (a visit
+    // and the bond state), and on a fresh database the losing "create table"
+    // raced the winner and the read came back 503.
+    if (!plansReady) await schemaOnce(async () => {
     await sql`create table if not exists plans (
       id uuid primary key default gen_random_uuid(),
       circle_id uuid not null references circles(id) on delete cascade,
@@ -44,6 +50,8 @@ export default async function handler(req, res) {
     )`;
     await sql`alter table plans add column if not exists expected int`;
     await sql`alter table plans add column if not exists reminded_at timestamptz`;
+    });
+    plansReady = true;
   } catch (e) { return failDb(res, e); }
 
   try {
@@ -70,6 +78,20 @@ export default async function handler(req, res) {
       }
       if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return res.status(405).json({ ok: false, error: 'GET or POST only' }); }
       const out = await visitAction(sql, circle, me, { ...body, tz: body.tz || reqTz(req) });
+      return res.status(out.status).json(out.json);
+    }
+
+    // Closer together (api/_bond.mjs): date polls, who brings what, shared
+    // cards, festivals, things to do on a call, and "I'm in town".
+    if (area === 'bond' || (typeof body.action === 'string' && /^bond_/.test(body.action))) {
+      await ensureBondSchema(sql);
+      if (req.method === 'GET') {
+        if (q.card) { const r = await cardRead(sql, circle, me, String(q.card)); return res.status(r.status).json(r.json); }
+        if (q.entry) { const r = await entryAudio(sql, circle, me, String(q.entry)); return res.status(r.status).json(r.json); }
+        return res.status(200).json({ ok: true, ...(await bondState(sql, circle, me)) });
+      }
+      if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return res.status(405).json({ ok: false, error: 'GET or POST only' }); }
+      const out = await bondAction(sql, circle, me, { ...body, tz: body.tz || reqTz(req) });
       return res.status(out.status).json(out.json);
     }
 
