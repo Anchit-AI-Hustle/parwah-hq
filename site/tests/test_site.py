@@ -2589,6 +2589,38 @@ check("repairs: the server's newer replies are read: a voice task's own title an
 check("repairs: the To do filters call the function that exists",
       "renderReminders(" not in _js)
 
+# ---------- 10cc. Care cycle: dose ticks, the hospital screen, after a visit ----------
+# The journeys run end to end in site/tests/db/carecycle.e2e.dbtest.mjs and
+# against the database in carecycle.dbtest.mjs; these keep the source honest.
+_dz = (API_DIR / "_doses.mjs").read_text(encoding="utf-8")
+_ad = (API_DIR / "_admission.mjs").read_text(encoding="utf-8")
+_vz = (API_DIR / "_visits.mjs").read_text(encoding="utf-8")
+_strip = lambda t: re.sub(r"//[^\n]*", "", t)
+check("care cycle: doses, the hospital screen and visits ride on existing routes, no new function",
+      "area === 'doses'" in (API_DIR / "care.mjs").read_text(encoding="utf-8")
+      and "area === 'admission'" in (API_DIR / "book.mjs").read_text(encoding="utf-8")
+      and "area === 'visit'" in (API_DIR / "plans.mjs").read_text(encoding="utf-8")
+      and not any((API_DIR / f).exists() for f in ("doses.mjs", "admission.mjs", "visits.mjs")))
+check("care cycle: the nudge and the family alert are each claimed once, inside waking hours",
+      "d.nudged_at is null" in _dz and "d.alerted_at is null" in _dz and "update medicine_doses d set nudged_at = now()" in _dz
+      and "update medicine_doses d set alerted_at = now()" in _dz and _dz.count("between ${WAKE_FROM} and ${WAKE_TO}") == 2
+      and "sweepDoses(sql, circle.id)" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
+check("care cycle: every dose read and the alert respect who may see a private medicine",
+      _strip(_dz).count("from book_access ba where ba.entry_id = b.id") >= 4)
+check("care cycle: a tick is a record, said in the app's own words",
+      "A tick is what was marked, not a check that the medicine was taken." in _app_src
+      and "It is a note, not a check." in _app_src)
+check("care cycle: no dose advice and no therapeutic words in the new modules",
+      not re.search(r"\b(dosage|overdose|double the dose|cure|treat|therapy)\b", _strip(_dz + _ad + _vz), re.I))
+check("care cycle: the hospital screen keeps IDs as their last four and quotes no insurer timings",
+      "policy_last4 text" in _ad and "claim_last4 text" in _ad and "policy_number" not in _strip(_ad).split("create table if not exists admissions")[1].split(")`;")[0]
+      and not re.search(r"IRDAI|turnaround|within \d+ (hours|minutes)", _strip(_ad) + _app_src[_app_src.index('id="admsheet"'):_app_src.index('id="vsheet"')], re.I))
+check("care cycle: visit notes are record-only; nothing in that path calls Ekta or a model",
+      not re.search(r"anthropic|ekta|_ektalocal", _strip(_vz), re.I)
+      and "Parwah and Ekta never read or explain a prescription or a report." in _app_src)
+check("care cycle: the old one-a-day button stays, and gives way only when times are set",
+      'id="btn-pill"' in _app_src and "pill.hidden = !!slots.length" in _app_src and "'pill'" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

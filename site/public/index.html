@@ -309,6 +309,46 @@ label + select{width:100%}
 .big.ok.done{background:var(--ok);color:var(--on-accent)}
 .big.pill{background:var(--surface);color:var(--ink);border:1.5px solid var(--bone-2);font-size:var(--fs-20)}
 .big.pill.done{background:var(--tint-ok);border-color:var(--ok)}
+/* CARE CYCLE: dose ticks, the week strip, the hospital screen, visits */
+#dose-elder .big .sub{font-weight:600}
+#dose-elder .big.pill.done .sub{color:var(--ink)}
+.cc-elderrow{display:flex;gap:var(--space-8);justify-content:flex-end;margin:calc(-1 * var(--space-8)) 0 var(--space-16)}
+.cc-head{display:flex;justify-content:space-between;align-items:center;gap:var(--space-8);flex-wrap:wrap}
+.cc-head .cbtn{min-height:var(--tap-min)}
+.cc-dose{display:flex;gap:var(--space-12);align-items:center;flex-wrap:wrap}
+.cc-dose .txt{flex:1;min-width:160px}
+.cc-dose .cbtn{min-height:var(--tap-min)}
+.cc-st{font-weight:700}
+.cc-st.ok{color:var(--ok)}
+.cc-st.bad{color:var(--alert)}
+.cc-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--space-4)}
+.cc-day{min-height:56px;border:1px solid var(--bone-2);background:var(--surface);border-radius:var(--radius-8);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-2);font-family:var(--body);font-size:var(--fs-12);font-weight:700;color:var(--ink);cursor:pointer;padding:var(--space-4) 0}
+.cc-day .m{font-size:var(--fs-16);line-height:1}
+.cc-day.ok{background:var(--tint-ok);border-color:var(--ok-line)}
+.cc-day.bad{background:var(--tint-bad);border-color:var(--alert-line)}
+.cc-day.sel{box-shadow:inset 0 0 0 2px var(--marigold)}
+.cc-pick button{min-height:var(--tap-min)}
+.cc-pick button[aria-pressed="true"]{background:var(--tint-warm);border-color:var(--marigold);box-shadow:inset 0 0 0 2px var(--marigold)}
+.cc-addrow{display:flex;gap:var(--space-8);align-items:flex-end;margin-top:var(--space-12)}
+.cc-addrow .pick{flex:1;min-width:0}
+.cc-addrow .cbtn{min-height:var(--tap-min)}
+.msheet .mp.cc-wide{max-width:520px}
+.cc-flat{box-shadow:none;margin-bottom:0;padding:var(--space-12) var(--space-16)}
+.cc-wait{background:var(--tint-warm);border:1px solid var(--bone-2);border-left:4px solid var(--marigold);border-radius:var(--radius-12);padding:var(--space-12) var(--space-16);margin-bottom:var(--space-12);font-size:var(--fs-14)}
+.cc-wait b{display:block;font-family:var(--disp);font-size:var(--fs-18)}
+.cc-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--space-8)}
+.cc-steps li{display:flex;gap:var(--space-12);align-items:center;background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-8) var(--space-12);font-size:var(--fs-14);min-height:var(--tap-min)}
+.cc-steps li .dot{flex:none;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;border:2px solid var(--bone-2);color:var(--ink-soft)}
+.cc-steps li.done .dot{background:var(--tint-ok);border-color:var(--ok);color:var(--ok)}
+.cc-steps li .txt{flex:1;min-width:0}
+.cc-steps li small{display:block;color:var(--ink-soft);font-size:var(--fs-12)}
+.cc-steps li.later{opacity:.7}
+.cc-steps li .cbtn{min-height:var(--tap-min);flex:none}
+.cc-papers label{display:flex;gap:var(--space-12);align-items:flex-start;font-weight:600;margin:0 0 var(--space-8);min-height:var(--tap-min);padding:var(--space-8) var(--space-12);background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-12)}
+.cc-papers input{width:22px;height:22px;flex:none;margin-top:var(--space-2)}
+.cc-papers small{display:block;font-weight:400;color:var(--ink-soft);font-size:var(--fs-12)}
+.crow.cc-alert{border-left:4px solid var(--alert)}
+.crow .cbtn{min-height:var(--tap-min)}
 .big.sos{background:var(--alert);color:var(--on-accent);font-family:var(--body);font-size:var(--fs-20);letter-spacing:.05em}
 html:has(body.senior){font-size:112.5%}
 .senior .widget b{font-size:var(--fs-18)}
@@ -1479,6 +1519,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="big sos" id="btn-sos">🆘 SOS - need help now<span class="sub">Everyone in the family is told at once</span></button>
       <button class="big ok" id="btn-checkin">All is well ✅<span class="sub">One tap - the whole family relaxes</span></button>
       <button class="big pill" id="btn-pill">Medicines taken ✔</button>
+      <!-- CARE CYCLE: the parent's own medicine times today, one big tick
+           each. When there are times, they stand in for "Medicines taken". -->
+      <div id="dose-elder" hidden></div>
     </div>
     <div class="homehero">
       <h1 id="m-title"></h1>
@@ -1487,6 +1530,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <!-- Someone in the family forgot their PIN and asked to be let back in. -->
     <div id="pinresets"></div>
     <div id="frslot"></div>
+    <!-- CARE CYCLE: someone in hospital, a visit to note, my own medicine times. -->
+    <div id="cc-today"></div>
     <!-- THE FIVE THINGS. Families talk on WhatsApp; Parwah holds what WhatsApp
          cannot: the papers, the medicines, who does what, who is who, and the
          card for an emergency. Ranked by utility in docs/design/TODAY.md; the
@@ -2166,8 +2211,27 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="cbtn ghost" id="pp-docs">📄 Their documents</button>
       <button class="cbtn ghost" id="pp-add">＋ Add something</button>
       <button class="cbtn ghost" id="pp-audit" style="grid-column:1/-1;min-height:48px">👁️ Who can see this?</button>
+      <button class="cbtn ghost cc-admit" id="pp-admit" style="grid-column:1/-1;min-height:48px">🏥 Admitted to hospital</button>
     </div>
     <div class="card" id="pp-todo-card" hidden><h3 id="pp-todo-title">To complete</h3><div class="feed" id="pp-todo"></div></div>
+    <!-- CARE CYCLE: medicine times and ticks, doctor visits, hospital stays. -->
+    <div class="card" id="pp-doses-card">
+      <h3>💊 Medicines today</h3>
+      <p class="hint" style="margin:0 0 var(--space-12)">A tick is what was marked, not a check that the medicine was taken.</p>
+      <div class="feed" id="pp-doses"><div class="ev">Loading…</div></div>
+      <p class="eyebrow" id="pp-week-h" style="margin:var(--space-16) 0 var(--space-8)">This week</p>
+      <div class="cc-week" id="pp-week" role="group" aria-label="This week, day by day"></div>
+      <div class="feed" id="pp-weekday" style="margin-top:var(--space-8)"></div>
+      <p class="eyebrow" style="margin:var(--space-16) 0 var(--space-8)">Times for each medicine</p>
+      <div class="feed" id="pp-medtimes"></div>
+    </div>
+    <div class="card" id="pp-visits-card">
+      <div class="cc-head"><h3 style="margin:0">🩺 Doctor visits</h3>
+        <button type="button" class="cbtn ghost" id="pp-visit-add">＋ After a visit</button></div>
+      <p class="hint" style="margin:var(--space-4) 0 var(--space-12)">What the doctor asked for, as the family wrote it down. Parwah does not read or explain prescriptions.</p>
+      <div class="feed" id="pp-visits"></div>
+    </div>
+    <div class="card" id="pp-adm-card" hidden><h3>🏥 Hospital stays</h3><div class="feed" id="pp-adm-hist"></div></div>
     <div class="card" id="pp-biomarkers-card">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-8)">
         <h3 style="margin:0">📊 Lab metrics &amp; trends</h3>
@@ -3205,6 +3269,126 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   </div>
 </div>
 
+<!-- CARE CYCLE sheets: medicine times, the hospital screen, after a visit. -->
+<div class="msheet" id="dsheet" hidden role="dialog" aria-modal="true" aria-labelledby="ds-title">
+  <div class="mp">
+    <button class="x" id="ds-x" aria-label="Close">✕</button>
+    <h3 id="ds-title" style="margin:0 var(--space-32) var(--space-4) 0">Medicine times</h3>
+    <p class="hint" style="margin:0 0 var(--space-12)">When this medicine is usually had. Parwah only reminds; it never says what or how much to take.</p>
+    <p class="eyebrow" style="margin:var(--space-8) 0 0">Times</p>
+    <div class="chips cc-pick" id="ds-slots" role="group" aria-label="Usual times">
+      <button type="button" data-t="08:00">Morning 8:00</button>
+      <button type="button" data-t="14:00">Afternoon 2:00</button>
+      <button type="button" data-t="21:00">Night 9:00</button>
+    </div>
+    <div class="cc-addrow">
+      <label class="pick" style="margin:0"><span>Another time</span><input type="time" id="ds-custom"></label>
+      <button type="button" class="cbtn ghost" id="ds-addt">Add time</button>
+    </div>
+    <div class="chips cc-pick" id="ds-extra" aria-label="Other times"></div>
+    <p class="eyebrow" style="margin:var(--space-16) 0 0">Days</p>
+    <div class="chips cc-pick" id="ds-days" role="group" aria-label="Days">
+      <button type="button" data-d="1">Mon</button><button type="button" data-d="2">Tue</button><button type="button" data-d="3">Wed</button>
+      <button type="button" data-d="4">Thu</button><button type="button" data-d="5">Fri</button><button type="button" data-d="6">Sat</button><button type="button" data-d="0">Sun</button>
+    </div>
+    <p class="hint" id="ds-dayhint">Every day</p>
+    <button class="go" id="ds-save" type="button">Save times</button>
+    <button class="cbtn ghost" id="ds-off" type="button" style="width:100%;margin-top:var(--space-8);min-height:var(--tap-min)" hidden>Stop the times for this medicine</button>
+    <p class="hint">If a time is not marked within an hour, the person gets one gentle reminder. After two hours, the family is told once. Nothing is sent between 10:30 at night and 7 in the morning.</p>
+  </div>
+</div>
+
+<div class="msheet" id="admsheet" hidden role="dialog" aria-modal="true" aria-labelledby="ad-title">
+  <div class="mp cc-wide">
+    <button class="x" id="ad-x" aria-label="Close">✕</button>
+    <p class="eyebrow" style="margin:0 0 var(--space-4)">Hospital</p>
+    <h3 id="ad-title" style="margin:0 var(--space-32) var(--space-4) 0"></h3>
+    <p class="hint" id="ad-sub" style="margin:0 0 var(--space-12)"></p>
+    <div id="ad-new" hidden>
+      <label for="ad-n-hosp">Hospital</label><input type="text" id="ad-n-hosp" maxlength="120" placeholder="e.g. City Hospital, Lajpat Nagar">
+      <div class="pickrow">
+        <label class="pick"><span>Ward or room</span><input type="text" id="ad-n-ward" maxlength="60" placeholder="e.g. Ward 3, bed 12"></label>
+        <label class="pick"><span>Doctor in charge</span><input type="text" id="ad-n-doc" maxlength="80" placeholder="e.g. Dr Mehta"></label>
+      </div>
+      <label class="seniorchk" style="margin-top:var(--space-12)"><input type="checkbox" id="ad-n-with" checked> I am with them now</label>
+      <button class="go" id="ad-n-go" type="button">Open the hospital screen</button>
+      <p class="hint">Everyone in the family sees the same screen and gets a message at each step.</p>
+    </div>
+    <div id="ad-live" hidden>
+      <div class="cc-wait" id="ad-wait" hidden role="status"></div>
+      <div class="card cc-flat">
+        <div id="ad-facts"></div>
+        <button type="button" class="linkbtn" id="ad-edit" style="margin-top:var(--space-8);min-height:var(--tap-min)">Change these details</button>
+        <div id="ad-editbox" hidden>
+          <label for="ad-e-hosp">Hospital</label><input type="text" id="ad-e-hosp" maxlength="120">
+          <div class="pickrow">
+            <label class="pick"><span>Ward or room</span><input type="text" id="ad-e-ward" maxlength="60"></label>
+            <label class="pick"><span>Doctor in charge</span><input type="text" id="ad-e-doc" maxlength="80"></label>
+            <label class="pick"><span>Insurer</span><input type="text" id="ad-e-ins" maxlength="80"></label>
+            <label class="pick"><span>TPA</span><input type="text" id="ad-e-tpa" maxlength="80"></label>
+            <label class="pick"><span>Policy number</span><input type="text" id="ad-e-pol" maxlength="40" autocomplete="off" placeholder="Only the last 4 are kept"></label>
+            <label class="pick"><span>Claim number</span><input type="text" id="ad-e-clm" maxlength="40" autocomplete="off" placeholder="Only the last 4 are kept"></label>
+          </div>
+          <button class="go" id="ad-e-save" type="button">Save details</button>
+        </div>
+      </div>
+      <p class="eyebrow" style="margin:var(--space-16) 0 var(--space-8)">With them now</p>
+      <div class="chips" id="ad-with" style="margin-top:0"></div>
+      <button type="button" class="cbtn ghost" id="ad-here" style="margin-top:var(--space-8);min-height:var(--tap-min)"></button>
+      <p class="eyebrow" style="margin:var(--space-16) 0 var(--space-8)">Steps</p>
+      <ol class="cc-steps" id="ad-steps"></ol>
+      <div id="ad-undo"></div>
+      <p class="hint">Each step is what someone in the family tapped, with the time. Parwah does not know how long a hospital or an insurer will take.</p>
+      <p class="eyebrow" style="margin:var(--space-16) 0 var(--space-8)">Papers to carry</p>
+      <div id="ad-papers" class="cc-papers"></div>
+      <p class="eyebrow" style="margin:var(--space-16) 0 var(--space-8)">At the counter</p>
+      <div id="ad-packet" class="feed"></div>
+      <div class="prow2" style="margin-top:var(--space-12)">
+        <button class="cbtn ecard-btn" id="ad-ecard" type="button">🚨 Emergency card</button>
+        <button class="cbtn ghost" id="ad-docs" type="button">📄 Their documents</button>
+      </div>
+      <button class="cbtn ghost" id="ad-close" type="button" style="width:100%;margin-top:var(--space-16);min-height:48px">Home again: close this screen</button>
+    </div>
+  </div>
+</div>
+
+<div class="msheet" id="vsheet" hidden role="dialog" aria-modal="true" aria-labelledby="vs-title">
+  <div class="mp cc-wide">
+    <button class="x" id="vs-x" aria-label="Close">✕</button>
+    <p class="eyebrow" style="margin:0 0 var(--space-4)">After the visit</p>
+    <h3 id="vs-title" style="margin:0 var(--space-32) var(--space-4) 0">How did the visit go?</h3>
+    <p class="hint" id="vs-sub" style="margin:0 0 var(--space-12)"></p>
+    <div class="pickrow" style="margin-top:0">
+      <label class="pick"><span>Whose visit</span><select id="vs-who"></select></label>
+      <label class="pick"><span>Doctor (optional)</span><input type="text" id="vs-doc" maxlength="80" placeholder="e.g. Dr Mehta"></label>
+    </div>
+    <label for="vs-photo">Photo of the prescription or notes</label>
+    <input type="file" id="vs-photo" accept="image/*,application/pdf" capture="environment">
+    <p class="hint" id="vs-fname" style="margin-top:var(--space-4)">Goes into the family vault, for this person. Up to 2 MB.</p>
+    <p class="eyebrow" style="margin:var(--space-16) 0 0">Next visit</p>
+    <div class="chips cc-pick" id="vs-next" role="group" aria-label="Next visit">
+      <button type="button" data-w="0">None</button><button type="button" data-w="2">2 weeks</button><button type="button" data-w="4">4 weeks</button>
+      <button type="button" data-w="6">6 weeks</button><button type="button" data-w="12">3 months</button>
+    </div>
+    <div class="pickrow">
+      <label class="pick"><span>Or in weeks</span><input type="number" id="vs-weeks" min="1" max="52" inputmode="numeric"></label>
+      <label class="pick"><span>Who books it</span><select id="vs-bookby"></select></label>
+    </div>
+    <p class="eyebrow" style="margin:var(--space-16) 0 0">Tests to do</p>
+    <div class="cc-addrow">
+      <label class="pick" style="margin:0"><span>A test the doctor asked for</span><input type="text" id="vs-test" maxlength="60" placeholder="e.g. Blood sugar"></label>
+      <button type="button" class="cbtn ghost" id="vs-addtest">Add</button>
+    </div>
+    <div class="chips" id="vs-tests"></div>
+    <label class="pick" style="margin-top:var(--space-12)"><span>Who gets the tests done</span><select id="vs-testby"></select></label>
+    <label for="vs-new">Anything new?</label>
+    <textarea id="vs-new" rows="2" maxlength="500" placeholder="In your words, e.g. walk 20 minutes a day"></textarea>
+    <button class="go" id="vs-save" type="button">Tell the family</button>
+    <button class="cbtn ghost" id="vs-skip" type="button" style="width:100%;margin-top:var(--space-8);min-height:var(--tap-min)" hidden>Skip this visit</button>
+    <p class="hint">Written down as you type it. Parwah and Ekta never read or explain a prescription or a report.</p>
+  </div>
+</div>
+
 <div class="msheet" id="ecard" hidden>
   <div class="mp ecard-mp">
     <button class="x" id="ec-x" aria-label="Close">✕</button>
@@ -3889,6 +4073,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     refreshBook();
     refreshCoins();
     refreshPlan();
+    ccRefresh();
     refreshChats();
     refreshGroups();
     renderFirstRun();
@@ -6380,6 +6565,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('pp-back').textContent = '← ' + ({ people: 'Family', home: 'Today', memory: 'Health & contacts', vault: 'Vault', care: 'To do' }[personFrom] || 'Back');
     switchTab('person');
     loadBiomarkers(id);
+    ccPerson(id);
     window.scrollTo(0, 0);
   }
   var personFrom = 'people';
@@ -6425,6 +6611,552 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   document.addEventListener('click', function(e){
     var b = e.target.closest('[data-person]'); if (b) openPerson(b.getAttribute('data-person'));
   });
+
+  // ================= CARE CYCLE =================
+  // Medicine times and ticks (api/_doses.mjs), the hospital screen
+  // (api/_admission.mjs) and notes after a doctor's visit (api/_visits.mjs).
+  // A tick is a record of what was marked, never proof, and nothing here
+  // reads, explains or advises on a medicine, a dose or a prescription.
+  var CC_API = { doses: '/api/care?area=doses', admission: '/api/book?area=admission', visit: '/api/plans?area=visit' };
+  var CC_STEPS = [['admitted', 'Admitted'], ['preauth_sent', 'Pre-auth sent'], ['preauth_approved', 'Pre-auth approved'],
+                  ['discharge_advised', 'Discharge advised'], ['final_bill', 'Final bill'], ['discharge_done', 'Discharge done']];
+  var CC_PAPERS = [['id', 'ID proof (Aadhaar or another photo ID)'], ['policy', 'Insurance policy or health card'],
+                   ['prescriptions', 'Previous prescriptions'], ['reports', 'Recent reports and scans'], ['medlist', 'List of medicines (from Health & contacts)']];
+  var ccDoses = { doses: [], schedules: [] }, ccAdm = { open: [], history: [] }, ccVis = { pending: [], visits: [] };
+  var ccPacket = { for: null, data: null };
+  var ccAt = 0, ccLoaded = false, ccAdmFor = null, ccAdmTimer = null, ccWeekSel = null;
+  function ccQ(base, extra){ return base + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + (extra || ''); }
+  function ccTz(){ try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } }
+  function ccPost(url, body){ return post(url, Object.assign({}, body, { code: state.code, memberId: state.memberId, tz: ccTz() })); }
+  function ccClock(slot){ var h = +slot.slice(0, 2); return (h % 12 || 12) + ':' + slot.slice(3, 5) + (h < 12 ? ' AM' : ' PM'); }
+  function ccSlotName(slot){ var h = +slot.slice(0, 2); return h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : h < 20 ? 'Evening' : 'Night'; }
+  function ccHM(iso){ var d = new Date(iso); return isNaN(d) ? '' : dtf([], { hour: 'numeric', minute: '2-digit' }).format(d); }
+  function ccDay(iso){ var d = new Date(iso); return isNaN(d) ? '' : dtf([], { day: 'numeric', month: 'short' }).format(d); }
+  function ccMember(id){ return (membersCache || []).filter(function(m){ return m.id === id; })[0] || null; }
+  function ccName(id){ var m = ccMember(id); return id === state.memberId ? 'You' : (m ? m.name : 'Someone'); }
+  function ccLocalDay(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function ccSince(iso){
+    var m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60) + ' min';
+  }
+
+  function ccRefresh(force){
+    if (!state) return;
+    if (!force && Date.now() - ccAt < 25000) { ccRender(); return; }
+    ccAt = Date.now();
+    var pq = personId ? '&person=' + encodeURIComponent(personId) : '';
+    Promise.all([
+      apiGet(ccQ(CC_API.doses)).catch(function(){ return null; }),
+      apiGet(ccQ(CC_API.admission, pq)).catch(function(){ return null; }),
+      apiGet(ccQ(CC_API.visit, pq)).catch(function(){ return null; })
+    ]).then(function(r){
+      if (r[0] && r[0].ok) ccDoses = r[0];
+      if (r[1] && r[1].ok) ccAdm = r[1];
+      if (r[2] && r[2].ok) ccVis = r[2];
+      ccLoaded = !!(r[0] && r[0].ok);
+      ccRender();
+    });
+  }
+  function ccRender(){
+    ccRenderElder(); ccRenderToday();
+    if (personId && curTab === 'person') ccRenderPerson(personId);
+    if (ccAdmFor && !$('admsheet').hidden && !$('ad-live').hidden) ccAdmRender();
+  }
+
+  // Doses today for one person, grouped by time.
+  function ccSlots(pid){
+    var g = {};
+    (ccDoses.doses || []).filter(function(d){ return d.person_id === pid && d.today; }).forEach(function(d){ (g[d.slot] = g[d.slot] || []).push(d); });
+    return Object.keys(g).sort().map(function(k){ return { slot: k, doses: g[k] }; });
+  }
+  function ccSlotState(s){
+    var due = s.doses.filter(function(d){ return d.status === 'due'; });
+    var last = s.doses.filter(function(d){ return d.status !== 'due'; }).sort(function(a, b){ return new Date(b.taken_at) - new Date(a.taken_at); })[0];
+    return { due: due, last: last, done: !due.length, skipped: !due.length && s.doses.every(function(d){ return d.status === 'skipped'; }) };
+  }
+  function ccMarkedBy(d){
+    if (!d.marked_by) return '';
+    return d.marked_by === state.memberId ? 'you' : (d.marked_by === d.person_id ? (d.person_name || 'them') : (d.marked_by_name || 'someone'));
+  }
+
+  // The parent's own big ticks, in elder mode. They stand in for the
+  // one-a-day "Medicines taken" button whenever times are set.
+  function ccRenderElder(){
+    var box = $('dose-elder'), pill = $('btn-pill');
+    if (!state || state.role !== 'parent') { box.hidden = true; box.innerHTML = ''; pill.hidden = false; return; }
+    var slots = ccSlots(state.memberId);
+    box.hidden = !slots.length; pill.hidden = !!slots.length;
+    if (!slots.length) { box.innerHTML = ''; return; }
+    box.innerHTML = slots.map(function(s){
+      var st = ccSlotState(s), name = ccSlotName(s.slot) + ' medicines, ' + ccClock(s.slot);
+      if (st.done) {
+        var by = st.last ? ccMarkedBy(st.last) : '';
+        return '<button class="big pill done" type="button" data-ccundo="' + esc(s.doses.map(function(d){ return d.id; }).join(',')) + '" aria-label="' + esc(name + (st.skipped ? ', marked skipped' : ', marked') + '. Tap to undo') + '">' +
+               (st.skipped ? '↷ ' : '✔ ') + esc(name) + '<span class="sub">' + (st.skipped ? 'Marked skipped' : 'Marked') +
+               (st.last ? ' at ' + esc(ccHM(st.last.taken_at)) + (by && by !== 'you' ? ' by ' + esc(by) : '') : '') + '. Tap to undo.</span></button>';
+      }
+      if (new Date(st.due[0].due_at).getTime() > Date.now() + 3 * 3600000) {
+        return '<div class="crow" style="margin-bottom:var(--space-16)"><span class="txt"><b>' + esc(name) + '</b><small>Later today. The tick comes here nearer the time.</small></span></div>';
+      }
+      return '<button class="big pill" type="button" data-ccmark="' + esc(st.due.map(function(d){ return d.id; }).join(',')) + '">' + esc(name) +
+             '<span class="sub">Tap when taken</span></button>' +
+             '<div class="cc-elderrow"><button type="button" class="cbtn ghost" style="min-height:var(--tap-min)" data-ccskip="' + esc(st.due.map(function(d){ return d.id; }).join(',')) + '">Skipped this time</button></div>';
+    }).join('') + '<p class="hint" style="margin:0 0 var(--space-16)">A tick tells the family you marked it. It is a note, not a check.</p>';
+  }
+
+  // Today, for everyone: someone in hospital, a visit to note, my own times.
+  function ccRenderToday(){
+    var box = $('cc-today'); if (!box || !state) return;
+    var h = '';
+    (ccAdm.open || []).forEach(function(a){
+      var adv = ccStep(a, 'discharge_advised'), done = ccStep(a, 'discharge_done');
+      var line = [a.hospital, a.ward].filter(Boolean).join(' · ');
+      if (adv && !done) line = (line ? line + ' · ' : '') + 'waiting since ' + ccHM(adv.at);
+      h += '<div class="crow cc-alert" style="margin-bottom:var(--space-12)"><span class="txt"><b>🏥 ' + esc(a.person_id === state.memberId ? 'You are in hospital' : a.person_name + ' is in hospital') + '</b><small>' +
+           esc(line || 'Opened ' + fmtTime(a.opened_at)) + '</small></span><button class="cbtn" type="button" data-ccadm="' + esc(a.person_id) + '">Open</button></div>';
+    });
+    (ccVis.pending || []).forEach(function(p){
+      h += '<div class="crow" style="margin-bottom:var(--space-12)"><span class="txt"><b>🩺 How did the visit go?</b><small>' + esc(p.title) + ' · ' + esc(fmtTime(p.at)) +
+           '</small></span><button class="cbtn" type="button" data-ccvisit="' + esc(p.id) + '">Tell the family</button>' +
+           '<button class="cbtn ghost" type="button" data-ccvskip="' + esc(p.id) + '">Skip</button></div>';
+    });
+    // Someone who is not in elder mode sees their own times here, smaller.
+    if (state.role !== 'parent') {
+      ccSlots(state.memberId).forEach(function(s){
+        var st = ccSlotState(s);
+        if (!st.done && new Date(st.due[0].due_at).getTime() > Date.now() + 3 * 3600000) return;   // later today: nothing to tap yet
+        h += '<div class="crow" style="margin-bottom:var(--space-12)"><span class="txt"><b>💊 Your ' + esc(ccClock(s.slot)) + ' medicines</b><small>' +
+             (st.done ? (st.skipped ? 'Marked skipped' : '✓ Marked') + (st.last ? ' at ' + esc(ccHM(st.last.taken_at)) : '') : 'Tap when taken') + '</small></span>' +
+             (st.done ? '<button class="cbtn ghost" type="button" data-ccundo="' + esc(s.doses.map(function(d){ return d.id; }).join(',')) + '">Undo</button>'
+                      : '<button class="cbtn" type="button" data-ccmark="' + esc(st.due.map(function(d){ return d.id; }).join(',')) + '">Mark taken</button>') + '</div>';
+      });
+    }
+    box.innerHTML = h;
+  }
+  function ccStep(a, key){ return (a.steps || []).filter(function(s){ return s.key === key; })[0] || null; }
+
+  // ---- marking ----
+  function ccMark(ids, status, reason, btn){
+    if (!ids.length) return;
+    if (btn) btn.disabled = true;
+    ccPost(CC_API.doses, { action: 'dose_mark', doseIds: ids, status: status, reason: reason || '' }).then(function(j){
+      if (btn) btn.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not mark that'); return; }
+      toast(status === 'skipped' ? 'Noted as skipped' : 'Marked. The family can see it.');
+      ccRefresh(true);
+    }).catch(function(){ if (btn) btn.disabled = false; toast('No connection - try again'); });
+  }
+  // askText returns null both for "Go back" and for an empty box, so the
+  // skip asks in two steps: the reason (optional), then the mark.
+  function ccSkipAsk(ids, btn){
+    $('as-in').value = ''; $('as-inlbl').textContent = 'Why, if you want to say (optional). For example: doctor said to stop, felt unwell, ran out.'; $('as-inwrap').hidden = false;
+    askOpen('Skipped this time?', '', 'Mark skipped', 'Go back', false, true).then(function(yes){
+      var v = $('as-in').value.trim(); $('as-inwrap').hidden = true;
+      if (yes) ccMark(ids, 'skipped', v, btn);
+    });
+  }
+  function ccUndo(ids, btn){
+    var mine = (ccDoses.doses || []).filter(function(d){ return ids.indexOf(d.id) >= 0 && d.status !== 'due' && (d.marked_by === state.memberId || d.person_id === state.memberId); });
+    if (!mine.length) { toast('Only whoever marked it, or the person it is for, can undo it'); return; }
+    askSheet('Undo this mark?', 'It goes back to not marked.', 'Undo it', 'Keep it').then(function(y){
+      if (!y) return;
+      if (btn) btn.disabled = true;
+      Promise.all(mine.map(function(d){ return ccPost(CC_API.doses, { action: 'dose_undo', doseId: d.id }); })).then(function(){ if (btn) btn.disabled = false; toast('Undone'); ccRefresh(true); })
+        .catch(function(){ if (btn) btn.disabled = false; toast('No connection - try again'); });
+    });
+  }
+  document.addEventListener('click', function(e){
+    var b;
+    if ((b = e.target.closest('[data-ccmark]'))) { ccMark(b.getAttribute('data-ccmark').split(',').filter(Boolean), 'taken', '', b); return; }
+    if ((b = e.target.closest('[data-ccskip]'))) { ccSkipAsk(b.getAttribute('data-ccskip').split(',').filter(Boolean), b); return; }
+    if ((b = e.target.closest('[data-ccundo]'))) { ccUndo(b.getAttribute('data-ccundo').split(',').filter(Boolean), b); return; }
+    if ((b = e.target.closest('[data-ccadm]'))) { ccAdmShow(b.getAttribute('data-ccadm')); return; }
+    if ((b = e.target.closest('[data-ccvisit]'))) { ccVisitShow(b.getAttribute('data-ccvisit'), null); return; }
+    if ((b = e.target.closest('[data-ccvskip]'))) {
+      var pid = b.getAttribute('data-ccvskip');
+      ccPost(CC_API.visit, { action: 'visit_skip', planId: pid }).then(function(j){ if (!j.ok) { toast(j.error || 'Could not do that'); return; } toast('Put away'); ccRefresh(true); });
+      return;
+    }
+    if ((b = e.target.closest('[data-ccsched]'))) { ccSchedShow(b.getAttribute('data-ccsched')); return; }
+    if ((b = e.target.closest('[data-ccwday]'))) { ccWeekSel = b.getAttribute('data-ccwday') === ccWeekSel ? null : b.getAttribute('data-ccwday'); ccRenderPerson(personId); return; }
+  });
+
+  // ---- one person's page ----
+  function ccPerson(id){ ccWeekSel = null; ccRenderPerson(id); ccRefresh(true); }
+  function ccDoseRow(d, act){
+    var st, cls = '';
+    if (d.status === 'taken') { st = '✓ Marked by ' + ccMarkedBy(d) + ', ' + ccHM(d.taken_at); cls = 'ok'; }
+    else if (d.status === 'skipped') { st = '↷ Skipped' + (d.skip_reason ? ': ' + d.skip_reason : '') + ' (marked by ' + ccMarkedBy(d) + ')'; }
+    else if (d.passed) { st = '! Not marked yet'; cls = 'bad'; }
+    else st = 'Later today';
+    var btns = '';
+    if (act) {
+      var soon = new Date(d.due_at).getTime() <= Date.now() + 3 * 3600000;
+      if (d.status === 'due' && soon) {
+        btns = '<button type="button" class="cbtn" data-ccmark="' + d.id + '">' + (d.person_id === state.memberId ? 'Mark taken' : 'Mark for ' + esc(d.person_name)) + '</button>' +
+               '<button type="button" class="cbtn ghost" data-ccskip="' + d.id + '">Skipped</button>';
+      } else if (d.status !== 'due' && (d.marked_by === state.memberId || d.person_id === state.memberId)) {
+        btns = '<button type="button" class="cbtn ghost" data-ccundo="' + d.id + '">Undo</button>';
+      }
+    }
+    return '<div class="ev cc-dose"><span class="txt"><b>' + esc(ccClock(d.slot)) + ' · ' + esc(d.name) + '</b><small class="cc-st ' + cls + '">' + esc(st) + '</small></span>' + btns + '</div>';
+  }
+  function ccRenderPerson(id){
+    if (!id || !state || !$('pp-doses')) return;
+    var who = ccMember(id), nm = who ? who.name : 'them';
+    var mine = (ccDoses.doses || []).filter(function(d){ return d.person_id === id; });
+    var scheds = (ccDoses.schedules || []).filter(function(s){ return s.person_id === id; });
+    var today = mine.filter(function(d){ return d.today; });
+    $('pp-doses').innerHTML = !ccLoaded ? '<div class="ev">Could not load medicine times just now. They will try again on their own.</div>'
+      : today.length ? today.map(function(d){ return ccDoseRow(d, true); }).join('')
+      : '<div class="ev">' + (scheds.length ? 'No medicine times today.' : 'No times set yet. Set the usual times for a medicine below, and ' + esc(id === state.memberId ? 'you' : nm) + ' get a big tick on Today.') + '</div>';
+    // The week, oldest first, ending today.
+    var cells = '', base = new Date();
+    for (var k = 6; k >= 0; k--) {
+      var dd = new Date(base.getFullYear(), base.getMonth(), base.getDate() - k), key = ccLocalDay(dd);
+      var ds = mine.filter(function(d){ return d.day === key; });
+      var miss = ds.filter(function(d){ return d.status === 'due' && d.passed; }).length;
+      var took = ds.filter(function(d){ return d.status === 'taken'; }).length;
+      var skip = ds.filter(function(d){ return d.status === 'skipped'; }).length;
+      var later = ds.filter(function(d){ return d.status === 'due' && !d.passed; }).length;
+      var mark = !ds.length ? '·' : miss ? '!' : skip ? '↷' : later ? '…' : '✓';
+      var cls = !ds.length ? '' : miss ? 'bad' : (!skip && !later) ? 'ok' : '';
+      var wd = dtf([], { weekday: 'short' }).format(dd);
+      var lab = wd + ' ' + dd.getDate() + ': ' + (!ds.length ? 'no times' : took + ' marked taken' + (skip ? ', ' + skip + ' skipped' : '') + (miss ? ', ' + miss + ' not marked' : '') + (later ? ', ' + later + ' later' : ''));
+      cells += '<button type="button" class="cc-day ' + cls + (ccWeekSel === key ? ' sel' : '') + '" data-ccwday="' + key + '" aria-label="' + esc(lab) + '" aria-pressed="' + (ccWeekSel === key) + '">' +
+               '<span>' + esc(wd.slice(0, 2)) + '</span><span class="m" aria-hidden="true">' + mark + '</span></button>';
+    }
+    $('pp-week').innerHTML = cells;
+    $('pp-week-h').hidden = $('pp-week').hidden = !scheds.length && !mine.length;
+    var sel = ccWeekSel ? mine.filter(function(d){ return d.day === ccWeekSel; }) : [];
+    $('pp-weekday').innerHTML = ccWeekSel ? (sel.length ? sel.map(function(d){ return ccDoseRow(d, false); }).join('') : '<div class="ev">No medicine times that day.</div>') : '';
+    // Each medicine in the book, with its times.
+    var meds = (bookCache || []).filter(function(e){ return e.kind === 'med' && e.about_member === id; });
+    $('pp-medtimes').innerHTML = meds.length ? meds.map(function(e){
+      var s = scheds.filter(function(x){ return x.medicine_id === e.id; })[0];
+      var when = s ? s.times.map(ccClock).join(', ') + ' · ' + ccDaysText(s.days) : 'No times set';
+      return '<div class="ev cc-dose"><span class="txt"><b>💊 ' + esc(e.name) + '</b><small>' + esc(when) + '</small></span>' +
+             '<button type="button" class="cbtn ghost" data-ccsched="' + e.id + '">' + (s ? 'Change times' : 'Set times') + '</button></div>';
+    }).join('') : '<div class="ev">No medicines in Health &amp; contacts for ' + esc(id === state.memberId ? 'you' : nm) + ' yet. Add one with "＋ Add something", then set its times here.</div>';
+    // Visits, newest first.
+    var vs = (ccVis.visits || []).filter(function(v){ return v.person_id === id; });
+    $('pp-visits').innerHTML = vs.length ? vs.map(function(v){
+      var ai = v.action_items || {}, bits = [];
+      if (v.next_due) bits.push('Next visit around ' + ccDay(v.next_due));
+      else if (ai.nextWeeks === null || ai.nextWeeks === undefined) bits.push('No next visit noted');
+      if (ai.tests && ai.tests.length) bits.push('Tests: ' + ai.tests.join(', '));
+      if (v.new_notes) bits.push('New: ' + v.new_notes);
+      bits.push('Noted by ' + (v.by_name || 'someone'));
+      return '<div class="ev cc-dose"><span class="txt"><b>' + esc(ccDay(v.recorded_at) + (ai.doctor ? ' · ' + ai.doctor : v.plan_title ? ' · ' + v.plan_title : '')) + '</b><small>' + esc(bits.join(' · ')) + '</small></span>' +
+             (v.vault_doc_id ? '<button type="button" class="cbtn ghost" data-vdocgo="' + esc(v.vault_doc_id) + '">📄 Photo</button>' : '') + '</div>';
+    }).join('') : '<div class="ev">Nothing written down yet. After a visit, a photo and three taps save everyone a long call.</div>';
+    // Hospital: the button, and stays that are closed.
+    var open = (ccAdm.open || []).filter(function(a){ return a.person_id === id; })[0];
+    $('pp-admit').textContent = open ? '🏥 In hospital now: open the screen' : '🏥 Admitted to hospital';
+    var hist = (ccAdm.history || []).filter(function(a){ return a.person_id === id; });
+    $('pp-adm-card').hidden = !hist.length;
+    $('pp-adm-hist').innerHTML = hist.map(function(a){
+      var steps = (a.steps || []).map(function(s){ var l = CC_STEPS.filter(function(x){ return x[0] === s.key; })[0]; return (l ? l[1] : s.key) + ' ' + ccDay(s.at) + ', ' + ccHM(s.at); });
+      return '<div class="ev"><b>' + esc((a.hospital || 'Hospital') + ' · ' + ccDay(a.opened_at) + (a.closed_at ? ' to ' + ccDay(a.closed_at) : '')) + '</b><small>' + esc(steps.join(' · ')) + '</small></div>';
+    }).join('');
+  }
+  function ccDaysText(days){
+    if (!days || !days.length) return 'every day';
+    var n = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return days.map(function(d){ return n[d]; }).join(', ');
+  }
+
+  // ---- the medicine times sheet ----
+  var ccSchedMed = null, ccExtra = [];
+  function ccPress(box, on){ box.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+  function ccSchedShow(medId){
+    var e = (bookCache || []).filter(function(x){ return x.id === medId; })[0]; if (!e) return;
+    ccSchedMed = medId;
+    var s = (ccDoses.schedules || []).filter(function(x){ return x.medicine_id === medId; })[0];
+    var who = ccMember(e.about_member);
+    $('ds-title').textContent = 'When ' + (e.about_member === state.memberId ? 'do you' : 'does ' + (who ? who.name : 'they')) + ' have ' + e.name + '?';
+    var times = s ? s.times.slice() : ['08:00'];
+    $('ds-slots').querySelectorAll('button').forEach(function(b){ ccPress(b, times.indexOf(b.getAttribute('data-t')) >= 0); });
+    ccExtra = times.filter(function(t){ return ['08:00', '14:00', '21:00'].indexOf(t) < 0; });
+    ccExtraRender();
+    var days = s && s.days && s.days.length ? s.days : [0, 1, 2, 3, 4, 5, 6];
+    $('ds-days').querySelectorAll('button').forEach(function(b){ ccPress(b, days.indexOf(+b.getAttribute('data-d')) >= 0); });
+    ccDayHint();
+    $('ds-custom').value = '';
+    $('ds-off').hidden = !s;
+    $('dsheet').hidden = false;
+    try { $('ds-x').focus(); } catch (x) {}
+  }
+  function ccExtraRender(){
+    $('ds-extra').innerHTML = ccExtra.map(function(t){ return '<button type="button" aria-pressed="true" data-xt="' + t + '" aria-label="Remove ' + ccClock(t) + '">' + ccClock(t) + ' ✕</button>'; }).join('');
+  }
+  function ccDayHint(){
+    var on = $('ds-days').querySelectorAll('button[aria-pressed="true"]').length;
+    $('ds-dayhint').textContent = on === 7 ? 'Every day' : on ? on + ' day' + (on === 1 ? '' : 's') + ' a week' : 'Pick at least one day';
+  }
+  $('ds-slots').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) ccPress(b, b.getAttribute('aria-pressed') !== 'true'); });
+  $('ds-days').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) { ccPress(b, b.getAttribute('aria-pressed') !== 'true'); ccDayHint(); } });
+  $('ds-extra').addEventListener('click', function(e){ var b = e.target.closest('[data-xt]'); if (!b) return; ccExtra = ccExtra.filter(function(t){ return t !== b.getAttribute('data-xt'); }); ccExtraRender(); });
+  $('ds-addt').addEventListener('click', function(){
+    var v = $('ds-custom').value;
+    if (!/^\d\d:\d\d$/.test(v)) { fieldErr('ds-custom', 'Pick a time first'); return; }
+    if (ccExtra.indexOf(v) < 0 && ['08:00', '14:00', '21:00'].indexOf(v) < 0) ccExtra.push(v);
+    else $('ds-slots').querySelectorAll('button').forEach(function(b){ if (b.getAttribute('data-t') === v) ccPress(b, true); });
+    ccExtra.sort(); ccExtraRender(); $('ds-custom').value = '';
+  });
+  $('ds-x').addEventListener('click', function(){ $('dsheet').hidden = true; });
+  $('dsheet').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });
+  $('ds-save').addEventListener('click', function(){
+    var times = [].map.call($('ds-slots').querySelectorAll('button[aria-pressed="true"]'), function(b){ return b.getAttribute('data-t'); }).concat(ccExtra);
+    var days = [].map.call($('ds-days').querySelectorAll('button[aria-pressed="true"]'), function(b){ return +b.getAttribute('data-d'); });
+    if (!times.length) { toast('Pick at least one time'); return; }
+    if (!days.length) { toast('Pick at least one day'); return; }
+    var b = this; b.disabled = true;
+    ccPost(CC_API.doses, { action: 'dose_schedule_set', medicineId: ccSchedMed, times: times, days: days }).then(function(j){
+      b.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not save the times'); return; }
+      $('dsheet').hidden = true; toast('Times saved'); ccRefresh(true);
+    }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  $('ds-off').addEventListener('click', function(){
+    askSheet('Stop the times for this medicine?', 'What was already marked stays in the history.', 'Stop the times', 'Keep them').then(function(y){
+      if (!y) return;
+      ccPost(CC_API.doses, { action: 'dose_schedule_off', medicineId: ccSchedMed }).then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not do that'); return; }
+        $('dsheet').hidden = true; toast('Times stopped'); ccRefresh(true);
+      });
+    });
+  });
+
+  // ---- the hospital screen ----
+  $('pp-admit').addEventListener('click', function(){ if (personId) ccAdmShow(personId); });
+  function ccAdmOpenFor(pid){ return (ccAdm.open || []).filter(function(a){ return a.person_id === pid; })[0] || null; }
+  function ccAdmShow(pid){
+    ccAdmFor = pid;
+    var who = ccMember(pid), nm = who ? who.name : 'Them';
+    var a = ccAdmOpenFor(pid);
+    $('ad-title').textContent = pid === state.memberId ? 'You are in hospital' : nm + ' is in hospital';
+    $('ad-new').hidden = !!a; $('ad-live').hidden = !a;
+    if (!a) {
+      $('ad-sub').textContent = 'Write down where. Everything else can be added at the counter.';
+      ['ad-n-hosp', 'ad-n-ward', 'ad-n-doc'].forEach(function(i){ $(i).value = ''; });
+      $('ad-n-with').checked = true;
+    } else {
+      ccAdmRender();
+      // The papers at the counter: read with the person's "who looked" trail.
+      apiGet(ccQ(CC_API.admission, '&person=' + encodeURIComponent(pid) + '&packet=1')).then(function(j){
+        if (!j.ok || ccAdmFor !== pid) return;
+        ccPacket = { for: pid, data: j.packet }; ccAdmPacket();
+      }).catch(function(){ $('ad-packet').innerHTML = '<div class="ev">Could not load the papers just now.</div>'; });
+    }
+    $('admsheet').hidden = false;
+    try { $('ad-x').focus(); } catch (x) {}
+    clearInterval(ccAdmTimer);
+    ccAdmTimer = setInterval(function(){ if ($('admsheet').hidden) { clearInterval(ccAdmTimer); return; } ccAdmWait(); }, 30000);
+  }
+  function ccAdmWait(){
+    var a = ccAdmOpenFor(ccAdmFor); if (!a) return;
+    var adv = ccStep(a, 'discharge_advised'), done = ccStep(a, 'discharge_done');
+    $('ad-wait').hidden = !(adv && !done);
+    if (adv && !done) $('ad-wait').innerHTML = '<b>Waiting since ' + esc(ccHM(adv.at)) + '</b>' + esc(ccSince(adv.at)) + ' since discharge was advised';
+  }
+  function ccAdmRender(){
+    var a = ccAdmOpenFor(ccAdmFor); if (!a) return;
+    $('ad-sub').textContent = 'Since ' + fmtTime(a.opened_at) + (a.opened_by_name ? ' · opened by ' + a.opened_by_name : '');
+    ccAdmWait();
+    var kv = function(k, v){ return '<div class="kv"><b>' + esc(k) + '</b><span>' + (v ? esc(v) : '<span class="hint" style="margin:0">Not written yet</span>') + '</span></div>'; };
+    $('ad-facts').innerHTML = kv('Hospital', a.hospital) + kv('Ward or room', a.ward) + kv('Doctor in charge', a.doctor) + kv('Insurer', a.insurer) + kv('TPA', a.tpa) +
+      kv('Policy number', a.policy_last4 ? 'ending ' + a.policy_last4 : '') + kv('Claim number', a.claim_last4 ? 'ending ' + a.claim_last4 : '');
+    var withIds = (a.with_names || []).map(function(w){ return w.id; });
+    $('ad-with').innerHTML = (a.with_names || []).length ? a.with_names.map(function(w){ return '<button type="button" disabled>' + esc(w.id === state.memberId ? 'You' : w.name) + '</button>'; }).join('')
+      : '<p class="hint" style="margin:0">Nobody has said they are there.</p>';
+    var here = withIds.indexOf(state.memberId) >= 0;
+    $('ad-here').textContent = here ? 'I have left the hospital' : 'I am at the hospital now';
+    $('ad-here').setAttribute('data-on', here ? '0' : '1');
+    var nextDone = false;
+    $('ad-steps').innerHTML = CC_STEPS.map(function(st, i){
+      var s = ccStep(a, st[0]);
+      if (s) return '<li class="done"><span class="dot" aria-hidden="true">✓</span><span class="txt"><b>' + esc(st[1]) + '</b><small>' + esc(ccHM(s.at) + ' · ' + (s.by === state.memberId ? 'you' : s.byName || 'someone')) + '</small></span></li>';
+      var isNext = !nextDone; nextDone = true;
+      return '<li class="' + (isNext ? 'next' : 'later') + '"><span class="dot" aria-hidden="true">' + (i + 1) + '</span><span class="txt"><b>' + esc(st[1]) + '</b><small>' + (isNext ? 'Tap when it happens' : 'Not yet') + '</small></span>' +
+             (isNext ? '<button type="button" class="cbtn" data-ccstep="' + st[0] + '">Mark now</button>' : '') + '</li>';
+    }).join('');
+    var last = (a.steps || [])[(a.steps || []).length - 1];
+    $('ad-undo').innerHTML = last && last.key !== 'admitted' ? '<button type="button" class="linkbtn" data-ccstepundo="' + last.key + '" style="min-height:var(--tap-min)">Undo the last step</button>' : '';
+    var meds = (bookCache || []).filter(function(e){ return e.kind === 'med' && e.about_member === ccAdmFor; }).map(function(e){ return e.name + (e.forwhat ? ' (' + e.forwhat + ')' : ''); });
+    $('ad-papers').innerHTML = CC_PAPERS.map(function(p){
+      var on = a.papers && a.papers[p[0]] === true;
+      return '<label><input type="checkbox" data-ccpaper="' + p[0] + '"' + (on ? ' checked' : '') + '><span>' + esc(p[1]) +
+             (p[0] === 'medlist' ? '<small>' + esc(meds.length ? meds.join(', ') : 'None in Health & contacts yet') + '</small>' : '') + '</span></label>';
+    }).join('');
+    ccAdmPacket();
+  }
+  function ccAdmPacket(){
+    var p = ccPacket.for === ccAdmFor ? ccPacket.data : null;
+    if (!p) { $('ad-packet').innerHTML = '<div class="ev">Loading…</div>'; return; }
+    var rows = [];
+    if (p.insurer || p.policyLast4) rows.push('<div class="ev"><b>🛡 ' + esc(p.insurer || 'Insurance') + '</b><small>' + esc(p.policyLast4 ? 'Policy ending ' + p.policyLast4 + '. The full number is in the vault.' : 'No policy number recorded') + '</small></div>');
+    if (p.tpa || p.tpaPhone) rows.push('<div class="ev"><b>TPA: ' + esc(p.tpa || 'help desk') + '</b><small>' + (p.tpaPhone ? '<a href="tel:' + esc(p.tpaPhone) + '">' + esc(p.tpaPhone) + '</a>' : '') + (p.tpaEmail ? ' · ' + esc(p.tpaEmail) : '') + '</small></div>');
+    if (p.emergencyName) rows.push('<div class="ev"><b>☎️ ' + esc(p.emergencyName) + '</b><small>Emergency contact' + (p.emergencyPhone ? ' · <a href="tel:' + esc(p.emergencyPhone) + '">' + esc(p.emergencyPhone) + '</a>' : '') + '</small></div>');
+    $('ad-packet').innerHTML = rows.length ? rows.join('') : '<div class="ev">No insurance or emergency contact recorded yet. Add them in Health &amp; contacts and they show here.</div>';
+  }
+  function ccAdmAct(body, msg){
+    var a = ccAdmOpenFor(ccAdmFor); if (!a) return Promise.resolve(null);
+    return ccPost(CC_API.admission, Object.assign({ admissionId: a.id }, body)).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not do that'); return j; }
+      if (msg) toast(msg);
+      ccRefresh(true); return j;
+    }).catch(function(){ toast('No connection - try again'); });
+  }
+  $('ad-n-go').addEventListener('click', function(){
+    var b = this; b.disabled = true;
+    ccPost(CC_API.admission, { action: 'admission_open', personId: ccAdmFor, hospital: $('ad-n-hosp').value, ward: $('ad-n-ward').value, doctor: $('ad-n-doc').value, withMe: $('ad-n-with').checked }).then(function(j){
+      b.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not open it'); return; }
+      toast('Everyone in the family has been told');
+      ccAt = 0;
+      apiGet(ccQ(CC_API.admission, '&person=' + encodeURIComponent(ccAdmFor))).then(function(r){ if (r.ok) { ccAdm = r; ccAdmShow(ccAdmFor); ccRender(); } });
+    }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  $('ad-undo').addEventListener('click', function(e){
+    var u = e.target.closest('[data-ccstepundo]');
+    if (u) askSheet('Undo the last step?', 'Use this if it was tapped by mistake.', 'Undo it', 'Keep it').then(function(y){ if (y) ccAdmAct({ action: 'admission_undo', step: u.getAttribute('data-ccstepundo') }, 'Undone'); });
+  });
+  $('ad-steps').addEventListener('click', function(e){
+    var b = e.target.closest('[data-ccstep]');
+    if (b) { b.disabled = true; ccAdmAct({ action: 'admission_step', step: b.getAttribute('data-ccstep') }, 'Marked. The family has been told.'); }
+  });
+  $('ad-papers').addEventListener('change', function(e){
+    var c = e.target.closest('[data-ccpaper]'); if (!c) return;
+    ccAdmAct({ action: 'admission_paper', key: c.getAttribute('data-ccpaper'), have: c.checked });
+  });
+  $('ad-here').addEventListener('click', function(){ ccAdmAct({ action: 'admission_with', on: this.getAttribute('data-on') === '1' }, this.getAttribute('data-on') === '1' ? 'The family can see you are there' : 'Noted'); });
+  $('ad-edit').addEventListener('click', function(){
+    var a = ccAdmOpenFor(ccAdmFor); if (!a) return;
+    var box = $('ad-editbox'); box.hidden = !box.hidden;
+    $('ad-e-hosp').value = a.hospital || ''; $('ad-e-ward').value = a.ward || ''; $('ad-e-doc').value = a.doctor || '';
+    $('ad-e-ins').value = a.insurer || ''; $('ad-e-tpa').value = a.tpa || ''; $('ad-e-pol').value = ''; $('ad-e-clm').value = '';
+    $('ad-e-pol').placeholder = a.policy_last4 ? 'Ending ' + a.policy_last4 + '. Only the last 4 are kept' : 'Only the last 4 are kept';
+    $('ad-e-clm').placeholder = a.claim_last4 ? 'Ending ' + a.claim_last4 + '. Only the last 4 are kept' : 'Only the last 4 are kept';
+  });
+  $('ad-e-save').addEventListener('click', function(){
+    var body = { action: 'admission_update', hospital: $('ad-e-hosp').value, ward: $('ad-e-ward').value, doctor: $('ad-e-doc').value, insurer: $('ad-e-ins').value, tpa: $('ad-e-tpa').value };
+    if ($('ad-e-pol').value.trim()) body.policyNumber = $('ad-e-pol').value;
+    if ($('ad-e-clm').value.trim()) body.claimNumber = $('ad-e-clm').value;
+    ccAdmAct(body, 'Saved').then(function(j){ if (j && j.ok) $('ad-editbox').hidden = true; });
+  });
+  $('ad-ecard').addEventListener('click', function(){ if (ccAdmFor) openEcard(ccAdmFor); });
+  $('ad-docs').addEventListener('click', function(){ if (ccAdmFor) { $('admsheet').hidden = true; openVaultFor(ccAdmFor); } });
+  $('ad-close').addEventListener('click', function(){
+    var who = ccMember(ccAdmFor);
+    askSheet('Close the hospital screen?', 'It is kept in ' + (who ? who.name + '\u2019s' : 'their') + ' history, and everyone is told.', 'Close it', 'Not yet').then(function(y){
+      if (!y) return;
+      ccAdmAct({ action: 'admission_close' }, 'Closed and kept in the history').then(function(j){ if (j && j.ok) $('admsheet').hidden = true; });
+    });
+  });
+  $('ad-x').addEventListener('click', function(){ $('admsheet').hidden = true; clearInterval(ccAdmTimer); });
+  $('admsheet').addEventListener('click', function(e){ if (e.target === this) { this.hidden = true; clearInterval(ccAdmTimer); } });
+
+  // ---- after a visit ----
+  var ccVPlan = null, ccVTests = [], ccVFile = null;
+  $('pp-visit-add').addEventListener('click', function(){ if (personId) ccVisitShow(null, personId); });
+  function ccVisitShow(planId, pid){
+    ccVPlan = planId ? (ccVis.pending || []).filter(function(p){ return p.id === planId; })[0] || null : null;
+    ccVTests = []; ccVFile = null;
+    var ms = membersCache || [];
+    if (!pid && ccVPlan) {
+      var parent = ms.filter(function(m){ return (ccVPlan.going || []).indexOf(m.id) >= 0 && m.role === 'parent'; })[0];
+      pid = parent ? parent.id : state.memberId;
+    }
+    pid = pid || state.memberId;
+    $('vs-who').innerHTML = ms.map(function(m){ return '<option value="' + m.id + '"' + (m.id === pid ? ' selected' : '') + '>' + esc(m.id === state.memberId ? m.name + ' (me)' : m.name) + '</option>'; }).join('');
+    var owners = ms.filter(function(m){ return m.on_app !== false; });
+    var opt = owners.map(function(m){ return '<option value="' + m.id + '"' + (m.id === state.memberId ? ' selected' : '') + '>' + esc(m.id === state.memberId ? 'Me' : m.name) + '</option>'; }).join('');
+    $('vs-bookby').innerHTML = opt; $('vs-testby').innerHTML = opt;
+    ccVisitTitle();
+    $('vs-sub').textContent = ccVPlan ? ccVPlan.title + ' · ' + fmtTime(ccVPlan.at) : 'Write down what the doctor asked for, so nobody has to ring round.';
+    $('vs-doc').value = ''; $('vs-new').value = ''; $('vs-test').value = ''; $('vs-weeks').value = ''; $('vs-photo').value = '';
+    $('vs-fname').textContent = 'Goes into the family vault, for this person. Up to 2 MB.';
+    $('vs-next').querySelectorAll('button').forEach(function(b){ ccPress(b, false); });
+    ccVTestsRender();
+    $('vs-skip').hidden = !ccVPlan;
+    $('vsheet').hidden = false;
+    try { $('vs-x').focus(); } catch (x) {}
+  }
+  function ccVisitTitle(){
+    var pid = $('vs-who').value, m = ccMember(pid);
+    $('vs-title').textContent = pid === state.memberId ? 'How did your visit go?' : 'How did ' + (m ? m.name + '\u2019s' : 'the') + ' visit go?';
+  }
+  $('vs-who').addEventListener('change', ccVisitTitle);
+  function ccVTestsRender(){
+    $('vs-tests').innerHTML = ccVTests.map(function(t, i){ return '<button type="button" data-vt="' + i + '" aria-label="Remove ' + esc(t) + '">' + esc(t) + ' ✕</button>'; }).join('');
+  }
+  $('vs-addtest').addEventListener('click', function(){
+    var v = $('vs-test').value.trim(); if (!v) { fieldErr('vs-test', 'Type the test first'); return; }
+    if (ccVTests.length >= 8) { toast('Up to 8 tests'); return; }
+    if (!ccVTests.some(function(t){ return t.toLowerCase() === v.toLowerCase(); })) ccVTests.push(v);
+    $('vs-test').value = ''; ccVTestsRender(); $('vs-test').focus();
+  });
+  $('vs-test').addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); $('vs-addtest').click(); } });
+  $('vs-tests').addEventListener('click', function(e){ var b = e.target.closest('[data-vt]'); if (!b) return; ccVTests.splice(+b.getAttribute('data-vt'), 1); ccVTestsRender(); });
+  $('vs-next').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    $('vs-next').querySelectorAll('button').forEach(function(x){ ccPress(x, x === b); });
+    $('vs-weeks').value = '';
+  });
+  $('vs-weeks').addEventListener('input', function(){ if (this.value) $('vs-next').querySelectorAll('button').forEach(function(x){ ccPress(x, false); }); });
+  $('vs-photo').addEventListener('change', function(){
+    var f = this.files && this.files[0], inp = this; ccVFile = null;
+    if (!f) return;
+    var name = f.name || 'prescription.jpg';
+    var keep = function(data, mime){
+      if (!data || data.length * 3 / 4 > 2 * 1024 * 1024) { $('vs-fname').textContent = 'That file is larger than 2 MB. For a PDF, save it smaller; a photo is made smaller automatically.'; inp.value = ''; return; }
+      ccVFile = { data: data, name: name, mime: mime }; $('vs-fname').textContent = '📎 ' + name + ' - goes into the vault when you save';
+    };
+    if (/^image\/(jpeg|png|webp)$/.test(f.type) && f.size > 900 * 1024) {
+      $('vs-fname').textContent = 'Making the photo smaller…';
+      vShrink(f, function(d){ if (d) { name = name.replace(/\.[a-z0-9]+$/i, '') + '.jpg'; keep(d, 'image/jpeg'); } else keep(null); });
+      return;
+    }
+    var fr = new FileReader(); fr.onload = function(){ keep(String(fr.result), f.type || 'image/jpeg'); }; fr.readAsDataURL(f);
+  });
+  $('vs-save').addEventListener('click', function(){
+    var b = this, pid = $('vs-who').value, m = ccMember(pid);
+    var pressed = $('vs-next').querySelector('button[aria-pressed="true"]');
+    var weeks = $('vs-weeks').value ? parseInt($('vs-weeks').value, 10) : (pressed ? +pressed.getAttribute('data-w') : 0);
+    if ($('vs-weeks').value && !(weeks >= 1 && weeks <= 52)) { fieldErr('vs-weeks', 'Pick 1 to 52 weeks, or None'); return; }
+    if ($('vs-test').value.trim()) $('vs-addtest').click();
+    b.disabled = true;
+    var send = function(docId){
+      ccPost(CC_API.visit, { action: 'visit_save', planId: ccVPlan ? ccVPlan.id : null, personId: pid, doctor: $('vs-doc').value, vaultDocId: docId || null,
+                             nextWeeks: weeks, tests: ccVTests, newNotes: $('vs-new').value, bookOwnerId: $('vs-bookby').value, testsOwnerId: $('vs-testby').value })
+        .then(function(j){
+          b.disabled = false;
+          if (!j.ok) { toast(j.error || 'Could not save'); return; }
+          $('vsheet').hidden = true;
+          toast(j.tasks ? 'Saved. ' + j.tasks + ' follow-up' + (j.tasks === 1 ? ' is' : 's are') + ' in To do.' : 'Saved for the family');
+          ccRefresh(true); try { refresh(); } catch (x) {}
+        }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+    };
+    if (!ccVFile) { send(null); return; }
+    // The photo goes in through the vault's own door, with its permissions.
+    post(API.vault, { area: 'vault', action: 'add', kind: 'health', aboutId: pid, code: state.code, memberId: state.memberId,
+                      label: ((m ? m.name + '\u2019s' : 'Visit') + ' prescription, ' + ccDay(ccVPlan ? ccVPlan.at : new Date().toISOString())).slice(0, 90),
+                      file: ccVFile.data, fileName: ccVFile.name, fileMime: ccVFile.mime })
+      .then(function(j){ if (!j.ok) { b.disabled = false; toast(j.error || 'The photo could not be saved'); return; } send(j.id); })
+      .catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  $('vs-skip').addEventListener('click', function(){
+    if (!ccVPlan) return;
+    ccPost(CC_API.visit, { action: 'visit_skip', planId: ccVPlan.id }).then(function(j){ if (!j.ok) { toast(j.error || 'Could not do that'); return; } $('vsheet').hidden = true; toast('Put away'); ccRefresh(true); });
+  });
+  $('vs-x').addEventListener('click', function(){ $('vsheet').hidden = true; });
+  $('vsheet').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape' || askDone) return;
+    ['dsheet', 'admsheet', 'vsheet'].forEach(function(id){ if (!$(id).hidden) $(id).hidden = true; });
+  });
+  // ================= /CARE CYCLE =================
 
   // ---------- one readiness number for the whole family ----------
   // A gap, said as a plain sentence: "Papa: no doctor recorded".

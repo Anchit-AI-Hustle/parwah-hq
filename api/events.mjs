@@ -12,6 +12,8 @@ import { ownedMember } from './_owned.mjs';
 import { pushCircle } from './_push.mjs';
 import { ensureTaskSchema, sweepOverdue, sweepReminders } from './_tasks.mjs';
 import { sweepPlanReminders } from './_plansweep.mjs';
+import { sweepDoses } from './_doses.mjs';
+import { sweepVisitAsk } from './_visits.mjs';
 import { award, today } from './_coins.mjs';
 import { reqTz } from './_recur.mjs';
 
@@ -109,6 +111,11 @@ async function escalateStaleSos(sql, circleId) {
                                 limit 500`.catch(async () => sql`select distinct circle_id from requests
                                 where status in ('open','assigned','claimed') and due_at is not null
                                   and due_at between now() - interval '2 days' and now() + interval '2 days' limit 500`);
+      // Families with medicine times set: their nudges ride on the timer too.
+      try {
+        const dc = await sql`select distinct circle_id from medicine_schedules where active limit 500`;
+        for (const d of dc) if (!circles.some(c => c.circle_id === d.circle_id)) circles.push(d);
+      } catch (e) { /* no medicine times anywhere yet */ }
       let reminded = 0, late = 0, events = 0;
       for (const c of circles) {
         try {
@@ -116,6 +123,7 @@ async function escalateStaleSos(sql, circleId) {
           late += await sweepOverdue(sql, c.circle_id);
           events += await sweepPlanReminders(sql, c.circle_id);
           await escalateStaleSos(sql, c.circle_id);
+          try { await sweepDoses(sql, c.circle_id); await sweepVisitAsk(sql, c.circle_id); } catch (e) { /* never stops the SOS check */ }
         } catch (e) { /* one family's trouble never stops the others */ }
       }
       return res.status(200).json({ ok: true, circles: circles.length, reminded, late, events });
@@ -172,6 +180,9 @@ async function escalateStaleSos(sql, circleId) {
       // Every open phone looks, so a late task is announced within a poll;
       // the sweep claims each alert, so it is still announced only once.
       try { await ensureTaskSchema(sql); await sweepReminders(sql, circle.id); await sweepOverdue(sql, circle.id); await sweepPlanReminders(sql, circle.id); } catch (e) { /* never break a read */ }
+      // Medicine nudges and "how did the visit go?", each sent once.
+      try { await sweepDoses(sql, circle.id); } catch (e) { /* never break a read */ }
+      try { await sweepVisitAsk(sql, circle.id); } catch (e) { /* never break a read */ }
       const pulse = await pulseToday(sql, circle.id, reqTz(req));
       const sosOpen = await sql`
         select s.id, s.member_id, s.status, s.escalated, s.created_at, s.acked_at, s.safe_at,

@@ -3,6 +3,39 @@
 Newest first. Each review uses `CHECKLIST.md`; severities are Nielsen's:
 0 not a problem, 1 cosmetic, 2 minor, 3 major, 4 blocker.
 
+## Review 14 - 2026-11-02 - dose ticks, the hospital screen, after a visit
+
+**Reviewer:** Claude, acting as senior product designer.
+**Brief:** three stories from family research. "Show me which doses Maa
+marked today, and nudge her and then me if the evening one is missed."
+"When Maa is admitted, everyone sees the same status, and whoever is at the
+counter has every paper." "After Papa's appointment, I can see what the
+doctor asked for and when the next visit is, without a 20-minute call."
+**Scope:** the big dose ticks in elder mode (`#dose-elder`), the Today rows
+(`#cc-today`), the person page cards (medicines today and the week strip,
+doctor visits, hospital stays), and three sheets: medicine times
+(`#dsheet`), the hospital screen (`#admsheet`) and after the visit
+(`#vsheet`). Screens checked at 390 and 1440, light and dark.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 121 | 2 Real-world match | Times read "20:58" in the feed and "8:58" on the tick, which a parent cannot tell from morning | 2 | Fixed: every time is said as the family says it, "8:58 PM", in the app, the feed and the push |
+| 122 | 5 Error prevention | A dose many hours away showed a big "Tap when taken" that the server then refused | 3 | Fixed: a time more than three hours off shows as "Later today" with nothing to tap |
+| 123 | 1 Visibility of status | The counter papers on the hospital screen sat on "Loading…" after the family list refreshed | 3 | Fixed: the papers are kept apart from the refreshing list; insurer, policy ending, TPA and the emergency contact show |
+| 124 | 8 Aesthetic & minimalist | "Undo the last step" was a whole empty step card | 1 | Fixed: a plain link under the steps |
+| 125 | 10 Trust | A tick could be read as proof that a medicine was taken | 3 | Fixed: "A tick is what was marked, not a check that the medicine was taken." on the family card, and "It is a note, not a check." under the parent's ticks; nothing gives dose advice |
+| 126 | 10 Trust | A hospital timeline invites "how long will it take?" | 2 | Fixed: the screen says Parwah does not know hospital or insurer timings; "waiting since 3:10 PM" is a clock, never an estimate; IDs show only their last four |
+| 127 | 4 Consistency | Status on the week strip by colour alone | 2 | Fixed: ✓, !, ↷ and … on every day, the tints only behind them, and each day said in words to a screen reader |
+
+New patterns: the week strip (`.cc-week`, `.cc-day`), the step list
+(`.cc-steps`), the waiting clock (`.cc-wait`), the paper checklist
+(`.cc-papers`) and pressed chips (`.cc-pick button[aria-pressed]`). All
+tokens; 44px targets and no sideways scroll at 390 are measured in
+`site/tests/db/carecycle.e2e.dbtest.mjs`; the rules in `test_site.py`
+("care cycle:" checks).
+
+**Approved.**
+
 ## Review 13 - 2026-10-20 - proof, a real signup, and privacy
 
 **Reviewer:** Claude, acting as senior product designer.
