@@ -7423,7 +7423,7 @@ body.senior .fcrow .txt b{font-size:var(--fs-18)}
   function ccTz(){ try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } }
   function ccPost(url, body){ return post(url, Object.assign({}, body, { code: state.code, memberId: state.memberId, tz: ccTz() })); }
   function ccClock(slot){ var h = +slot.slice(0, 2); return (h % 12 || 12) + ':' + slot.slice(3, 5) + (h < 12 ? ' AM' : ' PM'); }
-  function ccSlotName(slot){ var h = +slot.slice(0, 2); return h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : h < 20 ? 'Evening' : 'Night'; }
+  function ccSlotName(slot){ var h = +slot.slice(0, 2); return h < 4 ? 'Night' : h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : h < 20 ? 'Evening' : 'Night'; }
   function ccHM(iso){ var d = new Date(iso); return isNaN(d) ? '' : dtf([], { hour: 'numeric', minute: '2-digit' }).format(d); }
   function ccDay(iso){ var d = new Date(iso); return isNaN(d) ? '' : dtf([], { day: 'numeric', month: 'short' }).format(d); }
   function ccMember(id){ return (membersCache || []).filter(function(m){ return m.id === id; })[0] || null; }
