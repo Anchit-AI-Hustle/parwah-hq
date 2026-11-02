@@ -1186,6 +1186,25 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
   .bar{gap:var(--space-8);padding-left:calc(var(--space-12) + env(safe-area-inset-left));padding-right:calc(var(--space-12) + env(safe-area-inset-right))}
 }
 @media (max-width:430px){.relpick{grid-template-columns:repeat(2,minmax(0,1fr))}.relpick button[data-role="family"]{grid-column:auto}.relpick button{white-space:nowrap;font-size:var(--fs-14)}}
+/* Family tools: Costs, Home staff, Renewals and the nearby helpers
+   (api/_expenses.mjs, _staff.mjs, _renewals.mjs, _ladder.mjs). */
+.ftmonth{display:flex;align-items:center;justify-content:space-between;gap:var(--space-8);margin:0 0 var(--space-12);max-width:420px}
+.ftmonth .cbtn{min-width:var(--tap-min);min-height:var(--tap-min);font-size:var(--fs-18)}
+.ftbig{font-family:var(--disp);font-size:var(--fs-30);font-weight:800;margin:0;line-height:1.1}
+.ftline{display:flex;justify-content:space-between;gap:var(--space-12);padding:var(--space-8) 0;border-top:1px solid var(--bone-2);font-size:var(--fs-14)}
+.ftline:first-child{border-top:0}
+.ftbal{margin:var(--space-8) 0 0;padding:var(--space-8) var(--space-12);background:var(--tint-warm-2);border-radius:var(--radius-12);font-size:var(--fs-14);font-weight:600}
+.ftmarks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-8);margin-top:var(--space-8);width:100%}
+.ftmarks button{min-height:48px;border:1.5px solid var(--bone-2);background:var(--surface);color:var(--ink);border-radius:var(--radius-12);font-family:var(--body);font-weight:700;font-size:var(--fs-14);cursor:pointer;padding:var(--space-8)}
+.ftmarks button.sel{background:var(--tint-ok);border-color:var(--ok);color:var(--ink)}
+.senior .ftmarks button{min-height:56px;font-size:var(--fs-16)}
+.ftchip{display:inline-block;font-size:var(--fs-12);font-weight:700;border-radius:var(--radius-pill);padding:var(--space-2) var(--space-8);background:var(--bone);color:var(--ink);white-space:nowrap}
+.ftchip.ok{background:var(--tint-ok)}.ftchip.warn{background:var(--tint-warm)}.ftchip.bad{background:var(--tint-bad)}
+.ftacts{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-8)}
+.ftacts .cbtn,.ftacts a.cbtn{min-height:var(--tap-min);min-width:var(--tap-min);justify-content:center;text-decoration:none;display:inline-flex;align-items:center}
+.ftsum{font-size:var(--fs-14);background:var(--surface-2);border-radius:var(--radius-12);padding:var(--space-12);margin-top:var(--space-8)}
+.ftsplit{display:flex;align-items:center;justify-content:space-between;gap:var(--space-12);margin-bottom:var(--space-8)}
+.ftsplit input[type=number]{max-width:96px}
 .native-app #getapp,.native-app .ditem[href="get/"]{display:none}
 </style>
 </head>
@@ -1480,6 +1499,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button class="big ok" id="btn-checkin">All is well ✅<span class="sub">One tap - the whole family relaxes</span></button>
       <button class="big pill" id="btn-pill">Medicines taken ✔</button>
     </div>
+    <!-- Home staff, one tap each a day (api/_staff.mjs). -->
+    <div class="card" id="staff-today" hidden></div>
     <div class="homehero">
       <h1 id="m-title"></h1>
       <p class="herostatus" id="hero-status">…</p>
@@ -1577,6 +1598,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button data-sec="bills">🧾 Bills</button>
       <button data-sec="req">💡 Suggested<i class="dot" id="sugg-dot" hidden></i></button>
       <button data-sec="notes">📝 Notes &amp; lists</button>
+      <button data-sec="expenses">💸 Costs</button>
+      <button data-sec="staff">🧹 Home staff</button>
+      <button data-sec="renewals">📅 Renewals</button>
     </div>
     <div class="subsec" data-sec="rem">
     <p class="hint" style="margin:0 0 var(--space-12)">What needs doing, who is handling it, and when it is done - the whole family sees the same list.</p>
@@ -1706,6 +1730,113 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
           <label class="pick" id="bill-upi-wrap"><span>Biller's UPI ID (optional)</span><input type="text" id="bill-upi" placeholder="e.g. bses@icici"></label>
         </div>
         <button type="button" class="go" id="btn-add-bill" style="margin-top:var(--space-16);min-height:48px">Save bill</button>
+      </div>
+    </div>
+
+    <!-- SHARED CARE COSTS (api/_expenses.mjs): who paid what for care this
+         month. A record only: Parwah never moves money here. -->
+    <div class="subsec" data-sec="expenses" hidden>
+      <p class="hint" style="margin:0 0 var(--space-12)">Who paid what for care this month, so nobody keeps a spreadsheet. A record only: Parwah never moves money.</p>
+      <div class="ftmonth" role="group" aria-label="Month">
+        <button type="button" class="cbtn ghost" id="ex-prev" aria-label="Previous month">‹</button>
+        <b id="ex-month" aria-live="polite">This month</b>
+        <button type="button" class="cbtn ghost" id="ex-next" aria-label="Next month">›</button>
+      </div>
+      <div id="ex-sum"><div class="ev">Loading…</div></div>
+      <div id="ex-bills"></div>
+      <div class="feed" id="ex-list"></div>
+      <div class="card" style="margin-top:var(--space-16)">
+        <h3>Note a cost</h3>
+        <div class="pickrow">
+          <label class="pick"><span>Amount</span><input type="number" id="ex-amt" min="1" step="1" inputmode="decimal" placeholder="1800"></label>
+          <label class="pick"><span>Currency</span><select id="ex-cur"><option>INR</option><option>USD</option><option>AED</option><option>GBP</option><option>CAD</option></select></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>For</span><select id="ex-cat"></select></label>
+          <label class="pick"><span>For whom</span><select id="ex-for"></select></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>Paid by</span><select id="ex-by"></select></label>
+          <label class="pick"><span>Date</span><input type="date" id="ex-date"></label>
+        </div>
+        <details class="fmore" id="ex-more">
+          <summary>More options: a note, a receipt from the vault</summary>
+          <label class="pick" style="display:block"><span>Note</span><input type="text" id="ex-note" maxlength="140" placeholder="e.g. Dr Mehta, monthly visit"></label>
+          <label class="pick" style="display:block;margin-top:var(--space-12)"><span>Receipt</span><select id="ex-receipt"><option value="">No receipt</option></select></label>
+          <p class="hint">Put the receipt in the Vault first, then pick it here.</p>
+        </details>
+        <button type="button" class="go" id="ex-add" style="margin-top:var(--space-16)">Save the cost</button>
+      </div>
+      <details class="card fmore" id="ex-split">
+        <summary>How the family shares costs</summary>
+        <p class="hint">Optional. With a split, the month shows how far each person is from their share.</p>
+        <div class="seg" id="ex-split-seg" role="group" aria-label="How costs are shared">
+          <button type="button" data-split="none" class="sel">No split</button>
+          <button type="button" data-split="equal">Equal</button>
+          <button type="button" data-split="shares">Set shares</button>
+        </div>
+        <div id="ex-split-rows" style="margin-top:var(--space-12)"></div>
+        <button type="button" class="cbtn" id="ex-split-save" style="margin-top:var(--space-12)">Save the split</button>
+      </details>
+    </div>
+
+    <!-- HOME STAFF (api/_staff.mjs): days, leave, advances and month-end pay,
+         with the sum shown openly. Private to the family. -->
+    <div class="subsec" data-sec="staff" hidden>
+      <p class="hint" style="margin:0 0 var(--space-12)">The people who help at home: who came, leave, advances, and what is due at month-end. Only your family sees this.</p>
+      <div class="ftmonth" role="group" aria-label="Month">
+        <button type="button" class="cbtn ghost" id="st-prev" aria-label="Previous month">‹</button>
+        <b id="st-month" aria-live="polite">This month</b>
+        <button type="button" class="cbtn ghost" id="st-next" aria-label="Next month">›</button>
+      </div>
+      <div class="feed" id="st-list"><div class="ev">Loading…</div></div>
+      <details class="card fmore" id="st-addcard">
+        <summary>Add someone who helps at home</summary>
+        <p class="hint" id="st-dpdp">Tell them what you record here: their name, phone, days and pay. Only your family sees it, and you can delete it any time.</p>
+        <div class="pickrow">
+          <label class="pick"><span>Name</span><input type="text" id="st-name" maxlength="60" placeholder="e.g. Sunita"></label>
+          <label class="pick"><span>Work</span><select id="st-role"><option value="attendant">Attendant</option><option value="cook">Cook</option><option value="cleaner">Cleaner</option><option value="driver">Driver</option><option value="other">Other</option></select></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>Monthly salary</span><input type="number" id="st-salary" min="0" step="100" inputmode="numeric" placeholder="12000"></label>
+          <label class="pick"><span>Pay day</span><input type="number" id="st-payday" min="1" max="31" inputmode="numeric" placeholder="1"></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>Usually comes at</span><input type="time" id="st-time"></label>
+          <label class="pick"><span>Phone</span><input type="tel" id="st-phone" maxlength="16" placeholder="98100 12345"></label>
+        </div>
+        <div class="pick" style="margin-top:var(--space-12)"><span>Working days</span>
+          <div class="members" id="st-days" role="group" aria-label="Working days"></div>
+        </div>
+        <details class="fmore" id="st-more">
+          <summary>More options: paid leave, ID</summary>
+          <div class="pickrow">
+            <label class="pick"><span>Paid leave days a month</span><input type="number" id="st-leave" min="0" max="10" inputmode="numeric" placeholder="0"></label>
+            <label class="pick"><span>ID, last 4 digits only</span><input type="text" id="st-last4" maxlength="4" inputmode="numeric" placeholder="4321" autocomplete="off"></label>
+          </div>
+        </details>
+        <p class="hint">If nobody marks them by an hour after their time on a working day, the family gets one alert.</p>
+        <button type="button" class="go" id="st-add" style="margin-top:var(--space-12)">Add to the register</button>
+      </details>
+    </div>
+
+    <!-- RENEWALS (api/_renewals.mjs): every date that runs out, soonest
+         first, reminded 30 and 7 days ahead. -->
+    <div class="subsec" data-sec="renewals" hidden>
+      <p class="hint" style="margin:0 0 var(--space-12)">Insurance, licences, passports, tax, FDs: soonest first. The family is reminded 30 and 7 days before each runs out.</p>
+      <div class="feed" id="rn-list"><div class="ev">Loading…</div></div>
+      <div class="card" style="margin-top:var(--space-16)">
+        <h3>Add a renewal</h3>
+        <div class="pickrow">
+          <label class="pick"><span>What</span><select id="rn-kind"></select></label>
+          <label class="pick"><span>Runs out on</span><input type="date" id="rn-date"></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>Name it</span><input type="text" id="rn-label" maxlength="100" placeholder="e.g. Maa's health policy"></label>
+          <label class="pick"><span>Whose</span><select id="rn-about"></select></label>
+        </div>
+        <button type="button" class="go" id="rn-add" style="margin-top:var(--space-16)">Add it</button>
+        <p class="hint">Papers in the Vault with an expiry date show here on their own.</p>
       </div>
     </div>
 
@@ -2245,6 +2376,28 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <div class="card"><h3>🩺 Health</h3><div class="feed" id="pp-health"></div></div>
     <div class="card"><h3>📄 Documents</h3><div class="feed" id="pp-records"></div></div>
     <div class="card"><h3>📞 People to call</h3><div class="feed" id="pp-call"></div></div>
+    <!-- THE NEAREST-PERSON LADDER (api/_ladder.mjs): nearby people who said
+         yes themselves, called in order if nobody in the family answers an SOS. -->
+    <div class="card" id="pp-ladder-card">
+      <h3>🏠 Nearby helpers for SOS</h3>
+      <p class="hint" id="pp-ladder-why" style="margin:0 0 var(--space-12)">If an SOS gets no answer from the family in 5 minutes, Parwah calls the first person here, then the next. Each person says yes on their own link first.</p>
+      <div class="feed" id="pp-ladder"></div>
+      <details class="fmore ftadd" id="ld-addcard">
+        <summary>Ask someone nearby</summary>
+        <label class="pick" style="display:block" id="ld-pickwrap"><span>From your contacts</span><select id="ld-pick"><option value="">Someone new</option></select></label>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>Name</span><input type="text" id="ld-name" maxlength="80" placeholder="e.g. Mrs Khanna"></label>
+          <label class="pick"><span>Phone</span><input type="tel" id="ld-phone" maxlength="16" placeholder="98100 12345"></label>
+        </div>
+        <div class="pickrow" style="margin-top:var(--space-8)">
+          <label class="pick"><span>How near</span><input type="text" id="ld-dist" maxlength="80" placeholder="e.g. two floors down"></label>
+          <label class="pick"><span>Usually free</span><input type="text" id="ld-hours" maxlength="80" placeholder="e.g. evenings, all night"></label>
+        </div>
+        <label class="gchk" style="margin-top:var(--space-12);width:fit-content"><input type="checkbox" id="ld-key"> Has a house key</label>
+        <button type="button" class="go" id="ld-add" style="margin-top:var(--space-12)">Make their link</button>
+        <p class="hint">They see what Parwah will do, what is kept and how to remove it, and answer themselves.</p>
+      </details>
+    </div>
     <div class="card"><h3>💡 Useful to know</h3><div class="feed" id="pp-useful"></div>
       <p class="hint" style="margin-top:var(--space-12)">🟡 means it is due a re-check: nothing here is assumed current.</p></div>
   </section>
@@ -2956,6 +3109,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       <button data-tab="care" data-sec="rem">To do</button>
       <button data-tab="care" data-sec="req">Suggested</button>
       <button data-tab="care" data-sec="notes">Notes &amp; lists</button>
+      <button data-tab="care" data-sec="expenses">Costs</button>
+      <button data-tab="care" data-sec="staff">Home staff</button>
+      <button data-tab="care" data-sec="renewals">Renewals</button>
     </div>
     <button data-tab="people" id="tab-people"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-users"/></svg></span><span id="tab-people-l">Family</span></button>
     <p class="side-more side-only">More</p>
@@ -3060,6 +3216,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
         <button class="ditem sub" data-tab="care" data-sec="rem">To do</button>
         <button class="ditem sub" data-tab="care" data-sec="req">Suggested</button>
         <button class="ditem sub" data-tab="care" data-sec="notes">Notes &amp; lists</button>
+        <button class="ditem sub" data-tab="care" data-sec="expenses">Costs</button>
+        <button class="ditem sub" data-tab="care" data-sec="staff">Home staff</button>
+        <button class="ditem sub" data-tab="care" data-sec="renewals">Renewals</button>
       </div>
     </div>
     <button class="ditem" data-tab="people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg> Family</button>
@@ -3131,6 +3290,8 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     <p id="sa-sub"></p>
     <a class="ss-btn solid" id="sa-call">📞 Call</a>
     <button type="button" class="ss-btn solid" id="sa-ack">🧡 I am on it</button>
+    <p class="ss-label" id="sa-ladder-l" hidden>Nearby, said they can help</p>
+    <div class="ss-row" id="sa-ladder" hidden></div>
     <button type="button" class="ss-btn" id="sa-map">📍 See where they are</button>
     <button type="button" class="ss-btn" id="sa-play" hidden>▶ Listen to the recording</button>
     <button type="button" class="ss-btn" id="sa-quiet">Silence the alarm</button>
@@ -3496,6 +3657,9 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     });
     if (pane === 'care' && sec === 'notes') refreshNotes();
     if (pane === 'care' && sec === 'bills') loadBills();
+    if (pane === 'care' && sec === 'expenses') loadExpenses();
+    if (pane === 'care' && sec === 'staff') loadStaff();
+    if (pane === 'care' && sec === 'renewals') loadRenewals();
     if (pane === 'vault' && sec === 'locator') loadAssetLocators();
   }
   ['care', 'fun', 'vault', 'day'].forEach(function(pane){
@@ -3724,6 +3888,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     if (go) { hs.setAttribute('role', 'button'); hs.tabIndex = 0; hs.setAttribute('data-go', go); hs.setAttribute('aria-label', hs.textContent + (go === 'care' ? '. Open To do' : '. Open alerts')); }
     else { hs.removeAttribute('role'); hs.removeAttribute('tabindex'); hs.removeAttribute('data-go'); hs.removeAttribute('aria-label'); }
 
+    staffTodayMaybe();
     notifsCache = data.events;
     renderNotifs();
     pillFromFeed(data.events);
@@ -4274,6 +4439,445 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       }
     });
   });
+
+  // ---------- Family tools: Costs, Home staff, Renewals, Nearby helpers ----------
+  // Server: api/_expenses.mjs, _staff.mjs, _renewals.mjs, _ladder.mjs, all
+  // behind /api/care?area=... Records only: nothing here moves money.
+  function ftQs(extra){ return '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + (extra || ''); }
+  function ftGet(area, extra){ return apiGet(API.care + '?area=' + area + ftQs(extra)); }
+  function ftPost(action, body){ var b = body || {}; b.code = state.code; b.memberId = state.memberId; b.action = action; return post(API.care, b); }
+  function ftThisMonth(){ var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+  function ftToday(){ var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function ftMonthShift(m, k){ var d = new Date(Date.UTC(+m.slice(0, 4), +m.slice(5, 7) - 1 + k, 1)); return d.toISOString().slice(0, 7); }
+  function ftMonthName(m){ try { return new Date(m + '-15T12:00:00Z').toLocaleDateString([], { month: 'long', year: 'numeric' }); } catch (e) { return m; } }
+  function ftFirst(n){ return String(n || '').split(' ')[0]; }
+  function ftMembers(onlyApp){ return (membersCache || []).filter(function(m){ return !onlyApp || onApp(m); }); }
+  function ftFill(sel, list, keep, first){
+    var cur = keep !== undefined ? keep : sel.value;
+    sel.innerHTML = (first ? '<option value="">' + esc(first) + '</option>' : '') + list.map(function(m){
+      return '<option value="' + esc(m.id) + '">' + (m.id === state.memberId ? 'Me' : esc(m.name)) + '</option>';
+    }).join('');
+    if (cur && sel.querySelector('option[value="' + cur + '"]')) sel.value = cur;
+  }
+  function ftOffline(el, what){ $(el).innerHTML = '<div class="ev">No connection. ' + what + ' will load when you are back online.</div>'; }
+  function ftFail(el, j, what){ $(el).innerHTML = '<div class="ev">Could not load ' + what + '. ' + esc((j && j.error) || 'Try again in a minute.') + '</div>'; }
+
+  // ---- Costs
+  var FT_CAT = { medicines: '💊 Medicines', doctor: '🩺 Doctor', tests: '🧪 Tests', staff: '🧹 Home staff', bills: '🧾 Bills', groceries: '🛒 Groceries', travel: '🚕 Travel', other: '📦 Other' };
+  var exMonth = null, exData = null, exSplit = 'none';
+  function loadExpenses(){
+    if (!state) return;
+    exMonth = exMonth || ftThisMonth();
+    $('ex-month').textContent = ftMonthName(exMonth);
+    $('ex-next').disabled = exMonth >= ftThisMonth();
+    if (!$('ex-cat').options.length) $('ex-cat').innerHTML = Object.keys(FT_CAT).map(function(k){ return '<option value="' + k + '">' + FT_CAT[k] + '</option>'; }).join('');
+    ftFill($('ex-for'), ftMembers(false), undefined, 'The whole family');
+    ftFill($('ex-by'), ftMembers(false), $('ex-by').value || state.memberId);
+    if (!$('ex-date').value) $('ex-date').value = ftToday();
+    if (!$('ex-cur').getAttribute('data-set')) { var c = myCurrency(); if (['INR', 'USD', 'AED', 'GBP', 'CAD'].indexOf(c) >= 0) $('ex-cur').value = c; $('ex-cur').setAttribute('data-set', '1'); }
+    foldSync('ex-more');
+    if (!exData) $('ex-sum').innerHTML = '<div class="ev">Loading…</div>';
+    ftGet('expenses', '&month=' + exMonth).then(function(j){
+      if (!j.ok) { ftFail('ex-sum', j, 'the costs'); return; }
+      exData = j; renderExpenses();
+    }).catch(function(){ ftOffline('ex-sum', 'The costs'); });
+    exReceipts();
+  }
+  function exReceipts(){
+    apiGet(API.vault + ftQs()).then(function(j){
+      if (!j.ok) return;
+      var keep = $('ex-receipt').value;
+      $('ex-receipt').innerHTML = '<option value="">No receipt</option>' + (j.docs || []).filter(function(d){ return d.my_level === 'full'; }).map(function(d){
+        return '<option value="' + esc(d.id) + '">' + esc(d.label) + (d.about_name ? ' · ' + esc(d.about_name) : '') + '</option>';
+      }).join('');
+      if (keep) $('ex-receipt').value = keep;
+    }).catch(function(){});
+  }
+  function renderExpenses(){
+    var j = exData, name = ftMonthName(j.month);
+    var sum = (j.summary || []).map(function(t){
+      return '<div class="card" style="margin-bottom:var(--space-12)">' +
+        '<p class="hint" style="margin:0">Total for ' + esc(name) + (j.summary.length > 1 ? ', in ' + esc(t.currency) : '') + '</p>' +
+        '<div class="ftbig">' + esc(moneyFmt(t.total, t.currency)) + '</div>' +
+        '<div class="ftsum"><b>Paid by</b>' + t.byPayer.map(function(p){ return '<div class="ftline"><span>' + esc(p.memberId === state.memberId ? 'You' : p.name) + '</span><b>' + esc(moneyFmt(p.amount, t.currency)) + '</b></div>'; }).join('') + '</div>' +
+        '<div class="ftsum"><b>On what</b>' + t.byCategory.map(function(c){ return '<div class="ftline"><span>' + esc(FT_CAT[c.category] || c.category) + '</span><b>' + esc(moneyFmt(c.amount, t.currency)) + '</b></div>'; }).join('') + '</div>' +
+        (t.balance && t.balance.length ? '<p class="eyebrow" style="margin:var(--space-12) 0 0">Balance this month</p>' + t.balance.map(function(b){ return '<p class="ftbal">' + esc(b.line) + '</p>'; }).join('') : '') +
+        '</div>';
+    }).join('');
+    $('ex-sum').innerHTML = sum || '<div class="ev">Nothing noted for ' + esc(name) + ' yet. Add the first cost below, or turn a paid bill into one.</div>';
+    var bills = j.settledBills || [];
+    $('ex-bills').innerHTML = bills.length ? '<p class="eyebrow">Paid bills not in Costs yet</p><div class="feed">' + bills.map(function(b){
+      return '<div class="crow"><span class="txt"><b>🧾 ' + esc(b.biller_name) + ' · ' + esc(moneyFmt(b.amount, b.currency)) + '</b><small>Paid by ' + esc(b.settled_name || 'the family') + '</small></span>' +
+        '<button type="button" class="cbtn" data-exbill="' + esc(b.id) + '">Add to costs</button></div>';
+    }).join('') + '</div>' : '';
+    $('ex-list').innerHTML = (j.expenses || []).map(function(e){
+      var mine = e.created_by === state.memberId || e.paid_by === state.memberId;
+      return '<div class="crow"><span class="txt"><b>' + esc(FT_CAT[e.category] || e.category) + ' · ' + esc(moneyFmt(e.amount, e.currency)) + '</b>' +
+        '<small>' + esc((e.paid_by === state.memberId ? 'You' : (e.paid_name || 'Someone')) + ' paid' + (e.for_name ? ', for ' + e.for_name : '') + ' · ' + vDate(e.spent_on) + (e.note ? ' · ' + e.note : '')) + (e.receipt_doc_id ? ' · 📎 receipt in the vault' : '') + '</small></span>' +
+        (mine ? '<button type="button" class="cbtn ghost" data-exdel="' + esc(e.id) + '" aria-label="Remove this cost">Remove</button>' : '') + '</div>';
+    }).join('');
+    exSplit = (j.split && j.split.mode) || 'none';
+    renderSplit();
+  }
+  function renderSplit(){
+    var sh = (exData && exData.split && exData.split.shares) || {};
+    $('ex-split-seg').querySelectorAll('button').forEach(function(b){ b.classList.toggle('sel', b.getAttribute('data-split') === exSplit); });
+    pressSync($('ex-split-seg'));
+    var ms = ftMembers(false);
+    $('ex-split-rows').innerHTML = exSplit === 'none' ? '<p class="hint">Costs are only listed, with no shares.</p>'
+      : exSplit === 'equal' ? '<div class="members">' + ms.map(function(m){
+          return '<label class="gchk"><input type="checkbox" data-exsh="' + esc(m.id) + '"' + (sh[m.id] || !Object.keys(sh).length ? ' checked' : '') + '> ' + esc(m.id === state.memberId ? 'Me' : m.name) + '</label>';
+        }).join('') + '</div><p class="hint">Ticked people share every cost equally.</p>'
+      : ms.map(function(m){
+          return '<label class="ftsplit"><span>' + esc(m.id === state.memberId ? 'Me' : m.name) + '</span><input type="number" min="0" max="100" step="1" inputmode="numeric" data-exsh="' + esc(m.id) + '" value="' + esc(sh[m.id] || 0) + '" aria-label="Share for ' + esc(m.name) + '"></label>';
+        }).join('') + '<p class="hint">Shares are parts: 2 and 1 means one pays two thirds.</p>';
+  }
+  $('ex-split-seg').addEventListener('click', function(e){ var b = e.target.closest('button[data-split]'); if (!b) return; exSplit = b.getAttribute('data-split'); renderSplit(); });
+  $('ex-split-save').addEventListener('click', function(){
+    var shares = {};
+    $('ex-split-rows').querySelectorAll('[data-exsh]').forEach(function(x){ shares[x.getAttribute('data-exsh')] = x.type === 'checkbox' ? x.checked : +x.value || 0; });
+    ftPost('split_set', { mode: exSplit, shares: shares }).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not save the split'); return; }
+      toast('Split saved'); loadExpenses();
+    }).catch(function(){ toast('No connection - try again'); });
+  });
+  $('ex-prev').addEventListener('click', function(){ exMonth = ftMonthShift(exMonth || ftThisMonth(), -1); exData = null; loadExpenses(); });
+  $('ex-next').addEventListener('click', function(){ if ((exMonth || '') >= ftThisMonth()) return; exMonth = ftMonthShift(exMonth, 1); exData = null; loadExpenses(); });
+  $('ex-add').addEventListener('click', function(){
+    var amt = +$('ex-amt').value;
+    if (!(amt > 0)) { fieldErr('ex-amt', 'Write the amount as a number above 0'); return; }
+    var b = $('ex-add'); b.disabled = true;
+    ftPost('expense_add', { amount: amt, currency: $('ex-cur').value, category: $('ex-cat').value, forMemberId: $('ex-for').value || null,
+      paidById: $('ex-by').value || state.memberId, spentOn: $('ex-date').value, note: $('ex-note').value.trim(), receiptDocId: $('ex-receipt').value || null })
+      .then(function(j){
+        b.disabled = false;
+        if (!j.ok) { toast(j.error || 'Could not save the cost'); return; }
+        toast('Cost noted'); $('ex-amt').value = ''; $('ex-note').value = ''; $('ex-receipt').value = '';
+        var d = $('ex-date').value; if (d && d.slice(0, 7) !== exMonth) exMonth = d.slice(0, 7);
+        loadExpenses();
+      }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  $('pane-care').addEventListener('click', function(e){
+    var b = e.target.closest('[data-exbill]');
+    if (b) {
+      b.disabled = true;
+      ftPost('expense_from_bill', { billId: b.getAttribute('data-exbill') }).then(function(j){ toast(j.ok ? 'Added to costs' : (j.error || 'Could not add it')); loadExpenses(); })
+        .catch(function(){ b.disabled = false; toast('No connection - try again'); });
+      return;
+    }
+    b = e.target.closest('[data-exdel]');
+    if (b) {
+      var id = b.getAttribute('data-exdel');
+      askSheet('Remove this cost?', 'It comes off the month for everyone.', 'Remove', 'Keep it', true).then(function(y){
+        if (!y) return;
+        ftPost('expense_remove', { id: id }).then(function(j){ toast(j.ok ? 'Removed' : (j.error || 'Could not remove it')); loadExpenses(); });
+      });
+    }
+  });
+
+  // ---- Home staff
+  var FT_ROLE = { attendant: 'Attendant', cook: 'Cook', cleaner: 'Cleaner', driver: 'Driver', other: 'Helps at home' };
+  var FT_MARK = { came: 'Came', half: 'Half day', leave: 'Leave' };
+  var FT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var stMonth = null, stData = null, stTodayAt = 0;
+  function stMarks(s){
+    return '<div class="ftmarks" role="group" aria-label="' + esc(s.name) + ' today">' + Object.keys(FT_MARK).map(function(k){
+      return '<button type="button" data-stmark="' + esc(s.id) + '" data-st="' + k + '" aria-pressed="' + (s.todayStatus === k) + '"' + (s.todayStatus === k ? ' class="sel"' : '') + '>' + (s.todayStatus === k ? '✓ ' : '') + FT_MARK[k] + '</button>';
+    }).join('') + '</div>';
+  }
+  function loadStaff(){
+    if (!state) return;
+    stMonth = stMonth || ftThisMonth();
+    $('st-month').textContent = ftMonthName(stMonth);
+    $('st-next').disabled = stMonth >= ftThisMonth();
+    if (!$('st-days').children.length) $('st-days').innerHTML = FT_DAYS.map(function(d, i){ return '<label class="gchk"><input type="checkbox" data-stday="' + i + '"' + (i ? ' checked' : '') + '> ' + d + '</label>'; }).join('');
+    foldSync('st-more');
+    if (!stData) $('st-list').innerHTML = '<div class="ev">Loading…</div>';
+    ftGet('staff', '&month=' + stMonth).then(function(j){
+      if (!j.ok) { ftFail('st-list', j, 'the register'); return; }
+      stData = j; renderStaff(); renderStaffToday();
+    }).catch(function(){ ftOffline('st-list', 'The register'); });
+  }
+  function renderStaff(){
+    var j = stData, cur = j.month === ftThisMonth();
+    $('st-addcard').open = !j.staff.length || $('st-addcard').open;
+    $('st-list').innerHTML = j.staff.length ? j.staff.map(function(s){
+      var p = s.pay, m = ftMonthName(j.month);
+      return '<div class="card" style="margin-bottom:var(--space-12)">' +
+        '<h3 style="margin:0">' + esc(s.name) + ' <span class="ftchip">' + esc(FT_ROLE[s.role] || s.role) + '</span></h3>' +
+        '<p class="hint" style="margin:var(--space-4) 0 0">' + esc((s.arrive_time ? 'Comes at ' + s.arrive_time + ' · ' : '') + String(s.work_days).split('').map(function(d){ return FT_DAYS[+d]; }).join(', ') + (s.id_last4 ? ' · ID ending ' + s.id_last4 : '')) + '</p>' +
+        (cur ? '<p style="margin:var(--space-12) 0 0;font-weight:700">Today: ' + (s.todayStatus ? esc(FT_MARK[s.todayStatus]) + ' ✓' : s.workingToday ? 'not marked yet' : 'a day off') + '</p>' + stMarks(s) : '') +
+        '<div class="ftsum"><b>' + esc(m) + '</b>' +
+          '<div class="ftline"><span>Came</span><b>' + p.came + ' day' + (p.came === 1 ? '' : 's') + '</b></div>' +
+          '<div class="ftline"><span>Half days</span><b>' + p.half + '</b></div>' +
+          '<div class="ftline"><span>Leave</span><b>' + p.leave + '</b></div>' +
+          '<div class="ftline"><span>Advances</span><b>' + esc(moneyFmt(p.advances, s.currency)) + '</b></div>' +
+          '<div class="ftline"><span>Due</span><b>' + esc(moneyFmt(p.payable, s.currency)) + '</b></div>' +
+          '<p style="margin:var(--space-8) 0 0">' + esc(p.formula) + '</p><p class="hint" style="margin:var(--space-4) 0 0">' + esc(p.note) + '</p>' +
+          s.advanceList.map(function(a){ return '<div class="ftline"><span>Advance ' + esc(vDate(a.on_date)) + (a.note ? ' · ' + esc(a.note) : '') + '</span><button type="button" class="linkbtn" data-stadvdel="' + esc(a.id) + '">Remove</button></div>'; }).join('') +
+        '</div>' +
+        (s.paid ? '<p class="ftbal">✅ Paid ' + esc(moneyFmt(s.paid.amount, s.currency)) + ' by ' + esc(s.paid.paid_name || 'the family') + '</p>' : '') +
+        '<div class="ftacts">' +
+          (s.paid ? '<button type="button" class="cbtn ghost" data-stunpay="' + esc(s.id) + '">Undo paid</button>'
+                  : '<button type="button" class="cbtn" data-stpay="' + esc(s.id) + '">Mark paid</button>') +
+          '<button type="button" class="cbtn ghost" data-stadv="' + esc(s.id) + '">Note an advance</button>' +
+          (s.phone ? '<a class="cbtn ghost" href="tel:' + esc(s.phone) + '">📞 Call</a>' : '') +
+          '<button type="button" class="cbtn ghost" data-stdel="' + esc(s.id) + '">Remove</button>' +
+        '</div></div>';
+    }).join('') : '<div class="ev">Nobody in the register yet. Add the people who help at home below: a tap a day keeps the month-end sum right.</div>';
+  }
+  // On an elder's Today: one tap each, for the people expected today.
+  function renderStaffToday(){
+    var el = $('staff-today'); if (!el || !stData) return;
+    var list = stData.staff.filter(function(s){ return s.workingToday || s.todayStatus; });
+    el.hidden = !(state && state.role === 'parent' && list.length);
+    if (el.hidden) return;
+    el.innerHTML = '<h3 style="margin:0 0 var(--space-4)">Who came today?</h3><p class="hint" style="margin:0">One tap each. The family sees it.</p>' +
+      list.map(function(s){ return '<p style="margin:var(--space-12) 0 0;font-weight:700">' + esc(s.name) + ' <small class="hint">' + esc(FT_ROLE[s.role] || '') + '</small></p>' + stMarks(s); }).join('');
+  }
+  function staffTodayMaybe(){
+    if (!state || state.role !== 'parent' || Date.now() - stTodayAt < 300000) return;
+    stTodayAt = Date.now();
+    ftGet('staff').then(function(j){ if (j.ok) { if (!stMonth || stMonth === j.month) stData = j; renderStaffToday(); } }).catch(function(){});
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-stmark]'); if (!b) return;
+    var id = b.getAttribute('data-stmark'), st = b.getAttribute('data-st');
+    var s = stData && stData.staff.filter(function(x){ return x.id === id; })[0];
+    var clear = s && s.todayStatus === st;
+    b.disabled = true;
+    ftPost('staff_mark', { staffId: id, status: clear ? 'clear' : st }).then(function(j){
+      b.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not save that'); return; }
+      toast(clear ? 'Cleared for today' : (s ? s.name : 'Marked') + ': ' + FT_MARK[st] + ' ✓');
+      stTodayAt = 0; loadStaff();
+    }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  $('st-list').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b || !stData) return;
+    var sid = b.getAttribute('data-stpay') || b.getAttribute('data-stunpay') || b.getAttribute('data-stadv') || b.getAttribute('data-stdel');
+    var s = sid && stData.staff.filter(function(x){ return x.id === sid; })[0];
+    if (b.hasAttribute('data-stpay') && s) {
+      askSheet('Mark ' + ftMonthName(stData.month) + ' paid for ' + s.name + '?', s.pay.formula + '. It is also added to Costs.', 'Mark paid', 'Not now').then(function(y){
+        if (!y) return;
+        ftPost('staff_pay', { staffId: s.id, month: stData.month }).then(function(j){ toast(j.ok ? 'Marked paid ✓' : (j.error || 'Could not mark it paid')); exData = null; loadStaff(); });
+      });
+    } else if (b.hasAttribute('data-stunpay') && s) {
+      ftPost('staff_pay_undo', { staffId: s.id, month: stData.month }).then(function(j){ toast(j.ok ? 'Not paid yet, as before' : (j.error || 'Could not undo')); loadStaff(); });
+    } else if (b.hasAttribute('data-stadv') && s) {
+      askText('An advance to ' + s.name, 'Amount (' + curSym(s.currency) + ')', 'Save', 'Cancel').then(function(v){
+        if (!v) return;
+        var amt = +String(v).replace(/[^\d.]/g, '');
+        if (!(amt > 0)) { toast('Write the advance as a number above 0'); return; }
+        ftPost('staff_advance', { staffId: s.id, amount: amt }).then(function(j){ toast(j.ok ? 'Advance noted' : (j.error || 'Could not save it')); loadStaff(); });
+      });
+    } else if (b.hasAttribute('data-stdel') && s) {
+      askSheet('Remove ' + s.name + ' from the register?', 'Their days, advances and pay records are deleted. Costs already noted stay.', 'Remove', 'Keep', true).then(function(y){
+        if (!y) return;
+        ftPost('staff_remove', { staffId: s.id }).then(function(j){ toast(j.ok ? 'Removed' : (j.error || 'Could not remove')); loadStaff(); });
+      });
+    } else if (b.hasAttribute('data-stadvdel')) {
+      ftPost('staff_advance_remove', { id: b.getAttribute('data-stadvdel') }).then(function(j){ toast(j.ok ? 'Advance removed' : (j.error || 'Could not remove it')); loadStaff(); });
+    }
+  });
+  $('st-prev').addEventListener('click', function(){ stMonth = ftMonthShift(stMonth || ftThisMonth(), -1); stData = null; loadStaff(); });
+  $('st-next').addEventListener('click', function(){ if ((stMonth || '') >= ftThisMonth()) return; stMonth = ftMonthShift(stMonth, 1); stData = null; loadStaff(); });
+  $('st-add').addEventListener('click', function(){
+    var name = $('st-name').value.trim();
+    if (!name) { fieldErr('st-name', 'Write their name'); return; }
+    var l4 = $('st-last4').value.trim();
+    if (l4 && !/^[A-Za-z0-9]{4}$/.test(l4)) { fieldErr('st-last4', 'Only the last 4 digits of an ID, nothing more'); return; }
+    var days = []; $('st-days').querySelectorAll('[data-stday]').forEach(function(x){ if (x.checked) days.push(+x.getAttribute('data-stday')); });
+    ftPost('staff_add', { name: name, role: $('st-role').value, salary: $('st-salary').value, payDay: $('st-payday').value, arriveTime: $('st-time').value,
+      phone: $('st-phone').value.trim(), workDays: days, paidLeave: $('st-leave').value, idLast4: l4 }).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not add them'); return; }
+      toast(name + ' is in the register');
+      ['st-name', 'st-salary', 'st-payday', 'st-time', 'st-phone', 'st-leave', 'st-last4'].forEach(function(x){ $(x).value = ''; });
+      $('st-addcard').open = false; loadStaff();
+    }).catch(function(){ toast('No connection - try again'); });
+  });
+
+  // ---- Renewals
+  var rnData = null;
+  function rnWhen(d){ return d < 0 ? 'Ran out ' + (-d) + ' day' + (d === -1 ? '' : 's') + ' ago' : d === 0 ? 'Runs out today' : d === 1 ? 'Runs out tomorrow' : 'In ' + d + ' days'; }
+  function loadRenewals(){
+    if (!state) return;
+    ftFill($('rn-about'), ftMembers(false), undefined, 'The household');
+    if (!rnData) $('rn-list').innerHTML = '<div class="ev">Loading…</div>';
+    ftGet('renewals').then(function(j){
+      if (!j.ok) { ftFail('rn-list', j, 'renewals'); return; }
+      rnData = j;
+      if (!$('rn-kind').options.length) $('rn-kind').innerHTML = Object.keys(j.kinds).map(function(k){ return '<option value="' + k + '">' + j.kinds[k].icon + ' ' + esc(j.kinds[k].label) + '</option>'; }).join('');
+      renderRenewals();
+    }).catch(function(){ ftOffline('rn-list', 'Renewals'); });
+  }
+  function renderRenewals(){
+    var ms = ftMembers(true);
+    $('rn-list').innerHTML = rnData.renewals.length ? rnData.renewals.map(function(r){
+      var chip = r.days < 0 ? 'bad' : r.days <= 30 ? 'warn' : 'ok';
+      var months = Math.round((Date.now() - new Date(r.last_verified_at)) / 2592000000);
+      var key = r.source + ':' + r.id;
+      return '<div class="crow"><span class="txt"><b>' + r.icon + ' ' + esc(r.label) + '</b> <span class="ftchip ' + chip + '">' + rnWhen(r.days) + '</span>' +
+        '<small>' + esc([r.kindLabel !== r.label ? r.kindLabel : null, r.about_name, vDate(r.expires_on)].filter(Boolean).join(' · ')) +
+        (r.task_open ? ' · ✅ a task is open' + (r.task_name ? ' (' + esc(r.task_name) + ' has it)' : '') : r.owner_name ? ' · ' + esc(r.owner_name) + ' looks after it' : '') +
+        (r.stale ? ' · 🟡 checked ' + months + ' months ago' : '') + '</small>' +
+        // A task picker only where it is near: a date months away is listed, not pushed.
+        (!r.task_open && r.days <= 60 ? '<span class="ftacts"><label class="pick" style="margin:0;flex:1 1 140px"><span>Who renews it</span><select data-rnowner="' + esc(key) + '"><option value="">Anyone who takes it</option>' +
+           ms.map(function(m){ return '<option value="' + esc(m.id) + '"' + (m.id === (r.owner_member || '') ? ' selected' : '') + '>' + (m.id === state.memberId ? 'Me' : esc(m.name)) + '</option>'; }).join('') +
+           '</select></label><button type="button" class="cbtn" data-rntask="' + esc(key) + '">Make it a task</button></span>' : '') +
+        '<span class="ftacts">' + (r.source === 'vault'
+          ? '<button type="button" class="cbtn ghost" data-rnvault="' + esc(r.id) + '" data-about="' + esc(r.about_member) + '">Open in the vault</button>'
+          : (r.stale ? '<button type="button" class="cbtn ghost" data-rnok="' + esc(r.id) + '">Still right</button>' : '') +
+            '<button type="button" class="cbtn ghost" data-rnnew="' + esc(r.id) + '">Renewed: new date</button>' +
+            '<button type="button" class="cbtn ghost" data-rndel="' + esc(r.id) + '">Remove</button>') +
+        '</span></span></div>';
+    }).join('') : '<div class="ev">Nothing to renew yet. Add the dates that run out, and the family is reminded a month and a week before.</div>';
+  }
+  $('rn-list').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b || !rnData) return;
+    if (b.hasAttribute('data-rnvault')) {
+      var vid = b.getAttribute('data-rnvault');
+      openVaultFor(b.getAttribute('data-about'));
+      var tries = 0, go = function(){ if (vDoc(vid)) openDoc(vid); else if (tries++ < 20) setTimeout(go, 150); };
+      go(); return;
+    }
+    var k = b.getAttribute('data-rntask');
+    if (k) {
+      var sel = $('rn-list').querySelector('select[data-rnowner="' + k + '"]'), parts = k.split(':');
+      b.disabled = true;
+      ftPost('renewal_task', { id: parts[1], source: parts[0], ownerId: sel && sel.value ? sel.value : null }).then(function(j){
+        b.disabled = false;
+        toast(j.ok ? 'Task made. It is in To do.' : (j.error || 'Could not make the task'));
+        if (j.ok) { loadRenewals(); try { refresh(); } catch (x) {} }
+      }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+      return;
+    }
+    if (b.hasAttribute('data-rnok')) { ftPost('renewal_verify', { id: b.getAttribute('data-rnok') }).then(function(j){ toast(j.ok ? 'Marked as checked ✓' : (j.error || 'Could not save')); loadRenewals(); }); return; }
+    if (b.hasAttribute('data-rnnew')) {
+      var r = rnData.renewals.filter(function(x){ return x.id === b.getAttribute('data-rnnew'); })[0]; if (!r) return;
+      askText('Renewed ' + r.label + '? Write the new date it runs out', 'New date, like 2027-03-31', 'Save', 'Cancel').then(function(v){
+        if (!v) return;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { toast('Write the date like 2027-03-31'); return; }
+        ftPost('renewal_update', { id: r.id, kind: r.kind, label: r.label, aboutMemberId: r.about_member, ownerId: r.owner_member, expiresOn: v, notes: r.notes })
+          .then(function(j){ toast(j.ok ? 'New date saved ✓' : (j.error || 'Could not save')); loadRenewals(); });
+      });
+      return;
+    }
+    if (b.hasAttribute('data-rndel')) {
+      var id = b.getAttribute('data-rndel');
+      askSheet('Remove this renewal?', 'Its reminders stop.', 'Remove', 'Keep it', true).then(function(y){
+        if (y) ftPost('renewal_remove', { id: id }).then(function(j){ toast(j.ok ? 'Removed' : (j.error || 'Could not remove')); loadRenewals(); });
+      });
+    }
+  });
+  $('rn-add').addEventListener('click', function(){
+    var d = $('rn-date').value;
+    if (!d) { fieldErr('rn-date', 'Pick the date it runs out'); return; }
+    if ($('rn-kind').value === 'other' && !$('rn-label').value.trim()) { fieldErr('rn-label', 'Say what needs renewing'); return; }
+    ftPost('renewal_add', { kind: $('rn-kind').value, label: $('rn-label').value.trim(), expiresOn: d, aboutMemberId: $('rn-about').value || null }).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not add it'); return; }
+      toast('Added. The family is reminded a month and a week before.');
+      $('rn-date').value = ''; $('rn-label').value = ''; loadRenewals();
+    }).catch(function(){ toast('No connection - try again'); });
+  });
+
+  // ---- Nearby helpers for SOS (on a person's page)
+  var ldData = null, ldPerson = null, ldLinks = {};
+  var LD_STATE = { yes: ['ok', 'Said yes ✓'], no: ['bad', 'Said no'], pending: ['warn', 'Waiting for their answer'] };
+  function loadLadder(pid){
+    if (!state) return;
+    ldPerson = pid;
+    var nm = ((membersCache || []).filter(function(m){ return m.id === pid; })[0] || {}).name || 'them';
+    $('pp-ladder-card').querySelector('h3').textContent = '🏠 Nearby helpers for ' + ftFirst(nm);
+    ftGet('ladder').then(function(j){
+      if (!j.ok) { ftFail('pp-ladder', j, 'nearby helpers'); return; }
+      ldData = j; renderLadder();
+    }).catch(function(){ ftOffline('pp-ladder', 'Nearby helpers'); });
+  }
+  function ldWa(row, link){
+    var abs = location.origin + link;
+    var who = ((membersCache || []).filter(function(m){ return m.id === row.person_id; })[0] || {}).name || 'our parent';
+    var msg = 'Namaste ' + ftFirst(row.name) + ', this is ' + state.name + '. Could you be someone nearby who helps ' + ftFirst(who) + ' in an emergency? Parwah would call you only if ' + ftFirst(who) + ' presses SOS and the family cannot be reached. Please read and answer here: ' + abs;
+    return 'https://wa.me/' + String(row.phone).replace(/[^\d]/g, '') + '?text=' + encodeURIComponent(msg);
+  }
+  function renderLadder(){
+    var rows = ldData.ladder.filter(function(x){ return x.person_id === ldPerson; });
+    var yes = 0;
+    $('pp-ladder').innerHTML = rows.length ? rows.map(function(r, i){
+      var st = LD_STATE[r.consent] || LD_STATE.pending, link = ldLinks[r.id];
+      if (r.consent === 'yes') yes++;
+      return '<div class="crow"><span class="txt"><b>' + (r.consent === 'yes' ? yes + '. ' : '') + esc(r.name) + '</b> <span class="ftchip ' + st[0] + '">' + st[1] + '</span>' +
+        '<small>' + esc([r.distance_note, r.has_key ? '🔑 has a key' : null, r.hours ? 'free ' + r.hours : null, r.phone].filter(Boolean).join(' · ')) + '</small>' +
+        '<span class="ftacts">' +
+          '<button type="button" class="cbtn ghost" data-ldmove="' + esc(r.id) + '" data-dir="-1" aria-label="Move ' + esc(r.name) + ' up"' + (i ? '' : ' disabled') + '>↑</button>' +
+          '<button type="button" class="cbtn ghost" data-ldmove="' + esc(r.id) + '" data-dir="1" aria-label="Move ' + esc(r.name) + ' down"' + (i < rows.length - 1 ? '' : ' disabled') + '>↓</button>' +
+          (link ? '<a class="cbtn" href="' + esc(ldWa(r, link)) + '" target="_blank" rel="noopener">Send on WhatsApp</a><button type="button" class="cbtn ghost" data-ldcopy="' + esc(r.id) + '">Copy link</button>'
+                : '<button type="button" class="cbtn ghost" data-ldlink="' + esc(r.id) + '">' + (r.consent === 'pending' ? 'Get their link' : 'New link') + '</button>') +
+          '<button type="button" class="cbtn ghost" data-lddel="' + esc(r.id) + '">Remove</button>' +
+        '</span></span></div>';
+    }).join('') : '<div class="ev">Nobody yet. A neighbour, the building guard or a relative in town: someone who could be at the door in minutes.</div>';
+    $('pp-ladder-why').textContent = 'If an SOS gets no answer from the family in 5 minutes, ' + (ldData.calls ? 'Parwah calls' : 'the family is shown') +
+      ' the first person who said yes, then the next. Each person says yes on their own link first.' + (ldData.calls ? '' : ' Their numbers appear on the SOS screen with Call buttons.');
+    var used = {}; rows.forEach(function(r){ if (r.book_entry_id) used[r.book_entry_id] = 1; });
+    var pick = (ldData.nearby || []).filter(function(c){ return !used[c.id] && (!c.about_member || c.about_member === ldPerson); });
+    $('ld-pick').innerHTML = '<option value="">Someone new</option>' + pick.map(function(c){ return '<option value="' + esc(c.id) + '">' + esc(c.name) + ' · ' + esc(c.phone) + '</option>'; }).join('');
+    $('ld-pickwrap').hidden = !pick.length;
+  }
+  $('ld-pick').addEventListener('change', function(){
+    var c = ldData && (ldData.nearby || []).filter(function(x){ return x.id === $('ld-pick').value; })[0];
+    if (c) { $('ld-name').value = c.name; $('ld-phone').value = c.phone; }
+  });
+  $('ld-add').addEventListener('click', function(){
+    var name = $('ld-name').value.trim(), phone = $('ld-phone').value.trim();
+    if (!name) { fieldErr('ld-name', 'Write their name'); return; }
+    if (phone.replace(/[^\d]/g, '').length < 8) { fieldErr('ld-phone', 'Write a phone number they answer'); return; }
+    ftPost('ladder_add', { personId: ldPerson, name: name, phone: phone, distance: $('ld-dist').value.trim(), hours: $('ld-hours').value.trim(),
+      hasKey: $('ld-key').checked, bookEntryId: $('ld-pick').value || null }).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not add them'); return; }
+      ldLinks[j.id] = j.link;
+      ['ld-name', 'ld-phone', 'ld-dist', 'ld-hours'].forEach(function(x){ $(x).value = ''; }); $('ld-key').checked = false;
+      $('ld-addcard').open = false;
+      toast('Link ready. Send it to ' + ftFirst(name) + ' so they can answer.');
+      loadLadder(ldPerson);
+    }).catch(function(){ toast('No connection - try again'); });
+  });
+  $('pp-ladder').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b || !ldData) return;
+    var rows = ldData.ladder.filter(function(x){ return x.person_id === ldPerson; });
+    if (b.hasAttribute('data-ldmove')) {
+      var id = b.getAttribute('data-ldmove'), dir = +b.getAttribute('data-dir'), ids = rows.map(function(r){ return r.id; }), i = ids.indexOf(id), k = i + dir;
+      if (i < 0 || k < 0 || k >= ids.length) return;
+      ids[i] = ids[k]; ids[k] = id;
+      ftPost('ladder_order', { personId: ldPerson, ids: ids }).then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not move them'); return; }
+        loadLadder(ldPerson);
+        setTimeout(function(){ var nb = $('pp-ladder').querySelector('[data-ldmove="' + id + '"][data-dir="' + dir + '"]'); if (nb && !nb.disabled) nb.focus(); }, 400);
+      });
+    } else if (b.hasAttribute('data-ldlink')) {
+      ftPost('ladder_link', { id: b.getAttribute('data-ldlink') }).then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not make a link'); return; }
+        ldLinks[b.getAttribute('data-ldlink')] = j.link; renderLadder();
+        toast('A new link. Any older link has stopped working.');
+      });
+    } else if (b.hasAttribute('data-ldcopy')) {
+      var t = location.origin + ldLinks[b.getAttribute('data-ldcopy')];
+      try { navigator.clipboard.writeText(t).then(function(){ toast('Link copied'); }, function(){ toast(t); }); } catch (x) { toast(t); }
+    } else if (b.hasAttribute('data-lddel')) {
+      var rid = b.getAttribute('data-lddel');
+      askSheet('Remove them from the nearby helpers?', 'Parwah stops calling them and deletes what was kept about them.', 'Remove', 'Keep', true).then(function(y){
+        if (y) ftPost('ladder_remove', { id: rid }).then(function(j){ toast(j.ok ? 'Removed' : (j.error || 'Could not remove')); loadLadder(ldPerson); });
+      });
+    }
+  });
+  // On the family's SOS alarm: the nearby people who said yes, one tap to call.
+  function sosLadder(other){
+    var lad = (other && other.ladder) || [];
+    $('sa-ladder').innerHTML = lad.slice(0, 4).map(function(h){
+      return '<a class="ss-btn" href="tel:' + encodeURIComponent(h.phone) + '">📞 ' + esc(String(h.name).slice(0, 16)) + (h.hasKey ? ' 🔑' : '') + '</a>';
+    }).join('');
+    $('sa-ladder-l').textContent = other && other.ladderCalls ? 'Nearby helpers (Parwah calls them if nobody answers)' : 'Nearby, said they can help';
+    $('sa-ladder').hidden = $('sa-ladder-l').hidden = !lad.length;
+  }
 
   // ---------- Medicine Refill & Stockout Tracking ----------
   var refillAlertData = null;
@@ -5374,6 +5978,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('metile').title = state.name + ' · ' + state.circleName;
     applyBig();
     $('seniorui').hidden = state.role !== 'parent';
+    staffTodayMaybe();
     pillShow();
     document.body.classList.add('inapp');
     $('who').textContent = state.name + ' · ' + state.code; setInitials(state.name);
@@ -6380,6 +6985,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
     $('pp-back').textContent = '← ' + ({ people: 'Family', home: 'Today', memory: 'Health & contacts', vault: 'Vault', care: 'To do' }[personFrom] || 'Back');
     switchTab('person');
     loadBiomarkers(id);
+    loadLadder(id);
     window.scrollTo(0, 0);
   }
   var personFrom = 'people';
@@ -6735,6 +7341,7 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
       (other.safe_at ? '. They say they are safe now - check, then mark it sorted.' : '.') + (other.map ? ' Their location is shared with the family.' : '');
     $('sa-call').href = other.phone ? 'tel:' + encodeURIComponent(other.phone) : 'tel:' + myEmergencyNo();
     $('sa-call').textContent = other.phone ? '📞 Call ' + String(other.name).split(' ')[0] : '📞 Call ' + myEmergencyNo();
+    sosLadder(other);
     $('sa-map').hidden = !other.map;
     $('sa-play').hidden = !other.audio_id;
     $('sa-play').setAttribute('data-audio', other.audio_id || '');

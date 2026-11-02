@@ -378,3 +378,20 @@ On a laptop the sidebar already holds Chat and Ask Ekta. A second pair of floati
 | # | Heuristic | Finding | Sev | Status |
 |---|---|---|---|---|
 | 104 | 8 Minimalist | SOS, New chat and Ekta floated over a page that already has a sidebar. They sat on the to-do list | 3 | Fixed: Chat and Ask Ekta stay in the sidebar. SOS sits at the bottom of the sidebar, above the account line, full width and 64px tall. On a phone the three still float. Supersedes the wide-screen half of #90 |
+
+### Review 11, nearby helpers, costs, home staff, renewals (leader review, 2026-11-02)
+
+Scope: four new screens built from existing atoms (`.card`, `.crow`, `.ev`, `.pick`, `.seg`, `details.fmore`, `.gchk`, `.ss-btn`): Costs, Home staff and Renewals under To do; Nearby helpers on a person's page; "Who came today?" on an elder's Today; nearby people on the family's SOS alarm; the nearby person's own consent page. Measured by `site/tests/browser/familytools.browser.mjs` at 320, 390 and 1440px in both themes: no sideways scroll, 44px targets, 12px floor, AA contrast.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 105 | 1 Visibility | The month total on Costs rendered at body size inside a card | 2 | Fixed: the total is the hero number (`.ftbig`), the label above it is plain text, not a shouting eyebrow |
+| 106 | 8 Minimalist | Every renewal row carried a task picker, even an FD two hundred days away | 2 | Fixed: the picker shows only within 60 days or once expired; a repeated kind name ("Gas connection KYC · Gas connection KYC") is dropped |
+| 107 | 2 Real-world match | "1 paid leave day a month are not cut" | 1 | Fixed: "1 day of leave a month is paid" |
+| 108 | 7 Flexibility | The SOS alarm's helper buttons read "Mrs" (first word of the name) | 2 | Fixed: the name as the family wrote it, with a key mark when they hold one |
+| 109 | 5 Error prevention | An ID box could take a whole Aadhaar number | 3 | Fixed: 4 characters in the box and on the server; the add form tells the family to tell the worker what is kept |
+| 110 | 4 Consistency | Reordering the ladder by drag is hard on a phone and for older hands | 2 | Arrows (44px, labelled "Move X up/down"), focus kept on the moved row |
+
+New patterns: the month stepper (`.ftmonth`), the three-way day mark (`.ftmarks`, bigger in senior mode), the status chip (`.ftchip` ok / warn / bad, always with words). Follow-up (owner: product): a ladder rung on a missed check-in, through `ladderFor`, when the quiet-day alert lands.
+
+Verdict: Approved with follow-ups.
