@@ -867,6 +867,9 @@ CIRCLE_WIDE_OK = {
     ("_tasks.mjs", "Nobody has it yet - first to tap"): "its time has come and nobody has it: anyone may take it",
     ("plans.mjs",  ""):                   "a plan invites the whole circle",
     ("games.mjs",  "lobby is open"):      "an open lobby invites everyone",
+    ("_ladder.mjs", "Calling "):          "nobody answered an SOS: everyone sees who is being called next",
+    ("_staff.mjs", "not marked in yet"):  "anyone in the family may be the one who can check at home",
+    ("_renewals.mjs", "payload, {})"):    "a household date nobody looks after yet: anyone may take it",
 }
 def _push_calls(src):
     out = []
@@ -2073,7 +2076,7 @@ check("order: on a parent's phone nothing covers All is well, Pills or SOS",
 # something in it is set or refused (proved in vault.e2e, care.e2e, plans.e2e).
 _folds = re.findall(r'<details class="fmore" id="([a-z-]+)">\s*<summary>([^<]*)</summary>', _appt)
 check("options: the busy forms fold their extras under More options, each named",
-      sorted(f[0] for f in _folds) == ["b-more", "p-more", "r-more", "vd-more", "vp-more"]
+      sorted(f[0] for f in _folds) == ["b-more", "ex-more", "p-more", "r-more", "st-more", "vd-more", "vp-more"]
       and all(f[1].startswith("More options: ") for f in _folds)
       and "for (var d = el.closest('details'); d;" in _appt
       and all(("foldSync('" + f[0] + "')") in _appt for f in _folds))
@@ -2620,6 +2623,46 @@ check("care cycle: visit notes are record-only; nothing in that path calls Ekta 
       and "Parwah and Ekta never read or explain a prescription or a report." in _app_src)
 check("care cycle: the old one-a-day button stays, and gives way only when times are set",
       'id="btn-pill"' in _app_src and "pill.hidden = !!slots.length" in _app_src and "'pill'" in (API_DIR / "events.mjs").read_text(encoding="utf-8"))
+
+# ---------- Family tools: nearby helpers, costs, home staff, renewals ----------
+# The nearest-person ladder, shared care costs, the home staff register and
+# renewal radar (api/_ladder.mjs, _expenses.mjs, _staff.mjs, _renewals.mjs).
+# Behaviour is proved against a real database in familytools.dbtest; these
+# are the promises that must never quietly change.
+_ft = {n: (API_DIR / n).read_text(encoding="utf-8") for n in ("_ladder.mjs", "_expenses.mjs", "_staff.mjs", "_renewals.mjs", "care.mjs", "events.mjs", "circle.mjs", "_sosdial.mjs")}
+check("family tools: each lives behind /api/care, never a new function",
+      all(f"area === '{a}'" in _ft["care.mjs"] for a in ("ladder", "expenses", "staff", "renewals")))
+check("ladder: a nearby person joins only on their own yes, from a link nobody signs in for",
+      "consent = 'yes'" in _ft["_ladder.mjs"] and "req.query.consent !== undefined) return consentPage" in _ft["circle.mjs"]
+      and "token_hash" in _ft["_ladder.mjs"] and "randomBytes(24)" in _ft["_ladder.mjs"])
+check("ladder: the consent page says what is done, what is kept and how to remove it (DPDP)",
+      all(t in _ft["_ladder.mjs"] for t in ("What Parwah will do", "What is kept about you", "How to remove it", "Stop and delete my details", "noindex")))
+check("ladder: other features read it through ladderFor(sql, circleId, personId)",
+      "export async function ladderFor(sql, circleId, personId)" in _ft["_ladder.mjs"])
+check("ladder: an unanswered SOS calls rung by rung, claimed once, inside the family's daily cap",
+      "ladderEscalate(sql, circle.id, SOS_ESCALATE_MIN)" in _ft["events.mjs"] and "primary key (sos_id, rung)" in _ft["_ladder.mjs"]
+      and "DIAL_DAY_MAX" in _ft["_sosdial.mjs"][_ft["_sosdial.mjs"].index("export async function dialLadder"):])
+check("ladder: without Twilio the family's SOS alarm shows the helpers with Call buttons",
+      "function sosLadder(other)" in _appt and 'id="sa-ladder"' in _appt and "sosLadder(other);" in _appt)
+check("costs: a record only - no payment link, no transfer, amounts kept in their own currency",
+      not re.search(r"upi://|upi_link|checkout|payment_link", _ft["_expenses.mjs"]) and "EXPENSE_CURS = ['INR', 'USD', 'AED', 'GBP', 'CAD']" in _ft["_expenses.mjs"]
+      and "A record only: Parwah never moves money" in _appt)
+check("costs: the balance line is neutral words, never blame",
+      "' than their share'" in _ft["_expenses.mjs"] and not re.search(r"owes|debt|defaulter", _ft["_expenses.mjs"], re.I))
+check("staff: only the last 4 of an ID, and the add form tells the family to tell them (DPDP)",
+      "/^[A-Za-z0-9]{4}$/" in _ft["_staff.mjs"] and "Tell them what you record here" in _appt)
+check("staff: the month's pay is a sum written out in words",
+      "' salary'" in _ft["_staff.mjs"] and "divided by" in _ft["_staff.mjs"] and "p.formula" in _appt)
+check("staff: a late arrival alerts once a day, on working days only",
+      "primary key (staff_id, day)" in _ft["_staff.mjs"].split("staff_late_alert")[1] and "work_days" in _ft["_staff.mjs"]
+      and "sweepStaffLate(sql, circle.id)" in _ft["events.mjs"])
+check("staff: respectful words about the people who help",
+      not re.search(r"\b(servant|naukar|bai|absconded|no-show)\b", _ft["_staff.mjs"] + _appt[_appt.index('data-sec="staff" hidden'):_appt.index('data-sec="renewals" hidden')], re.I))
+check("renewals: 30 and 7 days ahead, each once per expiry date",
+      "STAGES = [30, 7]" in _ft["_renewals.mjs"] and "primary key (ref_id, stage, for_date)" in _ft["_renewals.mjs"]
+      and "sweepRenewals(sql, circle.id)" in _ft["events.mjs"])
+check("renewals: freshness like the family book, and a private vault paper only for who may see it",
+      "last_verified_at" in _ft["_renewals.mjs"] and "va.member_id is not null" in _ft["_renewals.mjs"])
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

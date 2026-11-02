@@ -145,3 +145,43 @@ export async function dialOut(sql, sosId, contacts, { name, text, map, cc }, { e
   } catch (e) { /* the SOS has already gone to the family */ }
   return out;
 }
+
+// THE NEAREST-PERSON LADDER (api/_ladder.mjs): one call to someone near the
+// person, who said yes on their own consent page, when nobody in the family
+// has answered. What it says: who it is from, who needs help, and that the
+// family could not be reached.
+export function ladderScript(helper, name, cc) {
+  const voice = !cc || cc === '+91' ? 'voice="Polly.Aditi" language="en-IN"' : 'voice="Polly.Joanna" language="en-US"';
+  const clean = (s, d) => String(s || d).replace(/[<>&"']/g, ' ').trim();
+  const line = 'Hello ' + clean(helper, 'there') + '. This is Parwah, calling for ' + clean(name, 'your neighbour') + "'s family. " +
+    clean(name, 'They') + ' pressed S O S and nobody in the family has answered yet. ' +
+    'You said you could help. Please go and check on them, or call them now. Thank you.';
+  return '<Response><Say ' + voice + '>' + line + '</Say><Pause length="1"/>' +
+         '<Say ' + voice + '>' + line + '</Say></Response>';
+}
+
+// Same account, same daily cap and the same claim-first rule as dialOut:
+// a rung is called once, and never past DIAL_DAY_MAX for the family.
+// → { configured, called, capped, failed, detail }
+export async function dialLadder(sql, sosId, helper, { name, cc }, { env = process.env, fetchImpl = globalThis.fetch } = {}) {
+  const cfg = dialConfig(env);
+  const out = { configured: !!(cfg.on && cfg.voice), called: false, capped: false, failed: false };
+  if (!out.configured || !sosId || !helper) return out;
+  try {
+    await ensureDialSchema(sql);
+    const to = e164(helper.phone, cc);
+    if (!to) { out.failed = true; out.detail = 'not a dialable number'; return out; }
+    const used = await sql`select count(*)::int as n from sos_dial d join sos s on s.id = d.sos_id
+                           where s.circle_id = (select circle_id from sos where id = ${sosId})
+                             and d.created_at > now() - interval '1 day'`;
+    if (((used[0] && used[0].n) || 0) >= DIAL_DAY_MAX) { out.capped = true; return out; }
+    const claim = await sql`insert into sos_dial (sos_id, phone, channel) values (${sosId}, ${to}, 'ladder')
+                            on conflict do nothing returning phone`;
+    if (!claim[0]) return out;
+    const r = await twilio(cfg, 'Calls.json', { To: to, From: cfg.voice, Twiml: ladderScript(helper.name, name, cc) }, fetchImpl);
+    await sql`update sos_dial set status = ${r.ok ? 'sent' : 'failed'}, detail = ${r.ok ? (r.id || null) : String(r.detail).slice(0, 200)}
+              where sos_id = ${sosId} and phone = ${to} and channel = 'ladder'`;
+    if (r.ok) out.called = true; else { out.failed = true; out.detail = r.detail; }
+  } catch (e) { out.failed = true; }
+  return out;
+}

@@ -5,7 +5,10 @@ import { db, ensureSchema, circleByCode, requireMember, isUuid, ensureCircleChat
 import { ensureSosSchema, sosText, parsePos, sosContacts, mapLink, SOS_AUDIO_MAX, SOS_AUDIO_TYPES } from './_sos.mjs';
 import { lockForSos, unlockSos, ensureLocationSchema } from './_locationapi.mjs';
 import { findState } from './_findme.mjs';
-import { dialOut } from './_sosdial.mjs';
+import { dialOut, dialConfig } from './_sosdial.mjs';
+import { ladderFor, ladderEscalate } from './_ladder.mjs';
+import { sweepStaffLate } from './_staff.mjs';
+import { sweepRenewals } from './_renewals.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
@@ -123,6 +126,7 @@ async function escalateStaleSos(sql, circleId) {
           late += await sweepOverdue(sql, c.circle_id);
           events += await sweepPlanReminders(sql, c.circle_id);
           await escalateStaleSos(sql, c.circle_id);
+          await ladderEscalate(sql, c.circle_id, SOS_ESCALATE_MIN);
           try { await sweepDoses(sql, c.circle_id); await sweepVisitAsk(sql, c.circle_id); } catch (e) { /* never stops the SOS check */ }
         } catch (e) { /* one family's trouble never stops the others */ }
       }
@@ -177,6 +181,12 @@ async function escalateStaleSos(sql, circleId) {
         order by created_at limit 20`;
       const pol = await sql`select join_policy from circles where id = ${circle.id}`;
       await escalateStaleSos(sql, circle.id);
+      // Nobody in the family answered: the nearby people who said yes, in
+      // order (api/_ladder.mjs). Then the home staff and renewal alerts,
+      // each claimed once in the database.
+      await ladderEscalate(sql, circle.id, SOS_ESCALATE_MIN);
+      await sweepStaffLate(sql, circle.id).catch(() => 0);
+      await sweepRenewals(sql, circle.id).catch(() => 0);
       // Every open phone looks, so a late task is announced within a poll;
       // the sweep claims each alert, so it is still announced only once.
       try { await ensureTaskSchema(sql); await sweepReminders(sql, circle.id); await sweepOverdue(sql, circle.id); await sweepPlanReminders(sql, circle.id); } catch (e) { /* never break a read */ }
@@ -209,7 +219,11 @@ async function escalateStaleSos(sql, circleId) {
         counts: docsN && docsN[0] ? { docs: docsN[0].n } : undefined,
         kind: ck[0] ? ck[0].kind : 'family', familyType: ck[0] ? ck[0].family_type : null, members, events, seenAt, calls,
         joinRequests: joinReqs, joinPolicy: (pol[0] && pol[0].join_policy) || 'approve',
-        sos: sosOpen.map(x => ({ ...x, map: mapLink(x.lat === null ? null : { lat: x.lat, lng: x.lng }) })),
+        sos: await Promise.all(sosOpen.map(async x => ({ ...x, map: mapLink(x.lat === null ? null : { lat: x.lat, lng: x.lng }),
+          // The nearby people who said yes, with Call buttons on the family's
+          // alarm; ladderCalls says Parwah rings them itself.
+          ladder: (await ladderFor(sql, circle.id, x.member_id)).map(h => ({ name: h.name, phone: h.phone, distance: h.distance_note, hasKey: h.has_key, hours: h.hours })),
+          ladderCalls: (() => { const c = dialConfig(); return !!(c.on && c.voice); })() }))),
         sosEscalateMin: SOS_ESCALATE_MIN, pulse,
         findme: await findState(sql, circle, g.me, tokenOf(req)).catch(() => null) });
     }
