@@ -870,6 +870,7 @@ CIRCLE_WIDE_OK = {
     ("_ladder.mjs", "Calling "):          "nobody answered an SOS: everyone sees who is being called next",
     ("_staff.mjs", "not marked in yet"):  "anyone in the family may be the one who can check at home",
     ("_renewals.mjs", "payload, {})"):    "a household date nobody looks after yet: anyone may take it",
+    ("_bond.mjs", "Plan it together on Parwah"): "a festival the circle itself chose, once, 14 days ahead",
 }
 def _push_calls(src):
     out = []
