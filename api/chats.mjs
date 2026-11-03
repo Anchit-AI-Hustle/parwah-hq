@@ -9,6 +9,11 @@
 //   send         {chatId, text}
 //   create_group {name, memberIds[]}
 //   open_dm      {otherId}   (returns the existing 1:1 chat if there is one)
+//   send kind 'audio' {chatId, text: data URI, secs}  voice note (api/_chatbond.mjs)
+//   react        {chatId, messageId, emoji|null}      one reaction per person, no push
+//   poll_create  {chatId, question, options[], multi, closeAt}
+//   poll_vote    {chatId, pollId, choices[]}          [] takes the vote back
+//   poll_close   {chatId, pollId}                     the person who asked only
 import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat , requireMember, spaceWord} from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
@@ -16,6 +21,7 @@ import { safeImageUri } from './_sec.mjs';
 import { pushCircle } from './_push.mjs';
 import { ektaTurn, isoOf } from './ekta.mjs';
 import { classify, mentionsUrgent, urgentToo, renderEmergency, renderCrisis, LOCAL_MODEL } from './_ektalocal.mjs';
+import { ensureChatBond, checkVoice, voiceLabel, attachBond, react, createPoll, votePoll, closePoll } from './_chatbond.mjs';
 
 async function chatForMember(sql, circle, chatId, memberId) {
   if (!isUuid(chatId)) return null;
@@ -47,7 +53,10 @@ async function listChats(sql, circle, me) {
   if (ids.length) {
     previews = await sql`
       select distinct on (m.chat_id) m.chat_id,
-             (case when m.kind = 'image' then '📷 Photo' else m.text end) as text,
+             (case when m.kind = 'image' then '📷 Photo'
+                   when m.kind = 'audio' then '🎙 Voice note (' || (coalesce(m.audio_secs, 0) / 60) || ':' || lpad((coalesce(m.audio_secs, 0) % 60)::text, 2, '0') || ')'
+                   when m.kind = 'poll' then '📊 Poll: ' || m.text
+                   else m.text end) as text,
              m.created_at,
              coalesce(mem.name, 'Ekta') as name
       from messages m left join members mem on mem.id = m.member_id
@@ -75,7 +84,9 @@ async function listChats(sql, circle, me) {
 // routine question. Photos are "[photo]": a picture's bytes are never sent.
 export function ektaChatTurns(chatName, spaceName, recent, text) {
   const question = String(text || '').replace(/@?\s*(ekta|एकता)\b[\s,:;.!?-]*/gi, ' ').replace(/\s+/g, ' ').trim() || String(text || '').trim();
-  const before = (recent || []).slice(0, -1).map(r => r.name + ': ' + (r.kind === 'image' ? '[photo]' : String(r.text || '').slice(0, 500)));
+  // A voice note is "[voice note]": its sound never leaves the family.
+  const before = (recent || []).slice(0, -1).map(r => r.name + ': ' + (r.kind === 'image' ? '[photo]'
+    : r.kind === 'audio' ? '[voice note]' : r.kind === 'poll' ? '[poll] ' + String(r.text || '').slice(0, 200) : String(r.text || '').slice(0, 500)));
   const turns = [];
   if (before.length) {
     turns.push({ role: 'user', content: 'You are a participant in the chat "' + (chatName || 'family chat') + '" of this ' + spaceName
@@ -118,7 +129,7 @@ async function maybeEktaReply(sql, circle, me, chat, text) {
 
 export default async function handler(req, res) {
   let sql;
-  try { sql = db(); await ensureSchema(sql); }
+  try { sql = db(); await ensureSchema(sql); await ensureChatBond(sql); }
   catch (e) { return failDb(res, e); }
 
   try {
@@ -141,7 +152,7 @@ export default async function handler(req, res) {
         const chat = await chatForMember(sql, circle, q.chat, me.id);
         if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
         const msgs = await sql`
-          select m.id, m.text, m.kind, m.created_at, m.member_id,
+          select m.id, m.text, m.kind, m.created_at, m.member_id, m.audio_secs,
                  coalesce(mem.name, 'Ekta') as name
           from messages m left join members mem on mem.id = m.member_id
           where m.chat_id = ${chat.id}
@@ -156,7 +167,8 @@ export default async function handler(req, res) {
         const participants = chat.kind === 'circle'
           ? await sql`select id, name from members where circle_id = ${circle.id} order by created_at`
           : await sql`select m.id, m.name from chat_members cm join members m on m.id = cm.member_id where cm.chat_id = ${chat.id} order by m.created_at`;
-        return res.status(200).json({ ok: true, chat: { id: chat.id, kind: chat.kind, name: chat.name }, messages: msgs.reverse(), reads, members: participants });
+        const withBond = await attachBond(sql, msgs.reverse(), me.id);
+        return res.status(200).json({ ok: true, chat: { id: chat.id, kind: chat.kind, name: chat.name }, messages: withBond, reads, members: participants });
       }
       const chats = await listChats(sql, circle, me);
       return res.status(200).json({ ok: true, chats });
@@ -172,9 +184,13 @@ export default async function handler(req, res) {
     if (action === 'send') {
       const chat = await chatForMember(sql, circle, body.chatId, me.id);
       if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
-      const kind = body.kind === 'image' ? 'image' : 'text';
-      let text;
-      if (kind === 'image') {
+      const kind = body.kind === 'image' ? 'image' : body.kind === 'audio' ? 'audio' : 'text';
+      let text, secs = null;
+      if (kind === 'audio') {
+        const v = checkVoice(body.text, body.secs);
+        if (v.err) return res.status(400).json({ ok: false, error: v.err });
+        text = v.uri; secs = v.secs;
+      } else if (kind === 'image') {
         text = String(body.text || '');
         // The whole string must be base64, not merely start like it: a
         // correct prefix followed by `x" onerror=...` used to be stored and
@@ -186,12 +202,12 @@ export default async function handler(req, res) {
         text = String(body.text || '').trim().slice(0, 1000);
         if (!text) return res.status(400).json({ ok: false, error: 'Empty message' });
       }
-      await sql`insert into messages (chat_id, member_id, text, kind) values (${chat.id}, ${me.id}, ${text}, ${kind})`;
+      await sql`insert into messages (chat_id, member_id, text, kind, audio_secs) values (${chat.id}, ${me.id}, ${text}, ${kind}, ${secs})`;
       // device alerts: personal chats always ping the other person; in any
       // chat, an @mention pings the person named.
       try {
         const label = chat.kind === 'dm' ? me.name : (chat.name || 'family chat');
-        const preview = kind === 'image' ? '📷 Photo' : text.slice(0, 90);
+        const preview = kind === 'image' ? '📷 Photo' : kind === 'audio' ? voiceLabel(secs) : text.slice(0, 90);
         if (chat.kind === 'dm') {
           const others = await sql`select member_id from chat_members where chat_id = ${chat.id} and member_id <> ${me.id}`;
           if (others[0]) await pushCircle(sql, circle.id, { title: '💬 ' + me.name, body: preview }, { only: others[0].member_id });
@@ -221,6 +237,30 @@ export default async function handler(req, res) {
       // ektaEmergency: her reply says to call for help, so the chat shows
       // the Call and SOS buttons under it, as Ekta's own screen does.
       return res.status(201).json({ ok: true, ekta: ekta ? true : false, ektaEmergency: !!(ekta && ekta.emergency) });
+    }
+
+    // Reactions and polls (api/_chatbond.mjs): only people in that chat.
+    if (action === 'react' || action === 'poll_create' || action === 'poll_vote' || action === 'poll_close') {
+      const chat = await chatForMember(sql, circle, body.chatId, me.id);
+      if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
+      // A reaction never pushes and never becomes a message.
+      if (action === 'react') { const r = await react(sql, chat, me, body); return res.status(r.status).json(r.json); }
+      if (action === 'poll_vote') { const r = await votePoll(sql, chat, me, body); return res.status(r.status).json(r.json); }
+      if (action === 'poll_close') { const r = await closePoll(sql, chat, me, body); return res.status(r.status).json(r.json); }
+      const r = await createPoll(sql, chat, me, body);
+      if (r.status === 201) {
+        // One push per person for a new poll; none per vote.
+        try {
+          const label = chat.kind === 'dm' ? me.name : (chat.name || spaceWord(circle) + ' chat');
+          const audience = chat.kind === 'circle'
+            ? await sql`select id from members where circle_id = ${circle.id} and id <> ${me.id} and user_id is not null`
+            : await sql`select m.id from chat_members cm join members m on m.id = cm.member_id where cm.chat_id = ${chat.id} and m.id <> ${me.id}`;
+          for (const p of audience) {
+            await pushCircle(sql, circle.id, { title: '📊 ' + me.name + ' asked in ' + label, body: r.poll.question.slice(0, 90) }, { only: p.id });
+          }
+        } catch (e) { /* alerts never block the poll */ }
+      }
+      return res.status(r.status).json(r.json);
     }
 
     if (action === 'create_group') {

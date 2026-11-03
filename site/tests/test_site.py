@@ -2852,59 +2852,40 @@ check("timer: the first signed-in poll of each minute runs it, under a short tim
 check("timer: Vercel's once-a-day cron is the backstop",
       any(c.get("path", "").startswith("/api/events?tick") for c in _json.loads((REPO / "vercel.json").read_text(encoding="utf-8")).get("crons", [])))
 
-# ---------- 10u. Closer together (bonding round, Nov 2026) ----------
-# Date polls and who brings what, the shared card and its secret,
-# anniversaries, the tyohaar kit, things to do on a call, "I'm in town".
-_bd = (API_DIR / "_bond.mjs").read_text(encoding="utf-8")
-_ty = (API_DIR / "_tyohaar.mjs").read_text(encoding="utf-8")
-_pl = (API_DIR / "plans.mjs").read_text(encoding="utf-8")
-_bjs = _appt[_appt.index("// ================= CLOSER TOGETHER ================="):_appt.index("// ---------- games: Snakes & Ladders ----------")]
-check("together: behind the plans route, no new function, one membership guard",
-      "area === 'bond'" in _pl and "/^bond_/" in _pl and "bondAction(sql, circle, me" in _pl
-      and _pl.index("requireMember(") < _pl.index("area === 'bond'"))
-check("together: tables made once, raced safely (schemaOnce)",
-      "schemaOnce(async () =>" in _bd and all(t in _bd for t in ("plan_polls", "plan_options", "plan_votes", "plan_items", "cards (", "card_entries", "circle_festivals", "festival_kits", "in_town")))
-check("together: a poll has 2 to 5 dates, one answer per person, and only the host locks it, once",
-      "POLL_MIN = 2, POLL_MAX = 5" in _bd and "primary key (option_id, member_id)" in _bd
-      and "Only the person who asked can lock the date" in _bd and "status = 'locked', locked_at = now() where id = ${p.id} and status = 'open' returning id" in _bd)
-check("together: an item is claimed by one person at a time",
-      "set claimed_by = ${me.id} where id = ${i.id} and claimed_by is null returning id" in _bd)
-check("together: THE CARD'S SECRET is kept by the server, on the list, the card and every voice note",
-      "export function sealedTo" in _bd and _bd.count("sealedTo(") >= 4
-      and "cardsAll.filter(c => !sealedTo(c, me))" in _bd and "This card is a surprise until the day" in _bd
-      and "placeOf(m && m.place, m && m.country, null).tz" in _bd)
-check("together: the person celebrated is never told in the feed, and cannot add to their own card",
-      "No feed line" in _bd and "This card is for you, so it is a surprise" in _bd)
-check("together: each card, hand-over and festival alert is claimed once in the database",
-      "on conflict (circle_id, auto_key) where auto_key is not null do nothing returning id" in _bd
-      and "set delivered_at = now() where id = ${c.id} and delivered_at is null returning id" in _bd
-      and "insert into festival_kits (circle_id, fkey, fdate) values (${circle.id}, ${f.key}, ${f.date})\n                            on conflict do nothing returning fkey" in _bd
-      and "kit_at is null returning fkey" in _bd)
-check("together: voice notes are small: 60 s, a byte cap, a MIME allow-list; photos are capped data URIs",
-      "VOICE_MAX_SEC = 60" in _bd and "VOICE_MAX_B64 = 340000" in _bd and "VOICE_TYPES.includes(mime)" in _bd
-      and "PHOTO_MAX = 220000" in _bd and "audioBitsPerSecond: 24000" in _bjs and "s2 >= 60" in _bjs)
-check("together: nothing plays or speaks by itself (a tap starts every voice note and every read-aloud)",
-      "autoplay" not in _bjs and "data-bcplay" in _bjs and "data-bspeak" in _bjs and "speechSynthesis.speak" in _bjs)
-check("together: festivals are off until the circle picks them, with the region note and no muhurat claim",
-      "festivalsDue(keys" in _bd and "if (keys.length)" in _bd and "Nothing is chosen for you" in _appt
-      and "differ by a day by region" in _ty and not re.search(r"muhurat|auspicious", (_ty[_ty.index("export const FESTIVALS"):] + _bjs).lower()))
-check("together: the kit makes one plan with a video room, a list, and a greeting card",
-      "roomUrl()" in _bd[_bd.index("bond_fest_kit"):] and "'Sweets', 'Plates and cups'" in _bd and "'Our ' + f.name + ' greeting'" in _bd)
-check("together: I'm in town is for groups only, a city and two dates, never a location, and expires",
-      "circle.kind !== 'group'" in _bd and "kind === 'group' ? await sql`" in _bd and "t.to_date >= ${today}::date" in _bd
-      and not re.search(r"\b(lat|lng|latitude|longitude)\b", _bd[_bd.index("I'm in town (groups only)\n"):]))
-check("together: quiz night and watch together are for groups",
-      "GROUP_ONLY_ACTIVITIES = ['quiz', 'watch']" in _bd and "bondIsGroup() ? ['quiz', 'watch'] : []" in _bjs)
-_bseed = " ".join(re.findall(r"'((?:[^'\\]|\\.)*)'", _bjs[_bjs.index("var BOND_STORIES"):_bjs.index("var BOND_ACTS")])).lower()
-_bhits = sorted({k for k, pat in BANNED.items() if re.search(pat, _bseed)})
-check(f"together: 6 to 10 stories and 3 quiz rounds of 10, all clear of banned words ({_bjs.count(chr(10) + '    { k: ')} stories)",
-      6 <= _bjs.count("\n    { k: ") <= 10 and _bjs.count("\n    [['") == 3 and not _bhits
-      and chr(0x2014) not in _bjs and chr(0x2013) not in _bjs, ", ".join(_bhits))
-check("together: forms ask in the app's own sheets, never confirm() or prompt(), and never say lonely",
-      "askSheet(" in _bjs and "askText(" in _bjs and not re.search(r"[^\w.](confirm|prompt)\(", _bjs)
-      and not re.search(r"\blonel", (_bjs + _bd).lower()))
-check("together: the anniversary is one date shared by both of a couple",
-      "anniv_with = ${w.id} where id = ${p.id}" in _bd and "anniv_with = ${p.id} where id = ${w.id}" in _bd and 'id="pp-anniv-card"' in _appt)
+# ---------- 10v. Chat bonding: voice notes, reactions, Dekh liya, quick polls ----------
+# "Nani can't type fast, so she holds a button and talks." A voice note is a
+# small recording of an allowed type, at most a minute, never sent to Ekta and
+# never played by itself. A reaction is one per person per message and never
+# pushes. A poll pushes once when it is asked, never per vote.
+_cb = (API_DIR / "_chatbond.mjs").read_text(encoding="utf-8")
+_cb_chats = (API_DIR / "chats.mjs").read_text(encoding="utf-8")
+_cb_app = (ROOT / "public" / "index.html").read_text(encoding="utf-8")
+_cb_js = _cb_app[_cb_app.index("// ---------- chat bonding: voice notes"):_cb_app.index("// ---------- family call: instant video room")]
+check("chat bonding: lives behind /api/chats in an underscore module (no new serverless function)",
+      "from './_chatbond.mjs'" in _cb_chats and "action === 'react' || action === 'poll_create'" in _cb_chats)
+check("chat bonding: voice notes reuse the SOS MIME allow-list, check the first bytes, and cap length and bytes",
+      "SOS_AUDIO_TYPES.indexOf(m[1]) < 0" in _cb and "looksLike(m[1], head)" in _cb
+      and "VOICE_MAX_SECS = 60" in _cb and "VOICE_MAX_BYTES = 384000" in _cb and "n * VOICE_BYTES_PER_SEC + VOICE_SLACK" in _cb)
+check("chat bonding: Ekta reads a voice note as [voice note], never the sound",
+      "r.kind === 'audio' ? '[voice note]'" in _cb_chats)
+check("chat bonding: one reaction per person per message, and reactions never push",
+      "primary key (message_id, member_id)" in _cb and "pushCircle" not in _cb
+      and "// A reaction never pushes and never becomes a message." in _cb_chats)
+check("chat bonding: one vote row per person per poll; a poll pushes once when asked, never per vote",
+      "primary key (poll_id, member_id)" in _cb and "One push per person for a new poll; none per vote." in _cb_chats)
+check("chat bonding: the chat list says what a voice note or poll is",
+      "'🎙 Voice note ('" in _cb_chats and "'📊 Poll: '" in _cb_chats)
+check("chat bonding: nothing plays by itself; play only on a tap",
+      "autoplay" not in _cb_app.lower() and _cb_js.count(".play()") == 2 and "function vnToggle(id)" in _cb_js)
+check("chat bonding: a refused microphone gets a plain sentence, never a console error",
+      "The microphone is off for Parwah. Allow it in your phone settings to send a voice note." in _cb_js and "console." not in _cb_js)
+check("chat bonding: senior mode holds to talk and has one big Dekh liya",
+      "Hold to talk, let go to send" in _cb_app and "Dekh liya" in _cb_js and "bondSenior()" in _cb_js)
+check("chat bonding: the audio shown in the page is checked before it is used",
+      "var AUDIO_URI = /^data:audio\\/(webm|ogg|mp4|mpeg|aac);base64,[A-Za-z0-9+/]+={0,2}$/;" in _cb_js)
+check("chat bonding: the db and browser tests run in test:db",
+      all(f in _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+          for f in ("chatbond.dbtest.mjs", "chatbond.e2e.dbtest.mjs")))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

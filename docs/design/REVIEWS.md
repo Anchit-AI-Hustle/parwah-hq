@@ -476,18 +476,18 @@ Checked at 390 and 1440, light and dark, on the real pages. Screens: /get/ (rebu
 
 New pattern: none. "The easy way" label is the existing eyebrow treatment in `--sindoor`.
 
-### Review 12, closer together: polls, cards, festivals, things to do, in town (2026-11-02)
+### Review 12, chat bonding: voice notes, reactions, Dekh liya, quick polls (2026-11-02)
 
-Checked at 320, 390 and 1440, light and dark, normal and senior mode, in a family and in a group, on the real app (site/tests/db/plansbond.e2e.dbtest.mjs measures 44px targets, the 12px floor, AA in both themes and no sideways scroll on every new screen). Screens: the Today cards (add to a card, my card on the day, plan a festival, answer a date, a friend in town), the date poll sheet and poll, who brings what on a plan, the "Do something together" sheet with the story and quiz views, the card sheet, Cards and Festivals on Together, the anniversary card on a person's page, and "I'm in town" (groups only).
+Checked at 320, 390 and 1440, light and dark, normal and senior mode, on the real app with a fake microphone (`site/tests/db/chatbond.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on every new screen). Screens: the recording bar and preview in the message box, the voice note player, the reaction picker, the poll sheet, the poll card, Who voted, and the senior hold bar with Dekh liya. Works the same in a family and in a friends' group; the wording says "family" or "group".
 
 | # | Heuristic | Finding | Sev | Status |
 |---|---|---|---|---|
-| 110 | 2 Real-world match | "When can everyone come?" was a WhatsApp thread nobody could count | 3 | Fixed: 2 to 5 dates, Yes / Maybe / No each, in every viewer's own time; the host sees counts and names and locks one, which makes the plan with everyone who said Yes going |
-| 111 | 1 Visibility | Who brings what lived in someone's head | 2 | Fixed: a list on each plan; "I'll bring it" claims, "I can't now" lets go; "2 still open" says what is left |
-| 112 | 5 Error prevention | A shared card that the person celebrated can open early is not a surprise | 3 | Fixed: the server never sends it to them before their own day, by their own city's calendar; no feed line or push names it to them |
-| 113 | 7 Flexibility | A parent in senior mode cannot read small lines or work a recorder | 2 | Fixed: lines at 20px and stories at 24px in senior mode; "Read the lines aloud" and voice notes start only on a tap |
-| 114 | 8 Minimalist | 16 festivals is a long list to push on every family | 2 | Fixed: nothing is chosen; a family or group picks its own, and only a picked one reaches Today, once, 14 days ahead, with "Not this time" |
-| 115 | 4 Consistency | The "Ask the family" label ran into the question ("date?Ask") on the button | 1 | Fixed: one text node, written per family or group |
-| 116 | 3 User control | A friend's visit to town is not a reason to share a location | 2 | Fixed: a city and two dates, never a place; it goes away after the last day; groups only, families have Find my |
+| 110 | 7 Flexibility | Typing is slow for a parent; the only way to say something was the keyboard | 3 | Fixed: a mic beside the camera (tap, see a timer out of 1:00, Stop, hear it, Send or Delete). Senior mode: one big bar, hold to talk, let go to send, slide away to cancel |
+| 111 | 3 User control | A voice note that starts by itself is a surprise in a temple or a meeting | 3 | Fixed: nothing plays until tapped; play and pause, 1x and 1.5x, the length shown |
+| 112 | 9 Error recovery | A phone that refuses the microphone threw an error nobody saw | 2 | Fixed: a plain sentence says how to allow it; typing still works |
+| 113 | 6 Recognition | Saying "I saw it" needed a typed reply | 2 | Fixed: a small 🙂 on every message (and a long press) opens five reactions; tap the count to see who; tap again to take it back. Senior mode: one big "❤️ Dekh liya" for the latest message. A reaction never pings and never moves the chat |
+| 114 | 2 Real-world match | "Whose house for Sunday lunch?" became thirty messages | 2 | Fixed: Poll in the chat header; 2 to 6 choices, one or more, an optional closing time; tap to vote or change; Who voted; the person who asked closes it. Senior mode: choices are 56px buttons |
+| 115 | 4 Consistency | The first dark-mode play button was jamun on a jamun card and nearly vanished | 2 | Fixed: the play button uses --ink on --day, which flips with the theme |
+| 116 | 9 Error recovery | The poll sheet kept "Write the question first" on screen after the question was written | 1 | Fixed: the message clears as soon as anything is typed |
 
-New patterns: the date poll (`.bondpoll`), the who-brings-what list (`.bonditems`), a card line (`.bondline`), large read-aloud text (`.bondtext`) and the quiz list (`.bondquiz`). All from existing tokens.
+New patterns: the voice note player (`.vn`), the recording bar (`.vnbar`), reaction chips and picker (`.rx-chip`, `.rx-add`, `.rx-big`), the poll card (`.pl`, `.pl-opt`) and the senior bar (`.bondsenior`, `.vnhold`, `.dekh`). All built from existing tokens; no new token.
