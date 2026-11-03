@@ -870,6 +870,7 @@ CIRCLE_WIDE_OK = {
     ("_ladder.mjs", "Calling "):          "nobody answered an SOS: everyone sees who is being called next",
     ("_staff.mjs", "not marked in yet"):  "anyone in the family may be the one who can check at home",
     ("_renewals.mjs", "payload, {})"):    "a household date nobody looks after yet: anyone may take it",
+    ("_bond.mjs", "Plan it together on Parwah"): "a festival the circle itself chose, once, 14 days ahead",
 }
 def _push_calls(src):
     out = []
@@ -2923,6 +2924,41 @@ check("timer: the first signed-in poll of each minute runs it, under a short tim
       "await runTick(sql, PIGGYBACK_BUDGET_MS)" in _evs and "rateLimit(sql, 'tick', 'all', 1, 50, { failClosed: true })" in _evs)
 check("timer: Vercel's once-a-day cron is the backstop",
       any(c.get("path", "").startswith("/api/events?tick") for c in _json.loads((REPO / "vercel.json").read_text(encoding="utf-8")).get("crons", [])))
+
+# ---------- 10v. Chat bonding: voice notes, reactions, Dekh liya, quick polls ----------
+# "Nani can't type fast, so she holds a button and talks." A voice note is a
+# small recording of an allowed type, at most a minute, never sent to Ekta and
+# never played by itself. A reaction is one per person per message and never
+# pushes. A poll pushes once when it is asked, never per vote.
+_cb = (API_DIR / "_chatbond.mjs").read_text(encoding="utf-8")
+_cb_chats = (API_DIR / "chats.mjs").read_text(encoding="utf-8")
+_cb_app = (ROOT / "public" / "index.html").read_text(encoding="utf-8")
+_cb_js = _cb_app[_cb_app.index("// ---------- chat bonding: voice notes"):_cb_app.index("// ---------- family call: instant video room")]
+check("chat bonding: lives behind /api/chats in an underscore module (no new serverless function)",
+      "from './_chatbond.mjs'" in _cb_chats and "action === 'react' || action === 'poll_create'" in _cb_chats)
+check("chat bonding: voice notes reuse the SOS MIME allow-list, check the first bytes, and cap length and bytes",
+      "SOS_AUDIO_TYPES.indexOf(m[1]) < 0" in _cb and "looksLike(m[1], head)" in _cb
+      and "VOICE_MAX_SECS = 60" in _cb and "VOICE_MAX_BYTES = 384000" in _cb and "n * VOICE_BYTES_PER_SEC + VOICE_SLACK" in _cb)
+check("chat bonding: Ekta reads a voice note as [voice note], never the sound",
+      "r.kind === 'audio' ? '[voice note]'" in _cb_chats)
+check("chat bonding: one reaction per person per message, and reactions never push",
+      "primary key (message_id, member_id)" in _cb and "pushCircle" not in _cb
+      and "// A reaction never pushes and never becomes a message." in _cb_chats)
+check("chat bonding: one vote row per person per poll; a poll pushes once when asked, never per vote",
+      "primary key (poll_id, member_id)" in _cb and "One push per person for a new poll; none per vote." in _cb_chats)
+check("chat bonding: the chat list says what a voice note or poll is",
+      "'🎙 Voice note ('" in _cb_chats and "'📊 Poll: '" in _cb_chats)
+check("chat bonding: nothing plays by itself; play only on a tap",
+      "autoplay" not in _cb_app.lower() and _cb_js.count(".play()") == 2 and "function vnToggle(id)" in _cb_js)
+check("chat bonding: a refused microphone gets a plain sentence, never a console error",
+      "The microphone is off for Parwah. Allow it in your phone settings to send a voice note." in _cb_js and "console." not in _cb_js)
+check("chat bonding: senior mode holds to talk and has one big Dekh liya",
+      "Hold to talk, let go to send" in _cb_app and "Dekh liya" in _cb_js and "bondSenior()" in _cb_js)
+check("chat bonding: the audio shown in the page is checked before it is used",
+      "var AUDIO_URI = /^data:audio\\/(webm|ogg|mp4|mpeg|aac);base64,[A-Za-z0-9+/]+={0,2}$/;" in _cb_js)
+check("chat bonding: the db and browser tests run in test:db",
+      all(f in _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+          for f in ("chatbond.dbtest.mjs", "chatbond.e2e.dbtest.mjs")))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
