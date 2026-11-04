@@ -1588,6 +1588,10 @@ check("day: the day section is reachable from the tabs and the drawer",
       appday.count('data-tab="day"') >= 2 and "'day'" in appday and "refreshDay" in appday)
 check("day: the unit test runs in the deploy gate",
       "daytest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
+check("day: a failed day is a sentence a person can read, with a way to try again",
+      "function humanFail(" in appday
+      and "humanFail(j.error, 'Could not work out today.')" in appday
+      and 'data-dayretry="1"' in appday)
 check("day: the source is testable from production with one URL",
       "probe=day" in (API_DIR / "diag.mjs").read_text(encoding="utf-8")
       and (API_DIR / "_dayselftest.mjs").exists()
@@ -1609,6 +1613,9 @@ check("entry: the explanation is legible on the cream ground, not sidebar grey",
       ".obpoint{display:flex;gap:var(--space-12);align-items:flex-start;font-size:var(--fs-14);line-height:1.45;color:var(--ink-soft)}" in appob)
 check("entry: there is a way to see the product before it asks for anything",
       'id="au-see"' in appob and 'id="demo-step"' in appob and "showStep('demo')" in appob)
+check("entry: the example is offered before the sign-in form",
+      appob.find('id="au-see"') < appob.find('id="auth-step"')
+      and "$('au-see').hidden = which !== 'auth'" in appob)
 check("entry: an interview can open straight onto the concept",
       "demoWanted()" in appob and "get('demo') === '1'" in appob)
 _demo = appob[appob.index("var DEMO = ["):appob.index("var demoAt = 0;")]
@@ -1921,6 +1928,12 @@ check("ekta: out of coins still answers what was always free, and says how anyon
       and _ekt.find("asked === 'emergency' || asked === 'crisis'") < _ekt.rfind("await providerKeys(sql, circle.id)") and "ektaOffline(j.records ?" in _appt)
 check("ekta: the screen says what she does, that she gives no medical advice and what a question costs; chips point at real things",
       "I never give medical advice. A question uses 2 coins" in _appt and "Daily check-in reminder" not in _appt and 'id="evoice" aria-pressed="true" aria-label="Read replies aloud"' in _appt)
+check("ekta: coins are earned inside the family, and the same screen says nothing is charged",
+      "Nothing is charged, and coins are not for sale." in _appt
+      and "Nothing is charged. Coins are earned inside the family, not bought." in _appt)
+check("today: a new family is asked to fill the emergency card from what is actually saved",
+      "function ecardReady()" in _appt and "Fill the emergency card" in _appt
+      and "e.category === 'emergency'" in _appt and "renderFirstRun();" in _appt)
 check("muhurat: no health advice in a Rog window, and care never waits for a muhurat",
       "health matters" not in _appt and "Medicines, doctor visits and emergencies never wait for a muhurat." in _appt
       and "health matters" not in (API_DIR / "_panchang.mjs").read_text(encoding="utf-8"))

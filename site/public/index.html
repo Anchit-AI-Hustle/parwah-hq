@@ -254,6 +254,10 @@ label + select{width:100%}
   .tabs button[data-tab="ekta"]{order:3}
   .tabs button[data-tab="care"]{order:4}
   .tabs button[data-tab="people"]{order:5}
+  /* The tab bar covers the bottom of the screen. A field scrolled into view
+     has to stop above it, or the last row of a form sits under SOS. */
+  body.inapp input, body.inapp select, body.inapp textarea, body.inapp .go{
+    scroll-margin-bottom:calc(var(--tabs-h) + var(--space-12) + env(safe-area-inset-bottom))}
 }
 .sosscreen,.sosalert{position:fixed;inset:0;z-index:var(--z-alarm);background:var(--sos);color:var(--on-sos);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;overscroll-behavior:contain;padding:var(--space-24) var(--space-16) var(--space-40)}
 .sosalert{background:var(--sos-deep)}
@@ -1533,6 +1537,8 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     <span class="obpoint"><span class="oi" aria-hidden="true">🔐</span><span><b>Papers, permissioned.</b> Aadhaar, PAN and passports - only their owner decides who can open them.</span></span>
   </div>
 
+  <button class="cbtn ghost" id="au-see" style="width:100%;margin-bottom:var(--space-16)">What is Parwah? See it first →</button>
+
   <div class="card" id="auth-step">
     <h3>Sign in with your mobile number</h3>
 <p class="hint" id="au-why" hidden style="margin:var(--space-4) 0 var(--space-12);font-weight:600;color:var(--marigold-d)">Parwah now signs in with a 4-number PIN, so your family's records open only for you. Sign in with your number once to set it. Your families are all still here.</p>
@@ -1573,7 +1579,6 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       <input type="text" id="au-name" maxlength="60" placeholder="e.g. Rohan" autocomplete="name">
     </div>
     <button class="go" id="au-go">Continue</button>
-    <button class="cbtn ghost" id="au-see" style="width:100%;margin-top:var(--space-12)">What is Parwah? See it first →</button>
     <p class="hint">Sign in with your number and your 4-number PIN. New here? You will choose one next.</p>
     <p class="hint" style="margin-top:var(--space-8)"><a href="welcome/">About Parwah</a></p>
   </div>
@@ -2952,7 +2957,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       <span class="txt"><b>Answering from your family records</b><small id="ekta-offline-why"></small></span>
     </div>
     <div class="emsgs" id="emsgs">
-      <div class="em a">Namaste! 🙏 Main Ekta hoon. Ask me about anything your family has saved: medicines, papers, doctors. I can set reminders and ask the family for help. I never give medical advice. A question uses 2 coins; reading back your records, the scam check and anything urgent are free.</div>
+      <div class="em a">Namaste! 🙏 Main Ekta hoon. Ask me about anything your family has saved: medicines, papers, doctors. I can set reminders and ask the family for help. I never give medical advice. A question uses 2 coins; reading back your records, the scam check and anything urgent are free. Coins are earned inside the family. Nothing is charged, and coins are not for sale.</div>
     </div>
     <div class="chips" id="echips">
       <button data-chip="What do we have recorded for the family?">📋 What we have saved</button>
@@ -3391,7 +3396,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       <h3>🪙 Family coins</h3>
       <p style="margin:var(--space-2) 0 var(--space-4)"><b id="coin-bal2" style="font-size:var(--fs-24)">-</b> <span class="hint">in the family pot</span></p>
       <p class="hint" id="coin-mine" style="margin:0 0 var(--space-12)"></p>
-      <p class="hint">One pot for the whole family. Keeping the family's records current earns coins, and Ekta spends them: <b id="coin-cost">each question to Ekta uses 2 coins</b>. Reading back your records, the scam check and anything urgent are free. Nothing is for sale.</p>
+      <p class="hint">One pot for the whole family. Keeping the family's records current earns coins, and Ekta spends them: <b id="coin-cost">each question to Ekta uses 2 coins</b>. Reading back your records, the scam check and anything urgent are free. Nothing is charged. Coins are earned inside the family, not bought.</p>
       <div id="coin-top" style="margin-top:var(--space-12)"></div>
       <p class="eyebrow" style="margin-top:var(--space-16)">How coins are earned</p>
       <div class="feed" id="coin-earn"></div>
@@ -4151,8 +4156,19 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   // holds the family's medicines and numbers.
   function clearState(){ try { localStorage.removeItem('parwah'); localStorage.removeItem('parwah-ecard'); } catch(e){} }
 
+  // A sentence written for a person can be shown. A stack, a query, a status
+  // code or a stand-in error cannot: those read as the app being broken.
+  function looksTechnical(s){
+    return s.length > 220 || /[{}<>]|https?:|\berror:|\bat \S|\b(sql|stack|syntax|exception|econn|enotfound|stub|undefined)\b|\b[45]\d\d\b|does not exist|duplicate key|violates |null value|permission denied|deadlock|"[a-z_]+"/i.test(s);
+  }
+  function humanFail(err, fallback){
+    var s = String(err == null ? '' : err).replace(/\s+/g, ' ').trim();
+    if (!s || looksTechnical(s) || s.length > 160) return fallback;
+    return s;
+  }
   function toast(t){
-    var el = $('toast'); el.textContent = t; el.classList.add('show');
+    var raw = String(t == null ? '' : t);
+    var el = $('toast'); el.textContent = looksTechnical(raw) ? 'That did not work. Try again.' : raw; el.classList.add('show');
     clearTimeout(toastTimer); toastTimer = setTimeout(function(){ el.classList.remove('show'); }, 2800);
   }
 
@@ -5139,7 +5155,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     if (cur && sel.querySelector('option[value="' + cur + '"]')) sel.value = cur;
   }
   function ftOffline(el, what){ $(el).innerHTML = '<div class="ev">No connection. ' + what + ' will load when you are back online.</div>'; }
-  function ftFail(el, j, what){ $(el).innerHTML = '<div class="ev">Could not load ' + what + '. ' + esc((j && j.error) || 'Try again in a minute.') + '</div>'; }
+  function ftFail(el, j, what){ $(el).innerHTML = '<div class="ev">Could not load ' + what + '. ' + esc(humanFail(j && j.error, 'Try again in a minute.')) + '</div>'; }
 
   // ---- Costs
   var FT_CAT = { medicines: '💊 Medicines', doctor: '🩺 Doctor', tests: '🧪 Tests', staff: '🧹 Home staff', bills: '🧾 Bills', groceries: '🛒 Groceries', travel: '🚕 Travel', other: '📦 Other' };
@@ -5655,7 +5671,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     }
     apiGet(API.locator + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){
-        if (!j.ok) { $('locator-feed').innerHTML = '<div class="ev">Could not load this. ' + esc(j.error || 'Try again in a moment.') + '</div>'; return; }
+        if (!j.ok) { $('locator-feed').innerHTML = '<div class="ev">Could not load this. ' + esc(humanFail(j.error, 'Try again in a moment.')) + '</div>'; return; }
         locatorsCache = j.locators || [];
         renderLocators();
       })
@@ -6795,6 +6811,9 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     $('pending-step').hidden = which !== 'pending';
     $('tour-step').hidden = which !== 'tour';
     $('demo-step').hidden = which !== 'demo';
+    // The way into the example sits above the form. It leaves with the form,
+    // or it stays on top of the screens the person just opened.
+    $('au-see').hidden = which !== 'auth';
     // The three points are a summary FOR the sign-in screen. Once the concept
     // screens are open they are the same thing said twice, and they push the
     // screen a person came to read below the fold on a phone.
@@ -8406,7 +8425,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       var body = { code: state.code, memberId: state.memberId, type: 'sos', text: sosSaid, tz: homeTz() };
       if (pos) { body.lat = pos.lat; body.lng = pos.lng; body.accuracy = Math.round(pos.accuracy || 0); }
       return post(API.events, body).then(function(j){
-        if (!j.ok) { $('ss-status').textContent = (j.error || 'The SOS could not be sent') + '. Call ' + myEmergencyNo() + ' or your family now.'; return; }
+        if (!j.ok) { $('ss-status').textContent = humanFail(j.error, 'The SOS could not be sent') + '. Call ' + myEmergencyNo() + ' or your family now.'; return; }
         sosLive = { id: j.sosId, text: j.text, contacts: j.contacts || [], map: j.map };
         var dl = j.dialed && j.dialed.configured ? j.dialed : null, sent = dl ? dl.sms + dl.whatsapp : 0;
         // Pressed again and again: the server says the family already has
@@ -8469,7 +8488,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
             if (!sosLive || !sosLive.id) return;
             post(API.events, { code: state.code, memberId: state.memberId, type: 'sos_audio', sosId: sosLive.id,
                                mime: blob.type, data: data, seconds: secs })
-              .then(function(j){ $('ss-rec').textContent = j.ok ? '🎙 Your ' + secs + '-second recording is with the family.' : '🎙 ' + (j.error || 'The recording could not be sent') + '.'; })
+              .then(function(j){ $('ss-rec').textContent = j.ok ? '🎙 Your ' + secs + '-second recording is with the family.' : '🎙 ' + humanFail(j.error, 'The recording could not be sent') + '.'; })
               .catch(function(){ $('ss-rec').textContent = '🎙 The recording could not be sent - no connection.'; });
           };
           if (sosLive && sosLive.id) sosRecUp();
@@ -8691,6 +8710,16 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     renderFirstRunList();
     if (lastReady) renderReady(lastReady);
   }
+  // The card is useful once it can answer a doctor: a blood group, an
+  // allergy, a medicine, or someone to call. Opening the sheet is not enough.
+  function ecardReady(){
+    return (bookCache || []).some(function(e){
+      if (e.kind === 'med') return true;
+      if (e.kind === 'fact' && (e.category === 'blood' || e.category === 'allergy')) return true;
+      if (e.kind === 'contact' && (e.category === 'emergency' || e.category === 'doctor')) return true;
+      return false;
+    });
+  }
   function renderFirstRunList(){
     if ($('frslot') && $('firstrun').parentNode !== $('frslot')) $('frslot').appendChild($('firstrun'));
     if (!state || frDone()) { $('firstrun').hidden = true; return; }
@@ -8699,6 +8728,10 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       { k:'alerts', done: !pushSupported() || (typeof Notification !== 'undefined' && Notification.permission === 'granted'),
         b:'Turn on alerts for this phone',
         s:'SOS, live calls and reminders reach you with Parwah closed', go:function(){ enablePush(); } },
+      { k:'card', done: ecardReady(),
+        b:'Fill the emergency card',
+        s:'A blood group, an allergy, a medicine, or who to call',
+        go:function(){ var b = $('btn-ecard'); if (b) b.click(); } },
       { k:'people', done: members > 1, b:'Invite someone to the family',
         s:'Parwah works when your family is in it',
         go:function(){ var b = document.querySelector('.invitebtn'); if (b) b.click(); } },
@@ -9049,6 +9082,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       .then(function(j){ if (j.ok) { bookLoaded = true; bookCache = j.entries || []; prepCache = j.prep || []; bookAccess = j.access || []; bookConsent = j.consent || [];
           recordsCache = j.records || []; renderReady(j.family);
           if (personId && curTab === 'person') openPerson(personId); bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); ecSave();
+          renderFirstRun();
           var openId = $('book-detail').hidden ? null : $('book-detail').dataset.bid;
           if (openId && bookEntry(openId)) openBookDetail(openId);
           else if (openId) { $('book-detail').hidden = true; $('book-list-view').hidden = false; }
@@ -10578,7 +10612,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
                       question: q, options: opts, multi: $('pl-multi').checked, closeAt: closeAt })
       .then(function(j){
         b.disabled = false;
-        if (!j.ok) { $('pl-err').textContent = j.error || 'Could not ask that'; $('pl-err').hidden = false; return; }
+        if (!j.ok) { $('pl-err').textContent = humanFail(j.error, 'Could not ask that'); $('pl-err').hidden = false; return; }
         plClose(); loadMsgs(); refreshChats(); toast('Poll sent');
       })
       .catch(function(){ b.disabled = false; toast('No connection - try again'); });
@@ -11417,7 +11451,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   function mbRecipeOpen(id){
     mbSheet('Recipe', '<div class="ev">Loading…</div>');
     mbGet('recipe', '&id=' + encodeURIComponent(id)).then(function(j){
-      if (!j || !j.ok) { $('mbs-body').innerHTML = '<div class="ev">' + esc((j && j.error) || 'Could not open it') + '</div>'; return; }
+      if (!j || !j.ok) { $('mbs-body').innerHTML = '<div class="ev">' + esc(humanFail(j && j.error, 'Could not open it')) + '</div>'; return; }
       var r = j.recipe;
       $('mbs-title').textContent = r.title;
       $('mbs-body').innerHTML =
@@ -11826,8 +11860,8 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     if (errEl) errEl.hidden = true;
     return post(API.plans, body).then(function(j){
       if (!j.ok) {
-        if (errEl) { errEl.textContent = j.error || 'That did not work. Try again.'; errEl.hidden = false; }
-        else toast(j.error || 'That did not work. Try again.');
+        if (errEl) { errEl.textContent = humanFail(j.error, 'That did not work. Try again.'); errEl.hidden = false; }
+        else toast(humanFail(j.error, 'That did not work. Try again.'));
         return j;
       }
       bondRefresh(true);
@@ -13414,7 +13448,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
                                 : { action: 'unplace', link: k, code: state.code, memberId: state.memberId, targetId: who };
       post(API.circle, body).then(function(j){
         b.disabled = false;
-        if (!j.ok) { $('tr-err').textContent = j.error || 'Could not change that'; $('tr-err').hidden = false; return; }
+        if (!j.ok) { $('tr-err').textContent = humanFail(j.error, 'Could not change that'); $('tr-err').hidden = false; return; }
         toast(k === 'person' ? 'Removed from the family' : 'Link removed'); refresh();
       }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
     });
@@ -14796,12 +14830,19 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     if (!force && dayData && Date.now() - dayAt < 10 * 60 * 1000) { renderDay(); return; }
     var qs = '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + '&tz=' + encodeURIComponent(homeTz());
     apiGet(API.day + qs).then(function(j){
-      if (!j.ok) { $('mu-sun').textContent = j.error || 'Could not work out today.'; return; }
+      if (!j.ok) {
+        $('mu-sun').innerHTML = esc(humanFail(j.error, 'Could not work out today.')) +
+          ' <button type="button" class="linkbtn" data-dayretry="1">Try again</button>';
+        return;
+      }
       dayData = j; dayAt = Date.now(); renderDay();
     }).catch(function(){
       if (!dayData) $('mu-sun').textContent = 'No connection - today’s timings need one, once.';
     });
   }
+  document.addEventListener('click', function(e){
+    if (e.target.closest('[data-dayretry]')) refreshDay(true);
+  });
 
   function renderDay(){
     if (!dayData) return;
