@@ -32,6 +32,7 @@ const { ensureTaskSchema } = await import('../../../api/_tasks.mjs');
 const { ensureFamilyCareSchema } = await import('../../../api/_familycare.mjs');
 const { ensureStaffSchema } = await import('../../../api/_staff.mjs');
 const { ensureRenewalSchema } = await import('../../../api/_renewals.mjs');
+const { default: plansH } = await import('../../../api/plans.mjs');
 
 const sql = db();
 await ensureSchema(sql);
@@ -140,6 +141,24 @@ const quietRow = async () => (await admin.query(`select to_char(quiet_nudged_for
   await freshMinute();
   const a = await tick(), b = await tick();
   ok('a second tick in the same minute is skipped', a.ok && !a.skipped && b.ok && b.skipped === true, JSON.stringify([a, b]));
+}
+
+// ---- 5. A birthday card is started from the timer, with every phone closed
+{
+  // The plans tables exist once anyone has opened Plans (as in production).
+  await plansH({ method: 'GET', headers: { 'x-parwah-token': papa.token, 'x-forwarded-for': '10.9.2.1' }, query: { circle: 'SHARMA', member: papa.id }, body: {} },
+    { status() { return this; }, json() { return this; }, setHeader() {} });
+  // Rohan turns a year older in 2 days (born 1990): the card opens 3 days out.
+  const d = new Date(Date.now() + 2 * 86400000);
+  const dob = '1990-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+  await admin.query(`update members set dob = $2 where circle_id = $1 and name = 'Rohan'`, [sharma, dob]);
+  await freshMinute();
+  const t = await tick();
+  const c = (await admin.query(`select count(*)::int c from cards where circle_id = $1 and occasion = 'birthday'`, [sharma])).rows[0].c;
+  ok('the timer starts the birthday card 3 days out, nobody\'s phone open', t.ok && c === 1, JSON.stringify([t, c]));
+  await freshMinute(); await tick();
+  const c2 = (await admin.query(`select count(*)::int c from cards where circle_id = $1 and occasion = 'birthday'`, [sharma])).rows[0].c;
+  ok('and a second run does not start another', c2 === 1, String(c2));
 }
 
 await admin.end();

@@ -17,6 +17,8 @@ import { ensureTaskSchema, sweepOverdue, sweepReminders } from './_tasks.mjs';
 import { sweepPlanReminders } from './_plansweep.mjs';
 import { sweepDoses } from './_doses.mjs';
 import { sweepVisitAsk } from './_visits.mjs';
+import { sweepBond, ensureBondSchema } from './_bond.mjs';
+import { storySweep, ensureBondSchema as ensureMemoryBondSchema } from './_memorybond.mjs';
 import { award, today } from './_coins.mjs';
 import { reqTz } from './_recur.mjs';
 
@@ -61,6 +63,11 @@ async function dueCircles(sql) {
   await q(() => sql`select distinct circle_id from medicine_schedules where active limit 500`);
   await q(() => sql`select distinct circle_id from home_staff where arrive_time is not null limit 500`);
   await q(() => sql`select distinct circle_id from renewals where expires_on <= current_date + 31 limit 500`);
+  // Shared cards (birthdays, anniversaries), chosen festivals, storytellers.
+  await q(() => sql`select distinct circle_id from members where dob is not null or anniversary is not null limit 500`);
+  await q(() => sql`select distinct circle_id from circle_festivals limit 500`);
+  await q(() => sql`select distinct circle_id from cards where date >= current_date - 1 limit 500`);
+  await q(() => sql`select distinct circle_id from story_tellers where status = 'yes' limit 500`);
   return [...ids];
 }
 export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
@@ -85,6 +92,8 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
     await one(() => sweepStaffLate(sql, id));
     await one(() => sweepRenewals(sql, id));
     await one(() => rotaSweep(sql, id));
+    await one(async () => { await ensureBondSchema(sql); const c = (await sql`select id, name, kind, code from circles where id = ${id}`)[0]; return c ? sweepBond(sql, c) : 0; });
+    await one(async () => { await ensureMemoryBondSchema(sql); return storySweep(sql, id); });
     done++;
   }
   return { circles: done, reminded, late, events };
@@ -147,9 +156,10 @@ async function escalateStaleSos(sql, circleId) {
 }
 
   try {
-    // THE TIMER. Reminders and late tasks are also checked every 10 minutes
-    // by .github/workflows/tick.yml, so an alarm rings when nobody in the
-    // family has Parwah open. It reads nothing and returns only counts;
+    // THE TIMER. Reminders and every other timed alert are also checked by
+    // ?tick (Vercel's daily cron and an outside every-minute caller) and by
+    // the first signed-in poll of each minute, so an alarm rings when nobody
+    // in that family has Parwah open. It reads nothing and returns only counts;
     // each alert is claimed in the database, so it is never sent twice;
     // and it runs at most once a minute whoever calls it.
     if (req.method === 'GET' && req.query && req.query.tick !== undefined) {

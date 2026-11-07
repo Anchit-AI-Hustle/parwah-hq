@@ -69,6 +69,11 @@ export function signOf(dob) {
 }
 
 export async function ensureHoroscopeSchema(sql) {
+  // First loads race here (two phones, two screens): see schemaOnce in _db.mjs.
+  const { schemaOnce } = await import('./_db.mjs');
+  return schemaOnce(() => horoscopeTables(sql));
+}
+async function horoscopeTables(sql) {
   await sql`create table if not exists horoscope (
     day date not null,
     sign text not null,

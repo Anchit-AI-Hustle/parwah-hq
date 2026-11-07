@@ -26,6 +26,11 @@ let schemaReady = false;
 // ---------------------------------------------------------------------------
 
 export async function ensureCarePrepSchema(sql) {
+  // First loads race here (two phones, two screens): see schemaOnce in _db.mjs.
+  const { schemaOnce } = await import('./_db.mjs');
+  return schemaOnce(() => carePrepTables(sql));
+}
+async function carePrepTables(sql) {
   if (schemaReady) return;
   // These tables point at circles, members, family_book and vault_docs. On a fresh
   // database none of those existed yet when refill, bills or biomarkers

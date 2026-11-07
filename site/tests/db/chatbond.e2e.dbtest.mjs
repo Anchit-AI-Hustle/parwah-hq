@@ -166,7 +166,7 @@ function measure([minTap, sel]) {
   }
   return out;
 }
-const SEL = '#chatview, #composer, #rxsheet:not([hidden]) .mp, #pollsheet:not([hidden]) .mp, #bondsheet:not([hidden]) .mp';
+const SEL = '#chatview, #composer, #rxsheet:not([hidden]) .mp, #pollsheet:not([hidden]) .mp, #chatwho:not([hidden]) .mp';
 async function sane(page, label) {
   for (const theme of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme: theme }); await page.waitForTimeout(150);

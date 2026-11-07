@@ -2526,10 +2526,33 @@ _tasksrc = (API_DIR / "_tasks.mjs").read_text(encoding="utf-8")
 check("reminders: a task can ring at its time or before it, once, and is late only after a grace",
       "export async function sweepReminders" in _tasksrc and "reminded_for is distinct from due_at" in _tasksrc
       and "LATE_GRACE_MIN" in _tasksrc and 'id="r-remind"' in _app_src and 'id="alarmsheet"' in _app_src)
+# The GitHub scheduled timer (tick.yml) is gone: its runs came hours late and,
+# from 5 Nov 2026, Cloudflare in front of the domain answered GitHub's runners
+# 403. The clock is every signed-in poll (runTick), Vercel's daily cron and
+# an outside every-minute caller with the CRON_SECRET header.
 check("reminders: a timer rings them with every phone closed, and says nothing private",
-      (REPO / ".github/workflows/tick.yml").exists() and "?tick=1" in (REPO / ".github/workflows/tick.yml").read_text(encoding="utf-8")
+      not (REPO / ".github/workflows/tick.yml").exists()
       and "req.query.tick !== undefined" in _evt and "rateLimit(sql, 'tick', 'all', 1, 50, { failClosed: true })" in _evt
-      and "x-cron-secret: $CRON_SECRET" in (REPO / ".github/workflows/tick.yml").read_text(encoding="utf-8"))
+      and "x-cron-secret" in _evt and any(c.get("path", "").startswith("/api/events?tick") for c in _json.loads((REPO / "vercel.json").read_text(encoding="utf-8")).get("crons", [])))
+check("timer: shared cards, festivals and the weekly story question ring from the timer too",
+      "sweepBond(sql, c)" in _evt and "storySweep(sql, id)" in _evt and "ensureMemoryBondSchema" in _evt)
+check("schema: care tools, plan prices and the horoscope set up their tables through schemaOnce",
+      all("schemaOnce(() => " + n + "(sql))" in (API_DIR / f).read_text(encoding="utf-8")
+          for f, n in (("_careprep.mjs", "carePrepTables"), ("_planapi.mjs", "planTables"), ("_horoscope.mjs", "horoscopeTables"))))
+check("schema: a deadlock between two first loads is retried like the other races",
+      "'40P01'" in (API_DIR / "_db.mjs").read_text(encoding="utf-8"))
+check("chat: the day line uses the viewer's own date, not the server's UTC day",
+      "fmtDue(localYmd(m.created_at))" in _app_src and "function localYmd(t)" in _app_src)
+check("errors: a plain reason with 'at' in it (at least, at 5pm) is shown, only a stack line is hidden",
+      r"\bat [\w.$<>]+ \(\S*:\d+" in _app_src and r"\bat \S|" not in _app_src)
+check("together: Cook together lists the family's own recipes",
+      "window.parwahRasoiList = function()" in _app_src and "window.parwahRasoiList()" in _app_src)
+check("together: Today loads the shared cards and polls as well as the family memory (a merge once dropped one)",
+      "    ccRefresh();\n    bondRefresh();\n    mbTodayLoad();\n" in _app_src)
+_static_ids = re.findall(r'\bid="([^"]+)"', re.sub(r"<script\b.*?</script>", "", _app_src, flags=re.S))
+_dup_ids = sorted({i for i in _static_ids if _static_ids.count(i) > 1})
+check("app: every id in the page is used once (two merges once shared bondsheet, pl-cancel and g-done)",
+      not _dup_ids, ", ".join(_dup_ids))
 _notes = (API_DIR / "_notesapi.mjs").read_text(encoding="utf-8")
 check("notes: shared lists under To do; a private note is private in the query itself",
       'data-sec="notes"' in _app_src and "(not n.private or n.by_member = ${me.id})" in _notes

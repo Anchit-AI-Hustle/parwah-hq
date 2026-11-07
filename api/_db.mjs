@@ -314,7 +314,8 @@ export function clientIp(req) {
 // not exists", and one can still lose with a duplicate error: the check and
 // the create are not one step. The loser has nothing to fix, so it runs the
 // same statements again, which now find everything there.
-const SCHEMA_RACE = new Set(['23505', '42P07', '42710']);
+// 40P01: two first loads creating tables can also deadlock each other.
+const SCHEMA_RACE = new Set(['23505', '42P07', '42710', '40P01']);
 // One retry was not enough: six first loads at once can collide on one
 // table, retry, and collide again on the next. Retry a few times with a short
 // random pause so the racers fall out of step.
