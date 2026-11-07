@@ -49,6 +49,11 @@ export function priceOf(planId, currency) {
 }
 
 async function ensurePlanSchema(sql) {
+  // First loads race here (two phones, two screens): see schemaOnce in _db.mjs.
+  const { schemaOnce } = await import('./_db.mjs');
+  return schemaOnce(() => planTables(sql));
+}
+async function planTables(sql) {
   await sql`create table if not exists plan_interest (
     id uuid primary key default gen_random_uuid(),
     circle_id uuid not null references circles(id) on delete cascade,

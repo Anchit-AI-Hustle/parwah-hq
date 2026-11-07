@@ -3249,7 +3249,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
           <button class="go" id="g-again" hidden>🔁 Play again</button>
           <button class="cbtn" id="g-nudge" hidden></button>
           <button class="cbtn" id="g-hand" hidden></button>
-          <button class="cbtn ghost" id="g-done" hidden>← All games</button>
+          <button class="cbtn ghost" id="g-allgames" hidden>← All games</button>
           <button class="cbtn no" id="g-leave" hidden>Leave this game</button>
         </div>
         <details class="grules" id="g-rules">
@@ -4039,7 +4039,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     <ul class="bond-who" id="rx-who"></ul>
   </div>
 </div>
-<div class="msheet" id="bondsheet" hidden role="dialog" aria-modal="true" aria-labelledby="bd-title">
+<div class="msheet" id="chatwho" hidden role="dialog" aria-modal="true" aria-labelledby="bd-title">
   <div class="mp">
     <button class="x" id="bd-x" aria-label="Close">✕</button>
     <h3 id="bd-title" style="margin:0 0 var(--space-12)"></h3>
@@ -4050,7 +4050,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   <div class="mp">
     <button class="x" id="pl-x" aria-label="Close">✕</button>
     <h3 id="pl-title" style="margin:0 0 var(--space-4)">Ask a quick question</h3>
-    <p class="hint" id="pl-sub" style="margin:0">Everyone in this chat can vote and change their vote.</p>
+    <p class="hint" id="plq-sub" style="margin:0">Everyone in this chat can vote and change their vote.</p>
     <label for="pl-q">Question</label>
     <input type="text" id="pl-q" maxlength="200" placeholder="e.g. Sunday lunch at whose house?">
     <label>Choices (2 to 6)</label>
@@ -4061,7 +4061,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     <input type="datetime-local" id="pl-close">
     <p class="fielderr" id="pl-err" hidden></p>
     <button class="go" id="pl-create" type="button">Send the poll</button>
-    <button class="cbtn ghost" id="pl-cancel" type="button" style="width:100%;margin-top:var(--space-8);min-height:var(--tap-min)">Cancel</button>
+    <button class="cbtn ghost" id="plq-cancel" type="button" style="width:100%;margin-top:var(--space-8);min-height:var(--tap-min)">Cancel</button>
   </div>
 </div>
 
@@ -4159,7 +4159,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   // A sentence written for a person can be shown. A stack, a query, a status
   // code or a stand-in error cannot: those read as the app being broken.
   function looksTechnical(s){
-    return s.length > 220 || /[{}<>]|https?:|\berror:|\bat \S|\b(sql|stack|syntax|exception|econn|enotfound|stub|undefined)\b|\b[45]\d\d\b|does not exist|duplicate key|violates |null value|permission denied|deadlock|"[a-z_]+"/i.test(s);
+    return s.length > 220 || /[{}<>]|https?:|\berror:|\bat [\w.$<>]+ \(\S*:\d+|\b(sql|stack|syntax|exception|econn|enotfound|stub|undefined)\b|\b[45]\d\d\b|does not exist|duplicate key|violates |null value|permission denied|deadlock|"[a-z_]+"/i.test(s);
   }
   function humanFail(err, fallback){
     var s = String(err == null ? '' : err).replace(/\s+/g, ' ').trim();
@@ -4450,6 +4450,12 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     if (!m) return String(t);
     var h = +m[1], ap = h >= 12 ? 'pm' : 'am'; h = h % 12 || 12;
     return h + ':' + m[2] + ' ' + ap;
+  }
+  // A server time (UTC) as the viewer's own calendar date, "YYYY-MM-DD": a
+  // message sent at 1am in India is that day, not the day before in UTC.
+  function localYmd(t){
+    var d = new Date(t); if (isNaN(d)) return String(t || '').slice(0, 10);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
   // "2026-09-02" → Today / Tomorrow / "2 Sep"
   function fmtDue(d){
@@ -4745,6 +4751,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     refreshCoins();
     refreshPlan();
     ccRefresh();
+    bondRefresh();
     mbTodayLoad();
     refreshChats();
     refreshGroups();
@@ -4814,7 +4821,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
         var reads = (j.reads || []).filter(function(r){ return r.member_id !== state.memberId; });
         var h = '', lastDay = '';
         j.messages.forEach(function(m, mi){
-          var day = fmtDue(String(m.created_at).slice(0, 10));
+          var day = fmtDue(localYmd(m.created_at));
           if (day && day !== lastDay) { h += '<div class="dsep">' + esc(day) + '</div>'; lastDay = day; }
           var mine = m.member_id === state.memberId;
           var ekta = !m.member_id;
@@ -10545,7 +10552,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     $('bd-list').innerHTML = m.poll.options.map(function(o){
       return '<li><b>' + esc(o.text) + '</b><br>' + (o.names.length ? esc(o.names.join(', ')) : 'Nobody yet') + '</li>';
     }).join('');
-    $('bondsheet').hidden = false;
+    $('chatwho').hidden = false;
     try { $('bd-x').focus(); } catch (e) {}
   }
   function bondClosePoll(mid){
@@ -10558,9 +10565,9 @@ body.senior .mbcard p{font-size:var(--fs-16)}
         .catch(function(){ toast('No connection - try again'); });
     });
   }
-  function bdClose(){ $('bondsheet').hidden = true; }
+  function bdClose(){ $('chatwho').hidden = true; }
   $('bd-x').addEventListener('click', bdClose);
-  $('bondsheet').addEventListener('click', function(e){ if (e.target === this) bdClose(); });
+  $('chatwho').addEventListener('click', function(e){ if (e.target === this) bdClose(); });
   function plRow(){ return '<div class="plrow"><input type="text" maxlength="80"><button type="button" class="cbtn ghost" data-plrm="1">✕</button></div>'; }
   function plSync(){
     var rows = $('pl-opts').querySelectorAll('.plrow');
@@ -10583,7 +10590,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   function plClose(){ $('pollsheet').hidden = true; try { $('cv-poll').focus(); } catch (e) {} }
   $('cv-poll').addEventListener('click', plOpen);
   $('pl-x').addEventListener('click', plClose);
-  $('pl-cancel').addEventListener('click', plClose);
+  $('plq-cancel').addEventListener('click', plClose);
   $('pollsheet').addEventListener('click', function(e){ if (e.target === this) plClose(); });
   $('pl-more').addEventListener('click', function(){
     if ($('pl-opts').querySelectorAll('.plrow').length >= 6) return;
@@ -10620,7 +10627,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   document.addEventListener('keydown', function(e){
     if (e.key !== 'Escape') return;
     if (!$('rxsheet').hidden) rxClose();
-    else if (!$('bondsheet').hidden) bdClose();
+    else if (!$('chatwho').hidden) bdClose();
     else if (!$('pollsheet').hidden) plClose();
     else if (vrec && vrec.mode === 'tap') vnCancel();
   });
@@ -11218,6 +11225,11 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     if (v === 'some') $('mbs-some').querySelectorAll('input:checked').forEach(function(i){ ids.push(i.value); });
     return { visibility: v, shareWith: ids };
   }
+  // Family recipes for "Cook together" on a call plan (Plans asks for these).
+  window.parwahRasoiList = function(){
+    if (!mbMem) { try { mbMemLoad(); } catch (e) {} return []; }
+    return (mbMem.recipes || []).map(function(r){ return { id: r.id, name: r.title, from: r.from_whom }; });
+  };
   function mbMemLoad(cb){
     if (!state) return;
     return mbGet('memory').then(function(j){
@@ -11555,7 +11567,11 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       if (d.mbnudge === 'voice') {
         post(API.chats, { code: state.code, memberId: state.memberId, action: 'open_dm', otherId: nd.targetId }).then(function(j){
           if (!j.ok) { toast(j.error || 'Could not open the chat'); return; }
-          switchTab('chat'); refreshChats(function(){ openChat(j.chatId); });
+          switchTab('chat'); refreshChats(function(){
+            openChat(j.chatId);
+            // The mic is ready, never started for them: a tap on it records.
+            setTimeout(function(){ var mic = $('cmic'); if (mic && !mic.hidden) { mic.focus(); toast('Tap 🎙 and talk to ' + mbFirst(nd.name)); } }, 300);
+          });
         }).catch(function(){ toast('No connection - try again'); });
       }
     }
@@ -12729,7 +12745,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     $('g-result').hidden = !over;
     if (over) $('g-result').textContent = resultLine(st, kind);
     $('g-again').hidden = !(over && meSeat);
-    $('g-done').hidden = !over;
+    $('g-allgames').hidden = !over;
     // Ended: the result and what next, not "End the game for everyone?".
     ['t-end', 'l-end', 'b-end', 'v-end', 'g-quit'].forEach(function(id){ if ($(id)) $(id).hidden = over; });
     var cur = !over && st.players[st.turn];
@@ -12878,7 +12894,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     else if (kind === 'snakes') gamePost(alone ? { action: 'start', solo: true } : { action: 'start', playerIds: others });
     else gamePost(alone ? { action: 'start_board', game: kind, solo: true } : { action: 'start_board', game: kind, playerIds: others });
   });
-  $('g-done').addEventListener('click', function(){ showGameList(); refreshFun(); });
+  $('g-allgames').addEventListener('click', function(){ showGameList(); refreshFun(); });
   $('g-nudge').addEventListener('click', function(){
     var b = this; b.disabled = true;
     post(API.games, { code: state.code, memberId: state.memberId, action: 'nudge', gameId: curGame && curGame.id })
