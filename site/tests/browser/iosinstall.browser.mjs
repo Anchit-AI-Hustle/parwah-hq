@@ -2,7 +2,8 @@
 //
 // An IPA cannot be opened on an iPhone: without a paid Apple account the
 // running iPhone app is Safari's Add to Home Screen. So on an iPhone the
-// download page leads with Get the iPhone app, never offers the IPA, and
+// download page leads with Install the iPhone app (the Web Clip profile),
+// never offers the IPA, and
 // warns when it is open inside Instagram or WhatsApp; the app then shows the
 // two taps, once, and never inside the installed app.
 import http from 'http';
@@ -49,11 +50,13 @@ async function page(ua, url, { standalone = false, scheme = 'light' } = {}) {
   const p = await page(SAFARI, '/get/');
   const order = await p.$$eval('.platform', ps => ps.map(x => x.id));
   ok(order[0] === 'p-ios', 'on an iPhone the iPhone section comes first', order.join());
-  ok(await p.isVisible('#ios-guide') && (await p.getAttribute('#ios-guide', 'href')) === '../?install=ios', 'it leads with Open in Safari, then Add to Home Screen');
-  ok(/Add to Home Screen/.test(await p.textContent('#p-ios')), 'with the Share and Add to Home Screen steps in the main card');
   ok(await p.isVisible('#ios-get') && (await p.getAttribute('#ios-get', 'href')) === '../install/parwah.mobileconfig'
-     && await p.$eval('#ios-get', el => !!el.closest('#advanced')), 'the profile stays, under Advanced options, never as the main button');
-  ok(/not signed/.test(await p.textContent('#adv-ios')), 'and it says honestly that iPhone will call the profile not signed');
+     && await p.$eval('#ios-get', el => el.classList.contains('getbtn') && !!el.closest('#p-ios')), 'it leads with Install the iPhone app, the main button in the iPhone card');
+  ok(/not signed/.test(await p.textContent('#p-ios')) && /Profile Downloaded/.test(await p.textContent('#p-ios')), 'with the Settings steps, and it says honestly that iPhone will call the profile not signed');
+  ok(await p.isVisible('#ios-guide') && (await p.getAttribute('#ios-guide', 'href')) === '../?install=ios'
+     && /Add to Home Screen/.test(await p.textContent('#ios-alt')), 'and Add to Home Screen from Safari is still offered as the other way');
+  const tap = await p.$eval('#ios-guide', el => el.getBoundingClientRect().height);
+  ok(tap >= 44, 'the Safari link is a 44px target', String(tap));
   ok(/Play Store/.test(await p.textContent('#adv-android')) && !(await p.$('#apk-link')), 'Android says Play Store soon, and offers no test file');
   ok(await p.$$eval('.getbtn', bs => bs.every(b => !b.closest('#advanced'))), 'no main-path button sits in Advanced');
   ok(!(await p.$('#ipa-link')), 'no IPA is offered to anyone');
