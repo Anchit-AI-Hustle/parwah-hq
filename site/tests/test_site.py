@@ -2798,25 +2798,37 @@ check("attribution: the list stores them, first touch kept on a re-join",
       and "utm_source = coalesce(waitlist.utm_source, excluded.utm_source)" in _auth_src
       and "normUtm" in _wl)
 
-# INSTALL TRUST. /get/ leads with the browser and Add to Home Screen; the
-# unsigned iPhone profile and the Android test build are Advanced, said
-# honestly. It used to probe /downloads/parwah.apk, which does not exist, and
-# every visit logged a 404 in the console.
+# INSTALL TRUST. /get/ offers the apps themselves (owner, 2026-11-09): the
+# Android APK, served from this site, and the iPhone Web Clip profile, each
+# with its honest note and the browser way as the other way. Nothing comes
+# from GitHub (the repo goes private), and no IPA is offered: it cannot
+# install on an iPhone without an Apple developer account.
 _get = (ROOT / "public" / "get" / "index.html").read_text(encoding="utf-8")
-_adv = _get.find('id="advanced"')
-check("get: no probe for a download that does not exist", "downloads/parwah.apk" not in _get and "direct-android" not in _get)
-check("get: no call to the GitHub API from the page (rate-limited for visitors, and the repo may go private)", "api.github.com" not in _get)
+_apk = ROOT / "public" / "downloads" / "parwah.apk"
+_andcard = _get[_get.find('id="p-android"'):_get.find('id="p-ios"')]
 _ioscard = _get[_get.find('id="p-ios"'):_get.find('id="p-desk"')]
+check("get: no call to the GitHub API from the page (rate-limited for visitors, and the repo may go private)", "api.github.com" not in _get)
+check("get: Android leads with Download the Android app, from this site, with Chrome as the other way",
+      'class="getbtn" id="apk-link" href="../downloads/parwah.apk"' in _andcard
+      and 'id="android-open" href="../"' in _andcard and "Add to Home screen" in _andcard and "Play Store" in _andcard)
+def _apk_ok(p):
+    import zipfile
+    try:
+        with zipfile.ZipFile(p) as z:
+            n = z.namelist()
+        return "AndroidManifest.xml" in n and "classes.dex" in n and any(x.startswith("META-INF/") for x in n)
+    except Exception:
+        return False
+check("get: the Android app the button downloads is on this site and is a real APK",
+      _apk.is_file() and _apk_ok(_apk), str(_apk))
 check("get: on iPhone, Install the iPhone app is the main button (owner, 2026-11-09), with Add to Home Screen as the other way",
       'class="getbtn" id="ios-get" href="../install/parwah.mobileconfig"' in _ioscard
-      and 'id="ios-guide" href="../?install=ios"' in _ioscard and "Add to Home Screen" in _ioscard
-      and 0 < _get.find('id="android-open"') < _adv and 'id="adv-ios"' not in _get)
-check("get: the iPhone profile says plainly it is not signed, and Android says Play Store soon",
-      "not signed" in _ioscard and "Play Store" in _get[_adv:])
-# The repo goes private and its test releases are deleted, so the page links
-# to nothing on GitHub: a debug-signed build is not offered to families.
-check("get: no download or link from GitHub (no test APK, no IPA, no releases page)",
-      "github.com" not in _get and ".apk" not in _get and ".ipa" not in _get)
+      and 'id="ios-guide" href="../?install=ios"' in _ioscard and "Add to Home Screen" in _ioscard and "not signed" in _ioscard)
+check("get: the APK is served as an Android package",
+      any(h["source"] == "/downloads/parwah.apk" and any(x["key"] == "Content-Type" and x["value"] == "application/vnd.android.package-archive" for x in h["headers"])
+          for h in _json.loads((ROOT.parent / "vercel.json").read_text(encoding="utf-8")).get("headers", [])))
+check("get: no download or link from GitHub, and no IPA (it cannot install on an iPhone)",
+      "github.com" not in _get and ".ipa" not in _get)
 
 # THE PRESS KIT. Facts that are true today, files a journalist can use.
 _press_dir = ROOT / "public" / "press"

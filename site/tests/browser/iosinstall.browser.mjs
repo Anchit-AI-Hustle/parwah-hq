@@ -57,8 +57,7 @@ async function page(ua, url, { standalone = false, scheme = 'light' } = {}) {
      && /Add to Home Screen/.test(await p.textContent('#ios-alt')), 'and Add to Home Screen from Safari is still offered as the other way');
   const tap = await p.$eval('#ios-guide', el => el.getBoundingClientRect().height);
   ok(tap >= 44, 'the Safari link is a 44px target', String(tap));
-  ok(/Play Store/.test(await p.textContent('#adv-android')) && !(await p.$('#apk-link')), 'Android says Play Store soon, and offers no test file');
-  ok(await p.$$eval('.getbtn', bs => bs.every(b => !b.closest('#advanced'))), 'no main-path button sits in Advanced');
+  ok(await p.$$eval('.platform .getbtn', bs => bs.length === 2), 'one main button per phone, no more');
   ok(!(await p.$('#ipa-link')), 'no IPA is offered to anyone');
   ok(!(await p.isVisible('#ios-inapp')), 'in Safari there is no "open in Safari" warning');
   ok(await p.evaluate(() => document.documentElement.scrollWidth <= 390), 'nothing scrolls sideways');
@@ -69,8 +68,9 @@ async function page(ua, url, { standalone = false, scheme = 'light' } = {}) {
 }
 {
   const p = await page(DESK, '/get/');
-  ok(!(await p.$('#ipa-link')) && !(await p.$('#apk-link')), 'on a computer too, no test files: the browser way is the app');
-  ok(await p.isVisible('#android-open'), 'and the Android browser steps are there');
+  ok(!(await p.$('#ipa-link')), 'on a computer too, no IPA');
+  ok(await p.isVisible('#apk-link') && (await p.getAttribute('#apk-link', 'href')) === '../downloads/parwah.apk', 'Download the Android app is offered, from this site');
+  ok(await p.isVisible('#android-open'), 'and the Chrome way is there too');
 }
 
 // ---- the app, arriving from Get the iPhone app
