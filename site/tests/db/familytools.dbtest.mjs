@@ -230,7 +230,10 @@ const anon = { id: maa.id, code: 'VERMAS', token: null };
   const r1 = await Promise.all([S.sweepStaffLate(db(), fam, nine), S.sweepStaffLate(db(), fam, nine)]);
   ok('staff late: the family is told once, even with two phones polling', r1[0] + r1[1] === 1, JSON.stringify(r1));
   ok('staff late: and not again that day', (await S.sweepStaffLate(db(), fam, nine + 3600000)) === 0);
-  const feed = (await admin.query(`select text from events where circle_id = $1 and text like '%not marked in yet%'`, [fam])).rows;
+  // Only Didi's lines: the staff GET above runs the same sweep on the real
+  // clock, so between 9 am and 1 pm in India Sunita (expected 08:00)
+  // is rightly reported late too, and the count must not depend on the hour.
+  const feed = (await admin.query(`select text from events where circle_id = $1 and text like '%Didi%not marked in yet%'`, [fam])).rows;
   ok('staff late: respectful words, with the expected time', feed.length === 1 && /Didi \(cook\) was expected at 08:00/.test(feed[0].text), JSON.stringify(feed));
   await admin.query(`insert into staff_attendance (staff_id, day, status) values ($1, '2026-11-04', 'came')`, [late.id]);
   ok('staff late: a day already marked is never alerted', (await S.sweepStaffLate(db(), fam, Date.UTC(2026, 10, 4, 9, 5))) === 0);
