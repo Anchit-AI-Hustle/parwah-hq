@@ -2806,11 +2806,13 @@ _get = (ROOT / "public" / "get" / "index.html").read_text(encoding="utf-8")
 _adv = _get.find('id="advanced"')
 check("get: no probe for a download that does not exist", "downloads/parwah.apk" not in _get and "direct-android" not in _get)
 check("get: no call to the GitHub API from the page (rate-limited for visitors, and the repo may go private)", "api.github.com" not in _get)
-check("get: the browser and Add to Home Screen come first, the profile under Advanced",
-      _adv > 0 and 0 < _get.find('id="ios-guide"') < _adv and 0 < _get.find('id="android-open"') < _adv
-      and _get.find('id="ios-get"') > _adv and "Add to Home Screen" in _get[:_adv])
-check("get: the advanced options say plainly what they are",
-      "not signed" in _get[_adv:] and "Play Store" in _get[_adv:])
+_ioscard = _get[_get.find('id="p-ios"'):_get.find('id="p-desk"')]
+check("get: on iPhone, Install the iPhone app is the main button (owner, 2026-11-09), with Add to Home Screen as the other way",
+      'class="getbtn" id="ios-get" href="../install/parwah.mobileconfig"' in _ioscard
+      and 'id="ios-guide" href="../?install=ios"' in _ioscard and "Add to Home Screen" in _ioscard
+      and 0 < _get.find('id="android-open"') < _adv and 'id="adv-ios"' not in _get)
+check("get: the iPhone profile says plainly it is not signed, and Android says Play Store soon",
+      "not signed" in _ioscard and "Play Store" in _get[_adv:])
 # The repo goes private and its test releases are deleted, so the page links
 # to nothing on GitHub: a debug-signed build is not offered to families.
 check("get: no download or link from GitHub (no test APK, no IPA, no releases page)",
