@@ -51,7 +51,9 @@ export const REGISTER_MAX = { title: 120, label: 40, identifier: 60, where: 1000
 // WHO CAN SEE IT
 // ---------------------------------------------------------------------------
 // Four plain choices. The keys of the first three are the original ones.
-// - ONLY_ME:        nobody else, ever. To everyone else it does not exist.
+// - ONLY_ME:        the person it is about, and whoever wrote it. To
+//                   everyone else it does not exist. Once the person it is
+//                   about has chosen this, only they can widen it again.
 // - NOMINEES_ONLY:  only the people named in designated_recipients.
 // - IMMEDIATE:      the whole family.
 // - EMERGENCY_ONLY: the family, only while this person has an SOS open.
@@ -170,7 +172,13 @@ export function registerIdentifier(raw) {
 // A postal PIN code has six digits and is not a secret: only four count.
 export function registerSecretRisk(v) {
   const s = String(v || '');
-  if (/\b(password|passcode|passphrase|pwd)\s*[:=]\s*\S/i.test(s)
+  // "password is tiger@77", "pwd tiger@77", "pass: x", "login: rohan / x".
+  // Saying where it is ("the password is in the red diary") stays allowed.
+  const WHERE = '(?!\\s*(is\\s+)?(in|on|at|kept|with|written|inside|under|saved|stored)\\b)';
+  if (new RegExp('\\b(password|passcode|passphrase|pwd|pass)\\b' + WHERE + '\\s*(is\\b|[-:=])\\s*\\S', 'i').test(s)
+      || new RegExp('\\b(pwd|passwd)\\b' + WHERE + '\\s+\\S*[^a-z\\s]\\S*', 'i').test(s)
+      || new RegExp('\\b(log ?in|user ?name|user ?id)\\b' + WHERE + '\\s*(is\\b|[:=])\\s*\\S', 'i').test(s)
+      || /\b(password|passcode|passphrase|pwd)\s*[:=]\s*\S/i.test(s)
       || /\bpin\b\W{0,3}(is\s+|no\.?\s*)?\d{4}(?!\d)/i.test(s)
       || /\bpasscode\b\W{0,3}(is\s+)?\d{4,8}(?!\d)/i.test(s)) {
     return 'Parwah never keeps a password or a PIN. Write where it is kept, not what it is.';
@@ -226,7 +234,12 @@ export function registerClean(b, { risk = null } = {}) {
 
   // Never a secret, in any box.
   for (const [field, v] of [['title', title], ['label', label], ['identifier', rawId], ['where', where], ['inName', inNameText], ['nominee', nominee], ['note', note]]) {
-    const why = (risk && risk(v)) || registerSecretRisk(v);
+    // An account number is cut to its last four anyway, and one in ten
+    // passes the card check by chance. In the number box only a number of
+    // card length (15 or 16 digits) is checked as a card.
+    const digits = v.replace(/\D/g, '').length;
+    const seen = field === 'identifier' && digits !== 15 && digits !== 16 ? v.replace(/\d[\d -]{5,}\d/g, ' ') : v;
+    const why = (risk && risk(seen)) || registerSecretRisk(seen);
     if (why) return { error: why, field };
   }
 

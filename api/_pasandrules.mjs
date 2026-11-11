@@ -25,7 +25,7 @@ export const PASAND_RESPONSES = [
   ['saved', 'Will try it'], ['loved', 'Loved it'], ['done', 'Seen it'], ['pass', 'Not for me']
 ];
 export const PASAND_AUDIENCES = ['family', 'chosen', 'me'];
-export const PASAND_MAX = { like: 60, likes: 40, title: 80, note: 200, reply: 200, link: 300, chosen: 60, perHour: 20, list: 100 };
+export const PASAND_MAX = { like: 60, likes: 40, title: 80, note: 200, reply: 200, link: 300, chosen: 60, perHour: 20, perDay: 40, list: 100 };
 
 const has = (list, key) => list.some(x => x[0] === key);
 export const isLikeKind = (k) => has(PASAND_KINDS, k);

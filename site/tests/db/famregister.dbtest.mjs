@@ -384,6 +384,50 @@ let emId;
   ok('a method it does not know is refused, not left hanging', r.status === 405, JSON.stringify(r));
 }
 
+// ---- the independent review of 2026-11-11: each finding, kept fixed
+{
+  // Rohan writes an entry about Papa; Papa makes it his alone. Rohan can
+  // still read what he wrote, but cannot widen it again.
+  const a = await add(U.rohan, { ...base, institutionOrItem: 'Plot in Mysuru', unlockPolicy: 'IMMEDIATE' });
+  ok('review: Papa makes an entry about him his alone', (await act(U.papa, 'locator_share', { id: a.id, unlockPolicy: 'ONLY_ME' })).status === 200);
+  const widen = await act(U.rohan, 'locator_share', { id: a.id, unlockPolicy: 'IMMEDIATE' });
+  ok('review: whoever wrote it cannot widen it again', widen.status === 403 && /person it is about/.test(widen.error || ''), JSON.stringify(widen));
+  ok('review: but can still read what they wrote', (await open(U.rohan, a.id)).status === 200);
+  ok('review: and Papa can widen it himself', (await act(U.papa, 'locator_share', { id: a.id, unlockPolicy: 'ONLY_ME' })).status === 200);
+
+  // The audit list says nothing about an entry that is someone's alone.
+  const audit = (u) => call(book, { method: 'GET', token: u.token, query: { area: 'audit', circle: code, member: u.id } });
+  const seen = (j) => (j.events || []).filter(e => e.resource === 'legacy_asset_locator' && e.resource_id === a.id).length;
+  const am = await audit(U.meera), ap = await audit(U.papa), ar = await audit(U.rohan);
+  ok('review: the audit list does not tell Meera an "Only me" entry exists', am.status === 200 && seen(am) === 0, String(seen(am)));
+  ok('review: Papa and Rohan, who can read it, still see its history', seen(ap) > 0 && seen(ar) > 0, seen(ap) + '/' + seen(ar));
+
+  // Someone not on Parwah can never press SOS: "Only in an emergency"
+  // about them would never open, so it is refused with what to pick.
+  const dadi = (await rows(`insert into members (circle_id, name, role) select id, 'Dadi', 'parent' from circles where code = $1 returning id`, [code]))[0].id;
+  const em = await add(U.rohan, { ...base, personId: dadi, institutionOrItem: 'Dadi gold', category: 'GOLD', unlockPolicy: 'EMERGENCY_ONLY' });
+  ok('review: "Only in an emergency" about someone not on Parwah is refused, with what to pick', em.status === 400 && /not on Parwah/.test(em.error || '') && /People I choose/.test(em.error || ''), JSON.stringify(em));
+  ok('review: the same entry as "People I choose" is fine', (await add(U.rohan, { ...base, personId: dadi, institutionOrItem: 'Dadi gold', category: 'GOLD', unlockPolicy: 'NOMINEES_ONLY', designatedRecipients: [U.meera.id] })).status === 200);
+  // For someone not on Parwah, whoever wrote it is the only one who can manage it at all.
+  const solo = await add(U.rohan, { ...base, personId: dadi, institutionOrItem: 'Dadi pension book', unlockPolicy: 'ONLY_ME' });
+  ok('review: an "Only me" entry about someone not on Parwah can still be re-shared by whoever wrote it', (await act(U.rohan, 'locator_share', { id: solo.id, unlockPolicy: 'IMMEDIATE' })).status === 200);
+
+  // An account number that happens to pass the card check is an account
+  // number: it is kept as its last four, not refused.
+  const luhnOk = '50100234567128';   // 14 digits, passes the card check by chance
+  const acct = await add(U.papa, { ...base, unlockPolicy: 'IMMEDIATE', institutionOrItem: 'HDFC savings', category: 'BANK_ACCOUNT', identifierMask: luhnOk });
+  const got = acct.id ? await open(U.papa, acct.id) : {};
+  ok('review: a long account number is kept as its last four, never refused as a card', acct.status === 200 && JSON.stringify(got).includes('7128') && !JSON.stringify(got).includes(luhnOk), JSON.stringify(acct));
+  ok('review: a card number in the note is still refused', (await add(U.papa, { ...base, unlockPolicy: 'IMMEDIATE', institutionOrItem: 'Card', note: 'card 4111 1111 1111 1111' })).status === 400);
+
+  // A password phrased any way is refused; where it is kept is fine.
+  for (const t of ['password is Tiger@77', 'Password - Tiger@77', 'pwd Tiger@77', 'Netbanking pass: Tiger@77', 'login: rohan / Tiger@77']) {
+    const bad = await add(U.papa, { ...base, unlockPolicy: 'IMMEDIATE', institutionOrItem: 'Net banking', note: t });
+    ok('review: refused in a note: ' + t, bad.status === 400 && /never keeps a password/.test(bad.error || ''), JSON.stringify(bad));
+  }
+  ok('review: where the password is kept is fine', (await add(U.papa, { ...base, unlockPolicy: 'IMMEDIATE', institutionOrItem: 'Net banking', note: 'The password is in the red diary' })).status === 200);
+}
+
 globalThis.fetch = realFetch;
 await admin.end();
 for (const p of globalThis.__parwahPools || []) await p.end().catch(() => {});

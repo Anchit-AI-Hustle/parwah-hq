@@ -2588,7 +2588,8 @@ check("pasand: the screen says no password is asked for, and no account is linke
       "Tick what you have so the family knows where to watch together. Parwah never asks for your password." in _app_src
       and 'type="password" id="ps-' not in _app_src)
 check("pasand: its tables are made through schemaOnce, sending is rate limited, and only recipients are pushed",
-      "schemaOnce(() => pasandTables(sql))" in _ps and "rateLimit(sql, 'pasand_rec', me.id, PASAND_MAX.perHour, 3600)" in _ps
+      "schemaOnce(() => pasandTables(sql))" in _ps and "rateLimit(sql, 'pasand_rec', me.id, PASAND_MAX.perHour, 3600, { failClosed: true })" in _ps
+      and "rateLimit(sql, 'pasand_rec_day', me.id, PASAND_MAX.perDay, 86400, { failClosed: true })" in _ps
       and "pushCircle(sql, circle.id, payload, { only: id })" in _ps
       and "requireMember(sql, code, memberId, tokenOf(req))" in _ps)
 check("pasand: Today, the Together tab and a person's page all draw it, and errors go through humanFail",
@@ -3134,10 +3135,14 @@ check("register: only the person it is about, or whoever wrote it, can edit, re-
       "return !!locator && !!memberId && (locator.person_id === memberId || locator.created_by === memberId);" in _fr
       and "action === 'locator_update' || action === 'locator_share' || action === 'locator_remove'" in _fr_api
       and "Only the person it is about, or whoever wrote it, can change this." in _fr_api)
+check("register: once the person it is about makes it theirs alone, only they can widen it; the audit list keeps quiet about it",
+      "if (row.unlock_policy === 'ONLY_ME' && row.person_id !== g.me.id) {" in _fr_api
+      and _fr_api.count("l.unlock_policy = 'ONLY_ME'") == 2
+      and "is not on Parwah yet, so an emergency could never open this" in _fr_api)
 check("register: never a card number, CVV, OTP, PIN or password; a long number keeps its last 4",
       "const { noteRisk } = await import('./_notesapi.mjs');" in _fr_api
       and _fr_api.count("registerClean(req.body, { risk: noteRisk })") == 2
-      and "const why = (risk && risk(v)) || registerSecretRisk(v);" in _fr
+      and "const why = (risk && risk(seen)) || registerSecretRisk(seen);" in _fr and "digits !== 15 && digits !== 16" in _fr
       and "['title', title], ['label', label], ['identifier', rawId], ['where', where], ['inName', inNameText], ['nominee', nominee], ['note', note]" in _fr
       and "Parwah never keeps a password or a PIN. Write where it is kept, not what it is." in _fr
       and "identifier: registerIdentifier(rawId)," in _fr and ">= 7) return maskAssetIdentifier(" in _fr)

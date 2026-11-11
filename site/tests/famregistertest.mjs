@@ -80,6 +80,10 @@ ok('and so does a policy number with letters around it', registerIdentifier('Pol
 ok('a short label stays as typed', registerIdentifier('Locker #42') === 'Locker #42' && registerIdentifier('  Folio 12 ') === 'Folio 12');
 ok('nothing typed is nothing stored', registerIdentifier('') === null && registerIdentifier(null) === null);
 ok('a password written out is refused', /never keeps a password/.test(registerSecretRisk('Gmail password: tiger@77') || ''));
+for (const t of ['password is Tiger@77', 'Password - Tiger@77', 'pwd Tiger@77', 'Netbanking pass: Tiger@77', 'login: rohan / Tiger@77', 'user name is rohan77'])
+  ok('a password or sign-in phrased any way is refused: ' + t, !!registerSecretRisk(t));
+for (const t of ['The password is in the red diary', 'password kept with Maa', 'login details are in the blue file', 'pass the salt', 'PIN code 560038', 'Passbook is in the steel almirah'])
+  ok('saying where it is kept, or an ordinary line, is fine: ' + t, registerSecretRisk(t) === null);
 ok('so is "pwd=..."', !!registerSecretRisk('pwd = hunter2'));
 ok('a PIN written out is refused', !!registerSecretRisk('Locker PIN is 4821') && !!registerSecretRisk('pin: 4821') && !!registerSecretRisk('PIN 4821'));
 ok('a passcode written out is refused', !!registerSecretRisk('phone passcode 482913'));

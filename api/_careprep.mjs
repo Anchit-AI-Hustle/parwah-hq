@@ -1204,6 +1204,12 @@ async function registerPeople(sql, circleId, v, personId) {
     v.designatedRecipients = v.designatedRecipients.filter(x => x !== personId);
     if (!v.designatedRecipients.length) return { error: 'Choose at least one person, or pick Only me.', status: 400 };
   }
+  // "Only in an emergency" opens on that person's own SOS. Someone who is
+  // not on Parwah can never press it, so the entry would never open.
+  if (v.unlockPolicy === 'EMERGENCY_ONLY') {
+    const who = await sql`select name, user_id from members where id = ${personId} and circle_id = ${circleId}`;
+    if (who[0] && !who[0].user_id) return { error: who[0].name + ' is not on Parwah yet, so an emergency could never open this. Pick People I choose.', status: 400, field: 'who' };
+  }
   return {};
 }
 
@@ -1332,6 +1338,12 @@ export async function locatorApi(req, res) {
         }
 
         if (action === 'locator_share') {
+          // Once the person it is about has made it theirs alone, only
+          // they can widen it again. Whoever wrote it can still read it.
+          if (row.unlock_policy === 'ONLY_ME' && row.person_id !== g.me.id) {
+            const subj = await sql`select user_id from members where id = ${row.person_id}`;
+            if (subj[0] && subj[0].user_id) return res.status(403).json({ ok: false, error: 'Only the person it is about can change who sees this now.' });
+          }
           const w = registerWho(req.body);
           if (w.error) return res.status(400).json({ ok: false, error: w.error, field: w.field });
           const p = await registerPeople(sql, g.circle.id, w.value, row.person_id);
@@ -1390,6 +1402,9 @@ export async function auditApi(req, res) {
           from audit_events ae
           left join members m on m.id = ae.actor_id
           where ae.circle_id = ${g.circle.id} and ae.resource = ${resource} and ae.resource_id = ${resourceId}
+            and not (ae.resource = 'legacy_asset_locator' and ae.actor_id is distinct from ${g.me.id}
+                     and exists (select 1 from legacy_asset_locators l where l.id = ae.resource_id and l.unlock_policy = 'ONLY_ME'
+                                 and l.person_id <> ${g.me.id} and l.created_by is distinct from ${g.me.id}))
           order by ae.timestamp desc limit 30
         `
       : await sql`
@@ -1397,6 +1412,9 @@ export async function auditApi(req, res) {
           from audit_events ae
           left join members m on m.id = ae.actor_id
           where ae.circle_id = ${g.circle.id}
+            and not (ae.resource = 'legacy_asset_locator' and ae.actor_id is distinct from ${g.me.id}
+                     and exists (select 1 from legacy_asset_locators l where l.id = ae.resource_id and l.unlock_policy = 'ONLY_ME'
+                                 and l.person_id <> ${g.me.id} and l.created_by is distinct from ${g.me.id}))
           order by ae.timestamp desc limit 50
         `;
 

@@ -258,8 +258,11 @@ export default async function handler(req, res) {
         }
         to = ids;
       }
-      if (!(await rateLimit(sql, 'pasand_rec', me.id, PASAND_MAX.perHour, 3600))) {
+      if (!(await rateLimit(sql, 'pasand_rec', me.id, PASAND_MAX.perHour, 3600, { failClosed: true }))) {
         return bad('That is a lot of recommendations in one hour. Try again later.', 429);
+      }
+      if (!(await rateLimit(sql, 'pasand_rec_day', me.id, PASAND_MAX.perDay, 86400, { failClosed: true }))) {
+        return bad('That is a lot of recommendations for one day. Try again tomorrow.', 429);
       }
       const r = await sql`insert into pasand_recs (circle_id, by_member, title, kind, platform, link, note, to_all)
                           values (${circle.id}, ${me.id}, ${title.value}, ${body.kind}, ${platform}, ${link.value}, ${note.value || null}, ${toAll})
@@ -268,7 +271,8 @@ export default async function handler(req, res) {
       const on = platform && platform !== 'other' ? platformName(platform) : '';
       const payload = { title: '💛 ' + me.name + ' recommends ' + title.value, body: (on ? 'On ' + on + '. ' : '') + 'Open Parwah to say what you think.', url: '/#home' };
       // Only the people it is for are told, one by one.
-      for (const id of to) await pushCircle(sql, circle.id, payload, { only: id });
+      // All at once, and a slow push never fails a recommendation already saved.
+      await Promise.allSettled(to.map(id => pushCircle(sql, circle.id, payload, { only: id })));
       return good({ id: r[0].id, to: to.length }, 201);
     }
     if (action === 'rec_respond') {

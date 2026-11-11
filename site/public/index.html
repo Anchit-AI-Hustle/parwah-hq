@@ -6160,7 +6160,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
         return;
       }
       if (changedId) { delete frDetails[changedId]; if (frOpenIds[changedId]) { delete frOpenIds[changedId]; } }
-      toast(changedId ? 'Saved 📒' : (who === 'ONLY_ME' ? 'Saved 📒 Only you can see it' : 'Saved 📒 It is in the register now'));
+      toast(changedId ? 'Saved 📒' : (who === 'ONLY_ME' ? 'Saved 📒 It is private now' : 'Saved 📒 It is in the register now'));
       frFormReset();
       loadAssetLocators();
       // The small, clean call: the Renewals list already has an "add".

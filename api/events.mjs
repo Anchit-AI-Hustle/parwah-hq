@@ -195,8 +195,10 @@ async function escalateStaleSos(sql, circleId) {
       // words. Worked out here so the app and the server can never disagree.
       const rishte = kinEveryone(by, g.me.id), firstNames = new Map(members.map(m => [m.id, m.name]));
       for (const m of members) {
-        m.kin = kinLabel(by, g.me.id, m.id);
-        const ri = m.id === g.me.id ? null : rishte.get(m.id);
+        // One walk names everyone; the old per-person walk is the fallback.
+        const known = rishte.get(m.id);
+        m.kin = known && m.id !== g.me.id ? known.label : kinLabel(by, g.me.id, m.id);
+        const ri = m.id === g.me.id ? null : known;
         m.rz = ri ? { hindi: ri.hindi, english: ri.english, side: ri.side, group: ri.closeness, chain: kinChainWords(ri.chain, firstNames) } : null;
         m.gen = (m.parent_id || m.spouse_id || members.some(x => x.parent_id === m.id)) ? gens.get(m.id) : null;
       }
