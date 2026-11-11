@@ -68,6 +68,11 @@ export function optionOf(styleKey, k) {
 }
 
 export async function ensurePulseSchema(sql) {
+  // First loads race here (two phones, two screens): see schemaOnce in _db.mjs.
+  const { schemaOnce } = await import('./_db.mjs');
+  return schemaOnce(() => pulseTables(sql));
+}
+async function pulseTables(sql) {
   await sql`create table if not exists pulse (
     circle_id uuid not null references circles(id) on delete cascade,
     member_id uuid not null references members(id) on delete cascade,

@@ -2539,7 +2539,7 @@ check("timer: shared cards, festivals and the weekly story question ring from th
 check("schema: care tools, plan prices and the horoscope set up their tables through schemaOnce",
       all("schemaOnce(() => " + n + "(sql))" in (API_DIR / f).read_text(encoding="utf-8")
           for f, n in (("_careprep.mjs", "carePrepTables"), ("_planapi.mjs", "planTables"), ("_horoscope.mjs", "horoscopeTables"),
-                       ("_bookschema.mjs", "bookTables"), ("_coins.mjs", "coinTables"))))
+                       ("_bookschema.mjs", "bookTables"), ("_coins.mjs", "coinTables"), ("_pulse.mjs", "pulseTables"))))
 check("schema: a deadlock between two first loads is retried like the other races",
       "'40P01'" in (API_DIR / "_db.mjs").read_text(encoding="utf-8"))
 check("chat: the day line uses the viewer's own date, not the server's UTC day",
