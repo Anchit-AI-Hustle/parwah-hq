@@ -57,6 +57,11 @@ node site/tests/kintest.mjs
 # Advanced care & preparedness engine: refill forecast, biomarker extraction,
 # ER packets, audio intents, bill delegation, asset locator access.
 node site/tests/carepreptest.mjs
+# The family register: who sees an entry (only me, people I choose, whole
+# family, only in an emergency), what a hidden one returns, and that no
+# password, PIN or card number is saved. _register.mjs imports only
+# _money.mjs, which imports nothing, so this runs before npm install too.
+node site/tests/famregistertest.mjs
 # Quiet day, ask family first, the life certificate, the call rota: when a
 # missed check-in tells the family, the November window, and an
 # acknowledgement that is never an Aadhaar number. _carerules.mjs imports
@@ -66,6 +71,10 @@ node site/tests/caretoolstest.mjs
 # 2027), 14 days ahead, and the yearly date behind birthday and anniversary
 # cards. _tyohaar.mjs imports nothing, so this runs before npm install.
 node site/tests/bondtest.mjs
+# Pasand: what a like, a link and a recommendation may be, the password and
+# sign-in refusal, and who may see whose likes. _pasandrules.mjs imports
+# nothing, so this runs before npm install too.
+node site/tests/pasandtest.mjs
 # The native apps' copy of the server's rules (PINs, for now) is written by
 # the server itself. If a rule changes in api/ and the contract is not
 # regenerated, the phones would accept what the server then refuses. Vercel's

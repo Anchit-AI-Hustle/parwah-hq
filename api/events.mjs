@@ -22,7 +22,7 @@ import { storySweep, ensureBondSchema as ensureMemoryBondSchema } from './_memor
 import { award, today } from './_coins.mjs';
 import { reqTz } from './_recur.mjs';
 
-import { index as kinIndex, kinLabel, generations } from './_kin.mjs';
+import { index as kinIndex, kinLabel, generations, kinEveryone, kinChainWords } from './_kin.mjs';
 import { pulseToday, ensurePulseSchema, optionOf, styleFor, today as pulseDay } from './_pulse.mjs';
 import { FC_EVENT_TYPES, familyCarePost, familyCareState, quietSweep, quietSweepAll, rotaSweep, pulseCallNudge } from './_familycare.mjs';
 
@@ -188,10 +188,18 @@ async function escalateStaleSos(sql, circleId) {
                                 from members where circle_id = ${circle.id} order by created_at`;
       // The family tree, read from where the person looking stands: Papa is
       // "Father" to Rohan and "Father-in-law" to Priya. null = not placed yet.
-      const by = kinIndex(members.map(m => ({ id: m.id, gender: m.gender, parentId: m.parent_id, spouseId: m.spouse_id })));
+      const by = kinIndex(members.map(m => ({ id: m.id, gender: m.gender, parentId: m.parent_id, spouseId: m.spouse_id, dob: m.dob })));
       const gens = generations(by);
+      // Rishtedaar: for whoever is looking, each person's home name, the
+      // plain English word, near or far, and the chain that joins them, in
+      // words. Worked out here so the app and the server can never disagree.
+      const rishte = kinEveryone(by, g.me.id), firstNames = new Map(members.map(m => [m.id, m.name]));
       for (const m of members) {
-        m.kin = kinLabel(by, g.me.id, m.id);
+        // One walk names everyone; the old per-person walk is the fallback.
+        const known = rishte.get(m.id);
+        m.kin = known && m.id !== g.me.id ? known.label : kinLabel(by, g.me.id, m.id);
+        const ri = m.id === g.me.id ? null : known;
+        m.rz = ri ? { hindi: ri.hindi, english: ri.english, side: ri.side, group: ri.closeness, chain: kinChainWords(ri.chain, firstNames) } : null;
         m.gen = (m.parent_id || m.spouse_id || members.some(x => x.parent_id === m.id)) ? gens.get(m.id) : null;
       }
       const ck = await sql`select kind, family_type from circles where id = ${circle.id}`;

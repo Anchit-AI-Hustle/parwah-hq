@@ -258,23 +258,27 @@ await ctxE.close();
 // =====================================================================
 const L = await phone(as('Anchit'), { hash: '#vault' });
 await L.click('#vault-seg [data-sec="locator"]'); await L.waitForTimeout(800);
-ok('the policies are the server\'s: anyone in the family, or only during an SOS', JSON.stringify(await L.$$eval('#loc-policy option', os => os.map(o => o.value))) === '["IMMEDIATE","EMERGENCY_ONLY"]');
+// The family register (2026-11): four choices in a labelled group, not a select of two.
+ok('the policies are the server\'s four: only me, people I choose, whole family, only in an emergency', JSON.stringify(await L.$$eval('#fr-who input', os => os.map(o => o.value))) === '["ONLY_ME","NOMINEES_ONLY","IMMEDIATE","EMERGENCY_ONLY"]');
 await L.fill('#loc-item', 'SBI locker, Hazratganj'); await L.selectOption('#loc-cat', 'LOCKER_KEY');
 await L.selectOption('#loc-about', U.Papa.memberId);
 await L.fill('#loc-mask', 'Locker 42'); await L.fill('#loc-notes', 'Key in the steel almirah, brown folder');
-await L.selectOption('#loc-policy', 'IMMEDIATE');
+await L.check('#fr-who input[value="IMMEDIATE"]');
 await L.click('#btn-add-locator'); await L.waitForTimeout(1000);
 await L.fill('#loc-item', 'Will'); await L.selectOption('#loc-cat', 'WILL');
-await L.fill('#loc-notes', 'With Mr Kapoor, the lawyer'); await L.selectOption('#loc-policy', 'EMERGENCY_ONLY');
+await L.fill('#loc-notes', 'With Mr Kapoor, the lawyer'); await L.check('#fr-who input[value="EMERGENCY_ONLY"]');
 await L.click('#btn-add-locator'); await L.waitForTimeout(1000);
 const locs = (await admin.query(`select institution_or_item, unlock_policy, person_id, identifier_mask from legacy_asset_locators order by created_at`)).rows;
 ok('both are saved with their policies, for Papa', locs.length === 2 && locs[0].unlock_policy === 'IMMEDIATE' && locs[1].unlock_policy === 'EMERGENCY_ONLY' && locs[0].person_id === U.Papa.memberId && locs[0].identifier_mask === 'Locker 42', JSON.stringify(locs));
+// The list no longer carries the notes: each entry is opened to read them.
+while (await L.$('#locator-feed [data-fropen][aria-expanded="false"]')) { await L.click('#locator-feed [data-fropen][aria-expanded="false"]'); await L.waitForTimeout(700); }
 const feed = await L.textContent('#locator-feed');
 ok('the family-wide one shows where it is kept', /steel almirah/.test(feed));
-ok('whoever wrote the SOS-only one can still read it, labelled with its rule', /Mr Kapoor/.test(feed) && /Only during an SOS/.test(feed));
+ok('whoever wrote the SOS-only one can still read it, labelled with its rule', /Mr Kapoor/.test(feed) && /Only in an emergency/.test(feed));
 // Rahul did not write it and it is not about him: the server hides it.
 const LR = await phone(as('Rahul'), { hash: '#vault' });
 await LR.click('#vault-seg [data-sec="locator"]'); await LR.waitForTimeout(900);
+while (await LR.$('#locator-feed [data-fropen][aria-expanded="false"]')) { await LR.click('#locator-feed [data-fropen][aria-expanded="false"]'); await LR.waitForTimeout(700); }
 const feedR = await LR.textContent('#locator-feed');
 ok('to the rest of the family, the SOS-only one says so instead of showing the notes', /steel almirah/.test(feedR) && !/Mr Kapoor/.test(feedR) && /Shown to the family only during an SOS/.test(feedR), feedR);
 ok('and there is no Unlock button: the server decides', !(await L.$('[data-unlockloc]')) && !/Unlock/.test(feed));

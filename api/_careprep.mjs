@@ -14,6 +14,11 @@
 
 import { randomUUID } from 'node:crypto';
 import { currencyOf, money } from './_money.mjs';
+import {
+  ASSET_CATEGORIES, UNLOCK_POLICIES, REGISTER_GROUPS, REGISTER_WHO,
+  canViewAssetLocator, maskAssetIdentifier, registerCanManage, registerLogsView,
+  registerRowFor, registerClean, registerWho, registerSeenBy
+} from './_register.mjs';
 
 export function isUuid(v) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ''));
@@ -156,6 +161,25 @@ async function carePrepTables(sql) {
       visibility text not null default 'family'
     )`;
     await sql`create index if not exists idx_asset_loc_person on legacy_asset_locators (person_id)`;
+    // The Family Register: optional details on each entry. Old rows keep
+    // reading as they did; every new column is empty until someone fills it.
+    await sql`alter table legacy_asset_locators add column if not exists custom_label text`;
+    await sql`alter table legacy_asset_locators add column if not exists in_name_member uuid references members(id) on delete set null`;
+    await sql`alter table legacy_asset_locators add column if not exists in_name_text text`;
+    await sql`alter table legacy_asset_locators add column if not exists nominee text`;
+    await sql`alter table legacy_asset_locators add column if not exists approx_value bigint`;
+    await sql`alter table legacy_asset_locators add column if not exists value_currency text`;
+    await sql`alter table legacy_asset_locators add column if not exists due_on date`;
+    await sql`alter table legacy_asset_locators add column if not exists note text`;
+    await sql`create index if not exists idx_asset_loc_circle on legacy_asset_locators (circle_id, created_at)`;
+    // Who opened an entry, and when: one row per viewer, per entry, per day.
+    await sql`create table if not exists legacy_asset_views (
+      locator_id uuid not null references legacy_asset_locators(id) on delete cascade,
+      viewer_id uuid not null references members(id) on delete cascade,
+      day date not null default current_date,
+      at timestamptz not null default now(),
+      primary key (locator_id, viewer_id, day)
+    )`;
 
     // 6. Sibling Care Tasks & Backlog
     await sql`create table if not exists sibling_care_tasks (
@@ -507,42 +531,10 @@ export function formatBillSettledNotification(billerName, amount, payerName, cur
 // 6. "WHEN I'M NOT HERE" (ASSET & LOCKER LOCATOR)
 // ---------------------------------------------------------------------------
 
-export const ASSET_CATEGORIES = [
-  'BANK_ACCOUNT',
-  'LOCKER_KEY',
-  'FIXED_DEPOSIT',
-  'WILL',
-  'DEMAT',
-  'PROPERTY_DEED',
-  'PENSION',
-  'OTHER'
-];
-
-export function maskAssetIdentifier(rawIdentifier) {
-  const raw = String(rawIdentifier || '').trim();
-  if (!raw) return 'Recorded';
-  if (raw.length <= 4) return '*** ' + raw;
-  return 'Ending in ...' + raw.slice(-4);
-}
-
-// Access gating rules:
-// - IMMEDIATE: circle members can view.
-// - EMERGENCY_ONLY: revealed only on active SOS.
-// - NOMINEES_ONLY: revealed only to designated recipients.
-// - Whoever wrote it, and the person it is about, can always see it: an
-//   entry its own author cannot read back looks like it was lost.
-export const UNLOCK_POLICIES = ['IMMEDIATE', 'EMERGENCY_ONLY', 'NOMINEES_ONLY'];
-export function canViewAssetLocator(locator, memberId, isEmergencyActive = false) {
-  if (!locator) return false;
-  if (memberId && (locator.created_by === memberId || locator.person_id === memberId)) return true;
-  const policy = locator.unlock_policy || 'IMMEDIATE';
-  if (policy === 'IMMEDIATE') return true;
-  if (policy === 'EMERGENCY_ONLY' && isEmergencyActive) return true;
-  if (locator.designated_recipients && Array.isArray(locator.designated_recipients)) {
-    return locator.designated_recipients.includes(memberId);
-  }
-  return false;
-}
+// The kinds of thing, the four sharing rules and the rule that decides who
+// reads what now live in _register.mjs (the Family Register). They are
+// exported from here too, so nothing that imported them has to change.
+export { ASSET_CATEGORIES, UNLOCK_POLICIES, canViewAssetLocator, maskAssetIdentifier };
 
 // ---------------------------------------------------------------------------
 // 7. SIBLING CO-CARE TASKS
@@ -1121,6 +1113,112 @@ export async function preauthApi(req, res) {
   } catch (e) { return fail(res, e); }
 }
 
+// THE FAMILY REGISTER ("When I'm Not Here"), behind /api/book?area=locator.
+//
+//   GET  ?area=locator&circle=CODE&member=ID            every entry I may know of
+//        &person=ID   only one person's entries
+//        &brief=1     the list without details (what the app asks for)
+//        &id=ID       one entry, with its details; this is "opening" it
+//   POST {action: locator_add | locator_update | locator_share | locator_remove}
+//
+// The rule for who reads what is registerRowFor in _register.mjs, and
+// nothing leaves this handler without going through it. Whenever the
+// details of an entry go to anyone but the person it is about, that is
+// written in legacy_asset_views: once per viewer, per entry, per day.
+async function registerRows(sql, circleId, { id = null, personId = null } = {}) {
+  if (id) {
+    return sql`
+      select lal.*, to_char(lal.due_on, 'YYYY-MM-DD') as due_day, m.name as person_name, hm.name as in_name_member_name
+      from legacy_asset_locators lal
+      join members m on m.id = lal.person_id
+      left join members hm on hm.id = lal.in_name_member
+      where lal.circle_id = ${circleId} and lal.id = ${id}`;
+  }
+  if (personId) {
+    return sql`
+      select lal.*, to_char(lal.due_on, 'YYYY-MM-DD') as due_day, m.name as person_name, hm.name as in_name_member_name
+      from legacy_asset_locators lal
+      join members m on m.id = lal.person_id
+      left join members hm on hm.id = lal.in_name_member
+      where lal.circle_id = ${circleId} and lal.person_id = ${personId}
+      order by lal.created_at asc`;
+  }
+  return sql`
+    select lal.*, to_char(lal.due_on, 'YYYY-MM-DD') as due_day, m.name as person_name, hm.name as in_name_member_name
+    from legacy_asset_locators lal
+    join members m on m.id = lal.person_id
+    left join members hm on hm.id = lal.in_name_member
+    where lal.circle_id = ${circleId}
+    order by lal.created_at asc`;
+}
+
+// "Only in an emergency" opens while that person has an SOS that is not
+// yet sorted.
+async function registerSos(sql, circleId) {
+  try {
+    const open = await sql`select distinct member_id from sos where circle_id = ${circleId} and status <> 'resolved'`;
+    return new Set(open.map(x => x.member_id));
+  } catch (e) { return new Set(); /* no SOS table yet: nobody has ever pressed it */ }
+}
+
+// Written down once a day. A log that cannot be written never blocks the
+// person from reading what they are allowed to read.
+async function registerLogView(sql, locatorId, viewerId) {
+  try {
+    await sql`insert into legacy_asset_views (locator_id, viewer_id) values (${locatorId}, ${viewerId})
+              on conflict (locator_id, viewer_id, day) do nothing`;
+  } catch (e) { console.error('Register view log failed:', e.message); }
+}
+
+// Who has opened the entries this member looks after (never their own visits).
+async function registerSeen(sql, circleId, meId, onlyId = null) {
+  const views = onlyId
+    ? await sql`
+        select v.locator_id, v.viewer_id, v.at, m.name
+        from legacy_asset_views v
+        join legacy_asset_locators l on l.id = v.locator_id
+        join members m on m.id = v.viewer_id
+        where l.circle_id = ${circleId} and l.id = ${onlyId} and v.viewer_id <> ${meId}
+          and (l.person_id = ${meId} or l.created_by = ${meId})
+        order by v.at desc limit 60`
+    : await sql`
+        select v.locator_id, v.viewer_id, v.at, m.name
+        from legacy_asset_views v
+        join legacy_asset_locators l on l.id = v.locator_id
+        join members m on m.id = v.viewer_id
+        where l.circle_id = ${circleId} and v.viewer_id <> ${meId}
+          and (l.person_id = ${meId} or l.created_by = ${meId})
+        order by v.at desc limit 600`;
+  return registerSeenBy(views);
+}
+
+// The people chosen and the name it is in must be in this family.
+async function registerPeople(sql, circleId, v, personId) {
+  if (v.inNameMember && !(await inCircle(sql, circleId, v.inNameMember))) {
+    return { error: 'Choose someone in this family, or write the name.', status: 403 };
+  }
+  if (v.unlockPolicy === 'NOMINEES_ONLY') {
+    const found = await sql`select id from members where circle_id = ${circleId} and id = any(${v.designatedRecipients}::uuid[])`;
+    if (found.length !== v.designatedRecipients.length) return { error: 'Choose people in this family', status: 403 };
+    // The person it is about always sees it: naming them adds nothing.
+    v.designatedRecipients = v.designatedRecipients.filter(x => x !== personId);
+    if (!v.designatedRecipients.length) return { error: 'Choose at least one person, or pick Only me.', status: 400 };
+  }
+  // "Only in an emergency" opens on that person's own SOS. Someone who is
+  // not on Parwah can never press it, so the entry would never open.
+  if (v.unlockPolicy === 'EMERGENCY_ONLY') {
+    const who = await sql`select name, user_id from members where id = ${personId} and circle_id = ${circleId}`;
+    if (who[0] && !who[0].user_id) return { error: who[0].name + ' is not on Parwah yet, so an emergency could never open this. Pick People I choose.', status: 400, field: 'who' };
+  }
+  return {};
+}
+
+// The value is in the money of the person it belongs to (see _money.mjs).
+async function registerCurrency(sql, personId) {
+  const r = await sql`select country from members where id = ${personId}`;
+  return currencyOf(r[0] && r[0].country);
+}
+
 export async function locatorApi(req, res) {
   const { db, requireMember, tokenOf, fail, failDb } = await getDb();
   let sql;
@@ -1134,48 +1232,35 @@ export async function locatorApi(req, res) {
       const q = req.query || {};
       const g = await requireMember(sql, q.circle, q.member, tokenOf(req));
       if (g.err) return res.status(g.status).json({ ok: false, error: g.err });
+      const inSos = await registerSos(sql, g.circle.id);
+
+      // One entry, opened.
+      if (q.id !== undefined) {
+        const gone = { ok: false, error: 'That entry is not here any more' };
+        if (!isUuid(q.id)) return res.status(404).json(gone);
+        const row = (await registerRows(sql, g.circle.id, { id: q.id }))[0];
+        const entry = registerRowFor(row, g.me.id, row ? inSos.has(row.person_id) : false);
+        // "Only me" answers exactly as an entry that was never written.
+        if (!entry) return res.status(404).json(gone);
+        if (!entry.can_view) return res.status(403).json({ ok: false, locked: true, error: 'This one is not shared with you.' });
+        if (registerLogsView(row, g.me.id)) await registerLogView(sql, row.id, g.me.id);
+        if (entry.can_manage) entry.seen_by = (await registerSeen(sql, g.circle.id, g.me.id, row.id))[row.id] || [];
+        return res.status(200).json({ ok: true, entry });
+      }
 
       const personId = isUuid(q.person) ? q.person : null;
-      const rows = personId
-        ? await sql`
-            select lal.*, m.name as person_name
-            from legacy_asset_locators lal
-            join members m on m.id = lal.person_id
-            where lal.circle_id = ${g.circle.id} and lal.person_id = ${personId}
-            order by lal.created_at asc
-          `
-        : await sql`
-            select lal.*, m.name as person_name
-            from legacy_asset_locators lal
-            join members m on m.id = lal.person_id
-            where lal.circle_id = ${g.circle.id}
-            order by lal.created_at asc
-          `;
-
-      // "Only in an emergency" opens while that person has an SOS that is
-      // not yet sorted. Before, nothing ever told this an SOS was on.
-      let inSos = new Set();
-      try {
-        const open = await sql`select distinct member_id from sos where circle_id = ${g.circle.id} and status <> 'resolved'`;
-        inSos = new Set(open.map(x => x.member_id));
-      } catch (e) { /* no SOS table yet: nobody has ever pressed it */ }
-      const locators = rows.map(r => {
-        const canView = canViewAssetLocator(r, g.me.id, inSos.has(r.person_id));
-        return {
-          id: r.id,
-          person_id: r.person_id,
-          person_name: r.person_name,
-          asset_category: r.asset_category,
-          institution_or_item: r.institution_or_item,
-          // As the person typed it ("Locker #42"), to anyone allowed to see
-          // the entry. Others get only the last four characters.
-          identifier_mask: canView ? (r.identifier_mask || null) : (r.identifier_mask ? maskAssetIdentifier(r.identifier_mask) : null),
-          physical_location_notes: canView ? r.physical_location_notes : 'Restricted (Protected under When I\'m Not Here access policy)',
-          unlock_policy: r.unlock_policy,
-          can_view: canView,
-          last_verified_at: r.last_verified_at
-        };
-      });
+      const brief = q.brief === '1' || q.brief === 'true';
+      const rows = await registerRows(sql, g.circle.id, { personId });
+      const seen = await registerSeen(sql, g.circle.id, g.me.id);
+      const locators = [];
+      for (const r of rows) {
+        const out = registerRowFor(r, g.me.id, inSos.has(r.person_id), { details: !brief });
+        if (!out) continue;
+        // Without brief=1 the details travel with the list, so that is a view.
+        if (out.can_view && !brief && registerLogsView(r, g.me.id)) await registerLogView(sql, r.id, g.me.id);
+        if (out.can_manage) out.seen_by = seen[r.id] || [];
+        locators.push(out);
+      }
 
       await recordAuditEvent(sql, {
         circleId: g.circle.id,
@@ -1185,7 +1270,7 @@ export async function locatorApi(req, res) {
         resourceId: personId
       });
 
-      return res.status(200).json({ ok: true, locators, categories: ASSET_CATEGORIES });
+      return res.status(200).json({ ok: true, locators, categories: ASSET_CATEGORIES, groups: REGISTER_GROUPS, who: REGISTER_WHO });
     }
 
     if (req.method === 'POST') {
@@ -1193,34 +1278,35 @@ export async function locatorApi(req, res) {
       const { code, memberId, action } = req.body;
       const g = await requireMember(sql, code, memberId, tokenOf(req));
       if (g.err) return res.status(g.status).json({ ok: false, error: g.err });
+      // Card numbers, CVV, OTP and bank PINs: the same check the notes use.
+      const { noteRisk } = await import('./_notesapi.mjs');
 
       if (action === 'locator_add') {
-        const { personId, category, institutionOrItem, identifierMask, physicalLocationNotes, unlockPolicy, designatedRecipients } = req.body;
-        if (!personId || !institutionOrItem || !physicalLocationNotes) {
-          return res.status(400).json({ ok: false, error: 'Person, item label, and physical location notes required' });
-        }
-
+        const { personId } = req.body;
+        if (!personId) return res.status(400).json({ ok: false, error: 'Say whose it is.' });
         if (!(await inCircle(sql, g.circle.id, personId))) {
           return res.status(403).json({ ok: false, error: 'Choose someone in this family' });
         }
         // Who may see it is the whole point of this entry. Anything but the
-        // three choices is refused, never quietly stored as "everyone now".
-        if (!UNLOCK_POLICIES.includes(unlockPolicy)) {
-          return res.status(400).json({ ok: false, error: 'Choose who can see this: everyone now (IMMEDIATE), only in an emergency (EMERGENCY_ONLY), or only the people you name (NOMINEES_ONLY).' });
-        }
-        const cat = ASSET_CATEGORIES.includes(category) ? category : 'OTHER';
-        const pol = unlockPolicy;
-        const recs = Array.isArray(designatedRecipients) ? designatedRecipients.filter(isUuid) : [];
+        // four choices is refused, never quietly stored as "everyone now".
+        const c = registerClean(req.body, { risk: noteRisk });
+        if (c.error) return res.status(400).json({ ok: false, error: c.error, field: c.field });
+        const v = c.value;
+        const p = await registerPeople(sql, g.circle.id, v, personId);
+        if (p.error) return res.status(p.status).json({ ok: false, error: p.error });
+        const cur = v.approxValue == null ? null : (v.valueCurrency || await registerCurrency(sql, personId));
 
         const ins = await sql`
           insert into legacy_asset_locators (
             circle_id, person_id, asset_category, institution_or_item,
             identifier_mask, physical_location_notes, unlock_policy,
-            designated_recipients, created_by
+            designated_recipients, created_by,
+            custom_label, in_name_member, in_name_text, nominee, approx_value, value_currency, due_on, note
           ) values (
-            ${g.circle.id}, ${personId}, ${cat}, ${String(institutionOrItem).trim().slice(0, 120)},
-            ${String(identifierMask || '').trim().slice(0, 60) || null}, ${String(physicalLocationNotes).trim().slice(0, 1000)}, ${pol},
-            ${JSON.stringify(recs)}, ${g.me.id}
+            ${g.circle.id}, ${personId}, ${v.category}, ${v.title},
+            ${v.identifier}, ${v.where}, ${v.unlockPolicy},
+            ${JSON.stringify(v.designatedRecipients)}, ${g.me.id},
+            ${v.customLabel}, ${v.inNameMember}, ${v.inNameText}, ${v.nominee}, ${v.approxValue}, ${cur}, ${v.dueOn}, ${v.note}
           ) returning id
         `;
 
@@ -1235,8 +1321,62 @@ export async function locatorApi(req, res) {
         return res.status(200).json({ ok: true, id: ins[0].id });
       }
 
+      if (action === 'locator_update' || action === 'locator_share' || action === 'locator_remove') {
+        const gone = { ok: false, error: 'That entry is not here any more' };
+        if (!isUuid(req.body.id)) return res.status(404).json(gone);
+        const row = (await registerRows(sql, g.circle.id, { id: req.body.id }))[0];
+        // Someone who may not even know it exists is told it does not.
+        if (!row || (!registerCanManage(row, g.me.id) && row.unlock_policy === 'ONLY_ME')) return res.status(404).json(gone);
+        if (!registerCanManage(row, g.me.id)) {
+          return res.status(403).json({ ok: false, error: 'Only the person it is about, or whoever wrote it, can change this.' });
+        }
+
+        if (action === 'locator_remove') {
+          await sql`delete from legacy_asset_locators where id = ${row.id} and circle_id = ${g.circle.id}`;
+          await recordAuditEvent(sql, { circleId: g.circle.id, actorId: g.me.id, action: 'remove_asset_locator', resource: 'legacy_asset_locator', resourceId: row.id });
+          return res.status(200).json({ ok: true });
+        }
+
+        if (action === 'locator_share') {
+          // Once the person it is about has made it theirs alone, only
+          // they can widen it again. Whoever wrote it can still read it.
+          if (row.unlock_policy === 'ONLY_ME' && row.person_id !== g.me.id) {
+            const subj = await sql`select user_id from members where id = ${row.person_id}`;
+            if (subj[0] && subj[0].user_id) return res.status(403).json({ ok: false, error: 'Only the person it is about can change who sees this now.' });
+          }
+          const w = registerWho(req.body);
+          if (w.error) return res.status(400).json({ ok: false, error: w.error, field: w.field });
+          const p = await registerPeople(sql, g.circle.id, w.value, row.person_id);
+          if (p.error) return res.status(p.status).json({ ok: false, error: p.error });
+          await sql`update legacy_asset_locators set unlock_policy = ${w.value.unlockPolicy},
+                      designated_recipients = ${JSON.stringify(w.value.designatedRecipients)}, updated_at = now()
+                    where id = ${row.id} and circle_id = ${g.circle.id}`;
+          await recordAuditEvent(sql, { circleId: g.circle.id, actorId: g.me.id, action: 'share_asset_locator', resource: 'legacy_asset_locator', resourceId: row.id, details: { who: w.value.unlockPolicy } });
+          return res.status(200).json({ ok: true });
+        }
+
+        // An edit. Whose it is does not change: that would be a new entry.
+        const c = registerClean(req.body, { risk: noteRisk });
+        if (c.error) return res.status(400).json({ ok: false, error: c.error, field: c.field });
+        const v = c.value;
+        const p = await registerPeople(sql, g.circle.id, v, row.person_id);
+        if (p.error) return res.status(p.status).json({ ok: false, error: p.error });
+        const cur = v.approxValue == null ? null : (v.valueCurrency || row.value_currency || await registerCurrency(sql, row.person_id));
+        await sql`update legacy_asset_locators set
+                    asset_category = ${v.category}, institution_or_item = ${v.title}, identifier_mask = ${v.identifier},
+                    physical_location_notes = ${v.where}, unlock_policy = ${v.unlockPolicy},
+                    designated_recipients = ${JSON.stringify(v.designatedRecipients)},
+                    custom_label = ${v.customLabel}, in_name_member = ${v.inNameMember}, in_name_text = ${v.inNameText},
+                    nominee = ${v.nominee}, approx_value = ${v.approxValue}, value_currency = ${cur}, due_on = ${v.dueOn},
+                    note = ${v.note}, updated_at = now(), last_verified_at = now()
+                  where id = ${row.id} and circle_id = ${g.circle.id}`;
+        await recordAuditEvent(sql, { circleId: g.circle.id, actorId: g.me.id, action: 'edit_asset_locator', resource: 'legacy_asset_locator', resourceId: row.id });
+        return res.status(200).json({ ok: true, id: row.id });
+      }
+
       return res.status(400).json({ ok: false, error: 'Unknown locator action' });
     }
+    return res.status(405).json({ ok: false, error: 'Method not allowed' });
   } catch (e) { return fail(res, e); }
 }
 
@@ -1262,6 +1402,9 @@ export async function auditApi(req, res) {
           from audit_events ae
           left join members m on m.id = ae.actor_id
           where ae.circle_id = ${g.circle.id} and ae.resource = ${resource} and ae.resource_id = ${resourceId}
+            and not (ae.resource = 'legacy_asset_locator' and ae.actor_id is distinct from ${g.me.id}
+                     and exists (select 1 from legacy_asset_locators l where l.id = ae.resource_id and l.unlock_policy = 'ONLY_ME'
+                                 and l.person_id <> ${g.me.id} and l.created_by is distinct from ${g.me.id}))
           order by ae.timestamp desc limit 30
         `
       : await sql`
@@ -1269,6 +1412,9 @@ export async function auditApi(req, res) {
           from audit_events ae
           left join members m on m.id = ae.actor_id
           where ae.circle_id = ${g.circle.id}
+            and not (ae.resource = 'legacy_asset_locator' and ae.actor_id is distinct from ${g.me.id}
+                     and exists (select 1 from legacy_asset_locators l where l.id = ae.resource_id and l.unlock_policy = 'ONLY_ME'
+                                 and l.person_id <> ${g.me.id} and l.created_by is distinct from ${g.me.id}))
           order by ae.timestamp desc limit 50
         `;
 

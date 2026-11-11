@@ -5,6 +5,11 @@
 let ready = false;
 export async function ensureBookSchema(sql) {
   if (ready) return;
+  // First loads race here (two phones, two screens): see schemaOnce in _db.mjs.
+  const { schemaOnce } = await import('./_db.mjs');
+  return schemaOnce(() => bookTables(sql));
+}
+async function bookTables(sql) {
   await sql`create table if not exists family_book (
     id uuid primary key default gen_random_uuid(),
     circle_id uuid not null references circles(id) on delete cascade,

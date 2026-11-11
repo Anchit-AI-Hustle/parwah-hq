@@ -2090,7 +2090,7 @@ check("order: on a parent's phone nothing covers All is well, Pills or SOS",
 # something in it is set or refused (proved in vault.e2e, care.e2e, plans.e2e).
 _folds = re.findall(r'<details class="fmore" id="([a-z-]+)">\s*<summary>([^<]*)</summary>', _appt)
 check("options: the busy forms fold their extras under More options, each named",
-      sorted(f[0] for f in _folds) == ["b-more", "ex-more", "p-more", "r-more", "st-more", "vd-more", "vp-more"]
+      sorted(f[0] for f in _folds) == ["b-more", "ex-more", "fr-more", "p-more", "r-more", "st-more", "vd-more", "vp-more"]
       and all(f[1].startswith("More options: ") for f in _folds)
       and "for (var d = el.closest('details'); d;" in _appt
       and all(("foldSync('" + f[0] + "')") in _appt for f in _folds))
@@ -2538,7 +2538,8 @@ check("timer: shared cards, festivals and the weekly story question ring from th
       "sweepBond(sql, c)" in _evt and "storySweep(sql, id)" in _evt and "ensureMemoryBondSchema" in _evt)
 check("schema: care tools, plan prices and the horoscope set up their tables through schemaOnce",
       all("schemaOnce(() => " + n + "(sql))" in (API_DIR / f).read_text(encoding="utf-8")
-          for f, n in (("_careprep.mjs", "carePrepTables"), ("_planapi.mjs", "planTables"), ("_horoscope.mjs", "horoscopeTables"))))
+          for f, n in (("_careprep.mjs", "carePrepTables"), ("_planapi.mjs", "planTables"), ("_horoscope.mjs", "horoscopeTables"),
+                       ("_bookschema.mjs", "bookTables"), ("_coins.mjs", "coinTables"), ("_pulse.mjs", "pulseTables"))))
 check("schema: a deadlock between two first loads is retried like the other races",
       "'40P01'" in (API_DIR / "_db.mjs").read_text(encoding="utf-8"))
 check("chat: the day line uses the viewer's own date, not the server's UTC day",
@@ -2559,6 +2560,47 @@ check("notes: shared lists under To do; a private note is private in the query i
       and "if (area === 'notes') return notesApi(req, res);" in (API_DIR / "book.mjs").read_text(encoding="utf-8"))
 check("notes: never a card number or a banking secret",
       "function luhn(d)" in _notes and "noteRisk" in _notes)
+# Pasand (likes, where I watch, recommendations): proved in pasandtest (the
+# rules), pasand.dbtest (the handler on PostgreSQL) and pasand.e2e (two real
+# phones). These guard what must not drift: it costs no serverless function,
+# the audience and the readers of a recommendation are decided in the query,
+# and a password or a sign-in is never kept.
+_ps = (API_DIR / "_pasand.mjs").read_text(encoding="utf-8")
+_psr = (API_DIR / "_pasandrules.mjs").read_text(encoding="utf-8")
+_psg = (API_DIR / "games.mjs").read_text(encoding="utf-8")
+check("pasand: it rides /api/games?area=pasand in an underscore module, never a new serverless function",
+      "import pasandApi from './_pasand.mjs';" in _psg and "if (area === 'pasand') return pasandApi(req, res);" in _psg
+      and "var pasandApi = '/api/games?area=pasand';" in _app_src and 'data-sec="pasand"' in _app_src
+      and not (API_DIR / "pasand.mjs").exists())
+check("pasand: who sees a person's likes and platforms is decided in the query itself, for both",
+      _ps.count(""".member_id = ${me.id} or coalesce(p.audience, 'family') = 'family'
+           or (p.audience = 'chosen' and ${me.id}::uuid = any(p.chosen)))""") == 2
+      and "check (audience in ('family', 'chosen', 'me'))" in _ps)
+check("pasand: a recommendation is read only by its sender and its recipients, in the query itself",
+      "and (r.by_member = ${me.id} or exists (select 1 from pasand_rec_to t where t.rec_id = r.id and t.member_id = ${me.id}))" in _ps
+      and "and t.member_id = ${me.id}\n                          returning t.rec_id" in _ps
+      and "and by_member = ${me.id} returning id" in _ps and "primary key (rec_id, member_id)" in _ps)
+check("pasand: a password, a sign-in or a link that is not plain https is refused with a reason, never kept",
+      "noteRisk(v) || credRisk(v)" in _ps and _ps.count("pasandRisk(") >= 5
+      and "export function credRisk(v)" in _psr and "if (u.username || u.password) return NO_PASSWORD;" in _psr
+      and "if (u.protocol !== 'https:')" in _psr and "PASAND_MAX.link" in _psr and "link: 300" in _psr
+      and not re.search(r"\b(password|passwd|secret|credential)\w*\s+(text|bytea)", _ps))
+check("pasand: the screen says no password is asked for, and no account is linked",
+      "Tick what you have so the family knows where to watch together. Parwah never asks for your password." in _app_src
+      and 'type="password" id="ps-' not in _app_src)
+check("pasand: its tables are made through schemaOnce, sending is rate limited, and only recipients are pushed",
+      "schemaOnce(() => pasandTables(sql))" in _ps and "rateLimit(sql, 'pasand_rec', me.id, PASAND_MAX.perHour, 3600, { failClosed: true })" in _ps
+      and "rateLimit(sql, 'pasand_rec_day', me.id, PASAND_MAX.perDay, 86400, { failClosed: true })" in _ps
+      and "pushCircle(sql, circle.id, payload, { only: id })" in _ps
+      and "requireMember(sql, code, memberId, tokenOf(req))" in _ps)
+check("pasand: Today, the Together tab and a person's page all draw it, and errors go through humanFail",
+      'id="ps-today"' in _app_src and 'id="ps-person-card"' in _app_src and "pasandPersonRender(id);" in _app_src
+      and "    mbTodayLoad();\n    pasandRefresh();\n" in _app_src
+      and "humanFail(j.error, 'That did not work. Try again.')" in _app_src.split("function pasandPost(")[1][:600])
+check("pasand: the rules test runs in the gate, and the db and browser tests run in test:db",
+      "node site/tests/pasandtest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all(f in _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+              for f in ("pasand.dbtest.mjs", "pasand.e2e.dbtest.mjs")))
 check("events: appointments, functions and trips; reminded an hour before; birthdays from dates of birth",
       "'appointment', 'function', 'trip'" in (API_DIR / "plans.mjs").read_text(encoding="utf-8")
       and "sweepPlanReminders" in _evt and "function bdaysSoon(days)" in _app_src)
@@ -3009,6 +3051,139 @@ check("chat bonding: the audio shown in the page is checked before it is used",
 check("chat bonding: the db and browser tests run in test:db",
       all(f in _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
           for f in ("chatbond.dbtest.mjs", "chatbond.e2e.dbtest.mjs")))
+
+# ---------- Rishtedaar: the wider family, named, with the chain ----------
+_rz_kin = (API_DIR / "_kin.mjs").read_text(encoding="utf-8")
+_rz_ev = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_rz_app = (ROOT / "public" / "index.html").read_text(encoding="utf-8")
+_rz_test = (ROOT / "tests" / "kintest.mjs").read_text(encoding="utf-8") if (ROOT / "tests" / "kintest.mjs").exists() else ""
+_rz_pkg = (REPO / "package.json").read_text(encoding="utf-8")
+check("rishtedaar: the kin arithmetic still imports nothing, so the gate runs it before npm install",
+      not re.search(r"^\s*import\s", _rz_kin, re.M) and "require(" not in _rz_kin and "await import(" not in _rz_kin)
+check("rishtedaar: the new exports exist beside the old ones",
+      all(("export function " + n + "(") in _rz_kin for n in ("kinLabel", "kinInfo", "kinChain", "kinChainWords", "kinCloseness", "kinEveryone", "index", "placement"))
+      and "export const NOT_CONNECTED" in _rz_kin)
+check("rishtedaar: every walk is bounded, by people already seen and by a cap",
+      "const WALK_CAP" in _rz_kin and "i < queue.length && i < WALK_CAP" in _rz_kin and "seen.has(x.id)" in _rz_kin and "guard++ < WALK_CAP" in _rz_kin)
+check("rishtedaar: the near family keeps its old words; the wider family is named only where it said Family or nothing",
+      "const near = lineLabel(by, fromId, toId);" in _rz_kin and "if (near && near !== 'Family') return near;" in _rz_kin)
+check("rishtedaar: elder or younger is never guessed without both dates of birth",
+      "if (!a || !b || !a.dob || !b.dob || a.dob === b.dob) return null;" in _rz_kin and "hindi = e === null ? null : e ? 'Jeth' : 'Devar'" in _rz_kin
+      and "hindi = e === null ? null : e ? 'Jethani' : 'Devrani'" in _rz_kin)
+check("rishtedaar: the home names are all there, in Latin letters",
+      all(("'" + w + "'") in _rz_kin for w in ("Jeth", "Jethani", "Devar", "Devrani", "Nanad", "Nandoi", "Saala", "Saali", "Salhaj", "Saadhu", "Bhabhi", "Jija",
+                                                 "Samdhi", "Samdhan", "Dada", "Dadi", "Nana", "Nani"))
+      and not re.search(r"[\u0900-\u097F]", _rz_kin))
+check("rishtedaar: not connected is said plainly, and a link is never made up",
+      "export const NOT_CONNECTED = 'Not connected in the family tree yet';" in _rz_kin and "return seen.has(toId) ? chainFrom(by, seen, toId) : null;" in _rz_kin)
+check("rishtedaar: the server works the list out for whoever is looking, so app and server cannot disagree",
+      "kinEveryone(by, g.me.id)" in _rz_ev and "kinChainWords(ri.chain, firstNames)" in _rz_ev and "group: ri.closeness" in _rz_ev
+      and "dob: m.dob" in _rz_ev and "kinLabel(by, g.me.id, m.id)" in _rz_ev
+      # The app draws what it is sent; it carries no second copy of the arithmetic.
+      and "lineLabel" not in _rz_app and "kinChain(" not in _rz_app)
+check("rishtedaar: the screen exists: the list, its subtitle, search, the chain sheet and Add a relative",
+      all(('id="' + i + '"') in _rz_app for i in ("rz-open", "rz-sheet", "rz-q", "rz-list", "rz-note", "rz-add", "rz-who", "rz-who-chain", "rz-who-call", "rz-who-page", "rz-who-place"))
+      and ">Rishtedaar</h3>" in _rz_app and ">Everyone you are related to, near and far</p>" in _rz_app and ">Add a relative</button>" in _rz_app)
+check("rishtedaar: three groups, then who is not in the tree yet",
+      "['ghar', 'Ghar: your own home'], ['kareebi', 'Kareebi: close family'], ['door', 'Door ke rishtedaar: the wider family']" in _rz_app
+      and "Not in the tree yet</p>" in _rz_app and "data-rzplace=" in _rz_app)
+check("rishtedaar: loading, empty, error and offline each say something",
+      "Loading your family" in _rz_app and "You are not in the tree yet. Start with yourself" in _rz_app
+      and "Could not load your family just now." in _rz_app and "You are offline. This is your family as this phone last saw it." in _rz_app
+      and "rzFail('error')" in _rz_app and "rzFail('offline')" in _rz_app)
+check("rishtedaar: a call button only for a phone the family read already sent, as the profile sheet does",
+      "if (m.phone) { $('rz-who-call').href = 'tel:' + encodeURIComponent(m.phone); $('rz-who-call').hidden = false; }" in _rz_app
+      and "$('rz-who-call').removeAttribute('href')" in _rz_app)
+check("rishtedaar: placing and adding reuse the existing tree form, which gets a search box when the family is long",
+      "function rzPlace(id)" in _rz_app and "sel.value = id; trChanged();" in _rz_app and "$('rz-add').addEventListener('click', function(){ rzPlace('new'); });" in _rz_app
+      and "others = rzOfFilter(others, ofSel);" in _rz_app and 'id="rz-offind"' in _rz_app
+      and "action: isNew ? 'add_person' : 'place'" in _rz_app)
+check("rishtedaar: a person's page says how you are related, and the chain on a tap",
+      'id="rz-pp-kin"' in _rz_app and 'id="rz-pp-chain"' in _rz_app and "rzPersonLine(m);" in _rz_app and "how are we related?" in _rz_app)
+_rz_ids = re.findall(r'id="(rz-[a-z-]+)"', _rz_app)
+check("rishtedaar: its ids are its own and none is used twice", len(_rz_ids) >= 15 and len(_rz_ids) == len(set(_rz_ids)))
+check("rishtedaar: no Devanagari in the list; the home names are in Latin letters like Chacha and Mausi",
+      not re.search(r"[\u0900-\u097F]", _rz_app[_rz_app.index("// ---------- Rishtedaar: everyone you are related to"):_rz_app.index("// ---------- location sharing (consent first)")]))
+check("rishtedaar: the wide family is unit-tested in the gate, and the browser test runs in test:db",
+      "DOOR KE RISHTEDAAR" in _rz_test and "a loop or a broken link never hangs a walk" in _rz_test
+      and (ROOT / "tests" / "db" / "rishtedaar.e2e.dbtest.mjs").exists()
+      and _rz_pkg.rstrip().count("site/tests/db/rishtedaar.e2e.dbtest.mjs") == 1)
+# ---------- 10z. The family register ("When I'm Not Here", grown up) ----------
+# Property, money, papers, things, online accounts and anything else, each
+# with one of four choices of who sees it. Behaviour is proved against a real
+# database in famregister.dbtest and in real browsers in famregister.e2e;
+# these keep the source honest.
+_fr = (API_DIR / "_register.mjs").read_text(encoding="utf-8")
+_fr_api = (API_DIR / "_careprep.mjs").read_text(encoding="utf-8")
+_fr_app = (REPO / "site/public/index.html").read_text(encoding="utf-8")
+_fr_who = [("ONLY_ME", "Only me"), ("NOMINEES_ONLY", "People I choose"), ("IMMEDIATE", "Whole family"), ("EMERGENCY_ONLY", "Only in an emergency")]
+check("register: the four choices exist on the server, on the form and on each entry's chip",
+      "export const UNLOCK_POLICIES = ['IMMEDIATE', 'EMERGENCY_ONLY', 'NOMINEES_ONLY', 'ONLY_ME'];" in _fr
+      and all(f"['{k}', '{l}']" in _fr for k, l in _fr_who)
+      and all(f'<input type="radio" name="fr-who" value="{k}"' in _fr_app and f"<b>{l}</b>" in _fr_app for k, l in _fr_who)
+      and all(f"{k}: '{l}'" in _fr_app for k, l in _fr_who) and 'class="frchip"' in _fr_app)
+check("register: one rule decides who reads an entry, and the handler sends nothing that has not been through it",
+      _fr.count("export function canViewAssetLocator(") == 1 and "function canViewAssetLocator" not in _fr_api
+      and "if (policy === 'ONLY_ME') return false;" in _fr
+      and "if (!canView && policy === 'ONLY_ME') return null;" in _fr
+      and "institution_or_item: null, identifier_mask: null, physical_location_notes: null" in _fr
+      and _fr_api.count("registerRowFor(") == 2 and "locators.push(out)" in _fr_api
+      and "physical_location_notes: canView" not in _fr_api and "can_view: canView" not in _fr_api)
+check("register: \"Only me\" answers like an entry that was never written, to read or to change",
+      "if (!entry) return res.status(404).json(gone);" in _fr_api
+      and "if (!row || (!registerCanManage(row, g.me.id) && row.unlock_policy === 'ONLY_ME')) return res.status(404).json(gone);" in _fr_api)
+check("register: only the person it is about, or whoever wrote it, can edit, re-share or remove",
+      "return !!locator && !!memberId && (locator.person_id === memberId || locator.created_by === memberId);" in _fr
+      and "action === 'locator_update' || action === 'locator_share' || action === 'locator_remove'" in _fr_api
+      and "Only the person it is about, or whoever wrote it, can change this." in _fr_api)
+check("register: once the person it is about makes it theirs alone, only they can widen it; the audit list keeps quiet about it",
+      "if (row.unlock_policy === 'ONLY_ME' && row.person_id !== g.me.id) {" in _fr_api
+      and _fr_api.count("l.unlock_policy = 'ONLY_ME'") == 2
+      and "is not on Parwah yet, so an emergency could never open this" in _fr_api)
+check("register: the people lists are refilled when the family arrives, not only when the screen opens",
+      "if (frSig !== frPeopleSig) { frPeopleSig = frSig; try { frFillPeople(); } catch (e) {} }" in _app_src)
+check("register: narrowing an entry that was for everyone says a Renewals reminder may remain",
+      "frWas.unlock_policy === 'IMMEDIATE' && who !== 'IMMEDIATE'" in _app_src and "that reminder is still there for the family" in _app_src)
+check("register: never a card number, CVV, OTP, PIN or password; a long number keeps its last 4",
+      "const { noteRisk } = await import('./_notesapi.mjs');" in _fr_api
+      and _fr_api.count("registerClean(req.body, { risk: noteRisk })") == 2
+      and "const why = (risk && risk(seen)) || registerSecretRisk(seen);" in _fr and "digits !== 15 && digits !== 16" in _fr
+      and "['title', title], ['label', label], ['identifier', rawId], ['where', where], ['inName', inNameText], ['nominee', nominee], ['note', note]" in _fr
+      and "Parwah never keeps a password or a PIN. Write where it is kept, not what it is." in _fr
+      and "identifier: registerIdentifier(rawId)," in _fr and ">= 7) return maskAssetIdentifier(" in _fr)
+check("register: a view is written once per viewer, per entry, per day, and never for the person it is about",
+      "primary key (locator_id, viewer_id, day)" in _fr_api and "on conflict (locator_id, viewer_id, day) do nothing" in _fr_api
+      and "return !!locator && !!memberId && locator.person_id !== memberId;" in _fr
+      and _fr_api.count("registerLogsView(") == 2 and "v.viewer_id <> ${meId}" in _fr_api and ">Seen by '" in _fr_app)
+check("register: it grew the old table, by add column if not exists inside the care schema; no second store",
+      _fr_api.count("create table if not exists legacy_asset_locators") == 1
+      and all(f"alter table legacy_asset_locators add column if not exists {c} " in _fr_api
+              for c in ("custom_label", "in_name_member", "in_name_text", "nominee", "approx_value", "value_currency", "due_on", "note"))
+      and "create table if not exists legacy_asset_views" in _fr_api
+      and not (API_DIR / "register.mjs").exists() and "area === 'locator'" in (API_DIR / "book.mjs").read_text(encoding="utf-8"))
+_fr_kinds = re.findall(r"\['([A-Z_]+)', '[^']+'\]", _fr[_fr.index("export const REGISTER_GROUPS"):_fr.index("export const REGISTER_KIND_LABEL")])
+_fr_sel = _fr_app[_fr_app.index('<select id="loc-cat">'):]
+_fr_sel = _fr_sel[:_fr_sel.index("</select>")]
+check(f"register: the picker offers every kind the server knows ({len(_fr_kinds)}), under six plain headings",
+      len(_fr_kinds) == 22 and sorted(re.findall(r'<option value="([A-Z_]+)"', _fr_sel)) == sorted(_fr_kinds)
+      and re.findall(r'<optgroup label="([^"]+)"', _fr_sel) == ["Home and land", "Money", "Papers", "Things", "Online", "Other"]
+      and all(f"label: '{h}'" in _fr for h in ("Home and land", "Money", "Papers", "Things", "Online", "Other")))
+check("register: the screen is the family's register, and still says When I'm not here",
+      "<b>Family register</b><small>When I'm not here:" in _fr_app and '<button data-sec="locator">📒 Family register</button>' in _fr_app
+      and 'id="fr-search"' in _fr_app and 'id="fr-person"' in _fr_app and "Add the first one" in _fr_app
+      and "apiGet(frUrl('&brief=1'))" in _fr_app and "apiGet(frUrl('&id=' + encodeURIComponent(id)))" in _fr_app)
+check("register: removing asks first, in the app's own sheet; errors go through humanFail",
+      "askSheet('Remove this from the register?'" in _fr_app and "action: 'locator_remove'" in _fr_app
+      and "humanFail(j.error, 'Could not save this. Try again in a moment.')" in _fr_app
+      and "You are offline. The register will load when the internet is back." in _fr_app)
+_fr_static = [i for i in _static_ids if i.startswith("fr-")]
+check(f"register: its new ids all start with fr- and none is the first-run card's ({len(_fr_static)})",
+      len(_fr_static) >= 20 and all(_fr_static.count(i) == 1 for i in _fr_static))
+_testdb_fr = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("register: the unit test is in the gate, and both database tests are last in test:db",
+      "node site/tests/famregistertest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and _testdb_fr.endswith("site/tests/db/famregister.dbtest.mjs && node --import ./site/tests/db/register.mjs site/tests/db/famregister.e2e.dbtest.mjs")
+      and (REPO / "site/tests/db/famregister.dbtest.mjs").exists() and (REPO / "site/tests/db/famregister.e2e.dbtest.mjs").exists())
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
