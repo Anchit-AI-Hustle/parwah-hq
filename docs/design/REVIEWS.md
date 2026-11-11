@@ -518,3 +518,19 @@ Checked at 320, 390 and 1440, light and dark, normal and senior mode, on the rea
 | 116 | 9 Error recovery | The poll sheet kept "Write the question first" on screen after the question was written | 1 | Fixed: the message clears as soon as anything is typed |
 
 New patterns: the voice note player (`.vn`), the recording bar (`.vnbar`), reaction chips and picker (`.rx-chip`, `.rx-add`, `.rx-big`), the poll card (`.pl`, `.pl-opt`) and the senior bar (`.bondsenior`, `.vnhold`, `.dekh`). All built from existing tokens; no new token.
+
+### Review 13, the family register, grown from "When I'm Not Here" (2026-11-11)
+
+Checked at 320, 390 and 1440, light and dark, normal and senior mode, on the real app (`site/tests/db/famregister.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the empty screen, the filled form, an opened entry, a locked row, a search with no match, the "remove?" sheet and the offline message). Screens: Vault, Family register.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 117 | 2 Real-world match | Eight kinds of thing, none of them a house, the gold or an email account | 3 | Fixed: 22 kinds under six plain headings (Home and land, Money, Papers, Things, Online, Other), with "Anything else" and the person's own name for it |
+| 118 | 3 User control | Who could read an entry was a select of two; "named people only" existed on the server but could not be chosen | 3 | Fixed: a labelled group of four (Only me, People I choose, Whole family, Only in an emergency), each with one line that says what it means, and a tick list of the family for the second |
+| 119 | 5 Error prevention | A locked entry still showed its name and the last four of its number to everyone | 3 | Fixed: a locked row says only whose it is and the kind; "Only me" is not shown to anyone else at all |
+| 120 | 3 User control | An entry could be added and never changed or removed | 3 | Fixed: Edit, Change who sees it, and Remove (asked first in the app's own sheet), for the person it is about and whoever wrote it |
+| 121 | 1 Visibility | Nobody could tell who had read where the papers are | 2 | Fixed: the details open on a tap, and the owner reads "Seen by Priya, 3 Nov" on the entry |
+| 122 | 6 Recognition | A long list had no way to find one thing | 2 | Fixed: a search over name, kind and person, a filter by person, and a count of what is shown |
+| 123 | 9 Error recovery | A refused save was a toast that vanished | 2 | Fixed: the reason sits under the box it is about (a password in the note says so under the note); offline and failed loads offer Try again |
+
+New patterns: the register row (`.frrow`, `.frhead`, `.frchip`, `.frbody`), the choice group (`.frwho`) and the find bar (`.frfind`). All built from existing tokens; no new token.

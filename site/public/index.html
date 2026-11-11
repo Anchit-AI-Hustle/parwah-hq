@@ -1293,6 +1293,37 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
 .locmap iframe{display:block;width:100%;height:260px;border:0;border-radius:var(--radius-16);background:var(--bone)}
 .locmap .row{display:flex;gap:var(--space-8);flex-wrap:wrap;margin-top:var(--space-8)}
 .crow .locacts{display:flex;gap:var(--space-8);flex-wrap:wrap}
+/* ---- The family register ("When I'm Not Here"): one row per thing, a
+   chip that says who sees it, and a choice group of four on the form. ---- */
+.frrow{background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-12) var(--space-16);box-shadow:var(--sh-1)}
+.frhead{display:flex;gap:var(--space-8) var(--space-12);align-items:flex-start;flex-wrap:wrap}
+.frhead .fric{flex:none;font-size:var(--fs-20);line-height:1.2}
+.frhead .txt{flex:1 1 140px;min-width:0;overflow-wrap:anywhere}
+.frhead .txt b{display:block;font-size:var(--fs-16);color:var(--ink)}
+.frhead .txt small,.frseen{display:block;color:var(--ink-soft);font-size:var(--fs-12);margin-top:var(--space-2)}
+.frchip{flex:none;font-size:var(--fs-12);font-weight:700;border-radius:var(--radius-pill);padding:var(--space-4) var(--space-12);background:var(--bone);color:var(--ink)}
+.frlock{margin:var(--space-8) 0 0;font-size:var(--fs-14);color:var(--ink-soft)}
+.fracts{display:flex;gap:var(--space-8);flex-wrap:wrap;margin-top:var(--space-12)}
+.fracts .cbtn{min-height:var(--tap-min)}
+.frbody{margin-top:var(--space-12);padding:var(--space-12);background:var(--bone);border-radius:var(--radius-12)}
+.frbody dl{margin:0}
+.frbody dt{font-size:var(--fs-12);font-weight:700;color:var(--ink);margin-top:var(--space-8)}
+.frbody dt:first-child{margin-top:0}
+.frbody dd{margin:var(--space-2) 0 0;font-size:var(--fs-14);color:var(--ink);overflow-wrap:anywhere;white-space:pre-wrap}
+.frwho{border:0;padding:0;margin:var(--space-16) 0 0;min-width:0}
+.frwho legend{font-size:var(--fs-14);font-weight:600;padding:0;margin-bottom:var(--space-8)}
+.frwho label{display:flex;align-items:flex-start;gap:var(--space-12);min-height:var(--tap-min);margin:0 0 var(--space-8);padding:var(--space-8) var(--space-12);border:1.5px solid var(--bone-2);border-radius:var(--radius-12);background:var(--surface);cursor:pointer}
+.frwho label:has(input:checked){border-color:var(--marigold-d);background:var(--bone)}
+.frwho input{flex:none;width:var(--space-20);height:var(--space-20);margin:var(--space-2) 0 0;accent-color:var(--marigold-d)}
+.frwho b{display:block;font-size:var(--fs-14);color:var(--ink)}
+.frwho small{display:block;font-weight:400;color:var(--ink-soft);font-size:var(--fs-12)}
+.frpeople{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-8)}
+.frpeople .gchk{min-height:var(--tap-min);margin:0;cursor:pointer}
+.frfind{display:flex;gap:var(--space-8);flex-wrap:wrap;margin-bottom:var(--space-8)}
+.frfind input{flex:2 1 160px;min-width:0}
+.frfind select{flex:1 1 120px;min-width:0}
+.senior .frhead .txt b{font-size:var(--fs-18)}
+.senior .frbody dd,.senior .frlock{font-size:var(--fs-16)}
 /* ---- Motion: anyone who asked their phone for less motion gets none,
    including from animations added after this line was written. ---- */
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
@@ -2400,7 +2431,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     <div class="seg pageseg" id="vault-seg" role="tablist" aria-label="Vault sections">
       <button data-sec="docs" class="sel">🔐 Documents</button>
       <button data-sec="pay">💳 Payments</button>
-      <button data-sec="locator">🗝️ When I'm Not Here</button>
+      <button data-sec="locator">📒 Family register</button>
     </div>
 
     <div class="subsec" data-sec="docs">
@@ -2527,43 +2558,105 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     </div>
 
     <div class="subsec" data-sec="locator" hidden>
-      <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>When I'm not here</b><small>Where the locker key, passbooks and original papers are kept. Never a bank balance.</small></span></div>
-      <p class="hint" style="margin:var(--space-8) 0 var(--space-12)">So the family can find things when you are away or in an emergency. You choose who can read where each one is kept.</p>
+      <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>Family register</b><small>When I'm not here: where the house papers, policies, keys and accounts are kept. Never a balance or a password.</small></span></div>
+      <p class="hint" style="margin:var(--space-8) 0 var(--space-12)">One list of what the family owns and where its papers are, so nothing is lost when you are away. You choose who can see each one.</p>
+      <div class="frfind" id="fr-find" hidden>
+        <input type="search" id="fr-search" maxlength="60" placeholder="Search the register…" aria-label="Search the family register by name, kind or person">
+        <select id="fr-person" aria-label="Show entries for one person"><option value="">Everyone</option></select>
+      </div>
+      <p class="hint" id="fr-count" role="status" hidden></p>
       <div class="feed" id="locator-feed"><div class="ev">Loading…</div></div>
 
-      <div class="card" style="margin-top:var(--space-16)">
-        <h3>Add where something is kept</h3>
-        <label for="loc-item">What it is, or which bank</label>
-        <input type="text" id="loc-item" maxlength="120" placeholder="e.g. SBI Green Park Branch, Master Bedroom Wardrobe Top Shelf">
+      <div class="card" id="fr-form" style="margin-top:var(--space-16)">
+        <h3 id="fr-ftitle">Add to the register</h3>
+        <div id="fr-fields">
+        <label for="loc-item">What it is</label>
+        <input type="text" id="loc-item" maxlength="120" placeholder="e.g. Flat in Indiranagar, SBI locker, LIC policy">
         <div class="pickrow">
-          <label class="pick"><span>Category</span>
+          <label class="pick"><span>Kind</span>
             <select id="loc-cat">
-              <option value="LOCKER_KEY">Locker Key</option>
-              <option value="BANK_ACCOUNT">Bank Passbook / Cheque</option>
-              <option value="FIXED_DEPOSIT">Fixed Deposit Receipt</option>
-              <option value="PROPERTY_DEED">Original Property Papers</option>
-              <option value="WILL">Will &amp; Testaments</option>
-              <option value="DEMAT">Demat / Share Certificates</option>
-              <option value="PENSION">Pension Booklet</option>
-              <option value="OTHER">Other Physical Item</option>
+              <optgroup label="Home and land">
+                <option value="HOUSE">House or flat</option>
+                <option value="LAND">Land or plot</option>
+                <option value="SHOP_OFFICE">Shop or office</option>
+                <option value="PROPERTY_DEED">Property papers</option>
+              </optgroup>
+              <optgroup label="Money">
+                <option value="BANK_ACCOUNT">Bank account or passbook</option>
+                <option value="FIXED_DEPOSIT">Fixed deposit</option>
+                <option value="MUTUAL_FUNDS">Mutual funds and shares</option>
+                <option value="DEMAT">Demat or share papers</option>
+                <option value="PPF_EPF_NPS">PPF, EPF or NPS</option>
+                <option value="PENSION">Pension</option>
+                <option value="INSURANCE">Insurance policy</option>
+                <option value="LOAN">Loan or EMI</option>
+              </optgroup>
+              <optgroup label="Papers">
+                <option value="WILL">Will</option>
+                <option value="RENT_AGREEMENT">Rent agreement</option>
+                <option value="BUSINESS_PAPER">Business paper</option>
+              </optgroup>
+              <optgroup label="Things">
+                <option value="LOCKER_KEY">Locker or locker key</option>
+                <option value="VEHICLE">Vehicle</option>
+                <option value="GOLD">Gold and jewellery</option>
+                <option value="HEIRLOOM">Family heirloom</option>
+              </optgroup>
+              <optgroup label="Online">
+                <option value="DIGITAL_ACCOUNT">Email, cloud or social account</option>
+                <option value="SUBSCRIPTION">Subscription or membership</option>
+              </optgroup>
+              <optgroup label="Other">
+                <option value="OTHER">Anything else</option>
+              </optgroup>
             </select>
           </label>
-          <label class="pick"><span>Whose item</span><select id="loc-about"></select></label>
+          <label class="pick"><span>Whose it is</span><select id="loc-about"></select></label>
         </div>
-        <label for="loc-mask" style="margin-top:var(--space-12)">A short hint anyone may see</label>
-        <input type="text" id="loc-mask" maxlength="100" placeholder="e.g. Locker Key #42 or Account ending ...4921">
-        <label for="loc-notes" style="margin-top:var(--space-12)">Where it is kept</label>
-        <textarea id="loc-notes" rows="2" maxlength="500" placeholder="e.g. In the steel almirah, inside the brown leather folder behind old passports"></textarea>
-        <!-- The two rules the server applies. A third (named people only)
-             needs a way to pick those people, which this form does not
-             have yet, so it is not offered. -->
-        <label class="pick" style="margin-top:var(--space-12)"><span>Who can read where it is kept</span>
-          <select id="loc-policy">
-            <option value="IMMEDIATE">Anyone in the family</option>
-            <option value="EMERGENCY_ONLY">Only during an SOS</option>
-          </select>
-        </label>
-        <button type="button" class="go" id="btn-add-locator" style="margin-top:var(--space-16);min-height:48px">Save where it is kept</button>
+        <div id="fr-labelwrap" hidden>
+          <label for="fr-label">Your own name for this kind of thing</label>
+          <input type="text" id="fr-label" maxlength="40" placeholder="e.g. Dadi's sewing machine">
+        </div>
+        <p class="hint" id="fr-kindhint" hidden>Write where the recovery details are kept. Never the password itself.</p>
+        <label for="loc-notes">Where it is kept, or where its papers are</label>
+        <textarea id="loc-notes" rows="2" maxlength="500" placeholder="e.g. In the steel almirah, inside the brown folder behind the old passports"></textarea>
+        <label for="loc-mask">A number or label, if it has one</label>
+        <input type="text" id="loc-mask" maxlength="60" autocomplete="off" placeholder="e.g. Locker 42, or an account number" aria-describedby="fr-maskhint">
+        <p class="hint" id="fr-maskhint">A long account or policy number keeps only its last 4.</p>
+        <details class="fmore" id="fr-more">
+          <summary>More options: name it is in, nominee, value, date, note</summary>
+          <label for="fr-inname">Whose name it is in</label>
+          <select id="fr-inname"><option value="">Not said</option></select>
+          <label for="fr-inname-text">Or a name outside the app, such as a joint owner</label>
+          <input type="text" id="fr-inname-text" maxlength="80" placeholder="e.g. jointly with Sunita Sharma">
+          <label for="fr-nominee">Nominee</label>
+          <input type="text" id="fr-nominee" maxlength="80" placeholder="e.g. Rohan Sharma">
+          <label for="fr-value">About how much it is worth <span id="fr-cur">₹</span></label>
+          <input type="text" id="fr-value" inputmode="numeric" maxlength="16" autocomplete="off" placeholder="e.g. 500000">
+          <label for="fr-due">Renewal or due date</label>
+          <input type="date" id="fr-due">
+          <label class="gchk" id="fr-renewwrap" hidden style="margin-top:var(--space-12);min-height:var(--tap-min)"><input type="checkbox" id="fr-renew"> Also remind the family before this date (adds it to Renewals)</label>
+          <label for="fr-note">Note</label>
+          <textarea id="fr-note" rows="2" maxlength="500" placeholder="e.g. Property tax is paid every March"></textarea>
+        </details>
+        </div>
+        <!-- The four rules the server applies (api/_register.mjs). The
+             server checks every one; this group only says them plainly. -->
+        <fieldset class="frwho" id="fr-who">
+          <legend>Who can see it</legend>
+          <label><input type="radio" name="fr-who" value="ONLY_ME"><span><b>Only me</b><small>Nobody else knows it is here.</small></span></label>
+          <label><input type="radio" name="fr-who" value="NOMINEES_ONLY"><span><b>People I choose</b><small>Only the family members you tick.</small></span></label>
+          <label><input type="radio" name="fr-who" value="IMMEDIATE" checked><span><b>Whole family</b><small>Everyone in this family on Parwah.</small></span></label>
+          <label><input type="radio" name="fr-who" value="EMERGENCY_ONLY"><span><b>Only in an emergency</b><small>The family, only while an SOS is on for the person it belongs to.</small></span></label>
+        </fieldset>
+        <div id="fr-people" hidden>
+          <p class="hint" id="fr-people-say">Tick who can see it.</p>
+          <div class="frpeople" id="fr-people-list" role="group" aria-labelledby="fr-people-say"></div>
+        </div>
+        <p class="fielderr" id="fr-err" role="alert" hidden></p>
+        <button type="button" class="go" id="btn-add-locator" style="margin-top:var(--space-16);min-height:48px">Save to the register</button>
+        <button type="button" class="linkbtn" id="fr-cancel" hidden style="margin-top:var(--space-8);min-height:var(--tap-min)">Cancel</button>
+        <p class="hint">Parwah never keeps a card number, CVV, OTP, PIN or password here. Whoever it belongs to can see who has opened it.</p>
       </div>
     </div>
   </section>
@@ -3468,6 +3561,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     <div class="subnav side-only" data-parent="vault">
       <button data-tab="vault" data-sec="docs">Documents</button>
       <button data-tab="vault" data-sec="pay">Payments</button>
+      <button data-tab="vault" data-sec="locator">Family register</button>
     </div>
     <button data-tab="memory" class="deskonly"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-health"/></svg></span>Health &amp; contacts</button>
     <button data-tab="care"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></span>To do<i class="dot" id="care-dot" hidden></i></button>
@@ -5660,83 +5754,311 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     if (window._lastCareData) renderCare(window._lastCareData);
   });
 
-  // ---------- Asset & Locker Locator ("When I'm Not Here") ----------
+  // ---------- The Family Register ("When I'm Not Here") ----------
+  // One list of what the family owns and where its papers are. The server
+  // decides who reads what (api/_register.mjs) and says so in can_view and
+  // can_manage. The list carries no details: opening an entry asks for it
+  // by id, and that is what the owner later reads as "Seen by".
   var locatorsCache = [];
-  var LOC_ICONS = {
-    LOCKER_KEY: '🗝️', BANK_ACCOUNT: '🏦', FIXED_DEPOSIT: '💰',
-    PROPERTY_DEED: '📜', WILL: '📑', DEMAT: '📈', PENSION: '👴', OTHER: '📦'
+  var frDetails = {}, frOpenIds = {}, frQuery = '', frPersonPick = '', frEditId = null, frShareId = null, frState = 'loading';
+  var FR_ICONS = {
+    HOUSE: '🏠', LAND: '🌳', SHOP_OFFICE: '🏬', PROPERTY_DEED: '📜',
+    BANK_ACCOUNT: '🏦', FIXED_DEPOSIT: '💰', MUTUAL_FUNDS: '📈', DEMAT: '📊', PPF_EPF_NPS: '🪙', PENSION: '🧾', INSURANCE: '🛡️', LOAN: '📅',
+    WILL: '📑', RENT_AGREEMENT: '📝', BUSINESS_PAPER: '🗂️',
+    LOCKER_KEY: '🗝️', VEHICLE: '🚗', GOLD: '💍', HEIRLOOM: '🏺',
+    DIGITAL_ACCOUNT: '📧', SUBSCRIPTION: '🎫', OTHER: '📦'
   };
+  var FR_WHO = { ONLY_ME: 'Only me', NOMINEES_ONLY: 'People I choose', IMMEDIATE: 'Whole family', EMERGENCY_ONLY: 'Only in an emergency' };
+  var FR_LOCKED = { EMERGENCY_ONLY: 'Shown to the family only during an SOS.', NOMINEES_ONLY: 'Hidden. Only the people chosen can read this.' };
+  var FR_FIELD = { title: 'loc-item', where: 'loc-notes', label: 'fr-label', identifier: 'loc-mask', inName: 'fr-inname-text', nominee: 'fr-nominee', note: 'fr-note', value: 'fr-value', due: 'fr-due' };
+  function frUrl(extra){ return API.locator + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + (extra || ''); }
+  function frDay(iso){ var d = new Date(iso); return isNaN(d) ? '' : dtf([], { day: 'numeric', month: 'short' }).format(d); }
+  function frDate(ymd){ var d = new Date(String(ymd).slice(0, 10) + 'T12:00:00'); return isNaN(d) ? String(ymd) : dtf([], { day: 'numeric', month: 'short', year: 'numeric' }).format(d); }
+  function frMember(id){ return (membersCache || []).filter(function(m){ return m.id === id; })[0] || null; }
+  function frName(m){ return m.id === state.memberId ? 'Me (' + m.name + ')' : m.name; }
+  function frWhoValue(){ var r = document.querySelector('#fr-who input:checked'); return r ? r.value : ''; }
+  function frSetWho(v){ document.querySelectorAll('#fr-who input').forEach(function(r){ r.checked = r.value === v; }); frWhoChanged(); }
+  function frErr(msg){ var e = $('fr-err'); e.textContent = msg || ''; e.hidden = !msg; if (msg) { try { e.scrollIntoView({ block: 'center' }); } catch (x) {} } }
+  // The people who can be chosen: everyone on Parwah in this family but me.
+  function frPeopleFill(picked){
+    var on = {}; (picked || []).forEach(function(id){ on[id] = true; });
+    var list = (membersCache || []).filter(function(m){ return m.id !== state.memberId && onApp(m); });
+    $('fr-people-list').innerHTML = list.map(function(m){
+      return '<label class="gchk"><input type="checkbox" value="' + esc(m.id) + '"' + (on[m.id] ? ' checked' : '') + '> ' + esc(m.name) + '</label>';
+    }).join('');
+    $('fr-people-say').textContent = list.length ? 'Tick who can see it.' : 'Nobody else in this family is on Parwah yet. Pick another choice for now.';
+  }
+  function frPeoplePicked(){ return Array.prototype.map.call(document.querySelectorAll('#fr-people-list input:checked'), function(c){ return c.value; }); }
+  function frWhoChanged(){
+    var w = frWhoValue();
+    $('fr-people').hidden = w !== 'NOMINEES_ONLY';
+    // Renewals are seen by the whole family, so the offer is made only for
+    // an entry the whole family sees.
+    $('fr-renewwrap').hidden = !($('fr-due').value && w === 'IMMEDIATE');
+    if ($('fr-renewwrap').hidden) $('fr-renew').checked = false;
+    frErr('');
+  }
+  function frKindChanged(){
+    var k = $('loc-cat').value;
+    $('fr-labelwrap').hidden = k !== 'OTHER';
+    $('fr-kindhint').hidden = k !== 'DIGITAL_ACCOUNT';
+  }
+  function frAboutChanged(){
+    var m = frMember($('loc-about').value);
+    $('fr-cur').textContent = curSym(currencyOf(m && m.country));
+  }
+  function frFillPeople(){
+    var ms = membersCache || [];
+    var opts = ms.map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(frName(m)) + '</option>'; }).join('');
+    var about = $('loc-about'), was = about.value;
+    about.innerHTML = opts; about.value = was || state.memberId; if (!about.value && ms[0]) about.value = ms[0].id;
+    var inn = $('fr-inname'), wasIn = inn.value;
+    inn.innerHTML = '<option value="">Not said</option>' + opts; inn.value = wasIn;
+    var per = $('fr-person');
+    per.innerHTML = '<option value="">Everyone</option>' + opts; per.value = frPersonPick; if (per.value !== frPersonPick) frPersonPick = '';
+    if (!frEditId && !frShareId) frPeopleFill(frPeoplePicked());
+    frAboutChanged();
+  }
   function loadAssetLocators(){
     if (!state) return;
-    var aboutSel = $('loc-about');
-    if (aboutSel && membersCache) {
-      var was = aboutSel.value;
-      aboutSel.innerHTML = membersCache.map(function(m){
-        return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>';
-      }).join('');
-      if (was) aboutSel.value = was;
-    }
-    apiGet(API.locator + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
+    frFillPeople(); frKindChanged();
+    if (!locatorsCache.length) { frState = 'loading'; renderLocators(); }
+    apiGet(frUrl('&brief=1'))
       .then(function(j){
-        if (!j.ok) { $('locator-feed').innerHTML = '<div class="ev">Could not load this. ' + esc(humanFail(j.error, 'Try again in a moment.')) + '</div>'; return; }
+        if (!j.ok) { frState = 'error'; frStateMsg = humanFail(j.error, 'Try again in a moment.'); locatorsCache = []; renderLocators(); return; }
+        frState = 'ok';
         locatorsCache = j.locators || [];
+        // What was open stays open, with what was already read.
+        var here = {}; locatorsCache.forEach(function(l){ here[l.id] = true; });
+        Object.keys(frOpenIds).forEach(function(id){ if (!here[id]) { delete frOpenIds[id]; delete frDetails[id]; } });
         renderLocators();
       })
-      .catch(function(){ $('locator-feed').innerHTML = '<div class="ev">No connection. Try again in a moment.</div>'; });
+      .catch(function(){ frState = 'offline'; locatorsCache = []; renderLocators(); });
   }
-  var LOC_POLICY = { IMMEDIATE: 'Anyone in the family', EMERGENCY_ONLY: 'Only during an SOS', NOMINEES_ONLY: 'Only the people chosen' };
+  var frStateMsg = '';
+  function frMatches(loc){
+    if (frPersonPick && loc.person_id !== frPersonPick) return false;
+    if (!frQuery) return true;
+    var hay = [loc.institution_or_item, loc.kind_label, loc.person_name, FR_WHO[loc.unlock_policy]].join(' ').toLowerCase();
+    return frQuery.toLowerCase().split(/\s+/).every(function(w){ return hay.indexOf(w) >= 0; });
+  }
+  function frSeenLine(loc){
+    if (!loc.can_manage) return '';
+    var seen = loc.seen_by || [];
+    if (!seen.length) return '<small class="frseen">Nobody else has opened this yet.</small>';
+    return '<small class="frseen" data-frseen="1">Seen by ' + seen.map(function(v){ return esc(v.name) + ', ' + esc(frDay(v.at)); }).join(' · ') + '</small>';
+  }
+  function frBody(loc){
+    var d = frDetails[loc.id];
+    if (!d) return '<div class="frbody" role="status">Opening…</div>';
+    if (d.error) return '<div class="frbody" role="alert">' + esc(d.error) + '</div>';
+    var rows = [['Where it is kept', d.physical_location_notes, ' data-locnotes="1"']];
+    if (d.identifier_mask) rows.push(['Number or label', d.identifier_mask, '']);
+    var inName = [d.in_name_member_name, d.in_name_text].filter(Boolean).join(', ');
+    if (inName) rows.push(['In the name of', inName, '']);
+    if (d.nominee) rows.push(['Nominee', d.nominee, '']);
+    if (d.value_text) rows.push(['About how much it is worth', d.value_text, '']);
+    if (d.due_on) rows.push(['Renewal or due date', frDate(d.due_on), '']);
+    if (d.note) rows.push(['Note', d.note, '']);
+    if (d.can_manage && d.unlock_policy === 'NOMINEES_ONLY') {
+      var names = (d.designated_recipients || []).map(function(id){ var m = frMember(id); return m ? m.name : null; }).filter(Boolean);
+      rows.push(['Who can see it', names.length ? names.join(', ') : 'Nobody chosen yet', '']);
+    }
+    var h = '<div class="frbody"><dl>' + rows.map(function(r){ return '<dt>' + esc(r[0]) + '</dt><dd' + r[2] + '>' + esc(r[1]) + '</dd>'; }).join('') + '</dl>';
+    if (d.can_manage) {
+      h += '<div class="fracts">' +
+        '<button type="button" class="cbtn ghost" data-fredit="' + esc(loc.id) + '">Edit</button>' +
+        '<button type="button" class="cbtn ghost" data-frshare="' + esc(loc.id) + '">Change who sees it</button>' +
+        '<button type="button" class="cbtn no" data-frremove="' + esc(loc.id) + '">Remove</button></div>';
+    }
+    return h + '</div>';
+  }
   function renderLocators(){
-    if (!locatorsCache.length) {
-      $('locator-feed').innerHTML = '<div class="ev">Nothing here yet. Add where the locker key, a passbook or the property papers are kept.</div>';
+    var feed = $('locator-feed');
+    $('fr-find').hidden = frState !== 'ok' || !locatorsCache.length;
+    $('fr-count').hidden = true;
+    if (frState === 'loading') { feed.innerHTML = '<div class="ev" role="status">Loading…</div>'; return; }
+    if (frState === 'error' || frState === 'offline') {
+      var off = frState === 'offline';
+      feed.innerHTML = '<div class="ev" role="alert">' + (off
+        ? (navigator.onLine === false ? 'You are offline. The register will load when the internet is back.' : 'No connection. Try again in a moment.')
+        : 'Could not load this. ' + esc(frStateMsg)) +
+        '<div class="fracts"><button type="button" class="cbtn ghost" data-frretry="1">Try again</button></div></div>';
       return;
     }
-    // The server decides who may read the notes and says so in can_view.
-    // There is no unlock button: a button that asks again cannot change the
-    // answer, it only makes a hidden thing look one tap away.
-    $('locator-feed').innerHTML = locatorsCache.map(function(loc){
-      var icon = LOC_ICONS[loc.asset_category] || '🗝️';
-      var where = loc.can_view ? loc.physical_location_notes
-        : (loc.unlock_policy === 'EMERGENCY_ONLY' ? 'Shown to the family only during an SOS.' : 'Hidden. Only the people chosen can read this.');
-      var policyLabel = LOC_POLICY[loc.unlock_policy] || LOC_POLICY.IMMEDIATE;
-      return '<div class="card" style="margin-bottom:var(--space-12)">' +
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-8);flex-wrap:wrap">' +
-          '<div>' +
-            '<h4 style="margin:0">' + icon + ' ' + esc(loc.institution_or_item) + '</h4>' +
-            '<small style="color:var(--ink-soft)">' + esc(loc.identifier_mask || '') + (loc.identifier_mask ? ' · ' : '') + 'For ' + esc(loc.person_name || 'family member') + '</small>' +
-          '</div>' +
-          '<span class="badge" style="background:var(--bone);color:var(--ink)">' + esc(policyLabel) + '</span>' +
-        '</div>' +
-        '<div style="margin:var(--space-8) 0 0;padding:var(--space-8);background:var(--tint-warm);border-radius:var(--radius-8)">' +
-          '<small style="font-weight:600;color:var(--ink-soft)">Where it is kept</small>' +
-          '<p style="margin:var(--space-4) 0 0;font-size:var(--fs-14);color:var(--ink)"' + (loc.can_view ? ' data-locnotes="1"' : '') + '>' + esc(where) + '</p>' +
-        '</div>' +
-      '</div>';
+    if (!locatorsCache.length) {
+      feed.innerHTML = '<div class="ev">Nothing here yet.<small>Start with one thing your family would need to find: the house papers, a policy, or the locker key.</small>' +
+        '<div class="fracts"><button type="button" class="cbtn" data-frstart="1">Add the first one</button></div></div>';
+      return;
+    }
+    var shown = locatorsCache.filter(frMatches);
+    if (frQuery || frPersonPick) {
+      $('fr-count').hidden = false;
+      $('fr-count').textContent = shown.length + ' of ' + locatorsCache.length + ' shown';
+    }
+    if (!shown.length) {
+      feed.innerHTML = '<div class="ev">Nothing matches.<small>Try another word, or show everyone.</small>' +
+        '<div class="fracts"><button type="button" class="cbtn ghost" data-frclear="1">Show everything</button></div></div>';
+      return;
+    }
+    // There is no unlock button: the server decides, and a button that asks
+    // again cannot change the answer.
+    feed.innerHTML = shown.map(function(loc){
+      var icon = FR_ICONS[loc.asset_category] || '📦';
+      var who = FR_WHO[loc.unlock_policy] || FR_WHO.IMMEDIATE;
+      var whose = loc.person_id === state.memberId ? 'Yours' : 'For ' + (loc.person_name || 'someone in the family');
+      var open = !!frOpenIds[loc.id];
+      var h = '<div class="frrow" data-frid="' + esc(loc.id) + '">' +
+        '<div class="frhead"><span class="fric" aria-hidden="true">' + icon + '</span>' +
+        '<span class="txt"><b>' + esc(loc.can_view ? loc.institution_or_item : loc.kind_label) + '</b>' +
+        '<small>' + (loc.can_view ? esc(loc.kind_label) + ' · ' : '') + esc(whose) + '</small>' + frSeenLine(loc) + '</span>' +
+        '<span class="frchip">' + esc(who) + '</span></div>';
+      if (!loc.can_view) return h + '<p class="frlock">🔒 ' + esc(FR_LOCKED[loc.unlock_policy] || 'Hidden. This one is not shared with you.') + '</p></div>';
+      h += '<div class="fracts"><button type="button" class="cbtn ghost" data-fropen="' + esc(loc.id) + '" aria-expanded="' + (open ? 'true' : 'false') + '">' + (open ? 'Close' : 'Open') + '</button></div>';
+      if (open) h += frBody(loc);
+      return h + '</div>';
     }).join('');
   }
-  $('btn-add-locator').addEventListener('click', function(){
-    var item = $('loc-item').value.trim();
-    if (!item) { fieldErr('loc-item', 'Say what it is, or which bank or shelf.'); return; }
-    var notes = $('loc-notes').value.trim();
-    if (!notes) { fieldErr('loc-notes', 'Say where it is kept.'); return; }
-    var btn = this; btn.disabled = true;
-    post(API.locator, {
-      code: state.code, memberId: state.memberId, action: 'locator_add',
-      personId: $('loc-about').value || state.memberId,
-      category: $('loc-cat').value,
-      institutionOrItem: item,
-      identifierMask: $('loc-mask').value.trim(),
-      physicalLocationNotes: notes,
-      unlockPolicy: $('loc-policy').value
-    }).then(function(j){
-      btn.disabled = false;
-      if (j.ok) {
-        toast('Saved 🗝️ The family can find it now');
-        $('loc-item').value = ''; $('loc-mask').value = ''; $('loc-notes').value = '';
+  function frOpenEntry(id){
+    if (frOpenIds[id]) { delete frOpenIds[id]; renderLocators(); return; }
+    frOpenIds[id] = true;
+    if (frDetails[id] && !frDetails[id].error) { renderLocators(); return; }
+    delete frDetails[id];
+    renderLocators();
+    apiGet(frUrl('&id=' + encodeURIComponent(id)))
+      .then(function(j){
+        if (j.ok && j.entry) {
+          frDetails[id] = j.entry;
+          locatorsCache.forEach(function(l){ if (l.id === id && j.entry.seen_by) l.seen_by = j.entry.seen_by; });
+          renderLocators();
+          return;
+        }
+        // No longer shared with me, or gone: the list is out of date.
+        delete frOpenIds[id]; delete frDetails[id];
+        toast(humanFail(j.error, 'Could not open this. Try again in a moment.'));
         loadAssetLocators();
-      } else {
-        toast(j.error || 'Could not save this');
+      })
+      .catch(function(){ frDetails[id] = { error: 'No connection. Try again in a moment.' }; renderLocators(); });
+  }
+  function frFormReset(){
+    frEditId = null; frShareId = null;
+    ['loc-item', 'loc-mask', 'loc-notes', 'fr-label', 'fr-inname-text', 'fr-nominee', 'fr-value', 'fr-due', 'fr-note'].forEach(function(id){ $(id).value = ''; });
+    $('fr-inname').value = ''; $('fr-renew').checked = false; foldSync('fr-more');
+    $('loc-about').disabled = false; $('fr-fields').hidden = false;
+    $('fr-ftitle').textContent = 'Add to the register';
+    $('btn-add-locator').textContent = 'Save to the register';
+    $('fr-cancel').hidden = true;
+    frPeopleFill([]); frSetWho('IMMEDIATE'); frKindChanged(); frErr('');
+  }
+  function frFormEdit(id, shareOnly){
+    var d = frDetails[id]; if (!d || d.error) return;
+    frFormReset();
+    if (shareOnly) frShareId = id; else frEditId = id;
+    $('loc-item').value = d.institution_or_item || '';
+    $('loc-cat').value = d.asset_category; if ($('loc-cat').value !== d.asset_category) $('loc-cat').value = 'OTHER';
+    $('loc-about').value = d.person_id; $('loc-about').disabled = true;
+    $('fr-label').value = d.custom_label || '';
+    $('loc-notes').value = d.physical_location_notes || '';
+    $('loc-mask').value = d.identifier_mask || '';
+    $('fr-inname').value = d.in_name_member || '';
+    $('fr-inname-text').value = d.in_name_text || '';
+    $('fr-nominee').value = d.nominee || '';
+    $('fr-value').value = d.approx_value == null ? '' : String(d.approx_value);
+    $('fr-due').value = d.due_on || '';
+    $('fr-note').value = d.note || '';
+    foldSync('fr-more');
+    frPeopleFill(d.designated_recipients || []);
+    frSetWho(d.unlock_policy); frKindChanged(); frAboutChanged();
+    $('fr-fields').hidden = !!shareOnly;
+    $('fr-ftitle').textContent = (shareOnly ? 'Who can see: ' : 'Edit: ') + (d.institution_or_item || '');
+    $('btn-add-locator').textContent = shareOnly ? 'Save who sees it' : 'Save changes';
+    $('fr-cancel').hidden = false;
+    try { $('fr-form').scrollIntoView({ block: 'start' }); (shareOnly ? document.querySelector('#fr-who input:checked') : $('loc-item')).focus(); } catch (e) {}
+  }
+  function frRemove(id){
+    var d = frDetails[id] || {};
+    askSheet('Remove this from the register?', '"' + (d.institution_or_item || 'This entry') + '" will be gone for everyone who could see it. This cannot be undone.', 'Yes, remove it', 'No, keep it', true).then(function(yes){
+      if (!yes) return;
+      post(API.locator, { code: state.code, memberId: state.memberId, action: 'locator_remove', id: id }).then(function(j){
+        if (!j.ok) { toast(humanFail(j.error, 'Could not remove this. Try again in a moment.')); return; }
+        delete frOpenIds[id]; delete frDetails[id];
+        if (frEditId === id || frShareId === id) frFormReset();
+        toast('Removed from the register');
+        loadAssetLocators();
+      }).catch(function(){ toast('No connection - try again'); });
+    });
+  }
+  $('locator-feed').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.hasAttribute('data-fropen')) frOpenEntry(b.getAttribute('data-fropen'));
+    else if (b.hasAttribute('data-fredit')) frFormEdit(b.getAttribute('data-fredit'), false);
+    else if (b.hasAttribute('data-frshare')) frFormEdit(b.getAttribute('data-frshare'), true);
+    else if (b.hasAttribute('data-frremove')) frRemove(b.getAttribute('data-frremove'));
+    else if (b.hasAttribute('data-frretry')) { frState = 'loading'; renderLocators(); loadAssetLocators(); }
+    else if (b.hasAttribute('data-frstart')) { try { $('fr-form').scrollIntoView({ block: 'start' }); $('loc-item').focus(); } catch (x) {} }
+    else if (b.hasAttribute('data-frclear')) { frQuery = ''; frPersonPick = ''; $('fr-search').value = ''; $('fr-person').value = ''; renderLocators(); }
+  });
+  $('fr-search').addEventListener('input', function(){ frQuery = this.value.trim(); renderLocators(); });
+  $('fr-person').addEventListener('change', function(){ frPersonPick = this.value; renderLocators(); });
+  $('fr-who').addEventListener('change', frWhoChanged);
+  $('fr-due').addEventListener('change', frWhoChanged);
+  $('loc-cat').addEventListener('change', frKindChanged);
+  $('loc-about').addEventListener('change', frAboutChanged);
+  $('fr-cancel').addEventListener('click', frFormReset);
+  $('btn-add-locator').addEventListener('click', function(){
+    var who = frWhoValue(), people = frPeoplePicked();
+    frErr('');
+    if (!who) { frErr('Choose who can see it.'); return; }
+    if (who === 'NOMINEES_ONLY' && !people.length) { frErr('Tick at least one person, or choose Only me.'); return; }
+    var btn = this, body;
+    if (frShareId) {
+      body = { code: state.code, memberId: state.memberId, action: 'locator_share', id: frShareId, unlockPolicy: who, designatedRecipients: people };
+    } else {
+      var item = $('loc-item').value.trim();
+      if (!item) { fieldErr('loc-item', 'Say what it is.'); return; }
+      var notes = $('loc-notes').value.trim();
+      if (!notes) { fieldErr('loc-notes', 'Say where it is kept, or where its papers are.'); return; }
+      var worth = $('fr-value').value.replace(/[,\s]/g, '');
+      if (worth && !/^\d+$/.test(worth)) { fieldErr('fr-value', 'Write the value as a whole number, like 500000.'); return; }
+      var about = frMember($('loc-about').value);
+      body = {
+        code: state.code, memberId: state.memberId, action: 'locator_add',
+        personId: $('loc-about').value || state.memberId,
+        category: $('loc-cat').value,
+        customLabel: $('fr-label').value.trim(),
+        institutionOrItem: item,
+        identifierMask: $('loc-mask').value.trim(),
+        physicalLocationNotes: notes,
+        inNameMemberId: $('fr-inname').value || null,
+        inNameText: $('fr-inname-text').value.trim(),
+        nominee: $('fr-nominee').value.trim(),
+        approxValue: worth,
+        valueCurrency: currencyOf(about && about.country) || '',
+        dueOn: $('fr-due').value || '',
+        note: $('fr-note').value.trim(),
+        unlockPolicy: who,
+        designatedRecipients: people
+      };
+      if (frEditId) { body.action = 'locator_update'; body.id = frEditId; }
+    }
+    var remind = !frShareId && $('fr-renew').checked && body.dueOn && who === 'IMMEDIATE'
+      ? { kind: body.category === 'FIXED_DEPOSIT' ? 'fd' : 'other', label: body.institutionOrItem, expiresOn: body.dueOn, aboutMemberId: body.personId } : null;
+    var changedId = frEditId || frShareId;
+    btn.disabled = true;
+    post(API.locator, body).then(function(j){
+      btn.disabled = false;
+      if (!j.ok) {
+        var msg = humanFail(j.error, 'Could not save this. Try again in a moment.');
+        if (j.field && FR_FIELD[j.field] && !frShareId) fieldErr(FR_FIELD[j.field], msg); else frErr(msg);
+        return;
       }
-    }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
+      if (changedId) { delete frDetails[changedId]; if (frOpenIds[changedId]) { delete frOpenIds[changedId]; } }
+      toast(changedId ? 'Saved 📒' : (who === 'ONLY_ME' ? 'Saved 📒 Only you can see it' : 'Saved 📒 It is in the register now'));
+      frFormReset();
+      loadAssetLocators();
+      // The small, clean call: the Renewals list already has an "add".
+      if (remind) ftPost('renewal_add', remind).then(function(r){ toast(r.ok ? 'Saved 📒 and added to Renewals' : 'Saved, but it could not be added to Renewals'); }).catch(function(){});
+    }).catch(function(){ btn.disabled = false; frErr('No connection. Try again in a moment.'); });
   });
 
   // ---------- Biomarkers & SVG Trendlines ----------
@@ -6083,7 +6405,10 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     record_biomarkers: 'saved new lab numbers',
     view_emergency_packet: 'opened the hospital papers',
     view_asset_locators: 'looked at where things are kept',
-    add_asset_locator: 'added where something is kept'
+    add_asset_locator: 'added where something is kept',
+    edit_asset_locator: 'changed an entry in the family register',
+    share_asset_locator: 'changed who can see an entry in the family register',
+    remove_asset_locator: 'removed an entry from the family register'
   };
   var audFor = null, audEvents = [];
   function openAuditDrawer(pId){
