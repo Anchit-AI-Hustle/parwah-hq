@@ -35,6 +35,7 @@ for (const t of ['Panchayat', 'Spin bowling', 'Pinterest boards', 'Passport to P
                  'The Login (film)', 'Chai at 5pm', 'rohan@example.com, ask him', 'Pin code 110001 chaat', '']) {
   ok('an ordinary like is kept: ' + t, P.credRisk(t) === null, String(P.credRisk(t)));
 }
+ok('the bare word is a title, not a password: a film called Password can be liked', P.credRisk('Password') === null && P.credRisk('The Password') === null && P.credRisk('Password 1234') === P.NO_PASSWORD && P.credRisk('password: abc') === P.NO_PASSWORD);
 ok('the reason is plain and says what to do', /never keeps a password/.test(P.NO_PASSWORD) && !/[{}<>]/.test(P.NO_PASSWORD));
 
 // ---- links

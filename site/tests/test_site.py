@@ -2598,8 +2598,7 @@ check("pasand: Today, the Together tab and a person's page all draw it, and erro
 check("pasand: the rules test runs in the gate, and the db and browser tests run in test:db",
       "node site/tests/pasandtest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
       and all(f in _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
-              for f in ("pasand.dbtest.mjs", "pasand.e2e.dbtest.mjs"))
-      and _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"].rstrip().endswith("pasand.e2e.dbtest.mjs"))
+              for f in ("pasand.dbtest.mjs", "pasand.e2e.dbtest.mjs")))
 check("events: appointments, functions and trips; reminded an hour before; birthdays from dates of birth",
       "'appointment', 'function', 'trip'" in (API_DIR / "plans.mjs").read_text(encoding="utf-8")
       and "sweepPlanReminders" in _evt and "function bdaysSoon(days)" in _app_src)

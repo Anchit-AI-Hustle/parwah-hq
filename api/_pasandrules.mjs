@@ -43,6 +43,9 @@ export const NO_PASSWORD = 'Parwah never keeps a password or a sign-in. Leave it
 export function credRisk(v) {
   const s = String(v == null ? '' : v);
   if (!s.trim()) return null;
+  // The bare word is a title (there is a film called Password); the word
+  // with anything beside it is someone sharing one.
+  if (/^\s*(the\s+)?(password|passcode)\s*$/i.test(s)) return null;
   if (/\b(pass ?words?|passwd|pass ?codes?|pwd)\b/i.test(s)) return NO_PASSWORD;
   if (/\b(log ?in|login id|sign ?in|user ?name|user ?id|pin|otp)\s*(is\b|[:=])/i.test(s)) return NO_PASSWORD;
   if (/[^\s@]+@[^\s@]+\.[a-z]{2,}\s*[:\/|]\s*\S{4,}/i.test(s)) return NO_PASSWORD;
