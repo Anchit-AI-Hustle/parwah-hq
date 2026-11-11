@@ -101,6 +101,8 @@ async function backToList() {
 }
 ok('the Coming soon game tiles are gone', (await R.locator('#pane-fun >> text=Coming soon').count()) === 0);
 for (const k of ['ludo', 'bhabhi', 'vyapar']) ok(`${k}: its card is there to start`, await R.locator(`[data-bstart="${k}"]`).count() === 1);
+// The pickers are filled when the family list arrives, not when the page opens.
+await R.waitForSelector('.bpick[data-for="ludo"] input[type=checkbox]', { state: 'attached', timeout: 10000 }).catch(() => {});
 ok('each game card lets you pick family to play with', (await R.locator('.bpick[data-for="ludo"] input[type=checkbox]').count()) === 1);
 
 // A tap, the way a finger taps. The board re-renders on its own between the
