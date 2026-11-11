@@ -2090,7 +2090,7 @@ check("order: on a parent's phone nothing covers All is well, Pills or SOS",
 # something in it is set or refused (proved in vault.e2e, care.e2e, plans.e2e).
 _folds = re.findall(r'<details class="fmore" id="([a-z-]+)">\s*<summary>([^<]*)</summary>', _appt)
 check("options: the busy forms fold their extras under More options, each named",
-      sorted(f[0] for f in _folds) == ["b-more", "ex-more", "p-more", "r-more", "st-more", "vd-more", "vp-more"]
+      sorted(f[0] for f in _folds) == ["b-more", "ex-more", "fr-more", "p-more", "r-more", "st-more", "vd-more", "vp-more"]
       and all(f[1].startswith("More options: ") for f in _folds)
       and "for (var d = el.closest('details'); d;" in _appt
       and all(("foldSync('" + f[0] + "')") in _appt for f in _folds))
@@ -3105,8 +3105,75 @@ check("rishtedaar: no Devanagari in the list; the home names are in Latin letter
 check("rishtedaar: the wide family is unit-tested in the gate, and the browser test runs in test:db",
       "DOOR KE RISHTEDAAR" in _rz_test and "a loop or a broken link never hangs a walk" in _rz_test
       and (ROOT / "tests" / "db" / "rishtedaar.e2e.dbtest.mjs").exists()
-      and _rz_pkg.rstrip().count("site/tests/db/rishtedaar.e2e.dbtest.mjs") == 1
-      and re.search(r'site/tests/db/rishtedaar\.e2e\.dbtest\.mjs"\s*\n\s*\}', _rz_pkg) is not None)
+      and _rz_pkg.rstrip().count("site/tests/db/rishtedaar.e2e.dbtest.mjs") == 1)
+# ---------- 10z. The family register ("When I'm Not Here", grown up) ----------
+# Property, money, papers, things, online accounts and anything else, each
+# with one of four choices of who sees it. Behaviour is proved against a real
+# database in famregister.dbtest and in real browsers in famregister.e2e;
+# these keep the source honest.
+_fr = (API_DIR / "_register.mjs").read_text(encoding="utf-8")
+_fr_api = (API_DIR / "_careprep.mjs").read_text(encoding="utf-8")
+_fr_app = (REPO / "site/public/index.html").read_text(encoding="utf-8")
+_fr_who = [("ONLY_ME", "Only me"), ("NOMINEES_ONLY", "People I choose"), ("IMMEDIATE", "Whole family"), ("EMERGENCY_ONLY", "Only in an emergency")]
+check("register: the four choices exist on the server, on the form and on each entry's chip",
+      "export const UNLOCK_POLICIES = ['IMMEDIATE', 'EMERGENCY_ONLY', 'NOMINEES_ONLY', 'ONLY_ME'];" in _fr
+      and all(f"['{k}', '{l}']" in _fr for k, l in _fr_who)
+      and all(f'<input type="radio" name="fr-who" value="{k}"' in _fr_app and f"<b>{l}</b>" in _fr_app for k, l in _fr_who)
+      and all(f"{k}: '{l}'" in _fr_app for k, l in _fr_who) and 'class="frchip"' in _fr_app)
+check("register: one rule decides who reads an entry, and the handler sends nothing that has not been through it",
+      _fr.count("export function canViewAssetLocator(") == 1 and "function canViewAssetLocator" not in _fr_api
+      and "if (policy === 'ONLY_ME') return false;" in _fr
+      and "if (!canView && policy === 'ONLY_ME') return null;" in _fr
+      and "institution_or_item: null, identifier_mask: null, physical_location_notes: null" in _fr
+      and _fr_api.count("registerRowFor(") == 2 and "locators.push(out)" in _fr_api
+      and "physical_location_notes: canView" not in _fr_api and "can_view: canView" not in _fr_api)
+check("register: \"Only me\" answers like an entry that was never written, to read or to change",
+      "if (!entry) return res.status(404).json(gone);" in _fr_api
+      and "if (!row || (!registerCanManage(row, g.me.id) && row.unlock_policy === 'ONLY_ME')) return res.status(404).json(gone);" in _fr_api)
+check("register: only the person it is about, or whoever wrote it, can edit, re-share or remove",
+      "return !!locator && !!memberId && (locator.person_id === memberId || locator.created_by === memberId);" in _fr
+      and "action === 'locator_update' || action === 'locator_share' || action === 'locator_remove'" in _fr_api
+      and "Only the person it is about, or whoever wrote it, can change this." in _fr_api)
+check("register: never a card number, CVV, OTP, PIN or password; a long number keeps its last 4",
+      "const { noteRisk } = await import('./_notesapi.mjs');" in _fr_api
+      and _fr_api.count("registerClean(req.body, { risk: noteRisk })") == 2
+      and "const why = (risk && risk(v)) || registerSecretRisk(v);" in _fr
+      and "['title', title], ['label', label], ['identifier', rawId], ['where', where], ['inName', inNameText], ['nominee', nominee], ['note', note]" in _fr
+      and "Parwah never keeps a password or a PIN. Write where it is kept, not what it is." in _fr
+      and "identifier: registerIdentifier(rawId)," in _fr and ">= 7) return maskAssetIdentifier(" in _fr)
+check("register: a view is written once per viewer, per entry, per day, and never for the person it is about",
+      "primary key (locator_id, viewer_id, day)" in _fr_api and "on conflict (locator_id, viewer_id, day) do nothing" in _fr_api
+      and "return !!locator && !!memberId && locator.person_id !== memberId;" in _fr
+      and _fr_api.count("registerLogsView(") == 2 and "v.viewer_id <> ${meId}" in _fr_api and ">Seen by '" in _fr_app)
+check("register: it grew the old table, by add column if not exists inside the care schema; no second store",
+      _fr_api.count("create table if not exists legacy_asset_locators") == 1
+      and all(f"alter table legacy_asset_locators add column if not exists {c} " in _fr_api
+              for c in ("custom_label", "in_name_member", "in_name_text", "nominee", "approx_value", "value_currency", "due_on", "note"))
+      and "create table if not exists legacy_asset_views" in _fr_api
+      and not (API_DIR / "register.mjs").exists() and "area === 'locator'" in (API_DIR / "book.mjs").read_text(encoding="utf-8"))
+_fr_kinds = re.findall(r"\['([A-Z_]+)', '[^']+'\]", _fr[_fr.index("export const REGISTER_GROUPS"):_fr.index("export const REGISTER_KIND_LABEL")])
+_fr_sel = _fr_app[_fr_app.index('<select id="loc-cat">'):]
+_fr_sel = _fr_sel[:_fr_sel.index("</select>")]
+check(f"register: the picker offers every kind the server knows ({len(_fr_kinds)}), under six plain headings",
+      len(_fr_kinds) == 22 and sorted(re.findall(r'<option value="([A-Z_]+)"', _fr_sel)) == sorted(_fr_kinds)
+      and re.findall(r'<optgroup label="([^"]+)"', _fr_sel) == ["Home and land", "Money", "Papers", "Things", "Online", "Other"]
+      and all(f"label: '{h}'" in _fr for h in ("Home and land", "Money", "Papers", "Things", "Online", "Other")))
+check("register: the screen is the family's register, and still says When I'm not here",
+      "<b>Family register</b><small>When I'm not here:" in _fr_app and '<button data-sec="locator">📒 Family register</button>' in _fr_app
+      and 'id="fr-search"' in _fr_app and 'id="fr-person"' in _fr_app and "Add the first one" in _fr_app
+      and "apiGet(frUrl('&brief=1'))" in _fr_app and "apiGet(frUrl('&id=' + encodeURIComponent(id)))" in _fr_app)
+check("register: removing asks first, in the app's own sheet; errors go through humanFail",
+      "askSheet('Remove this from the register?'" in _fr_app and "action: 'locator_remove'" in _fr_app
+      and "humanFail(j.error, 'Could not save this. Try again in a moment.')" in _fr_app
+      and "You are offline. The register will load when the internet is back." in _fr_app)
+_fr_static = [i for i in _static_ids if i.startswith("fr-")]
+check(f"register: its new ids all start with fr- and none is the first-run card's ({len(_fr_static)})",
+      len(_fr_static) >= 20 and all(_fr_static.count(i) == 1 for i in _fr_static))
+_testdb_fr = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("register: the unit test is in the gate, and both database tests are last in test:db",
+      "node site/tests/famregistertest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and _testdb_fr.endswith("site/tests/db/famregister.dbtest.mjs && node --import ./site/tests/db/register.mjs site/tests/db/famregister.e2e.dbtest.mjs")
+      and (REPO / "site/tests/db/famregister.dbtest.mjs").exists() and (REPO / "site/tests/db/famregister.e2e.dbtest.mjs").exists())
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
