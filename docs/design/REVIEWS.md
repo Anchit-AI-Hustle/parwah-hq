@@ -518,3 +518,18 @@ Checked at 320, 390 and 1440, light and dark, normal and senior mode, on the rea
 | 116 | 9 Error recovery | The poll sheet kept "Write the question first" on screen after the question was written | 1 | Fixed: the message clears as soon as anything is typed |
 
 New patterns: the voice note player (`.vn`), the recording bar (`.vnbar`), reaction chips and picker (`.rx-chip`, `.rx-add`, `.rx-big`), the poll card (`.pl`, `.pl-opt`) and the senior bar (`.bondsenior`, `.vnhold`, `.dekh`). All built from existing tokens; no new token.
+
+### Review 13, Rishtedaar: the wider family, named, with the chain (2026-11-11)
+
+Checked at 320 and 390, light and dark, on the real app with a five-generation family built through the real tree API (`site/tests/db/rishtedaar.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the list, the chain sheet, the list with a message, the empty list and the line on a person's page). Screens: the Rishtedaar list (opened from the family tree), the chain sheet, "how are we related?" on a person's page, and the search box on the "of" list in the tree form.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 117 | 2 Real-world match | Anyone further than a first cousin was called "Family", and a wife's own parents had no word at all once her husband's parents were in the tree | 3 | Fixed: Jeth, Devar, Nanad, Saala, Saali, Bhabhi, Jija, Samdhi and the rest are named; a parent's cousin, a cousin's child and a second cousin have their words; beyond that the chain itself is told short ("Dada's brother's son's wife") |
+| 118 | 5 Error prevention | Jeth or Devar depends on who was born first, and many dates of birth are empty | 3 | Fixed: with either date missing the English word is shown (Brother-in-law). Nothing is guessed |
+| 119 | 6 Recognition | A label alone does not say how a far relative is connected | 2 | Fixed: one line of chain under every name ("Your mother Geeta's brother"), the full chain on a tap, and the same line on the person's page |
+| 120 | 1 Visibility | A list that is empty, still loading, or could not be read looked the same: blank | 2 | Fixed: each says what is happening. Empty gives one first step with a button; a failed read keeps the family this phone last saw and offers Try again |
+| 121 | 7 Flexibility | In a family of fifteen the "of" list in the tree form was a long scroll | 2 | Fixed: past eight people a search box shortens the list; a choice already made is never dropped |
+| 122 | 3 User control | The 12-second refresh redrew the list under a finger | 2 | Fixed: the list is redrawn only when what it shows has changed |
+
+New patterns: none. Rows are `.crow`, sheets are `.msheet`, buttons are `.cbtn` and `.go`; the page-specific classes (`.rz-row`, `.rz-msg`, `.rz-chain`) use existing tokens only.

@@ -730,6 +730,17 @@ details.more[open]>summary::before{content:"▾ "}
 .trlinks{margin-top:var(--space-16);padding-top:var(--space-12);border-top:1px solid var(--bone-2)}
 .trlinks .linkbtn{display:flex;margin-top:0;text-align:left}
 .tperson .off{font-style:normal;font-size:var(--fs-12);color:var(--ink-soft)}
+/* Rishtedaar: everyone you are related to, near and far. Rows are .crow. */
+.rz-row{width:100%;margin-top:var(--space-8);font-family:var(--body);color:var(--ink);text-align:left;cursor:pointer}
+.rz-row .txt b{display:block;font-size:var(--fs-16)}
+.rz-row .txt .rz-kin{color:var(--ink);font-size:var(--fs-14);font-weight:600}
+.rz-list .eyebrow{margin:var(--space-20) 0 var(--space-4)}
+.rz-list .crow .cbtn{min-height:var(--tap-min)}
+.rz-msg{background:var(--tint-warm);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-12) var(--space-16);font-size:var(--fs-14);color:var(--ink);margin-top:var(--space-12)}
+.rz-msg .cbtn{margin-top:var(--space-12);min-height:var(--tap-min)}
+.rz-chain{font-size:var(--fs-16);font-weight:600;color:var(--ink);margin:var(--space-12) 0}
+.personhero .rz-ppkin{color:var(--cream);margin-top:0;text-align:left}
+.personhero .rz-ppchain{color:var(--dim);font-size:var(--fs-14);margin:0 0 var(--space-12)}
 #createcard.nuclear .jointonly{display:none}
 #c-ftype{flex-wrap:wrap}
 #c-ftype button{flex:1 1 0;min-width:0;text-align:left}
@@ -2222,6 +2233,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       <h3 id="tree-title">🌳 Family tree</h3>
       <p class="hint" id="tree-sub" style="margin:var(--space-4) 0 var(--space-12)"></p>
       <div id="tree" class="tree"></div>
+      <button type="button" class="cbtn ghost" id="rz-open" style="margin-top:var(--space-12)">Rishtedaar: everyone, near and far</button>
       <details class="treeadd" id="tree-more">
         <summary class="eyebrow" id="tree-add-head">Add someone to the tree</summary>
         <div id="tree-add">
@@ -2234,6 +2246,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
         <div class="seg" id="tr-gender" role="group" aria-labelledby="tr-g-label">
           <button type="button" data-g="m" aria-pressed="false">He</button><button type="button" data-g="f" aria-pressed="false">She</button>
         </div>
+        <label class="pick" id="rz-offind-wrap" hidden style="margin-top:var(--space-12)"><span>Find a person in the list</span><input type="search" id="rz-offind" maxlength="40" placeholder="Type a name" autocomplete="off"></label>
         <div class="treeform">
           <label class="pick"><span>is the</span><select id="tr-place" aria-label="Their place"></select></label>
           <label class="pick"><span>of</span><select id="tr-of" aria-label="Of whom"></select></label>
@@ -2574,6 +2587,8 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     <div class="personhero" style="margin-top:var(--space-12)">
       <h1 id="pp-name"></h1>
       <p class="lede" id="pp-sub" style="margin:var(--space-2) 0 var(--space-12)"></p>
+      <button type="button" class="linkbtn rz-ppkin" id="rz-pp-kin" hidden aria-expanded="false" aria-controls="rz-pp-chain"></button>
+      <p class="rz-ppchain" id="rz-pp-chain" hidden></p>
       <p class="herostatus" id="pp-ready"></p>
     </div>
     <div class="prow2" style="margin-bottom:var(--space-16)">
@@ -4065,6 +4080,33 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   </div>
 </div>
 
+<div class="msheet" id="rz-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="rz-title">
+  <div class="mp cc-wide">
+    <button class="x" id="rz-x" aria-label="Close">✕</button>
+    <h3 id="rz-title" style="margin-top:0">Rishtedaar</h3>
+    <p class="hint" id="rz-sub" style="margin:var(--space-4) 0 var(--space-12)">Everyone you are related to, near and far</p>
+    <label class="pick"><span>Search</span><input type="search" id="rz-q" maxlength="40" placeholder="A name, or a word like mama or cousin" autocomplete="off"></label>
+    <div class="rz-msg" id="rz-note" role="status" hidden></div>
+    <div class="rz-list" id="rz-list"></div>
+    <button type="button" class="go" id="rz-add" style="margin-top:var(--space-20)">Add a relative</button>
+    <p class="hint">You can add family who are not on Parwah too. Say how they are related to one person, and Parwah works out the rest.</p>
+  </div>
+</div>
+<div class="msheet" id="rz-who" hidden role="dialog" aria-modal="true" aria-labelledby="rz-who-name">
+  <div class="mp">
+    <button class="x" id="rz-who-x" aria-label="Close">✕</button>
+    <h3 id="rz-who-name" style="margin-top:0"></h3>
+    <span class="rolebadge" id="rz-who-kin"></span>
+    <p class="hint" style="margin-bottom:0">How you are related</p>
+    <p class="rz-chain" id="rz-who-chain"></p>
+    <div class="kv" id="rz-who-city-row" hidden><b>Lives in</b><span id="rz-who-city"></span></div>
+    <div class="prow2">
+      <a class="cbtn" id="rz-who-call" hidden>📞 Call</a>
+      <button type="button" class="cbtn ghost" id="rz-who-page">👤 Their page</button>
+      <button type="button" class="cbtn ghost" id="rz-who-place" hidden>🌳 Place in the tree</button>
+    </div>
+  </div>
+</div>
 <div class="msheet" id="asksheet" hidden role="dialog" aria-modal="true" aria-labelledby="as-q">
   <div class="mp">
     <h3 id="as-q" style="margin-top:0"></h3>
@@ -4721,7 +4763,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       .then(function(j){
         if (j.ok) { homeOffline(false); seenAt = j.seenAt || seenAt; joinReqs = j.joinRequests || []; joinPolicy = j.joinPolicy || 'approve'; render(j); renderForSelect(j.members); renderTree(j); renderJoinReqs(); findSync(j.findme); return; }
         // Not ok, and not a code change we can heal from below: say so.
-        homeOffline(true);
+        homeOffline(true); rzFail('error');
         // Circle code changed by another member? Re-map by membership and recover.
         if (authUser && authUser.phone && !window._healing) {
           window._healing = true;
@@ -4735,7 +4777,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
           }).catch(function(){ window._healing = false; });
         }
       })
-      .catch(function(){ homeOffline(true); });
+      .catch(function(){ homeOffline(true); rzFail('offline'); });
     apiGet(API.care + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
       .then(function(j){
         if (j.ok) { renderCare(j); return; }
@@ -7642,6 +7684,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     $('pp-name').textContent = name;
     $('pp-sub').textContent = [m && m.relation ? relLabel(m) : null, m && m.place ? 'Lives in ' + m.place : null]
       .filter(Boolean).join(' · ') || 'In your family';
+    rzPersonLine(m);
     $('pp-ready').textContent = pp
       ? (pp.attention ? pp.pct + '% ready - ' + pp.attention + ' thing' + (pp.attention > 1 ? 's' : '') + ' to complete'
                       : 'Everything important is recorded 🧡')
@@ -13358,6 +13401,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     $('tree-add-head').textContent = me && !me.gen ? 'Where are you in the family?' : 'Add someone to the tree';
     if (!placed.length) $('tree-more').open = true;
     fillTreeOf();
+    rzState = 'ok'; rzRender();
   }
   // What a place is called once he or she is known.
   var TR_WORDS = { child: ['son', 'daughter', 'son or daughter'], spouse: ['husband', 'wife', 'husband or wife'],
@@ -13384,6 +13428,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     $('tr-place').value = plSel;
     var others = treeMembers.filter(function(m){ return m.id !== who; })
       .sort(function(a, b){ return (a.gen ? 0 : 1) - (b.gen ? 0 : 1); });
+    others = rzOfFilter(others, ofSel);
     $('tr-of').innerHTML = '<option value="">Choose…</option>' + others.map(function(m){ return '<option value="' + m.id + '">' + esc(m.id === state.memberId ? 'me' : m.name) + '</option>'; }).join('');
     if (ofSel && others.some(function(m){ return m.id === ofSel; })) $('tr-of').value = ofSel;
     $('tr-go').disabled = !others.length;
@@ -13468,6 +13513,156 @@ body.senior .mbcard p{font-size:var(--fs-16)}
         toast(k === 'person' ? 'Removed from the family' : 'Link removed'); refresh();
       }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
     });
+  });
+
+  // ---------- Rishtedaar: everyone you are related to, near and far ----------
+  // The server works out, for whoever is looking, each person's home name,
+  // the plain English word, the group (ghar, kareebi, door, unplaced) and
+  // the chain in words (m.rz, from api/_kin.mjs). This only draws it.
+  var rzState = 'loading', rzFrom = null, rzWhoFrom = null, rzDrawn = '';
+  var RZ_GROUPS = [['ghar', 'Ghar: your own home'], ['kareebi', 'Kareebi: close family'], ['door', 'Door ke rishtedaar: the wider family']];
+  // Past this many people, the "of" list in the tree form gets a search box.
+  var RZ_LONG = 8;
+  function rzOfFilter(others, keep){
+    var wrap = $('rz-offind-wrap'), q = ($('rz-offind').value || '').trim().toLowerCase();
+    wrap.hidden = others.length <= RZ_LONG;
+    if (wrap.hidden || !q) return others;
+    var hit = others.filter(function(m){ return m.id === keep || String(m.name || '').toLowerCase().indexOf(q) >= 0; });
+    return hit.length ? hit : others;
+  }
+  // The family could not be read: say which, and keep showing what this
+  // phone already has.
+  function rzFail(why){ rzState = treeMembers.length ? 'stale-' + why : why; rzRender(); }
+  // Home name first when there is one, the English word after.
+  function rzWords(m){
+    var z = m.rz || {}, first = z.hindi || m.kin || '', second = z.english || '';
+    if (!first) return m.on_app === false ? 'Not in the tree yet · not on Parwah' : 'Not in the tree yet';
+    var t = first;
+    if (second && second.toLowerCase() !== first.toLowerCase()) t += ' · ' + second;
+    else if (m.kin && m.kin.toLowerCase() !== first.toLowerCase()) t += ' · ' + m.kin;
+    return t + (m.on_app === false ? ' · not on Parwah' : '');
+  }
+  function rzHay(m){ var z = m.rz || {}; return [m.name, z.hindi, z.english, m.kin].join(' ').toLowerCase(); }
+  function rzMember(id){ return treeMembers.filter(function(m){ return m.id === id; })[0] || null; }
+  function rzRender(){
+    var sheet = $('rz-sheet'); if (!sheet || sheet.hidden) return;
+    var note = $('rz-note'), q = ($('rz-q').value || '').trim().toLowerCase(), html = '', msg = '';
+    var others = treeMembers.filter(function(m){ return state && m.id !== state.memberId; });
+    var me = state ? rzMember(state.memberId) : null;
+    if (rzState === 'loading') msg = 'Loading your family…';
+    else if (rzState === 'error') msg = 'Could not load your family just now. <button type="button" class="cbtn ghost" data-rzretry="1">Try again</button>';
+    else if (rzState === 'offline') msg = 'You are offline. Open Rishtedaar again when this phone has internet.';
+    else {
+      if (rzState === 'stale-offline' || (typeof navigator !== 'undefined' && navigator.onLine === false)) msg = 'You are offline. This is your family as this phone last saw it.';
+      else if (rzState !== 'ok') msg = 'Could not reach Parwah just now. This is your family as this phone last saw it. <button type="button" class="cbtn ghost" data-rzretry="1">Try again</button>';
+      var linked = others.filter(function(m){ return m.rz && m.rz.group !== 'unplaced'; });
+      var shown = others.filter(function(m){ return !q || rzHay(m).indexOf(q) >= 0; });
+      // A family with nobody connected yet: one helpful first step.
+      if (!linked.length && !q) {
+        msg += (msg ? '<br><br>' : '') + (me && !me.gen
+          ? 'You are not in the tree yet. Start with yourself: say who your father, mother, husband or wife is. Parwah works out the rest.' +
+            ' <button type="button" class="cbtn" data-rzplace="' + esc(me.id) + '">Place myself in the tree</button>'
+          : 'Nobody is connected to you in the tree yet. Add one person, such as your father or your wife, and the rest follows.');
+      }
+      RZ_GROUPS.forEach(function(g){
+        var rows = shown.filter(function(m){ return m.rz && m.rz.group === g[0]; });
+        if (!rows.length) return;
+        html += '<p class="eyebrow">' + esc(g[1]) + '</p>' + rows.map(function(m){
+          return '<button type="button" class="crow rz-row" data-rz="' + esc(m.id) + '"><span class="txt"><b>' + esc(m.name) + '</b>' +
+                 '<span class="rz-kin">' + esc(rzWords(m)) + '</span><small>' + esc(m.rz.chain || '') + '</small></span></button>';
+        }).join('');
+      });
+      var loose = shown.filter(function(m){ return !m.rz || m.rz.group === 'unplaced'; });
+      if (loose.length) {
+        html += '<p class="eyebrow">Not in the tree yet</p>' + loose.map(function(m){
+          return '<div class="crow" style="margin-top:var(--space-8)"><span class="txt"><b>' + esc(m.name) + '</b><small>' +
+                 (m.on_app === false ? 'Not on Parwah. ' : '') + 'Say how they are related, to see them here.</small></span>' +
+                 '<button type="button" class="cbtn" data-rzplace="' + esc(m.id) + '">Place in the tree</button></div>';
+        }).join('');
+      }
+      if (q && !shown.length) msg += (msg ? '<br><br>' : '') + 'Nobody matches "' + esc(q) + '". Try a name, or a word like mama or cousin.';
+    }
+    // The 12-second refresh must not take the row out from under a finger.
+    var sig = msg + '|rz|' + html;
+    if (sig === rzDrawn) return;
+    rzDrawn = sig;
+    note.hidden = !msg; note.innerHTML = msg;
+    $('rz-list').innerHTML = html;
+  }
+  function rzOpen(){
+    rzFrom = document.activeElement; rzDrawn = '';
+    $('rz-q').value = '';
+    $('rz-sheet').hidden = false;
+    rzRender();
+    try { $('rz-x').focus(); } catch (e) {}
+  }
+  function rzClose(){ $('rz-sheet').hidden = true; if (rzFrom && rzFrom.focus) { try { rzFrom.focus(); } catch (e) {} } }
+  function rzWhoOpen(id){
+    var m = rzMember(id); if (!m) return;
+    var z = m.rz || {}, loose = !z.group || z.group === 'unplaced';
+    $('rz-who-name').textContent = m.name;
+    $('rz-who-kin').textContent = rzWords(m);
+    $('rz-who-chain').textContent = loose ? 'Not connected in the family tree yet. Place them in the tree to see how you are related.' : (z.chain || '');
+    var city = placeLine(m);
+    $('rz-who-city-row').hidden = !city; if (city) $('rz-who-city').textContent = city;
+    // The same rule as the profile sheet: a number is shown only when the
+    // family read sent one to this person.
+    if (m.phone) { $('rz-who-call').href = 'tel:' + encodeURIComponent(m.phone); $('rz-who-call').hidden = false; }
+    else { $('rz-who-call').hidden = true; $('rz-who-call').removeAttribute('href'); }
+    $('rz-who-place').hidden = !loose;
+    $('rz-who').dataset.mid = m.id;
+    rzWhoFrom = document.activeElement;
+    $('rz-who').hidden = false;
+    try { $('rz-who-x').focus(); } catch (e) {}
+  }
+  function rzWhoClose(){ $('rz-who').hidden = true; if (rzWhoFrom && rzWhoFrom.focus && document.contains(rzWhoFrom)) { try { rzWhoFrom.focus(); } catch (e) {} } }
+  // Into the existing tree form: for a person already in the family, or for
+  // someone new who is not on Parwah ('new').
+  function rzPlace(id){
+    $('rz-who').hidden = true; $('rz-sheet').hidden = true;
+    if (curTab !== 'people') switchTab('people');
+    var sel = $('tr-who');
+    if (id !== 'new' && !rzMember(id)) return;
+    sel.value = id; trChanged();
+    $('tree-more').open = true;
+    var at = id === 'new' ? $('tr-name') : sel;
+    try { $('tree-more').scrollIntoView({ block: 'start' }); at.focus(); } catch (e) {}
+  }
+  function rzPersonLine(m){
+    var b = $('rz-pp-kin'), c = $('rz-pp-chain');
+    c.hidden = true; b.setAttribute('aria-expanded', 'false');
+    var show = !!m && famKind === 'family' && state && m.id !== state.memberId && rzMember(m.id);
+    b.hidden = !show; if (!show) return;
+    var t = rzMember(m.id), z = t.rz || {}, loose = !z.group || z.group === 'unplaced';
+    b.textContent = (loose ? 'Not in the tree yet' : rzWords(t).replace(/ · not on Parwah$/, '')) + ': how are we related?';
+    c.textContent = loose ? 'Not connected in the family tree yet. Place them in the tree on the Family tab to see how you are related.' : (z.chain || '');
+  }
+  $('rz-pp-kin').addEventListener('click', function(){
+    var c = $('rz-pp-chain'); c.hidden = !c.hidden;
+    this.setAttribute('aria-expanded', c.hidden ? 'false' : 'true');
+  });
+  $('rz-open').addEventListener('click', rzOpen);
+  $('rz-x').addEventListener('click', rzClose);
+  $('rz-sheet').addEventListener('click', function(e){ if (e.target === this) rzClose(); });
+  $('rz-q').addEventListener('input', rzRender);
+  $('rz-offind').addEventListener('input', fillTreeOf);
+  $('rz-add').addEventListener('click', function(){ rzPlace('new'); });
+  function rzListTap(e){
+    var r = e.target.closest('[data-rz]'); if (r) { rzWhoOpen(r.getAttribute('data-rz')); return; }
+    var pl = e.target.closest('[data-rzplace]'); if (pl) { rzPlace(pl.getAttribute('data-rzplace')); return; }
+    if (e.target.closest('[data-rzretry]')) { if (!treeMembers.length) rzState = 'loading'; rzRender(); refresh(); }
+  }
+  $('rz-list').addEventListener('click', rzListTap);
+  $('rz-note').addEventListener('click', rzListTap);
+  $('rz-who-x').addEventListener('click', rzWhoClose);
+  $('rz-who').addEventListener('click', function(e){ if (e.target === this) rzWhoClose(); });
+  $('rz-who-page').addEventListener('click', function(){
+    var mid = $('rz-who').dataset.mid; $('rz-who').hidden = true; $('rz-sheet').hidden = true; openPerson(mid);
+  });
+  $('rz-who-place').addEventListener('click', function(){ rzPlace($('rz-who').dataset.mid); });
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    if (!$('rz-who').hidden) rzWhoClose(); else if (!$('rz-sheet').hidden) rzClose();
   });
 
   // ---------- location sharing (consent first) ----------

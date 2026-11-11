@@ -3010,6 +3010,64 @@ check("chat bonding: the db and browser tests run in test:db",
       all(f in _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
           for f in ("chatbond.dbtest.mjs", "chatbond.e2e.dbtest.mjs")))
 
+# ---------- Rishtedaar: the wider family, named, with the chain ----------
+_rz_kin = (API_DIR / "_kin.mjs").read_text(encoding="utf-8")
+_rz_ev = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_rz_app = (ROOT / "public" / "index.html").read_text(encoding="utf-8")
+_rz_test = (ROOT / "tests" / "kintest.mjs").read_text(encoding="utf-8") if (ROOT / "tests" / "kintest.mjs").exists() else ""
+_rz_pkg = (REPO / "package.json").read_text(encoding="utf-8")
+check("rishtedaar: the kin arithmetic still imports nothing, so the gate runs it before npm install",
+      not re.search(r"^\s*import\s", _rz_kin, re.M) and "require(" not in _rz_kin and "await import(" not in _rz_kin)
+check("rishtedaar: the new exports exist beside the old ones",
+      all(("export function " + n + "(") in _rz_kin for n in ("kinLabel", "kinInfo", "kinChain", "kinChainWords", "kinCloseness", "kinEveryone", "index", "placement"))
+      and "export const NOT_CONNECTED" in _rz_kin)
+check("rishtedaar: every walk is bounded, by people already seen and by a cap",
+      "const WALK_CAP" in _rz_kin and "i < queue.length && i < WALK_CAP" in _rz_kin and "seen.has(x.id)" in _rz_kin and "guard++ < WALK_CAP" in _rz_kin)
+check("rishtedaar: the near family keeps its old words; the wider family is named only where it said Family or nothing",
+      "const near = lineLabel(by, fromId, toId);" in _rz_kin and "if (near && near !== 'Family') return near;" in _rz_kin)
+check("rishtedaar: elder or younger is never guessed without both dates of birth",
+      "if (!a || !b || !a.dob || !b.dob || a.dob === b.dob) return null;" in _rz_kin and "hindi = e === null ? null : e ? 'Jeth' : 'Devar'" in _rz_kin
+      and "hindi = e === null ? null : e ? 'Jethani' : 'Devrani'" in _rz_kin)
+check("rishtedaar: the home names are all there, in Latin letters",
+      all(("'" + w + "'") in _rz_kin for w in ("Jeth", "Jethani", "Devar", "Devrani", "Nanad", "Nandoi", "Saala", "Saali", "Salhaj", "Saadhu", "Bhabhi", "Jija",
+                                                 "Samdhi", "Samdhan", "Dada", "Dadi", "Nana", "Nani"))
+      and not re.search(r"[\u0900-\u097F]", _rz_kin))
+check("rishtedaar: not connected is said plainly, and a link is never made up",
+      "export const NOT_CONNECTED = 'Not connected in the family tree yet';" in _rz_kin and "return seen.has(toId) ? chainFrom(by, seen, toId) : null;" in _rz_kin)
+check("rishtedaar: the server works the list out for whoever is looking, so app and server cannot disagree",
+      "kinEveryone(by, g.me.id)" in _rz_ev and "kinChainWords(ri.chain, firstNames)" in _rz_ev and "group: ri.closeness" in _rz_ev
+      and "dob: m.dob" in _rz_ev and "kinLabel(by, g.me.id, m.id)" in _rz_ev
+      # The app draws what it is sent; it carries no second copy of the arithmetic.
+      and "lineLabel" not in _rz_app and "kinChain(" not in _rz_app)
+check("rishtedaar: the screen exists: the list, its subtitle, search, the chain sheet and Add a relative",
+      all(('id="' + i + '"') in _rz_app for i in ("rz-open", "rz-sheet", "rz-q", "rz-list", "rz-note", "rz-add", "rz-who", "rz-who-chain", "rz-who-call", "rz-who-page", "rz-who-place"))
+      and ">Rishtedaar</h3>" in _rz_app and ">Everyone you are related to, near and far</p>" in _rz_app and ">Add a relative</button>" in _rz_app)
+check("rishtedaar: three groups, then who is not in the tree yet",
+      "['ghar', 'Ghar: your own home'], ['kareebi', 'Kareebi: close family'], ['door', 'Door ke rishtedaar: the wider family']" in _rz_app
+      and "Not in the tree yet</p>" in _rz_app and "data-rzplace=" in _rz_app)
+check("rishtedaar: loading, empty, error and offline each say something",
+      "Loading your family" in _rz_app and "You are not in the tree yet. Start with yourself" in _rz_app
+      and "Could not load your family just now." in _rz_app and "You are offline. This is your family as this phone last saw it." in _rz_app
+      and "rzFail('error')" in _rz_app and "rzFail('offline')" in _rz_app)
+check("rishtedaar: a call button only for a phone the family read already sent, as the profile sheet does",
+      "if (m.phone) { $('rz-who-call').href = 'tel:' + encodeURIComponent(m.phone); $('rz-who-call').hidden = false; }" in _rz_app
+      and "$('rz-who-call').removeAttribute('href')" in _rz_app)
+check("rishtedaar: placing and adding reuse the existing tree form, which gets a search box when the family is long",
+      "function rzPlace(id)" in _rz_app and "sel.value = id; trChanged();" in _rz_app and "$('rz-add').addEventListener('click', function(){ rzPlace('new'); });" in _rz_app
+      and "others = rzOfFilter(others, ofSel);" in _rz_app and 'id="rz-offind"' in _rz_app
+      and "action: isNew ? 'add_person' : 'place'" in _rz_app)
+check("rishtedaar: a person's page says how you are related, and the chain on a tap",
+      'id="rz-pp-kin"' in _rz_app and 'id="rz-pp-chain"' in _rz_app and "rzPersonLine(m);" in _rz_app and "how are we related?" in _rz_app)
+_rz_ids = re.findall(r'id="(rz-[a-z-]+)"', _rz_app)
+check("rishtedaar: its ids are its own and none is used twice", len(_rz_ids) >= 15 and len(_rz_ids) == len(set(_rz_ids)))
+check("rishtedaar: no Devanagari in the list; the home names are in Latin letters like Chacha and Mausi",
+      not re.search(r"[\u0900-\u097F]", _rz_app[_rz_app.index("// ---------- Rishtedaar: everyone you are related to"):_rz_app.index("// ---------- location sharing (consent first)")]))
+check("rishtedaar: the wide family is unit-tested in the gate, and the browser test runs in test:db",
+      "DOOR KE RISHTEDAAR" in _rz_test and "a loop or a broken link never hangs a walk" in _rz_test
+      and (ROOT / "tests" / "db" / "rishtedaar.e2e.dbtest.mjs").exists()
+      and _rz_pkg.rstrip().count("site/tests/db/rishtedaar.e2e.dbtest.mjs") == 1
+      and re.search(r'site/tests/db/rishtedaar\.e2e\.dbtest\.mjs"\s*\n\s*\}', _rz_pkg) is not None)
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]
