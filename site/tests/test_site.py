@@ -2559,6 +2559,47 @@ check("notes: shared lists under To do; a private note is private in the query i
       and "if (area === 'notes') return notesApi(req, res);" in (API_DIR / "book.mjs").read_text(encoding="utf-8"))
 check("notes: never a card number or a banking secret",
       "function luhn(d)" in _notes and "noteRisk" in _notes)
+# Pasand (likes, where I watch, recommendations): proved in pasandtest (the
+# rules), pasand.dbtest (the handler on PostgreSQL) and pasand.e2e (two real
+# phones). These guard what must not drift: it costs no serverless function,
+# the audience and the readers of a recommendation are decided in the query,
+# and a password or a sign-in is never kept.
+_ps = (API_DIR / "_pasand.mjs").read_text(encoding="utf-8")
+_psr = (API_DIR / "_pasandrules.mjs").read_text(encoding="utf-8")
+_psg = (API_DIR / "games.mjs").read_text(encoding="utf-8")
+check("pasand: it rides /api/games?area=pasand in an underscore module, never a new serverless function",
+      "import pasandApi from './_pasand.mjs';" in _psg and "if (area === 'pasand') return pasandApi(req, res);" in _psg
+      and "var pasandApi = '/api/games?area=pasand';" in _app_src and 'data-sec="pasand"' in _app_src
+      and not (API_DIR / "pasand.mjs").exists())
+check("pasand: who sees a person's likes and platforms is decided in the query itself, for both",
+      _ps.count(""".member_id = ${me.id} or coalesce(p.audience, 'family') = 'family'
+           or (p.audience = 'chosen' and ${me.id}::uuid = any(p.chosen)))""") == 2
+      and "check (audience in ('family', 'chosen', 'me'))" in _ps)
+check("pasand: a recommendation is read only by its sender and its recipients, in the query itself",
+      "and (r.by_member = ${me.id} or exists (select 1 from pasand_rec_to t where t.rec_id = r.id and t.member_id = ${me.id}))" in _ps
+      and "and t.member_id = ${me.id}\n                          returning t.rec_id" in _ps
+      and "and by_member = ${me.id} returning id" in _ps and "primary key (rec_id, member_id)" in _ps)
+check("pasand: a password, a sign-in or a link that is not plain https is refused with a reason, never kept",
+      "noteRisk(v) || credRisk(v)" in _ps and _ps.count("pasandRisk(") >= 5
+      and "export function credRisk(v)" in _psr and "if (u.username || u.password) return NO_PASSWORD;" in _psr
+      and "if (u.protocol !== 'https:')" in _psr and "PASAND_MAX.link" in _psr and "link: 300" in _psr
+      and not re.search(r"\b(password|passwd|secret|credential)\w*\s+(text|bytea)", _ps))
+check("pasand: the screen says no password is asked for, and no account is linked",
+      "Tick what you have so the family knows where to watch together. Parwah never asks for your password." in _app_src
+      and 'type="password" id="ps-' not in _app_src)
+check("pasand: its tables are made through schemaOnce, sending is rate limited, and only recipients are pushed",
+      "schemaOnce(() => pasandTables(sql))" in _ps and "rateLimit(sql, 'pasand_rec', me.id, PASAND_MAX.perHour, 3600)" in _ps
+      and "pushCircle(sql, circle.id, payload, { only: id })" in _ps
+      and "requireMember(sql, code, memberId, tokenOf(req))" in _ps)
+check("pasand: Today, the Together tab and a person's page all draw it, and errors go through humanFail",
+      'id="ps-today"' in _app_src and 'id="ps-person-card"' in _app_src and "pasandPersonRender(id);" in _app_src
+      and "    mbTodayLoad();\n    pasandRefresh();\n" in _app_src
+      and "humanFail(j.error, 'That did not work. Try again.')" in _app_src.split("function pasandPost(")[1][:600])
+check("pasand: the rules test runs in the gate, and the db and browser tests run in test:db",
+      "node site/tests/pasandtest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all(f in _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+              for f in ("pasand.dbtest.mjs", "pasand.e2e.dbtest.mjs"))
+      and _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"].rstrip().endswith("pasand.e2e.dbtest.mjs"))
 check("events: appointments, functions and trips; reminded an hour before; birthdays from dates of birth",
       "'appointment', 'function', 'trip'" in (API_DIR / "plans.mjs").read_text(encoding="utf-8")
       and "sweepPlanReminders" in _evt and "function bdaysSoon(days)" in _app_src)

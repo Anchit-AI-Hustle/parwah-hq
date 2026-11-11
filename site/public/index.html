@@ -1059,6 +1059,13 @@ button.pl-opt{cursor:pointer}
 .bondtoday .crow .cbtn{min-height:var(--tap-min)}
 .bondrec{font-size:var(--fs-14);color:var(--ink-soft);margin:var(--space-8) 0}
 .bonderr{color:var(--alert);font-size:var(--fs-14);margin:var(--space-8) 0 0}
+/* Pasand (api/_pasand.mjs): likes, where I watch, recommendations. Built from the shared parts. */
+.card .pskind{font-size:var(--fs-14);font-weight:700;color:var(--ink);margin:var(--space-12) 0 0}
+.pschips{margin-top:var(--space-8)}
+.pschips button,.pstap{min-height:var(--tap-min)}
+a.pstap,a.bondwide{text-decoration:none}
+.psplat{margin-bottom:var(--space-8)}
+.psplat .seniorchk,.psto .seniorchk{margin:0}
 .senior .bondtext{font-size:var(--fs-24)}
 .senior .bondline{font-size:var(--fs-20)}
 .senior .bondtoday .crow .txt b{font-size:var(--fs-18)}
@@ -1757,6 +1764,8 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     <!-- CLOSER TOGETHER (api/_bond.mjs): a card to add to, a date to answer,
          a festival to plan, a friend in town. Only when one applies. -->
     <div id="bond-today"></div>
+    <!-- PASAND (api/_pasand.mjs): something a person recommended to me, until I answer. -->
+    <div id="ps-today"></div>
     <!-- The daily check-in: off until the person it is about says yes. -->
     <div class="card fccard" id="fcquiet" hidden>
       <h3>🕚 Daily check-in</h3>
@@ -2717,6 +2726,12 @@ body.senior .mbcard p{font-size:var(--fs-16)}
         <button type="button" class="cbtn ghost bondwide" id="pa-clear" hidden>Remove the anniversary</button>
       </details>
     </div>
+    <!-- Pasand (api/_pasand.mjs): their likes and platforms, when they share them with me. -->
+    <div class="card" id="ps-person-card">
+      <h3 id="ps-person-h">💛 Likes</h3>
+      <div id="ps-person"><div class="ev">Loading…</div></div>
+      <button type="button" class="cbtn bondwide" id="ps-person-rec" hidden></button>
+    </div>
     <div class="card"><h3>💡 Useful to know</h3><div class="feed" id="pp-useful"></div>
       <p class="hint" style="margin-top:var(--space-12)">🟡 means it is due a re-check: nothing here is assumed current.</p></div>
   </section>
@@ -2995,6 +3010,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       <button data-sec="plans" class="sel">🗓 Plans</button>
       <button data-sec="games">🎲 Games</button>
       <button data-sec="board">🎨 Board</button>
+      <button data-sec="pasand">💛 Pasand</button>
     </div>
     <div class="subsec" data-sec="plans">
     <div class="card">
@@ -3283,6 +3299,50 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       </div>
     </div>
     </div>
+
+    <!-- PASAND (api/_pasand.mjs): what each person likes, where they watch and
+         listen, and a recommendation from one person to another. -->
+    <div class="subsec" data-sec="pasand" hidden>
+    <p class="hint" style="margin:0 0 var(--space-12)">Pasand means what you like. Share what you enjoy, see what the others enjoy, and tell someone "you will love this".</p>
+    <p class="hint bad" id="ps-stale" role="status" hidden></p>
+    <div class="card">
+      <h3>💛 Recommendations</h3>
+      <div class="pkind" id="ps-tabs" role="group" aria-label="Which recommendations">
+        <button type="button" data-pstab="forme" class="sel" aria-pressed="true">For me</button>
+        <button type="button" data-pstab="fromme" aria-pressed="false">From me</button>
+      </div>
+      <div class="feed" id="ps-recs" style="margin-top:var(--space-12)"><div class="ev">Loading…</div></div>
+      <button type="button" class="go" id="ps-rec-open">Recommend something</button>
+    </div>
+    <div class="card">
+      <h3>My likes</h3>
+      <p class="hint" style="margin:0 0 var(--space-8)">Keep it short: a show, a singer, a dish, a team. Up to 40.</p>
+      <div id="ps-likes"><div class="ev">Loading…</div></div>
+      <label for="ps-like-kind">What kind of thing?</label>
+      <select id="ps-like-kind"></select>
+      <label for="ps-like-text">What do you like?</label>
+      <input type="text" id="ps-like-text" maxlength="60" placeholder="e.g. Panchayat · Kishore Kumar · Rajma chawal">
+      <p class="bonderr" id="ps-like-err" role="alert" hidden></p>
+      <button type="button" class="go" id="ps-like-add">Add to my likes</button>
+      <p class="eyebrow">Who sees my likes and where I watch</p>
+      <div class="pkind" id="ps-aud" role="group" aria-label="Who sees my likes and where I watch">
+        <button type="button" data-psaud="family" class="sel" aria-pressed="true">Whole family</button>
+        <button type="button" data-psaud="chosen" aria-pressed="false">People I choose</button>
+        <button type="button" data-psaud="me" aria-pressed="false">Only me</button>
+      </div>
+      <div class="psto" id="ps-aud-who" hidden></div>
+      <p class="hint" id="ps-aud-note"></p>
+    </div>
+    <div class="card">
+      <h3>Where I watch and listen</h3>
+      <p class="hint" style="margin:0 0 var(--space-12)">Tick what you have so the family knows where to watch together. Parwah never asks for your password.</p>
+      <div id="ps-plats"><div class="ev">Loading…</div></div>
+    </div>
+    <div class="card">
+      <h3 id="ps-people-h">What the family likes</h3>
+      <div class="feed" id="ps-people"><div class="ev">Loading…</div></div>
+    </div>
+    </div>
   </section>
 
   <!-- PROFILE -->
@@ -3463,6 +3523,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       <button data-tab="fun" data-sec="plans">Plans &amp; calls</button>
       <button data-tab="fun" data-sec="games">Games</button>
       <button data-tab="fun" data-sec="board">Drawing board</button>
+      <button data-tab="fun" data-sec="pasand">Pasand</button>
     </div>
     <button data-tab="vault"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-lock"/></svg></span>Vault</button>
     <div class="subnav side-only" data-parent="vault">
@@ -3566,6 +3627,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
         <button class="ditem sub" data-tab="fun" data-sec="plans">Plans &amp; calls</button>
         <button class="ditem sub" data-tab="fun" data-sec="games">Games</button>
         <button class="ditem sub" data-tab="fun" data-sec="board">Drawing board</button>
+        <button class="ditem sub" data-tab="fun" data-sec="pasand">Pasand</button>
       </div>
     </div>
     <div class="dgroup">
@@ -4349,6 +4411,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     if (pane === 'care' && sec === 'staff') loadStaff();
     if (pane === 'care' && sec === 'renewals') loadRenewals();
     if (pane === 'vault' && sec === 'locator') loadAssetLocators();
+    if (pane === 'fun' && sec === 'pasand') pasandRefresh();
   }
   ['care', 'fun', 'vault', 'day'].forEach(function(pane){
     $(pane + '-seg').addEventListener('click', function(e){
@@ -4753,6 +4816,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     ccRefresh();
     bondRefresh();
     mbTodayLoad();
+    pasandRefresh();
     refreshChats();
     refreshGroups();
     renderFirstRun();
@@ -4850,6 +4914,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
 
   function renderForSelect(members){
     membersCache = members;
+    if (pasandData) pasandRender();   // names to tick come from the family list
     // Who can be asked to share their location depends on who is in the
     // family, which can arrive after the locations did.
     if (curTab === 'people' && locMe && locMe.precision !== undefined) { try { renderLoc(); } catch (e) {} }
@@ -7693,6 +7758,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     $('pp-back').textContent = '← ' + ({ people: 'Family', home: 'Today', memory: 'Health & contacts', vault: 'Vault', care: 'To do' }[personFrom] || 'Back');
     switchTab('person');
     bondPersonRender(id);
+    pasandPersonRender(id);
     loadBiomarkers(id);
     ccPerson(id);
     loadLadder(id);
@@ -12362,6 +12428,321 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       if (!fm && !nm) { er.textContent = 'Say who the card is for.'; er.hidden = false; return; }
       bondPost({ action: 'bond_card_start', occasion: ob ? ob.getAttribute('data-bco') : 'other', forMember: fm || null, forName: nm, date: dt }, er).then(function(j){ if (j.ok) bondCardOpen(j.id); });
     }
+  });
+
+  // ---------- Pasand: likes, where I watch, recommendations (api/_pasand.mjs) ----------
+  // What each person likes, where they watch and listen, and "you will love
+  // this" from one person to another. The server decides who sees what;
+  // this only draws what it was given. No account is linked and no password
+  // is ever asked for. The lists mirror api/_pasandrules.mjs.
+  var pasandApi = '/api/games?area=pasand';
+  var pasandData = null, pasandAt = 0, pasandTab = 'forme', pasandAudDraft = false, pasandFail = '';
+  var psKinds = [['shows', '🎬', 'Shows and films'], ['music', '🎵', 'Music'], ['games', '🎮', 'Games'],
+    ['books', '📚', 'Books'], ['food', '🍛', 'Food'], ['hobbies', '🎨', 'Hobbies'],
+    ['sports', '🏏', 'Sports'], ['places', '🏞', 'Places'], ['other', '💛', 'Other']];
+  var psPlatforms = [['netflix', 'Netflix'], ['prime', 'Prime Video'], ['hotstar', 'JioHotstar'], ['sonyliv', 'SonyLIV'],
+    ['zee5', 'ZEE5'], ['youtube', 'YouTube'], ['spotify', 'Spotify'], ['jiosaavn', 'JioSaavn'],
+    ['applemusic', 'Apple Music'], ['gaana', 'Gaana'], ['audible', 'Audible'], ['kindle', 'Kindle'], ['other', 'Other']];
+  var psRecKinds = [['show', '📺', 'Show'], ['film', '🎬', 'Film'], ['song', '🎵', 'Song'], ['album', '💿', 'Album'],
+    ['game', '🎮', 'Game'], ['book', '📚', 'Book'], ['eat', '🍛', 'Place to eat'], ['other', '💛', 'Anything']];
+  var psResponses = [['saved', 'Will try it'], ['loved', 'Loved it'], ['done', 'Seen it'], ['pass', 'Not for me']];
+  function pasandPick(list, k){ for (var i = 0; i < list.length; i++) if (list[i][0] === k) return list[i]; return null; }
+  function pasandOn(k){ var p = k && k !== 'other' ? pasandPick(psPlatforms, k) : null; return p ? p[1] : ''; }
+  function pasandWord(){ return spaceWord() === 'group' ? 'group' : 'family'; }
+  // Only a plain https link is ever put in the page as a link.
+  function pasandLink(u){ return /^https:\/\/[^\s"'<>]+$/i.test(String(u || '')) ? String(u) : ''; }
+  function pasandLinkErr(v){
+    if (!v) return '';
+    if (v.length > 300) return 'That link is too long. Use a shorter one.';
+    if (!/^https:\/\/\S+$/i.test(v)) return 'That link needs to start with https. Copy it again from the app or the browser.';
+    return '';
+  }
+  function pasandMember(id){ return (membersCache || []).filter(function(m){ return m.id === id; })[0] || null; }
+  function pasandOthers(){ return (membersCache || []).filter(function(m){ return m.id !== state.memberId; }); }
+  function pasandSay(el, msg){ if (el) { el.textContent = msg; el.hidden = false; } else toast(msg); }
+  function pasandRefresh(force){
+    if (!state) return;
+    if (!force && Date.now() - pasandAt < 20000) return;
+    pasandAt = Date.now();
+    apiGet(pasandApi + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId)).then(function(j){
+      // Every list is given a shape, so a short answer never breaks a screen.
+      if (j && j.ok) { pasandData = { me: j.me || { audience: 'family', chosen: [], likes: [], platforms: [] }, people: j.people || [], forMe: j.forMe || [], fromMe: j.fromMe || [] }; pasandFail = ''; }
+      else pasandFail = humanFail(j && j.error, 'Could not load Pasand. Try again in a moment.');
+      pasandRender();
+    }).catch(function(){ pasandFail = 'No connection. Pasand will show when you are back online.'; pasandRender(); });
+  }
+  // A POST; a refusal is said under the form when there is one, otherwise in a toast.
+  function pasandPost(body, errEl){
+    body.code = state.code; body.memberId = state.memberId; body.area = 'pasand';
+    if (errEl) errEl.hidden = true;
+    return post(pasandApi, body).then(function(j){
+      if (!j.ok) { pasandSay(errEl, humanFail(j.error, 'That did not work. Try again.')); return j; }
+      pasandRefresh(true);
+      return j;
+    }).catch(function(){ pasandSay(errEl, 'No connection. Try again.'); return { ok: false }; });
+  }
+  function pasandRender(){
+    pasandRenderToday();
+    var stale = $('ps-stale');
+    if (stale) { stale.hidden = !(pasandFail && pasandData); stale.textContent = pasandFail ? pasandFail + ' Showing what was loaded last.' : ''; }
+    if (!pasandData) {
+      if (pasandFail) ['ps-recs', 'ps-likes', 'ps-plats', 'ps-people'].forEach(function(id){ $(id).innerHTML = '<div class="ev">' + esc(pasandFail) + '</div>'; });
+    } else {
+      pasandRenderRecs(); pasandRenderLikes(); pasandRenderAud(); pasandRenderPlats(); pasandRenderPeople();
+    }
+    if (curTab === 'person' && personId) pasandPersonRender(personId);
+  }
+  function pasandRecLine(r){
+    var on = pasandOn(r.platform);
+    return (r.by_name || 'Someone') + ' recommends ' + r.title + ' for you.' + (on ? ' On ' + on + '.' : '');
+  }
+
+  // ---- Today: what was recommended to me and I have not answered yet
+  function pasandRenderToday(){
+    var box = $('ps-today'); if (!box) return;
+    var open = ((pasandData && pasandData.forMe) || []).filter(function(r){ return !r.response; });
+    var h = open.slice(0, 3).map(function(r){
+      return '<div class="crow"><span class="txt"><b>💛 ' + esc(pasandRecLine(r)) + '</b><small>' + esc(r.note || 'Open it and say what you think.') + '</small></span>' +
+        '<button type="button" class="cbtn" data-psopen="' + esc(r.id) + '">See it</button></div>';
+    }).join('');
+    if (open.length > 3) h += '<div class="crow"><span class="txt"><b>💛 ' + (open.length - 3) + ' more for you</b><small>All of them are in Pasand.</small></span>' +
+      '<button type="button" class="cbtn ghost" data-psgo="1">Open Pasand</button></div>';
+    box.innerHTML = h ? '<div class="bondtoday">' + h + '</div>' : '';
+  }
+
+  // ---- For me, From me
+  function pasandRenderRecs(){
+    var d = pasandData, h = '';
+    document.querySelectorAll('#ps-tabs button').forEach(function(x){ var on = x.getAttribute('data-pstab') === pasandTab; x.classList.toggle('sel', on); x.setAttribute('aria-pressed', on); });
+    if (pasandTab === 'forme') {
+      (d.forMe || []).forEach(function(r){
+        var k = pasandPick(psRecKinds, r.kind) || psRecKinds[7], on = pasandOn(r.platform), ans = pasandPick(psResponses, r.response), link = pasandLink(r.link);
+        h += '<div class="plan"><b>' + k[1] + ' ' + esc(r.title) + '</b><small>From ' + esc(r.by_name || 'someone') + (on ? ' · On ' + esc(on) : '') + ' · ' + esc(fmtTime(r.created_at)) + '</small>' +
+          (r.note ? '<small>' + esc(r.note) + '</small>' : '') +
+          (ans ? '<small>Your answer: ' + esc(ans[1]) + (r.reply ? '. You said: ' + esc(r.reply) : '') + '</small>' : '') +
+          '<div class="prow"><button type="button" class="cbtn pstap' + (ans ? ' ghost' : '') + '" data-psopen="' + esc(r.id) + '">' + (ans ? 'Change my answer' : 'Say what you think') + '</button>' +
+          (link ? '<a class="cbtn ghost pstap" href="' + esc(link) + '" target="_blank" rel="noopener noreferrer">Open the link</a>' : '') + '</div></div>';
+      });
+      if (!h) h = '<div class="ev">Nothing for you yet. Recommend something to someone, and they may send one back.</div>';
+    } else {
+      (d.fromMe || []).forEach(function(r){
+        var k = pasandPick(psRecKinds, r.kind) || psRecKinds[7], on = pasandOn(r.platform), to = r.to || [];
+        h += '<div class="plan"><b>' + k[1] + ' ' + esc(r.title) + '</b><small>To ' + (r.toAll ? 'the whole ' + pasandWord() : esc(to.map(function(t){ return t.name; }).join(', '))) +
+          (on ? ' · On ' + esc(on) : '') + ' · ' + esc(fmtTime(r.created_at)) + '</small>' + (r.note ? '<small>' + esc(r.note) + '</small>' : '');
+        to.forEach(function(t){
+          var a = pasandPick(psResponses, t.response);
+          h += '<small>' + esc(t.name) + ': ' + (a ? esc(a[1]) + (t.reply ? '. They said: ' + esc(t.reply) : '') : 'no answer yet') + '</small>';
+        });
+        h += '<div class="prow"><button type="button" class="cbtn no pstap" data-psdel="' + esc(r.id) + '">Remove</button></div></div>';
+      });
+      if (!h) h = '<div class="ev">You have not recommended anything yet. Tap Recommend something to start.</div>';
+    }
+    $('ps-recs').innerHTML = h;
+  }
+
+  // ---- my likes, and who sees them
+  function pasandRenderLikes(){
+    var mine = pasandData.me.likes || [], h = '';
+    psKinds.forEach(function(k){
+      var ls = mine.filter(function(l){ return l.kind === k[0]; }); if (!ls.length) return;
+      h += '<p class="pskind">' + k[1] + ' ' + k[2] + '</p><div class="chips pschips">' + ls.map(function(l){
+        return '<button type="button" data-pslikedel="' + esc(l.id) + '" aria-label="Remove ' + esc(l.text) + '">' + esc(l.text) + ' ✕</button>';
+      }).join('') + '</div>';
+    });
+    $('ps-likes').innerHTML = h || '<div class="ev">Nothing here yet. Start with one show you could watch again and again.</div>';
+  }
+  function pasandAudShow(a, chosen){
+    document.querySelectorAll('#ps-aud button').forEach(function(x){ var on = x.getAttribute('data-psaud') === a; x.classList.toggle('sel', on); x.setAttribute('aria-pressed', on); });
+    $('ps-aud').querySelector('[data-psaud="family"]').textContent = 'Whole ' + pasandWord();
+    var who = $('ps-aud-who');
+    who.hidden = a !== 'chosen';
+    if (a === 'chosen') {
+      var others = pasandOthers();
+      who.innerHTML = others.length ? others.map(function(m){
+        return '<label class="seniorchk"><input type="checkbox" data-pswho="' + esc(m.id) + '"' + (chosen.indexOf(m.id) >= 0 ? ' checked' : '') + '> ' + esc(m.name) + '</label>';
+      }).join('') + '<p class="bonderr" id="ps-aud-err" role="alert" hidden></p><button type="button" class="cbtn bondwide" id="ps-aud-save">Save who sees them</button>'
+        : '<p class="hint">Nobody else is in this ' + pasandWord() + ' yet.</p>';
+    }
+    $('ps-aud-note').textContent = a === 'family' ? 'Everyone in this ' + pasandWord() + ' can see your likes and where you watch.'
+      : a === 'chosen' ? 'Only the people you tick can see your likes and where you watch.' : 'Only you can see your likes and where you watch.';
+  }
+  function pasandRenderAud(){
+    if (pasandAudDraft) return;   // someone is ticking names; do not redraw under them
+    pasandAudShow(pasandData.me.audience || 'family', pasandData.me.chosen || []);
+  }
+
+  // ---- where I watch and listen
+  function pasandRenderPlats(){
+    var mine = {}; (pasandData.me.platforms || []).forEach(function(p){ mine[p.platform] = p; });
+    $('ps-plats').innerHTML = psPlatforms.map(function(p){
+      var on = mine[p[0]], link = on ? pasandLink(on.link) : '';
+      return '<div class="crow psplat"><label class="seniorchk txt"><input type="checkbox" data-psplat="' + p[0] + '"' + (on ? ' checked' : '') + '> ' + p[1] + '</label>' +
+        (link ? '<a class="cbtn ghost pstap" href="' + esc(link) + '" target="_blank" rel="noopener noreferrer" aria-label="Open my ' + p[1] + ' link">Open</a>' : '') +
+        (on ? '<button type="button" class="cbtn ghost" data-pslink="' + p[0] + '" aria-label="' + (link ? 'Change' : 'Add') + ' my ' + p[1] + ' link">' + (link ? 'Change link' : 'Add a link') + '</button>' : '') + '</div>';
+    }).join('');
+  }
+  function pasandLinkSheet(key){
+    var p = pasandPick(psPlatforms, key); if (!p) return;
+    var cur = ''; (pasandData.me.platforms || []).forEach(function(x){ if (x.platform === key) cur = pasandLink(x.link); });
+    bondSheet('🔗 My ' + p[1] + ' link',
+      '<p class="hint" style="margin:0">Paste a public profile or playlist link, so the ' + pasandWord() + ' can find you there. Parwah never asks for your password.</p>' +
+      '<label for="ps-link-in">Link (starts with https)</label><input type="url" id="ps-link-in" maxlength="300" inputmode="url" autocomplete="off" placeholder="https://" value="' + esc(cur) + '">' +
+      '<p class="bonderr" id="ps-link-err" role="alert" hidden></p>' +
+      '<button type="button" class="go" id="ps-link-save" data-psfor="' + key + '">Save the link</button>' +
+      (cur ? '<button type="button" class="cbtn ghost bondwide" id="ps-link-clear" data-psfor="' + key + '">Remove the link</button>' : ''));
+    try { $('ps-link-in').focus(); } catch (e) {}
+  }
+
+  // ---- what the others like
+  function pasandPersonHtml(p){
+    var h = '';
+    psKinds.forEach(function(k){
+      var ls = (p.likes || []).filter(function(l){ return l.kind === k[0]; });
+      if (ls.length) h += '<small>' + k[1] + ' ' + esc(ls.map(function(l){ return l.text; }).join(', ')) + '</small>';
+    });
+    var ps = p.platforms || [];
+    if (ps.length) h += '<small>Watches and listens on: ' + esc(ps.map(function(x){ var q = pasandPick(psPlatforms, x.platform); return q ? q[1] : 'Other'; }).join(', ')) + '</small>';
+    var links = ps.map(function(x){
+      var l = pasandLink(x.link), q = pasandPick(psPlatforms, x.platform);
+      return l && q ? '<a class="cbtn ghost pstap" href="' + esc(l) + '" target="_blank" rel="noopener noreferrer">' + q[1] + ' link</a>' : '';
+    }).join('');
+    return h + (links ? '<div class="prow">' + links + '</div>' : '');
+  }
+  function pasandRenderPeople(){
+    $('ps-people-h').textContent = 'What the ' + pasandWord() + ' likes';
+    var people = pasandData.people || [];
+    $('ps-people').innerHTML = people.length ? people.map(function(p){
+      return '<div class="plan"><b>' + esc(p.name) + '</b>' + pasandPersonHtml(p) +
+        (p.onApp ? '<div class="prow"><button type="button" class="cbtn pstap" data-psrec="' + esc(p.memberId) + '">Recommend something to ' + esc(p.name) + '</button></div>' : '') + '</div>';
+    }).join('') : '<div class="ev">Nobody else has shared their likes yet. Add yours, and ask them to add theirs.</div>';
+  }
+  // On a person's page: their likes and platforms, when the server sent them.
+  function pasandPersonRender(id){
+    var card = $('ps-person-card'); if (!card) return;
+    var mine = id === state.memberId, m = pasandMember(id), nm = (m && m.name) || 'them', btn = $('ps-person-rec');
+    $('ps-person-h').textContent = mine ? '💛 What I like' : '💛 What ' + nm + ' likes';
+    btn.hidden = !mine && !onApp(m);
+    btn.textContent = mine ? 'Add or change my likes' : 'Recommend something to ' + nm;
+    btn.setAttribute('data-psfor', mine ? '' : id);
+    if (!pasandData) { $('ps-person').innerHTML = '<div class="ev">' + esc(pasandFail || 'Loading…') + '</div>'; pasandRefresh(); return; }
+    var p = mine ? pasandData.me : (pasandData.people || []).filter(function(x){ return x.memberId === id; })[0];
+    var body = p ? pasandPersonHtml(p) : '';
+    $('ps-person').innerHTML = body ? '<div class="plan">' + body + '</div>'
+      : '<div class="ev">' + (mine ? 'You have not added any likes yet.' : esc(nm) + ' has not shared any likes with you yet.') + '</div>';
+  }
+
+  // ---- recommend something
+  function pasandRecSheet(toId){
+    var who = pasandOthers().filter(onApp), word = pasandWord();
+    if (!who.length) {
+      bondSheet('💛 Recommend something', '<p class="hint" style="margin:0">Nobody else in this ' + word + ' is on Parwah yet. Invite someone first, then tell them what they will love.</p>');
+      return;
+    }
+    bondSheet('💛 Recommend something',
+      '<p class="hint" style="margin:0">A show, a film, a song, a book, a place to eat. They get a notification and can tell you what they think.</p>' +
+      '<label for="ps-r-title">What is it?</label><input type="text" id="ps-r-title" maxlength="80" placeholder="e.g. Panchayat">' +
+      '<div class="pkind" id="ps-r-kind" role="group" aria-label="What kind of thing">' +
+      psRecKinds.map(function(k, i){ return '<button type="button" data-psk="' + k[0] + '" class="' + (i === 0 ? 'sel' : '') + '" aria-pressed="' + (i === 0) + '">' + k[1] + ' ' + k[2] + '</button>'; }).join('') + '</div>' +
+      '<label for="ps-r-plat">Where is it? (optional)</label><select id="ps-r-plat"><option value="">Not sure</option>' +
+      psPlatforms.map(function(p){ return '<option value="' + p[0] + '">' + p[1] + '</option>'; }).join('') + '</select>' +
+      '<label for="ps-r-link">Link (optional, starts with https)</label><input type="url" id="ps-r-link" maxlength="300" inputmode="url" autocomplete="off" placeholder="https://">' +
+      '<label for="ps-r-note">One line about it (optional)</label><input type="text" id="ps-r-note" maxlength="200" placeholder="e.g. You will love Pradhan ji">' +
+      '<p class="eyebrow">Who is it for?</p><div class="psto" id="ps-r-to">' +
+      '<label class="seniorchk"><input type="checkbox" id="ps-r-all"' + (toId ? '' : ' checked') + '> The whole ' + word + '</label>' +
+      who.map(function(m){ return '<label class="seniorchk"><input type="checkbox" data-psto="' + esc(m.id) + '"' + (m.id === toId ? ' checked' : '') + '> ' + esc(m.name) + '</label>'; }).join('') + '</div>' +
+      '<p class="bonderr" id="ps-r-err" role="alert" hidden></p>' +
+      '<button type="button" class="go" id="ps-r-send">Send it</button>');
+    try { $('ps-r-title').focus(); } catch (e) {}
+  }
+  function pasandRecSend(){
+    var err = $('ps-r-err'), title = $('ps-r-title').value.trim(), link = $('ps-r-link').value.trim();
+    if (!title) { pasandSay(err, 'Write what you recommend, like Panchayat.'); return; }
+    var bad = pasandLinkErr(link);
+    if (bad) { pasandSay(err, bad); return; }
+    var all = $('ps-r-all').checked, to = [];
+    document.querySelectorAll('#ps-r-to [data-psto]').forEach(function(c){ if (c.checked) to.push(c.getAttribute('data-psto')); });
+    if (!all && !to.length) { pasandSay(err, 'Pick who it is for.'); return; }
+    var kb = document.querySelector('#ps-r-kind .sel');
+    pasandPost({ action: 'rec_add', title: title, kind: kb ? kb.getAttribute('data-psk') : 'other', platform: $('ps-r-plat').value || null,
+                 link: link, note: $('ps-r-note').value.trim(), toAll: all, to: all ? [] : to }, err).then(function(j){
+      if (!j.ok) return;
+      bondSheetClose(); pasandTab = 'fromme'; toast('Sent 💛 They will get a notification.');
+    });
+  }
+  // ---- answer one
+  function pasandAnsSheet(id){
+    var r = ((pasandData && pasandData.forMe) || []).filter(function(x){ return x.id === id; })[0]; if (!r) return;
+    var k = pasandPick(psRecKinds, r.kind) || psRecKinds[7], on = pasandOn(r.platform), link = pasandLink(r.link);
+    bondSheet('💛 ' + (r.by_name || 'Someone') + ' recommends',
+      '<div class="plan"><b>' + k[1] + ' ' + esc(r.title) + '</b>' + (on ? '<small>On ' + esc(on) + '</small>' : '') + (r.note ? '<small>' + esc(r.note) + '</small>' : '') + '</div>' +
+      (link ? '<a class="cbtn ghost bondwide" href="' + esc(link) + '" target="_blank" rel="noopener noreferrer">Open the link</a>' : '') +
+      '<p class="eyebrow">What do you think?</p>' +
+      '<div class="pkind" id="ps-ans" role="group" aria-label="Your answer">' +
+      psResponses.map(function(a){ var sel = r.response === a[0]; return '<button type="button" data-psans="' + a[0] + '" class="' + (sel ? 'sel' : '') + '" aria-pressed="' + sel + '">' + a[1] + '</button>'; }).join('') + '</div>' +
+      '<label for="ps-ans-reply">Say something back (optional)</label><input type="text" id="ps-ans-reply" maxlength="200" value="' + esc(r.reply || '') + '" placeholder="e.g. Watching it this weekend">' +
+      '<p class="bonderr" id="ps-ans-err" role="alert" hidden></p>' +
+      '<button type="button" class="go" id="ps-ans-save" data-psfor="' + esc(r.id) + '">Send my answer</button>');
+  }
+  function pasandLikeAdd(){
+    var err = $('ps-like-err'), text = $('ps-like-text').value.trim();
+    if (!text) { pasandSay(err, 'Write what you like first.'); return; }
+    pasandPost({ action: 'like_add', kind: $('ps-like-kind').value, text: text }, err).then(function(j){
+      if (!j.ok) return;
+      $('ps-like-text').value = '';
+      toast(j.already ? 'That is already in your likes.' : 'Added 💛');
+    });
+  }
+  $('ps-like-kind').innerHTML = psKinds.map(function(k){ return '<option value="' + k[0] + '">' + k[1] + ' ' + k[2] + '</option>'; }).join('');
+  $('ps-like-text').addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); pasandLikeAdd(); } });
+  $('ps-like-text').addEventListener('input', function(){ $('ps-like-err').hidden = true; });
+  // Every Pasand button, in one place.
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-psopen],[data-psgo],[data-psdel],[data-pslikedel],[data-pslink],[data-psrec],[data-psans],[data-psk],[data-pstab],[data-psaud],#ps-aud-save,#ps-link-save,#ps-link-clear,#ps-r-send,#ps-ans-save,#ps-rec-open,#ps-like-add,#ps-person-rec');
+    if (!b || !state) return;
+    var d = b.dataset;
+    var pickIn = function(box){ box.querySelectorAll('button').forEach(function(x){ var on = x === b; x.classList.toggle('sel', on); x.setAttribute('aria-pressed', on); }); };
+    if (d.psopen) pasandAnsSheet(d.psopen);
+    if (d.psgo) { switchTab('fun'); setSec('fun', 'pasand'); }
+    if (d.psdel) askSheet('Remove this recommendation?', 'It goes for everyone you sent it to.', 'Remove', 'Keep it', true).then(function(y){
+      if (y) pasandPost({ action: 'rec_remove', id: d.psdel }).then(function(j){ if (j.ok) toast('Removed'); });
+    });
+    if (d.pslikedel) pasandPost({ action: 'like_remove', id: d.pslikedel });
+    if (d.pslink) pasandLinkSheet(d.pslink);
+    if (d.psrec) pasandRecSheet(d.psrec);
+    if (d.psans || d.psk) pickIn(b.parentElement);
+    if (d.pstab) { pasandTab = d.pstab; if (pasandData) pasandRenderRecs(); }
+    if (d.psaud) {
+      if (d.psaud === 'chosen') { pasandAudDraft = true; pasandAudShow('chosen', (pasandData && pasandData.me.chosen) || []); }
+      else { pasandAudDraft = false; pasandAudShow(d.psaud, []); pasandPost({ action: 'audience_set', audience: d.psaud }).then(function(j){ if (j.ok) toast('Saved'); }); }
+    }
+    if (b.id === 'ps-aud-save') {
+      var ids = []; document.querySelectorAll('#ps-aud-who [data-pswho]').forEach(function(c){ if (c.checked) ids.push(c.getAttribute('data-pswho')); });
+      if (!ids.length) { pasandSay($('ps-aud-err'), 'Tick at least one person.'); return; }
+      pasandPost({ action: 'audience_set', audience: 'chosen', chosen: ids }, $('ps-aud-err')).then(function(j){ if (j.ok) { pasandAudDraft = false; toast('Saved. Only they can see your likes.'); } });
+    }
+    if (b.id === 'ps-link-save' || b.id === 'ps-link-clear') {
+      var v = b.id === 'ps-link-clear' ? '' : $('ps-link-in').value.trim(), le = pasandLinkErr(v);
+      if (le) { pasandSay($('ps-link-err'), le); return; }
+      pasandPost({ action: 'platform_set', platform: d.psfor, on: true, link: v }, $('ps-link-err')).then(function(j){ if (j.ok) { bondSheetClose(); toast(v ? 'Link saved' : 'Link removed'); } });
+    }
+    if (b.id === 'ps-r-send') pasandRecSend();
+    if (b.id === 'ps-ans-save') {
+      var ab = document.querySelector('#ps-ans .sel');
+      if (!ab) { pasandSay($('ps-ans-err'), 'Pick one answer.'); return; }
+      pasandPost({ action: 'rec_respond', id: d.psfor, response: ab.getAttribute('data-psans'), reply: $('ps-ans-reply').value.trim() }, $('ps-ans-err')).then(function(j){ if (j.ok) { bondSheetClose(); toast('Sent 💛'); } });
+    }
+    if (b.id === 'ps-rec-open') pasandRecSheet();
+    if (b.id === 'ps-like-add') pasandLikeAdd();
+    if (b.id === 'ps-person-rec') { if (d.psfor) pasandRecSheet(d.psfor); else { switchTab('fun'); setSec('fun', 'pasand'); } }
+  });
+  document.addEventListener('change', function(e){
+    var c = e.target; if (!c || !c.getAttribute || !state) return;
+    if (c.getAttribute('data-psplat')) {
+      pasandPost({ action: 'platform_set', platform: c.getAttribute('data-psplat'), on: c.checked }).then(function(j){ if (!j.ok && pasandData) pasandRenderPlats(); });
+    }
+    // The whole family, or named people: ticking one clears the other.
+    if (c.id === 'ps-r-all' && c.checked) document.querySelectorAll('#ps-r-to [data-psto]').forEach(function(x){ x.checked = false; });
+    if (c.getAttribute('data-psto') && c.checked) $('ps-r-all').checked = false;
   });
 
   // ---------- games: Snakes & Ladders ----------
