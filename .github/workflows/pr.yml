@@ -119,6 +119,23 @@ jobs:
       # workflows' push triggers - GitHub suppresses them to prevent loops -
       # so the deploy would silently never run. A dispatch is the one event
       # that token is allowed to start.
+      # The dispatch reads `main` at the moment it is sent. Sent in the same
+      # second as the merge, it once read the commit before it and deployed
+      # the previous version (PR #92). Wait until main holds the tested
+      # commit, and fail loudly if it never does.
+      - name: Wait until main holds the merged commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          for i in $(seq 1 30); do
+            st=$(gh api "repos/$GITHUB_REPOSITORY/compare/$SHA...main" --jq .status 2>/dev/null || true)
+            if [ "$st" = "ahead" ] || [ "$st" = "identical" ]; then echo "main holds $SHA ($st)"; exit 0; fi
+            sleep 2
+          done
+          echo "::error::main does not hold $SHA after a minute, so the deploy was not started. Run the Deploy workflow by hand."
+          exit 1
+
       - name: Start the production deploy
         env:
           GH_TOKEN: ${{ github.token }}

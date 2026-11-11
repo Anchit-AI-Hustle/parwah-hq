@@ -1473,6 +1473,11 @@ check("automerge: commit messages survive the merge (no squash)",
 # this the deploy would silently never run.
 check("automerge: and production deploys after the merge",
       0 < _pr_merge_at < _pr_runs.find("run: gh workflow run deploy.yml"))
+# The dispatch reads main when it is sent. Sent in the same second as the
+# merge it once deployed the commit before it (PR #92).
+check("automerge: the deploy starts only once main holds the merged commit",
+      0 < _pr_merge_at < _pr_runs.find('compare/$SHA...main') < _pr_runs.find("run: gh workflow run deploy.yml")
+      and '[ "$st" = "ahead" ] || [ "$st" = "identical" ]' in _pr_runs and "exit 1" in _pr_runs)
 check("automerge: the only token it uses is the workflow's own",
       set(re.findall(r"GH_TOKEN:\s*(\S+(?: \S+)*)", _pr)) == {"${{ github.token }}"})
 _pr_node = re.search(r"node-version:\s*(\d+)", _pr)
