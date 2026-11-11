@@ -12,6 +12,9 @@ import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 import { award } from './_coins.mjs';
+// Pasand (likes, where I watch, recommendations) rides this route, so it
+// costs no serverless function of its own.
+import pasandApi from './_pasand.mjs';
 
 // A game finished together earns the family coins, once per person per game
 // (the coin ledger's unique index makes the game id pay once). Played alone
@@ -392,6 +395,8 @@ async function nextNumber(sql, circleId, kind) {
 }
 
 export default async function handler(req, res) {
+  const area = String((req.query && req.query.area) || (req.body && req.body.area) || '');
+  if (area === 'pasand') return pasandApi(req, res);
   let sql;
   try { sql = db(); await ensureSchema(sql); await ensureEnded(sql); }
   catch (e) { return failDb(res, e); }
