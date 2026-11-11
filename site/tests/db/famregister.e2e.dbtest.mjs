@@ -162,7 +162,11 @@ const priya = await person(fam, 'SHARMA', 'Sharma Family', 'Priya');
 const SEC = '#pane-vault .subsec[data-sec="locator"]';
 const openRegister = async (who, opts) => {
   const P = await phone(who, { hash: '#vault', ...(opts || {}) });
-  await P.click('#vault-seg [data-sec="locator"]'); await P.waitForTimeout(1000);
+  await P.click('#vault-seg [data-sec="locator"]');
+  // Until the list has been read, not for a fixed second: the very first
+  // read also makes the tables, and takes as long as it takes.
+  await P.waitForFunction(() => { const f = document.getElementById('locator-feed'); return f && !/Loading/.test(f.textContent); }, null, { timeout: 15000 });
+  await P.waitForTimeout(300);
   return P;
 };
 const feed = (P) => P.textContent('#locator-feed');

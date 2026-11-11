@@ -5051,6 +5051,10 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   function renderForSelect(members){
     membersCache = members;
     if (pasandData) pasandRender();   // names to tick come from the family list
+    // The register's "Whose it is" list was filled once, when the screen
+    // opened: if the family arrived after that, it stayed empty.
+    var frSig = members.map(function(m){ return m.id + ':' + m.name; }).join('|');
+    if (frSig !== frPeopleSig) { frPeopleSig = frSig; try { frFillPeople(); } catch (e) {} }
     // Who can be asked to share their location depends on who is in the
     // family, which can arrive after the locations did.
     if (curTab === 'people' && locMe && locMe.precision !== undefined) { try { renderLoc(); } catch (e) {} }
@@ -5914,6 +5918,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     var m = frMember($('loc-about').value);
     $('fr-cur').textContent = curSym(currencyOf(m && m.country));
   }
+  var frPeopleSig = '';
   function frFillPeople(){
     var ms = membersCache || [];
     var opts = ms.map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(frName(m)) + '</option>'; }).join('');
@@ -6151,6 +6156,10 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     var remind = !frShareId && $('fr-renew').checked && body.dueOn && who === 'IMMEDIATE'
       ? { kind: body.category === 'FIXED_DEPOSIT' ? 'fd' : 'other', label: body.institutionOrItem, expiresOn: body.dueOn, aboutMemberId: body.personId } : null;
     var changedId = frEditId || frShareId;
+    // Renewals is read by the whole family. A reminder made while this was
+    // for everyone stays there after it is narrowed: say so.
+    var frWas = (locatorsCache || []).filter(function(l){ return l.id === frShareId; })[0];
+    var frNarrowed = !!(frShareId && frWas && frWas.unlock_policy === 'IMMEDIATE' && who !== 'IMMEDIATE');
     btn.disabled = true;
     post(API.locator, body).then(function(j){
       btn.disabled = false;
@@ -6160,7 +6169,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
         return;
       }
       if (changedId) { delete frDetails[changedId]; if (frOpenIds[changedId]) { delete frOpenIds[changedId]; } }
-      toast(changedId ? 'Saved 📒' : (who === 'ONLY_ME' ? 'Saved 📒 It is private now' : 'Saved 📒 It is in the register now'));
+      toast(frNarrowed ? 'Saved 📒 If this was added to Renewals, that reminder is still there for the family. You can remove it in Renewals.' : changedId ? 'Saved 📒' : (who === 'ONLY_ME' ? 'Saved 📒 It is private now' : 'Saved 📒 It is in the register now'));
       frFormReset();
       loadAssetLocators();
       // The small, clean call: the Renewals list already has an "add".

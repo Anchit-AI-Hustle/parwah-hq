@@ -2538,7 +2538,8 @@ check("timer: shared cards, festivals and the weekly story question ring from th
       "sweepBond(sql, c)" in _evt and "storySweep(sql, id)" in _evt and "ensureMemoryBondSchema" in _evt)
 check("schema: care tools, plan prices and the horoscope set up their tables through schemaOnce",
       all("schemaOnce(() => " + n + "(sql))" in (API_DIR / f).read_text(encoding="utf-8")
-          for f, n in (("_careprep.mjs", "carePrepTables"), ("_planapi.mjs", "planTables"), ("_horoscope.mjs", "horoscopeTables"))))
+          for f, n in (("_careprep.mjs", "carePrepTables"), ("_planapi.mjs", "planTables"), ("_horoscope.mjs", "horoscopeTables"),
+                       ("_bookschema.mjs", "bookTables"), ("_coins.mjs", "coinTables"))))
 check("schema: a deadlock between two first loads is retried like the other races",
       "'40P01'" in (API_DIR / "_db.mjs").read_text(encoding="utf-8"))
 check("chat: the day line uses the viewer's own date, not the server's UTC day",
@@ -3139,6 +3140,10 @@ check("register: once the person it is about makes it theirs alone, only they ca
       "if (row.unlock_policy === 'ONLY_ME' && row.person_id !== g.me.id) {" in _fr_api
       and _fr_api.count("l.unlock_policy = 'ONLY_ME'") == 2
       and "is not on Parwah yet, so an emergency could never open this" in _fr_api)
+check("register: the people lists are refilled when the family arrives, not only when the screen opens",
+      "if (frSig !== frPeopleSig) { frPeopleSig = frSig; try { frFillPeople(); } catch (e) {} }" in _app_src)
+check("register: narrowing an entry that was for everyone says a Renewals reminder may remain",
+      "frWas.unlock_policy === 'IMMEDIATE' && who !== 'IMMEDIATE'" in _app_src and "that reminder is still there for the family" in _app_src)
 check("register: never a card number, CVV, OTP, PIN or password; a long number keeps its last 4",
       "const { noteRisk } = await import('./_notesapi.mjs');" in _fr_api
       and _fr_api.count("registerClean(req.body, { risk: noteRisk })") == 2

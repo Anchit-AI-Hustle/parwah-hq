@@ -36,6 +36,11 @@ export const PAST_LABELS = { checkin: 'Checked in', pill: 'Took the medicines', 
 export const SPEND = { ekta: 2 };
 
 export async function ensureCoinSchema(sql) {
+  // First loads race here (two phones, two screens): see schemaOnce in _db.mjs.
+  const { schemaOnce } = await import('./_db.mjs');
+  return schemaOnce(() => coinTables(sql));
+}
+async function coinTables(sql) {
   await sql`create table if not exists coins (
     id uuid primary key default gen_random_uuid(),
     circle_id uuid not null references circles(id) on delete cascade,
