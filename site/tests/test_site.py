@@ -3302,7 +3302,7 @@ check("afterloss: starting a list never changes who sees an entry: this module n
 check("afterloss: an active list is the emergency only for that person and the two who started it; a nominee's name opens nothing",
       "if (list.status !== 'active' || list.person_id !== row.person_id) return false;" in _al
       and "if (memberId === list.started_by || memberId === list.confirmed_by) return true;" in _al
-      and "afterlossNominees" not in _al and "a name is not a person" in _al
+      and "afterlossNominees" not in _al and "name is not a person" in _al
       and "inSos.has(row.person_id) || alOpens(row, g.me.id)" in _fr_api
       and "registerRowFor(row, g.me.id, emergency(row))" in _fr_api and "registerRowFor(r, g.me.id, emergency(r), { details: !brief })" in _fr_api)
 check("afterloss: the register form says what Only in an emergency means now",
