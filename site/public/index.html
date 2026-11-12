@@ -1541,6 +1541,52 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   body.mbprint .mbbook h2{break-after:avoid}
   body.mbprint .mbbook section{break-inside:avoid}
 }
+/* YAADON KI ALBUM (api/_album.mjs): the grid, one photo full width, the add
+   sheet. Built from the shared parts and the tokens; no new token. Every
+   tile is a fixed square, so nothing moves as pictures arrive. */
+.abgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:var(--space-4);margin:var(--space-12) 0}
+.abtile{display:block;width:100%;aspect-ratio:1/1;padding:0;border:0;border-radius:var(--radius-8);overflow:hidden;background:var(--bone);cursor:pointer}
+.abtile img{display:block;width:100%;height:100%;object-fit:cover}
+.abtile img[hidden]{display:none}
+.abfilters{display:flex;flex-wrap:wrap;gap:var(--space-12);margin-top:var(--space-12)}
+.abfilters>span{flex:1 1 130px;min-width:0}
+.abfilters label{margin-top:0}
+.abfilters select{width:100%;min-height:var(--tap-min)}
+.abnote{margin:var(--space-12) 0}
+.abwide{min-height:var(--tap-min);margin-top:var(--space-8)}
+.abaud button{min-height:var(--tap-min)}
+.ablead{font-size:var(--fs-14);color:var(--ink);margin:0}
+.abpick{display:flex;flex-wrap:wrap;gap:var(--space-8);margin:var(--space-12) 0 0}
+.abpick label{flex:1 1 130px;display:flex;align-items:center;justify-content:center;min-height:var(--tap-min);margin:0;text-align:center}
+.abq{display:flex;align-items:center;gap:var(--space-12);padding:var(--space-8) 0;border-bottom:1px solid var(--bone-2);font-size:var(--fs-14)}
+.abq img,.abq .abqph{width:56px;height:56px;flex:none;object-fit:cover;border-radius:var(--radius-8);background:var(--bone)}
+.abq .abqt{flex:1;min-width:0}
+.abq b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.abq small{display:block;font-size:var(--fs-12);color:var(--ink-soft)}
+.abq small.bad{color:var(--alert);font-weight:600}
+.abq .cbtn{flex:none;min-height:var(--tap-min)}
+.abtimg{flex:none;width:56px;height:56px;border-radius:var(--radius-8);overflow:hidden;background:var(--bone)}
+.abtimg img{display:block;width:100%;height:100%;object-fit:cover}
+.abtoday .txt{min-width:120px}
+.abview{position:fixed;inset:0;z-index:var(--z-sheet);background:var(--day);overflow-y:auto;overscroll-behavior:contain}
+.abview-in{max-width:760px;margin:0 auto;padding:var(--space-12) var(--space-16) var(--space-32)}
+.abview-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-12);margin-bottom:var(--space-8);font-size:var(--fs-14);color:var(--ink-soft)}
+.abview-bar .cbtn,.abview-nav .cbtn{min-height:var(--tap-min)}
+.abview-pic{display:flex;align-items:center;justify-content:center;min-height:220px;background:var(--bone);border-radius:var(--radius-12);overflow:hidden;touch-action:pan-y}
+.abview-pic img{display:block;width:100%;height:auto;max-height:76vh;object-fit:contain}
+.abview-pic img[hidden]{display:none}
+.abview-pic .hint{margin:var(--space-16);color:var(--ink)}
+.abview-nav{display:flex;gap:var(--space-8);margin:var(--space-8) 0 0}
+.abview-nav[hidden]{display:none}
+.abview-nav .cbtn{flex:1}
+.abview-nav .cbtn:disabled{opacity:.6;cursor:default}
+.abview-cap{font-family:var(--disp);font-size:var(--fs-20);line-height:1.3;color:var(--ink);margin:var(--space-12) 0 var(--space-4)}
+.abview-meta{font-size:var(--fs-14);color:var(--ink-soft);margin:var(--space-4) 0 0}
+.abview .mbacts{margin-top:var(--space-12)}
+.abview .mbacts a.cbtn{display:flex;align-items:center;justify-content:center;text-align:center}
+.abview .mbacts a.cbtn[hidden]{display:none}
+body.senior .abview-cap{font-size:var(--fs-24)}
+body.senior .abview-meta{font-size:var(--fs-16)}
 </style>
 </head>
 <body>
@@ -1875,6 +1921,9 @@ body.senior .mbcard p{font-size:var(--fs-16)}
          storyteller, this week's question, a group's throwback, Yaadein,
          and a private reach-out nudge. Each one only when there is one. -->
     <div id="mb-today" aria-live="polite"></div>
+    <!-- YAADON KI ALBUM on Today (api/_album.mjs): one older photo a week,
+         for someone who may see it. Never a notification. -->
+    <div id="ab-today"></div>
     <!-- THE FIVE THINGS. Families talk on WhatsApp; Parwah holds what WhatsApp
          cannot: the papers, the medicines, who does what, who is who, and the
          card for an emergency. Ranked by utility in docs/design/TODAY.md; the
@@ -1912,6 +1961,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       <button class="widget" data-goto="chat"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></span><b>Chats</b><small id="w-chat">Family + personal</small></button>
       <button class="widget callgo" id="callnow"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-cam"/></svg></span><b>Family call</b><small>Everyone joins with one tap</small></button>
       <button class="widget" data-goto="memory" data-mbv="stories"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-book"/></svg></span><b>Stories &amp; recipes</b><small id="w-mb">One question a week, and the family's recipes</small></button>
+      <button class="widget" data-goto="memory" data-mbv="album"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-cam"/></svg></span><b>Photo album</b><small id="ab-w">Yaadon ki album: the family's own photos</small></button>
       <button class="widget" data-goto="memory" data-bk="people"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-book"/></svg></span><b>Contacts &amp; addresses</b><small id="w-book">Doctors, neighbours, addresses</small></button>
       <button class="widget" data-goto="care" data-sec="req"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-bulb"/></svg></span><b>Suggested</b><small id="w-req">Loading…</small></button>
       <button class="widget" data-goto="fun" data-sec="plans"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-cal"/></svg></span><b>Plans</b><small id="w-plan">Calls, parties, get-togethers</small></button>
@@ -2380,12 +2430,33 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       <button type="button" data-mbv="health" class="sel">🩺 Health &amp; contacts</button>
       <button type="button" data-mbv="stories">📖 Stories</button>
       <button type="button" data-mbv="recipes">🍲 Recipes</button>
+      <button type="button" data-mbv="album">📷 Album</button>
       <button type="button" data-mbv="settings">⚙️ Settings</button>
     </div>
     <div id="mb-root" hidden>
       <div id="mb-stories" hidden></div>
       <div id="mb-recipes" hidden></div>
       <div id="mb-settings" hidden></div>
+    </div>
+    <!-- YAADON KI ALBUM (api/_album.mjs): the family's own photos, in albums.
+         Only what the family adds is ever shown here. -->
+    <div id="ab-root" hidden>
+      <p class="hint" id="ab-count" aria-live="polite" hidden></p>
+      <div class="ev abnote" id="ab-near" role="status" hidden></div>
+      <div id="ab-tools" hidden>
+        <div class="mbtools">
+          <button type="button" class="cbtn" id="ab-add">📷 Add photos</button>
+          <button type="button" class="cbtn ghost" id="ab-new">＋ New album</button>
+        </div>
+        <div class="abfilters">
+          <span><label for="ab-f-album">Album</label><select id="ab-f-album"></select></span>
+          <span><label for="ab-f-person">Who is in it</label><select id="ab-f-person"></select></span>
+        </div>
+      </div>
+      <div class="abnote" id="ab-albumbar" hidden></div>
+      <div class="ev abnote" id="ab-stale" role="status" hidden></div>
+      <div class="abnote" id="ab-state" aria-live="polite"></div>
+      <div class="abgrid" id="ab-grid"></div>
     </div>
     <div id="book-list-view">
       <div class="addrow" style="margin-top:0">
@@ -2922,6 +2993,12 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       <h3 id="ps-person-h">💛 Likes</h3>
       <div id="ps-person"><div class="ev">Loading…</div></div>
       <button type="button" class="cbtn bondwide" id="ps-person-rec" hidden></button>
+    </div>
+    <!-- Yaadon ki album (api/_album.mjs): photos this person is in, when I may see them. -->
+    <div class="card" id="ab-pp-card" hidden>
+      <h3 id="ab-pp-h">Photos</h3>
+      <div class="abgrid" id="ab-pp-grid"></div>
+      <button type="button" class="cbtn ghost bondwide" id="ab-pp-all"></button>
     </div>
     <div class="card"><h3>💡 Useful to know</h3><div class="feed" id="pp-useful"></div>
       <p class="hint" style="margin-top:var(--space-12)">🟡 means it is due a re-check: nothing here is assumed current.</p></div>
@@ -4277,6 +4354,25 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   </div>
 </div>
 
+<!-- YAADON KI ALBUM (api/_album.mjs): one photo, full width, with its caption,
+     who is in it, who added it and when. Arrow keys and a swipe move along. -->
+<div class="abview" id="ab-viewer" hidden role="dialog" aria-modal="true" aria-label="Photo">
+  <div class="abview-in">
+    <div class="abview-bar">
+      <button type="button" class="cbtn ghost" id="ab-v-x">✕ Close</button>
+      <span id="ab-v-pos" aria-live="polite"></span>
+    </div>
+    <div class="abview-pic" id="ab-v-pic"><img id="ab-v-img" alt="" hidden><p class="hint" id="ab-v-wait" role="status">Loading the photo…</p></div>
+    <div class="abview-nav" id="ab-v-nav">
+      <button type="button" class="cbtn ghost" id="ab-v-prev">← Previous</button>
+      <button type="button" class="cbtn ghost" id="ab-v-next">Next →</button>
+    </div>
+    <p class="abview-cap" id="ab-v-cap"></p>
+    <p class="abview-meta" id="ab-v-people"></p>
+    <p class="abview-meta" id="ab-v-meta"></p>
+    <div class="mbacts" id="ab-v-acts"></div>
+  </div>
+</div>
 <!-- FAMILY MEMORY sheets (api/_memorybond.mjs): answer a story, pick a
      storyteller, who can hear it, a recipe. One sheet, filled by mbSheet(). -->
 <div class="msheet" id="mbsheet" hidden role="dialog" aria-modal="true" aria-labelledby="mbs-title">
@@ -5144,6 +5240,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     bondRefresh();
     mbTodayLoad();
     pasandRefresh();
+    albumTodayLoad();
     refreshChats();
     refreshGroups();
     renderFirstRun();
@@ -8572,6 +8669,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     bondPersonRender(id);
     pasandPersonRender(id);
     afterlossPersonLink(id);
+    albumPersonRender(id);
     loadBiomarkers(id);
     ccPerson(id);
     loadLadder(id);
@@ -12118,15 +12216,19 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   }
   function mbShow(v){
     mbView = v || 'health';
-    var health = mbView === 'health';
+    var health = mbView === 'health', album = mbView === 'album';
     document.querySelectorAll('#mb-switch [data-mbv]').forEach(function(b){ var on = b.getAttribute('data-mbv') === mbView; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
-    $('mb-root').hidden = health;
+    $('mb-root').hidden = health || album;
+    $('ab-root').hidden = !album;
     $('book-list-view').hidden = !health; $('book-detail').hidden = true;
     ['stories', 'recipes', 'settings'].forEach(function(k){ $('mb-' + k).hidden = k !== mbView; });
     document.querySelector('#pane-memory .ektahead b').textContent = health ? 'Health & contacts' : 'Family Memory';
     document.querySelector('#pane-memory .ektahead small').textContent = health ? 'Medicines, blood groups, allergies, doctors and addresses'
       : mbView === 'recipes' ? (mbGroup() ? 'The group cookbook' : 'The family’s recipes, in their own words')
-      : mbView === 'settings' ? 'Nudges, Yaadein and who is remembered' : 'One question a week, answers kept by person';
+      : mbView === 'settings' ? 'Nudges, Yaadein and who is remembered'
+      : album ? 'Yaadon ki album: the ' + mbWord() + '’s own photos' : 'One question a week, answers kept by person';
+    // The album (api/_album.mjs) draws itself.
+    if (album) { albumLoad(); return; }
     if (!health) {
       if (!mbMem) $('mb-' + mbView).innerHTML = '<div class="ev">Loading…</div>';
       else mbRenderView();
@@ -12500,6 +12602,594 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     }
   });
   // ---------- end of family memory (api/_memorybond.mjs) ----------
+
+  // ---------- Yaadon ki album: the family's own photos (api/_album.mjs) ----------
+  // A shared album the whole family adds to. Each photo is made smaller on
+  // this phone before it is sent (1600 pixels on its longest side, plus a
+  // small 320 pixel preview). Drawing it again on a canvas keeps the picture
+  // and leaves out what the camera wrote beside it, the location included.
+  // The server decides who sees which album; this only draws what it was
+  // given. A picture is fetched with the sign-in token and shown from
+  // memory, so there is no address anyone else could open.
+  var AB_API = '/api/book?area=album';
+  var AB_LOCATION = 'Parwah removes the location from your photos before saving them.';
+  // The same numbers as api/_albumrules.mjs; the server sends its own on load.
+  var AB_MAX = { photoBytes: 600000, thumbBytes: 40000, photoSide: 1600, thumbSide: 320, perRequest: 6, minYear: 1900 };
+  // Tried in order until the picture fits: the size asked for first, then smaller.
+  var AB_STEPS = [[1600, 0.8], [1600, 0.7], [1600, 0.6], [1280, 0.65], [1280, 0.5], [1024, 0.5], [800, 0.5]];
+  var AB_THUMB_STEPS = [[320, 0.7], [320, 0.55], [320, 0.4], [240, 0.5], [160, 0.5]];
+  var abData = null, abFor = '', abFail = '', abAt = 0, abFilter = { album: '', person: '' }, abOld = false, abSig = '';
+  var abUrls = {}, abWaits = {}, abView = { list: [], i: 0, back: null }, abQueue = [], abSeq = 0, abIO = null, abSending = false;
+  var abTodayAt = 0, abTodayPick = null, abPersonSeq = 0, abPersonList = [], abTouch = null;
+  function abQs(){ return '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId); }
+  function abWord(){ return spaceWord() === 'group' ? 'group' : 'family'; }
+  function abGet(extra){ return apiGet(AB_API + abQs() + (extra || '')); }
+  function abPost(body){
+    body.area = 'album'; body.code = state.code; body.memberId = state.memberId;
+    return post(AB_API, body).then(function(j){
+      // A full album is said in this screen's own words, from the numbers
+      // the server sent: a sentence with "400" in it reads like a status
+      // code to humanFail, and would be swapped for "That did not work".
+      if (!j.ok) j.error = j.full && j.cap ? abFullLine(j.count, j.cap) : humanFail(j.error, 'That did not work. Try again.');
+      return j;
+    }).catch(function(){ return { ok: false, error: 'No connection. Try again when you are back online.' }; });
+  }
+  function abFullLine(count, cap){
+    var left = Math.max(0, cap - (+count || 0));
+    return left ? 'There is room for ' + left + ' more ' + (left === 1 ? 'photo' : 'photos') + '. The album holds ' + cap + '. Add fewer, or remove some older ones.'
+      : 'The album is full: ' + cap + ' photos. Remove some older ones to add more.';
+  }
+  function abKb(n){ return Math.max(1, Math.round(n / 1000)) + ' KB'; }
+  function abNames(p){ return (p.people || []).map(function(x){ return x.name; }); }
+  function abList(names){ return names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : (names[0] || ''); }
+  function abAudLabel(a){ return a === 'me' ? 'Only me' : a === 'chosen' ? 'People I choose' : 'Whole ' + abWord(); }
+  function abAudNote(a){
+    return a === 'me' ? 'Only you can see these photos.'
+      : a === 'chosen' ? 'Only you and the people you tick can see these photos and add to them.'
+      : 'Everyone in this ' + abWord() + ' can see these photos and add their own.';
+  }
+  function abYearErr(v){
+    var now = new Date().getFullYear();
+    if (!v) return '';
+    if (!/^\d{4}$/.test(v)) return 'Write the year as four digits, like 1987.';
+    if (+v < AB_MAX.minYear || +v > now) return 'The year can be from ' + AB_MAX.minYear + ' to ' + now + '.';
+    return '';
+  }
+
+  // ---- loading the album
+  function albumLoad(force){
+    if (!state) return;
+    if (abFor !== state.code) { abData = null; abFail = ''; abSig = ''; abFilter = { album: '', person: '' }; abOld = false; abFor = state.code; }
+    if (!force && abData && Date.now() - abAt < 15000) { albumRender(); return; }
+    abAt = Date.now();
+    if (!abData) albumRender();
+    abGet('').then(function(j){
+      if (j && j.ok) { abData = j; abFail = ''; if (j.max) AB_MAX = j.max; }
+      else abFail = humanFail(j && j.error, 'Could not load the album. Try again in a moment.');
+      albumRender();
+    }).catch(function(){ abFail = 'You are offline. The album will show when you are back online.'; albumRender(); });
+  }
+  function albumShown(){
+    if (!abData) return [];
+    var list = (abData.photos || []).filter(function(p){
+      if (abFilter.album && p.albumId !== abFilter.album) return false;
+      if (abFilter.person && !(p.people || []).some(function(x){ return x.id === abFilter.person; })) return false;
+      return !abOld || p.canChange;
+    });
+    // The server sends newest first; "oldest first" is the same list from its other end.
+    return abOld ? list.slice().sort(function(a, b){ return a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0; }) : list;
+  }
+  function albumTile(p, attr, i){
+    return '<button type="button" class="abtile" ' + attr + '="' + i + '" aria-label="Open photo: ' + esc(p.alt) + '">' +
+      '<img alt="' + esc(p.alt) + '" data-abimg="' + esc(p.id) + '" width="320" height="320" decoding="async" hidden></button>';
+  }
+  function albumRender(){
+    var root = $('ab-root'); if (!root) return;
+    var d = abData, st = $('ab-state'), grid = $('ab-grid');
+    $('ab-stale').hidden = !(abFail && d);
+    $('ab-stale').textContent = abFail && d ? abFail + ' Showing what was loaded last.' : '';
+    $('ab-tools').hidden = !d;
+    if (!d) {
+      $('ab-count').hidden = true; $('ab-near').hidden = true; $('ab-albumbar').hidden = true; grid.innerHTML = ''; abSig = '';
+      st.innerHTML = abFail ? '<div class="ev">' + esc(abFail) + '<div><button type="button" class="cbtn ghost abwide" data-abretry="1">Try again</button></div></div>'
+        : '<div class="ev">Loading the album…</div>';
+      return;
+    }
+    // The count, always; and said louder when the album is nearly full.
+    var loud = d.near || d.full;
+    $('ab-count').hidden = loud; $('ab-count').textContent = d.line || '';
+    $('ab-near').hidden = !loud;
+    if (loud) $('ab-near').innerHTML = '<b>' + esc(d.line || '') + '</b>' +
+      (abOld ? '' : '<div><button type="button" class="cbtn ghost abwide" data-abold="1">Show the oldest photos I can remove</button></div>');
+    // The two filters keep what was chosen while it still exists.
+    var albums = d.albums || [], fa = $('ab-f-album'), fp = $('ab-f-person');
+    if (abFilter.album && !albums.some(function(a){ return a.id === abFilter.album; })) abFilter.album = '';
+    fa.innerHTML = '<option value="">All albums</option>' + albums.map(function(a){
+      return '<option value="' + esc(a.id) + '">' + esc(a.name) + ' (' + a.count + ')</option>'; }).join('');
+    fa.value = abFilter.album;
+    var inPhotos = {}; (d.photos || []).forEach(function(p){ (p.people || []).forEach(function(x){ inPhotos[x.id] = x.name; }); });
+    if (abFilter.person && !inPhotos[abFilter.person]) {
+      var pm = (d.members || []).filter(function(m){ return m.id === abFilter.person; })[0];
+      if (pm) inPhotos[pm.id] = pm.name; else abFilter.person = '';
+    }
+    fp.innerHTML = '<option value="">Everyone</option>' + Object.keys(inPhotos).sort(function(a, b){ return inPhotos[a] < inPhotos[b] ? -1 : 1; }).map(function(id){
+      return '<option value="' + esc(id) + '">' + esc(inPhotos[id]) + '</option>'; }).join('');
+    fp.value = abFilter.person;
+    // The chosen album: when it was, who it is for, and its maker's two buttons.
+    var bar = $('ab-albumbar'), al = albums.filter(function(a){ return a.id === abFilter.album; })[0];
+    bar.hidden = !al;
+    if (al) {
+      var when = al.date ? mbDate(al.date + 'T12:00:00') : (al.year ? String(al.year) : '');
+      bar.innerHTML = '<div class="plan"><b>' + esc(al.name) + '</b><small>' + esc([when, abAudLabel(al.audience), al.count === 1 ? '1 photo' : al.count + ' photos',
+        al.isDefault ? 'For everyone, always' : (al.mine ? 'Made by you' : (al.byName ? 'Made by ' + al.byName : ''))].filter(Boolean).join(' · ')) + '</small>' +
+        (al.mine && !al.isDefault ? '<div class="prow"><button type="button" class="cbtn ghost pstap" data-abaledit="' + esc(al.id) + '">Change album</button>' +
+          '<button type="button" class="cbtn no pstap" data-abaldel="' + esc(al.id) + '">Remove album</button></div>' : '') + '</div>';
+    }
+    var list = albumShown(), h = '';
+    if (abOld) h += '<div class="ev">Oldest first. Only the photos you may remove are shown.<div><button type="button" class="cbtn ghost abwide" data-abold="0">Back to all photos</button></div></div>';
+    if (!(d.photos || []).length) {
+      h += '<div class="ev"><b>No photos yet.</b><small>Start with one old photo the whole ' + abWord() + ' will know. A scan of a printed photo is welcome.</small>' +
+        '<div><button type="button" class="cbtn abwide" data-abadd="1">Add the first photo</button></div></div>';
+    } else if (!list.length) {
+      h += '<div class="ev">' + (abOld ? 'None of the photos here were added by you.' : 'No photos here yet.') +
+        (abFilter.album || abFilter.person ? '<div><button type="button" class="cbtn ghost abwide" data-aball="1">Show all photos</button></div>' : '') + '</div>';
+    }
+    st.innerHTML = h;
+    // The grid is drawn again only when what it shows has changed, so
+    // pictures already on screen do not blink.
+    var sig = list.map(function(p){ return p.id + '|' + p.alt; }).join('\n');
+    if (sig !== abSig || grid.children.length !== list.length) {
+      abSig = sig;
+      grid.innerHTML = list.map(function(p, i){ return albumTile(p, 'data-abopen', i); }).join('');
+      albumLazy(grid);
+    }
+    albumViewSync();
+  }
+
+  // ---- pictures: fetched with the sign-in token, kept in memory, shown when near the screen
+  function albumFetch(id, size){
+    var key = id + ':' + size;
+    if (abUrls[key]) return Promise.resolve(abUrls[key]);
+    if (abWaits[key]) return abWaits[key];
+    abWaits[key] = fetch(AB_API + '&view=photo&size=' + size + '&id=' + encodeURIComponent(id) + abQs(), { headers: authHeaders({}) }).then(function(r){
+      if (!r.ok || !/^image\/jpeg/.test(r.headers.get('Content-Type') || '')) throw new Error('no photo');
+      return r.blob();
+    }).then(function(b){ delete abWaits[key]; abUrls[key] = URL.createObjectURL(b); return abUrls[key]; },
+            function(e){ delete abWaits[key]; throw e; });
+    return abWaits[key];
+  }
+  function albumImg(el){
+    if (!el || el.getAttribute('data-abst')) return;
+    var id = el.getAttribute('data-abimg');
+    el.setAttribute('data-abst', 'wait');
+    albumFetch(id, 'thumb').then(function(u){ el.src = u; el.hidden = false; el.setAttribute('data-abst', 'ok'); })
+      .catch(function(){ el.removeAttribute('data-abst'); });
+  }
+  function albumLazy(box){
+    var tiles = box.querySelectorAll('.abtile');
+    if (!('IntersectionObserver' in window)) { tiles.forEach(function(t){ albumImg(t.querySelector('img')); }); return; }
+    if (!abIO) abIO = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if (e.isIntersecting) { abIO.unobserve(e.target); albumImg(e.target.querySelector('img')); } });
+    }, { rootMargin: '300px' });
+    tiles.forEach(function(t){ abIO.observe(t); });
+  }
+
+  // ---- one photo, full width
+  function albumOpen(list, i, back){
+    abView = { list: list.slice(), i: i, back: back || document.activeElement };
+    $('ab-viewer').hidden = false;
+    albumViewShow();
+    try { $('ab-v-x').focus(); } catch (e) {}
+  }
+  function albumClose(){
+    $('ab-viewer').hidden = true;
+    var b = abView.back, cur = abView.list[abView.i]; abView = { list: [], i: 0, back: null };
+    // Back to where the person was: the photo they tapped, or, when the grid
+    // was drawn again meanwhile, the photo they were last looking at.
+    try {
+      if (!b || !document.body.contains(b)) { var im = cur && document.querySelector('.abtile img[data-abimg="' + cur.id + '"]'); b = im ? im.parentNode : $('ab-add'); }
+      if (b) b.focus();
+    } catch (e) {}
+  }
+  function albumStep(n){
+    var j = abView.i + n;
+    if (j < 0 || j >= abView.list.length) return;
+    abView.i = j; albumViewShow();
+  }
+  function albumFileName(p){
+    var s = String(p.caption || 'family photo').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'family-photo';
+    return 'parwah-' + s + (p.year ? '-' + p.year : '') + '.jpg';
+  }
+  function albumViewShow(){
+    var v = abView, p = v.list[v.i];
+    if (!p) { albumClose(); return; }
+    var img = $('ab-v-img'), wait = $('ab-v-wait'), names = abNames(p);
+    img.hidden = true; img.removeAttribute('src'); img.alt = p.alt;
+    wait.hidden = false; wait.textContent = 'Loading the photo…';
+    $('ab-v-pos').textContent = v.list.length > 1 ? 'Photo ' + (v.i + 1) + ' of ' + v.list.length : '';
+    $('ab-v-nav').hidden = v.list.length < 2;
+    $('ab-v-prev').disabled = v.i <= 0; $('ab-v-next').disabled = v.i >= v.list.length - 1;
+    $('ab-v-cap').textContent = p.caption || ''; $('ab-v-cap').hidden = !p.caption;
+    $('ab-v-people').textContent = names.length ? 'With ' + abList(names) : ''; $('ab-v-people').hidden = !names.length;
+    $('ab-v-meta').textContent = ['Added by ' + (p.byMember === state.memberId ? 'you' : (p.byName || 'someone who has left')) + ' on ' + mbDate(p.createdAt),
+      p.year ? 'Taken in ' + p.year : '', 'Album: ' + (p.albumName || '')].filter(Boolean).join(' · ');
+    $('ab-v-acts').innerHTML = '<a class="cbtn ghost" id="ab-v-save" hidden>Save to my phone</a>' +
+      (p.taggedMe ? '<button type="button" class="cbtn ghost" data-abuntag="1">Remove my name from it</button>' : '') +
+      (p.canChange ? '<button type="button" class="cbtn ghost" data-abedit="1">Change caption and people</button>' +
+        '<button type="button" class="cbtn no" data-abdel="1">Remove photo</button>' : '');
+    var id = p.id;
+    albumFetch(id, 'full').then(function(u){
+      var cur = abView.list[abView.i]; if (!cur || cur.id !== id) return;
+      img.src = u; img.hidden = false; wait.hidden = true;
+      // The same picture this phone already holds, offered as a file to keep.
+      var a = $('ab-v-save'); if (a) { a.href = u; a.setAttribute('download', albumFileName(cur)); a.hidden = false; }
+    }).catch(function(){
+      var cur = abView.list[abView.i]; if (!cur || cur.id !== id) return;
+      wait.innerHTML = 'This photo could not be loaded. <button type="button" class="cbtn ghost abwide" data-abvretry="1">Try again</button>';
+    });
+  }
+  // After the album reloads, the open photo shows what was just saved.
+  function albumViewSync(){
+    if ($('ab-viewer').hidden || !abData) return;
+    var by = {}; (abData.photos || []).forEach(function(p){ by[p.id] = p; });
+    var cur = abView.list[abView.i], changed = false;
+    abView.list = abView.list.map(function(p){ if (by[p.id] && JSON.stringify(by[p.id]) !== JSON.stringify(p)) { changed = true; return by[p.id]; } return p; });
+    if (changed && cur) albumViewShow();
+  }
+  function albumChanged(){
+    albumLoad(true); albumTodayLoad(true);
+    if (curTab === 'person' && personId) albumPersonRender(personId);
+  }
+  function albumRemovePhoto(){
+    var p = abView.list[abView.i]; if (!p) return;
+    askSheet('Remove this photo?', 'It goes for everyone who can see it, and it cannot be brought back.', 'Yes, remove it', 'No, keep it', true).then(function(y){
+      if (!y) return;
+      abPost({ action: 'photo_remove', id: p.id }).then(function(j){
+        if (!j.ok) { toast(j.error); return; }
+        toast('Photo removed');
+        abView.list = abView.list.filter(function(x){ return x.id !== p.id; });
+        if (!abView.list.length) albumClose();
+        else { abView.i = Math.min(abView.i, abView.list.length - 1); albumViewShow(); }
+        albumChanged();
+      });
+    });
+  }
+  function albumUntag(){
+    var p = abView.list[abView.i]; if (!p) return;
+    abPost({ action: 'untag', id: p.id }).then(function(j){
+      if (!j.ok) { toast(j.error); return; }
+      toast('Your name is off this photo');
+      p.people = (p.people || []).filter(function(x){ return x.id !== state.memberId; }); p.taggedMe = false;
+      albumViewShow(); albumChanged();
+    });
+  }
+  function albumPeopleHtml(sel){
+    var ms = (abData && abData.members) || [];
+    return ms.length ? ms.map(function(m){
+      return '<label class="mbchk"><input type="checkbox" data-abwho="' + esc(m.id) + '"' + ((sel || []).indexOf(m.id) >= 0 ? ' checked' : '') + '> ' +
+        esc(m.name) + (m.id === state.memberId ? ' (me)' : '') + '</label>'; }).join('') : '<p class="hint">Nobody is in this ' + abWord() + ' yet.</p>';
+  }
+  function albumPeopleRead(box){ var ids = []; box.querySelectorAll('[data-abwho]:checked').forEach(function(i){ ids.push(i.getAttribute('data-abwho')); }); return ids; }
+  function albumEditSheet(){
+    var p = abView.list[abView.i]; if (!p) return;
+    // Opened from Today or a person's page, the family list may not be here yet.
+    if (!abData) {
+      abGet('').then(function(j){ if (j && j.ok) { abData = j; abFor = state.code; albumEditSheet(); } else toast('Could not load the album. Try again in a moment.'); })
+        .catch(function(){ toast('No connection. Try again when you are back online.'); });
+      return;
+    }
+    mbSheet('Change this photo',
+      '<label for="ab-e-cap">Caption (optional)</label><input type="text" id="ab-e-cap" maxlength="200" value="' + esc(p.caption || '') + '">' +
+      '<label for="ab-e-year">Year it was taken (optional)</label><input type="text" inputmode="numeric" id="ab-e-year" maxlength="4" placeholder="Like 1987" value="' + esc(p.year || '') + '">' +
+      '<p class="eyebrow">Who is in it</p><div id="ab-e-people">' + albumPeopleHtml((p.people || []).map(function(x){ return x.id; })) + '</div>' +
+      '<p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="ab-e-save">Save changes</button>');
+    $('ab-e-save').addEventListener('click', function(){
+      var year = $('ab-e-year').value.trim(), err = abYearErr(year);
+      if (err) { mbErr(err); return; }
+      var btn = this; btn.disabled = true;
+      abPost({ action: 'photo_edit', id: p.id, caption: $('ab-e-cap').value, year: year, people: albumPeopleRead($('ab-e-people')) }).then(function(j){
+        btn.disabled = false;
+        if (!j.ok) { mbErr(j.error); return; }
+        mbSheetClose(); toast('Saved'); albumChanged();
+      });
+    });
+  }
+
+  // ---- an album: its name, when it was, and who can see it
+  function albumForm(a){
+    if (!abData) { toast('The album is still loading. Try again in a moment.'); return; }
+    a = a || { audience: 'family', chosen: [] };
+    var aud = a.audience || 'family';
+    var others = (abData.members || []).filter(function(m){ return m.id !== state.memberId && m.on_app; });
+    var today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    mbSheet(a.id ? 'Change album' : 'New album',
+      '<label for="ab-al-name">Album name</label><input type="text" id="ab-al-name" maxlength="60" placeholder="Like Diwali 2019" value="' + esc(a.name || '') + '">' +
+      '<div class="tworow"><span><label for="ab-al-date">Date (optional)</label><input type="date" id="ab-al-date" max="' + today + '" value="' + esc(a.date || '') + '"></span>' +
+      '<span><label for="ab-al-year">Or only the year</label><input type="text" inputmode="numeric" id="ab-al-year" maxlength="4" placeholder="Like 1987" value="' + esc(a.year || '') + '"></span></div>' +
+      '<p class="eyebrow" id="ab-al-audl">Who can see it</p><div class="seg abaud" id="ab-al-aud" role="group" aria-labelledby="ab-al-audl">' +
+      ['family', 'chosen', 'me'].map(function(k){ return '<button type="button" data-abaud="' + k + '">' + abAudLabel(k) + '</button>'; }).join('') + '</div>' +
+      '<p class="hint" id="ab-al-note"></p><div id="ab-al-who" hidden>' +
+      (others.length ? others.map(function(m){ return '<label class="mbchk"><input type="checkbox" data-abwho="' + esc(m.id) + '"' + ((a.chosen || []).indexOf(m.id) >= 0 ? ' checked' : '') + '> ' + esc(m.name) + '</label>'; }).join('')
+        : '<p class="hint">Nobody else in this ' + abWord() + ' is on Parwah yet.</p>') + '</div>' +
+      '<p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="ab-al-save">' + (a.id ? 'Save changes' : 'Make the album') + '</button>');
+    function show(k){
+      aud = k;
+      $('ab-al-aud').querySelectorAll('button').forEach(function(b){ var on = b.getAttribute('data-abaud') === k; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+      $('ab-al-note').textContent = abAudNote(k); $('ab-al-who').hidden = k !== 'chosen';
+    }
+    show(aud);
+    $('ab-al-aud').addEventListener('click', function(e){ var b = e.target.closest('[data-abaud]'); if (b) show(b.getAttribute('data-abaud')); });
+    $('ab-al-save').addEventListener('click', function(){
+      var name = $('ab-al-name').value.trim(), year = $('ab-al-year').value.trim(), chosen = albumPeopleRead($('ab-al-who'));
+      if (!name) { mbErr('Give the album a name, like Diwali 2019.'); try { $('ab-al-name').focus(); } catch (e) {} return; }
+      var err = abYearErr(year); if (err) { mbErr(err); return; }
+      if (aud === 'chosen' && !chosen.length) { mbErr('Pick at least one person.'); return; }
+      var btn = this; btn.disabled = true;
+      abPost({ action: 'album_save', id: a.id || undefined, name: name, date: $('ab-al-date').value, year: year, audience: aud, chosen: aud === 'chosen' ? chosen : [] }).then(function(j){
+        btn.disabled = false;
+        if (!j.ok) { mbErr(j.error); return; }
+        mbSheetClose(); toast(a.id ? 'Album saved' : 'Album made. Add its first photo.');
+        if (j.id) { abFilter.album = j.id; abFilter.person = ''; abOld = false; }
+        albumChanged();
+      });
+    });
+    try { $('ab-al-name').focus(); } catch (e) {}
+  }
+  function albumRemoveAlbum(id){
+    var a = ((abData && abData.albums) || []).filter(function(x){ return x.id === id; })[0]; if (!a) return;
+    askSheet('Remove the album ' + a.name + '?', a.count ? (a.count === 1 ? 'Its 1 photo goes' : 'All ' + a.count + ' of its photos go') + ' with it, for everyone who can see them. This cannot be undone.'
+      : 'It has no photos in it.', 'Yes, remove it', 'No, keep it', true).then(function(y){
+      if (!y) return;
+      abPost({ action: 'album_remove', id: id }).then(function(j){
+        if (!j.ok) { toast(j.error); return; }
+        toast('Album removed'); abFilter.album = ''; albumChanged();
+      });
+    });
+  }
+
+  // ---- adding photos: made smaller here, sent one at a time, each with its own state
+  function albumCanvas(img, side){
+    var k = Math.min(1, side / Math.max(img.naturalWidth, img.naturalHeight));
+    var c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+    var g = c.getContext('2d');
+    g.fillStyle = 'white'; g.fillRect(0, 0, c.width, c.height);   // a see-through picture gets a white ground, not a black one
+    g.drawImage(img, 0, 0, c.width, c.height);
+    return c;
+  }
+  function albumFit(img, steps, max){
+    var i = 0, last = null;
+    function step(){
+      if (i >= steps.length) return Promise.reject(new Error('too big'));
+      var s = steps[i++];
+      if (!last || last.side !== s[0]) last = { side: s[0], c: albumCanvas(img, s[0]) };
+      return new Promise(function(res){ last.c.toBlob(res, 'image/jpeg', s[1]); }).then(function(b){
+        if (!b || b.type !== 'image/jpeg') throw new Error('no jpeg');
+        if (b.size <= max) return { blob: b, w: last.c.width, h: last.c.height };
+        return step();
+      });
+    }
+    return step();
+  }
+  function albumB64(blob){
+    return new Promise(function(res, rej){
+      var fr = new FileReader();
+      fr.onload = function(){ res(String(fr.result).split(',')[1] || ''); };
+      fr.onerror = function(){ rej(new Error('unreadable')); };
+      fr.readAsDataURL(blob);
+    });
+  }
+  // One photo from the phone becomes a JPEG of at most 1600 pixels and a
+  // preview of at most 320, both drawn fresh, so nothing the camera wrote
+  // into the file (where, when, which phone) comes along.
+  function albumShrink(file){
+    return new Promise(function(resolve, reject){
+      var url = URL.createObjectURL(file), img = new Image(), out = {};
+      img.onload = function(){
+        albumFit(img, AB_STEPS, AB_MAX.photoBytes).then(function(p){ out.p = p; return albumFit(img, AB_THUMB_STEPS, AB_MAX.thumbBytes); })
+          .then(function(t){ out.t = t; return Promise.all([albumB64(out.p.blob), albumB64(out.t.blob)]); })
+          .then(function(b){
+            URL.revokeObjectURL(url);
+            resolve({ photo: b[0], thumb: b[1], bytes: out.p.blob.size, tbytes: out.t.blob.size, w: out.p.w, h: out.p.h, url: URL.createObjectURL(out.t.blob) });
+          }).catch(function(e){ URL.revokeObjectURL(url); reject(e); });
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error('unreadable')); };
+      img.src = url;
+    });
+  }
+  function albumQueueRender(){
+    var box = $('ab-queue'); if (!box) return;
+    box.innerHTML = abQueue.map(function(q){
+      var act = q.st === 'failed' ? '<button type="button" class="cbtn" data-abqretry="' + q.n + '">Retry</button>'
+        : (q.st === 'ready' || q.st === 'bad') && !abSending ? '<button type="button" class="cbtn no" data-abqdrop="' + q.n + '" aria-label="Take ' + esc(q.name) + ' off the list">Take off</button>' : '';
+      return '<div class="abq" data-abq="' + q.n + '" data-abst="' + q.st + '" data-abbytes="' + (q.bytes || 0) + '" data-abtbytes="' + (q.tbytes || 0) + '" data-abw="' + (q.w || 0) + '" data-abh="' + (q.h || 0) + '">' +
+        (q.url ? '<img alt="" src="' + q.url + '">' : '<span class="abqph" aria-hidden="true"></span>') +
+        '<span class="abqt"><b>' + esc(q.name) + '</b><small' + (q.st === 'failed' || q.st === 'bad' ? ' class="bad"' : '') + '>' + esc(q.msg) + '</small></span>' + act + '</div>';
+    }).join('');
+  }
+  function albumPick(files){
+    mbErr('');
+    var list = Array.prototype.slice.call(files || []);
+    var room = AB_MAX.perRequest - abQueue.filter(function(q){ return q.st !== 'done' && q.st !== 'bad'; }).length;
+    var took = list.slice(0, Math.max(0, room));
+    if (list.length > took.length) mbErr('You can add ' + AB_MAX.perRequest + ' photos at a time. ' + (took.length ? 'The first ' + took.length + (took.length === 1 ? ' is' : ' are') + ' on the list.' : 'Add these, then choose more.'));
+    took.forEach(function(f){
+      var q = { n: ++abSeq, name: f.name || 'Photo', st: 'prep', msg: 'Getting it ready…' };
+      abQueue.push(q); albumQueueRender();
+      albumShrink(f).then(function(o){
+        q.photo = o.photo; q.thumb = o.thumb; q.bytes = o.bytes; q.tbytes = o.tbytes; q.w = o.w; q.h = o.h; q.url = o.url;
+        q.st = 'ready'; q.msg = 'Ready to add, ' + abKb(o.bytes);
+        albumQueueRender();
+      }).catch(function(){ q.st = 'bad'; q.msg = 'This photo could not be read. Try another one.'; albumQueueRender(); });
+    });
+  }
+  function albumSend(todo){
+    if (abSending) return;
+    if (abQueue.some(function(q){ return q.st === 'prep'; })) { mbErr('A photo is still getting ready. Try again in a moment.'); return; }
+    if (!todo.length) { mbErr(abQueue.some(function(q){ return q.st === 'done'; }) ? 'Every photo on the list is saved. Choose more to add.' : 'Choose a photo first.'); return; }
+    var year = $('ab-a-year').value.trim(), err = abYearErr(year);
+    if (err) { mbErr(err); try { $('ab-a-year').focus(); } catch (e) {} return; }
+    var meta = { albumId: $('ab-a-album').value, caption: $('ab-a-cap').value, year: year, people: albumPeopleRead($('ab-a-people')) };
+    var btn = $('ab-a-save'), full = false;
+    mbErr(''); abSending = true; btn.disabled = true; $('ab-a-full').hidden = true;
+    function finish(){
+      abSending = false;
+      var done = abQueue.filter(function(q){ return q.st === 'done'; }).length;
+      var left = abQueue.filter(function(q){ return q.st === 'failed' || q.st === 'ready'; }).length;
+      // Whatever was being looked at, the new photos are shown.
+      if (done) { abOld = false; abFilter.person = ''; if (abFilter.album && abFilter.album !== meta.albumId) abFilter.album = ''; }
+      albumChanged();
+      if ($('ab-a-save')) $('ab-a-save').disabled = false;
+      albumQueueRender();
+      if (!left) {
+        if ($('ab-queue')) mbSheetClose();
+        toast(done === 1 ? 'Photo added to the album' : done + ' photos added to the album');
+        return;
+      }
+      if (!$('ab-queue')) { toast(left === 1 ? '1 photo was not added. Open Add photos to try again.' : left + ' photos were not added.'); return; }
+      mbErr(full ? 'The album is full, so ' + (left === 1 ? '1 photo was' : left + ' photos were') + ' not added. Remove some older ones to make room.'
+        : (left === 1 ? '1 photo was' : left + ' photos were') + ' not added. Tap Retry beside ' + (left === 1 ? 'it' : 'each one') + '.');
+      $('ab-a-full').hidden = !full;
+    }
+    (function next(i){
+      if (i >= todo.length) { finish(); return; }
+      var q = todo[i];
+      q.st = 'sending'; q.msg = 'Sending, ' + (i + 1) + ' of ' + todo.length + '…'; albumQueueRender();
+      abPost({ action: 'photo_add', albumId: meta.albumId, caption: meta.caption, year: meta.year, people: meta.people, photos: [{ photo: q.photo, thumb: q.thumb }] }).then(function(j){
+        if (j.ok) { q.st = 'done'; q.msg = 'Saved'; q.photo = q.thumb = null; }
+        else { q.st = 'failed'; q.msg = j.error; if (j.full) full = true; }
+        albumQueueRender();
+        // A full album refuses every photo after this one too: stop asking.
+        if (full) { todo.slice(i + 1).forEach(function(x){ x.st = 'failed'; x.msg = 'Not sent: the album is full.'; }); finish(); return; }
+        next(i + 1);
+      });
+    })(0);
+  }
+  function albumDefaultId(){ var a = ((abData && abData.albums) || []).filter(function(x){ return x.isDefault; })[0]; return a ? a.id : ''; }
+  function albumAddSheet(){
+    if (!abData) { toast('The album is still loading. Try again in a moment.'); return; }
+    if (abSending) { toast('Photos are still being sent. Give it a moment.'); return; }
+    abQueue.forEach(function(q){ if (q.url) { try { URL.revokeObjectURL(q.url); } catch (e) {} } });
+    abQueue = [];
+    var albums = abData.albums || [], cur = abFilter.album || albumDefaultId();
+    mbSheet('Add photos',
+      '<p class="hint ablead" id="ab-a-loc">' + AB_LOCATION + '</p>' +
+      (abData.full || abData.near ? '<div class="ev abnote">' + esc(abData.line || '') + '</div>' : '') +
+      '<div class="abpick"><label class="cbtn" for="ab-file" role="button" tabindex="0">Choose photos</label>' +
+      '<label class="cbtn ghost" for="ab-cam" role="button" tabindex="0">Take a photo</label></div>' +
+      '<input type="file" id="ab-file" accept="image/*" multiple hidden><input type="file" id="ab-cam" accept="image/*" capture="environment" hidden>' +
+      '<p class="hint">Up to ' + AB_MAX.perRequest + ' at a time. Old printed photos are welcome: take a picture of the print.</p>' +
+      '<div id="ab-queue" aria-live="polite"></div>' +
+      '<label for="ab-a-album">Album</label><select id="ab-a-album">' + albums.map(function(a){
+        return '<option value="' + esc(a.id) + '"' + (a.id === cur ? ' selected' : '') + '>' + esc(a.name) + ' (' + abAudLabel(a.audience).toLowerCase() + ')</option>'; }).join('') + '</select>' +
+      '<label for="ab-a-cap">Caption (optional)</label><input type="text" id="ab-a-cap" maxlength="200" placeholder="Like Diwali at Nani’s house">' +
+      '<label for="ab-a-year">Year it was taken (optional)</label><input type="text" inputmode="numeric" id="ab-a-year" maxlength="4" placeholder="Like 1987">' +
+      '<p class="eyebrow">Who is in it</p><div id="ab-a-people">' + albumPeopleHtml([]) + '</div>' +
+      '<p class="hint">The caption, the year and the people go on every photo you add now. You can change each one later.</p>' +
+      '<p class="mberr" id="mbs-err" role="alert" hidden></p>' +
+      '<div id="ab-a-full" hidden><button type="button" class="cbtn ghost abwide" data-abold="1">Show the oldest photos I can remove</button></div>' +
+      '<button class="go" type="button" id="ab-a-save">Add to the album</button>');
+    ['ab-file', 'ab-cam'].forEach(function(id){
+      $(id).addEventListener('change', function(){ albumPick(this.files); this.value = ''; });
+      var l = document.querySelector('label[for="' + id + '"]');
+      // The two buttons are labels for hidden file inputs; Enter and Space work too.
+      l.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $(id).click(); } });
+    });
+    $('ab-a-save').addEventListener('click', function(){ albumSend(abQueue.filter(function(q){ return q.st === 'ready' || q.st === 'failed'; })); });
+    // A refusal goes away as soon as the box it is about is changed.
+    $('ab-a-year').addEventListener('input', function(){ if (!abSending) mbErr(''); });
+  }
+
+  // ---- Today: one older photo a week, for someone who may see it
+  function albumTodayLoad(force){
+    if (!state) return;
+    if (!force && Date.now() - abTodayAt < 60000) return;
+    abTodayAt = Date.now();
+    abGet('&view=today').then(function(j){ abTodayPick = j && j.ok ? j.pick : null; albumTodayRender(); }).catch(function(){});
+  }
+  function albumTodayRender(){
+    var box = $('ab-today'); if (!box) return;
+    var t = abTodayPick;
+    if (!t || !t.photo) { box.innerHTML = ''; return; }
+    var names = abNames(t.photo);
+    box.innerHTML = '<div class="bondtoday"><div class="crow abtoday"><span class="abtimg"><img alt="' + esc(t.photo.alt) + '" data-abimg="' + esc(t.photo.id) + '" width="56" height="56" hidden></span>' +
+      '<span class="txt"><b>A photo from ' + esc(String(t.year)) + '</b><small>' + esc(t.photo.caption || (names.length ? 'With ' + abList(names) : 'From the album ' + (t.photo.albumName || ''))) + '</small></span>' +
+      '<button type="button" class="cbtn" data-abtoday="see">See it</button><button type="button" class="cbtn ghost" data-abtoday="hide">Not now</button></div></div>';
+    albumImg(box.querySelector('img'));
+  }
+
+  // ---- on a person's page: up to six photos they are in, that I may see
+  function albumPersonRender(id){
+    var card = $('ab-pp-card'); if (!card) return;
+    card.hidden = true;
+    var seq = ++abPersonSeq;
+    abGet('&person=' + encodeURIComponent(id) + '&limit=6').then(function(j){
+      if (seq !== abPersonSeq || !j || !j.ok || !(j.photos || []).length) return;
+      var m = (membersCache || []).filter(function(x){ return x.id === id; })[0], mine = id === state.memberId, nm = mine ? 'me' : ((m && m.name) || 'them');
+      abPersonList = j.photos;
+      $('ab-pp-h').textContent = 'Photos with ' + nm;
+      $('ab-pp-grid').innerHTML = j.photos.map(function(p, i){ return albumTile(p, 'data-abppopen', i); }).join('');
+      var all = $('ab-pp-all'); all.textContent = 'See all photos with ' + nm; all.setAttribute('data-abperson', id);
+      card.hidden = false;
+      albumLazy($('ab-pp-grid'));
+    }).catch(function(){});
+  }
+  function albumShowFor(person){
+    abFilter = { album: '', person: person || '' }; abOld = false;
+    switchTab('memory'); mbShow('album');
+  }
+
+  // Every album button, in one place.
+  document.addEventListener('click', function(e){
+    if (!state) return;
+    var b = e.target.closest('#ab-add,#ab-new,#ab-v-x,#ab-v-prev,#ab-v-next,#ab-pp-all,[data-abopen],[data-abppopen],[data-abadd],[data-abretry],[data-abold],[data-aball],[data-abaledit],[data-abaldel],[data-abuntag],[data-abedit],[data-abdel],[data-abvretry],[data-abqretry],[data-abqdrop],[data-abtoday]');
+    if (!b) return;
+    var d = b.dataset;
+    if (b.id === 'ab-add' || d.abadd) { albumAddSheet(); return; }
+    if (b.id === 'ab-new') { albumForm(); return; }
+    if (b.id === 'ab-v-x') { albumClose(); return; }
+    if (b.id === 'ab-v-prev') { albumStep(-1); return; }
+    if (b.id === 'ab-v-next') { albumStep(1); return; }
+    if (b.id === 'ab-pp-all') { albumShowFor(b.getAttribute('data-abperson')); return; }
+    if (d.abopen !== undefined) { albumOpen(albumShown(), +d.abopen, b); return; }
+    if (d.abppopen !== undefined) { albumOpen(abPersonList, +d.abppopen, b); return; }
+    if (d.abretry) { abFail = ''; albumLoad(true); return; }
+    if (d.abold !== undefined) {
+      abOld = d.abold === '1'; if (abOld) abFilter = { album: '', person: '' };
+      if (!$('mbsheet').hidden) mbSheetClose();
+      albumRender(); try { $('ab-grid').scrollIntoView({ block: 'nearest' }); } catch (x) {}
+      return;
+    }
+    if (d.aball) { abFilter = { album: '', person: '' }; abOld = false; albumRender(); return; }
+    if (d.abaledit) { albumForm(((abData && abData.albums) || []).filter(function(a){ return a.id === d.abaledit; })[0]); return; }
+    if (d.abaldel) { albumRemoveAlbum(d.abaldel); return; }
+    if (d.abuntag) { albumUntag(); return; }
+    if (d.abedit) { albumEditSheet(); return; }
+    if (d.abdel) { albumRemovePhoto(); return; }
+    if (d.abvretry) { albumViewShow(); return; }
+    if (d.abqretry) { albumSend(abQueue.filter(function(q){ return String(q.n) === d.abqretry && q.st === 'failed'; })); return; }
+    if (d.abqdrop) { abQueue = abQueue.filter(function(q){ return String(q.n) !== d.abqdrop; }); albumQueueRender(); return; }
+    if (d.abtoday === 'see' && abTodayPick) { albumOpen([abTodayPick.photo], 0, b); return; }
+    if (d.abtoday === 'hide') { abTodayPick = null; albumTodayRender(); abPost({ action: 'today_hide' }); return; }
+  });
+  $('ab-f-album').addEventListener('change', function(){ abFilter.album = this.value; albumRender(); });
+  $('ab-f-person').addEventListener('change', function(){ abFilter.person = this.value; albumRender(); });
+  // Arrow keys step through the photos and Escape closes. Asked first, so a
+  // sheet open on top of the photo gets its own Escape.
+  document.addEventListener('keydown', function(e){
+    if ($('ab-viewer').hidden || !$('asksheet').hidden || !$('mbsheet').hidden) return;
+    if (e.key === 'Escape') { e.preventDefault(); albumClose(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); albumStep(1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); albumStep(-1); }
+  }, true);
+  // A sideways swipe on the picture does the same as the arrows.
+  $('ab-v-pic').addEventListener('touchstart', function(e){ var t = e.changedTouches[0]; abTouch = { x: t.clientX, y: t.clientY }; }, { passive: true });
+  $('ab-v-pic').addEventListener('touchend', function(e){
+    if (!abTouch) return;
+    var t = e.changedTouches[0], dx = t.clientX - abTouch.x, dy = t.clientY - abTouch.y; abTouch = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > 2 * Math.abs(dy)) albumStep(dx < 0 ? 1 : -1);
+  }, { passive: true });
+  // ---------- end of Yaadon ki album (api/_album.mjs) ----------
 
   // ---------- plans ----------
   $('p-kind').addEventListener('click', function(e){

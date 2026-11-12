@@ -620,3 +620,22 @@ Checked at 320 and 390, light and dark, on the real app with two families that s
 | W12 | 3 User control | A mark made by mistake | 3 | Fixed: any adult in the family can take it off, asked first; the date and the line go with it |
 
 New patterns: none. Sheets are `.msheet`, rows are `.crow` and `.plan`, buttons are `.cbtn` and `.go`, messages reuse `.rz-msg`; the page-specific classes start with `fl-`, `ff-` and `rm-` and use existing tokens only.
+### Review TBD-album, the family photo album (2026-11-12)
+
+Checked at 320 and 390, light and dark, normal and senior mode, on the real app with three phones (`site/tests/db/album.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the empty album, the grid, the grid when nearly full, the add sheet (empty, with photos ready, with one to retry, when full), one photo full width, the change and new album sheets, the "remove?" sheet, the row on Today, the card on a person's page and the offline message). Screens: Family Memory, Album; one photo; Today; a person's page.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| P1 | 5 Error prevention | A phone photo carries where it was taken, and a family would not know it was being stored | 4 | Fixed: every photo is drawn again on the phone before it is sent, which leaves the location out. The add sheet says so in one line ("Parwah removes the location from your photos before saving them."), and the server refuses any file that still carries camera details |
+| P2 | 5 Error prevention | A 6 MB camera photo would be refused by the server, or six of them by Vercel's 4.5 MB body limit, and the family would be told to "make it smaller" | 3 | Fixed: the phone makes each photo 1600 pixels at most and under 600 KB (a 4000 by 3000 photo measured 265 KB), with a 320 pixel preview, and sends them one at a time |
+| P3 | 1 Visibility | Several photos sent at once gave one spinner and one error for all of them | 3 | Fixed: each photo has its own row and its own state (getting ready, ready with its size, sending 2 of 3, saved, or the reason it did not go) and its own Retry |
+| P4 | 3 User control | A photo could only be for everyone | 3 | Fixed: an album is for the whole family, the people I choose, or only me, with one line that says what each means. The server applies it to the list and to the picture itself, so a private photo cannot be opened by its address |
+| P5 | 3 User control | Being named in a photo was someone else's decision | 3 | Fixed: anyone named in a photo can take their own name off it with one button. Changing or removing the photo stays with whoever added it or made the album, and removing asks first in the app's own sheet |
+| P6 | 1 Visibility | The 400 photo limit would arrive as a surprise refusal | 2 | Fixed: the count is always on the screen ("38 of 400 photos"), it is said louder from 360 ("nearly full, you can add 28 more"), and at the limit the refusal offers "Show the oldest photos I can remove" |
+| P7 | 4 Consistency | Pictures arriving one by one push a grid around | 2 | Fixed: every tile is a fixed square before its picture arrives, and only the tiles near the screen are fetched (with 372 photos, the first screen asks for about 15) |
+| P8 | 7 Flexibility | Moving between photos needed a small target | 2 | Fixed: Previous and Next are full-width buttons, the arrow keys and a sideways swipe do the same, Escape closes, and the focus goes back to the photo that was tapped |
+| P9 | 10 Help | A picture with no words is nothing to a screen reader | 2 | Fixed: alt text is built from the caption, the people and the year ("Diwali at Nani's house. With Nani and Rohan, 1987") |
+| P10 | 8 Minimalist | A weekly memory could become a daily nag, or bring up someone the family has lost | 3 | Fixed: one older photo a week for each person, the same one all week, as a quiet row on Today with "Not now". No notification is ever sent for it. A photo of someone marked as remembered is never brought up by itself |
+| P11 | 2 Real-world match | Dignity: an album can drift into stock pictures and sample content | 3 | Fixed: the album shows only what the family added. The empty state is words and one button, with no sample picture, and there is no public link, no share outside the family and no download of everything |
+
+New patterns: the photo grid (`.abgrid`, `.abtile`), one photo full width (`.abview` and its parts), the upload row (`.abq`) and the picker buttons (`.abpick`). All built from existing tokens; no new token.

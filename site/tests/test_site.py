@@ -3464,6 +3464,105 @@ check("wider: the browser test waits for what it checks, never for a fixed time"
       "waitForTimeout" not in _wf_e2e and "waitForFunction" in _wf_e2e and "waitForSelector" in _wf_e2e and _wf_e2e.count("await design(") >= 15)
 check("wider: the design review is written down",
       "the wider family: linked families, family facts, days of remembrance (2026-11-12)" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
+# ---------- 10z. Yaadon ki album: the family photo album ----------
+# Proved in albumrulestest (the rules), album.dbtest (the handler on
+# PostgreSQL) and album.e2e (real phones). These guard what must not drift:
+# only a JPEG is kept and the sender's word for the type is never read; the
+# bytes are served private, through the signed-in route; who sees a photo is
+# said in every query; the bytes are touched in two functions only, so a
+# move to file storage is one change; and the add sheet says the location
+# is removed.
+_ab = (API_DIR / "_album.mjs").read_text(encoding="utf-8")
+_abr = (API_DIR / "_albumrules.mjs").read_text(encoding="utf-8")
+_ab_js = _app_src[_app_src.index("// ---------- Yaadon ki album: the family's own photos (api/_album.mjs)"):_app_src.index("// ---------- end of Yaadon ki album (api/_album.mjs)")]
+_ab_html = _app_src[_app_src.index('<div id="ab-root" hidden>'):_app_src.index('<div id="book-list-view">')] \
+    + _app_src[_app_src.index('<div class="abview" id="ab-viewer"'):_app_src.index('<!-- FAMILY MEMORY sheets (api/_memorybond.mjs)')] \
+    + _app_src[_app_src.index('<div class="card" id="ab-pp-card"'):_app_src.index('<div class="card"><h3>💡 Useful to know</h3>')]
+_ab_code = "\n".join(l for l in _ab.splitlines() if not l.strip().startswith("//"))
+def _ab_fn(name):
+    _i = _ab_code.index("export async function " + name + "(")
+    return _ab_code[_i:_ab_code.index("\n}\n", _i) + 3]
+_ab_put, _ab_get = _ab_fn("albumPutBytes"), _ab_fn("albumGetBytes")
+_ab_tables = _ab_code[_ab_code.index("async function albumTables(sql)"):]
+_ab_tables = _ab_tables[:_ab_tables.index("\n}\n") + 3]
+_AB_AUD = "(a.audience = 'family' or a.by_member = ${me.id} or (a.audience = 'chosen' and ${me.id}::uuid = any(a.chosen)))"
+check("album: it rides /api/book?area=album in an underscore module, never a new serverless function",
+      "import albumApi from './_album.mjs';" in (API_DIR / "book.mjs").read_text(encoding="utf-8")
+      and "if (area === 'album') return albumApi(req, res);" in (API_DIR / "book.mjs").read_text(encoding="utf-8")
+      and "var AB_API = '/api/book?area=album';" in _ab_js and not (API_DIR / "album.mjs").exists()
+      and not re.search(r"^\s*import\s", _abr, re.M))
+check("album: only a JPEG is kept: the first bytes are read, and the size, the pixels and camera details are checked",
+      "b[0] !== 0xFF || b[1] !== 0xD8 || b[2] !== 0xFF" in _abr and "export function imageError(bytes, kind)" in _abr
+      and "bytes.length > maxBytes" in _abr and "if (info.exif)" in _abr
+      and "photoBytes: 600000" in _abr and "thumbBytes: 40000" in _abr
+      and "imageError(pBytes, 'photo') || imageError(tBytes, 'thumb')" in _ab)
+check("album: the sender's word for the type is never read; the server states image/jpeg itself",
+      not re.search(r"\b(?:it|photo)\.(?:mime|type|contentType|fileMime|fileName|name)\b|\bbody\.(?:mime|type|contentType|fileMime|fileName)\b", _ab_code)
+      and "content-type" not in _ab_code.lower().replace("res.setheader('content-type', 'image/jpeg')", "").replace("x-content-type-options", "")
+      and "res.setHeader('Content-Type', 'image/jpeg');" in _ab and "res.setHeader('X-Content-Type-Options', 'nosniff');" in _ab)
+check("album: a photo is served private, asked for again each time, and never as a public or shared address",
+      "res.setHeader('Cache-Control', 'private, no-cache');" in _ab and _ab_code.count("Cache-Control") == 1
+      and "public" not in _ab_code.lower() and "res.setHeader('Vary', 'X-Parwah-Token');" in _ab
+      and "headers: authHeaders({})" in _ab_js.split("function albumFetch(")[1][:500]
+      and "URL.createObjectURL(b)" in _ab_js.split("function albumFetch(")[1][:900]
+      and "navigator.share" not in _ab_js and "wa.me" not in _ab_js and not re.search(r"download all|public link", _ab_js + _ab_html, re.I))
+check(f"album: who may see a photo is decided in the query itself, every time one is read ({_ab_code.count(_AB_AUD)} queries)",
+      _ab_code.count(_AB_AUD) >= 6 and _AB_AUD.replace("${me.id}", "${meId}") in _ab_get
+      and all(_AB_AUD in _ab_code[m.start():m.start() + 1400] for m in re.finditer(r"from album_photos p\s+join album_albums a", _ab_code))
+      and "export function albumCanSee(album, viewerId)" in _abr)
+_ab_touch = [m.start() for m in re.finditer(r"album_bytes|\bb\.photo\b|\bb\.thumb\b|decode\(|encode\(", _ab_code)]
+_ab_ok = [(_ab_code.index(f), _ab_code.index(f) + len(f)) for f in (_ab_put, _ab_get, _ab_tables)]
+check("album: the picture bytes are read and written in two functions only, so a move to file storage is one change",
+      len(_ab_touch) >= 4 and all(any(a <= t < b for a, b in _ab_ok) for t in _ab_touch)
+      and "insert into album_bytes" in _ab_put and "from album_bytes b" in _ab_get
+      and "insert into album_bytes" not in _ab_tables and "select" not in _ab_put
+      and "THE ONLY TWO PLACES THE PICTURE BYTES ARE TOUCHED" in _ab
+      and all("album_bytes" not in f.read_text(encoding="utf-8") for f in API_DIR.glob("*.mjs") if f.name != "_album.mjs")
+      and "album_bytes" not in _app_src and "count, cap: ALBUM_MAX.perCircle" in _ab)
+check("album: the add sheet says the location is removed, and the browser makes every photo a fresh JPEG before sending",
+      "export const ALBUM_LOCATION_LINE = 'Parwah removes the location from your photos before saving them.';" in _abr
+      and "var AB_LOCATION = 'Parwah removes the location from your photos before saving them.';" in _ab_js
+      and "'<p class=\"hint ablead\" id=\"ab-a-loc\">' + AB_LOCATION + '</p>'" in _ab_js
+      and "var AB_STEPS = [[1600, 0.8]," in _ab_js and "var AB_THUMB_STEPS = [[320, 0.7]," in _ab_js
+      and "last.c.toBlob(res, 'image/jpeg', s[1])" in _ab_js and "if (b.size <= max)" in _ab_js
+      and "photoBytes: 600000, thumbBytes: 40000, photoSide: 1600, thumbSide: 320, perRequest: 6" in _ab_js
+      and 'accept="image/*" multiple hidden' in _ab_js and 'accept="image/*" capture="environment" hidden' in _ab_js)
+check("album: 400 a circle, 6 a request, 60 an hour failing closed, and one request stays under Vercel's body limit",
+      "perCircle: 400" in _abr and "perRequest: 6" in _abr and "perHour: 60" in _abr and "requestBytes: 3200000" in _abr
+      and "rateLimit(sql, 'album_up', me.id, ALBUM_MAX.perHour, 3600, { failClosed: true })" in _ab
+      and "where (select count(*) from album_photos where circle_id = ${circle.id}) < ${ALBUM_MAX.perCircle}" in _ab
+      and "capError(before, items.length)" in _ab and "list.length > ALBUM_MAX.perRequest" in _ab and "total > ALBUM_MAX.requestBytes" in _ab)
+check("album: tables through schemaOnce, every call through requireMember, ids through isUuid, failures through _fail",
+      "schemaOnce(() => albumTables(sql))" in _ab and "requireMember(sql, code, memberId, tokenOf(req))" in _ab
+      and _ab.count("isUuid(") >= 4 and "return fail(res, e);" in _ab and "return failDb(res, e);" in _ab
+      and "noteRisk(caption.value)" in _ab and "noteRisk(name.value)" in _ab)
+check("album: Today shows one older photo a week and never pushes; a person's page and Family Memory draw it too",
+      "pushCircle" not in _ab and "weeklyPick(me.id, today, cands.map(c => c.id))" in _ab
+      and "primary key (member_id, week)" in _ab_tables
+      and "\n    albumTodayLoad();\n" in _app_src and "\n    albumPersonRender(id);\n" in _app_src
+      and 'id="ab-today"' in _app_src and 'data-mbv="album"' in _app_src and "if (album) { albumLoad(); return; }" in _app_src
+      and "<b>A photo from ' + esc(String(t.year)) + '</b>" in _ab_js)
+check("album: removing asks first, errors go through humanFail, and every picture has alt text",
+      _ab_js.count("askSheet(") >= 2 and "humanFail(j.error, 'That did not work. Try again.')" in _ab_js.split("function abPost(")[1][:900]
+      and "'<img alt=\"' + esc(p.alt) + '\" data-abimg=" in _ab_js and "img.alt = p.alt;" in _ab_js
+      and "alt: albumAlt(p.caption, people.map(x => x.name), p.taken_year)" in _ab
+      and "You are offline. The album will show when you are back online." in _ab_js and "Loading the album…" in _ab_js
+      and "No photos yet." in _ab_js and "data-abqretry" in _ab_js)
+_ab_static = [i for i in _static_ids if i.startswith("ab-")]
+check(f"album: its ids all start with ab-, each used once ({len(_ab_static)}), and its functions start with album or ab",
+      len(_ab_static) >= 20 and all(_ab_static.count(i) == 1 for i in _ab_static)
+      and all(re.match(r"(album[A-Z]|ab[A-Z])", f) for f in re.findall(r"\n  function ([A-Za-z0-9_]+)\(", _ab_js)))
+_ab_hits = sorted({k for k, pat in BANNED.items() if re.search(pat, (_ab_js + " " + _ab_html + " " + _ab + " " + _abr).lower())})
+_ab_dash = [lab for nd, lab in EM_FORMS + EN_FORMS if nd.lower() in (_ab_js + _ab_html + _ab + _abr).lower()]
+check("album: its screens, messages and comments pass the banned-words scan, with no dashes",
+      not _ab_hits and not _ab_dash, ", ".join(_ab_hits + _ab_dash))
+_ab_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("album: the rules test runs in the gate, and the db and browser tests run in test:db",
+      "node site/tests/albumrulestest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all("site/tests/db/" + f in _ab_testdb and (REPO / "site/tests/db" / f).exists() for f in ("album.dbtest.mjs", "album.e2e.dbtest.mjs")))
+check("album: the coverage map says it is live, with no storage account, and its review is written down",
+      "| A shared family photo album | Live |" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
+      and "the family photo album" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
