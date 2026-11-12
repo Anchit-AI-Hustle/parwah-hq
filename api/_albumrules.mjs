@@ -29,8 +29,8 @@ export const ALBUM_LOCATION_LINE = 'Parwah removes the location from your photos
 // ---- is it really a JPEG?
 // Walks the file the way a decoder does: start marker, then segment after
 // segment up to the picture data. Returns its size in pixels and whether a
-// camera details block (Exif) is still inside, or null when the bytes are
-// not a JPEG at all. A PNG renamed to .jpg fails on the first two bytes.
+// details block (Exif, XMP, IPTC: `exif`) is still inside, or null when the
+// bytes are not a JPEG at all. A PNG renamed to .jpg fails on the first two bytes.
 export function jpegInfo(b) {
   if (!b || typeof b.length !== 'number' || b.length < 4) return null;
   if (b[0] !== 0xFF || b[1] !== 0xD8 || b[2] !== 0xFF) return null;
@@ -45,7 +45,13 @@ export function jpegInfo(b) {
     if (m === 0x01 || (m >= 0xD0 && m <= 0xD7)) { i += 2; continue; }
     const len = (b[i + 2] << 8) | b[i + 3];
     if (len < 2 || i + 2 + len > b.length) return null;
-    if (m === 0xE1 && len >= 8 && b[i + 4] === 0x45 && b[i + 5] === 0x78 && b[i + 6] === 0x69 && b[i + 7] === 0x66) exif = true;
+    // Details that travel beside the picture. APP1 holds Exif (the camera,
+    // the place) and also XMP, which can carry the same place under another
+    // name; APP13 holds IPTC and Photoshop notes (a caption, a city, a
+    // name). None of them is part of the picture, and a canvas re-encode
+    // writes none, so ANY APP1 or APP13 segment is refused, whatever its
+    // label says.
+    if (m === 0xE1 || m === 0xED) exif = true;
     const sof = m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC;
     if (sof) {
       if (len < 7) return null;

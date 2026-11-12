@@ -354,6 +354,15 @@ r = await act(a.Arjun, 'fact_add', { kind: 'custom', text: 'The locker OTP is 44
 ok('an OTP is never kept (the notes rule)', r.status === 400 && /never keeps/.test(r.error), JSON.stringify(r));
 ok('nor a card number', (await act(a.Arjun, 'fact_add', { kind: 'surname', text: 'Card 4111 1111 1111 1111 was Dada\'s' })).status === 400);
 ok('a wrong audience is refused', (await act(a.Arjun, 'fact_add', { kind: 'tongue', text: 'Hindi', audience: 'everyone' })).status === 400);
+ok('someone marked as remembered cannot be chosen, and the reason is said', await (async () => {
+  await admin.query(`update members set remembered = true where id = $1`, [a.Bharat.id]);
+  const x = await act(a.Arjun, 'fact_add', { kind: 'tongue', text: 'Hindi', audience: 'chosen', chosen: [a.Kavya.id, a.Bharat.id] });
+  const g = await act(a.Arjun, 'fact_add', { kind: 'custom', text: 'A custom kept for now', audience: 'me' });
+  const y = await act(a.Arjun, 'fact_edit', { id: g.id, text: 'A custom kept for now', audience: 'chosen', chosen: [a.Bharat.id] });
+  await act(a.Arjun, 'fact_remove', { id: g.id });
+  await admin.query(`update members set remembered = false where id = $1`, [a.Bharat.id]);
+  return x.status === 400 && x.error === 'Bharat is remembered here, so cannot be chosen.' && !x.id && g.status === 201 && y.status === 400 && y.error === x.error;
+})());
 ok('"people I choose" needs people', (await act(a.Arjun, 'fact_add', { kind: 'tongue', text: 'Hindi', audience: 'chosen', chosen: [] })).status === 400);
 ok('and only people of this family, not yourself', (await act(a.Arjun, 'fact_add', { kind: 'tongue', text: 'Hindi', audience: 'chosen', chosen: [b.Karan.id] })).status === 400
    && (await act(a.Arjun, 'fact_add', { kind: 'tongue', text: 'Hindi', audience: 'chosen', chosen: [a.Arjun.id] })).status === 400);

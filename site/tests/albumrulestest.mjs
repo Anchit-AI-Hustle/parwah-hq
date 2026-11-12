@@ -16,9 +16,11 @@ const bytesOf = (b64) => Uint8Array.from(Buffer.from(b64, 'base64'));
 
 // A JPEG put together by hand, so each part can be changed: its size in
 // pixels, a camera details block, and how many bytes it weighs.
-function makeJpeg({ w = 1600, h = 1200, exif = false, size = 0 } = {}) {
+function makeJpeg({ w = 1600, h = 1200, exif = false, size = 0, extra = null } = {}) {
   const parts = [[0xFF, 0xD8], [0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 1, 1, 0, 0, 1, 0, 1, 0, 0]];
   if (exif) parts.push([0xFF, 0xE1, 0x00, 0x10, 0x45, 0x78, 0x69, 0x66, 0x00, 0x00, 0x4D, 0x4D, 0x00, 0x2A, 0, 0, 0, 8]);
+  // Any other segment: [marker, ...its label and bytes].
+  if (extra) { const body = extra.slice(1); parts.push([0xFF, extra[0], (body.length + 2) >> 8, (body.length + 2) & 255, ...body]); }
   parts.push([0xFF, 0xC0, 0x00, 0x0B, 8, h >> 8, h & 255, w >> 8, w & 255, 1, 1, 0x11, 0]);
   parts.push([0xFF, 0xDA, 0x00, 0x08, 1, 1, 0, 0, 0x3F, 0]);
   const head = parts.flat();
@@ -67,6 +69,16 @@ ok('an empty file is refused', /did not arrive/.test(A.imageError(new Uint8Array
 // ---- the location never arrives
 const withExif = A.jpegInfo(makeJpeg({ exif: true }));
 ok('camera details inside a JPEG are seen', withExif && withExif.exif === true);
+// XMP sits in APP1 under another label and can carry the same place; IPTC and Photoshop notes sit in APP13.
+const label = (t) => [...Buffer.from(t, 'latin1')];
+const xmp = makeJpeg({ extra: [0xE1, ...label('http://ns.adobe.com/xap/1.0/\u0000<x:xmpmeta><exif:GPSLatitude>28,36.83N</exif:GPSLatitude></x:xmpmeta>')] });
+const iptc = makeJpeg({ extra: [0xED, ...label('Photoshop 3.0\u00008BIM'), 4, 4, 0, 0, 0, 0, 0, 9, 0x1C, 2, 90, 0, 4, ...label('Agra')] });
+const bare1 = makeJpeg({ extra: [0xE1, 1, 2, 3] });
+ok('an XMP block (APP1 with another label) is seen as details too', A.jpegInfo(xmp) && A.jpegInfo(xmp).exif === true && /where it was taken/.test(A.imageError(xmp, 'photo')));
+ok('so is an IPTC or Photoshop block (APP13)', A.jpegInfo(iptc) && A.jpegInfo(iptc).exif === true && /where it was taken/.test(A.imageError(iptc, 'photo')) && !!A.imageError(iptc, 'thumb'));
+ok('any APP1 at all is refused, whatever its label says', A.jpegInfo(bare1).exif === true && !!A.imageError(bare1, 'photo'));
+ok('other segments a plain JPEG may carry are still fine: a comment, an ICC profile, Adobe', [[0xFE, ...label('made by hand')], [0xE2, ...label('ICC_PROFILE\u0000'), 1, 1], [0xEE, ...label('Adobe'), 0, 100, 0, 0, 0, 0, 0]]
+   .every(x => { const j = makeJpeg({ extra: x }); return A.jpegInfo(j).exif === false && A.imageError(j, 'photo') === null; }));
 ok('and that photo is refused, saying why', /where it was taken/.test(A.imageError(makeJpeg({ exif: true }), 'photo')));
 ok('every refusal is a plain sentence', [makeJpeg({ size: 700000 }), bytesOf(REAL_PNG), makeJpeg({ w: 3000 }), makeJpeg({ exif: true }), null]
    .every(b => { const e = A.imageError(b, 'photo'); return e && !/[{}<>]/.test(e) && e.length < 200; }));

@@ -87,6 +87,15 @@ async function albumTables(sql) {
     primary key (photo_id, member_id)
   )`;
   await sql`create index if not exists album_people_member on album_people (member_id)`;
+  // A name someone took off a photo themself. Whoever added the photo can
+  // change its people, but cannot put that name back: it was the person's
+  // own choice, and only they could change it.
+  await sql`create table if not exists album_untagged (
+    photo_id uuid not null references album_photos(id) on delete cascade,
+    member_id uuid not null references members(id) on delete cascade,
+    at timestamptz not null default now(),
+    primary key (photo_id, member_id)
+  )`;
   // The pictures themselves, apart from everything that is listed and
   // searched, so no list query ever drags them along.
   await sql`create table if not exists album_bytes (
@@ -451,6 +460,12 @@ export default async function albumApi(req, res) {
       if (words.error) return bad(words.error);
       const people = await peopleOf(body.people);
       if (people.error) return bad(people.error);
+      // A name its owner took off this photo is not put back by anyone else.
+      // (Putting your own name back is your own choice again.)
+      const took = people.ids.length ? await sql`select u.member_id, m.name from album_untagged u join members m on m.id = u.member_id
+                                                 where u.photo_id = ${p.id} and u.member_id = any(${people.ids}::uuid[]) and u.member_id <> ${me.id}` : [];
+      if (took[0]) return bad(took[0].name + ' took their name off this photo, so it stays off.', 409);
+      await sql`delete from album_untagged where photo_id = ${p.id} and member_id = ${me.id} and ${me.id}::uuid = any(${people.ids}::uuid[])`;
       await sql`update album_photos set caption = ${words.caption}, taken_year = ${words.year} where id = ${p.id}`;
       await sql`delete from album_people where photo_id = ${p.id} and not (member_id = any(${people.ids}::uuid[]))`;
       if (people.ids.length) await sql`insert into album_people (photo_id, member_id) select ${p.id}, unnest(${people.ids}::uuid[]) on conflict do nothing`;
@@ -462,6 +477,8 @@ export default async function albumApi(req, res) {
       if (!p) return bad('That photo is not here, or it is not shared with you.', 404);
       const r = await sql`delete from album_people where photo_id = ${p.id} and member_id = ${me.id} returning photo_id`;
       if (!r[0]) return bad('Your name is not on this photo.', 404);
+      // Remembered, so an edit by whoever added the photo cannot undo it.
+      await sql`insert into album_untagged (photo_id, member_id) values (${p.id}, ${me.id}) on conflict do nothing`;
       return good();
     }
 
@@ -483,8 +500,13 @@ export default async function albumApi(req, res) {
         const ids = [...new Set(Array.isArray(body.chosen) ? body.chosen : [])];
         if (!ids.length) return bad('Pick at least one person.');
         if (ids.length > ALBUM_MAX.chosen || !ids.every(isUuid)) return bad('Bad person');
-        const rows = await sql`select id, name, user_id from members where circle_id = ${circle.id} and id = any(${ids}::uuid[]) and id <> ${me.id}`;
+        // In this circle AND not marked as remembered. (A remembered person
+        // may still be TAGGED in a photo: that is what an album is for.)
+        const rows = await sql`select m.id, m.name, m.user_id, coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered
+                               from members m where m.circle_id = ${circle.id} and m.id = any(${ids}::uuid[]) and m.id <> ${me.id}`;
         if (rows.length !== ids.length) return bad('Pick people from this ' + word + '.');
+        const lost = rows.find(m => m.remembered);
+        if (lost) return bad(lost.name + ' is remembered here, so cannot be chosen.');
         const off = rows.find(m => !m.user_id);
         if (off) return bad(off.name + ' is not on Parwah yet, so they would not see it.');
         chosen = ids;

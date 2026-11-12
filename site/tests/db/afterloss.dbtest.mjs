@@ -287,6 +287,10 @@ ok('starting and confirming changed no unlock_policy and no chosen people', (awa
   ok('and Priya\'s list still has no such step', !step(await see(U.priya), 'e:' + E.locker));
   ok('it can be given to someone who may', (await act(U.rohan, 'afterloss_assign', { listId, key: 'e:' + E.locker, assignId: U.meera.id })).status === 200 && step(await see(U.meera), 'e:' + E.locker).assigned_name === 'Meera');
   ok('not to someone added by name', (await act(U.rohan, 'afterloss_assign', { listId, key: 'f:will', assignId: dadi })).status === 400);
+  await rows(`update members set remembered = true where id = $1`, [U.kabir.id]);
+  r = await act(U.rohan, 'afterloss_assign', { listId, key: 'f:will', assignId: U.kabir.id });
+  ok('not to someone marked as remembered, and the reason is said', r.status === 400 && r.error === 'Kabir is remembered here, so cannot be given a step.' && step(await see(U.rohan), 'f:will').assigned_to === null, JSON.stringify(r));
+  await rows(`update members set remembered = false where id = $1`, [U.kabir.id]);
   ok('not to someone from another family', (await act(U.rohan, 'afterloss_assign', { listId, key: 'f:will', assignId: other.id })).status === 403);
   ok('not to the person the list is about', (await act(U.rohan, 'afterloss_assign', { listId, key: 'f:will', assignId: U.papa.id })).status === 400);
   ok('a first-things step can be given to anyone on Parwah in the family', (await act(U.meera, 'afterloss_assign', { listId, key: 'f:will', assignId: U.kabir.id })).status === 200 && step(await see(U.rohan), 'f:will').assigned_name === 'Kabir');

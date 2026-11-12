@@ -3589,6 +3589,19 @@ check("album: only a JPEG is kept: the first bytes are read, and the size, the p
       and "bytes.length > maxBytes" in _abr and "if (info.exif)" in _abr
       and "photoBytes: 600000" in _abr and "thumbBytes: 40000" in _abr
       and "imageError(pBytes, 'photo') || imageError(tBytes, 'thumb')" in _ab)
+check("album: any APP1 (Exif or XMP) and any APP13 (IPTC, Photoshop) segment is refused, not only one labelled Exif",
+      "if (m === 0xE1 || m === 0xED) exif = true;" in _abr and "b[i + 4] === 0x45 && b[i + 5] === 0x78" not in _abr)
+check("album: a tag its owner took off is remembered, and whoever added the photo cannot put it back",
+      "create table if not exists album_untagged" in _ab
+      and "insert into album_untagged (photo_id, member_id) values (${p.id}, ${me.id}) on conflict do nothing" in _ab
+      and "if (took[0]) return bad(took[0].name + ' took their name off this photo, so it stays off.', 409);" in _ab
+      and _ab.index("if (took[0]) return bad(") < _ab.index("update album_photos set caption = ${words.caption}"))
+check("remembered people are refused by the server as a chosen audience (family facts, albums) and as the person given an after-loss step; a photo tag is still allowed",
+      "if (lost) return { error: lost.name + ' is remembered here, so cannot be chosen.' };" in _wf_fact
+      and "if (lost) return bad(lost.name + ' is remembered here, so cannot be chosen.');" in _ab
+      and "remembered" not in _ab.split("const peopleOf = async (list) => {")[1].split("const wordsOf")[0]
+      and "if (m.remembered) return res.status(400).json({ ok: false, error: m.name + ' is remembered here, so cannot be given a step.' });" in _al_api
+      and "if (m.remembered) return bad(m.name + ' is remembered here, so is not sent recommendations.');" in (API_DIR / "_pasand.mjs").read_text(encoding="utf-8"))
 check("album: the sender's word for the type is never read; the server states image/jpeg itself",
       not re.search(r"\b(?:it|photo)\.(?:mime|type|contentType|fileMime|fileName|name)\b|\bbody\.(?:mime|type|contentType|fileMime|fileName)\b", _ab_code)
       and "content-type" not in _ab_code.lower().replace("res.setheader('content-type', 'image/jpeg')", "").replace("x-content-type-options", "")

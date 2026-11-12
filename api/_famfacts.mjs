@@ -70,8 +70,13 @@ async function audienceOf(sql, circle, me, body) {
   const ids = [...new Set(Array.isArray(body.chosen) ? body.chosen : [])];
   if (!ids.length) return { error: 'Pick at least one person.' };
   if (ids.length > FACT_CHOSEN_MAX || !ids.every(isUuid)) return { error: 'Pick people from this family.' };
-  const rows = await sql`select id from members where circle_id = ${circle.id} and id = any(${ids}::uuid[]) and id <> ${me.id}`;
+  // In this family AND not marked as remembered: the picker leaves such a
+  // person out, and this is the rule itself.
+  const rows = await sql`select m.id, m.name, coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered
+                         from members m where m.circle_id = ${circle.id} and m.id = any(${ids}::uuid[]) and m.id <> ${me.id}`;
   if (rows.length !== ids.length) return { error: 'Pick people from this family.' };
+  const lost = rows.find(m => m.remembered);
+  if (lost) return { error: lost.name + ' is remembered here, so cannot be chosen.' };
   return { audience, chosen: ids };
 }
 

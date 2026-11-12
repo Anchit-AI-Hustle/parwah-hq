@@ -147,7 +147,7 @@ export async function afterlossActiveFor(sql, circleId, personId) {
   } catch (e) { return false; }
 }
 
-const circleMembers = (sql, circleId) => sql`select id, name, user_id, to_char(dob, 'YYYY-MM-DD') as dob from members where circle_id = ${circleId} order by created_at`;
+const circleMembers = (sql, circleId) => sql`select id, name, user_id, remembered, to_char(dob, 'YYYY-MM-DD') as dob from members where circle_id = ${circleId} order by created_at`;
 
 function listOut(l, me, members) {
   const name = (id) => { const m = members.find(x => x.id === id); return m ? m.name : null; };
@@ -362,6 +362,7 @@ export default async function afterlossApi(req, res) {
           if (body.assignId != null && body.assignId !== '') {
             const m = isUuid(body.assignId) ? members.find(x => x.id === body.assignId) : null;
             if (!m) return res.status(403).json({ ok: false, error: 'Choose someone in this family' });
+            if (m.remembered) return res.status(400).json({ ok: false, error: m.name + ' is remembered here, so cannot be given a step.' });
             if (!m.user_id) return res.status(400).json({ ok: false, error: m.name + ' is not on Parwah yet, so cannot be given a step.' });
             if (m.id === list.person_id) return res.status(400).json({ ok: false, error: 'Choose someone else in the family.' });
             // Whoever does a step must be able to read it: the same rule again.

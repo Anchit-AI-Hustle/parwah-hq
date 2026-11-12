@@ -222,6 +222,15 @@ let onlyMe, chosenAlbum, mePhoto, chosenPhoto;
   ok('someone from another circle cannot be chosen', (await call(asha, { body: { action: 'album_save', name: 'Trip', audience: 'chosen', chosen: [vikram.id] } })).status === 400);
   r = await call(asha, { body: { action: 'album_save', name: 'Trip', audience: 'chosen', chosen: [nani.id] } });
   ok('someone who is not on Parwah cannot be chosen, and it says why', r.status === 400 && /Nani is not on Parwah yet/.test(r.error));
+  // Someone marked as remembered cannot be chosen for an album, but can still be named in a photo.
+  await admin.query(`alter table members add column if not exists remembered boolean not null default false`);
+  await admin.query(`update members set remembered = true where id = $1`, [papa.id]);
+  r = await call(asha, { body: { action: 'album_save', name: 'Trip', audience: 'chosen', chosen: [rohan.id, papa.id] } });
+  ok('someone marked as remembered cannot be chosen for an album, and it says why', r.status === 400 && r.error === 'Papa is remembered here, so cannot be chosen.', JSON.stringify(r));
+  ok('but can still be tagged in a photo: that is what an album is for', await (async () => { const x = await add(asha, famAlbum, { caption: 'Papa, long ago', people: [papa.id] });
+    const ok2 = x.status === 201 && (await count(`select count(*)::int as n from album_people where photo_id = $1 and member_id = $2`, [x.ids[0], papa.id])) === 1;
+    await call(asha, { body: { action: 'photo_remove', id: x.ids[0] } }); return ok2; })());
+  await admin.query(`update members set remembered = false where id = $1`, [papa.id]);
   ok('a date that has not come is refused', (await call(asha, { body: { action: 'album_save', name: 'Trip', audience: 'family', date: '2999-01-01' } })).status === 400);
   ok('nothing was made while those were refused', (await count(`select count(*)::int as n from album_albums where circle_id = $1`, [fam])) === 1);
 
@@ -319,6 +328,14 @@ let onlyMe, chosenAlbum, mePhoto, chosenPhoto;
   ok('and he cannot do it through an edit, which is not his to make', (await call(rohan, { body: { action: 'photo_edit', id: p1, people: [] } })).status === 403);
   ok('twice is "your name is not on this photo"', /Your name is not on this photo/.test((await call(rohan, { body: { action: 'untag', id: p1 } })).error));
   ok('the photo itself is untouched', (await img(rohan, p1, 'full')).status === 200 && p.caption === 'Diwali, 1987');
+  // Asha added the photo and may change its people, but not put back a name its owner took off.
+  r = await call(asha, { body: { action: 'photo_edit', id: p1, caption: 'Diwali, 1987', year: 1988, people: [nani.id, papa.id, rohan.id] } });
+  ok('THE ADDER CANNOT RE-ADD A TAG THE PERSON REMOVED THEMSELF, and is told why', r.status === 409 && r.error === 'Rohan took their name off this photo, so it stays off.'
+     && (await get(asha)).photos.find(x => x.id === p1).people.map(x => x.name).join() === 'Nani,Papa', JSON.stringify(r));
+  ok('the rest of that edit was not half applied', (await get(asha)).photos.find(x => x.id === p1).caption === 'Diwali, 1987' && (await count(`select count(*)::int as n from album_people where photo_id = $1`, [p1])) === 2);
+  ok('she can still change the caption and the other people', (await call(asha, { body: { action: 'photo_edit', id: p1, caption: 'Diwali, 1987', year: 1988, people: [nani.id, papa.id] } })).status === 200);
+  ok('on another photo Rohan can be named as before', await (async () => { const other = (await add(asha, famAlbum, { caption: 'Holi', people: [rohan.id] })).ids[0];
+    const x = (await get(rohan)).photos.find(q => q.id === other); await call(asha, { body: { action: 'photo_remove', id: other } }); return !!x && x.taggedMe === true; })());
   ok('a filter by person finds Papa\'s photos, not Rohan\'s any more', (await get(asha, { person: papa.id })).photos.some(x => x.id === p1) && !(await get(asha, { person: rohan.id })).photos.some(x => x.id === p1));
   ok('up to six for a person\'s page', (await get(asha, { person: papa.id, limit: 1 })).photos.length === 1);
 }
