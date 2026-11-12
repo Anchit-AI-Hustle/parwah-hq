@@ -178,6 +178,9 @@ export async function alertRecipients(sql, circleId, personId, medIds) {
 }
 
 // ---------- the sweep: nudge once, then tell the family once ----------
+// Someone marked as remembered is never nudged, and the family is never
+// told they missed a dose: both claims skip them. The flag is read through
+// the row, so this works on a database where no module has added it yet.
 export async function sweepDoses(sql, circleId) {
   try { await ensureDoseSchema(sql); await fillDoses(sql, circleId); } catch (e) { return 0; }
   const nudged = await sql`
@@ -186,6 +189,7 @@ export async function sweepDoses(sql, circleId) {
       and d.due_at <= now() - make_interval(mins => ${NUDGE_AFTER_MIN})
       and d.due_at > now() - make_interval(mins => ${NUDGE_AFTER_MIN + SEND_WINDOW_MIN})
       and to_char(now() at time zone d.tz, 'HH24:MI') between ${WAKE_FROM} and ${WAKE_TO}
+      and not exists (select 1 from members m where m.id = d.person_id and coalesce((to_jsonb(m)->>'remembered')::boolean, false))
     returning d.id, d.person_id, d.slot`;
   const alerted = await sql`
     update medicine_doses d set alerted_at = now()
@@ -193,6 +197,7 @@ export async function sweepDoses(sql, circleId) {
       and d.due_at <= now() - make_interval(mins => ${ALERT_AFTER_MIN})
       and d.due_at > now() - make_interval(mins => ${ALERT_AFTER_MIN + SEND_WINDOW_MIN})
       and to_char(now() at time zone d.tz, 'HH24:MI') between ${WAKE_FROM} and ${WAKE_TO}
+      and not exists (select 1 from members m where m.id = d.person_id and coalesce((to_jsonb(m)->>'remembered')::boolean, false))
     returning d.id, d.person_id, d.slot, d.medicine_id`;
   // One message per person per time, however many medicines share it.
   const group = (rows) => { const g = new Map(); for (const r of rows) { const k = r.person_id + '|' + r.slot; if (!g.has(k)) g.set(k, []); g.get(k).push(r); } return g; };

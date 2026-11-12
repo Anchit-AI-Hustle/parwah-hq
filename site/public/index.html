@@ -16360,8 +16360,10 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     $('rm-mp-row').hidden = !gone;
     if (gone) $('rm-mp-when').textContent = rmWhen(m) || 'Remembered here';
     $('rm-mp-say').hidden = !(gone && m.remember_line); $('rm-mp-say').textContent = gone && m.remember_line ? '"' + m.remember_line + '"' : '';
-    $('rm-mp-open').hidden = self || !fam;
-    $('rm-mp-open').textContent = gone ? '🪔 Day of remembrance' : '🪔 No longer with us?';
+    // Nobody marks themself. Someone who was marked and is here can take
+    // the mark off: it was a mistake.
+    $('rm-mp-open').hidden = (self && !gone) || !fam;
+    $('rm-mp-open').textContent = self ? 'This is a mistake. Take the mark off' : gone ? '🪔 Day of remembrance' : '🪔 No longer with us?';
     // Nothing is asked of someone who is remembered.
     if (gone) { $('mp-remind').hidden = true; $('mp-call').hidden = true; }
   }
@@ -16380,7 +16382,11 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     try { $('rm-year').focus(); } catch (e) {}
   }
   function rmClose(){ $('rm-sheet').hidden = true; if (rmFrom && rmFrom.focus && document.contains(rmFrom)) { try { rmFrom.focus(); } catch (e) {} } }
-  $('rm-mp-open').addEventListener('click', function(){ rmOpen($('msheet').dataset.mid); });
+  $('rm-mp-open').addEventListener('click', function(){
+    var id = $('msheet').dataset.mid;
+    if (state && id === state.memberId) { rmUndoAsk((membersCache || []).filter(function(x){ return x.id === id; })[0], this); return; }
+    rmOpen(id);
+  });
   $('rm-x').addEventListener('click', rmClose);
   $('rm-sheet').addEventListener('click', function(e){ if (e.target === this) rmClose(); });
   $('rm-today').addEventListener('click', function(e){ var b = e.target.closest('[data-rmsee]'); if (b) openMemberSheet(b.getAttribute('data-rmsee')); });
@@ -16399,18 +16405,21 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       $('rm-sheet').hidden = true; toast('Saved 🪔'); refresh();
     }).catch(function(){ btn.disabled = false; say('No connection. Try again.'); });
   });
-  $('rm-undo').addEventListener('click', function(){
-    var btn = this, m = rmFor; if (!m) return;
-    askSheet('Take this mark off ' + m.name + '?', 'The date and the line go with it. Anyone grown up in the family can put it back.', 'Take it off', 'Keep it', true).then(function(y){
+  function rmUndoAsk(m, btn){
+    if (!m) return;
+    var self = state && m.id === state.memberId;
+    askSheet(self ? 'Take this mark off yourself?' : 'Take this mark off ' + m.name + '?', self ? 'You were marked as no longer with us. Taking the mark off puts things back as they were.'
+      : 'The date and the line go with it. Anyone grown up in the family can put it back.', 'Take it off', 'Keep it', true).then(function(y){
       if (!y) return;
       btn.disabled = true;
       widerPost({ action: 'remember_undo', targetId: m.id }).then(function(j){
         btn.disabled = false;
-        if (!j.ok) { $('rm-err').textContent = humanFail(j.error, 'Could not change this. Try again in a moment.'); $('rm-err').hidden = false; return; }
-        $('rm-sheet').hidden = true; toast('The mark is off'); refresh();
+        if (!j.ok) { var why = humanFail(j.error, 'Could not change this. Try again in a moment.'); if (self) toast(why); else { $('rm-err').textContent = why; $('rm-err').hidden = false; } return; }
+        $('rm-sheet').hidden = true; if (self) $('msheet').hidden = true; toast('The mark is off'); refresh();
       }).catch(function(){ btn.disabled = false; toast('No connection. Try again.'); });
     });
-  });
+  }
+  $('rm-undo').addEventListener('click', function(){ rmUndoAsk(rmFor, this); });
   document.addEventListener('keydown', function(e){
     if (e.key !== 'Escape') return;
     if (!$('fl-who').hidden) flWhoClose();

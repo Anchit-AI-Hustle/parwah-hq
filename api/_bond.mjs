@@ -222,8 +222,9 @@ export async function sweepBond(sql, circle) {
                         where c.circle_id = ${circle.id} and c.for_member is not null and c.delivered_at is null
                           and c.date <= current_date + 1`;
   for (const c of due) {
-    const who = byId.get(c.for_member);
-    if (!who || dstr(c.date) > todayFor(who)) continue;
+    const who = byId.get(c.for_member), who2 = c.for_member2 ? byId.get(c.for_member2) : null;
+    // A card still waiting for someone since marked as remembered is never sent.
+    if (!who || who.remembered || (who2 && who2.remembered) || dstr(c.date) > todayFor(who)) continue;
     const got = await sql`update cards set delivered_at = now() where id = ${c.id} and delivered_at is null returning id`;
     if (!got[0]) continue;
     const n = await sql`select count(*)::int as n from card_entries where card_id = ${c.id}`;

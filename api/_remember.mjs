@@ -5,16 +5,24 @@
 //   POST {code, memberId, action:'remember_undo', targetId}
 //
 // An adult in the family marks a person, with the year (the day and month
-// when known) and one line if they wish. Any adult can undo it. Once marked,
-// the person is never offered for a check-in, a nudge, a recommendation or a
-// birthday card (those sweeps read the same flag), and the tree shows them
-// with a quiet marker in words.
+// when known) and one line if they wish. Any adult can undo it, and so can
+// the person themself: if they can sign in, the mark was a mistake. Once
+// marked, the person is never offered for a check-in, a nudge, a
+// recommendation or a birthday card (those sweeps read the same flag), and
+// the tree shows them with a quiet marker in words.
+//
+// Marking changes nothing that undo cannot put back: the check-in time and
+// the rest of the person's settings stay as they were, and every sweep
+// skips a remembered person instead.
+//
+// Someone who used Parwah in the last 30 days (a session, or anything they
+// did in the family) cannot be marked this way: see rememberRecent.
 //
 // Each year the family is told once, from 6 in the evening the day before
 // (or on the day, when no phone was awake that evening). The claim is one
 // row per person per year, so two phones never send it twice. The dates are
 // worked out in api/_rememberrules.mjs.
-import { schemaOnce, isUuid } from './_db.mjs';
+import { schemaOnce, isUuid, rateLimit } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import { placeOf } from './_places.mjs';
 import { noteRisk } from './_notesapi.mjs';
@@ -84,6 +92,29 @@ export async function sweepRemember(sql, circleId, nowMs = Date.now()) {
   return sent;
 }
 
+// Has this person used Parwah in the last 30 days? A session that was used,
+// or anything they did in the family. Someone who has is very likely alive,
+// so one person alone must not mark them. Shared with the older toggle in
+// _memorybond.mjs so there is one rule.
+export const REMEMBER_RECENT_DAYS = 30;
+export async function rememberRecent(sql, target) {
+  if (!target || !target.user_id) return false;
+  const r = await sql`select 1 as x where
+      exists (select 1 from sessions s where s.user_id = ${target.user_id} and s.last_used_at > now() - make_interval(days => ${REMEMBER_RECENT_DAYS}))
+      or exists (select 1 from events e where e.member_id = ${target.id} and e.created_at > now() - make_interval(days => ${REMEMBER_RECENT_DAYS}))`;
+  return !!r[0];
+}
+export const rememberRecentWhy = (name) => firstName(name) + ' used Parwah recently. If this is right, ask them or an elder to check.';
+// The one push to someone on Parwah who was marked: so that, if it is a
+// mistake, they hear of it and can undo it at once. At most three an hour
+// from one person about one person.
+export async function rememberTell(sql, circleId, me, target) {
+  if (!target || !target.user_id) return;
+  if (!(await rateLimit(sql, 'remember_tell', me.id + ':' + target.id, 3, 3600, { failClosed: true }))) return;
+  await pushCircle(sql, circleId, { title: firstName(me.name) + ' marked you as no longer with us',
+    body: firstName(me.name) + ' marked you as no longer with us. If this is a mistake, open Parwah to undo it.', url: '/#profile' }, { only: target.id });
+}
+
 const bad = (error, status = 400, extra) => ({ status, json: { ok: false, error, ...(extra || {}) } });
 const good = (json, status = 200) => ({ status, json: { ok: true, ...(json || {}) } });
 
@@ -93,12 +124,15 @@ export async function rememberAction(sql, circle, me, body) {
   const a = String(body.action || '');
   if (circle.kind === 'group') return bad('A group of friends has no family tree.');
   const today = wallIn(Date.now(), tzOf(me)).date;
+  // The marked person takes their own mark off: they are here, so it was a
+  // mistake. This is the one thing anyone may do about themself, at any age.
+  const selfUndo = a === 'remember_undo' && body.targetId === me.id;
   // With the family's care: an adult, on Parwah, decides this.
-  if (!isAdult(me.dob, today)) return bad('An adult in the family does this.', 403);
+  if (!selfUndo && !isAdult(me.dob, today)) return bad('An adult in the family does this.', 403);
   if (!isUuid(body.targetId)) return bad('Choose someone in this family');
-  const t = (await sql`select id, name, remembered, to_char(dob, 'YYYY') as born from members where id = ${body.targetId} and circle_id = ${circle.id}`)[0];
+  const t = (await sql`select id, name, user_id, remembered, to_char(dob, 'YYYY') as born from members where id = ${body.targetId} and circle_id = ${circle.id}`)[0];
   if (!t) return bad('Choose someone in this family', 404);
-  if (t.id === me.id) return bad('This is for someone else in the family.');
+  if (t.id === me.id && !selfUndo) return bad('This is for someone else in the family.');
 
   if (a === 'remember_mark') {
     const c = passedClean({ year: body.year, month: body.month, day: body.day }, today, t.born ? +t.born : null);
@@ -108,19 +142,22 @@ export async function rememberAction(sql, circle, me, body) {
     const risk = noteRisk(line);
     if (risk) return bad(risk, 400, { field: 'line' });
     const p = c.value;
+    if (!t.remembered && await rememberRecent(sql, t)) return bad(rememberRecentWhy(t.name), 409, { recent: true });
     await sql`update members set remembered = true, passed_year = ${p.year}, passed_month = ${p.month}, passed_day = ${p.day},
                                  remember_line = ${line || null}, remembered_by = ${me.id}, remembered_at = now()
               where id = ${t.id} and circle_id = ${circle.id}`;
-    // Nothing is asked of them again. Each of these belongs to a feature a
-    // family may never have opened, so a missing table or column is not an
-    // error here.
+    // Nothing is asked of them again: every sweep skips a remembered person.
+    // Their check-in time is NOT cleared, because undo could not put it
+    // back. A waiting card is taken away (the sweep makes it again after an
+    // undo). Cards belong to a feature a family may never have opened, so a
+    // missing table or column is not an error here.
     const quiet = async run => { try { await run(); } catch (e) { if (!(e && (e.code === '42P01' || e.code === '42703'))) throw e; } };
-    await quiet(() => sql`update members set checkin_by = null, checkin_ask = null, checkin_ask_by = null where id = ${t.id}`);
     await quiet(() => sql`delete from cards where circle_id = ${circle.id} and auto_key is not null and delivered_at is null
                             and (for_member = ${t.id} or for_member2 = ${t.id})`);
     if (!t.remembered) {
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${me.id}, 'care', ${'🪔 ' + me.name + ' marked ' + t.name + ' as no longer with us. ' + firstName(t.name) + ' is remembered here.'})`;
+      await rememberTell(sql, circle.id, me, t);
     }
     return good({ passed: p, words: passedWords(p), line: line || null });
   }

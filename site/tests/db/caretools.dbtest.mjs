@@ -270,6 +270,14 @@ let lc;
   const rt = (await admin.query(`select claimed_by, template_data, due_at from requests where id = $1`, [d.next])).rows[0];
   ok('a missed day moves on once, to the next person, never into the past twice', rolled.reduce((a, b) => a + b, 0) === 1 && rt.claimed_by === rohan.id && rt.template_data.idx === 0
      && new Date(rt.due_at).getTime() > Date.now() - 86400000, JSON.stringify([rolled, rt]));
+  // A rota for someone since marked as remembered stops turning.
+  await admin.query(`update requests set due_at = due_at - interval '3 days', due_date = due_date - 3 where id = $1`, [d.next]);
+  await admin.query(`update members set remembered = true where id = $1`, [maa.id]);
+  const still = await rotaSweep(sql, sharma);
+  const st = (await admin.query(`select claimed_by, about_member, due_at from requests where id = $1`, [d.next])).rows[0];
+  ok('the rota does not move on for someone who is remembered', still === 0 && st.about_member === maa.id && st.claimed_by === rohan.id && new Date(st.due_at).getTime() < Date.now() - 86400000, JSON.stringify([still, st]));
+  await admin.query(`update members set remembered = false where id = $1`, [maa.id]);
+  ok('with the mark off, it moves on again', (await rotaSweep(sql, sharma)) === 1);
   const out = await act(vikram, 'rota_done', { taskId: d.next });
   ok('another family cannot mark it', out.http === 404);
   const anon = await act(rohan, 'rota_done', { taskId: d.next }, { token: '' });

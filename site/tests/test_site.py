@@ -3450,10 +3450,34 @@ check("facts: who reads a fact, and who may change it, is said in SQL",
 check("facts: every text passes the notes rule (no card number, CVV, OTP or banking PIN)",
       "import { noteRisk } from './_notesapi.mjs';" in _wf_fact and _wf_fact.count("const risk = noteRisk(text);") == 2
       and "const risk = noteRisk(line);" in _wf_rem)
-check("remembrance: only an adult marks or undoes, with the year at least",
-      "if (!isAdult(me.dob, today)) return bad('An adult in the family does this.', 403);" in _wf_rem
-      and _wf_rem.index("if (!isAdult(me.dob, today))") < _wf_rem.index("if (a === 'remember_mark')") < _wf_rem.index("if (a === 'remember_undo')")
+check("remembrance: only an adult marks or undoes (the marked person may undo their own mark, never set it), with the year at least",
+      "if (!selfUndo && !isAdult(me.dob, today)) return bad('An adult in the family does this.', 403);" in _wf_rem
+      and "const selfUndo = a === 'remember_undo' && body.targetId === me.id;" in _wf_rem
+      and "if (t.id === me.id && !selfUndo) return bad('This is for someone else in the family.');" in _wf_rem
+      and "const selfUndo = !body.on && t.id === me.id;" in _mb_api
+      and "if (t.id === me.id && !selfUndo) return bad(400," in _mb_api
+      and _wf_rem.index("if (!selfUndo && !isAdult(me.dob, today))") < _wf_rem.index("if (a === 'remember_mark')") < _wf_rem.index("if (a === 'remember_undo')")
       and "if (year === null) return { error: 'Write the year." in _wf_rules and not re.search(r"(?m)^import ", _wf_rules))
+check("remembrance: marking destroys nothing undo cannot restore: the check-in time is never cleared",
+      not re.search(r"set\s+checkin_by\s*=\s*null", _wf_rem) and "checkin_ask = null" not in _wf_rem
+      and "Their check-in time is NOT cleared" in _wf_rem)
+check("remembrance: someone who used Parwah in the last 30 days is not marked by one person; one rule for both ways in; a marked person on Parwah is told once",
+      "export const REMEMBER_RECENT_DAYS = 30;" in _wf_rem
+      and "if (!t.remembered && await rememberRecent(sql, t)) return bad(rememberRecentWhy(t.name), 409, { recent: true });" in _wf_rem
+      and "' used Parwah recently. If this is right, ask them or an elder to check.'" in _wf_rem
+      and "if (await rememberRecent(sql, full)) return bad(409, rememberRecentWhy(t.name));" in _mb_api
+      and "' marked you as no longer with us. If this is a mistake, open Parwah to undo it.'" in _wf_rem
+      and "rateLimit(sql, 'remember_tell', me.id + ':' + target.id, 3, 3600, { failClosed: true })" in _wf_rem
+      and _wf_rem.count("await rememberTell(sql, circle.id, me, t);") == 1 and "await rememberTell(sql, circle.id, me, full);" in _mb_api)
+check("remembrance: every sweep that would chase or name a remembered person skips them (check-ins, doses, tasks, the call rota, cards)",
+      _fc_api.count("and not m.remembered") >= 2
+      and _dz.count("and not exists (select 1 from members m where m.id = d.person_id and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 2
+      and _tasksrc.count("and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 2
+      and _fc_api.count("and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 1
+      and "if (!who || who.remembered || (who2 && who2.remembered) || dstr(c.date) > todayFor(who)) continue;" in (API_DIR / "_bond.mjs").read_text(encoding="utf-8"))
+check("remembrance: my own sheet offers to take a mistaken mark off, and never to set one",
+      "$('rm-mp-open').hidden = (self && !gone) || !fam;" in _app_src and "This is a mistake. Take the mark off" in _app_src
+      and "if (state && id === state.memberId) { rmUndoAsk(" in _app_src)
 check("remembrance: the reminder is claimed once per person per year, and is wired into the timer",
       "primary key (member_id, year)" in _wf_rem and "on conflict do nothing returning member_id" in _wf_rem
       and "events += await one(() => sweepRemember(sql, id));" in _wf_evt

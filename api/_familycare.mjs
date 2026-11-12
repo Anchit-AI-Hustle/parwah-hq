@@ -233,8 +233,10 @@ export async function quietSweepAll(sql) {
 // ---------------- call rota: a day nobody marked moves on ----------------
 export async function rotaSweep(sql, circleId, nowMs = Date.now()) {
   await ensureTaskSchema(sql);
+  // A call rota for someone since marked as remembered stops turning.
   const ts = await sql`select id, circle_id, series_id, due_at, tz, series_anchor, template_data, claimed_by from requests
-                       where circle_id = ${circleId} and template = 'callrota' and status in ('open','assigned','claimed') and due_at is not null`;
+                       where circle_id = ${circleId} and template = 'callrota' and status in ('open','assigned','claimed') and due_at is not null
+                         and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))`;
   let n = 0;
   for (const t of ts) {
     const tz = tzOf(t.tz), due = new Date(t.due_at).getTime();

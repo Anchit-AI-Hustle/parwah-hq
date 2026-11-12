@@ -432,6 +432,26 @@ ok('the mark is off: Today is quiet again', await gone(PA, '#rm-sheet') && await
 await PA.evaluate(() => { location.hash = '#people'; });
 ok('and the tree says "not on Parwah" for him as before', await sees(PA, '#tree [data-mprof="' + dadaji + '"] small', /not on Parwah/) && !/No longer with us/.test(await PA.textContent('#tree')));
 
+// Someone marked by mistake is here, on their own phone: they take the mark off themself.
+await admin.query(`update members set remembered = true, passed_year = 2025 where id = $1`, [a.Arjun.memberId]);
+await PA.waitForFunction((id) => { const r = document.querySelector('#tree [data-mprof="' + id + '"]'); return !!r && /No longer with us|Remembered/i.test(r.textContent); }, a.Arjun.memberId, T).catch(() => {});
+await PA.click('#tree [data-mprof="' + a.Arjun.memberId + '"]');
+ok('my own sheet, when I was marked, offers to take the mark off', await shown(PA, '#msheet') && await shown(PA, '#rm-mp-open') && (await PA.textContent('#rm-mp-open')).trim() === 'This is a mistake. Take the mark off');
+await design(PA, '#msheet', 'my own sheet when I was marked by mistake');
+await PA.click('#rm-mp-open');
+ok('it asks first, in plain words, and never opens the date sheet', await shown(PA, '#asksheet') && /Take this mark off yourself\?/.test(await PA.textContent('#as-q')) && await PA.isHidden('#rm-sheet'));
+await PA.click('#as-yes');
+ok('the mark is off me, in the database and on the tree', await PA.waitForFunction(() => /The mark is off/.test(document.getElementById('toast').textContent), null, T).then(() => true, () => false)
+   && (await admin.query('select remembered, passed_year from members where id = $1', [a.Arjun.memberId])).rows[0].remembered === false
+   && (await admin.query('select passed_year from members where id = $1', [a.Arjun.memberId])).rows[0].passed_year === null);
+ok('nobody can mark themself: with no mark there is no such button on my own sheet', await (async () => {
+  await admin.query(`update members set remembered = false where id = $1`, [a.Arjun.memberId]);
+  await PA.evaluate(() => { location.hash = '#home'; }); await PA.evaluate(() => { location.hash = '#people'; });
+  await PA.waitForFunction((id) => { const r = document.querySelector('#tree [data-mprof="' + id + '"]'); return !!r && !/No longer with us/i.test(r.textContent); }, a.Arjun.memberId, T).catch(() => {});
+  await PA.click('#tree [data-mprof="' + a.Arjun.memberId + '"]');
+  return await shown(PA, '#msheet') && await PA.isHidden('#rm-mp-open');
+})());
+
 ok('no script errors', errors.length === 0, errors.join(' | '));
 await browser.close();
 server.close();

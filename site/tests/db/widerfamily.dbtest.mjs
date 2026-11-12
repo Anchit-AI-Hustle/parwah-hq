@@ -385,9 +385,26 @@ ok('no anniversary card for a couple when one of them is remembered', await (asy
 // No check-in, asked or swept.
 await Fc.ensureFamilyCareSchema(sql);
 await admin.query(`update members set checkin_by = '09:00' where id = any($1::uuid[])`, [[a.Nani.id, a.Bharat.id]]);
+// Nani signed in today: one person alone cannot mark someone who used Parwah in the last 30 days.
+const webpush = (await import('web-push')).default;
+const pushed = [];
+webpush.sendNotification = async (sub, body) => { pushed.push({ endpoint: sub.endpoint, body: JSON.parse(body) }); return {}; };
+const { ensurePushSchema } = await import('../../../api/_push.mjs');
+await ensurePushSchema(sql);
+for (const m of [a.Nani, a.Arjun, a.Bharat]) await admin.query(`insert into push_subs (member_id, endpoint, p256dh, auth) values ($1, $2, 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM', 'tBHItJI5svbpez7KI4CCXg')`, [m.id, 'https://fcm.googleapis.com/fcm/send/' + m.id]);
 r = await act(a.Arjun, 'remember_mark', { targetId: a.Nani.id, year: 2024 });
-ok('marking someone who is on Parwah turns their daily check-in off', r.status === 200 && (await row(a.Nani.id)).checkin_by === null);
-await admin.query(`update members set checkin_by = '09:00' where id = $1`, [a.Nani.id]);   // even if a stale row said otherwise
+ok('someone who used Parwah in the last 30 days cannot be marked', r.status === 409 && r.error === 'Nani used Parwah recently. If this is right, ask them or an elder to check.' && (await row(a.Nani.id)).remembered === false
+   && (await row(a.Nani.id)).checkin_by === '09:00', JSON.stringify(r));
+// A session last used 40 days ago, and nothing done since: now the family may.
+await admin.query(`update sessions set last_used_at = now() - interval '40 days' where user_id = $1`, [a.Nani.userId]);
+await admin.query(`update events set created_at = created_at - interval '40 days' where member_id = $1`, [a.Nani.id]);
+await admin.query(`update members set checkin_ask = '10:00', checkin_ask_by = $2 where id = $1`, [a.Nani.id, a.Arjun.id]);
+const p0 = pushed.length;
+r = await act(a.Arjun, 'remember_mark', { targetId: a.Nani.id, year: 2024 });
+ok('marking someone who is on Parwah keeps their check-in time: undo could not put it back', r.status === 200 && (await row(a.Nani.id)).remembered === true && (await row(a.Nani.id)).checkin_by === '09:00'
+   && (await row(a.Nani.id)).checkin_ask === '10:00' && (await row(a.Nani.id)).checkin_ask_by === a.Arjun.id, JSON.stringify(r));
+ok('Nani is told once, and how to undo it; nobody else is pushed', pushed.length === p0 + 1 && pushed[p0].endpoint.endsWith(a.Nani.id)
+   && pushed[p0].body.body === 'Arjun marked you as no longer with us. If this is a mistake, open Parwah to undo it.', JSON.stringify(pushed.slice(p0)));
 await Fc.quietSweep(sql, A.id, istAt('23'));
 ok('the check-in sweep nudges Bharat, and never the person who is remembered', (await row(a.Bharat.id)).quiet_nudged_for !== null && (await row(a.Nani.id)).quiet_nudged_for === null && (await row(a.Nani.id)).quiet_alerted_for === null);
 r = await call(api.events, { token: a.Arjun.token, body: { code: A.code, memberId: a.Arjun.id, type: 'quiet_ask', targetId: a.Nani.id, checkinBy: '10:00' } });
@@ -415,6 +432,31 @@ ok('after it, the nudge is gone at once', bt.nudge === null, JSON.stringify(bt.n
 await admin.query('delete from bond_nudges');
 bt = await Mb.bondToday(sql, dRow, meRow);
 ok('and no new nudge ever picks them', bt.nudge === null, JSON.stringify(bt.nudge));
+
+// The marked person is here after all: she undoes her own mark, and nothing was lost.
+ok('nobody marks themself, even when already marked', (await act(a.Nani, 'remember_mark', { targetId: a.Nani.id, year: 2024 })).status === 400 && (await row(a.Nani.id)).remembered === true);
+r = await act(a.Nani, 'remember_undo', { targetId: a.Nani.id });
+ok('the marked person undoes their own mark', r.status === 200 && (await row(a.Nani.id)).remembered === false && (await row(a.Nani.id)).passed_year === null);
+ok('and her check-in is as it was before the mark', (await row(a.Nani.id)).checkin_by === '09:00' && (await row(a.Nani.id)).checkin_ask === '10:00');
+await admin.query(`update members set quiet_nudged_for = null, quiet_alerted_for = null where id = $1`, [a.Nani.id]);
+await Fc.quietSweep(sql, A.id, istAt('23'));
+ok('so the check-in sweep looks after her again', (await row(a.Nani.id)).quiet_nudged_for !== null);
+ok('a child may undo a mark on themself, and only on themself', await (async () => {
+  await admin.query(`update members set remembered = true where id = $1`, [a.Chintu.id]);
+  const x = await act(a.Chintu, 'remember_undo', { targetId: a.Chintu.id });
+  return x.status === 200 && (await row(a.Chintu.id)).remembered === false;
+})());
+// A card that was already waiting when the mark was set another way is never delivered.
+ok('a waiting card for someone marked as remembered is not sent on the day', await (async () => {
+  await admin.query(`update members set remembered = false where id = $1`, [dadaji]);
+  const c = (await admin.query(`insert into cards (circle_id, for_member, occasion, title, date, auto_key) values ($1, $2, 'birthday', 'Dadaji''s birthday', current_date - 1, 'test:late') returning id`, [A.id, dadaji])).rows[0].id;
+  await admin.query(`update members set remembered = true where id = $1`, [dadaji]);
+  await Bond.sweepBond(sql, circleRow);
+  const kept = (await admin.query('select delivered_at from cards where id = $1', [c])).rows[0].delivered_at === null;
+  await admin.query('delete from cards where id = $1', [c]);
+  await admin.query(`update members set remembered = true, passed_year = 2019, passed_month = 3, passed_day = 12 where id = $1`, [dadaji]);
+  return kept;
+})());
 
 // Any adult can undo it.
 ok('a child cannot undo', (await act(a.Chintu, 'remember_undo', { targetId: dadaji })).status === 403);
