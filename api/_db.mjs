@@ -1,6 +1,7 @@
 // Shared database helpers for the Parwah app API.
 import { neon } from '@neondatabase/serverless';
 import { createHash } from 'node:crypto';
+import { limitKeyOf } from './_pushrules.mjs';
 
 let schemaReady = false;
 
@@ -308,6 +309,19 @@ export function clientIp(req) {
   // address on every request and walk past every limit keyed on it.
   const fwd = String(h['x-vercel-forwarded-for'] || h['x-real-ip'] || h['x-forwarded-for'] || '').split(',')[0].trim();
   return fwd || 'unknown';
+}
+
+// THE KEY A PER-CALLER LIMIT COUNTS BY. A whole neighbourhood can share one
+// mobile address, so a limit counted by address alone locks out families who
+// did nothing. The app sends a random id of its own for the device in
+// X-Parwah-Device (16 to 64 letters, digits, - or _); with it the key is
+// "address|device", without it the address alone, as before.
+// A caller can change that id on every request, so a limit keyed this way
+// must sit BESIDE a looser one keyed by clientIp(req) alone (say ten times
+// the allowance), never in its place.
+export function limitKey(req) {
+  const h = (req && req.headers) || {};
+  return limitKeyOf(clientIp(req), h['x-parwah-device'] || h['X-Parwah-Device']);
 }
 
 // Two first requests at once on a fresh database both run "create table if

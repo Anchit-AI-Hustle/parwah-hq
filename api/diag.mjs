@@ -12,6 +12,25 @@ import selftest from './_selftest.mjs';
 import ektaSelftest from './_ektaselftest.mjs';
 import daySelftest from './_dayselftest.mjs';
 import pinSelftest from './_pinselftest.mjs';
+//   GET /api/diag?probe=status → when the timer last ran, and how many pages
+//                                broke on people's phones (counts only)
+import { db } from './_db.mjs';
+import { lastTickAt } from './_push.mjs';
+import { errorCounts } from './_pushapi.mjs';
+import { failDb } from './_fail.mjs';
+
+// Is the timer alive, and are phones breaking. Reads only; no names, no
+// messages, no family: a time, its age, and three counts.
+async function status(req, res) {
+  try {
+    const sql = db();
+    const at = await lastTickAt(sql);
+    return res.status(200).json({ ok: true,
+      last_tick_at: at,
+      last_tick_age_sec: at ? Math.max(0, Math.round((Date.now() - new Date(at).getTime()) / 1000)) : null,
+      client_errors: await errorCounts(sql) });
+  } catch (e) { return failDb(res, e); }
+}
 
 // EVERY ONE OF THESE WAS OPEN TO THE WORLD, AND EVERY ONE WRITES.
 // ?probe=db creates a circle, members, chats, vault documents and coin
@@ -43,7 +62,7 @@ export default async function handler(req, res) {
       service: 'parwah',
       time: new Date().toISOString(),
       db_configured: !!(process.env.DATABASE_URL || process.env.POSTGRES_URL),
-      probes: 'add ?probe=db|day|pin|ekta, with the diagnostics key in the X-Diag-Key header'
+      probes: 'add ?probe=db|day|pin|ekta|status, with the diagnostics key in the X-Diag-Key header'
     });
   }
   if (!authorised(req)) {
@@ -57,5 +76,6 @@ export default async function handler(req, res) {
   if (probe === 'day') return daySelftest(req, res);
   if (probe === 'pin') return pinSelftest(req, res);
   if (probe === 'health') return health(req, res);
+  if (probe === 'status') return status(req, res);
   return res.status(400).json({ ok: false, error: 'Unknown probe' });
 }
