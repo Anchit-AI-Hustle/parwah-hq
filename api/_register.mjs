@@ -57,6 +57,9 @@ export const REGISTER_MAX = { title: 120, label: 40, identifier: 60, where: 1000
 // - NOMINEES_ONLY:  only the people named in designated_recipients.
 // - IMMEDIATE:      the whole family.
 // - EMERGENCY_ONLY: the family, only while this person has an SOS open.
+//                   Also, while the family's "What needs doing" list for this
+//                   person is active: the two who started it, and the nominee
+//                   the entry names (afterlossOpens in _afterloss.mjs).
 // Whoever wrote it, and the person it is about, can always see it: an
 // entry its own author cannot read back looks like it was lost.
 export const UNLOCK_POLICIES = ['IMMEDIATE', 'EMERGENCY_ONLY', 'NOMINEES_ONLY', 'ONLY_ME'];

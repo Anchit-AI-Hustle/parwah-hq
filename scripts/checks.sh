@@ -62,6 +62,11 @@ node site/tests/carepreptest.mjs
 # password, PIN or card number is saved. _register.mjs imports only
 # _money.mjs, which imports nothing, so this runs before npm install too.
 node site/tests/famregistertest.mjs
+# "What needs doing": the checklist for when someone passes away. The nine
+# first things, the wording for every register kind, the second adult, and
+# that no step is made for an entry the viewer may not see. _afterloss.mjs
+# imports nothing, so this runs before npm install too.
+node site/tests/afterlosstest.mjs
 # Quiet day, ask family first, the life certificate, the call rota: when a
 # missed check-in tells the family, the November window, and an
 # acknowledgement that is never an Aadhaar number. _carerules.mjs imports

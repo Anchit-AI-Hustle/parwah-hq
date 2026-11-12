@@ -1352,6 +1352,30 @@ h1,h2,h3,.appname{letter-spacing:-.02em}
 .frfind{display:flex;gap:var(--space-8);flex-wrap:wrap;margin-bottom:var(--space-8)}
 .frfind input{flex:2 1 160px;min-width:0}
 .frfind select{flex:1 1 120px;min-width:0}
+/* "What needs doing" (api/_afterlossapi.mjs): the checklist for when someone
+   passes away. Calm on purpose: quiet links to reach it, no alert colours,
+   and "done" is the status green, never a vibe colour. */
+.alwrap{margin-top:var(--space-16)}
+.alnote{font-size:var(--fs-14);color:var(--ink-soft);margin:0 0 var(--space-8)}
+.alnote .linkbtn,.alpp .linkbtn,.alline .linkbtn{margin-top:0}
+.alpp{margin:0 0 var(--space-16)}
+.card p.alsorry{font-size:var(--fs-16);color:var(--ink);margin:0}
+.alhead{font-family:var(--disp);font-size:var(--fs-16);color:var(--ink);margin:var(--space-20) 0 var(--space-8)}
+.alprog{font-size:var(--fs-14);font-weight:700;color:var(--ink);margin:var(--space-16) 0 var(--space-8)}
+.card p.alprog{color:var(--ink)}
+.albar i{background:var(--ok)}
+.alline{font-size:var(--fs-14);color:var(--ink-soft);margin:var(--space-12) 0 0}
+.alstep{background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-4) var(--space-16) var(--space-12);box-shadow:var(--sh-1)}
+.altick{display:flex;align-items:flex-start;gap:var(--space-12);min-height:var(--tap-min);margin:0;padding:var(--space-8) 0 0;cursor:pointer}
+.altick input{flex:none;width:var(--space-24);height:var(--space-24);margin:var(--space-2) 0 0;accent-color:var(--ok)}
+.altick b{display:block;font-size:var(--fs-16);font-weight:700;color:var(--ink);overflow-wrap:anywhere}
+.altick small{display:block;font-weight:400;font-size:var(--fs-14);color:var(--ink-soft);margin-top:var(--space-2);overflow-wrap:anywhere}
+.alstep.done .altick b{color:var(--ink-soft);text-decoration:line-through}
+.card p.almeta,.almeta{font-size:var(--fs-12);color:var(--ink-soft);margin:var(--space-4) 0 0;overflow-wrap:anywhere}
+.card p.alwhy,.alwhy{font-size:var(--fs-14);font-weight:600;color:var(--ink);margin:var(--space-8) 0 0}
+.alacts{display:flex;gap:var(--space-8);flex-wrap:wrap;align-items:center;margin-top:var(--space-8)}
+.alacts select{flex:1 1 100%;min-width:0;min-height:var(--tap-min);font-size:var(--fs-14)}
+.alacts .cbtn{min-height:var(--tap-min)}
 .senior .frhead .txt b{font-size:var(--fs-18)}
 .senior .frbody dd,.senior .frlock{font-size:var(--fs-16)}
 /* ---- Motion: anyone who asked their phone for less motion gets none,
@@ -2467,6 +2491,9 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       <button data-sec="pay">💳 Payments</button>
       <button data-sec="locator">📒 Family register</button>
     </div>
+    <!-- "What needs doing" (api/_afterlossapi.mjs): one quiet line when a
+         list is waiting for this person or is open. Nothing otherwise. -->
+    <div id="al-top" hidden></div>
 
     <div class="subsec" data-sec="docs">
       <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg></span><span><b>Family vault</b><small>Aadhaar, PAN, passport, licence, health and birth papers - each one shared with exactly who you choose</small></span></div>
@@ -2681,7 +2708,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
           <label><input type="radio" name="fr-who" value="ONLY_ME"><span><b>Only me</b><small>Nobody else knows it is here.</small></span></label>
           <label><input type="radio" name="fr-who" value="NOMINEES_ONLY"><span><b>People I choose</b><small>Only the family members you tick.</small></span></label>
           <label><input type="radio" name="fr-who" value="IMMEDIATE" checked><span><b>Whole family</b><small>Everyone in this family on Parwah.</small></span></label>
-          <label><input type="radio" name="fr-who" value="EMERGENCY_ONLY"><span><b>Only in an emergency</b><small>The family, only while an SOS is on for the person it belongs to.</small></span></label>
+          <label><input type="radio" name="fr-who" value="EMERGENCY_ONLY"><span><b>Only in an emergency</b><small>Opens during an emergency, or when the family starts 'What needs doing' for this person.</small></span></label>
         </fieldset>
         <div id="fr-people" hidden>
           <p class="hint" id="fr-people-say">Tick who can see it.</p>
@@ -2691,6 +2718,21 @@ body.senior .mbcard p{font-size:var(--fs-16)}
         <button type="button" class="go" id="btn-add-locator" style="margin-top:var(--space-16);min-height:48px">Save to the register</button>
         <button type="button" class="linkbtn" id="fr-cancel" hidden style="margin-top:var(--space-8);min-height:var(--tap-min)">Cancel</button>
         <p class="hint">Parwah never keeps a card number, CVV, OTP, PIN or password here. Whoever it belongs to can see who has opened it.</p>
+      </div>
+
+      <!-- WHEN SOMEONE PASSES AWAY: a list drawn from the register. Reached
+           by a quiet link, never a bright button. Who sees which entry is
+           still the register's own rule (api/_register.mjs). -->
+      <div class="alwrap" id="al-wrap">
+        <button type="button" class="linkbtn" id="al-open" aria-expanded="false" aria-controls="al-panel">When someone passes away: what needs doing</button>
+        <div class="card" id="al-panel" hidden>
+          <h3 id="al-head">What needs doing</h3>
+          <p class="alsorry" id="al-sorry">We are sorry. This list is here so nothing is forgotten.</p>
+          <p class="hint" id="al-legal">This is a list to help you remember, not legal advice. Rules differ by bank and state.</p>
+          <label for="al-person">Who is this list for</label>
+          <select id="al-person"><option value="">Choose a person</option></select>
+          <div id="al-body"></div>
+        </div>
       </div>
     </div>
   </section>
@@ -2854,6 +2896,8 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     </div>
     <div class="card"><h3>💡 Useful to know</h3><div class="feed" id="pp-useful"></div>
       <p class="hint" style="margin-top:var(--space-12)">🟡 means it is due a re-check: nothing here is assumed current.</p></div>
+    <!-- "What needs doing" (api/_afterlossapi.mjs): a quiet link, last on the page. -->
+    <p class="alpp"><button type="button" class="linkbtn" id="al-pp-link" hidden>When someone passes away: what needs doing</button></p>
   </section>
 
   <!-- THE DAY - muhurat for where you live, and the twelve rashis -->
@@ -4315,7 +4359,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var API = { notes: '/api/book?area=notes', circle: '/api/circle', events: '/api/events', care: '/api/care', ekta: '/api/ekta', chats: '/api/chats', games: '/api/games', plans: '/api/plans', auth: '/api/auth', book: '/api/book', vault: '/api/book?area=vault', pay: '/api/book?area=pay', push: '/api/settings?area=push', keys: '/api/settings?area=keys', coins: '/api/settings?area=coins', plan: '/api/settings?area=plan', day: '/api/settings?area=day', pin: '/api/settings?area=pin', location: '/api/settings?area=location', refill: '/api/care?area=refill', bills: '/api/care?area=bills', tasks: '/api/care?area=tasks', biomarkers: '/api/book?area=biomarkers', preauth: '/api/book?area=preauth', locator: '/api/book?area=locator', audit: '/api/book?area=audit' };
+  var API = { notes: '/api/book?area=notes', circle: '/api/circle', events: '/api/events', care: '/api/care', ekta: '/api/ekta', chats: '/api/chats', games: '/api/games', plans: '/api/plans', auth: '/api/auth', book: '/api/book', vault: '/api/book?area=vault', pay: '/api/book?area=pay', push: '/api/settings?area=push', keys: '/api/settings?area=keys', coins: '/api/settings?area=coins', plan: '/api/settings?area=plan', day: '/api/settings?area=day', pin: '/api/settings?area=pin', location: '/api/settings?area=location', refill: '/api/care?area=refill', bills: '/api/care?area=bills', tasks: '/api/care?area=tasks', biomarkers: '/api/book?area=biomarkers', preauth: '/api/book?area=preauth', locator: '/api/book?area=locator', afterloss: '/api/book?area=afterloss', audit: '/api/book?area=audit' };
   var TABS = ['home','people','person','memory','vault','care','day','chat','ekta','profile','fun','notifs'];
   var state = null;
   var pollTimer = null, toastTimer = null;
@@ -4514,7 +4558,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     afterPaint(function(){
       if (curTab !== t) return;   // they moved on before it ran
       if (t === 'fun') { refreshFun(); boardSync(); }
-      if (t === 'vault') refreshVault();
+      if (t === 'vault') { refreshVault(); afterlossLists(); }
       if (t === 'day' || (t === 'home' && !dayData)) refreshDay();   // Today's Muhurat widget shows the period running now
       if (t === 'notifs') { renderNotifs(); markSeen(); }
     });
@@ -6199,6 +6243,245 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     }).catch(function(){ btn.disabled = false; frErr('No connection. Try again in a moment.'); });
   });
 
+  // ---------- "What needs doing": the checklist for when someone passes away ----------
+  // The server (api/_afterlossapi.mjs) decides everything: who may start it,
+  // that a second adult must agree, and which steps this person may see.
+  // Starting it never changes who can see a register entry, and this screen
+  // has no rule of its own: it draws only the steps it is sent.
+  var alOpen = false, alPerson = '', alView = null, alSt = 'idle', alMsg = '', alLists = [], alWhy = {}, alAskPick = '', alTimer = null, alSeq = 0;
+  function afterlossUrl(extra){ return API.afterloss + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + (extra || ''); }
+  function afterlossFillPeople(){
+    var sel = $('al-person');
+    // Everyone but me. I am on the list only if the family started one for me.
+    var forMe = alLists.some(function(l){ return l.person_id === state.memberId; });
+    var list = (membersCache || []).filter(function(m){ return m.id !== state.memberId || forMe; });
+    sel.innerHTML = '<option value="">Choose a person</option>' + list.map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(frName(m)) + '</option>'; }).join('');
+    sel.value = alPerson; if (sel.value !== alPerson) alPerson = '';
+  }
+  // One quiet line at the top of the Vault when a list waits for me or is open.
+  function afterlossTop(){
+    var lines = alLists.map(function(l){
+      var who = esc(l.person_name || 'someone in the family'), say = '';
+      if (l.status === 'pending' && l.can_confirm) say = esc(l.started_by_name || 'Someone in the family') + " asks you to confirm 'What needs doing' for " + who + '.';
+      else if (l.status === 'pending' && l.started_by === state.memberId) say = 'Waiting for ' + esc(l.ask_name || 'a second adult') + " to confirm 'What needs doing' for " + who + '.';
+      else if (l.status === 'active') say = "'What needs doing' is open for " + who + '.';
+      return say ? '<p class="alnote">' + say + ' <button type="button" class="linkbtn" data-algoto="' + esc(l.person_id) + '">Open the list</button></p>' : '';
+    }).join('');
+    $('al-top').innerHTML = lines; $('al-top').hidden = !lines;
+  }
+  function afterlossLists(){
+    if (!state) return;
+    apiGet(afterlossUrl('')).then(function(j){
+      if (!j.ok) return;
+      alLists = j.lists || [];
+      afterlossTop();
+      if (alOpen) afterlossFillPeople();
+    }).catch(function(){});
+  }
+  function afterlossPoll(){
+    if (document.hidden || !alOpen || !alPerson || curTab !== 'vault' || $('al-wrap').closest('.subsec').hidden || !$('asksheet').hidden) return;
+    afterlossLoad(true);
+    // The line at the top of the Vault follows too: waiting, open, or gone.
+    afterlossLists();
+  }
+  function afterlossShow(on){
+    alOpen = !!on;
+    $('al-panel').hidden = !alOpen;
+    $('al-open').setAttribute('aria-expanded', alOpen ? 'true' : 'false');
+    if (!alOpen) return;
+    afterlossFillPeople();
+    if (!alTimer) alTimer = setInterval(afterlossPoll, 10000);
+    afterlossLoad(false);
+    afterlossLists();
+  }
+  // From a person's page, or from the line at the top of the Vault.
+  function afterlossGo(id){
+    if (curTab !== 'vault') switchTab('vault');
+    setSec('vault', 'locator');
+    alPerson = id || alPerson; alWhy = {}; alView = null;
+    afterlossShow(true);
+    try { $('al-panel').scrollIntoView({ block: 'start' }); $('al-person').focus({ preventScroll: true }); } catch (e) {}
+  }
+  function afterlossPersonLink(id){
+    var b = $('al-pp-link');
+    b.hidden = !state || id === state.memberId;
+    b.setAttribute('data-alfor', id);
+  }
+  function afterlossLoad(quiet){
+    if (!state || !alOpen) return;
+    if (!alPerson) { alView = null; alSt = 'idle'; afterlossRender(); return; }
+    var seq = ++alSeq;
+    if (!quiet || !alView) { alSt = 'loading'; afterlossRender(); }
+    apiGet(afterlossUrl('&person=' + encodeURIComponent(alPerson))).then(function(j){
+      if (seq !== alSeq) return;
+      if (!j.ok) { if (quiet && alView) return; alSt = 'error'; alMsg = humanFail(j.error, 'Try again in a moment.'); alView = null; }
+      else { alSt = 'ok'; alView = j; }
+      afterlossRender();
+    }).catch(function(){
+      if (seq !== alSeq || (quiet && alView)) return;
+      alSt = 'offline'; alView = null; afterlossRender();
+    });
+  }
+  function afterlossStepHtml(s, live, people){
+    var meta = [], key = esc(s.key);
+    if (s.done) meta.push('Done' + (s.done_by_name ? ' by ' + esc(s.done_by_name) : ''));
+    if (s.assigned_to) meta.push((s.assigned_to === state.memberId ? 'You are' : esc(s.assigned_name || 'Someone in the family') + ' is') + ' doing this');
+    if (s.only_you) meta.push('Only you can see this step');
+    var h = '<div class="alstep' + (s.done ? ' done' : '') + '" data-alkey="' + key + '">' +
+      '<label class="altick"><input type="checkbox" data-altick="' + key + '"' + (s.done ? ' checked' : '') + (live ? '' : ' disabled') + '>' +
+      '<span><b>' + esc(s.title) + '</b>' + (s.how ? '<small>' + esc(s.how) + '</small>' : '') + '</span></label>';
+    if (meta.length) h += '<p class="almeta" data-almeta="1">' + meta.join(' · ') + '</p>';
+    if (s.note) h += '<p class="almeta" data-alnotetext="1">Note' + (s.note_by_name ? ' from ' + esc(s.note_by_name) : '') + ': ' + esc(s.note) + '</p>';
+    if (alWhy[s.key]) h += '<p class="alwhy" role="alert">' + esc(alWhy[s.key]) + '</p>';
+    if (live) {
+      h += '<div class="alacts"><select data-alassign="' + key + '" aria-label="Who is doing this: ' + esc(s.title) + '"><option value="">Nobody is doing this yet</option>' +
+        people.map(function(m){ return '<option value="' + esc(m.id) + '"' + (m.id === s.assigned_to ? ' selected' : '') + '>' + esc(frName(m)) + '</option>'; }).join('') + '</select>' +
+        '<button type="button" class="cbtn ghost" data-alnote="' + key + '">' + (s.note ? 'Change the note' : 'Add a note') + '</button>' +
+        (s.note ? '<button type="button" class="cbtn no" data-alnoteclear="' + key + '">Remove the note</button>' : '') + '</div>';
+    }
+    return h + '</div>';
+  }
+  function afterlossRender(){
+    var box = $('al-body'), v = alView;
+    // A redraw must not take the keyboard away from whoever is using it.
+    var a = document.activeElement, keep = null;
+    if (a && box.contains(a)) ['data-altick', 'data-alassign', 'data-alnote', 'data-alnoteclear'].forEach(function(n){ if (a.hasAttribute(n)) keep = '[' + n + '="' + a.getAttribute(n) + '"]'; });
+    var why = alWhy._ ? '<p class="alwhy" role="alert">' + esc(alWhy._) + '</p>' : '';
+    if (!alPerson) {
+      box.innerHTML = '<div class="ev">Choose a person above.<small>This list is for when someone in the family has passed away. Nothing starts until two adults agree.</small></div>';
+      return;
+    }
+    if (alSt === 'loading') { box.innerHTML = '<div class="ev" role="status">Loading…</div>'; return; }
+    if (alSt === 'error' || alSt === 'offline') {
+      box.innerHTML = '<div class="ev" role="alert">' + (alSt === 'offline'
+        ? (navigator.onLine === false ? 'You are offline. The list will load when the internet is back.' : 'No connection. Try again in a moment.')
+        : 'Could not load this. ' + esc(alMsg)) +
+        '<div class="fracts"><button type="button" class="cbtn ghost" data-alretry="1">Try again</button></div></div>';
+      return;
+    }
+    if (!v) { box.innerHTML = ''; return; }
+    var who = esc(v.person_name || 'this person'), l = v.list, h = '', mine = v.person_id === state.memberId;
+    if (!l) {
+      if (mine) h = '<div class="ev">This list is started by the family, for someone else.</div>';
+      else if (!v.start || !v.start.can_start) h = '<div class="ev">Nothing has been started for ' + who + '.<small>Only an adult in the family who is on Parwah can start this.</small></div>';
+      else {
+        var adults = v.start.adults || [];
+        if (!adults.some(function(m){ return m.id === alAskPick; })) alAskPick = adults[0] ? adults[0].id : '';
+        h = '<div class="ev">Nothing has been started for ' + who + '.<small>Start this only when ' + who + ' has passed away.</small></div>';
+        if (v.start.needs_second) {
+          h += '<label for="al-ask">Who should confirm with you</label><select id="al-ask">' +
+            adults.map(function(m){ return '<option value="' + esc(m.id) + '"' + (m.id === alAskPick ? ' selected' : '') + '>' + esc(m.name) + '</option>'; }).join('') + '</select>' +
+            '<p class="hint">Two people start this together, so it is never started by mistake. The family is told only after the second person agrees.</p>';
+        } else {
+          h += '<p class="hint">You are the only adult on Parwah in this family, so it starts when you say yes.</p>';
+        }
+        h += '<p class="hint">Starting it does not change who can see any entry in the register.</p>' + why +
+          '<div class="alacts"><button type="button" class="cbtn ghost" data-alstart="1">' + (v.start.needs_second ? 'Ask them to confirm' : 'Start the list') + '</button></div>';
+      }
+    } else if (l.status === 'pending') {
+      var asker = l.started_by === state.memberId ? 'You' : esc(l.started_by_name || 'Someone in the family');
+      var asked = l.can_confirm ? 'you' : esc(l.ask_name || 'a second adult');
+      h = '<div class="ev" data-alpending="1">' + asker + ' asked ' + asked + ' to confirm this list for ' + who + '.<small>It starts only if ' + asked + ' agree' + (l.can_confirm ? '' : 's') + '. Nothing is open yet.</small></div>' + why;
+      if (l.can_confirm) {
+        h += '<p class="hint">Say yes only if ' + who + ' has passed away. The family is told when you agree.</p>' +
+          '<div class="alacts"><button type="button" class="cbtn ghost" data-alconfirm="1">Yes, start the list</button>' +
+          '<button type="button" class="cbtn no" data-alcancel="1">Not now</button></div>';
+      } else if (l.can_cancel) {
+        h += '<div class="alacts"><button type="button" class="cbtn no" data-alcancel="1">Take the request back</button></div>';
+      }
+    } else {
+      var live = l.status === 'active', steps = v.steps || [];
+      var people = (membersCache || []).filter(function(m){ return onApp(m) && m.id !== v.person_id; });
+      var first = steps.filter(function(s){ return s.part === 'first'; }), reg = steps.filter(function(s){ return s.part !== 'first'; });
+      if (!live) h += '<div class="ev" data-alclosed="1">This list is closed.<small>What was ticked is kept. An adult in the family can open it again.</small></div>';
+      else if (l.confirmed_by_name) h += '<p class="almeta">Started by ' + esc(l.started_by_name || 'someone in the family') + ' and ' + esc(l.confirmed_by_name) + '.</p>';
+      h += '<p class="alprog" id="al-progress" role="status">' + esc((v.progress && v.progress.text) || '') + '</p><div class="frbar albar"><i></i></div>';
+      if (mine) h += '<p class="alline">This list was started for you. If that was a mistake, you can close it below.</p>';
+      else if (v.only_mine) {
+        h += '<p class="alline" id="al-onlyme">You hold ' + v.only_mine + (v.only_mine === 1 ? ' entry' : ' entries') + ' about ' + who +
+          ' that nobody else can see. You may choose to share ' + (v.only_mine === 1 ? 'it' : 'them') + ' now. ' +
+          '<button type="button" class="linkbtn" data-alreg="1">Open the register</button></p>';
+      }
+      h += why + '<h4 class="alhead">First things</h4><div class="feed" id="al-first">' + first.map(function(s){ return afterlossStepHtml(s, live, people); }).join('') + '</div>' +
+        '<h4 class="alhead">From the register</h4>' + (reg.length
+          ? '<div class="feed" id="al-reg">' + reg.map(function(s){ return afterlossStepHtml(s, live, people); }).join('') + '</div>'
+          : '<div class="ev" id="al-reg">Nothing in the register about ' + who + ' is shared with you.<small>Each person sees only the entries they could already see in the register.</small></div>');
+      if (l.can_close) h += '<button type="button" class="linkbtn" data-alclose="1">Close this list</button>';
+      if (l.can_reopen) h += '<button type="button" class="linkbtn" data-alreopen="1">Open this list again</button>';
+    }
+    box.innerHTML = h;
+    var bar = box.querySelector('.albar i');
+    if (bar && v.progress) bar.style.width = (v.progress.total ? Math.round(v.progress.done / v.progress.total * 100) : 0) + '%';
+    if (keep) { try { var el = box.querySelector(keep); if (el) el.focus({ preventScroll: true }); } catch (e) {} }
+  }
+  // One change to the list. A refusal is said under the step it was about,
+  // or under the list, in the server's own plain words.
+  function afterlossPost(action, body, key){
+    var k = key || '_';
+    return post(API.afterloss, Object.assign({ code: state.code, memberId: state.memberId, action: action }, body || {})).then(function(j){
+      if (j.ok) delete alWhy[k]; else alWhy[k] = humanFail(j.error, 'That did not work. Try again in a moment.');
+      afterlossLoad(true); afterlossLists();
+      return j;
+    }).catch(function(){ alWhy[k] = 'No connection. Try again in a moment.'; afterlossRender(); return null; });
+  }
+  function afterlossStep(key){ return ((alView && alView.steps) || []).filter(function(s){ return s.key === key; })[0] || null; }
+  $('al-open').addEventListener('click', function(){ afterlossShow(!alOpen); });
+  $('al-person').addEventListener('change', function(){ alPerson = this.value; alWhy = {}; alView = null; afterlossLoad(false); });
+  $('al-pp-link').addEventListener('click', function(){ afterlossGo(this.getAttribute('data-alfor')); });
+  $('al-top').addEventListener('click', function(e){ var b = e.target.closest('[data-algoto]'); if (b) afterlossGo(b.getAttribute('data-algoto')); });
+  $('al-body').addEventListener('change', function(e){
+    var t = e.target, l = alView && alView.list;
+    if (t.id === 'al-ask') { alAskPick = t.value; return; }
+    if (!l) return;
+    if (t.hasAttribute('data-altick')) {
+      var key = t.getAttribute('data-altick');
+      afterlossPost('afterloss_tick', { listId: l.id, key: key, done: t.checked }, key);
+    } else if (t.hasAttribute('data-alassign')) {
+      afterlossPost('afterloss_assign', { listId: l.id, key: t.getAttribute('data-alassign'), assignId: t.value || null }, t.getAttribute('data-alassign'));
+    }
+  });
+  $('al-body').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    var v = alView, l = v && v.list, who = (v && v.person_name) || 'this person';
+    if (b.hasAttribute('data-alretry')) { afterlossLoad(false); return; }
+    if (!v) return;
+    if (b.hasAttribute('data-alstart')) {
+      var needs = v.start && v.start.needs_second, ask = (v.start.adults || []).filter(function(m){ return m.id === alAskPick; })[0];
+      if (needs && !ask) { alWhy._ = 'Choose a second adult in the family to confirm.'; afterlossRender(); return; }
+      askSheet("Start 'What needs doing' for " + who + '?', needs
+        ? ask.name + ' will be asked to confirm. The family is told only after that.'
+        : 'The list starts now, and the family is told.', needs ? 'Yes, ask ' + ask.name : 'Yes, start it', 'Not now').then(function(yes){
+          if (yes) afterlossPost('afterloss_start', { personId: v.person_id, askId: needs ? ask.id : null });
+        });
+      return;
+    }
+    if (!l) return;
+    if (b.hasAttribute('data-alconfirm')) {
+      askSheet("Start 'What needs doing' for " + who + '?', 'Say yes only if ' + who + ' has passed away. The family will be told.', 'Yes, start it', 'Not now').then(function(yes){
+        if (yes) afterlossPost('afterloss_confirm', { listId: l.id });
+      });
+    } else if (b.hasAttribute('data-alcancel')) {
+      afterlossPost('afterloss_cancel', { listId: l.id });
+    } else if (b.hasAttribute('data-alclose')) {
+      askSheet('Close this list?', 'What was ticked is kept, and it can be opened again. Entries marked "Only in an emergency" close again.', 'Yes, close it', 'Keep it open').then(function(yes){
+        if (yes) afterlossPost('afterloss_close', { listId: l.id });
+      });
+    } else if (b.hasAttribute('data-alreopen')) {
+      afterlossPost('afterloss_reopen', { listId: l.id });
+    } else if (b.hasAttribute('data-alnote')) {
+      var nk = b.getAttribute('data-alnote');
+      askText('A note for this step', 'Keep it short. Never a password, a PIN or a card number.', 'Save the note', 'Cancel').then(function(text){
+        if (text) afterlossPost('afterloss_note', { listId: l.id, key: nk, note: text }, nk);
+      });
+    } else if (b.hasAttribute('data-alnoteclear')) {
+      afterlossPost('afterloss_note', { listId: l.id, key: b.getAttribute('data-alnoteclear'), note: '' }, b.getAttribute('data-alnoteclear'));
+    } else if (b.hasAttribute('data-alreg')) {
+      // Their own entries, in the register above, where "Change who sees it" lives.
+      frPersonPick = v.person_id; frQuery = ''; $('fr-search').value = ''; $('fr-person').value = frPersonPick; renderLocators();
+      try { $('locator-feed').scrollIntoView({ block: 'start' }); } catch (x) {}
+    }
+  });
+
   // ---------- Biomarkers & SVG Trendlines ----------
   var biomarkersCache = [];
   var selectedBiomarkerType = 'HBA1C';
@@ -6546,7 +6829,12 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     add_asset_locator: 'added where something is kept',
     edit_asset_locator: 'changed an entry in the family register',
     share_asset_locator: 'changed who can see an entry in the family register',
-    remove_asset_locator: 'removed an entry from the family register'
+    remove_asset_locator: 'removed an entry from the family register',
+    afterloss_start: "asked to start 'What needs doing'",
+    afterloss_confirm: "confirmed 'What needs doing'",
+    afterloss_cancel: "took back a request to start 'What needs doing'",
+    afterloss_close: "closed 'What needs doing'",
+    afterloss_reopen: "opened 'What needs doing' again"
   };
   var audFor = null, audEvents = [];
   function openAuditDrawer(pId){
@@ -8158,6 +8446,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     switchTab('person');
     bondPersonRender(id);
     pasandPersonRender(id);
+    afterlossPersonLink(id);
     loadBiomarkers(id);
     ccPerson(id);
     loadLadder(id);

@@ -48,7 +48,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | Renewals and due dates with reminders | Live | renewals |
 | Shared notes and lists; private notes | Live | notes |
 | Useful contacts (plumber, doctor), shared or private | Live | family book |
-| What to do when someone passes away: a checklist built from the register | Next | tranche 2 |
+| What to do when someone passes away: a checklist built from the register, started by two adults, never legal advice | Live | "What needs doing" (`api/_afterlossapi.mjs`), under the Family register |
 | A will or nomination reminder, never legal advice | Later | |
 
 ### D. Who is who (the family itself)
@@ -122,7 +122,7 @@ whose name starts with an underscore, reached through an existing route by an
 
 | Route | Areas behind it |
 |---|---|
-| `/api/book` | health and contacts, vault, pay, notes, memory bond, biomarkers, pre-auth, **register (locator)**, audit, admission |
+| `/api/book` | health and contacts, vault, pay, notes, memory bond, biomarkers, pre-auth, **register (locator)**, audit, admission, **what needs doing (afterloss)** |
 | `/api/care` | reminders, requests, refill, bills, sibling tasks, doses, ladders, expenses, staff, renewals |
 | `/api/plans` | plans, visits, shared cards and polls, **watch together**, **cost split** |
 | `/api/games` | games, **pasand** |
@@ -150,7 +150,7 @@ whose name starts with an underscore, reached through an existing route by an
 | Only me | the owner | notes, register, interests |
 | People I choose | the owner and named members | vault, family book, register, interests, recommendations |
 | Whole family | everyone in the circle | most things, by default |
-| Only in an emergency | the circle, while that person has an open SOS | register |
+| Only in an emergency | the circle, while that person has an open SOS; and, while the family's "What needs doing" list for that person is open, the two adults who started it and the nominee the entry names | register |
 | Sealed until the day | everyone but the person it is for | shared cards |
 
 The person an entry is about, and whoever wrote it, can always read it back.
@@ -202,8 +202,12 @@ Honest limits:
   Rishtedaar list. Nothing else crosses over.
 - Family facts: gotra, native village, kuldevta, customs, with an audience.
 - Days of remembrance on a person, with a gentle reminder to the family.
-- "When someone passes away": a checklist drawn from the register (which
-  bank, which policy, who is the nominee), shown only to the people chosen.
+- ~~"When someone passes away": a checklist drawn from the register (which
+  bank, which policy, who is the nominee), shown only to the people chosen.~~
+  Live as "What needs doing". It has no viewing rule of its own: every step
+  from the register goes through `registerRowFor`, and starting a list never
+  changes who can see an entry. Tables: `afterloss_lists`, `afterloss_steps`.
+- Watch together: a plan made from a recommendation in one tap.
 
 **Tranche 3: children and the home**
 - A child's page: school, fees, exams, pick-up duty, vaccines.

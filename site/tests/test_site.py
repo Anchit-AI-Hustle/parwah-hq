@@ -3185,7 +3185,9 @@ _fr_static = [i for i in _static_ids if i.startswith("fr-")]
 check(f"register: its new ids all start with fr- and none is the first-run card's ({len(_fr_static)})",
       len(_fr_static) >= 20 and all(_fr_static.count(i) == 1 for i in _fr_static))
 _testdb_fr = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
-check("register: the unit test is in the gate, and both database tests are in test:db, in order",
+# Not "last": a check that needs its test to be the last entry breaks the
+# moment the next feature appends its own, which is what happened here.
+check("register: the unit test is in the gate, and both database tests run in test:db, one after the other",
       "node site/tests/famregistertest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
       and "site/tests/db/famregister.dbtest.mjs && node --import ./site/tests/db/register.mjs site/tests/db/famregister.e2e.dbtest.mjs" in _testdb_fr
       and (REPO / "site/tests/db/famregister.dbtest.mjs").exists() and (REPO / "site/tests/db/famregister.e2e.dbtest.mjs").exists())
@@ -3269,6 +3271,100 @@ _testdb_tg = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["s
 check("together and split: the sums are tested in the gate, and the database and browser tests are in test:db",
       "node site/tests/splitmathtest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
       and all(("site/tests/db/" + f) in _testdb_tg and (REPO / "site/tests/db" / f).exists() for f in ("plantogether.dbtest.mjs", "plantogether.e2e.dbtest.mjs")))
+# ---------- 10za. "What needs doing": the checklist for when someone passes away ----------
+# A list drawn from the family register. Behaviour is proved against a real
+# database in afterloss.dbtest and in real browsers in afterloss.e2e; these
+# keep the three promises in the source: one viewing rule, the words "not
+# legal advice", and that starting a list never changes who sees an entry.
+_al = (API_DIR / "_afterloss.mjs").read_text(encoding="utf-8")
+_al_api = (API_DIR / "_afterlossapi.mjs").read_text(encoding="utf-8")
+_al_app = _fr_app
+_al_js = _al_app[_al_app.index('// ---------- "What needs doing"'):_al_app.index("// ---------- Biomarkers & SVG Trendlines")]
+_al_html = _al_app[_al_app.index('<div class="alwrap" id="al-wrap">'):_al_app.index("<!-- ONE PERSON - the sections")]
+_al_css = "\n".join(l for l in _al_app.splitlines() if l.startswith((".al", ".card p.al")))
+_al_legal = "This is a list to help you remember, not legal advice. Rules differ by bank and state."
+_al_sorry = "We are sorry. This list is here so nothing is forgotten."
+check("afterloss: its rules import nothing, and take the register's viewing rule as an argument",
+      not re.search(r"^\s*import\s", _al, re.M) and "rowFor(row, viewerId" in _al
+      and "if (typeof rowFor !== 'function') throw" in _al)
+check("afterloss: the single viewing rule is reused: registerRowFor, never a second rule",
+      "import { registerRowFor, registerLogsView, registerSecretRisk } from './_register.mjs';" in _al_api
+      and "afterlossSteps({ rows, viewerId: me.id, rowFor: registerRowFor, opens, marks })" in _al_api
+      and "registerRowFor(row, m.id, opens(row, m.id))" in _al_api
+      and not re.search(r"unlock_policy|designated_recipients|canViewAssetLocator\s*\(", _al_api)
+      # The rules may label a step the viewer already holds as "only you";
+      # they never compare a policy to decide whether to show one.
+      and not re.search(r"unlock_policy\s*===\s*'(IMMEDIATE|NOMINEES_ONLY|EMERGENCY_ONLY)'|designated_recipients|canView", _al))
+check("afterloss: starting a list never changes who sees an entry: this module never writes to the register",
+      not re.search(r"(update|insert\s+into|delete\s+from)\s+legacy_asset_(locators|views)", _al_api, re.I)
+      and "it never writes to legacy_asset_locators at all" in _al_api
+      and _al_app.count("Starting it does not change who can see any entry in the register.") == 1)
+check("afterloss: an active list is the emergency only for that person and the two who started it; a nominee's name opens nothing",
+      "if (list.status !== 'active' || list.person_id !== row.person_id) return false;" in _al
+      and "if (memberId === list.started_by || memberId === list.confirmed_by) return true;" in _al
+      and "afterlossNominees" not in _al and "a name is not a person" in _al
+      and "inSos.has(row.person_id) || alOpens(row, g.me.id)" in _fr_api
+      and "registerRowFor(row, g.me.id, emergency(row))" in _fr_api and "registerRowFor(r, g.me.id, emergency(r), { details: !brief })" in _fr_api)
+check("afterloss: the register form says what Only in an emergency means now",
+      "<b>Only in an emergency</b><small>Opens during an emergency, or when the family starts 'What needs doing' for this person.</small>" in _al_app)
+check("afterloss: it says once, plainly, that it is not legal advice, and that it is sorry",
+      f"export const AFTERLOSS_LEGAL = '{_al_legal}';" in _al and f"export const AFTERLOSS_SORRY = '{_al_sorry}';" in _al
+      and _al_app.count(_al_legal) == 1 and _al_app.count(_al_sorry) == 1
+      and f'<p class="hint" id="al-legal">{_al_legal}</p>' in _al_html and f'id="al-sorry">{_al_sorry}</p>' in _al_html)
+check("afterloss: two people start it: a second adult is asked, and only they can confirm",
+      "Choose a second adult in the family to confirm. Two people start this together." in _al
+      and "where id = ${list.id} and status = 'pending' and ask_member = ${g.me.id} returning id" in _al_api
+      and "on conflict (circle_id, person_id) do nothing returning id" in _al_api)
+check("afterloss: a tick, an assignment and a note are one statement each, so none undoes another",
+      _al_api.count("on conflict (list_id, step_key) do update set") == 3
+      and "do update set done = excluded.done, done_by = excluded.done_by," in _al_api
+      and "do update set assigned_to = excluded.assigned_to," in _al_api and "do update set note = excluded.note," in _al_api
+      and _al_api.count("from afterloss_lists l where l.id = ${list.id} and l.status = 'active'") == 3)
+check("afterloss: a note is checked for a card number, CVV, OTP, PIN or password",
+      "afterlossNote(body.note, [noteRisk, registerSecretRisk])" in _al_api)
+check("afterloss: exactly two pushes, to the adult asked and to the family, and nothing timed",
+      _al_api.count("await pushCircle(") == 3 and "{ only: rule.askId }" in _al_api and _al_api.count("afterlossPush('started'") == 2
+      and _al_api.count("afterlossPush('ask'") == 1 and "runTick" not in _al_api and "setTimeout" not in _al_api and "remind" not in _al_api.lower())
+check("afterloss: it rides behind /api/book as area=afterloss; tables are made through schemaOnce; every request passes requireMember",
+      "if (area === 'afterloss' || (req.body && typeof req.body.action === 'string' && /^afterloss_/.test(req.body.action))) return afterlossApi(req, res);"
+        in (API_DIR / "book.mjs").read_text(encoding="utf-8")
+      and "await schemaOnce(() => afterlossTables(sql));" in _al_api and _al_api.count("await requireMember(sql,") == 2
+      and "create table if not exists afterloss_lists" in _al_api and "create table if not exists afterloss_steps" in _al_api
+      and "afterloss: '/api/book?area=afterloss'" in _al_app)
+check("afterloss: the ways in are quiet text links, never a bright button, and nothing wears an alert colour",
+      '<button type="button" class="linkbtn" id="al-open" aria-expanded="false" aria-controls="al-panel">When someone passes away: what needs doing</button>' in _al_html
+      and '<button type="button" class="linkbtn" id="al-pp-link" hidden>When someone passes away: what needs doing</button>' in _al_app
+      and 'class="go"' not in _al_html and 'class="go"' not in _al_js and 'class="cbtn"' not in _al_js and "urgent" not in _al_js
+      and len(_al_css) > 800
+      and not re.search(r"--alert|--sos|--rani|--flame|--sindoor|--marigold|--grad|tint-bad", _al_css)
+      and ".albar i{background:var(--ok)}" in _al_css and "accent-color:var(--ok)" in _al_css)
+check("afterloss: loading, empty, error and offline are each said, and errors go through humanFail",
+      '<div class="ev" role="status">Loading…</div>' in _al_js and "Choose a person above." in _al_js
+      and "You are offline. The list will load when the internet is back." in _al_js and "data-alretry" in _al_js
+      and "humanFail(j.error, 'Try again in a moment.')" in _al_js and "humanFail(j.error, 'That did not work. Try again in a moment.')" in _al_js
+      and not re.search(r"\b(alert|confirm|prompt)\(", _al_js))
+check("afterloss: the writer of an Only me entry is told gently, and offered the register",
+      "that nobody else can see. You may choose to share" in _al_js and 'data-alreg="1">Open the register</button>' in _al_js
+      and "afterlossActiveFor(sql, g.circle.id, row.person_id)" in _fr_api)
+_al_ids = ["al-top", "al-wrap", "al-open", "al-panel", "al-head", "al-sorry", "al-legal", "al-person", "al-body", "al-pp-link"]
+_al_dyn = ["al-ask", "al-first", "al-onlyme", "al-progress", "al-reg"]
+check(f"afterloss: its ids start with al-, each is in the page once, and none is the alarm sheet's ({len(_al_ids)})",
+      all(_static_ids.count(i) == 1 for i in _al_ids)
+      and sorted(set(re.findall(r'\bid="(al-[a-z-]+)"', _al_js))) == _al_dyn
+      and not set(_al_ids + _al_dyn) & {"al-title", "al-sub", "al-done", "al-snooze", "al-close"})
+_al_copy = _al + " " + _al_js + " " + _al_html
+_al_hits = sorted({k for k, pat in BANNED.items() if re.search(pat, _al_copy.lower())})
+_al_dash = [lab for nd, lab in EM_FORMS + EN_FORMS if nd.lower() in (_al + _al_api + _al_js + _al_html).lower()]
+check("afterloss: every word passes the banned-words scan, with no dashes, no promise and no pity",
+      not _al_hits and not _al_dash
+      and not re.search(r"\b(guarantee|will be paid|entitled|legally|by law|tragic|suffer|alas)\b", _al_copy, re.I),
+      ", ".join(_al_hits + _al_dash))
+_testdb_al = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("afterloss: the unit test is in the gate, and both database tests run in test:db",
+      "node site/tests/afterlosstest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and "node --import ./site/tests/db/register.mjs site/tests/db/afterloss.dbtest.mjs" in _testdb_al
+      and "node --import ./site/tests/db/register.mjs site/tests/db/afterloss.e2e.dbtest.mjs" in _testdb_al
+      and (REPO / "site/tests/db/afterloss.dbtest.mjs").exists() and (REPO / "site/tests/db/afterloss.e2e.dbtest.mjs").exists())
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
