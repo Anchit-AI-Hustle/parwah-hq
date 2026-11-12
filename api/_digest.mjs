@@ -240,7 +240,7 @@ async function digestAnthropic({ system, user, maxTokens, timeoutMs }) {
 }
 // Returns { text, model } for a reply that passed the check, otherwise null.
 // It never throws: a failure here is a reason to show (a), not an error.
-async function digestAskModel(facts) {
+async function digestAskModel(facts, names) {
   const sent = facts.slice(0, 8), prompt = digestPrompt(sent);
   const ms = digestSeams.timeoutMs || DG.timeoutMs;
   let timer = null;
@@ -250,7 +250,7 @@ async function digestAskModel(facts) {
       (digestSeams.callModel || digestAnthropic)({ system: prompt.system, user: prompt.user, maxTokens: DG.maxTokens, timeoutMs: ms }),
       late]);
     if (!out || out.refusal) return null;
-    const checked = digestCheck(out.text, sent);
+    const checked = digestCheck(out.text, sent, names);
     return checked.ok ? { text: checked.text, model: String(out.model || 'model').slice(0, 80) } : null;
   } catch (e) { return null; }
   finally { if (timer) clearTimeout(timer); }
@@ -310,7 +310,12 @@ async function digestByModel(sql, circle, me, day, facts, nowMs) {
     returning calls`;
   if (!slot[0]) return null;
   await sql`update digest_daily set model_tried = true where member_id = ${me.id} and day = ${day}::date`;
-  const out = await digestAskModel(facts);
+  // Everyone's name, so the check can refuse a reply that names a person
+  // the facts did not. No list means no model line: fail safe.
+  let names;
+  try { names = (await sql`select name from members where circle_id = ${circle.id}`).map(r => r.name); }
+  catch (e) { return null; }
+  const out = await digestAskModel(facts, names);
   if (!out) return null;
   const up = await sql`update digest_daily set text = ${out.text}, by_model = true, model = ${out.model}
                        where member_id = ${me.id} and day = ${day}::date

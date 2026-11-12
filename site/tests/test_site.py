@@ -3710,7 +3710,7 @@ check("digest: ONE CALL PER MEMBER PER DAY - the row is claimed final once, and 
 check("digest: THE CAP - 12 model calls a circle a day, taken in one statement, counted where the owner can read it",
       "capPerCircle: 12" in _dgr and "create table if not exists digest_usage" in _dg
       and "do update set calls = digest_usage.calls + 1" in _dg_by and "where digest_usage.calls < ${DG.capPerCircle}" in _dg_by
-      and "if (!slot[0]) return null;" in _dg_by and _dg_by.index("if (!slot[0]) return null;") < _dg_by.index("digestAskModel(facts)")
+      and "if (!slot[0]) return null;" in _dg_by and _dg_by.index("if (!slot[0]) return null;") < _dg_by.index("digestAskModel(facts")
       and "set written = written + 1" in _dg_by)
 check("digest: only with the server's own key, only in the evening, never for a quiet day, and no coins are charged",
       "if (!facts.length || !process.env.ANTHROPIC_API_KEY) return null;" in _dg_by and "eveningHour: 18" in _dgr

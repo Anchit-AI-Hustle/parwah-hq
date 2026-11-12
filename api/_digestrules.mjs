@@ -280,7 +280,10 @@ export function digestPrompt(facts) {
 // Is a model's reply safe to show? Returns { ok, text } or { ok: false, why }.
 // The digit rule is a cheap guard against an invented number: every run of
 // digits in the reply must appear, whole, in the facts it was given.
-export function digestCheck(reply, facts) {
+// `names` is everyone in the family. A reply may only name a person the
+// facts it was sent already name: an invented line about anyone else, a
+// remembered person above all, is never shown.
+export function digestCheck(reply, facts, names = []) {
   const text = String(reply == null ? '' : reply).replace(/\s+/g, ' ').trim();
   if (!text) return { ok: false, why: 'empty' };
   if (text.length > DG.maxChars) return { ok: false, why: 'long' };
@@ -289,6 +292,12 @@ export function digestCheck(reply, facts) {
   for (const n of text.match(/\d+/g) || []) if (!have.has(n)) return { ok: false, why: 'number' };
   const j = text.match(new RegExp(DG_JUDGE.source, 'gi')) || [];
   for (const w of j) if (!new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(given)) return { ok: false, why: 'judgement' };
+  for (const n of names || []) {
+    const name = String(n == null ? '' : n).trim();
+    if (name.length < 2) continue;
+    const re = new RegExp('(?<![\\p{L}\\p{N}])' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\p{N}])', 'iu');
+    if (re.test(text) && !re.test(given)) return { ok: false, why: 'name' };
+  }
   if (text.indexOf(String.fromCharCode(8211)) >= 0 || text.indexOf(String.fromCharCode(8212)) >= 0 || /https?:|[*#`]/.test(text)) return { ok: false, why: 'format' };
   return { ok: true, text };
 }

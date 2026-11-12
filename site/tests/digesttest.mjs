@@ -191,6 +191,9 @@ ok('a reply over 700 characters is refused', digestCheck('Papa checked in. '.rep
 ok('an invented number is refused', digestCheck('Papa checked in at 8:10 am and walked 5000 steps.', bf).why === 'number');
 ok('an invented time is refused', digestCheck('Papa checked in at 9:45 am.', bf).why === 'number');
 ok('a number from the list is fine', digestCheck('Papa checked in at 8:10 am.', bf).ok);
+ok('a family name the facts did not give is refused', digestCheck('Papa checked in at 8:10 am. Dadi is resting.', bf, ['Papa', 'Maa', 'Dadi']).why === 'name');
+ok('a name the facts gave is fine, and part of a longer word is not a name', digestCheck('Papa checked in at 8:10 am.', bf, ['Papa', 'Maa', 'Dadi', 'in']).ok
+   && digestCheck('Papa checked in at 8:10 am, dadima style.', bf, ['Dadi']).ok, JSON.stringify(digestCheck('Papa checked in at 8:10 am.', bf, ['Papa', 'Maa', 'Dadi', 'in'])));
 ok('a judgement is refused', digestCheck('Maa forgot her medicines again.', bf).why === 'judgement');
 ok('advice is refused', digestCheck('Maa should see a doctor about her medicines.', bf).why === 'judgement');
 ok('a family word that is in the list is allowed (a plan called "Doctor visit")',
