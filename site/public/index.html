@@ -1077,6 +1077,18 @@ button.pl-opt{cursor:pointer}
 a.pstap,a.bondwide{text-decoration:none}
 .psplat{margin-bottom:var(--space-8)}
 .psplat .seniorchk,.psto .seniorchk{margin:0}
+/* Watch together (tg) and splitting a cost (sp): built from the tokens above. */
+.tgans{display:flex;gap:var(--space-8);flex-wrap:wrap}
+.plan small.tgon{font-weight:700;color:var(--ink)}
+.sptotal{display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-12);font-size:var(--fs-16);margin-top:var(--space-12)}
+.sptotal b{font-family:var(--display);font-size:var(--fs-20)}
+.splist{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-8)}
+.splist li,.spline{display:flex;align-items:center;gap:var(--space-8);flex-wrap:wrap;font-size:var(--fs-14);background:var(--surface-2);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-8) var(--space-12)}
+.splist li > span:first-child,.spline > span:first-child{flex:1;min-width:140px}
+.splist small,.spline small{display:block;color:var(--ink-soft);font-size:var(--fs-12);margin-top:var(--space-2)}
+.spline + .spline{margin-top:var(--space-8)}
+.spstate{font-weight:700;color:var(--ink)}
+.spshare{display:block;margin-top:var(--space-8)}
 .senior .bondtext{font-size:var(--fs-24)}
 .senior .bondline{font-size:var(--fs-20)}
 .senior .bondtoday .crow .txt b{font-size:var(--fs-18)}
@@ -3156,6 +3168,16 @@ body.senior .mbcard p{font-size:var(--fs-16)}
         <button type="button" data-kind="appointment">🩺 Appointment</button>
         <button type="button" data-kind="function">🪔 Function</button>
         <button type="button" data-kind="trip">✈️ Trip</button>
+        <button type="button" data-kind="together">🍿 Watch something together</button>
+      </div>
+      <!-- Watch something together (api/_together.mjs): where it is and one
+           https link, both optional. No account is linked, no password asked. -->
+      <div id="tg-more" hidden>
+        <div class="pickrow">
+          <label class="pick"><span>Where is it?</span><select id="tg-plat" aria-label="Where to watch or listen, optional"></select></label>
+          <label class="pick"><span>Link</span><input type="url" id="tg-link" maxlength="300" inputmode="url" autocomplete="off" placeholder="https://" aria-label="Link, optional, starts with https"></label>
+        </div>
+        <p class="hint">Both are optional. Each person watches on their own screen. Parwah never asks for a password.</p>
       </div>
       <div class="pickrow">
         <label class="pick"><span>Date</span><input type="date" id="p-date" aria-label="Plan date"></label>
@@ -12159,17 +12181,22 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       var whenTxt = fmtDue(pDay(when)) + ', ' + when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       var mine = (p.going || []).indexOf(state.memberId) >= 0;
       var icon = { call: '📹', party: '🎶', meet: '🤗', appointment: '🩺', 'function': '🪔', trip: '✈️' }[p.kind] || '🗓';
+      // Watch or listen together: its own icon, three answers, and the link at the time.
+      var tg = p.kind === 'together';
+      if (tg) icon = togetherIcon(p);
       h += '<div class="plan"><b>' + icon + ' ' + esc(p.title) + '</b>' +
         '<small>' + esc(whenTxt) + ' (your time) · by ' + esc(p.by_name || 'family') +
         (p.place ? ' · ' + esc(p.place) : '') + (p.expected ? ' · ~' + p.expected + ' people' : '') +
-        (p.going_names ? '<br>Going: ' + esc(p.going_names) : '') + '</small>' +
+        (p.going_names ? '<br>Going: ' + esc(p.going_names) : '') + (tg ? togetherWhoHtml(p) : '') + '</small>' +
+        (tg ? togetherExtra(p) : '') +
         '<div class="prow">' +
         (p.room ? '<a class="cbtn" href="' + esc(p.room) + '" target="_blank" rel="noopener">Join room</a>' : '') +
-        '<button class="cbtn ' + (mine ? 'ghost' : '') + '" data-rsvp="' + p.id + '">' + (mine ? 'Going ✔' : 'I\'m in 🙌') + '</button>' +
+        (tg ? togetherAnswersHtml(p) : '<button class="cbtn ' + (mine ? 'ghost' : '') + '" data-rsvp="' + p.id + '">' + (mine ? 'Going ✔' : 'I\'m in 🙌') + '</button>') +
         '<a class="cbtn ghost" href="' + esc(gcalLink(p)) + '" target="_blank" rel="noopener">🗓 Calendar</a>' +
         '<button class="cbtn no" data-pcancel="' + p.id + '">Cancel</button>' +
-        '</div>' + bondPlanExtra(p) + '</div>';
+        '</div>' + bondPlanExtra(p) + splitPlanBtn(p) + '</div>';
     });
+    togetherWatch(plans);
     $('plist').innerHTML = h || (calSel
       ? '<div class="ev">No plans on ' + esc(fmtDue(calSel)) + ' yet - the date is set below, make one 🎈</div>'
       : '<div class="ev">Nothing planned yet - make the first plan below 🎈</div>');
@@ -12199,10 +12226,15 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     if (at < new Date(Date.now() - 5 * 60000)) { fieldErr('p-date', 'That time has already gone - pick a time from now on.'); return; }
     var pc = $('p-count').value;
     if (pc && (!/^\d+$/.test(pc) || +pc < 1 || +pc > 50)) { fieldErr('p-count', 'Write how many people as a number from 1 to 50.'); return; }
-    post(API.plans, { code: state.code, memberId: state.memberId, action: 'create', title: t, kind: planKind, at: at.toISOString(), place: $('p-place').value.trim(), expected: $('p-count').value, tz: homeTz() })
+    // Watch something together: an optional platform and one https link.
+    var tgOn = planKind === 'together', tgLink = tgOn ? $('tg-link').value.trim() : '';
+    if (tgOn && pasandLinkErr(tgLink)) { fieldErr('tg-link', pasandLinkErr(tgLink)); return; }
+    post(API.plans, { code: state.code, memberId: state.memberId, action: 'create', title: t, kind: planKind, at: at.toISOString(), place: $('p-place').value.trim(), expected: $('p-count').value, tz: homeTz(),
+                      platform: tgOn ? $('tg-plat').value : undefined, link: tgOn ? tgLink : undefined })
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not set the plan'); return; }
         $('p-title').value = ''; $('p-place').value = ''; $('p-count').value = ''; foldSync('p-more');
+        $('tg-link').value = ''; $('tg-plat').value = '';
         toast('Plan set - the family can see it 🎉');
         refreshFun();
       })
@@ -12880,7 +12912,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     var open = ((pasandData && pasandData.forMe) || []).filter(function(r){ return !r.response; });
     var h = open.slice(0, 3).map(function(r){
       return '<div class="crow"><span class="txt"><b>💛 ' + esc(pasandRecLine(r)) + '</b><small>' + esc(r.note || 'Open it and say what you think.') + '</small></span>' +
-        '<button type="button" class="cbtn" data-psopen="' + esc(r.id) + '">See it</button></div>';
+        '<button type="button" class="cbtn" data-psopen="' + esc(r.id) + '">See it</button>' + togetherBtn(r) + '</div>';
     }).join('');
     if (open.length > 3) h += '<div class="crow"><span class="txt"><b>💛 ' + (open.length - 3) + ' more for you</b><small>All of them are in Pasand.</small></span>' +
       '<button type="button" class="cbtn ghost" data-psgo="1">Open Pasand</button></div>';
@@ -12898,7 +12930,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
           (r.note ? '<small>' + esc(r.note) + '</small>' : '') +
           (ans ? '<small>Your answer: ' + esc(ans[1]) + (r.reply ? '. You said: ' + esc(r.reply) : '') + '</small>' : '') +
           '<div class="prow"><button type="button" class="cbtn pstap' + (ans ? ' ghost' : '') + '" data-psopen="' + esc(r.id) + '">' + (ans ? 'Change my answer' : 'Say what you think') + '</button>' +
-          (link ? '<a class="cbtn ghost pstap" href="' + esc(link) + '" target="_blank" rel="noopener noreferrer">Open the link</a>' : '') + '</div></div>';
+          (link ? '<a class="cbtn ghost pstap" href="' + esc(link) + '" target="_blank" rel="noopener noreferrer">Open the link</a>' : '') + togetherBtn(r) + '</div></div>';
       });
       if (!h) h = '<div class="ev">Nothing for you yet. Recommend something to someone, and they may send one back.</div>';
     } else {
@@ -12910,7 +12942,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
           var a = pasandPick(psResponses, t.response);
           h += '<small>' + esc(t.name) + ': ' + (a ? esc(a[1]) + (t.reply ? '. They said: ' + esc(t.reply) : '') : 'no answer yet') + '</small>';
         });
-        h += '<div class="prow"><button type="button" class="cbtn no pstap" data-psdel="' + esc(r.id) + '">Remove</button></div></div>';
+        h += '<div class="prow">' + togetherBtn(r) + '<button type="button" class="cbtn no pstap" data-psdel="' + esc(r.id) + '">Remove</button></div></div>';
       });
       if (!h) h = '<div class="ev">You have not recommended anything yet. Tap Recommend something to start.</div>';
     }
@@ -13120,6 +13152,352 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     // The whole family, or named people: ticking one clears the other.
     if (c.id === 'ps-r-all' && c.checked) document.querySelectorAll('#ps-r-to [data-psto]').forEach(function(x){ x.checked = false; });
     if (c.getAttribute('data-psto') && c.checked) $('ps-r-all').checked = false;
+  });
+
+  // ---------- Watch or listen together (api/_together.mjs) ----------
+  // A recommendation, or just an idea, turned into a plan in one tap: a
+  // day, a time, who it is with, and the link ready at the time. It is an
+  // ordinary plan of kind `together`, made and answered through the same
+  // /api/plans path as every other plan. Every name here starts with
+  // "together" or "tg". The words mirror api/_together.mjs.
+  var tgVerbs = { show: ['🍿', 'Watch'], film: ['🍿', 'Watch'], song: ['🎧', 'Listen'], album: ['🎧', 'Listen'],
+    game: ['🎮', 'Play'], eat: ['📍', 'Go'], book: ['📚', 'Read'], other: ['🤝', 'Do it'] };
+  var tgAnswers = [['in', 'I am in'], ['maybe', 'Maybe'], ['no', 'Cannot']];
+  var tgTimer = null;
+  function togetherVerb(k){ var v = tgVerbs[k] || tgVerbs.show; return { icon: v[0], label: v[1] + ' together' }; }
+  // "Open it" shows from 10 minutes before the time until 3 hours after.
+  function togetherOpenNow(at){ var t = new Date(at).getTime(), n = Date.now(); return n >= t - 10 * 60000 && n <= t + 180 * 60000; }
+  // This Saturday at 8pm on this phone's own clock, or next Saturday when
+  // that has already gone.
+  function togetherDefault(){
+    var now = new Date(), add = (6 - now.getDay() + 7) % 7;
+    if (add === 0 && (now.getHours() > 20 || (now.getHours() === 20 && now.getMinutes() > 0))) add = 7;
+    return { date: bondYmd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + add)), time: '20:00' };
+  }
+  function togetherRec(id){
+    var all = ((pasandData && pasandData.forMe) || []).concat((pasandData && pasandData.fromMe) || []);
+    return all.filter(function(r){ return r.id === id; })[0] || null;
+  }
+  // The button on a recommendation: Watch, Listen, Play, Go or Read together.
+  function togetherBtn(r){
+    var v = togetherVerb(r.kind);
+    return '<button type="button" class="cbtn ghost pstap" data-tgrec="' + esc(r.id) + '">' + v.icon + ' ' + v.label + '</button>';
+  }
+  function togetherSheet(recId){
+    var r = togetherRec(recId); if (!r) return;
+    var v = togetherVerb(r.kind), on = pasandOn(r.platform), def = togetherDefault(), word = pasandWord();
+    // The people it was between: whoever sent it, or everyone I sent it to.
+    var between = r.by_member === state.memberId ? (r.to || []).map(function(t){ return t.member_id; }) : [r.by_member];
+    var others = pasandOthers();
+    bondSheet(v.icon + ' ' + v.label,
+      '<div class="plan"><b>' + esc(r.title) + '</b>' + (on ? '<small>On ' + esc(on) + '</small>' : '') + '</div>' +
+      '<div class="pickrow">' +
+      '<label class="pick"><span>Date</span><input type="date" id="tg-date" value="' + def.date + '"></label>' +
+      '<label class="pick"><span>Time</span><input type="time" id="tg-time" value="' + def.time + '"></label></div>' +
+      '<p class="hint">This is your own time. Everyone else sees it in theirs.</p>' +
+      '<p class="eyebrow">Who is it with?</p><div class="psto" id="tg-who">' +
+      (others.length ? others.map(function(m){
+        return '<label class="seniorchk"><input type="checkbox" data-tgwho="' + esc(m.id) + '"' + (between.indexOf(m.id) >= 0 ? ' checked' : '') + '> ' + esc(m.name) + '</label>';
+      }).join('') : '<p class="hint">Nobody else is in this ' + word + ' yet.</p>') + '</div>' +
+      '<p class="hint">The people you tick are told. Everyone in the ' + word + ' can see the plan and join.</p>' +
+      '<p class="bonderr" id="tg-err" role="alert" hidden></p>' +
+      '<button type="button" class="go" id="tg-send" data-tgfor="' + esc(r.id) + '">Set the plan</button>');
+  }
+  function togetherSend(recId){
+    var err = $('tg-err'), d = $('tg-date').value, t = $('tg-time').value;
+    if (!d || !t) { pasandSay(err, 'Pick the date and the time.'); return; }
+    var at = new Date(d + 'T' + t);
+    if (isNaN(at) || at < new Date(Date.now() - 5 * 60000)) { pasandSay(err, 'That time has already gone. Pick a time from now on.'); return; }
+    var who = [];
+    document.querySelectorAll('#tg-who [data-tgwho]').forEach(function(c){ if (c.checked) who.push(c.getAttribute('data-tgwho')); });
+    err.hidden = true;
+    var btn = $('tg-send'); btn.disabled = true;
+    post(API.plans, { code: state.code, memberId: state.memberId, action: 'create', kind: 'together', recId: recId, at: at.toISOString(), invite: who, tz: homeTz() })
+      .then(function(j){
+        btn.disabled = false;
+        if (!j.ok) { pasandSay(err, humanFail(j.error, 'Could not set the plan. Try again.')); return; }
+        bondSheetClose();
+        toast('Plan set. It is in Plans 🍿');
+        refreshFun();
+      })
+      .catch(function(){ btn.disabled = false; pasandSay(err, 'No connection. Try again.'); });
+  }
+  // What a together plan adds to its card: where it is, the three answers,
+  // and at the time, Open it and Call the family.
+  function togetherIcon(p){ return togetherVerb(p.rec_kind).icon; }
+  function togetherAnswersHtml(p){
+    var me = state.memberId;
+    var mine = (p.going || []).indexOf(me) >= 0 ? 'in' : (p.maybe || []).indexOf(me) >= 0 ? 'maybe' : (p.cannot || []).indexOf(me) >= 0 ? 'no' : '';
+    return '<span class="tgans" role="group" aria-label="Your answer">' + tgAnswers.map(function(a){
+      var on = mine === a[0];
+      return '<button type="button" class="cbtn pstap' + (on ? '' : ' ghost') + '" data-tgans="' + a[0] + '" data-plan="' + esc(p.id) + '" aria-pressed="' + on + '">' + (on ? '✔ ' : '') + a[1] + '</button>';
+    }).join('') + '</span>';
+  }
+  function togetherWhoHtml(p){
+    return (p.maybe_names ? '<br>Maybe: ' + esc(p.maybe_names) : '') + (p.cannot_names ? '<br>Cannot: ' + esc(p.cannot_names) : '') +
+      (p.invited_names ? '<br>Asked: ' + esc(p.invited_names) : '');
+  }
+  function togetherExtra(p){
+    var on = pasandOn(p.platform), link = pasandLink(p.link), h = '';
+    if (on) h += '<small class="tgon">On ' + esc(on) + '</small>';
+    if (togetherOpenNow(p.at)) {
+      h += '<div class="prow">' +
+        (link ? '<a class="cbtn pstap" data-tgopen="1" href="' + esc(link) + '" target="_blank" rel="noopener noreferrer">▶ Open it</a>' : '') +
+        '<button type="button" class="cbtn ghost pstap" data-tgcall="1">📞 Call the ' + bondWord() + '</button></div>';
+    } else if (new Date(p.at).getTime() > Date.now()) {
+      h += '<small>' + (link ? 'Open it and Call the ' + bondWord() + ' show here 10 minutes before.' : 'Call the ' + bondWord() + ' shows here 10 minutes before.') + '</small>';
+    }
+    return h;
+  }
+  // The card changes at 10 minutes before and at 3 hours after: draw the
+  // plans again at the next of those moments, with no polling.
+  function togetherWatch(plans){
+    clearTimeout(tgTimer); tgTimer = null;
+    var now = Date.now(), next = 0;
+    (plans || []).forEach(function(p){
+      if (p.kind !== 'together') return;
+      var t = new Date(p.at).getTime();
+      [t - 10 * 60000, t + 180 * 60000].forEach(function(x){ if (x > now && (!next || x < next)) next = x; });
+    });
+    if (next && next - now < 6 * 3600000) tgTimer = setTimeout(function(){ if (plansCache) renderPlans(plansCache); }, next - now + 500);
+  }
+  function togetherAnswer(planId, answer){
+    post(API.plans, { code: state.code, memberId: state.memberId, action: 'rsvp', planId: planId, answer: answer })
+      .then(function(j){ if (!j.ok) { toast(humanFail(j.error, 'Could not save your answer. Try again.')); return; } refreshFun(); })
+      .catch(function(){ toast('No connection - try again'); });
+  }
+  // "Watch something together" in the plan form: an optional platform and link.
+  $('tg-plat').innerHTML = '<option value="">Not sure</option>' + psPlatforms.map(function(p){ return '<option value="' + p[0] + '">' + p[1] + '</option>'; }).join('');
+  $('p-kind').addEventListener('click', function(){ $('tg-more').hidden = planKind !== 'together'; });
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-tgrec],[data-tgans],[data-tgcall],#tg-send');
+    if (!b || !state) return;
+    var d = b.dataset;
+    if (d.tgrec) togetherSheet(d.tgrec);
+    if (d.tgans) togetherAnswer(d.plan, d.tgans);
+    if (d.tgcall) askCall();
+    if (b.id === 'tg-send') togetherSend(d.tgfor);
+  });
+
+  // ---------- Splitting the cost of a trip or a function (api/_split.mjs) ----------
+  // Who paid what on a plan, each person's share, and who owes whom in the
+  // fewest transfers. Parwah never moves money: the most it does is open
+  // the payer's own UPI app with the amount filled in, and only with an id
+  // the payer was already allowed to see. Every amount is a whole number of
+  // paise; the server does the sums and this only draws them. Every name
+  // here starts with "split" or "sp".
+  var splitApi = '/api/plans?area=split';
+  var spData = null, spPlanId = null, spEditId = null;
+  var SP_NOTE = 'Parwah does not move money. This opens your own UPI app.';
+  function splitMoney(p){
+    var cur = spData && spData.currency && spData.currency !== 'XXX' ? spData.currency : '';
+    var rest = p % 100, whole = (p - rest) / 100;
+    try { if (cur) return new Intl.NumberFormat(cur === 'INR' ? 'en-IN' : 'en', { style: 'currency', currency: cur, minimumFractionDigits: rest ? 2 : 0, maximumFractionDigits: rest ? 2 : 0 }).format(p / 100); } catch (e) {}
+    return (cur ? cur + ' ' : '') + whole.toLocaleString('en-US') + (rest ? '.' + (rest < 10 ? '0' : '') + rest : '');
+  }
+  // "1250" or "1,250.50" to whole paise, the same rule as the server. null when it is not an amount.
+  function splitParse(v){
+    var m = /^(\d{1,9})(?:\.(\d{1,2}))?$/.exec(String(v == null ? '' : v).replace(/[,\s]/g, ''));
+    return m ? parseInt(m[1], 10) * 100 + parseInt(((m[2] || '') + '00').slice(0, 2), 10) : null;
+  }
+  function splitPlain(p){ var rest = p % 100; return String((p - rest) / 100) + (rest ? '.' + (rest < 10 ? '0' : '') + rest : ''); }
+  // Only a link that opens a UPI app, and nothing else, is ever put in the page.
+  function splitUpi(u){ return /^upi:\/\/pay\?[A-Za-z0-9%&=._~-]+$/.test(String(u || '')) ? String(u) : ''; }
+  // The sheet is shared: draw only while it is still showing this plan's costs.
+  function splitShowing(){ var r = $('sp-root'); return !!r && !$('bondsheet').hidden && r.getAttribute('data-plan') === spPlanId; }
+  function splitBody(html){ $('bs-body').innerHTML = '<div id="sp-root" data-plan="' + esc(spPlanId) + '">' + html + '</div>'; }
+  function splitOpen(planId){
+    spPlanId = planId; spData = null; spEditId = null;
+    bondSheet('💰 Costs', '');
+    splitBody('<div class="ev" id="sp-load">Loading…</div>');
+    splitLoad();
+  }
+  function splitFail(msg){
+    if (!splitShowing()) return;
+    splitBody('<div class="ev" id="sp-fail" role="alert">' + esc(msg) + '</div><button type="button" class="cbtn ghost bondwide" id="sp-retry">Try again</button>');
+  }
+  function splitLoad(){
+    var pid = spPlanId;
+    return apiGet(splitApi + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + '&plan=' + encodeURIComponent(pid)).then(function(j){
+      if (pid !== spPlanId) return;
+      if (j && j.ok) { spData = j; if (splitShowing()) splitRender(); }
+      else splitFail(humanFail(j && j.error, 'Could not load the costs. Try again in a moment.'));
+    }).catch(function(){ if (pid === spPlanId) splitFail('No connection. The costs will show when you are back online.'); });
+  }
+  // A POST; a refusal is said under the form when there is one, otherwise in a toast.
+  function splitPost(body, errEl){
+    body.code = state.code; body.memberId = state.memberId;
+    if (errEl) errEl.hidden = true;
+    return post(API.plans, body).then(function(j){
+      if (!j.ok) pasandSay(errEl, humanFail(j.error, 'That did not work. Try again.'));
+      return j;
+    }).catch(function(){ pasandSay(errEl, 'No connection. Try again.'); return { ok: false }; });
+  }
+  function splitName(id, name){ return id === state.memberId ? 'You' : (name || 'Someone'); }
+  function splitRender(){
+    var d = spData, me = state.memberId, h = '';
+    $('bs-title').textContent = '💰 Costs: ' + d.plan.title;
+    h += '<p class="hint" style="margin:0">Who paid what, and who owes whom. Only the people on this plan can see this.</p>';
+    if (!d.costs.length) {
+      h += '<div class="ev" id="sp-empty" style="margin-top:var(--space-12)">No costs yet. Add the first one, like the rooms or the taxi.</div>';
+    } else {
+      h += '<div class="sptotal" id="sp-total"><span>Total</span><b>' + esc(splitMoney(d.total)) + '</b></div>';
+      h += '<p class="eyebrow">Each person</p><ul class="splist" id="sp-people">' + d.people.map(function(p){
+        var st = p.net > 0 ? '✓ Is owed ' + splitMoney(p.net) : p.net < 0 ? '! Owes ' + splitMoney(-p.net) : '✓ All square';
+        return '<li><span><b>' + esc(splitName(p.memberId, p.name)) + '</b><small>Share ' + esc(splitMoney(p.share)) + ' · Paid ' + esc(splitMoney(p.paid)) + '</small></span><span class="spstate">' + esc(st) + '</span></li>';
+      }).join('') + '</ul>';
+      h += '<p class="eyebrow">Who owes whom</p><div id="sp-owes">';
+      var canPay = false, anyLine = false;
+      d.owes.forEach(function(o){
+        anyLine = true;
+        var upi = o.mine === 'pay' ? splitUpi(o.upi) : '';
+        if (upi) canPay = true;
+        h += '<div class="spline"><span><b>' + esc(splitName(o.from, o.fromName)) + (o.from === me ? ' owe ' : ' owes ') + esc(o.to === me ? 'you' : o.toName) + ' ' + esc(splitMoney(o.amount)) + '</b>' +
+          (o.mine === 'pay' && !upi && o.askUpi ? '<small>Ask ' + esc(o.toName) + ' for a UPI id. ' + esc(o.toName) + ' can save one under Ways to pay and allow you to use it.</small>' : '') + '</span>' +
+          (upi ? '<a class="cbtn pstap" data-spupi="1" href="' + esc(upi) + '">Pay ' + esc(o.toName) + '</a>' : '') +
+          (o.mine === 'pay' ? '<button type="button" class="cbtn ghost pstap" data-sppaid="' + esc(o.to) + '">I have paid</button>' : '') +
+          (o.mine === 'receive' ? '<button type="button" class="cbtn ghost pstap" data-spgot="' + esc(o.from) + '">Received</button>' : '') + '</div>';
+      });
+      d.waiting.forEach(function(w){
+        anyLine = true;
+        var said = w.paid ? esc(splitName(w.from, w.fromName)) + (w.from === me ? ' say ' : ' says ') + esc(splitMoney(w.amount)) + ' is paid to ' + esc(w.to === me ? 'you' : w.toName)
+                          : esc(splitName(w.to, w.toName)) + (w.to === me ? ' say ' : ' says ') + esc(splitMoney(w.amount)) + ' has come from ' + esc(w.from === me ? 'you' : w.fromName);
+        var waitFor = w.paid ? (w.to === me ? 'you to tap Received' : w.toName + ' to tap Received') : (w.from === me ? 'you to tap I have paid' : w.fromName + ' to tap I have paid');
+        h += '<div class="spline"><span><b>' + said + '</b><small>⏳ Waiting for ' + esc(waitFor) + '. It is not closed yet.</small></span>' +
+          (w.canConfirm ? (w.paid ? '<button type="button" class="cbtn pstap" data-spgot="' + esc(w.from) + '">Received</button>'
+                                  : '<button type="button" class="cbtn pstap" data-sppaid="' + esc(w.to) + '">I have paid</button>') : '') +
+          (w.canUndo ? '<button type="button" class="cbtn ghost pstap" data-spundo="' + esc(w.id) + '">Undo</button>' : '') + '</div>';
+      });
+      d.settled.forEach(function(s){
+        h += '<div class="spline"><span><b>' + esc(splitName(s.from, s.fromName)) + ' paid ' + esc(s.to === me ? 'you' : s.toName) + ' ' + esc(splitMoney(s.amount)) + '</b><small>✓ Settled. Both of you confirmed.</small></span></div>';
+      });
+      if (!anyLine) h += '<div class="ev" id="sp-square">✓ Everyone is square. Nothing is owed.</div>';
+      h += '</div>';
+      // Said once, near the button: what Parwah does and does not do.
+      if (d.owes.length || d.waiting.length) h += '<p class="hint" id="sp-note">' + (canPay ? SP_NOTE : 'Parwah does not move money. It only does the sums. Pay in your own way, then tap I have paid.') + '</p>';
+      h += '<p class="eyebrow">Costs</p><ul class="splist" id="sp-costs">' + d.costs.map(function(c){
+        var who = c.mode === 'uneven' ? c.shares.map(function(s){ return splitName(s.memberId, s.name) + ' ' + splitMoney(s.amount); }).join(', ')
+                                      : c.shares.map(function(s){ return splitName(s.memberId, s.name); }).join(', ');
+        return '<li><span><b>' + esc(c.what) + ' · ' + esc(splitMoney(c.amount)) + '</b><small>Paid by ' + esc(splitName(c.paidBy, c.paidName)) + ' · ' + (c.mode === 'uneven' ? 'Uneven: ' : 'Shared equally: ') + esc(who) + '</small></span>' +
+          (c.canEdit ? '<button type="button" class="cbtn ghost pstap" data-spedit="' + esc(c.id) + '" aria-label="Change ' + esc(c.what) + '">Change</button>' +
+                       '<button type="button" class="cbtn no pstap" data-spdel="' + esc(c.id) + '" aria-label="Remove ' + esc(c.what) + '">Remove</button>' : '') + '</li>';
+      }).join('') + '</ul>';
+    }
+    h += '<button type="button" class="go" id="sp-add">＋ Add a cost</button>';
+    splitBody(h);
+  }
+  function splitForm(costId){
+    var d = spData; if (!d) return;
+    var c = costId ? d.costs.filter(function(x){ return x.id === costId; })[0] : null;
+    spEditId = c ? c.id : null;
+    var between = c ? c.shares.map(function(s){ return s.memberId; }) : (d.plan.going || []);
+    var uneven = !!c && c.mode === 'uneven', paidBy = c ? c.paidBy : state.memberId;
+    var cur = d.currency && d.currency !== 'XXX' ? ' (in ' + d.currency + ')' : '';
+    $('bs-title').textContent = c ? '💰 Change a cost' : '💰 Add a cost';
+    splitBody(
+      '<label for="sp-what" style="margin-top:0">What was it for?</label><input type="text" id="sp-what" maxlength="80" placeholder="e.g. Taxi from the airport" value="' + esc(c ? c.what : '') + '">' +
+      '<label for="sp-amount">How much?' + esc(cur) + '</label><input type="text" id="sp-amount" inputmode="decimal" autocomplete="off" maxlength="14" placeholder="e.g. 1250" value="' + (c ? splitPlain(c.amount) : '') + '">' +
+      '<label for="sp-paidby">Who paid?</label><select id="sp-paidby">' + d.members.map(function(m){
+        return '<option value="' + esc(m.id) + '"' + (m.id === paidBy ? ' selected' : '') + '>' + esc(splitName(m.id, m.name)) + '</option>'; }).join('') + '</select>' +
+      '<p class="eyebrow">Shared between</p><div class="psto" id="sp-between">' + d.members.map(function(m){
+        return '<label class="seniorchk"><input type="checkbox" data-spwho="' + esc(m.id) + '"' + (between.indexOf(m.id) >= 0 ? ' checked' : '') + '> ' + esc(splitName(m.id, m.name)) + '</label>'; }).join('') + '</div>' +
+      '<div class="pkind" id="sp-mode" role="group" aria-label="How it is shared">' +
+      '<button type="button" data-spmode="equal" class="' + (uneven ? '' : 'sel') + '" aria-pressed="' + !uneven + '">Equal shares</button>' +
+      '<button type="button" data-spmode="uneven" class="' + (uneven ? 'sel' : '') + '" aria-pressed="' + uneven + '">Uneven shares</button></div>' +
+      '<div id="sp-uneven"' + (uneven ? '' : ' hidden') + '></div>' +
+      '<p class="bonderr" id="sp-err" role="alert" hidden></p>' +
+      '<button type="button" class="go" id="sp-save">Save the cost</button>' +
+      '<button type="button" class="cbtn ghost bondwide" id="sp-back">Back to the costs</button>');
+    if (uneven) { var typed = {}; c.shares.forEach(function(s){ typed[s.memberId] = splitPlain(s.amount); }); splitUneven(typed); }
+    try { if (!c) $('sp-what').focus(); } catch (e) {}
+  }
+  function splitTicked(){ var ids = []; document.querySelectorAll('#sp-between [data-spwho]').forEach(function(x){ if (x.checked) ids.push(x.getAttribute('data-spwho')); }); return ids; }
+  // One box per person ticked; what was typed stays when a tick changes.
+  function splitUneven(typed){
+    var box = $('sp-uneven'); if (!box) return;
+    var keep = typed || {};
+    if (!typed) box.querySelectorAll('[data-spshare]').forEach(function(i){ keep[i.getAttribute('data-spshare')] = i.value; });
+    var names = {}; spData.members.forEach(function(m){ names[m.id] = splitName(m.id, m.name); });
+    var ids = splitTicked();
+    box.innerHTML = (ids.length ? ids.map(function(id){
+      return '<label class="pick spshare"><span>' + esc(names[id] || 'Someone') + '</span><input type="text" inputmode="decimal" autocomplete="off" maxlength="14" data-spshare="' + esc(id) + '" value="' + esc(keep[id] || '') + '" placeholder="0"></label>';
+    }).join('') : '<p class="hint">Tick who shares it first.</p>') + '<p class="hint" id="sp-sum" role="status"></p>';
+    splitSum();
+  }
+  function splitSum(){
+    var el = $('sp-sum'); if (!el) return;
+    var total = splitParse($('sp-amount').value), sum = 0, bad = false;
+    document.querySelectorAll('#sp-uneven [data-spshare]').forEach(function(i){
+      if (!i.value.trim()) return;
+      var p = splitParse(i.value); if (p === null) bad = true; else sum += p;
+    });
+    el.textContent = bad ? 'Write each share as an amount, like 500 or 499.50.'
+      : total === null ? 'Write how much it was first.'
+      : sum === total ? '✓ The shares add up to ' + splitMoney(total) + '.'
+      : '! The shares add up to ' + splitMoney(sum) + '. They must add up to ' + splitMoney(total) + '.';
+  }
+  function splitSave(){
+    var err = $('sp-err'), what = $('sp-what').value.trim(), amount = splitParse($('sp-amount').value);
+    if (!what) { pasandSay(err, 'Write what it was for, like Taxi from the airport.'); return; }
+    if (amount === null || amount <= 0) { pasandSay(err, 'Write the amount as a number above 0, like 1250 or 1250.50.'); return; }
+    var ids = splitTicked();
+    if (!ids.length) { pasandSay(err, 'Tick at least one person who shares it.'); return; }
+    var uneven = !!document.querySelector('#sp-mode [data-spmode="uneven"].sel');
+    var body = { action: spEditId ? 'split_edit' : 'split_add', planId: spPlanId, id: spEditId, what: what, amount: $('sp-amount').value.trim(), paidBy: $('sp-paidby').value, between: ids, mode: uneven ? 'uneven' : 'equal' };
+    if (uneven) {
+      var shares = {}, sum = 0, bad = false;
+      document.querySelectorAll('#sp-uneven [data-spshare]').forEach(function(i){
+        var v = i.value.trim(), p = v ? splitParse(v) : 0;
+        if (p === null) bad = true; else { sum += p; shares[i.getAttribute('data-spshare')] = v || '0'; }
+      });
+      if (bad) { pasandSay(err, 'Write each share as an amount, like 500 or 499.50.'); return; }
+      if (sum !== amount) { pasandSay(err, 'The shares add up to ' + splitMoney(sum) + '. They must add up to ' + splitMoney(amount) + '.'); return; }
+      body.shares = shares;
+    }
+    var btn = $('sp-save'); btn.disabled = true;
+    splitPost(body, err).then(function(j){
+      btn.disabled = false;
+      if (!j.ok) return;
+      toast('Saved');
+      splitBody('<div class="ev" id="sp-load">Loading…</div>');
+      splitLoad();
+    });
+  }
+  // The button on a plan: plain on a trip or a function, quieter elsewhere.
+  function splitPlanBtn(p){
+    var big = p.kind === 'trip' || p.kind === 'function';
+    return '<div class="prow"><button type="button" class="cbtn pstap' + (big ? '' : ' ghost') + '" data-spopen="' + esc(p.id) + '">💰 ' + (big ? 'Split the costs' : 'Add costs') + '</button></div>';
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-spopen],[data-sppaid],[data-spgot],[data-spundo],[data-spedit],[data-spdel],[data-spmode],#sp-add,#sp-save,#sp-back,#sp-retry');
+    if (!b || !state) return;
+    var d = b.dataset, again = function(msg){ return function(j){ if (j.ok) { if (msg) toast(msg); splitLoad(); } }; };
+    if (d.spopen) splitOpen(d.spopen);
+    if (d.sppaid) splitPost({ action: 'split_paid', planId: spPlanId, to: d.sppaid }).then(again('Marked as paid. It closes when they tap Received.'));
+    if (d.spgot) splitPost({ action: 'split_received', planId: spPlanId, from: d.spgot }).then(again('Marked as received.'));
+    if (d.spundo) splitPost({ action: 'split_undo', id: d.spundo }).then(again('Undone'));
+    if (d.spedit) splitForm(d.spedit);
+    if (d.spdel) askSheet('Remove this cost?', 'The sums change for everyone on the plan.', 'Remove', 'Keep it', true).then(function(y){
+      if (y) splitPost({ action: 'split_remove', id: d.spdel }).then(again('Removed'));
+    });
+    if (d.spmode) {
+      b.parentElement.querySelectorAll('button').forEach(function(x){ var on = x === b; x.classList.toggle('sel', on); x.setAttribute('aria-pressed', on); });
+      $('sp-uneven').hidden = d.spmode !== 'uneven';
+      if (d.spmode === 'uneven') splitUneven();
+    }
+    if (b.id === 'sp-add') splitForm(null);
+    if (b.id === 'sp-save') splitSave();
+    if (b.id === 'sp-back') { if (spData) splitRender(); else splitOpen(spPlanId); }
+    if (b.id === 'sp-retry') { splitBody('<div class="ev" id="sp-load">Loading…</div>'); splitLoad(); }
+  });
+  document.addEventListener('change', function(e){
+    var c = e.target; if (!c || !c.getAttribute) return;
+    if (c.getAttribute('data-spwho') && $('sp-uneven') && !$('sp-uneven').hidden) splitUneven();
+  });
+  document.addEventListener('input', function(e){
+    var c = e.target; if (!c || !c.getAttribute) return;
+    if (c.id === 'sp-amount' || c.getAttribute('data-spshare')) splitSum();
+    if (c.id === 'sp-what' || c.id === 'sp-amount' || c.getAttribute('data-spshare')) { var er = $('sp-err'); if (er) er.hidden = true; }
   });
 
   // ---------- games: Snakes & Ladders ----------

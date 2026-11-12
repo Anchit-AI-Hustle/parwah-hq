@@ -75,6 +75,12 @@ node site/tests/bondtest.mjs
 # sign-in refusal, and who may see whose likes. _pasandrules.mjs imports
 # nothing, so this runs before npm install too.
 node site/tests/pasandtest.mjs
+# Splitting a cost: whole paise only, shares that always add up, who owes
+# whom in the fewest transfers, and a UPI link with every field encoded.
+# Watch together: the words and the "Open it" window. _splitmath.mjs imports
+# nothing and _together.mjs only the Pasand rules, so this runs before npm
+# install too.
+node site/tests/splitmathtest.mjs
 # The native apps' copy of the server's rules (PINs, for now) is written by
 # the server itself. If a rule changes in api/ and the contract is not
 # regenerated, the phones would accept what the server then refuses. Vercel's

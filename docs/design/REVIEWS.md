@@ -564,3 +564,22 @@ Checked at 320 and 390, light and dark, on the real app with a family and a frie
 | 135 | 8 Minimalist | Old recommendations would crowd Today | 2 | Fixed: Today shows only the unanswered ones, three at most, then a count. The rest live under For me |
 
 New patterns: none beyond page-specific classes that start with `ps-`, built from existing tokens.
+
+### Review TBD-together, plans: watch together and splitting a cost (2026-11-12)
+
+Checked at 320 and 390, light and dark, normal and senior mode, on the real app (`site/tests/db/plantogether.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the Today row and From me with Watch together, the Watch together sheet with and without a refusal, the together plan card at the time and answered, the plan form with Watch something together, the costs sheet empty, refused, offline, with three costs, with Pay and I have paid, with a line waiting, with everyone square, and the cost form with a refusal and with uneven shares). Screens: Together, Plans and Pasand; Today.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| T1 | 6 Recognition | A recommendation ended at "Will try it"; making a time for it meant typing the name again into a plan | 3 | Fixed: one button on every recommendation (Today, For me, From me), worded by what it is: Watch, Listen, Play, Go or Read together. The sheet opens on this Saturday 8pm with the people it was between already ticked |
+| T2 | 1 Visibility | At the time of the plan, the link was three screens away | 3 | Fixed: the plan card says "On Prime Video" and, from 10 minutes before until 3 hours after, shows Open it and Call the family. Before that it says when they will show |
+| T3 | 4 Consistency | A second answer system (yes, maybe, no) beside the plan's own "I'm in" | 2 | Fixed: I am in, Maybe, Cannot go through the same answer on the same plan; "in" is still the plan's going list, so the hour-before reminder reaches who said yes |
+| T4 | 5 Error prevention | A link on a plan could be anything | 4 | Fixed: https only, under Pasand's own rule, checked on the server, checked again when a plan is made from a recommendation, and once more before it is put in the page. A refusal sits under the link box |
+| T5 | 2 Real-world match | "Settle up" can read as Parwah paying | 4 | Fixed: said once, near the button, in plain words: "Parwah does not move money. This opens your own UPI app." Where there is no app to open it says Parwah only does the sums |
+| T6 | 5 Error prevention | One person could mark a debt as gone | 4 | Fixed: I have paid and Received are two taps by two people, in either order. Until both, the line reads "waiting" and can be undone by whoever marked it |
+| T7 | 5 Error prevention | A UPI id could be shown to someone its owner never allowed | 4 | Fixed: the link is built on the server only for the person who has to pay, only in rupees, and only when the owner already allowed them in Ways to pay. Otherwise: "Ask Meera for a UPI id", and no link |
+| T8 | 1 Visibility | Owes and settled told apart by colour | 3 | Fixed: each state is a mark and words in ink (✓ Is owed, ! Owes, ✓ All square, ⏳ Waiting, ✓ Settled). No vibe colour carries a status |
+| T9 | 9 Error recovery | Uneven shares that do not add up failed only on save | 2 | Fixed: a running line under the boxes says what they add up to and what they must add up to; the same words come back if saved anyway |
+| T10 | 3 User control | Someone not on the plan tapped Costs and saw a blank sheet | 2 | Fixed: "Only people on this plan can see its costs. Say you are in first.", with Try again. Offline and a failed load say so in plain words too |
+
+New patterns: the answer group (`.tgans`), the ledger list and line (`.splist`, `.spline`, `.spstate`), the total row (`.sptotal`) and the share box (`.spshare`). All built from existing tokens; no new token.

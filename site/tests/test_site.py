@@ -3185,10 +3185,90 @@ _fr_static = [i for i in _static_ids if i.startswith("fr-")]
 check(f"register: its new ids all start with fr- and none is the first-run card's ({len(_fr_static)})",
       len(_fr_static) >= 20 and all(_fr_static.count(i) == 1 for i in _fr_static))
 _testdb_fr = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
-check("register: the unit test is in the gate, and both database tests are last in test:db",
+check("register: the unit test is in the gate, and both database tests are in test:db, in order",
       "node site/tests/famregistertest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
-      and _testdb_fr.endswith("site/tests/db/famregister.dbtest.mjs && node --import ./site/tests/db/register.mjs site/tests/db/famregister.e2e.dbtest.mjs")
+      and "site/tests/db/famregister.dbtest.mjs && node --import ./site/tests/db/register.mjs site/tests/db/famregister.e2e.dbtest.mjs" in _testdb_fr
       and (REPO / "site/tests/db/famregister.dbtest.mjs").exists() and (REPO / "site/tests/db/famregister.e2e.dbtest.mjs").exists())
+
+# Watch together and splitting a cost (2026-11-12): proved in splitmathtest
+# (the sums), plantogether.dbtest (the handlers on PostgreSQL) and
+# plantogether.e2e (real phones). These guard what must not drift.
+_tg = (API_DIR / "_together.mjs").read_text(encoding="utf-8")
+_sp = (API_DIR / "_split.mjs").read_text(encoding="utf-8")
+_spm = (API_DIR / "_splitmath.mjs").read_text(encoding="utf-8")
+_tg_plans = (API_DIR / "plans.mjs").read_text(encoding="utf-8")
+_tg_app = _app_src.split("// ---------- Watch or listen together (api/_together.mjs) ----------")[1].split("// ---------- games: Snakes & Ladders ----------")[0]
+check("together and split: both ride /api/plans in underscore modules, never a new serverless function",
+      "from './_together.mjs';" in _tg_plans and "from './_split.mjs';" in _tg_plans
+      and "if (area === 'split' || (typeof body.action === 'string' && /^split_/.test(body.action)))" in _tg_plans
+      and "var splitApi = '/api/plans?area=split';" in _app_src
+      and not any((API_DIR / f).exists() for f in ("together.mjs", "split.mjs", "splitmath.mjs")))
+check("together: a plan of kind together, on the plans table, made through the same create and answered through the same rsvp",
+      "'trip', 'other', TOGETHER_KIND]" in _tg_plans and "export const TOGETHER_KIND = 'together';" in _tg
+      and "tg = await togetherPrepare(sql, circle, me, body);" in _tg_plans and "togetherAnswer(sql, circle, me, rows[0].id, body.answer)" in _tg_plans
+      and "create table" not in _tg and "pushCircle" not in _tg and "together: '🍿'" in (API_DIR / "_plansweep.mjs").read_text(encoding="utf-8"))
+check("together: only the sender or a recipient can make a plan from a recommendation, in the query itself",
+      "and (r.by_member = ${me.id} or exists (select 1 from pasand_rec_to t where t.rec_id = r.id and t.member_id = ${me.id}))" in _tg
+      and "title = r[0].title; platform = r[0].platform || null; link = r[0].link || null;" in _tg)
+check("together: a link is https only, under Pasand's own rule, on the server and again before it is put in the page",
+      "import { isPlatform, isRecKind, platformName, cleanLink, credRisk } from './_pasandrules.mjs';" in _tg
+      and _tg.count("cleanLink(") >= 2 and "noteRisk(v) || credRisk(v)" in _tg
+      and "var on = pasandOn(p.platform), link = pasandLink(p.link)" in _tg_app
+      and 'data-tgopen="1" href="\' + esc(link) + \'" target="_blank" rel="noopener noreferrer"' in _tg_app
+      and "if (tgOn && pasandLinkErr(tgLink)) { fieldErr('tg-link', pasandLinkErr(tgLink)); return; }" in _app_src)
+check("together: Open it shows from 10 minutes before until 3 hours after, and the call button starts the app's own family call",
+      "TOGETHER_OPEN = { beforeMin: 10, afterMin: 180 }" in _tg and "n >= t - 10 * 60000 && n <= t + 180 * 60000" in _tg_app
+      and "if (d.tgcall) askCall();" in _tg_app and "function askCall(){" in _app_src)
+check("split: the screen and the server say it once, in the same words: Parwah does not move money",
+      "export const SPLIT_NOTE = 'Parwah does not move money. This opens your own UPI app.';" in _sp
+      and "var SP_NOTE = 'Parwah does not move money. This opens your own UPI app.';" in _tg_app
+      and _tg_app.count("SP_NOTE") == 2 and 'id="sp-note"' in _tg_app)
+check("split: every sum is whole paise; the sums file imports nothing and has no fraction in it",
+      not re.search(r"^\s*import\s", _spm, re.M) and not re.search(r"parseFloat|toFixed|Math\.round|Math\.floor|Math\.ceil", _spm)
+      and not re.search(r"\d\.\d", re.sub(r"'[^'\n]*'", "''", re.sub(r"//.*", "", _spm)))
+      and "amount_paise bigint not null check (amount_paise > 0)" in _sp and "share_paise bigint not null" in _sp
+      and "numeric" not in _sp and "Math.round" not in _sp and "parseFloat" not in _sp
+      and "const amount = parsePaise(b.amount);" in _sp)
+check("split: a UPI id reaches only the payer, only in rupees, and only when its owner already allowed them (pay_perms)",
+      "join pay_perms pp on pp.method_id = p.id and pp.member_id = ${me.id}" in _sp
+      and "const payees = rupees ? d.book.owes.filter(o => o.from === me.id).map(o => o.to) : [];" in _sp
+      and "p.kind = 'upi'" in _sp and _sp.count("handle") == 3 and _sp.count("upiLink(") == 1
+      and "if (!isUpiId(x.pa)) return null;" in _spm and "if ((x.cu || 'INR') !== 'INR') return null;" in _spm
+      and _spm.count("encodeURIComponent(") == 2
+      and "function splitUpi(u){ return /^upi:\\/\\/pay\\?[A-Za-z0-9%&=._~-]+$/.test(String(u || '')) ? String(u) : ''; }" in _tg_app)
+check("split: a UPI PIN is never taken or kept, and no money is ever moved from here",
+      "for (const k of Object.keys(b)) if (/pin$/i.test(k)) return bad(SPLIT_NO_PIN);" in _sp and "const risk = noteRisk(what);" in _sp
+      and not re.search(r"fetch\(|https?://", _sp) and not re.search(r"type=.password|upi ?pin", _tg_app, re.I))
+check("split: who sees a plan's costs is decided in the query: on the plan, or sharing one of its costs",
+      "(p.by_member = ${me.id} or ${me.id}::uuid = any(p.going) or ${me.id}::uuid = any(p.maybe) or ${me.id}::uuid = any(p.invited)" in _sp
+      and "if (!r[0].on_plan) return { err: bad(NOT_ON, 403) };" in _sp
+      and _sp.count("await planFor(sql, circle, me,") == 5)
+check("split: settling is two-sided, and a cost is changed only by whoever added it or made the plan",
+      "check (paid_at is not null or received_at is not null)" in _sp and "where paid_at is null or received_at is null" in _sp
+      and "if (r[0].paid_at && r[0].received_at) return bad('Both of you have confirmed this one, so it stays.', 409);" in _sp
+      and "if (r[0].added_by !== me.id && g.plan.by_member !== me.id)" in _sp
+      and "const line = d.book.owes.find(o => o.from === from && o.to === to);" in _sp)
+check("together and split: tables and columns through schemaOnce; every push names one person",
+      "schemaOnce(() => togetherColumns(sql))" in _tg and "schemaOnce(() => splitTables(sql))" in _sp
+      and _sp.count("pushCircle(") == 2 and _sp.count("{ only: other }") == 2)
+check("together and split: loading, empty, error and offline are all said, and errors go through humanFail",
+      'id="sp-load">Loading' in _tg_app and 'id="sp-empty"' in _tg_app and 'id="sp-fail" role="alert"' in _tg_app
+      and "No connection. The costs will show when you are back online." in _tg_app
+      and "humanFail(j && j.error, 'Could not load the costs. Try again in a moment.')" in _tg_app
+      and "humanFail(j.error, 'That did not work. Try again.')" in _tg_app.split("function splitPost(")[1][:500]
+      and "humanFail(j.error, 'Could not set the plan. Try again.')" in _tg_app)
+check("together and split: status is said in words and a mark, never by colour alone, and never in the vibe colours",
+      "'✓ Is owed '" in _tg_app and "'! Owes '" in _tg_app and "'✓ All square'" in _tg_app and "(on ? '✔ ' : '') + a[1]" in _tg_app
+      and not re.search(r"--(rani|peacock|flame|grad)\b", "".join(l for l in _app_src.splitlines() if re.match(r"\.(tg|sp)[a-z]", l))))
+_tg_names = re.findall(r"^  function ([A-Za-z0-9_$]+)\(", _tg_app, re.M)
+_tg_ids = sorted(set(re.findall(r'\bid="((?:tg|sp)-[a-z-]+)"', _app_src)))
+check(f"together and split: every new function starts with together or split, every new id with tg- or sp- ({len(_tg_names)} functions, {len(_tg_ids)} ids)",
+      len(_tg_names) >= 25 and all(re.match(r"(together|split)[A-Z]", n) for n in _tg_names)
+      and len(_tg_ids) >= 20 and all(_static_ids.count(i) <= 1 for i in _tg_ids))
+_testdb_tg = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("together and split: the sums are tested in the gate, and the database and browser tests are in test:db",
+      "node site/tests/splitmathtest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all(("site/tests/db/" + f) in _testdb_tg and (REPO / "site/tests/db" / f).exists() for f in ("plantogether.dbtest.mjs", "plantogether.e2e.dbtest.mjs")))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

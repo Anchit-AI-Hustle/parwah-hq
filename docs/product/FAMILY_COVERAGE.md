@@ -75,7 +75,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | **Everyone's interests, visible to who they choose** | **Building** | Pasand |
 | **Where each person watches and listens** | **Building** | Pasand platforms |
 | **Recommend a show, song, game, book or place to anyone, and hear back** | **Building** | Pasand recommendations |
-| Watch or listen together at a set time (a plan with a link) | Next | builds on plans and Pasand |
+| Watch or listen together at a set time (a plan with a link) | Live | a `together` plan, made from a recommendation in one tap |
 | A shared family photo album | Decide | needs paid storage (Cloudflare R2 or Vercel Blob) |
 | A daily "what happened today" digest | Decide | has a running AI cost |
 
@@ -84,7 +84,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 |---|---|---|
 | Who paid for care, and settling up | Live | expenses, split |
 | Saved ways to pay each other (UPI id, never a PIN) | Live | pay methods |
-| Splitting a trip or a function | Decide | UPI links sit close to the no-payments rule |
+| Splitting a trip or a function | Live | plan costs: who paid, who owes whom, a two-sided "paid" and "received". Parwah never moves money; it can open the payer's own UPI app |
 | Pocket money and chores for children | Later | |
 | A family budget | Later | out of the care wedge for now |
 
@@ -124,7 +124,7 @@ whose name starts with an underscore, reached through an existing route by an
 |---|---|
 | `/api/book` | health and contacts, vault, pay, notes, memory bond, biomarkers, pre-auth, **register (locator)**, audit, admission |
 | `/api/care` | reminders, requests, refill, bills, sibling tasks, doses, ladders, expenses, staff, renewals |
-| `/api/plans` | plans, visits, shared cards and polls |
+| `/api/plans` | plans, visits, shared cards and polls, **watch together**, **cost split** |
 | `/api/games` | games, **pasand** |
 | `/api/circle` | family, members, **tree and kin** |
 | `/api/settings` | keys, push, coins, plan, day, PIN, location |
@@ -178,6 +178,23 @@ Honest limits of this round:
 - **The register stores where things are and who should know, not the money
   itself.** No balances are fetched from a bank.
 
+**Shipped after tranche 1 (2026-11-12)**
+
+| Feature | Module | Route | Tables |
+|---|---|---|---|
+| Watch or listen together | `api/_together.mjs` | `/api/plans` (kind `together`) | columns on `plans`: platform, link, rec_id, rec_kind, invited, maybe, cannot |
+| Splitting the cost of a trip or a function | `api/_split.mjs`, `api/_splitmath.mjs` | `/api/plans?area=split` | `plan_costs`, `plan_cost_shares`, `plan_settles`; `plans.cost_currency` |
+
+Honest limits:
+- **Parwah never moves money.** The split only does the sums. "Pay" opens
+  the payer's own UPI app with the amount filled in, and only with a UPI id
+  its owner has already allowed that person to use. A UPI PIN is never asked
+  for. A line is closed only when both people say so.
+- **A plan is in one currency**, from the country of whoever made it. UPI
+  links appear only on plans in rupees.
+- **A together plan is seen by the whole circle**, like every plan. Only the
+  people ticked are told.
+
 ## 4. What comes next
 
 **Tranche 2: the wider family**
@@ -187,7 +204,6 @@ Honest limits of this round:
 - Days of remembrance on a person, with a gentle reminder to the family.
 - "When someone passes away": a checklist drawn from the register (which
   bank, which policy, who is the nominee), shown only to the people chosen.
-- Watch together: a plan made from a recommendation in one tap.
 
 **Tranche 3: children and the home**
 - A child's page: school, fees, exams, pick-up duty, vaccines.
@@ -197,7 +213,6 @@ Honest limits of this round:
 
 **Waiting on the owner**
 - Photo album: choose and pay for storage.
-- Trip and function cost split with UPI links.
 - Ekta daily digest: accept the AI running cost or not.
 - SMS sign-in stays off, by the owner's decision.
 

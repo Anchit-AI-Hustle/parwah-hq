@@ -5,7 +5,7 @@
 import { pushCircle } from './_push.mjs';
 
 export const PLAN_REMIND_MIN = 60;
-export const PLAN_ICON = { call: '📹', party: '🎶', meet: '🤗', appointment: '🩺', function: '🪔', trip: '✈️', other: '🗓' };
+export const PLAN_ICON = { call: '📹', party: '🎶', meet: '🤗', appointment: '🩺', function: '🪔', trip: '✈️', together: '🍿', other: '🗓' };
 
 // The time in the zone of whoever set it, with that zone named ("IST",
 // "GMT+1", "EDT"), because the family reading it may live somewhere else.
