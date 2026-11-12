@@ -153,11 +153,13 @@ export async function digestGather(sql, circle, me, tz, nowMs = Date.now()) {
   raw.anniversaries = (await q(() => sql`
     select id, anniv_with from members where circle_id = ${cid} and anniversary is not null
       and to_char(anniversary, 'MM-DD') = ${w.tomorrowMd}`)).map(r => [r.id, r.anniv_with].filter(Boolean));
-  // A day of remembrance, once a person carries one (the next tranche adds
-  // the date). Until that column exists this read fails and gives nothing.
+  // A day of remembrance (api/_remember.mjs keeps the month and the day a
+  // person passed). If those columns are not there yet on this database the
+  // read fails and gives nothing.
   raw.remembrance = (await q(() => sql`
     select id from members where circle_id = ${cid} and remembered
-      and to_char(remembered_on, 'MM-DD') = ${w.tomorrowMd}`)).map(r => r.id);
+      and passed_month is not null and passed_day is not null
+      and lpad(passed_month::text, 2, '0') || '-' || lpad(passed_day::text, 2, '0') = ${w.tomorrowMd}`)).map(r => r.id);
   // Tasks: the family's shared list. Counts, not titles.
   raw.tasks = (await q(() => sql`
     select completed_by as id, count(*)::int as n from requests

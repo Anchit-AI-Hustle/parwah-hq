@@ -254,6 +254,10 @@ let s2text;
   // remembered: nothing automatic about them, ever
   ok('nobody can mark themselves remembered', (await call(rohan, { body: { action: 'remembered', targetId: rohan.id, on: true } })).status === 400);
   ok('another group cannot touch Papa', (await call(vikramG, { body: { action: 'remembered', targetId: papa.id, on: true } })).status === 403);
+  // Adults only, as for days of remembrance: a child in the family cannot set it.
+  await admin.query(`update members set dob = current_date - interval '12 years' where id = $1`, [rohan.id]);
+  ok('a child cannot mark someone remembered', (await call(rohan, { body: { action: 'remembered', targetId: papa.id, on: true } })).status === 403);
+  await admin.query(`update members set dob = null where id = $1`, [rohan.id]);
   r = await call(rohan, { body: { action: 'remembered', targetId: papa.id, on: true } });
   ok('the family marks Papa remembered', r.status === 200);
   t = await today(meera);

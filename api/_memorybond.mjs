@@ -726,6 +726,11 @@ export default async function bondApi(req, res) {
       const t = await memberIn(body.targetId);
       if (!t) return bad(403, 'That person is not in this ' + word);
       if (t.id === me.id) return bad(400, 'This is for someone the ' + word + ' remembers');
+      // The same rule as days of remembrance (api/_remember.mjs): a mark like
+      // this is set, or taken back, by an adult who is on Parwah.
+      const { isAdult } = await import('./_rememberrules.mjs');
+      const mine = (await sql`select dob, user_id from members where id = ${me.id}`)[0] || {};
+      if (!mine.user_id || !isAdult(mine.dob, new Date().toISOString().slice(0, 10))) return bad(403, 'An adult in the ' + word + ' can mark this.');
       await sql`update members set remembered = ${!!body.on} where id = ${t.id}`;
       if (body.on) await sql`update story_tellers set status = 'no', decided_at = now() where member_id = ${t.id}`;
       return res.status(200).json({ ok: true });
