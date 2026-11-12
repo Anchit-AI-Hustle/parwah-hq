@@ -22,6 +22,7 @@ import { pushCircle } from './_push.mjs';
 import { ektaTurn, isoOf } from './ekta.mjs';
 import { classify, mentionsUrgent, urgentToo, renderEmergency, renderCrisis, LOCAL_MODEL } from './_ektalocal.mjs';
 import { ensureChatBond, checkVoice, voiceLabel, attachBond, react, createPoll, votePoll, closePoll } from './_chatbond.mjs';
+import ashirwadApi from './_ashirwad.mjs';
 
 async function chatForMember(sql, circle, chatId, memberId) {
   if (!isUuid(chatId)) return null;
@@ -128,6 +129,9 @@ async function maybeEktaReply(sql, circle, me, chat, text) {
 }
 
 export default async function handler(req, res) {
+  // Ashirwad, "How is your day?" and "Reached safely" ride along here: they
+  // are messages between two people, and share the voice-note rules.
+  if (String((req.query && req.query.area) || (req.body && req.body.area) || '') === 'ashirwad') return ashirwadApi(req, res);
   let sql;
   try { sql = db(); await ensureSchema(sql); await ensureChatBond(sql); }
   catch (e) { return failDb(res, e); }
