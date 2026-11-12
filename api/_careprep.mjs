@@ -1125,7 +1125,7 @@ export async function preauthApi(req, res) {
 // nothing leaves this handler without going through it. Whenever the
 // details of an entry go to anyone but the person it is about, that is
 // written in legacy_asset_views: once per viewer, per entry, per day.
-async function registerRows(sql, circleId, { id = null, personId = null } = {}) {
+export async function registerRows(sql, circleId, { id = null, personId = null } = {}) {
   if (id) {
     return sql`
       select lal.*, to_char(lal.due_on, 'YYYY-MM-DD') as due_day, m.name as person_name, hm.name as in_name_member_name
@@ -1153,8 +1153,9 @@ async function registerRows(sql, circleId, { id = null, personId = null } = {}) 
 }
 
 // "Only in an emergency" opens while that person has an SOS that is not
-// yet sorted.
-async function registerSos(sql, circleId) {
+// yet sorted, or while the family's "What needs doing" list for that person
+// is active (afterlossOpener in _afterlossapi.mjs).
+export async function registerSos(sql, circleId) {
   try {
     const open = await sql`select distinct member_id from sos where circle_id = ${circleId} and status <> 'resolved'`;
     return new Set(open.map(x => x.member_id));
@@ -1163,7 +1164,7 @@ async function registerSos(sql, circleId) {
 
 // Written down once a day. A log that cannot be written never blocks the
 // person from reading what they are allowed to read.
-async function registerLogView(sql, locatorId, viewerId) {
+export async function registerLogView(sql, locatorId, viewerId) {
   try {
     await sql`insert into legacy_asset_views (locator_id, viewer_id) values (${locatorId}, ${viewerId})
               on conflict (locator_id, viewer_id, day) do nothing`;
@@ -1233,13 +1234,19 @@ export async function locatorApi(req, res) {
       const g = await requireMember(sql, q.circle, q.member, tokenOf(req));
       if (g.err) return res.status(g.status).json({ ok: false, error: g.err });
       const inSos = await registerSos(sql, g.circle.id);
+      // "What needs doing" (api/_afterlossapi.mjs): while the family's list
+      // for a person is active, that is the emergency for that person's
+      // entries, for the two who started it and the nominee the entry names.
+      const { afterlossOpener } = await import('./_afterlossapi.mjs');
+      const alOpens = await afterlossOpener(sql, g.circle.id);
+      const emergency = (row) => !!row && (inSos.has(row.person_id) || alOpens(row, g.me.id));
 
       // One entry, opened.
       if (q.id !== undefined) {
         const gone = { ok: false, error: 'That entry is not here any more' };
         if (!isUuid(q.id)) return res.status(404).json(gone);
         const row = (await registerRows(sql, g.circle.id, { id: q.id }))[0];
-        const entry = registerRowFor(row, g.me.id, row ? inSos.has(row.person_id) : false);
+        const entry = registerRowFor(row, g.me.id, emergency(row));
         // "Only me" answers exactly as an entry that was never written.
         if (!entry) return res.status(404).json(gone);
         if (!entry.can_view) return res.status(403).json({ ok: false, locked: true, error: 'This one is not shared with you.' });
@@ -1254,7 +1261,7 @@ export async function locatorApi(req, res) {
       const seen = await registerSeen(sql, g.circle.id, g.me.id);
       const locators = [];
       for (const r of rows) {
-        const out = registerRowFor(r, g.me.id, inSos.has(r.person_id), { details: !brief });
+        const out = registerRowFor(r, g.me.id, emergency(r), { details: !brief });
         if (!out) continue;
         // Without brief=1 the details travel with the list, so that is a view.
         if (out.can_view && !brief && registerLogsView(r, g.me.id)) await registerLogView(sql, r.id, g.me.id);
@@ -1342,7 +1349,11 @@ export async function locatorApi(req, res) {
           // they can widen it again. Whoever wrote it can still read it.
           if (row.unlock_policy === 'ONLY_ME' && row.person_id !== g.me.id) {
             const subj = await sql`select user_id from members where id = ${row.person_id}`;
-            if (subj[0] && subj[0].user_id) return res.status(403).json({ ok: false, error: 'Only the person it is about can change who sees this now.' });
+            // The one time whoever wrote it may widen it: the family has
+            // started "What needs doing" for this person, so nobody else is
+            // left who could. It is still the writer's own choice, entry by entry.
+            const { afterlossActiveFor } = await import('./_afterlossapi.mjs');
+            if (subj[0] && subj[0].user_id && !(await afterlossActiveFor(sql, g.circle.id, row.person_id))) return res.status(403).json({ ok: false, error: 'Only the person it is about can change who sees this now.' });
           }
           const w = registerWho(req.body);
           if (w.error) return res.status(400).json({ ok: false, error: w.error, field: w.field });

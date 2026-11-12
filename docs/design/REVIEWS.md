@@ -564,3 +564,21 @@ Checked at 320 and 390, light and dark, on the real app with a family and a frie
 | 135 | 8 Minimalist | Old recommendations would crowd Today | 2 | Fixed: Today shows only the unanswered ones, three at most, then a count. The rest live under For me |
 
 New patterns: none beyond page-specific classes that start with `ps-`, built from existing tokens.
+
+### Review TBD-afterloss, "What needs doing": the checklist for when someone passes away (2026-11-12)
+
+Checked at 320 and 390, light and dark, normal and senior mode, on the real app with a family of four (`site/tests/db/afterloss.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the list before a person is chosen, starting it, waiting for the second adult, being asked to confirm, the list in use on three phones, a refusal under a step, a closed list, the two sheets, the line at the top of the Vault, the link on a person's page and the offline message). Screens: Vault, Family register; one link on a person's page.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| A1 | 2 Real-world match | The register says where things are, but in the week a family loses someone nobody knows what to do with each one | 4 | Fixed: one list in two parts. Nine first things for India (death certificate, bank, insurer, employer or pension office, phone and utilities, a will, landlord or society, Aadhaar and PAN, subscriptions), then one step per register entry, worded by its kind, with the nominee and where the papers are |
+| A2 | 5 Error prevention | A list like this could be started by mistake, or in a quarrel | 4 | Fixed: two adults start it. The first names a second adult, who alone can say yes, and both are asked once more in the app's own sheet. With only one adult on Parwah, one is enough. It can be closed and opened again |
+| A3 | 5 Error prevention | Starting it could quietly widen who reads an entry | 4 | Fixed: it never changes any entry. Each person sees only the steps for entries they could already see, by the register's own rule. "Only in an emergency" entries open for the two who started it and the nominee the entry names, only while the list is open, and the register form now says so where the choice is made |
+| A4 | 1 Visibility | "Only me" entries would be lost with the person | 3 | Fixed: whoever wrote one reads a gentle line that they hold entries nobody else can see and may share them now, with a link to the register. Nobody else is told they exist |
+| A5 | 4 Consistency | Status colours could borrow the alert red or the bright primary at the worst moment | 3 | Fixed: the ways in are text links, the buttons are the plain ones, done is the status green, and nothing on the screen uses an alert or vibe colour |
+| A6 | 1 Visibility | Three people working one list could not tell who had done what | 2 | Fixed: each step shows who ticked it, who is doing it and a short note; "2 of 11 done" and a bar follow on every phone without a reload |
+| A7 | 9 Error recovery | A refused note or a failed load would be a toast that vanished | 2 | Fixed: a refusal sits under the step it is about (a password in a note says so there); loading, nothing chosen, offline and a server error each have their own words and Try again |
+| A8 | 10 Help | A family could read the list as legal advice | 3 | Fixed: said once, at the top: "This is a list to help you remember, not legal advice. Rules differ by bank and state." No step promises an outcome or a time |
+| A9 | 8 Minimalist | A feature like this could nag | 2 | Fixed: two pushes in all, one to the adult asked and one to the family when it starts. No reminders |
+
+New patterns: the checklist step (`.alstep`, `.altick`, `.almeta`, `.alacts`) and the quiet line (`.alnote`, `.alline`). All built from existing tokens; no new token. The progress bar is the first-run bar (`.frbar`) with the status green (`.albar`).
