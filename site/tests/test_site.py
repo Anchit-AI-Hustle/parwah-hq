@@ -3324,9 +3324,42 @@ check("afterloss: a tick, an assignment and a note are one statement each, so no
       and _al_api.count("from afterloss_lists l where l.id = ${list.id} and l.status = 'active'") == 3)
 check("afterloss: a note is checked for a card number, CVV, OTP, PIN or password",
       "afterlossNote(body.note, [noteRisk, registerSecretRisk])" in _al_api)
-check("afterloss: exactly two pushes, to the adult asked and to the family, and nothing timed",
-      _al_api.count("await pushCircle(") == 3 and "{ only: rule.askId }" in _al_api and _al_api.count("afterlossPush('started'") == 2
-      and _al_api.count("afterlossPush('ask'") == 1 and "runTick" not in _al_api and "setTimeout" not in _al_api and "remind" not in _al_api.lower())
+check("afterloss: its pushes are the ask (one place, at most three an hour per person about one person), the family once when it comes into force, and the two starters when the person closes it; nothing timed",
+      _al_api.count("await pushCircle(") == 4 and "afterlossPush('ask', { starter: me.name, person: person.name }), { only: askId }" in _al_api
+      and _al_api.count("afterlossPush('ask'") == 1 and _al_api.count("await pushAsk(sql, g.circle.id, g.me,") == 2
+      and "rateLimit(sql, 'afterloss_ask', me.id + ':' + person.id, 3, 3600, { failClosed: true })" in _al_api
+      and "afterlossPush(can.reopening ? 'reopened' : 'started'," in _al_api and _al_api.count("afterlossPush('void'") == 1
+      and "runTick" not in _al_api and "setTimeout" not in _al_api and "remind" not in _al_api.lower())
+check("afterloss: opening a closed list again goes through the start rule, waits for a second adult, and clears the old confirmation",
+      _al_api.count("afterlossStartRule({ me: meRow, personId: list.person_id, members, askId: isUuid(body.askId) ? body.askId : null })") == 1
+      and "confirmed_by = null, confirmed_at = ${rule.needs ? null : new Date().toISOString()}::timestamptz" in _al_api
+      and "set status = ${state}, started_by = ${g.me.id}, ask_member = ${rule.needs ? rule.askId : null}," in _al_api
+      and "set status = 'active', reopened_by" not in _al_api
+      and "afterlossPost('afterloss_reopen', { listId: l.id, askId: alAskPick || null });" in _al_app)
+check("afterloss: one adult alone is refused for someone on Parwah; in force means confirmed, or that one allowed start",
+      "export const AFTERLOSS_NEEDS_SECOND = 'This needs a second adult on Parwah to confirm.';" in _al
+      and "if (person && (person.user_id || person.on_app)) return { error: AFTERLOSS_NEEDS_SECOND, status: 400, solo: false };" in _al
+      and "return !!list.confirmed_by || (list.solo === true && !personOnApp);" in _al
+      and "if (!list.confirmed_by && list.solo !== true) return false;" in _al
+      and "return !!r[0] && afterlossInForce(r[0], r[0].on_app);" in _al_api
+      and ".filter(l => afterlossInForce(l, l.on_app));" in _al_api
+      and "and status = 'active'`;\n    return !!r[0];" not in _al_api)
+check("afterloss: the person it is about closes it and it is removed, with its steps; the mark comes off only if the list set it",
+      "if (g.me.id === list.person_id) {" in _al_api and "await voidList(sql, g.circle.id, list)" in _al_api
+      and "delete from afterloss_lists where id = ${list.id} and circle_id = ${circleId} returning set_remembered" in _al_api
+      and "if (gone[0].set_remembered) {" in _al_api
+      and "body: person + ' closed the list that was started for them.'" in _al
+      and "Closing it removes it, and the people who started it are told." in _al_app)
+check("afterloss: a list in force marks the person as remembered, with no date, and records that it did",
+      "update members set remembered = true where id = ${list.person_id} and circle_id = ${circleId} and not remembered returning id" in _al_api
+      and "update afterloss_lists set set_remembered = true where id = ${list.id}" in _al_api
+      and _al_api.count("await markRemembered(sql, g.circle.id,") == 3 and "passed_year =" not in _al_api)
+check("register: the comment on Only in an emergency says the real rule: the two who started and confirmed, never a nominee by name",
+      "only the two who started and\n//                   confirmed it. A nominee is a name, and a name opens\n//                   nothing" in (API_DIR / "_register.mjs").read_text(encoding="utf-8")
+      and "the nominee\n//                   the entry names" not in (API_DIR / "_register.mjs").read_text(encoding="utf-8"))
+check("afterloss: the rule takes no members list and has no unused name key",
+      "export function afterlossOpens(list, row, memberId) {" in _al and "nameKey" not in _al
+      and "afterlossOpens(by.get(row.person_id), row, memberId)" in _al_api and "(inForce && afterlossOpens(list, row, memberId))" in _al_api and not re.search(r"afterlossOpens\([^)]*, members\)", _al_api))
 check("afterloss: it rides behind /api/book as area=afterloss; tables are made through schemaOnce; every request passes requireMember",
       "if (area === 'afterloss' || (req.body && typeof req.body.action === 'string' && /^afterloss_/.test(req.body.action))) return afterlossApi(req, res);"
         in (API_DIR / "book.mjs").read_text(encoding="utf-8")

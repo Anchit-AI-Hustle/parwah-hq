@@ -344,15 +344,20 @@ ok('the tick and the bar are the status green, and nothing in the list is the al
 }));
 
 // ================================================================ 6. from a person's page
-await Y.waitForSelector(`[data-person="${papa.id}"]`, { state: 'attached', timeout: T });
-await Y.evaluate((id) => document.querySelector(`[data-person="${id}"]`).click(), papa.id);
+// Papa is marked as remembered now (the list is in force), so he is no longer
+// in the "looked after" rows; his page is reached the way the tree reaches it.
+const openPerson = (pg, id) => pg.evaluate((pid) => { const b = document.createElement('button'); b.setAttribute('data-person', pid); b.hidden = true; document.body.appendChild(b); b.click(); b.remove(); }, id);
+ok('a list in force marks Papa as remembered, and he leaves the "looked after" rows', (await admin.query('select remembered, passed_year from members where id = $1', [papa.id])).rows[0].remembered === true
+   && (await admin.query('select passed_year from members where id = $1', [papa.id])).rows[0].passed_year == null
+   && await Y.waitForFunction((id) => !!document.querySelector('[data-person]') && !document.querySelector(`[data-person="${id}"]`), papa.id, { timeout: T }).then(() => true, () => false));
+await openPerson(Y, papa.id);
 ok('on Papa\'s page there is the same quiet link, last on the page', await shown(Y, '#pane-person') && await shown(Y, '#al-pp-link') && (await Y.textContent('#al-pp-link')) === 'When someone passes away: what needs doing'
    && await Y.$eval('#al-pp-link', b => b.classList.contains('linkbtn') && getComputedStyle(b).backgroundColor === 'rgba(0, 0, 0, 0)' && !b.closest('section').querySelector('.alpp ~ *')));
 await design(Y, '.alpp', 'the link on a person\'s page');
 await Y.click('#al-pp-link');
 ok('it opens the list for that person in the register', await shown(Y, '#al-panel') && (await Y.inputValue('#al-person')) === papa.id && await progress(Y, '3 of 11 done'));
-await Y.evaluate((id) => document.querySelector(`[data-person="${id}"]`).click(), papa.id); await shown(Y, '#pane-person');
-ok('nobody is offered it on their own page', await (async () => { const S2 = await phone(priya, { hash: '#profile' }); await S2.waitForSelector(`[data-person="${papa.id}"]`, { state: 'attached', timeout: T });
+await openPerson(Y, papa.id); await shown(Y, '#pane-person');
+ok('nobody is offered it on their own page', await (async () => { const S2 = await phone(priya, { hash: '#profile' }); await S2.waitForSelector('[data-person]', { state: 'attached', timeout: T });
   await S2.evaluate((id) => { const b = document.createElement('button'); b.setAttribute('data-person', id); b.hidden = true; document.body.appendChild(b); b.click(); b.remove(); }, priya.id);
   const there = await shown(S2, '#pane-person'); const hid = !(await S2.isVisible('#al-pp-link')); await S2.context().close(); return there && hid; })());
 
@@ -369,8 +374,18 @@ ok('closed: the register has locked the locker for Rohan again', await has(R, '#
 ok('closing changed no entry\'s audience', (await policies()) === before && (await lists())[0].status === 'closed');
 await design(R, '#al-wrap', 'a closed list');
 ok('Meera\'s phone follows: closed, and the locker step is gone', await has(M, '#al-body [data-alclosed]', /This list is closed/) && await lacks(M, '#al-body', /SBI locker/));
+// Opening it again is the start rule again: a second adult is asked.
+ok('closed: opening it again asks who should confirm', await shown(M, '#al-body #al-ask') && await has(M, '#al-body [data-alreopen]', /Ask them to open this list again/)
+   && await has(M, '#al-body', /Two people open this again together/));
+await M.selectOption('#al-ask', rohan.id);
+await design(M, '#al-wrap', 'a closed list, with who should confirm');
 await M.click('#al-body [data-alreopen]');
-ok('Meera opens it again: the locker step is back, still given to Rohan, the ticks kept', await progress(M, '2 of 11 done') && await has(M, stepSel('e:' + lockerId) + ' [data-almeta]', /Rohan is doing this/) && (await lists())[0].status === 'active');
+ok('Meera asks Rohan: it waits, and nothing is open yet', await has(M, '#al-body [data-alpending]', /You asked Rohan to confirm this list for Papa.*Nothing is open yet/) && (await lists())[0].status === 'pending'
+   && (await lists())[0].started_by === meera.id && (await lists())[0].confirmed_by === null);
+ok('Rohan\'s phone shows the request, and no steps', await has(R, '#al-body [data-alpending]', /Meera asked you to confirm/) && await shown(R, '#al-body [data-alconfirm]') && !(await R.$('#al-body [data-altick]')));
+await R.click('#al-body [data-alconfirm]'); await yes(R);
+ok('Rohan says yes: it is open again, the locker step is back, still given to Rohan, the ticks kept', await progress(M, '2 of 11 done') && await has(M, stepSel('e:' + lockerId) + ' [data-almeta]', /Rohan is doing this/)
+   && (await lists())[0].status === 'active' && (await lists())[0].confirmed_by === rohan.id);
 
 // ================================================================ 8. senior mode, and no internet
 const S = await openRegister(priya, { big: true });
@@ -393,6 +408,18 @@ ok('an error from the server is said plainly, with Try again, never the raw word
 await S.unroute('**/api/book?area=afterloss**');
 await S.click('#al-body [data-alretry]');
 ok('and Try again brings the list back', await progress(S, '3 of 11 done'));
+
+// ================================================================ 9. the person it is about closes it: removed
+await P.click('#al-open').catch(() => {}); await shown(P, '#al-panel');
+await P.selectOption('#al-person', papa.id);
+ok('Papa sees that the list was started for him, and that he can close it', await has(P, '#al-body', /This list was started for you\. If that was a mistake, you can close it below\./) && await shown(P, '#al-body [data-alclose]'));
+await P.click('#al-body [data-alclose]');
+ok('closing it as the person says it will be removed, and who is told', await shown(P, '#asksheet') && /Closing it removes it, and the people who started it are told\./.test(await P.textContent('#as-sub')));
+await P.click('#as-yes'); await hiddenNow(P, '#asksheet');
+ok('it is gone: no list for Papa, in the page and in the database', await has(P, '#al-body', /This list is started by the family, for someone else\./) && (await lists()).length === 0
+   && (await admin.query('select 1 from afterloss_steps')).rows.length === 0);
+ok('the mark the list set is off Papa', (await admin.query('select remembered from members where id = $1', [papa.id])).rows[0].remembered === false);
+ok('Meera\'s phone follows: nothing has been started for Papa, and it would take two again', await has(M, '#al-body', /Nothing has been started for Papa/) && await shown(M, '#al-body #al-ask'));
 
 ok('no script errors', errors.length === 0, errors.join(' | '));
 await browser.close();

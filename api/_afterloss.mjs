@@ -124,20 +124,35 @@ export function afterlossIsAdult(m, today = new Date()) {
   return age >= 18;
 }
 
-// The second adult. With nobody else to ask, one adult is enough.
-//   { error } | { needs: false } | { needs: true, askId }
+// The second adult. Starting a list and opening a closed one again both go
+// through this one rule. One adult alone is enough only when the person is
+// not on Parwah AND the family truly has no other adult: someone who signs
+// in could be alive and reading, so that always takes two.
+//   { error } | { needs: false, others } | { needs: true, askId, others }
+export const AFTERLOSS_NEEDS_SECOND = 'This needs a second adult on Parwah to confirm.';
 export function afterlossStartRule({ me, personId, members, askId, today }) {
   if (!me || !afterlossIsAdult(me, today)) return { error: 'Only an adult in the family who is on Parwah can start this.', status: 403 };
   if (me.id === personId) return { error: 'This list is started by the family, for someone else.', status: 400 };
   const others = (members || []).filter(m => m.id !== me.id && m.id !== personId && afterlossIsAdult(m, today));
-  if (!others.length) return { needs: false, others };
+  if (!others.length) {
+    const person = (members || []).find(m => m.id === personId);
+    if (person && (person.user_id || person.on_app)) return { error: AFTERLOSS_NEEDS_SECOND, status: 400, solo: false };
+    return { needs: false, others };
+  }
   if (!askId || !others.some(m => m.id === askId)) {
     return { error: 'Choose a second adult in the family to confirm. Two people start this together.', status: 400, field: 'ask', others };
   }
   return { needs: true, askId, others };
 }
 
-const nameKey = (v) => one(v).toLowerCase().replace(/[^\p{L}\p{N} ]/gu, '');
+// Is this list truly in force? Active, and either a second adult confirmed
+// it or it was an allowed start by the only adult (see the rule above).
+// `personOnApp` is whether the person it is about signs in to Parwah.
+export function afterlossInForce(list, personOnApp) {
+  if (!list || list.status !== 'active') return false;
+  return !!list.confirmed_by || (list.solo === true && !personOnApp);
+}
+
 // "Only in an emergency" and this list. While the list for a person is
 // active, it is the emergency for THAT person's entries, and only for the
 // two who started and confirmed it. A nominee is written as a name, and a
@@ -146,9 +161,12 @@ const nameKey = (v) => one(v).toLowerCase().replace(/[^\p{L}\p{N} ]/gu, '');
 // should see it is named under "People I choose" in the register.
 // It never touches unlock_policy: it only answers "is it an emergency?"
 // for the one rule in _register.mjs.
-export function afterlossOpens(list, row, memberId, members) {
+export function afterlossOpens(list, row, memberId) {
   if (!list || !row || !memberId) return false;
   if (list.status !== 'active' || list.person_id !== row.person_id) return false;
+  // Active is not enough: a second adult confirmed it, or it was an allowed
+  // start by the only adult. A list that is neither opens nothing.
+  if (!list.confirmed_by && list.solo !== true) return false;
   if (memberId === list.started_by || memberId === list.confirmed_by) return true;
   return false;
 }
@@ -201,8 +219,12 @@ export function afterlossNote(v, risks = []) {
   return { value: s || null };
 }
 
-// The two pushes this feature ever sends.
+// The pushes this feature ever sends: the ask to the second adult, the one
+// to the family when it starts (or is opened again), and the one to the two
+// who started it when the person it is about closes it themself.
 export function afterlossPush(kind, { starter, person, confirmer }) {
   if (kind === 'ask') return { title: starter + ' asks you to confirm', body: starter + " wants to start '" + AFTERLOSS_NAME + "' for " + person + '. It starts only if you agree.', url: '/#vault' };
+  if (kind === 'void') return { title: "'" + AFTERLOSS_NAME + "' was closed", body: person + ' closed the list that was started for them.', url: '/#vault' };
+  if (kind === 'reopened') return { title: starter + " opened '" + AFTERLOSS_NAME + "' for " + person + ' again', body: (confirmer ? confirmer + ' confirmed. ' : '') + 'The list is in the Family register.', url: '/#vault' };
   return { title: starter + " started '" + AFTERLOSS_NAME + "' for " + person, body: (confirmer ? confirmer + ' confirmed. ' : '') + 'The list is in the Family register.', url: '/#vault' };
 }

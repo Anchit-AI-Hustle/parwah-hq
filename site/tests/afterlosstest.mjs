@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import {
   AFTERLOSS_NAME, AFTERLOSS_SORRY, AFTERLOSS_LEGAL, AFTERLOSS_FIRST, AFTERLOSS_KINDS, AFTERLOSS_MAX,
-  afterlossKey, afterlossDay, afterlossEntryStep, afterlossIsAdult, afterlossStartRule,
+  afterlossKey, afterlossDay, afterlossEntryStep, afterlossIsAdult, afterlossStartRule, afterlossInForce, AFTERLOSS_NEEDS_SECOND,
   afterlossOpens, afterlossSteps, afterlossProgress, afterlossNote, afterlossPush
 } from '../../api/_afterloss.mjs';
 import { ASSET_CATEGORIES, registerRowFor, registerSecretRisk } from '../../api/_register.mjs';
@@ -107,7 +107,15 @@ ok('nor can I be my own second adult', !!afterlossStartRule({ me: members[1], pe
 ok('nor someone from outside the family', !!afterlossStartRule({ me: members[1], personId: PAPA, members, askId: KABIR, today }).error);
 const small = [members[0], members[1], { id: KABIR, name: 'Kabir', user_id: 'u9', dob: '2015-01-01' }, { id: PRIYA, name: 'Dadi', user_id: null }];
 rule = afterlossStartRule({ me: members[1], personId: PAPA, members: small, askId: null, today });
-ok('with only one adult (a child and a name do not count), one is enough', rule.needs === false && !rule.error, JSON.stringify(rule));
+ok('with only one adult (a child and a name do not count) and a person who is on Parwah, starting alone is refused', rule.error === 'This needs a second adult on Parwah to confirm.' && rule.needs === undefined, JSON.stringify(rule));
+const DADI = { id: PRIYA, name: 'Dadi', user_id: null };
+rule = afterlossStartRule({ me: members[1], personId: PRIYA, members: [members[1], DADI, small[2]], askId: null, today });
+ok('one adult alone is enough for someone who is not on Parwah, when there is no other adult', rule.needs === false && !rule.error, JSON.stringify(rule));
+ok('one adult alone is refused for someone who is on Parwah', (() => { const x = afterlossStartRule({ me: members[1], personId: PAPA, members: [members[0], members[1], small[2]], askId: null, today });
+  return x.error === 'This needs a second adult on Parwah to confirm.' && x.error === AFTERLOSS_NEEDS_SECOND && x.status === 400 && x.needs === undefined; })());
+ok('in force: active and confirmed, or an allowed start by the only adult', afterlossInForce({ status: 'active', confirmed_by: MEERA }, true) && afterlossInForce({ status: 'active', solo: true }, false)
+   && !afterlossInForce({ status: 'active', solo: true }, true) && !afterlossInForce({ status: 'active' }, false) && !afterlossInForce({ status: 'pending', confirmed_by: MEERA }, false)
+   && !afterlossInForce({ status: 'closed', confirmed_by: MEERA }, false) && !afterlossInForce(null, false));
 ok('nobody starts it for themself', afterlossStartRule({ me: members[0], personId: PAPA, members, askId: ROHAN, today }).status === 400);
 ok('a child cannot start it', afterlossStartRule({ me: small[2], personId: PAPA, members: small, askId: ROHAN, today }).status === 403);
 
@@ -117,12 +125,15 @@ ok('a child cannot start it', afterlossStartRule({ me: small[2], personId: PAPA,
 const list = { status: 'active', person_id: PAPA, started_by: ROHAN, confirmed_by: MEERA };
 const row = (extra) => ({ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', person_id: PAPA, created_by: PAPA, asset_category: 'BANK_ACCOUNT', institution_or_item: 'SBI savings',
   physical_location_notes: 'Passbook in the almirah', unlock_policy: 'IMMEDIATE', designated_recipients: [], ...extra });
-ok('an active list opens for the two who started and confirmed it', afterlossOpens(list, row(), ROHAN, members) && afterlossOpens(list, row(), MEERA, members));
-ok('not for anyone else', !afterlossOpens(list, row(), PRIYA, members));
-ok('and not for someone who only shares the nominee\'s name', !afterlossOpens(list, row({ nominee: 'Priya' }), PRIYA, members));
-ok('only for that person\'s entries', !afterlossOpens(list, row({ person_id: MEERA }), ROHAN, members));
-ok('not while it waits for the second adult, and not once closed', !afterlossOpens({ ...list, status: 'pending' }, row(), ROHAN, members) && !afterlossOpens({ ...list, status: 'closed' }, row(), ROHAN, members));
-ok('no list, no entry or no viewer opens nothing', !afterlossOpens(null, row(), ROHAN, members) && !afterlossOpens(list, null, ROHAN, members) && !afterlossOpens(list, row(), null, members));
+ok('an active list opens for the two who started and confirmed it', afterlossOpens(list, row(), ROHAN) && afterlossOpens(list, row(), MEERA));
+ok('not for anyone else', !afterlossOpens(list, row(), PRIYA));
+ok('and not for someone who only shares the nominee\'s name', !afterlossOpens(list, row({ nominee: 'Priya' }), PRIYA));
+ok('only for that person\'s entries', !afterlossOpens(list, row({ person_id: MEERA }), ROHAN));
+ok('not while it waits for the second adult, and not once closed', !afterlossOpens({ ...list, status: 'pending' }, row(), ROHAN) && !afterlossOpens({ ...list, status: 'closed' }, row(), ROHAN));
+ok('an active list that nobody confirmed opens nothing, unless it was an allowed start by the only adult', !afterlossOpens({ ...list, confirmed_by: null }, row(), ROHAN)
+   && afterlossOpens({ ...list, confirmed_by: null, solo: true }, row(), ROHAN));
+ok('the rule takes no list of members, and the unused name key is gone', afterlossOpens.length === 3 && !/nameKey/.test(src));
+ok('no list, no entry or no viewer opens nothing', !afterlossOpens(null, row(), ROHAN) && !afterlossOpens(list, null, ROHAN) && !afterlossOpens(list, row(), null));
 
 // ---- the list one person sees: nothing for an entry they may not see
 const rows = [
@@ -132,7 +143,7 @@ const rows = [
   row({ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4', institution_or_item: 'Bank locker', unlock_policy: 'EMERGENCY_ONLY', asset_category: 'LOCKER_KEY' }),
   row({ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5', institution_or_item: 'Gold set', unlock_policy: 'ONLY_ME', created_by: MEERA, asset_category: 'GOLD' })
 ];
-const opens = (r, id) => afterlossOpens(list, r, id, members);
+const opens = (r, id) => afterlossOpens(list, r, id);
 const seen = (viewer, o = opens) => afterlossSteps({ rows, viewerId: viewer, rowFor: registerRowFor, opens: o });
 const reg = (v) => v.steps.filter(x => x.part === 'register').map(x => x.title).join(' | ');
 ok('the first nine steps are there for everyone', [ROHAN, MEERA, PRIYA].every(id => seen(id).steps.slice(0, 9).map(x => x.key).join() === AFTERLOSS_FIRST.map(x => x.key).join()));
@@ -174,6 +185,10 @@ ok('a long note is refused in words', /300 letters or fewer/.test(afterlossNote(
 const ask = afterlossPush('ask', { starter: 'Rohan', person: 'Dadaji' }), started = afterlossPush('started', { starter: 'Rohan', person: 'Dadaji', confirmer: 'Meera' });
 ok('the ask: who asks, and that it starts only with a yes', ask.title === 'Rohan asks you to confirm' && /'What needs doing' for Dadaji/.test(ask.body) && /only if you agree/.test(ask.body));
 ok('the start: "Rohan started \'What needs doing\' for Dadaji"', started.title === "Rohan started 'What needs doing' for Dadaji" && /^Meera confirmed\./.test(started.body));
+
+const voided = afterlossPush('void', { person: 'Papa' }), again = afterlossPush('reopened', { starter: 'Priya', person: 'Dadaji', confirmer: 'Rohan' });
+ok('the person closed it themself: one calm line', voided.body === 'Papa closed the list that was started for them.' && !/!/.test(voided.title + voided.body));
+ok('opened again: who, for whom, and who confirmed', again.title === "Priya opened 'What needs doing' for Dadaji again" && /^Rohan confirmed\./.test(again.body));
 
 if (fails.length) { console.error('afterlosstest: ' + fails.length + ' FAILED of ' + (pass + fails.length)); for (const f of fails) console.error('  FAIL  ' + f); process.exit(1); }
 console.log('afterlosstest: ' + pass + '/' + pass + ' checks pass');

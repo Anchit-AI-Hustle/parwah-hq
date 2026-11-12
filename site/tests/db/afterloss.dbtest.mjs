@@ -15,7 +15,16 @@
 //   - ticks made at the same moment all hold; a tick, an assignment and a
 //     note on one step never undo each other;
 //   - a note refuses a card number, a CVV, an OTP, a PIN and a password;
-//   - exactly two pushes: one to the adult asked, one to the family.
+//   - exactly two pushes: one to the adult asked, one to the family;
+//   - opening a closed list again is the start rule again: a second adult
+//     is asked, nothing opens while it waits, and the two who open it again
+//     are the two the emergency entries open for;
+//   - the person the list is about closes it: it is removed, the two who
+//     started it are told, and it cannot be opened again;
+//   - one adult alone is refused for someone who is on Parwah;
+//   - a list in force marks the person as remembered, with no date; removing
+//     it takes the mark off only if the list set it;
+//   - the ask is sent at most three times an hour from one person about one.
 //
 // Run with a database that is safe to wipe; its name must end in _test:
 //   PARWAH_TEST_DATABASE_URL=postgres://postgres@localhost:5432/parwah_afterloss_test \
@@ -186,6 +195,14 @@ const listId = (await rows('select id from afterloss_lists'))[0].id;
 }
 const pushesAfterStart = pushed.length;
 
+// ---- a confirmed list marks the person as remembered, with no date made up
+{
+  const m = (await rows(`select to_jsonb(m) as j from members m where id = $1`, [U.papa.id]))[0].j;
+  ok('confirmed: Papa is marked as remembered, and no date of passing was invented', m.remembered === true && m.passed_year == null && m.passed_month == null && m.passed_day == null, JSON.stringify(m));
+  ok('the list records that it set the mark', (await rows('select set_remembered, solo from afterloss_lists where id = $1', [listId]))[0].set_remembered === true);
+  ok('nobody else in the family was marked', (await rows(`select 1 from members where remembered and id <> $1`, [U.papa.id])).length === 0);
+}
+
 // ---- starting it left every entry's audience exactly as it was
 ok('starting and confirming changed no unlock_policy and no chosen people', (await policies()) === before);
 
@@ -324,13 +341,42 @@ const afterShare = await policies();
   ok('closing changed no unlock_policy', (await policies()) === afterShare);
   ok('a child cannot open it again', (await act(U.kabir, 'afterloss_reopen', { listId })).status === 403);
   ok('closing it twice is refused', (await act(U.priya, 'afterloss_close', { listId })).status === 409);
+  ok('closing it normally leaves Papa marked as remembered', (await rows('select remembered from members where id = $1', [U.papa.id]))[0].remembered === true);
+  ok('closing told nobody', pushed.length === p0);
+
+  // Opening it again is the start rule again.
   r = await act(U.priya, 'afterloss_reopen', { listId });
-  ok('an adult opens it again', r.status === 200 && (await rows('select status from afterloss_lists'))[0].status === 'active');
-  const R2 = await see(U.rohan), P2 = await see(U.priya);
-  ok('reopened: the emergency entries are back for the two who started it, with their ticks', !!step(R2, 'e:' + E.locker) && step(R2, 'e:' + E.ppf).done === true && step(R2, 'e:' + E.locker).assigned_name === 'Meera');
-  ok('reopened: Priya opened it again, but she is not one of the two, so the locker and the PPF stay shut for her', !step(P2, 'e:' + E.locker) && !step(P2, 'e:' + E.ppf)
-     && (await regList(U.priya)).locators.find(l => l.id === E.locker).can_view === false);
-  ok('closing and reopening changed no unlock_policy, and told nobody', (await policies()) === afterShare && pushed.length === p0);
+  ok('one adult alone cannot open it again when a second adult exists', r.status === 400 && r.field === 'ask' && /second adult/.test(r.error) && (await rows('select status from afterloss_lists'))[0].status === 'closed', JSON.stringify(r));
+  ok('the second adult cannot be the person, herself, a child, a name or an outsider', (await act(U.priya, 'afterloss_reopen', { listId, askId: U.papa.id })).status === 400
+     && (await act(U.priya, 'afterloss_reopen', { listId, askId: U.priya.id })).status === 400 && (await act(U.priya, 'afterloss_reopen', { listId, askId: U.kabir.id })).status === 400
+     && (await act(U.priya, 'afterloss_reopen', { listId, askId: dadi })).status === 400 && (await act(U.priya, 'afterloss_reopen', { listId, askId: other.id })).status === 400);
+  ok('the person the list is about cannot open it again', (await act(U.papa, 'afterloss_reopen', { listId, askId: U.meera.id })).status === 403);
+  ok('after all of that it is still closed and nobody was told', (await rows('select status from afterloss_lists'))[0].status === 'closed' && pushed.length === p0);
+  r = await act(U.priya, 'afterloss_reopen', { listId, askId: U.rohan.id });
+  let l = (await rows('select * from afterloss_lists where id = $1', [listId]))[0];
+  ok('Priya asks Rohan to open it again: it waits, Priya is the starter, and the old confirmation is cleared', r.status === 200 && r.state === 'pending' && l.status === 'pending' && l.started_by === U.priya.id
+     && l.ask_member === U.rohan.id && l.confirmed_by === null && l.confirmed_at === null && l.reopened_by === U.priya.id, JSON.stringify(l));
+  ok('the same confirm request is pushed, to Rohan only', pushed.length === p0 + 1 && whoGot(p0) === 'rohan' && pushed[p0].body.title === 'Priya asks you to confirm' && /'What needs doing' for Papa/.test(pushed[p0].body.body));
+  const W = await see(U.rohan);
+  ok('waiting to open again: no steps, Rohan may confirm, and it says it is a request to open again', W.list.status === 'pending' && W.list.reopening === true && W.list.can_confirm === true && W.steps.length === 0, JSON.stringify(W.list));
+  ok('waiting to open again: the emergency entries are shut for everyone but Papa', (await regList(U.rohan)).locators.find(x => x.id === E.locker).can_view === false && (await regOpen(U.priya, E.locker)).status === 403
+     && (await regOpen(U.meera, E.locker)).status === 403);
+  ok('waiting to open again: nothing can be ticked', (await act(U.priya, 'afterloss_tick', { listId, key: 'f:bank', done: false })).status === 409);
+  ok('waiting to open again: the writer of an "Only me" entry cannot widen it', (await add(U.rohan, { ...base, category: 'HEIRLOOM', institutionOrItem: 'Old pen', unlockPolicy: 'ONLY_ME' })).status === 200
+     && (await act(U.rohan, 'locator_share', { id: (await rows(`select id from legacy_asset_locators where institution_or_item = 'Old pen'`))[0].id, unlockPolicy: 'IMMEDIATE' })).status === 403);
+  await rows(`delete from legacy_asset_locators where institution_or_item = 'Old pen'`);
+  ok('Priya cannot confirm her own request, and Meera was not asked', (await act(U.priya, 'afterloss_confirm', { listId })).status === 403 && (await act(U.meera, 'afterloss_confirm', { listId })).status === 403);
+  ok('Priya takes the request back: the list is closed again, with its ticks, and is not deleted', (await act(U.priya, 'afterloss_cancel', { listId })).status === 200
+     && (await rows('select status from afterloss_lists where id = $1', [listId]))[0].status === 'closed' && (await rows('select 1 from afterloss_steps where list_id = $1 and done', [listId])).length >= 9);
+  ok('she asks again, and Rohan confirms: it is active', (await act(U.priya, 'afterloss_reopen', { listId, askId: U.rohan.id })).status === 200 && (await act(U.rohan, 'afterloss_confirm', { listId })).status === 200);
+  l = (await rows('select * from afterloss_lists where id = $1', [listId]))[0];
+  ok('active again only after that confirmation: started by Priya, confirmed by Rohan', l.status === 'active' && l.started_by === U.priya.id && l.confirmed_by === U.rohan.id && !!l.confirmed_at, JSON.stringify(l));
+  ok('the family is told once that it is open again', pushed.filter(x => x.body.title === "Priya opened 'What needs doing' for Papa again" && /^Rohan confirmed\./.test(x.body.body)).length === 4, pushed.slice(p0).map(x => x.body.title).join(' | '));
+  const R2 = await see(U.rohan), P2 = await see(U.priya), M2 = await see(U.meera);
+  ok('reopened: the emergency entries are open for the two who opened it again, with their ticks', !!step(R2, 'e:' + E.locker) && step(R2, 'e:' + E.ppf).done === true && step(R2, 'e:' + E.locker).assigned_name === 'Meera' && !!step(P2, 'e:' + E.locker) && !!step(P2, 'e:' + E.ppf));
+  ok('reopened: Meera confirmed the first start but not this one, so the locker and the PPF stay shut for her', !step(M2, 'e:' + E.locker) && !step(M2, 'e:' + E.ppf)
+     && (await regList(U.meera)).locators.find(x => x.id === E.locker).can_view === false);
+  ok('closing and reopening changed no unlock_policy', (await policies()) === afterShare);
 }
 
 // ---- an entry removed from the register takes its step with it
@@ -341,6 +387,7 @@ const afterShare = await policies();
 }
 
 // ---- taking a request back, and a family with one adult
+let baujiList = null;
 {
   const p0 = pushed.length;
   r = await act(U.rohan, 'afterloss_start', { personId: dadi, askId: U.priya.id });
@@ -350,21 +397,84 @@ const afterShare = await policies();
   ok('Priya says not now: the request is gone', (await act(U.priya, 'afterloss_cancel', { listId: id2 })).status === 200 && (await rows('select 1 from afterloss_lists where person_id = $1', [dadi])).length === 0);
   r = await act(U.rohan, 'afterloss_start', { personId: dadi, askId: U.priya.id });
   ok('it can be asked again, and Rohan can take his own request back', r.status === 200 && (await act(U.rohan, 'afterloss_cancel', { listId: r.id })).status === 200 && (await lists(U.meera)).lists.length === 1);
+  // Start, take back, start again must not ring Priya's phone all day.
+  const p2 = pushed.length;
+  r = await act(U.rohan, 'afterloss_start', { personId: dadi, askId: U.priya.id });
+  ok('a third ask in the hour still reaches Priya', r.status === 200 && pushed.length === p2 + 1 && (await act(U.rohan, 'afterloss_cancel', { listId: r.id })).status === 200);
+  r = await act(U.rohan, 'afterloss_start', { personId: dadi, askId: U.priya.id });
+  ok('a fourth ask in the hour is still made, but no push is sent', r.status === 200 && r.state === 'pending' && pushed.length === p2 + 1 && (await see(U.priya, dadi)).list.can_confirm === true, JSON.stringify(r));
+  ok('and Rohan takes it back', (await act(U.rohan, 'afterloss_cancel', { listId: r.id })).status === 200 && (await lists(U.meera)).lists.length === 1);
+  ok('Dadi was never marked as remembered: nothing was confirmed for her', (await rows('select remembered from members where id = $1', [dadi]))[0].remembered === false);
   ok('an active list cannot be taken back, only closed', (await act(U.rohan, 'afterloss_cancel', { listId })).status === 409);
 
   const p1 = pushed.length;
   r = await see(other, bauji, other.code);
   ok('Kamla is the only adult in her family: no second adult is asked for', r.start.can_start && r.start.needs_second === false && r.start.adults.length === 0, JSON.stringify(r.start));
   r = await act(other, 'afterloss_start', { personId: bauji }, other.code);
+  baujiList = r.id;
   ok('with only one adult, she starts it alone and it is active at once', r.status === 200 && r.state === 'active' && (await see(other, bauji, other.code)).list.status === 'active' && (await see(other, bauji, other.code)).steps.length === 9, JSON.stringify(r));
   ok('nobody else is in her family to tell, and the Sharmas hear nothing', pushed.length === p1);
+  ok('a start by the only adult marks Bauji as remembered too', (await rows('select remembered from members where id = $1', [bauji]))[0].remembered === true
+     && (await rows('select solo, set_remembered from afterloss_lists where id = $1', [r.id]))[0].solo === true);
+  // Someone who is on Parwah could be alive and reading: never one adult alone.
+  const vimla = await signUp('9861000010', 'Vimla', '4417');
+  await call(circle, { token: other.token, body: { action: 'set_join_policy', code: other.code, memberId: other.id, policy: 'open' } });
+  vimla.id = (await call(circle, { token: vimla.token, body: { action: 'join', code: other.code, memberName: 'Vimla', userId: vimla.userId, role: 'family', relation: 'sister' } })).memberId;
+  const p3 = pushed.length;
+  const solo = await act(other, 'afterloss_start', { personId: vimla.id }, other.code);
+  ok('one adult alone is refused for someone who is on Parwah', !!vimla.id && solo.status === 400 && solo.error === 'This needs a second adult on Parwah to confirm.' && !solo.id
+     && (await rows('select 1 from afterloss_lists where person_id = $1', [vimla.id])).length === 0, JSON.stringify(solo));
+  const sv = await see(other, vimla.id, other.code);
+  ok('and the screen is told why it cannot start', sv.start.can_start === false && sv.start.why === 'This needs a second adult on Parwah to confirm.', JSON.stringify(sv.start));
+  ok('Vimla is not marked, and nobody was told', (await rows('select remembered from members where id = $1', [vimla.id]))[0].remembered === false && pushed.length === p3);
   ok('the Sharmas cannot see the Guptas\' list, or tick it', (await lists(U.rohan)).lists.every(l => l.person_name !== 'Bauji') && (await act(U.rohan, 'afterloss_tick', { listId: r.id, key: 'f:bank', done: true })).status === 404);
 }
 
+// ---- a list that is active but was never confirmed opens nothing (rows from before this rule)
+{
+  await rows(`update afterloss_lists set confirmed_by = null where id = $1`, [listId]);
+  ok('active without a confirmation: the emergency entries are shut, in the list and in the register', !step(await see(U.priya), 'e:' + E.locker) && (await regOpen(U.priya, E.locker)).status === 403
+     && (await regList(U.rohan)).locators.find(x => x.id === E.locker).can_view === false);
+  ok('and the writer of an "Only me" entry cannot widen it', (await add(U.priya, { ...base, category: 'HEIRLOOM', institutionOrItem: 'Old ring', unlockPolicy: 'ONLY_ME' })).status === 200
+     && (await act(U.priya, 'locator_share', { id: (await rows(`select id from legacy_asset_locators where institution_or_item = 'Old ring'`))[0].id, unlockPolicy: 'IMMEDIATE' })).status === 403);
+  await rows(`update afterloss_lists set confirmed_by = $2 where id = $1`, [listId, U.rohan.id]);
+  ok('confirmed again, the same writer may', (await act(U.priya, 'locator_share', { id: (await rows(`select id from legacy_asset_locators where institution_or_item = 'Old ring'`))[0].id, unlockPolicy: 'IMMEDIATE' })).status === 200);
+  await rows(`delete from legacy_asset_locators where institution_or_item = 'Old ring'`);
+}
+
+// ---- the person the list is about closes it: they are alive, so it is removed
+{
+  const p0 = pushed.length;
+  r = await act(U.papa, 'afterloss_close', { listId });
+  ok('Papa closes the list that was started for him: it is removed', r.status === 200 && r.state === 'removed' && (await rows('select 1 from afterloss_lists where id = $1', [listId])).length === 0
+     && (await rows('select 1 from afterloss_steps where list_id = $1', [listId])).length === 0, JSON.stringify(r));
+  ok('the two who started and confirmed it are told, once, calmly, and nobody else', pushed.length === p0 + 2 && whoGot(p0) === 'priya,rohan'
+     && pushed.slice(p0).every(x => x.body.body === 'Papa closed the list that was started for them.'), whoGot(p0) + ' ' + JSON.stringify(pushed.slice(p0)));
+  ok('the mark this list set is taken off Papa', (await rows('select remembered from members where id = $1', [U.papa.id]))[0].remembered === false);
+  ok('it cannot be opened again, by anyone', (await act(U.priya, 'afterloss_reopen', { listId, askId: U.rohan.id })).status === 404 && (await act(U.rohan, 'afterloss_confirm', { listId })).status === 404);
+  ok('the emergency entries are shut again', (await regOpen(U.priya, E.locker)).status === 403 && (await regOpen(U.rohan, E.locker)).status === 403);
+  ok('a fresh start goes through the whole rule: alone is refused', (await act(U.rohan, 'afterloss_start', { personId: U.papa.id })).status === 400);
+  // Someone else had already marked Papa: removing a list must not undo that.
+  await rows(`update members set remembered = true where id = $1`, [U.papa.id]);
+  r = await act(U.meera, 'afterloss_start', { personId: U.papa.id, askId: U.priya.id });
+  const id3 = r.id;
+  ok('a new list, asked and confirmed', r.status === 200 && r.state === 'pending' && (await act(U.priya, 'afterloss_confirm', { listId: id3 })).status === 200
+     && (await rows('select set_remembered from afterloss_lists where id = $1', [id3]))[0].set_remembered === false);
+  ok('Papa removes it again, and the mark it did not set stays', (await act(U.papa, 'afterloss_close', { listId: id3 })).status === 200 && (await rows('select remembered from members where id = $1', [U.papa.id]))[0].remembered === true);
+  await rows(`update members set remembered = false where id = $1`, [U.papa.id]);
+  // A request to open a closed list again, and Papa says no: removed too.
+  r = await act(U.meera, 'afterloss_start', { personId: U.papa.id, askId: U.priya.id });
+  const id4 = r.id;
+  ok('a list is confirmed, closed by an adult, and asked open again', (await act(U.priya, 'afterloss_confirm', { listId: id4 })).status === 200 && (await act(U.meera, 'afterloss_close', { listId: id4 })).status === 200
+     && (await act(U.meera, 'afterloss_reopen', { listId: id4, askId: U.priya.id })).status === 200);
+  ok('Papa takes that request back himself: the list is removed and his mark comes off', (await act(U.papa, 'afterloss_cancel', { listId: id4 })).status === 200
+     && (await rows('select 1 from afterloss_lists where id = $1', [id4])).length === 0 && (await rows('select remembered from members where id = $1', [U.papa.id]))[0].remembered === false);
+}
+
 // ---- in all, the Sharma list sent exactly two kinds of push, once each
-ok('from start to here the Sharma list for Papa sent one ask and one "started", and nothing since', pushesAfterStart === 5 && pushed.filter(p => /started 'What needs doing' for Papa/.test(p.body.title)).length === 4
-   && pushed.filter(p => p.body.title === 'Rohan asks you to confirm').length === 3, pushed.map(p => p.body.title).join(' | '));
-ok('an unknown action is refused', (await act(U.rohan, 'afterloss_everything', { listId })).status === 400);
+ok('from start to here the Sharma list for Papa sent one ask and one "started", and nothing since', pushesAfterStart === 5 && pushed.filter(p => p.body.title === "Rohan started 'What needs doing' for Papa").length === 4
+   && pushed.filter(p => p.body.title === 'Rohan asks you to confirm').length === 4, pushed.map(p => p.body.title).join(' | '));
+ok('an unknown action is refused', (await act(other, 'afterloss_everything', { listId: baujiList }, other.code)).status === 400);
 
 globalThis.fetch = realFetch;
 await admin.end();

@@ -6591,7 +6591,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var who = esc(v.person_name || 'this person'), l = v.list, h = '', mine = v.person_id === state.memberId;
     if (!l) {
       if (mine) h = '<div class="ev">This list is started by the family, for someone else.</div>';
-      else if (!v.start || !v.start.can_start) h = '<div class="ev">Nothing has been started for ' + who + '.<small>Only an adult in the family who is on Parwah can start this.</small></div>';
+      else if (!v.start || !v.start.can_start) h = '<div class="ev">Nothing has been started for ' + who + '.<small>' + esc((v.start && v.start.why) || 'Only an adult in the family who is on Parwah can start this.') + '</small></div>';
       else {
         var adults = v.start.adults || [];
         if (!adults.some(function(m){ return m.id === alAskPick; })) alAskPick = adults[0] ? adults[0].id : '';
@@ -6635,7 +6635,17 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           ? '<div class="feed" id="al-reg">' + reg.map(function(s){ return afterlossStepHtml(s, live, people); }).join('') + '</div>'
           : '<div class="ev" id="al-reg">Nothing in the register about ' + who + ' is shared with you.<small>Each person sees only the entries they could already see in the register.</small></div>');
       if (l.can_close) h += '<button type="button" class="linkbtn" data-alclose="1">Close this list</button>';
-      if (l.can_reopen) h += '<button type="button" class="linkbtn" data-alreopen="1">Open this list again</button>';
+      if (l.can_reopen) {
+        // Opening it again follows the same rule as starting it.
+        var again = (v.start && v.start.adults) || [];
+        if (!again.some(function(m){ return m.id === alAskPick; })) alAskPick = again[0] ? again[0].id : '';
+        if (again.length) {
+          h += '<label for="al-ask">Who should confirm with you</label><select id="al-ask">' +
+            again.map(function(m){ return '<option value="' + esc(m.id) + '"' + (m.id === alAskPick ? ' selected' : '') + '>' + esc(m.name) + '</option>'; }).join('') + '</select>' +
+            '<p class="hint">Two people open this again together, the same as starting it. Nothing is open until the second person agrees.</p>';
+        }
+        h += '<button type="button" class="linkbtn" data-alreopen="1">' + (again.length ? 'Ask them to open this list again' : 'Open this list again') + '</button>';
+      }
     }
     box.innerHTML = h;
     var bar = box.querySelector('.albar i');
@@ -6691,11 +6701,13 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     } else if (b.hasAttribute('data-alcancel')) {
       afterlossPost('afterloss_cancel', { listId: l.id });
     } else if (b.hasAttribute('data-alclose')) {
-      askSheet('Close this list?', 'What was ticked is kept, and it can be opened again. Entries marked "Only in an emergency" close again.', 'Yes, close it', 'Keep it open').then(function(yes){
+      askSheet('Close this list?', v.person_id === state.memberId
+        ? 'This list was started for you. Closing it removes it, and the people who started it are told.'
+        : 'What was ticked is kept, and it can be opened again. Entries marked "Only in an emergency" close again.', 'Yes, close it', 'Keep it open').then(function(yes){
         if (yes) afterlossPost('afterloss_close', { listId: l.id });
       });
     } else if (b.hasAttribute('data-alreopen')) {
-      afterlossPost('afterloss_reopen', { listId: l.id });
+      afterlossPost('afterloss_reopen', { listId: l.id, askId: alAskPick || null });
     } else if (b.hasAttribute('data-alnote')) {
       var nk = b.getAttribute('data-alnote');
       askText('A note for this step', 'Keep it short. Never a password, a PIN or a card number.', 'Save the note', 'Cancel').then(function(text){

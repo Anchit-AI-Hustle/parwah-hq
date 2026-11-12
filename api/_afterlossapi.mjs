@@ -5,7 +5,9 @@
 //   GET  ?area=afterloss&circle=CODE&member=ID             every list in this family, and who may start one
 //        &person=ID                                        one person's list, with the steps I may see
 //   POST {action: afterloss_start, personId, askId}        asks a second adult; alone only if there is none
-//        {action: afterloss_confirm | afterloss_cancel | afterloss_close | afterloss_reopen, listId}
+//                                                          and the person is not on Parwah
+//        {action: afterloss_confirm | afterloss_cancel | afterloss_close, listId}
+//        {action: afterloss_reopen, listId, askId}         the same rule as starting: a second adult confirms
 //        {action: afterloss_tick, listId, key, done}
 //        {action: afterloss_assign, listId, key, assignId | null}
 //        {action: afterloss_note, listId, key, note}
@@ -16,7 +18,7 @@
 // can see an entry is exactly what it was before the list was started.
 // An active list only answers "is it an emergency?" for that one rule, for
 // that person's entries (afterlossOpens in _afterloss.mjs).
-import { db, requireMember, isUuid, schemaOnce } from './_db.mjs';
+import { db, requireMember, isUuid, schemaOnce, rateLimit } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
@@ -25,7 +27,7 @@ import { ensureCarePrepSchema, registerRows, registerSos, registerLogView, recor
 import { noteRisk } from './_notesapi.mjs';
 import {
   AFTERLOSS_NAME, AFTERLOSS_SORRY, AFTERLOSS_LEGAL,
-  afterlossKey, afterlossIsAdult, afterlossStartRule, afterlossOpens, afterlossSteps, afterlossNote, afterlossPush
+  afterlossKey, afterlossIsAdult, afterlossStartRule, afterlossOpens, afterlossInForce, afterlossSteps, afterlossNote, afterlossPush
 } from './_afterloss.mjs';
 
 let ready = false;
@@ -71,6 +73,51 @@ async function afterlossTables(sql) {
     updated_at timestamptz not null default now(),
     primary key (list_id, step_key)
   )`;
+  // solo: started by the only adult, for someone who is not on Parwah (the
+  // one start that needs no second adult). set_remembered: this list is what
+  // marked the person as remembered, so voiding it may take the mark off.
+  await sql`alter table afterloss_lists add column if not exists solo boolean not null default false`;
+  await sql`alter table afterloss_lists add column if not exists set_remembered boolean not null default false`;
+  // The flag is older than this module (Family Memory made it). Every sweep
+  // that names a person reads it: cards, check-ins, the digest, the album.
+  await sql`alter table members add column if not exists remembered boolean not null default false`;
+}
+
+// A list that is in force says the person has passed away, so the rest of
+// Parwah must stop naming them as if they had not. No date is invented.
+// The list remembers whether it was the one that set the mark.
+async function markRemembered(sql, circleId, list) {
+  const got = await sql`update members set remembered = true where id = ${list.person_id} and circle_id = ${circleId} and not remembered returning id`;
+  if (!got[0]) return;
+  await sql`update afterloss_lists set set_remembered = true where id = ${list.id}`;
+  // A birthday or anniversary card already waiting is taken away. The cards
+  // table belongs to a feature a family may never have opened.
+  try {
+    await sql`delete from cards where circle_id = ${circleId} and auto_key is not null and delivered_at is null
+                and (for_member = ${list.person_id} or for_member2 = ${list.person_id})`;
+  } catch (e) { if (!(e && (e.code === '42P01' || e.code === '42703'))) throw e; }
+}
+
+// The person the list is about closed it: they are alive, it was a mistake.
+// The list and its steps go, so it cannot be opened again; a fresh start
+// goes through the whole rule. The mark comes off only if this list set it
+// and nobody has since written a day of remembrance on top of it.
+async function voidList(sql, circleId, list) {
+  const gone = await sql`delete from afterloss_lists where id = ${list.id} and circle_id = ${circleId} returning set_remembered`;
+  if (!gone[0]) return false;
+  if (gone[0].set_remembered) {
+    await sql`update members m set remembered = false where m.id = ${list.person_id} and m.circle_id = ${circleId}
+                and (to_jsonb(m)->>'remembered_by') is null and (to_jsonb(m)->>'passed_year') is null`;
+  }
+  return true;
+}
+
+// The ask to a second adult is a push, and start, take back, start again
+// would be a way to ring someone's phone all day. Three an hour from one
+// person about one person; past that the request still stands, quietly.
+async function pushAsk(sql, circleId, me, person, askId) {
+  if (!(await rateLimit(sql, 'afterloss_ask', me.id + ':' + person.id, 3, 3600, { failClosed: true }))) return;
+  await pushCircle(sql, circleId, afterlossPush('ask', { starter: me.name, person: person.name }), { only: askId });
 }
 
 // For the register itself (locatorApi): the same answer the checklist
@@ -78,21 +125,25 @@ async function afterlossTables(sql) {
 // Returns (row, memberId) => boolean. No table yet means no list yet.
 export async function afterlossOpener(sql, circleId) {
   try {
-    const lists = await sql`select person_id, status, started_by, confirmed_by from afterloss_lists
-                            where circle_id = ${circleId} and status = 'active'`;
+    const lists = (await sql`select l.person_id, l.status, l.started_by, l.confirmed_by, l.solo, m.user_id is not null as on_app
+                             from afterloss_lists l join members m on m.id = l.person_id
+                             where l.circle_id = ${circleId} and l.status = 'active'`).filter(l => afterlossInForce(l, l.on_app));
     if (!lists.length) return () => false;
-    const members = await sql`select id, name from members where circle_id = ${circleId}`;
     const by = new Map(lists.map(l => [l.person_id, l]));
-    return (row, memberId) => afterlossOpens(by.get(row.person_id), row, memberId, members);
+    return (row, memberId) => afterlossOpens(by.get(row.person_id), row, memberId);
   } catch (e) { return () => false; }
 }
 
-// Is there an active list for this person? The writer of an "Only me"
+// Is there a list in force for this person? The writer of an "Only me"
 // entry may then choose to share it, because nobody else is left who can.
+// In force: active AND confirmed by a second adult, or an allowed start by
+// the only adult for someone who is not on Parwah (afterlossInForce).
 export async function afterlossActiveFor(sql, circleId, personId) {
   try {
-    const r = await sql`select 1 as x from afterloss_lists where circle_id = ${circleId} and person_id = ${personId} and status = 'active'`;
-    return !!r[0];
+    const r = await sql`select l.status, l.confirmed_by, l.solo, m.user_id is not null as on_app
+                        from afterloss_lists l join members m on m.id = l.person_id
+                        where l.circle_id = ${circleId} and l.person_id = ${personId} and l.status = 'active'`;
+    return !!r[0] && afterlossInForce(r[0], r[0].on_app);
   } catch (e) { return false; }
 }
 
@@ -109,6 +160,8 @@ function listOut(l, me, members) {
     confirmed_by: l.confirmed_by, confirmed_by_name: name(l.confirmed_by), confirmed_at: l.confirmed_at,
     closed_by_name: name(l.closed_by), closed_at: l.closed_at,
     can_confirm: l.status === 'pending' && l.ask_member === me.id && adult,
+    // A request to open a closed list again waits like a first start does.
+    reopening: l.status === 'pending' && !!l.closed_at,
     can_cancel: l.status === 'pending' && (l.started_by === me.id || l.ask_member === me.id || subject),
     can_close: l.status === 'active' && (adult || subject),
     can_reopen: l.status === 'closed' && adult && !subject
@@ -120,7 +173,9 @@ function listOut(l, me, members) {
 async function viewOf(sql, circleId, list, me, members) {
   const rows = await registerRows(sql, circleId, { personId: list.person_id });
   const inSos = await registerSos(sql, circleId);
-  const opens = (row, memberId) => inSos.has(row.person_id) || afterlossOpens(list, row, memberId, members);
+  const person = members.find(m => m.id === list.person_id);
+  const inForce = afterlossInForce(list, !!(person && person.user_id));
+  const opens = (row, memberId) => inSos.has(row.person_id) || (inForce && afterlossOpens(list, row, memberId));
   const marks = {};
   const stored = await sql`
     select s.step_key, s.done, s.done_at, s.assigned_to, s.note,
@@ -162,8 +217,10 @@ export default async function afterlossApi(req, res) {
       if (!isUuid(q.person) || !members.some(m => m.id === q.person)) return res.status(404).json({ ok: false, error: 'That person is not in this family' });
       const list = (await sql`select * from afterloss_lists where circle_id = ${g.circle.id} and person_id = ${q.person}`)[0];
       const rule = afterlossStartRule({ me: meRow, personId: q.person, members, askId: null });
-      const start = { can_start: !list && !!rule.others, needs_second: !!(rule.others && rule.others.length),
-        adults: (rule.others || []).map(m => ({ id: m.id, name: m.name })) };
+      // rule.error with field 'ask' only means "now choose the second adult".
+      const may = !rule.error || rule.field === 'ask';
+      const start = { can_start: !list && may, needs_second: !!(rule.others && rule.others.length),
+        adults: (rule.others || []).map(m => ({ id: m.id, name: m.name })), why: may ? null : rule.error };
       const personName = members.find(m => m.id === q.person).name;
       if (!list || list.status === 'pending') {
         return res.status(200).json({ ok: true, ...words, person_id: q.person, person_name: personName,
@@ -199,13 +256,16 @@ export default async function afterlossApi(req, res) {
           ? await sql`insert into afterloss_lists (circle_id, person_id, status, started_by, ask_member)
                       values (${g.circle.id}, ${person.id}, 'pending', ${g.me.id}, ${rule.askId})
                       on conflict (circle_id, person_id) do nothing returning id`
-          : await sql`insert into afterloss_lists (circle_id, person_id, status, started_by, confirmed_at)
-                      values (${g.circle.id}, ${person.id}, 'active', ${g.me.id}, now())
+          : await sql`insert into afterloss_lists (circle_id, person_id, status, started_by, confirmed_at, solo)
+                      values (${g.circle.id}, ${person.id}, 'active', ${g.me.id}, now(), true)
                       on conflict (circle_id, person_id) do nothing returning id`;
         if (!made[0]) return res.status(409).json({ ok: false, error: 'There is already a list for ' + person.name + '. Open it from the Family register.' });
         await audit('afterloss_start', made[0].id, { person: person.id });
-        if (rule.needs) await pushCircle(sql, g.circle.id, afterlossPush('ask', { starter: g.me.name, person: person.name }), { only: rule.askId });
-        else await pushCircle(sql, g.circle.id, afterlossPush('started', { starter: g.me.name, person: person.name }), { except: g.me.id });
+        if (rule.needs) await pushAsk(sql, g.circle.id, g.me, person, rule.askId);
+        else {
+          await markRemembered(sql, g.circle.id, { id: made[0].id, person_id: person.id });
+          await pushCircle(sql, g.circle.id, afterlossPush('started', { starter: g.me.name, person: person.name }), { except: g.me.id });
+        }
         return res.status(200).json({ ok: true, id: made[0].id, state: rule.needs ? 'pending' : 'active' });
       }
 
@@ -222,27 +282,56 @@ export default async function afterlossApi(req, res) {
                             where id = ${list.id} and status = 'pending' and ask_member = ${g.me.id} returning id`;
         if (!r[0]) return res.status(409).json({ ok: false, error: 'This has already been answered.' });
         await audit('afterloss_confirm', list.id);
-        // The one push to the family. Never another from this feature.
-        await pushCircle(sql, g.circle.id, afterlossPush('started', { starter: can.started_by_name || 'Someone in the family', person: can.person_name, confirmer: g.me.name }), { except: g.me.id });
+        await markRemembered(sql, g.circle.id, list);
+        // The one push to the family, each time the list comes into force.
+        await pushCircle(sql, g.circle.id, afterlossPush(can.reopening ? 'reopened' : 'started', { starter: can.started_by_name || 'Someone in the family', person: can.person_name, confirmer: g.me.name }), { except: g.me.id });
         return res.status(200).json({ ok: true, state: 'active' });
       }
       if (action === 'afterloss_cancel') {
         if (!can.can_cancel) return res.status(list.status === 'pending' ? 403 : 409).json({ ok: false, error: list.status === 'pending' ? 'Only the two people asked can take this back.' : 'This has already been answered.' });
-        await sql`delete from afterloss_lists where id = ${list.id} and status = 'pending'`;
+        if (can.reopening && g.me.id !== list.person_id) {
+          // A request to open it again is taken back: the list is closed, as
+          // it was, with its ticks. Nothing was open in between.
+          await sql`update afterloss_lists set status = 'closed', ask_member = null where id = ${list.id} and status = 'pending'`;
+        } else if (can.reopening) {
+          await voidList(sql, g.circle.id, list);
+        } else {
+          await sql`delete from afterloss_lists where id = ${list.id} and status = 'pending'`;
+        }
         await audit('afterloss_cancel', list.id);
         return res.status(200).json({ ok: true });
       }
       if (action === 'afterloss_close') {
         if (!can.can_close) return res.status(list.status === 'active' ? 403 : 409).json({ ok: false, error: list.status === 'active' ? 'Only an adult in the family can close this.' : 'This list is not open.' });
+        if (g.me.id === list.person_id) {
+          // They are alive, so it was a mistake: the list is removed, not kept.
+          if (!(await voidList(sql, g.circle.id, list))) return res.status(404).json(gone);
+          await audit('afterloss_void', list.id, { person: list.person_id });
+          const told = [...new Set([list.started_by, list.confirmed_by].filter(id => id && id !== g.me.id))];
+          for (const id of told) await pushCircle(sql, g.circle.id, afterlossPush('void', { person: g.me.name }), { only: id });
+          return res.status(200).json({ ok: true, state: 'removed' });
+        }
         await sql`update afterloss_lists set status = 'closed', closed_by = ${g.me.id}, closed_at = now() where id = ${list.id} and status = 'active'`;
         await audit('afterloss_close', list.id);
         return res.status(200).json({ ok: true, state: 'closed' });
       }
       if (action === 'afterloss_reopen') {
         if (!can.can_reopen) return res.status(list.status === 'closed' ? 403 : 409).json({ ok: false, error: list.status === 'closed' ? 'Only an adult in the family can open this again.' : 'This list is not closed.' });
-        await sql`update afterloss_lists set status = 'active', reopened_by = ${g.me.id}, reopened_at = now() where id = ${list.id} and status = 'closed'`;
+        // Exactly the rule for starting: a second adult is named and must
+        // say yes. Until then the list is pending and opens nothing.
+        const person = members.find(m => m.id === list.person_id);
+        const rule = afterlossStartRule({ me: meRow, personId: list.person_id, members, askId: isUuid(body.askId) ? body.askId : null });
+        if (rule.error) return res.status(rule.status).json({ ok: false, error: rule.error, field: rule.field });
+        const state = rule.needs ? 'pending' : 'active';
+        const r = await sql`update afterloss_lists set status = ${state}, started_by = ${g.me.id}, ask_member = ${rule.needs ? rule.askId : null},
+                              confirmed_by = null, confirmed_at = ${rule.needs ? null : new Date().toISOString()}::timestamptz, solo = ${!rule.needs},
+                              reopened_by = ${g.me.id}, reopened_at = now()
+                            where id = ${list.id} and status = 'closed' returning id`;
+        if (!r[0]) return res.status(409).json({ ok: false, error: 'This list is not closed.' });
         await audit('afterloss_reopen', list.id);
-        return res.status(200).json({ ok: true, state: 'active' });
+        if (rule.needs) await pushAsk(sql, g.circle.id, g.me, person || { id: list.person_id, name: can.person_name }, rule.askId);
+        else await markRemembered(sql, g.circle.id, list);
+        return res.status(200).json({ ok: true, state });
       }
 
       if (action === 'afterloss_tick' || action === 'afterloss_assign' || action === 'afterloss_note') {
