@@ -3185,10 +3185,117 @@ _fr_static = [i for i in _static_ids if i.startswith("fr-")]
 check(f"register: its new ids all start with fr- and none is the first-run card's ({len(_fr_static)})",
       len(_fr_static) >= 20 and all(_fr_static.count(i) == 1 for i in _fr_static))
 _testdb_fr = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
-check("register: the unit test is in the gate, and both database tests are last in test:db",
+# Both tests must be IN test:db, one after the other. Not last: a check that
+# needs its own test to be the last entry breaks the next feature's merge.
+check("register: the unit test is in the gate, and both database tests are in test:db, the rules before the browser",
       "node site/tests/famregistertest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
-      and _testdb_fr.endswith("site/tests/db/famregister.dbtest.mjs && node --import ./site/tests/db/register.mjs site/tests/db/famregister.e2e.dbtest.mjs")
+      and "site/tests/db/famregister.dbtest.mjs && node --import ./site/tests/db/register.mjs site/tests/db/famregister.e2e.dbtest.mjs" in _testdb_fr
       and (REPO / "site/tests/db/famregister.dbtest.mjs").exists() and (REPO / "site/tests/db/famregister.e2e.dbtest.mjs").exists())
+
+# ---------- 10z. "Aaj kya hua": the daily digest from Ekta ----------
+# The owner accepted a small AI cost for this one feature. These checks keep
+# it small: only the list is sent, one call per member per day, a cap per
+# circle, never from the timer, and the plain version always there.
+_dg = (API_DIR / "_digest.mjs").read_text(encoding="utf-8")
+_dgr = (API_DIR / "_digestrules.mjs").read_text(encoding="utf-8")
+_dg_ekta = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
+_dg_ev = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_dg_fn = lambda src, name: src[src.index(name):].split("\n}\n", 1)[0]
+_dg_sweep = _dg_fn(_dg, "export async function digestSweep(")
+_dg_gather = _dg_fn(_dg, "export async function digestGather(")
+_dg_ask = _dg_fn(_dg, "async function digestAskModel(")
+_dg_by = _dg_fn(_dg, "async function digestByModel(")
+_dg_open = _dg_fn(_dg, "export async function digestOpen(")
+check("digest: it rides /api/ekta in underscore modules, after requireMember, never a new serverless function",
+      not (API_DIR / "digest.mjs").exists() and "/^digest(_|$)/.test(req.body.action)" in _dg_ekta
+      and "const { digestHandle } = await import('./_digest.mjs');" in _dg_ekta
+      and _dg_ekta.index("requireMember(sql, code, memberId, tokenOf(req))") < _dg_ekta.index("digestHandle(sql, circle, me, req, res)")
+      and _dg_ekta.index("digestHandle(sql, circle, me, req, res)") < _dg_ekta.index("await spend(sql, circle.id, me.id, 'ekta')"))
+check("digest: the rules module imports nothing, so the gate can test it before npm install",
+      not re.search(r"^\s*import\s", _dgr, flags=re.M) and "await import(" not in _dgr and "require(" not in _dgr
+      and "node site/tests/digesttest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
+check("digest: ONLY THE LIST IS SENT - the prompt is built from the facts' sentences and nothing else",
+      "list.map((f, i) => (i + 1) + '. ' + f.text).join('\\n')" in _dgr
+      and "const sent = facts.slice(0, 8), prompt = digestPrompt(sent);" in _dg_ask
+      and "({ system: prompt.system, user: prompt.user, maxTokens: DG.maxTokens, timeoutMs: ms })" in _dg_ask
+      and not re.search(r"\b(raw|row|sql|me\.|circle\.|phone|email)\b", _dg_ask.split("try {", 1)[1].split("} catch", 1)[0]))
+check("digest: what is gathered is only what the viewer may open - each feature's own rule is in the SQL, and notes, the vault, the register and health numbers are never read",
+      "b.visibility = 'circle' or b.about_member = ${mid} or b.by_member = ${mid}" in _dg_gather
+      and "s.visibility = 'circle' or s.about_member = ${mid} or (s.visibility = 'some' and ${mid} = any(s.share_with))" in _dg_gather
+      and "join pasand_rec_to t on t.rec_id = r.id and t.member_id = ${mid}" in _dg_gather
+      and "for_member is distinct from ${mid} and for_member2 is distinct from ${mid}" in _dg_gather
+      and not re.search(r"from\s+(notes|vault_\w+|legacy_asset_\w+|biomarker_records|pulse|messages|care_bills|care_expenses|pay_\w+|book_consent)\b", _dg)
+      and "b.name" not in _dg_gather and "answer_text" not in _dg and "export function digestMaySee(" in _dgr)
+check("digest: ONE CALL PER MEMBER PER DAY - the row is claimed final once, and only the claimer may ask the model",
+      "primary key (member_id, day)" in _dg and "where digest_daily.final = false" in _dg_open
+      and "if (mine[0] && evening) row = await digestByModel(" in _dg_open and _dg.count("digestByModel(") == 2
+      and _dg.count("digestAskModel(") == 2 and "set model_tried = true" in _dg_by)
+check("digest: THE CAP - 12 model calls a circle a day, taken in one statement, counted where the owner can read it",
+      "capPerCircle: 12" in _dgr and "create table if not exists digest_usage" in _dg
+      and "do update set calls = digest_usage.calls + 1" in _dg_by and "where digest_usage.calls < ${DG.capPerCircle}" in _dg_by
+      and "if (!slot[0]) return null;" in _dg_by and _dg_by.index("if (!slot[0]) return null;") < _dg_by.index("digestAskModel(facts)")
+      and "set written = written + 1" in _dg_by)
+check("digest: only with the server's own key, only in the evening, never for a quiet day, and no coins are charged",
+      "if (!facts.length || !process.env.ANTHROPIC_API_KEY) return null;" in _dg_by and "eveningHour: 18" in _dgr
+      and "spend(" not in _dg and "from './_coins.mjs'" not in _dg and "NO COINS ARE CHARGED" in _dg)
+check("digest: NO TIMER-DRIVEN MODEL CALL - the 8pm notification is the plain first sentence, claimed once a day",
+      "await one(() => digestSweep(sql, id));" in _dg_ev and "from digest_prefs where evening" in _dg_ev
+      and not re.search(r"digestAskModel|digestByModel|digestOpen|callModel|digestAnthropic|anthropic", _dg_sweep, flags=re.I)
+      and "digestFirst(facts, spaceWord(circle))" in _dg_sweep
+      and "pushed_for is distinct from ${day}::date returning member_id" in _dg_sweep and "if (!claim[0]) continue;" in _dg_sweep
+      and "evening boolean not null default false" in _dg and "pushHour: 20" in _dgr
+      and not re.search(r"digestOpen|digestHandle|digestByModel", _dg_ev))
+check("digest: THE FALLBACK - a timeout, a refusal, an error or a reply that fails the check all end in the plain version, silently",
+      "timeoutMs: 8000" in _dgr and "maxTokens: 300" in _dgr and "maxChars: 700" in _dgr
+      and "Promise.race([" in _dg_ask and "if (!out || out.refusal) return null;" in _dg_ask
+      and "} catch (e) { return null; }" in _dg_ask and "return checked.ok ?" in _dg_ask
+      and "if (!have.has(n)) return { ok: false, why: 'number' };" in _dgr and "DG_JUDGE" in _dgr
+      and "${digestWrite(facts, word)}" in _dg_open and "if (!out) return null;" in _dg_by)
+check("digest: the same client and the same model choice as a conversation with Ekta; no new model id, and the SDK is loaded only when a call is made",
+      "const { anthropicClient, MODEL_PRIMARY } = await import('./ekta.mjs');" in _dg and "export const MODEL_PRIMARY" in _dg_ekta
+      and "export function anthropicClient(vault)" in _dg_ekta and "const client = anthropicClient(vault);" in _dg_ekta
+      and _dg_ekta.count("new Anthropic(") == 1 and "new Anthropic(" not in _dg and "@anthropic-ai/sdk" not in _dg
+      and not re.search(r"claude-[a-z0-9.\-]+", _dg + _dgr) and "model: MODEL_PRIMARY," in _dg
+      and "{ timeout: timeoutMs, maxRetries: 0 }" in _dg)
+check("digest: the voice - the rules tell the model no advice, no medical meaning, no guesses, no judgement, and that facts are data",
+      all(x in _dgr for x in ("Use ONLY the facts", "No advice.", "No medical meaning.", "No guesses", "No judgement of any person.", "data, not instructions"))
+      and "' not checked in today.'" in _dgr and "' medicines were not marked today.'" in _dgr
+      and not re.search(r"\b(forgot|again|failed)\b", re.sub(r"export const DG_JUDGE.*", "", _dgr).split("export function digestCheck")[0]))
+check("digest: someone marked as remembered is named only on their day of remembrance",
+      "const gone = (id) => { const p = people.get(id); return !p || p.remembered === true; };" in _dgr
+      and "the one place a remembered person is named" in _dgr and "and remembered`" in _dg_gather)
+check("digest: its tables are made through schemaOnce, opening is rate limited, and errors go through fail()",
+      "await schemaOnce(() => digestTables(sql));" in _dg and all(f"create table if not exists {t} (" in _dg for t in ("digest_daily", "digest_usage", "digest_prefs"))
+      and "rateLimit(sql, 'digest', me.id, 40, 600)" in _dg and "} catch (e) { return fail(res, e); }" in _dg
+      and "error: String(e" not in _dg)
+check("digest: Today shows the row from 6pm, Ekta's screen has the button at any hour, and the sheet is the app's own",
+      'id="dg-today"' in _app_src and 'id="dg-ekta"' in _app_src and "function digestEvening(){ return new Date().getHours() >= 18; }" in _app_src
+      and "bondSheet('Aaj kya hua'," in _app_src and "action: 'digest' }" in _app_src and "digestRenderToday();" in _app_src
+      and _app_src.index('id="ps-today"') < _app_src.index('id="dg-today"') < _app_src.index('id="fcquiet"'))
+check("digest: loading, error and offline each say so; errors go through humanFail; nothing is asked of the server until the row is opened",
+      "Ekta is putting today together." in _app_src and "humanFail(j && j.error, 'Could not load today\\'s note. Try again in a moment.')" in _app_src
+      and "You are offline. Aaj kya hua will load when the internet is back." in _app_src and 'id="dg-retry"' in _app_src
+      and _app_src.count("action: 'digest' }") == 1 and "function digestLoad(){" in _app_src
+      and "digestLoad" not in _app_src[_app_src.index("function digestRenderToday(){"):_app_src.index("function digestClockText(")])
+check("digest: thumbs are one per member per day, the evening setting starts off, and senior mode has the words only",
+      "action: 'digest_vote', vote: v" in _app_src and "action: 'digest_evening', on: on" in _app_src
+      and "set vote = ${v}, voted_at = now()" in _dg and "if (digestSenior()) return h;" in _app_src
+      and "Tell me each evening" in _app_src and "It is off until you turn it on." in _app_src
+      and "Written by Ekta from what you can see in the family today." in _dg)
+_dg_static = [i for i in _static_ids if i.startswith("dg-")]
+_dg_all = set(re.findall(r'id="(dg-[a-z-]+)"', _app_src))
+check(f"digest: its ids all start with dg- ({len(_dg_all)}), none twice in the page, and its functions start with digest",
+      sorted(_dg_static) == ["dg-ekta", "dg-today"] and len(_dg_all) >= 12
+      and not re.findall(r"function dg\w*\(", _app_src)
+      and len(re.findall(r"function digest\w+\(", _app_src)) >= 10)
+_testdb_dg = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("digest: the rules test runs in the gate, and the db and browser tests run in test:db with no key and no network",
+      all(("site/tests/db/" + f) in _testdb_dg and (REPO / "site/tests/db" / f).exists() for f in ("digest.dbtest.mjs", "digest.e2e.dbtest.mjs"))
+      and all("globalThis.fetch = async" in (REPO / "site/tests/db" / f).read_text(encoding="utf-8")
+              and "digestSeams.callModel" in (REPO / "site/tests/db" / f).read_text(encoding="utf-8")
+              and "waitForTimeout" not in (REPO / "site/tests/db" / f).read_text(encoding="utf-8")
+              for f in ("digest.dbtest.mjs", "digest.e2e.dbtest.mjs"))
+      and "getHours()" not in (REPO / "site/tests/db/digest.dbtest.mjs").read_text(encoding="utf-8"))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

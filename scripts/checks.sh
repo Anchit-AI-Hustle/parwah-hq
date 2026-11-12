@@ -75,6 +75,11 @@ node site/tests/bondtest.mjs
 # sign-in refusal, and who may see whose likes. _pasandrules.mjs imports
 # nothing, so this runs before npm install too.
 node site/tests/pasandtest.mjs
+# Aaj kya hua, the daily digest: the list a member may be told, the plain
+# writer (busy, quiet and hard days), the neutral voice, and the check on a
+# model's reply. _digestrules.mjs imports nothing, so this runs before npm
+# install too.
+node site/tests/digesttest.mjs
 # The native apps' copy of the server's rules (PINs, for now) is written by
 # the server itself. If a rule changes in api/ and the contract is not
 # regenerated, the phones would accept what the server then refuses. Vercel's
