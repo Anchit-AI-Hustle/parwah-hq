@@ -564,3 +564,24 @@ Checked at 320 and 390, light and dark, on the real app with a family and a frie
 | 135 | 8 Minimalist | Old recommendations would crowd Today | 2 | Fixed: Today shows only the unanswered ones, three at most, then a count. The rest live under For me |
 
 New patterns: none beyond page-specific classes that start with `ps-`, built from existing tokens.
+
+### Review TBD-wider, the wider family: linked families, family facts, days of remembrance (2026-11-12)
+
+Checked at 320 and 390, light and dark, on the real app with two families that share one daughter (`site/tests/db/widerfamily.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the tree card with its two new buttons and with a linked tree under it, the Linked families sheet (empty, with a request, with a link, with a message), a linked person's sheet, Rishtedaar with a linked family in it, the question before a link ends, Family facts (empty, the form, the list, an error), the remembrance sheet, a person's sheet with and without the mark, the tree with a remembered person, and the card on Today). Screens: Family, Today.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| W1 | 5 Error prevention | Linking two families could be read as sharing everything | 4 | Fixed: the sheet, the request and the yes each say what is shared (the tree and the Rishtedaar list) and that nothing else is: no chats, no papers, no health, no location. The server sends only name, he or she, the two tree links, the year of birth and the city |
+| W2 | 3 User control | A link, once made, might feel permanent | 3 | Fixed: "End this link" on every linked family, for either side, asked first in the app's own sheet, and it takes effect at once. A request still waiting can be taken back |
+| W3 | 5 Error prevention | Phone numbers of one family shown to another without anyone choosing it | 4 | Fixed: off by default. Each side has its own tick, "Share our phone numbers with them", and can change it later |
+| W4 | 2 Real-world match | A person of the other family with no single word for the relation | 2 | Fixed: the home name when there is one (Saas, Saala, Damaad, Samdhi), otherwise the chain told short, with the full chain in words on a tap |
+| W5 | 4 Consistency | The same person listed twice, once from each family | 2 | Fixed: the bridge, and her father added by name, are one person. They show once in Rishtedaar and are marked "in both families" in the linked tree |
+| W6 | 1 Visibility | A request from another family could sit unseen | 2 | Fixed: the button on the tree card says "Linked families: 1 request waiting", and the family gets one push |
+| W7 | 3 User control | Who sees a family fact was not a choice | 3 | Fixed: Whole family (the default), People I choose, Only me, as one labelled group. An elder can change the words of a fact, never who sees it |
+| W8 | 9 Error recovery | A refused fact (an OTP in a note) would vanish as a toast | 2 | Fixed: the reason sits under the form; a failed load keeps what was loaded last and offers Try again; offline says so |
+| W9 | 2 Real-world match | Words for someone who has passed away can read as clinical | 3 | Fixed: "No longer with us", "day of remembrance", "We remember". A test refuses clinical words in the sheet and on Today |
+| W10 | 4 Consistency | A remembered person still said "not on Parwah", and was offered a task, a gift, a birthday | 3 | Fixed: one helper decides it for every list. The tree and the person's sheet say "🪔 No longer with us" in words, never by colour alone |
+| W11 | 8 Minimalist | A yearly reminder could crowd Today | 2 | Fixed: one calm row, on the day only, with one button. One push the evening before, once a year |
+| W12 | 3 User control | A mark made by mistake | 3 | Fixed: any adult in the family can take it off, asked first; the date and the line go with it |
+
+New patterns: none. Sheets are `.msheet`, rows are `.crow` and `.plan`, buttons are `.cbtn` and `.go`, messages reuse `.rz-msg`; the page-specific classes start with `fl-`, `ff-` and `rm-` and use existing tokens only.

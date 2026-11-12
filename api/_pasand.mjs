@@ -88,6 +88,9 @@ async function pasandTables(sql) {
     primary key (rec_id, member_id)
   )`;
   await sql`create index if not exists pasand_rec_to_member on pasand_rec_to (member_id)`;
+  // Someone who is no longer with us (api/_remember.mjs) is never sent a
+  // recommendation. Made here too, so this needs no other screen opened.
+  await sql`alter table members add column if not exists remembered boolean not null default false`;
 }
 
 // A card number or a banking secret (the notes rule) or a password or a
@@ -241,11 +244,11 @@ export default async function handler(req, res) {
       if (risk) return bad(risk);
       // Recipients: everyone else who is on Parwah, or the people chosen.
       const word = circle.kind === 'group' ? 'group' : 'family';
-      const others = await sql`select id, name, user_id from members where circle_id = ${circle.id} and id <> ${me.id}`;
+      const others = await sql`select id, name, user_id, remembered from members where circle_id = ${circle.id} and id <> ${me.id}`;
       let to;
       const toAll = !!body.toAll;
       if (toAll) {
-        to = others.filter(m => m.user_id).map(m => m.id);
+        to = others.filter(m => m.user_id && !m.remembered).map(m => m.id);
         if (!to.length) return bad('Nobody else in this ' + word + ' is on Parwah yet.');
       } else {
         const ids = [...new Set(Array.isArray(body.to) ? body.to : [])];
@@ -254,6 +257,7 @@ export default async function handler(req, res) {
         for (const id of ids) {
           const m = others.find(x => x.id === id);
           if (!m) return bad('Pick people from this ' + word + '.');
+          if (m.remembered) return bad(m.name + ' is remembered here, so is not sent recommendations.');
           if (!m.user_id) return bad(m.name + ' is not on Parwah yet, so they would not see it.');
         }
         to = ids;

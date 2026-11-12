@@ -871,6 +871,8 @@ CIRCLE_WIDE_OK = {
     ("_staff.mjs", "not marked in yet"):  "anyone in the family may be the one who can check at home",
     ("_renewals.mjs", "payload, {})"):    "a household date nobody looks after yet: anyone may take it",
     ("_bond.mjs", "Plan it together on Parwah"): "a festival the circle itself chose, once, 14 days ahead",
+    ("_famlink.mjs", "asks to link family trees"): "another family asks to link trees: any adult of this one may be the one who answers",
+    ("_remember.mjs", "A quiet day to remember"): "a day of remembrance is the whole family's, once a year",
 }
 def _push_calls(src):
     out = []
@@ -3185,10 +3187,110 @@ _fr_static = [i for i in _static_ids if i.startswith("fr-")]
 check(f"register: its new ids all start with fr- and none is the first-run card's ({len(_fr_static)})",
       len(_fr_static) >= 20 and all(_fr_static.count(i) == 1 for i in _fr_static))
 _testdb_fr = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
-check("register: the unit test is in the gate, and both database tests are last in test:db",
+# Other features add their own tests after these, so this asks for the two
+# to be there, in order, and never for them to be the last.
+check("register: the unit test is in the gate, and both database tests are in test:db, in order",
       "node site/tests/famregistertest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
-      and _testdb_fr.endswith("site/tests/db/famregister.dbtest.mjs && node --import ./site/tests/db/register.mjs site/tests/db/famregister.e2e.dbtest.mjs")
+      and "site/tests/db/famregister.dbtest.mjs && node --import ./site/tests/db/register.mjs site/tests/db/famregister.e2e.dbtest.mjs" in _testdb_fr
       and (REPO / "site/tests/db/famregister.dbtest.mjs").exists() and (REPO / "site/tests/db/famregister.e2e.dbtest.mjs").exists())
+
+# ---------- The wider family: linked families, family facts, days of remembrance ----------
+_wf_link = (API_DIR / "_famlink.mjs").read_text(encoding="utf-8")
+_wf_fact = (API_DIR / "_famfacts.mjs").read_text(encoding="utf-8")
+_wf_rem = (API_DIR / "_remember.mjs").read_text(encoding="utf-8")
+_wf_rules = (API_DIR / "_rememberrules.mjs").read_text(encoding="utf-8")
+_wf_kin = (API_DIR / "_kin.mjs").read_text(encoding="utf-8")
+_wf_circ = (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+_wf_evt = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_wf_app = _app_src
+_wf_code = lambda src: re.sub(r"(?m)^\s*//.*$", "", src)
+check("wider: no new function; three modules behind /api/circle, handed their actions by prefix",
+      all((API_DIR / f).exists() for f in ("_famlink.mjs", "_famfacts.mjs", "_remember.mjs"))
+      and not any((API_DIR / f).exists() for f in ("famlink.mjs", "famfacts.mjs", "remember.mjs", "link.mjs", "facts.mjs"))
+      and "famlinkAction(sql, req, circle, mRow[0], req.body)" in _wf_circ and "famfactsAction(sql, circle, mRow[0], req.body)" in _wf_circ
+      and "rememberAction(sql, circle, mRow[0], req.body)" in _wf_circ
+      and all(a in _wf_circ for a in ("'link_state'", "'link_request'", "'link_approve'", "'link_decline'", "'link_end'", "'fact_list'", "'fact_add'", "'fact_edit'", "'fact_remove'", "'remember_mark'", "'remember_undo'")))
+check("wider: the caller is proved to be a member of this family before any of the three is asked",
+      _wf_circ.index("const widerOf = ") < _wf_circ.index("await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name, role, dob, place, country`)") < _wf_circ.index("await famlinkAction("))
+check("wider: each module makes its own tables through schemaOnce",
+      all("await schemaOnce(() => " in m for m in (_wf_link, _wf_fact, _wf_rem))
+      and "create table if not exists family_links" in _wf_link and "create table if not exists family_facts" in _wf_fact
+      and "create table if not exists remember_sent" in _wf_rem and "alter table members add column if not exists passed_year int" in _wf_rem)
+_wf_people = _wf_link[_wf_link.index("async function peopleOf("):_wf_link.index("async function linkState(")]
+check("links: one read of the other family, and it names only what may cross",
+      _wf_code(_wf_link).count("from members where circle_id = ${circleId}") == 1
+      and "select id, name, gender, parent_id, spouse_id, to_char(dob, 'YYYY') as born, place," in _wf_people
+      and "case when ${!!withPhones}::boolean then phone else null end as phone" in _wf_people
+      and not re.search(r"\b(dob|relation|gift_info|country|role|user_id|remembered|passed_|remember_line|created_at)\b", _wf_people.replace("to_char(dob, 'YYYY') as born", "").replace("order by created_at, id", "")))
+check("links: nothing else of a family is ever read by the link module",
+      set(re.findall(r"(?:from|join|into|update)\s+([a-z_]+)\b", _wf_code(_wf_link))) <= {"family_links", "circles", "members", "events"}
+      and not re.search(r"family_links|famlink", _wf_code(_wf_fact)))
+check("links: a yes from an adult of the other family, either side ends it, six at most, one per pair",
+      "if (iAmA || l.status !== 'pending') return bad('That request has already been dealt with', 404);" in _wf_link
+      and "if (!adult()) return bad('An adult in the family answers this.', 403);" in _wf_link
+      and "export const LINKS_MAX = 6;" in _wf_link and _wf_link.count("activeCount(sql, ") >= 3
+      and "least(a_circle, b_circle), greatest(a_circle, b_circle)" in _wf_link and "where status in ('pending', 'active')" in _wf_link
+      and "set status = 'ended', ended_by = ${me.id}, ended_at = now()" in _wf_link and "rateLimit(sql, 'link', clientIp(req), 12, 600)" in _wf_link)
+check("links: the two trees are joined in memory, by a pure function with ids that cannot collide",
+      "export function joinGraphs(own, other, bridge, prefix = LINK_PREFIX)" in _wf_kin and "export function kinLinked(" in _wf_kin
+      and "export const LINK_MAX_PEOPLE = 400;" in _wf_kin and not re.search(r"(?m)^import ", _wf_kin)
+      and "kinLinked(ownShape, people.map(shape), { own: mine, other: theirs }, me.id," in _wf_link
+      and "dob: p.born ? p.born + '-01-01' : null" in _wf_link)
+check("facts: who reads a fact, and who may change it, is said in SQL",
+      _wf_fact.count("f.by_member = ${me.id} or f.audience = 'family' or (f.audience = 'chosen' and ${me.id}::uuid = any(f.chosen))") == 2
+      and _wf_fact.count("or (${elder}::boolean and (f.audience = 'family' or (f.audience = 'chosen' and ${me.id}::uuid = any(f.chosen)))))") == 2
+      and "check (audience in ('family', 'chosen', 'me'))" in _wf_fact and "audience text not null default 'family'" in _wf_fact
+      and "export const FACT_CUSTOMS_MAX = 20;" in _wf_fact and "['custom', 'A custom worth writing down', 600]" in _wf_fact)
+check("facts: every text passes the notes rule (no card number, CVV, OTP or banking PIN)",
+      "import { noteRisk } from './_notesapi.mjs';" in _wf_fact and _wf_fact.count("const risk = noteRisk(text);") == 2
+      and "const risk = noteRisk(line);" in _wf_rem)
+check("remembrance: only an adult marks or undoes, with the year at least",
+      "if (!isAdult(me.dob, today)) return bad('An adult in the family does this.', 403);" in _wf_rem
+      and _wf_rem.index("if (!isAdult(me.dob, today))") < _wf_rem.index("if (a === 'remember_mark')") < _wf_rem.index("if (a === 'remember_undo')")
+      and "if (year === null) return { error: 'Write the year." in _wf_rules and not re.search(r"(?m)^import ", _wf_rules))
+check("remembrance: the reminder is claimed once per person per year, and is wired into the timer",
+      "primary key (member_id, year)" in _wf_rem and "on conflict do nothing returning member_id" in _wf_rem
+      and "events += await one(() => sweepRemember(sql, id));" in _wf_evt
+      and "where remembered and passed_month is not null and passed_day is not null limit 500`)" in _wf_evt
+      and "remembrance: rememberToday(members)" in _wf_evt and "export const REMEMBER_EVE_HOUR = 18;" in _wf_rules)
+_wf_bond = (API_DIR / "_bond.mjs").read_text(encoding="utf-8")
+_wf_fc = (API_DIR / "_familycare.mjs").read_text(encoding="utf-8")
+_wf_ps = (API_DIR / "_pasand.mjs").read_text(encoding="utf-8")
+check("remembrance: no birthday or anniversary card, no check-in, no recommendation for someone remembered",
+      "if (!m.dob || m.remembered) continue;" in _wf_bond and "if (m.remembered || w.remembered) continue;" in _wf_bond
+      and _wf_fc.count("and not m.remembered") == 2 and "is remembered here, so is not asked" in _wf_fc
+      and "others.filter(m => m.user_id && !m.remembered)" in _wf_ps and "is remembered here, so is not sent recommendations." in _wf_ps
+      and "delete from cards where circle_id = ${circle.id} and auto_key is not null and delivered_at is null" in _wf_rem)
+check("remembrance: the words are gentle and plain, never clinical, on the server and in the app",
+      not re.search(r"(?i)\b(deceased|death anniversary|died|dead|expired|demise)\b", _wf_code(_wf_rem) + _wf_code(_wf_rules))
+      and "day of remembrance." in _wf_rules and "var RM_MARK = '🪔 No longer with us';" in _wf_app
+      and not re.search(r"(?i)\b(deceased|died|dead)\b", _wf_app[_wf_app.index('id="rm-sheet"'):_wf_app.index('id="asksheet"')]))
+check("remembrance: every list of people asks one helper, and the marker is words, not a colour alone",
+      "function onApp(m){ return !!m && m.on_app !== false && !rmGone(m); }" in _wf_app and "function rmTag(m)" in _wf_app
+      and _wf_app.count("if (!m.dob || rmGone(m)) return;") == 2 and "esc(rmTag(m)) + '</small></button>';" in _wf_app
+      and '<b>🪔 No longer with us</b>' in _wf_app and "rmRenderToday(data.remembrance);" in _wf_app)
+check("wider: the linked tree is read only, and Rishtedaar gains the other family in the same groups",
+      "var far = flRzRows(g[0], q);" in _wf_app and 'id="fl-trees"' in _wf_app and "Linked family: ' + esc(l.name)" in _wf_app
+      and "data-mprof" not in _wf_app[_wf_app.index("function flPerson(l, p)"):_wf_app.index("function flRenderTrees()")]
+      and "Nothing else is shared: no chats, no papers, no health, no location." in _wf_app)
+check("wider: loading, empty with a first step, error and offline are all said; errors go through humanFail",
+      all(t in _wf_app for t in ("Loading linked families…", "No linked family yet. Ask a related family for their family code.", "You are offline. Linked families will show when the internet is back.",
+                                 "Loading family facts…", "Nothing is written down yet. Start with one thing you know", "You are offline. Family facts will show when the internet is back.",
+                                 "humanFail(j && j.error, 'Could not load linked families. Try again in a moment.')", "humanFail(j && j.error, 'Could not load family facts. Try again in a moment.')",
+                                 "humanFail(j.error, 'Could not save this. Try again in a moment.')")))
+_wf_ids = [i for i in _static_ids if i.startswith(("fl-", "ff-", "rm-"))]
+check(f"wider: its new ids start with fl-, ff- or rm-, and none is used twice ({len(_wf_ids)})",
+      len(_wf_ids) >= 45 and all(_wf_ids.count(i) == 1 for i in _wf_ids))
+_wf_db = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+_wf_e2e = (REPO / "site/tests/db/widerfamily.e2e.dbtest.mjs").read_text(encoding="utf-8")
+# Other features add their tests too, so this never asks to be the last entry.
+check("wider: the unit test is in the gate, and both database tests are in test:db, in order",
+      "node site/tests/widerfamilytest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and "site/tests/db/widerfamily.dbtest.mjs && node --import ./site/tests/db/register.mjs site/tests/db/widerfamily.e2e.dbtest.mjs" in _wf_db)
+check("wider: the browser test waits for what it checks, never for a fixed time",
+      "waitForTimeout" not in _wf_e2e and "waitForFunction" in _wf_e2e and "waitForSelector" in _wf_e2e and _wf_e2e.count("await design(") >= 15)
+check("wider: the design review is written down",
+      "the wider family: linked families, family facts, days of remembrance (2026-11-12)" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

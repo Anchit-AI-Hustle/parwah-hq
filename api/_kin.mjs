@@ -548,3 +548,103 @@ export function genderFromRelation(rel) {
   if (['mother', 'grandmother', 'daughter', 'sister', 'granddaughter', 'daughter-in-law'].includes(rel)) return 'f';
   return null;
 }
+
+// ---------- linked families: two trees joined at one person ----------
+// Two related families (maika and sasural, two brothers' homes) each keep
+// their own tree. When both agree to link, the two graphs are joined in
+// memory at the one person who belongs to both (the bridge), and every
+// relation across the join is worked out by the same arithmetic as above.
+// Nothing is written: ending the link ends the join.
+//
+// Ids of the other family are given a prefix, so two families can never
+// collide. The bridge person is one node. So are the people who must be the
+// same in both trees: the bridge's husband or wife, and the bridge's parents
+// (a daughter-in-law's father, added by name in her husband's home, is the
+// Papa of her own home).
+export const LINK_PREFIX = 'L:';
+export const LINK_MAX_PEOPLE = 400;   // people of the other family taken into one join
+const yearOnly = v => { const d = dobOf(v); return d ? d.slice(0, 4) + '-01-01' : null; };
+
+// own, other: [{ id, gender, parentId, spouseId, dob? }]; bridge: { own, other }.
+// Returns { by, ids, same, joined }:
+//   by      the joined index, ready for kinInfo, kinChain and kinEveryone
+//   ids     Map of the other family's id to its id in the joined index
+//   same    Map of the other family's id to this family's id, for the people
+//           who are one person in both
+//   joined  false when the bridge is not in both families (by is then this
+//           family alone)
+// Dates of birth are cut to the year on both sides, so elder or younger is
+// only said when the years differ, and a full date never decides anything.
+export function joinGraphs(own, other, bridge, prefix = LINK_PREFIX) {
+  const cut = list => (list || []).map(p => ({ ...p, dob: yearOnly(p.dob) }));
+  const A = index(cut(own)), B = index(cut(other).slice(0, LINK_MAX_PEOPLE));
+  const same = new Map(), ids = new Map(), taken = new Set();
+  if (!bridge || !A.has(bridge.own) || !B.has(bridge.other)) return { by: A, ids, same, joined: false };
+  const pair = (b, a) => {
+    if (!b || !a || !B.has(b) || !A.has(a) || same.has(b) || taken.has(a)) return;
+    same.set(b, a); taken.add(a);
+  };
+  pair(bridge.other, bridge.own);
+  const a = A.get(bridge.own), b = B.get(bridge.other), wed = [];
+  if (a.spouseId && b.spouseId) pair(b.spouseId, a.spouseId);
+  if (a.parentId && b.parentId) {
+    const pa = A.get(a.parentId), pb = B.get(b.parentId);
+    // One tree may point to the father and the other to the mother.
+    const cross = !!pa.gender && !!pb.gender && pa.gender !== pb.gender;
+    if (!cross) { pair(pb.id, pa.id); if (pa.spouseId && pb.spouseId) pair(pb.spouseId, pa.spouseId); }
+    else {
+      if (pa.spouseId) pair(pb.id, pa.spouseId);
+      if (pb.spouseId) pair(pb.spouseId, pa.id);
+      if (!pa.spouseId && !pb.spouseId) wed.push([pa.id, pb.id]);
+    }
+  }
+  const map = id => (!id ? null : same.has(id) ? same.get(id) : prefix + id);
+  const out = new Map(), borrowed = new Set();
+  for (const p of A.values()) out.set(p.id, { ...p });
+  for (const p of B.values()) {
+    ids.set(p.id, map(p.id));
+    if (same.has(p.id)) {
+      // One person: this family's links stand, the other family's fill the gaps.
+      const t = out.get(same.get(p.id));
+      if (!t.gender) t.gender = p.gender;
+      if (!t.dob) t.dob = p.dob;
+      if (!t.parentId && p.parentId) { t.parentId = map(p.parentId); borrowed.add(t.id); }
+      if (!t.spouseId && p.spouseId) t.spouseId = map(p.spouseId);
+    } else out.set(prefix + p.id, { id: prefix + p.id, gender: p.gender, parentId: map(p.parentId), spouseId: map(p.spouseId), dob: p.dob });
+  }
+  for (const [x, y] of wed) { out.get(x).spouseId = prefix + y; out.get(prefix + y).spouseId = x; }
+  const by = index([...out.values()]);
+  // A join must never make someone their own ancestor. A link that closes a
+  // loop is dropped: the other family's first, then a link this family
+  // took from the other, and this family's own links last.
+  const rank = p => (String(p.id).startsWith(prefix) ? 0 : borrowed.has(p.id) ? 1 : 2);
+  const order = [...by.values()].sort((x, y) => rank(x) - rank(y));
+  for (const p of order) if (p.parentId && (p.parentId === p.id || above(by, p.id).has(p.id))) p.parentId = null;
+  return { by, ids, same, joined: true };
+}
+
+// How each person of a linked family is related to one person of this family.
+// names / otherNames: Map or plain object of id to name, for the chain in
+// words. Returns Map of the other family's id to
+//   { same, label, hindi, english, side, group, chain, words }
+//   same   this family's id when they are one person in both, else null
+//   group  'ghar' or 'kareebi' when the arithmetic says so, otherwise 'door'
+//   words  the chain in words; null when the trees do not connect them
+export function kinLinked(own, other, bridge, fromId, names, otherNames, prefix = LINK_PREFIX) {
+  const out = new Map();
+  const j = joinGraphs(own, other, bridge, prefix);
+  if (!j.joined || !j.by.has(fromId)) return out;
+  const get = (src, id) => (!src ? '' : typeof src.get === 'function' ? src.get(id) : src[id]);
+  const all = new Map();
+  for (const p of own || []) all.set(p.id, get(names, p.id) || '');
+  for (const p of other || []) if (!j.same.has(p.id)) all.set(prefix + p.id, get(otherNames, p.id) || '');
+  const every = kinEveryone(j.by, fromId);
+  for (const [otherId, joinedId] of j.ids) {
+    const info = every.get(joinedId);
+    if (!info) continue;
+    const near = info.closeness === 'ghar' || info.closeness === 'kareebi';
+    out.set(otherId, { same: j.same.get(otherId) || null, label: info.label, hindi: info.hindi, english: info.english, side: info.side,
+                       group: near ? info.closeness : 'door', chain: info.chain, words: info.chain ? kinChainWords(info.chain, all) : null });
+  }
+  return out;
+}

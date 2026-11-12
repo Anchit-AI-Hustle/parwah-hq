@@ -75,6 +75,12 @@ node site/tests/bondtest.mjs
 # sign-in refusal, and who may see whose likes. _pasandrules.mjs imports
 # nothing, so this runs before npm install too.
 node site/tests/pasandtest.mjs
+# The wider family: two family trees joined at one person (ids that cannot
+# collide, walks that end, the chain in words), and days of remembrance
+# (29 February, a year with no day, the evening before on the family's own
+# clock). _kin.mjs and _rememberrules.mjs import nothing, so this runs
+# before npm install too.
+node site/tests/widerfamilytest.mjs
 # The native apps' copy of the server's rules (PINs, for now) is written by
 # the server itself. If a rule changes in api/ and the contract is not
 # regenerated, the phones would accept what the server then refuses. Vercel's

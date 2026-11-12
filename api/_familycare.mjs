@@ -68,6 +68,9 @@ export async function ensureFamilyCareSchema(sql) {
     await sql`alter table members add column if not exists quiet_alerted_at timestamptz`;
     await sql`alter table members add column if not exists quiet_ack_for date`;
     await sql`alter table members add column if not exists quiet_ack_by uuid references members(id) on delete set null`;
+    // Someone who is no longer with us (api/_remember.mjs) is never asked
+    // to check in. Made here too, so the sweep needs no other screen opened.
+    await sql`alter table members add column if not exists remembered boolean not null default false`;
     // A missed check-in that reached a nearby helper: one row per person per
     // day is the claim. A helper who deletes their details leaves no name here.
     await sql`create table if not exists quiet_ladder (
@@ -129,7 +132,11 @@ async function pushEach(sql, circleId, payload, skip) {
 }
 async function memberIn(sql, circleId, id) {
   if (!isUuid(id)) return null;
-  const r = await sql`select id, name, role, phone, gender, to_char(dob, 'YYYY-MM-DD') as dob, user_id is not null as on_app from members where id = ${id} and circle_id = ${circleId}`;
+  // remembered is read through the row, so this works on a database where
+  // no screen has made that column yet (the task routes do not make it).
+  const r = await sql`select m.id, m.name, m.role, m.phone, m.gender, to_char(m.dob, 'YYYY-MM-DD') as dob, m.user_id is not null as on_app,
+                             coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered
+                      from members m where m.id = ${id} and m.circle_id = ${circleId}`;
   return r[0] || null;
 }
 function tzOf(v) { return validTz(v) || HOME_TZ; }
@@ -162,7 +169,7 @@ export async function quietSweep(sql, circleId, nowMs = Date.now(), opts = {}) {
                               to_char(m.quiet_alerted_for, 'YYYY-MM-DD') as alerted,
                               to_char(m.quiet_ack_for, 'YYYY-MM-DD') as acked,
                               (select to_char(max(q.day), 'YYYY-MM-DD') from quiet_ladder q where q.person_id = m.id) as laddered
-                       from members m where m.circle_id = ${circleId} and m.checkin_by is not null and m.user_id is not null`;
+                       from members m where m.circle_id = ${circleId} and m.checkin_by is not null and m.user_id is not null and not m.remembered`;
   let sent = 0;
   for (const m of ms) {
     const by = validHHMM(m.checkin_by); if (!by) continue;
@@ -292,7 +299,7 @@ export async function familyCareState(sql, circleId, meId, nowMs = Date.now()) {
                               to_char(m.quiet_alerted_for, 'YYYY-MM-DD') as alerted,
                               to_char(m.quiet_ack_for, 'YYYY-MM-DD') as acked, k.name as ack_by_name, m.quiet_ack_by
                        from members m left join members a on a.id = m.checkin_ask_by left join members k on k.id = m.quiet_ack_by
-                       where m.circle_id = ${circleId} and m.user_id is not null
+                       where m.circle_id = ${circleId} and m.user_id is not null and not m.remembered
                          and (m.checkin_by is not null or m.checkin_ask is not null or m.role = 'parent' or m.id = ${meId})
                        order by m.created_at`;
   const quiet = [];
@@ -372,6 +379,7 @@ export async function familyCarePost(sql, req, res, reqTzValue) {
     const t = await memberIn(sql, circle.id, b.targetId);
     if (!t) return no(res, 404, 'That person is not in this family');
     if (t.id === me.id) return no(res, 400, 'Set your own time with Turn on');
+    if (t.remembered) return no(res, 400, t.name + ' is remembered here, so is not asked');
     if (!t.on_app) return no(res, 400, t.name + ' is not on Parwah, so cannot check in here');
     if (!(await rateLimit(sql, 'quietask', t.id, 3, 86400))) return no(res, 429, t.name + ' has been asked already today');
     await sql`update members set checkin_ask = ${by}, checkin_ask_by = ${me.id} where id = ${t.id}`;
@@ -607,6 +615,7 @@ export async function familyTaskAction(sql, circle, me, body, reqTzValue) {
   if (action === 'rota_create') {
     const about = await memberIn(sql, circle.id, body.aboutMemberId);
     if (!about) return bad(404, 'Pick who the calls are for');
+    if (about.remembered) return bad(400, about.name + ' is remembered here, so has no call rota');
     const time = validHHMM(body.time) || '19:00';
     const want = Array.isArray(body.memberIds) ? body.memberIds.filter(isUuid) : [];
     const rota = [];
@@ -614,6 +623,7 @@ export async function familyTaskAction(sql, circle, me, body, reqTzValue) {
       if (rota.includes(id) || id === about.id) continue;
       const m = await memberIn(sql, circle.id, id);
       if (!m) return bad(404, 'Someone on the rota is not in this family');
+      if (m.remembered) return bad(400, m.name + ' is remembered here, so cannot be on the rota');
       if (!m.on_app) return bad(400, m.name + ' is not on Parwah, so cannot be on the rota');
       rota.push(id);
     }
