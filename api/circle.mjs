@@ -9,6 +9,9 @@ import { pushCircle } from './_push.mjs';
 import { consentPage } from './_ladder.mjs';
 import { award } from './_coins.mjs';
 import { index as kinIndex, placement, PLACES, GENDERS, FAMILY_TYPES, genderFromRelation } from './_kin.mjs';
+import { famlinkAction } from './_famlink.mjs';
+import { famfactsAction } from './_famfacts.mjs';
+import { rememberAction } from './_remember.mjs';
 
 export default async function handler(req, res) {
   // A nearby person's own consent page for the SOS ladder: the link is the
@@ -71,7 +74,13 @@ export default async function handler(req, res) {
     if (!allowed) return res.status(429).json({ ok: false, error: 'Too many join attempts from this device - please wait a few minutes and try again' });
   }
 
-  const NAMELESS = ['join_status', 'update_member', 'leave', 'set_code', 'approve_join', 'decline_join', 'set_join_policy', 'place', 'unplace', 'add_person', 'remove_person'];
+  // The wider family (linked families, family facts, days of remembrance):
+  // each lives in its own module and is handed its actions below.
+  const WIDER = { link_: ['link_state', 'link_request', 'link_approve', 'link_decline', 'link_end', 'link_phones'],
+                  fact_: ['fact_list', 'fact_add', 'fact_edit', 'fact_remove'],
+                  remember_: ['remember_mark', 'remember_undo'] };
+  const NAMELESS = ['join_status', 'update_member', 'leave', 'set_code', 'approve_join', 'decline_join', 'set_join_policy', 'place', 'unplace', 'add_person', 'remove_person',
+                    ...WIDER.link_, ...WIDER.fact_, ...WIDER.remember_];
   if (!name && !NAMELESS.includes(action)) return res.status(400).json({ ok: false, error: 'Please tell us your name' });
 
   try {
@@ -341,6 +350,24 @@ export default async function handler(req, res) {
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, null, 'care', ${mRow[0].name + ' left the ' + spaceWord(circle) + ' 👋'})`;
       return res.status(200).json({ ok: true, deleted: counts });
+    }
+
+    // THE WIDER FAMILY. The caller must be a member of this family, signed in
+    // as themselves (ownedMember), before any of the three modules is asked.
+    // A member of a linked family is not a member of this one: they are
+    // refused here like any stranger.
+    const widerOf = Object.keys(WIDER).find(k => WIDER[k].includes(action));
+    if (widerOf) {
+      const circle = await circleByCode(sql, code);
+      if (!circle) return res.status(404).json({ ok: false, error: 'No family found with that code' });
+      const memberId = req.body.memberId;
+      if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
+      const mRow = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name, role, dob, place, country`);
+      if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
+      const out = widerOf === 'link_' ? await famlinkAction(sql, req, circle, mRow[0], req.body)
+                : widerOf === 'fact_' ? await famfactsAction(sql, circle, mRow[0], req.body)
+                : await rememberAction(sql, circle, mRow[0], req.body);
+      return res.status(out.status).json(out.json);
     }
 
     // THE FAMILY TREE. Anyone in the family may place anyone - every member

@@ -21,6 +21,7 @@ import { sweepBond, ensureBondSchema } from './_bond.mjs';
 import { storySweep, ensureBondSchema as ensureMemoryBondSchema } from './_memorybond.mjs';
 import { award, today } from './_coins.mjs';
 import { reqTz } from './_recur.mjs';
+import { sweepRemember, ensureRememberSchema, rememberToday } from './_remember.mjs';
 
 import { index as kinIndex, kinLabel, generations, kinEveryone, kinChainWords } from './_kin.mjs';
 import { pulseToday, ensurePulseSchema, optionOf, styleFor, today as pulseDay } from './_pulse.mjs';
@@ -68,6 +69,8 @@ async function dueCircles(sql) {
   await q(() => sql`select distinct circle_id from circle_festivals limit 500`);
   await q(() => sql`select distinct circle_id from cards where date >= current_date - 1 limit 500`);
   await q(() => sql`select distinct circle_id from story_tellers where status = 'yes' limit 500`);
+  // Days of remembrance: someone marked, with a day and a month to keep.
+  await q(() => sql`select distinct circle_id from members where remembered and passed_month is not null and passed_day is not null limit 500`);
   return [...ids];
 }
 export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
@@ -94,6 +97,7 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
     await one(() => rotaSweep(sql, id));
     await one(async () => { await ensureBondSchema(sql); const c = (await sql`select id, name, kind, code from circles where id = ${id}`)[0]; return c ? sweepBond(sql, c) : 0; });
     await one(async () => { await ensureMemoryBondSchema(sql); return storySweep(sql, id); });
+    events += await one(() => sweepRemember(sql, id));
     done++;
   }
   return { circles: done, reminded, late, events };
@@ -183,8 +187,12 @@ async function escalateStaleSos(sql, circleId) {
         if (!a[0]) return res.status(404).json({ ok: false, error: 'That recording is not here' });
         return res.status(200).json({ ok: true, mime: a[0].mime, data: a[0].data, seconds: a[0].seconds });
       }
+      // Someone marked as no longer with us carries the mark, and the day
+      // the family keeps, to every screen that lists people.
+      await ensureRememberSchema(sql);
       const members = await sql`select id, name, role, phone, place, country, relation, dob, gift_info, created_at,
-                                       parent_id, spouse_id, gender, user_id is not null as on_app
+                                       parent_id, spouse_id, gender, user_id is not null as on_app,
+                                       remembered, passed_year, passed_month, passed_day, remember_line
                                 from members where circle_id = ${circle.id} order by created_at`;
       // The family tree, read from where the person looking stands: Papa is
       // "Father" to Rohan and "Father-in-law" to Priya. null = not placed yet.
@@ -245,6 +253,8 @@ async function escalateStaleSos(sql, circleId) {
       try { await sweepVisitAsk(sql, circle.id); } catch (e) { /* never break a read */ }
       // A missed check-in and a call rota's missed day, on the same poll.
       try { await quietSweep(sql, circle.id); await rotaSweep(sql, circle.id); } catch (e) { /* never break a read */ }
+      // A day of remembrance tomorrow or today, told once a year.
+      try { await sweepRemember(sql, circle.id); } catch (e) { /* never break a read */ }
       const pulse = await pulseToday(sql, circle.id, reqTz(req));
       const sosOpen = await sql`
         select s.id, s.member_id, s.status, s.escalated, s.created_at, s.acked_at, s.safe_at,
@@ -276,7 +286,7 @@ async function escalateStaleSos(sql, circleId) {
           // alarm; ladderCalls says Parwah rings them itself.
           ladder: (await ladderFor(sql, circle.id, x.member_id)).map(h => ({ name: h.name, phone: h.phone, distance: h.distance_note, hasKey: h.has_key, hours: h.hours })),
           ladderCalls: (() => { const c = dialConfig(); return !!(c.on && c.voice); })() }))),
-        sosEscalateMin: SOS_ESCALATE_MIN, pulse,
+        sosEscalateMin: SOS_ESCALATE_MIN, pulse, remembrance: rememberToday(members),
         findme: await findState(sql, circle, g.me, tokenOf(req)).catch(() => null),
         familyCare: await familyCareState(sql, circle.id, g.me.id).catch(() => null) });
     }

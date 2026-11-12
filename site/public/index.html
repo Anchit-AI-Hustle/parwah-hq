@@ -741,6 +741,24 @@ details.more[open]>summary::before{content:"▾ "}
 .rz-chain{font-size:var(--fs-16);font-weight:600;color:var(--ink);margin:var(--space-12) 0}
 .personhero .rz-ppkin{color:var(--cream);margin-top:0;text-align:left}
 .personhero .rz-ppchain{color:var(--dim);font-size:var(--fs-14);margin:0 0 var(--space-12)}
+/* The wider family: linked families (fl-), family facts (ff-), days of remembrance (rm-). */
+.fl-ways{display:flex;gap:var(--space-8);flex-wrap:wrap;margin-top:var(--space-8)}
+.fl-ways .cbtn{flex:1 1 140px}
+.fl-fam{margin-top:var(--space-16);padding-top:var(--space-4);border-top:1px solid var(--bone-2)}
+.fl-fam .eyebrow{margin:var(--space-12) 0 var(--space-4)}
+.fl-say{margin:var(--space-4) 0 var(--space-8)}
+.fl-list .eyebrow,.ff-list .eyebrow{margin:var(--space-20) 0 var(--space-8)}
+.fl-ask{margin-top:var(--space-8);font-size:var(--fs-14);color:var(--ink)}
+.fl-ask b{font-size:var(--fs-16)}
+.fl-acts{display:flex;gap:var(--space-8);flex-wrap:wrap;margin-top:var(--space-12)}
+.fl-acts .cbtn{flex:1 1 120px}
+.fl-row{margin-top:var(--space-8)}
+.ff-text{display:block;font-size:var(--fs-16);color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere}
+.ff-ticks{display:flex;flex-wrap:wrap;gap:var(--space-8)}
+.ff-form .cbtn{width:100%;margin-top:var(--space-8)}
+.rm-pair{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-8);margin-top:var(--space-12)}
+.rm-say{font-size:var(--fs-14);color:var(--ink-soft);margin:var(--space-8) 0 0}
+.bondtoday .crow.rm-card{border-left-color:var(--bone-2)}
 #createcard.nuclear .jointonly{display:none}
 #c-ftype{flex-wrap:wrap}
 #c-ftype button{flex:1 1 0;min-width:0;text-align:left}
@@ -1844,6 +1862,9 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     <div id="bond-today"></div>
     <!-- PASAND (api/_pasand.mjs): something a person recommended to me, until I answer. -->
     <div id="ps-today"></div>
+    <!-- DAYS OF REMEMBRANCE (api/_remember.mjs): one calm line on the day
+         the family keeps for someone who is no longer with us. -->
+    <div id="rm-today"></div>
     <!-- The daily check-in: off until the person it is about says yes. -->
     <div class="card fccard" id="fcquiet" hidden>
       <h3>🕚 Daily check-in</h3>
@@ -2310,6 +2331,14 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       <p class="hint" id="tree-sub" style="margin:var(--space-4) 0 var(--space-12)"></p>
       <div id="tree" class="tree"></div>
       <button type="button" class="cbtn ghost" id="rz-open" style="margin-top:var(--space-12)">Rishtedaar: everyone, near and far</button>
+      <!-- THE WIDER FAMILY: a related family's tree, read only, once both
+           families agree (api/_famlink.mjs); and the facts a family writes
+           down about itself (api/_famfacts.mjs). -->
+      <div class="fl-ways">
+        <button type="button" class="cbtn ghost" id="fl-open">Linked families</button>
+        <button type="button" class="cbtn ghost" id="ff-open">Family facts</button>
+      </div>
+      <div id="fl-trees"></div>
       <details class="treeadd" id="tree-more">
         <summary class="eyebrow" id="tree-add-head">Add someone to the tree</summary>
         <div id="tree-add">
@@ -3747,6 +3776,8 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     <div class="kv" id="mp-likes-row" hidden><b>Loves</b><span id="mp-likes"></span></div>
     <div class="kv" id="mp-wish-row" hidden><b>Wishlist</b><span id="mp-wish"></span></div>
     <div class="kv"><b>In the family since</b><span id="mp-since">-</span></div>
+    <div class="kv" id="rm-mp-row" hidden><b>🪔 No longer with us</b><span id="rm-mp-when"></span></div>
+    <p class="rm-say" id="rm-mp-say" hidden></p>
     <div class="prow2">
       <a class="cbtn" id="mp-call" hidden>📞 Call</a>
       <button class="cbtn ecard-btn" id="mp-ecard">🚨 Emergency card</button>
@@ -3755,6 +3786,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       <button class="cbtn ghost" id="mp-remind">✅ Something to do for them</button>
       <button class="cbtn ghost" id="mp-dm">💬 Message privately</button>
       <button class="cbtn ghost" id="mp-gift">🎁 Send a gift</button>
+      <button type="button" class="cbtn ghost" id="rm-mp-open" hidden>🪔 No longer with us?</button>
     </div>
     <div id="giftbox" hidden>
       <p class="hint" id="gift-sizes" hidden style="margin-top:var(--space-12);background:var(--tint-warm);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-8) var(--space-12)"></p>
@@ -4329,6 +4361,84 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     </div>
   </div>
 </div>
+<div class="msheet" id="fl-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="fl-title">
+  <div class="mp cc-wide">
+    <button class="x" id="fl-x" aria-label="Close">✕</button>
+    <h3 id="fl-title" style="margin-top:0">Linked families</h3>
+    <p class="hint" id="fl-sub" style="margin:var(--space-4) 0 var(--space-12)">Two related families can see each other's family tree and Rishtedaar list. Nothing else is shared: no chats, no papers, no health, no location.</p>
+    <div class="rz-msg" id="fl-note" role="status" hidden></div>
+    <div class="fl-list" id="fl-list"></div>
+    <details class="treeadd" id="fl-new">
+      <summary class="eyebrow" id="fl-new-head">Link another family</summary>
+      <label class="pick"><span>Their family code</span><input type="text" id="fl-code" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. VERMAS"></label>
+      <label class="pick" style="margin-top:var(--space-12)"><span>Who belongs to both families?</span><select id="fl-bridge" aria-label="Who belongs to both families"></select></label>
+      <label class="pick" style="margin-top:var(--space-12)"><span>Their name in the other family, if it is different</span><input type="text" id="fl-name" maxlength="60" autocomplete="off" placeholder="e.g. Priya Verma"></label>
+      <label class="seniorchk"><input type="checkbox" id="fl-phones"> Share our phone numbers with them</label>
+      <p class="hint">An adult in the other family says yes or no. Either family can end the link at any time.</p>
+      <p class="fielderr" id="fl-err" role="alert" hidden></p>
+      <button type="button" class="go" id="fl-send">Ask to link</button>
+    </details>
+  </div>
+</div>
+<div class="msheet" id="fl-who" hidden role="dialog" aria-modal="true" aria-labelledby="fl-who-name">
+  <div class="mp">
+    <button class="x" id="fl-who-x" aria-label="Close">✕</button>
+    <h3 id="fl-who-name" style="margin-top:0"></h3>
+    <span class="rolebadge" id="fl-who-kin"></span>
+    <p class="hint" style="margin-bottom:0">How you are related</p>
+    <p class="rz-chain" id="fl-who-chain"></p>
+    <div class="kv"><b>Family</b><span id="fl-who-fam"></span></div>
+    <div class="kv" id="fl-who-city-row" hidden><b>Lives in</b><span id="fl-who-city"></span></div>
+    <div class="kv" id="fl-who-born-row" hidden><b>Born in</b><span id="fl-who-born"></span></div>
+    <div class="prow2">
+      <a class="cbtn" id="fl-who-call" hidden>📞 Call</a>
+    </div>
+    <p class="hint" id="fl-who-note">From a linked family. You see their name, their place in the tree, the year they were born and their city. Nothing else is shared.</p>
+  </div>
+</div>
+<div class="msheet" id="ff-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="ff-title">
+  <div class="mp cc-wide">
+    <button class="x" id="ff-x" aria-label="Close">✕</button>
+    <h3 id="ff-title" style="margin-top:0">Family facts</h3>
+    <p class="hint" id="ff-sub" style="margin:var(--space-4) 0 var(--space-12)">What is worth writing down about your family: gotra, native place, kuldevta, customs. These stay in this family, even when it is linked to another.</p>
+    <div class="rz-msg" id="ff-note" role="status" hidden></div>
+    <div class="ff-list" id="ff-list"></div>
+    <div class="ff-form" id="ff-form" hidden>
+      <p class="eyebrow" id="ff-form-head">Add a fact</p>
+      <label class="pick"><span>What is it?</span><select id="ff-kind" aria-label="What kind of fact"></select></label>
+      <label class="pick" style="margin-top:var(--space-12)"><span>Write it down</span><textarea id="ff-text" rows="3" maxlength="600" placeholder="e.g. Our family is from Bikaner"></textarea></label>
+      <div id="ff-audwrap">
+        <p class="trlbl" id="ff-aud-label">Who can see it?</p>
+        <div class="seg" id="ff-aud" role="group" aria-labelledby="ff-aud-label">
+          <button type="button" data-aud="family" class="sel" aria-pressed="true">Whole family</button><button type="button" data-aud="chosen" aria-pressed="false">People I choose</button><button type="button" data-aud="me" aria-pressed="false">Only me</button>
+        </div>
+        <div id="ff-people" hidden></div>
+      </div>
+      <p class="hint">Never write a card number, an OTP or a PIN here.</p>
+      <p class="fielderr" id="ff-err" role="alert" hidden></p>
+      <button type="button" class="go" id="ff-save">Save</button>
+      <button type="button" class="cbtn ghost" id="ff-cancel">Cancel</button>
+    </div>
+    <button type="button" class="go" id="ff-add" style="margin-top:var(--space-20)">Add a fact</button>
+  </div>
+</div>
+<div class="msheet" id="rm-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="rm-title">
+  <div class="mp">
+    <button class="x" id="rm-x" aria-label="Close">✕</button>
+    <h3 id="rm-title" style="margin-top:0">No longer with us</h3>
+    <p class="hint" id="rm-sub" style="margin:var(--space-4) 0 var(--space-12)"></p>
+    <label class="pick"><span>Year</span><input type="text" id="rm-year" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="e.g. 2019"></label>
+    <div class="rm-pair">
+      <label class="pick"><span>Month</span><select id="rm-month" aria-label="Month, if you know it"><option value="">Not sure</option><option value="1">January</option><option value="2">February</option><option value="3">March</option><option value="4">April</option><option value="5">May</option><option value="6">June</option><option value="7">July</option><option value="8">August</option><option value="9">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select></label>
+      <label class="pick"><span>Day</span><input type="text" id="rm-day" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="e.g. 12" aria-label="Day, if you know it"></label>
+    </div>
+    <label class="pick" style="margin-top:var(--space-12)"><span>A line to remember them by, if you wish</span><input type="text" id="rm-line" maxlength="160" autocomplete="off" placeholder="e.g. He taught us all to ride a cycle"></label>
+    <p class="hint" id="rm-hint">With the day and the month, the family gets one gentle reminder each year, the evening before. Parwah will not ask them to check in, and will not suggest calls, cards or birthdays for them. Their papers and stories stay.</p>
+    <p class="fielderr" id="rm-err" role="alert" hidden></p>
+    <button type="button" class="go" id="rm-save">Save</button>
+    <button type="button" class="cbtn ghost" id="rm-undo" hidden style="width:100%;margin-top:var(--space-8)">Take this mark off</button>
+  </div>
+</div>
 <div class="msheet" id="asksheet" hidden role="dialog" aria-modal="true" aria-labelledby="as-q">
   <div class="mp">
     <h3 id="as-q" style="margin-top:0"></h3>
@@ -4588,14 +4698,28 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   function chatShort(c){ return c ? (c.kind === 'circle' ? 'everyone' : c.name) : ''; }
   // Someone added to the tree by name never signs in: they can be written
   // about, never given a task, a chat or a share.
-  function onApp(m){ return !!m && m.on_app !== false; }
+  function onApp(m){ return !!m && m.on_app !== false && !rmGone(m); }
+  // DAYS OF REMEMBRANCE (api/_remember.mjs). Someone the family has marked
+  // as no longer with us is never offered a task, a chat, a share, a
+  // check-in, a birthday or an invite: every list of people asks here.
+  function rmGone(m){ return !!(m && m.remembered); }
+  var RM_MARK = '🪔 No longer with us';
+  var RM_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  // What follows a person's relation word: the quiet marker, in words, or
+  // "not on Parwah". Never both: nobody who is remembered is invited.
+  function rmTag(m){ return rmGone(m) ? ' · ' + RM_MARK : (m && m.on_app === false ? ' · not on Parwah' : ''); }
+  // As much of the date as the family wrote: "12 March 2019", "March 2019", "2019".
+  function rmWhen(m){
+    if (!m || !m.passed_year) return '';
+    return (m.passed_day && m.passed_month ? m.passed_day + ' ' : '') + (m.passed_month ? RM_MONTHS[m.passed_month - 1] + ' ' : '') + m.passed_year;
+  }
   function relLabel(m){
     if (m && state && m.id === state.memberId) return 'You';
     // The tree knows best: "Father-in-law" to Priya, "Father" to Rohan.
     if (m && m.kin && m.kin !== 'You') return m.kin;
     // The word chosen when joining describes them to whoever invited them,
     // not to you; once the family has a tree, it is not used.
-    if (famKind === 'family' && treeMembers.some(function(x){ return x.gen; })) return m && m.on_app === false ? 'Not on Parwah' : 'Not in the tree yet';
+    if (famKind === 'family' && treeMembers.some(function(x){ return x.gen; })) return m && m.on_app === false && !rmGone(m) ? 'Not on Parwah' : 'Not in the tree yet';
     var r = (m && m.relation) || '';
     if (r) return r.charAt(0).toUpperCase() + r.slice(1);
     return m && m.role === 'parent' ? 'Parent' : 'Family';
@@ -4853,6 +4977,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     renderNotifs();
     pillFromFeed(data.events);
     fcRender(data.familyCare);
+    rmRenderToday(data.remembrance);
   }
 
   function heroGo(){
@@ -8954,7 +9079,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     }
     pid = pid || state.memberId;
     $('vs-who').innerHTML = ms.map(function(m){ return '<option value="' + m.id + '"' + (m.id === pid ? ' selected' : '') + '>' + esc(m.id === state.memberId ? m.name + ' (me)' : m.name) + '</option>'; }).join('');
-    var owners = ms.filter(function(m){ return m.on_app !== false; });
+    var owners = ms.filter(function(m){ return onApp(m); });
     var opt = owners.map(function(m){ return '<option value="' + m.id + '"' + (m.id === state.memberId ? ' selected' : '') + '>' + esc(m.id === state.memberId ? 'Me' : m.name) + '</option>'; }).join('');
     $('vs-bookby').innerHTML = opt; $('vs-testby').innerHTML = opt;
     ccVisitTitle();
@@ -9815,8 +9940,8 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   // nobody is marked as one, everyone.
   function renderPrep(){
     var mem = {}; (membersCache || []).forEach(function(m){ mem[m.id] = m; });
-    var looked = prepCache.filter(function(pp){ var m = mem[pp.memberId]; return m && (m.role === 'parent' || m.on_app === false); });
-    var list = looked.length ? looked : prepCache;
+    var looked = prepCache.filter(function(pp){ var m = mem[pp.memberId]; return m && !rmGone(m) && (m.role === 'parent' || m.on_app === false); });
+    var list = (looked.length ? looked : prepCache).filter(function(pp){ return !rmGone(mem[pp.memberId]); });
     var h = list.map(function(pp){
       var missing = Object.keys(pp.items).filter(function(k){ return pp.items[k] !== 'ok' && PREP_LABEL[k]; });
       return '<div class="crow"><button type="button" class="txt rowbtn" data-person="' + pp.memberId + '">' +
@@ -11714,7 +11839,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
 
   // ---- ready-made tasks: the life certificate and the call rota ----
   function fcParentsFirst(){
-    var ms = (membersCache || []).slice();
+    var ms = (membersCache || []).filter(function(m){ return !rmGone(m); });
     return ms.filter(function(m){ return m.role === 'parent'; }).concat(ms.filter(function(m){ return m.role !== 'parent'; }));
   }
   function fcRotaPeople(){
@@ -12401,7 +12526,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   function bdaysIn(y, mo){
     var out = {};
     (membersCache || []).forEach(function(m){
-      if (!m.dob) return;
+      if (!m.dob || rmGone(m)) return;   // no birthday for someone who is remembered
       var d = String(m.dob).slice(0, 10).split('-');
       if (+d[1] - 1 !== mo) return;
       var k = y + '-' + pad2(mo + 1) + '-' + pad2(+d[2]);
@@ -12412,7 +12537,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   function bdaysSoon(days){
     var now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(), out = [];
     (membersCache || []).forEach(function(m){
-      if (!m.dob) return;
+      if (!m.dob || rmGone(m)) return;   // no birthday for someone who is remembered
       var d = String(m.dob).slice(0, 10).split('-');
       var next = new Date(now.getFullYear(), +d[1] - 1, +d[2]);
       if (next.getTime() < t0) next = new Date(now.getFullYear() + 1, +d[1] - 1, +d[2]);
@@ -12937,7 +13062,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     } catch (e) {}
   }
   function bondCardStart(){
-    var ms = (membersCache || []).filter(function(m){ return m.id !== state.memberId; });
+    var ms = (membersCache || []).filter(function(m){ return m.id !== state.memberId && !rmGone(m); });
     bondSheet('💌 Start a card',
       '<p class="hint" style="margin:0 0 var(--space-8)">For a birthday, a farewell, a wedding or any day. Everyone in the ' + bondWord() + ' can add to it.</p>' +
       '<div class="pkind" id="bcs-occ" role="group" aria-label="What is it for">' + [['birthday', '🎂 Birthday'], ['farewell', '👋 Farewell'], ['wedding', '💐 Wedding'], ['anniversary', '💍 Anniversary'], ['other', '💌 Any day']].map(function(o, i){ return '<button type="button" data-bco="' + o[0] + '" class="' + (i === 4 ? 'sel' : '') + '" aria-pressed="' + (i === 4) + '">' + o[1] + '</button>'; }).join('') + '</div>' +
@@ -13156,7 +13281,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     return '';
   }
   function pasandMember(id){ return (membersCache || []).filter(function(m){ return m.id === id; })[0] || null; }
-  function pasandOthers(){ return (membersCache || []).filter(function(m){ return m.id !== state.memberId; }); }
+  function pasandOthers(){ return (membersCache || []).filter(function(m){ return m.id !== state.memberId && !rmGone(m); }); }
   function pasandSay(el, msg){ if (el) { el.textContent = msg; el.hidden = false; } else toast(msg); }
   function pasandRefresh(force){
     if (!state) return;
@@ -14730,7 +14855,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   function treePerson(m){
     var me = state && m.id === state.memberId;
     return '<button type="button" class="tperson" data-mprof="' + m.id + '"><b>' + esc(m.name) + '</b><small>' +
-           esc(me ? 'You' : (m.kin || relLabel(m))) + (m.on_app === false ? ' · not on Parwah' : '') + '</small></button>';
+           esc(me ? 'You' : (m.kin || relLabel(m))) + esc(rmTag(m)) + '</small></button>';
   }
   function renderTree(j){
     famKind = j.kind || 'family'; famType = j.familyType || null;
@@ -14784,6 +14909,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     if (!placed.length) $('tree-more').open = true;
     fillTreeOf();
     rzState = 'ok'; rzRender();
+    flRefresh(false);
   }
   // What a place is called once he or she is known.
   var TR_WORDS = { child: ['son', 'daughter', 'son or daughter'], spouse: ['husband', 'wife', 'husband or wife'],
@@ -14918,11 +15044,11 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   // Home name first when there is one, the English word after.
   function rzWords(m){
     var z = m.rz || {}, first = z.hindi || m.kin || '', second = z.english || '';
-    if (!first) return m.on_app === false ? 'Not in the tree yet · not on Parwah' : 'Not in the tree yet';
+    if (!first) return 'Not in the tree yet' + rmTag(m);
     var t = first;
     if (second && second.toLowerCase() !== first.toLowerCase()) t += ' · ' + second;
     else if (m.kin && m.kin.toLowerCase() !== first.toLowerCase()) t += ' · ' + m.kin;
-    return t + (m.on_app === false ? ' · not on Parwah' : '');
+    return t + rmTag(m);
   }
   function rzHay(m){ var z = m.rz || {}; return [m.name, z.hindi, z.english, m.kin].join(' ').toLowerCase(); }
   function rzMember(id){ return treeMembers.filter(function(m){ return m.id === id; })[0] || null; }
@@ -14948,21 +15074,23 @@ body.senior .mbcard p{font-size:var(--fs-16)}
       }
       RZ_GROUPS.forEach(function(g){
         var rows = shown.filter(function(m){ return m.rz && m.rz.group === g[0]; });
-        if (!rows.length) return;
+        // People of a linked family sit in the same three groups, after this family's own.
+        var far = flRzRows(g[0], q);
+        if (!rows.length && !far) return;
         html += '<p class="eyebrow">' + esc(g[1]) + '</p>' + rows.map(function(m){
           return '<button type="button" class="crow rz-row" data-rz="' + esc(m.id) + '"><span class="txt"><b>' + esc(m.name) + '</b>' +
                  '<span class="rz-kin">' + esc(rzWords(m)) + '</span><small>' + esc(m.rz.chain || '') + '</small></span></button>';
-        }).join('');
+        }).join('') + far;
       });
       var loose = shown.filter(function(m){ return !m.rz || m.rz.group === 'unplaced'; });
       if (loose.length) {
         html += '<p class="eyebrow">Not in the tree yet</p>' + loose.map(function(m){
           return '<div class="crow" style="margin-top:var(--space-8)"><span class="txt"><b>' + esc(m.name) + '</b><small>' +
-                 (m.on_app === false ? 'Not on Parwah. ' : '') + 'Say how they are related, to see them here.</small></span>' +
+                 (m.on_app === false && !rmGone(m) ? 'Not on Parwah. ' : '') + 'Say how they are related, to see them here.</small></span>' +
                  '<button type="button" class="cbtn" data-rzplace="' + esc(m.id) + '">Place in the tree</button></div>';
         }).join('');
       }
-      if (q && !shown.length) msg += (msg ? '<br><br>' : '') + 'Nobody matches "' + esc(q) + '". Try a name, or a word like mama or cousin.';
+      if (q && !shown.length && !flRzCount(q)) msg += (msg ? '<br><br>' : '') + 'Nobody matches "' + esc(q) + '". Try a name, or a word like mama or cousin.';
     }
     // The 12-second refresh must not take the row out from under a finger.
     var sig = msg + '|rz|' + html;
@@ -15016,7 +15144,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     var show = !!m && famKind === 'family' && state && m.id !== state.memberId && rzMember(m.id);
     b.hidden = !show; if (!show) return;
     var t = rzMember(m.id), z = t.rz || {}, loose = !z.group || z.group === 'unplaced';
-    b.textContent = (loose ? 'Not in the tree yet' : rzWords(t).replace(/ · not on Parwah$/, '')) + ': how are we related?';
+    b.textContent = (loose ? 'Not in the tree yet' : rzWords(t).replace(/ · (not on Parwah|🪔 No longer with us)$/, '')) + ': how are we related?';
     c.textContent = loose ? 'Not connected in the family tree yet. Place them in the tree on the Family tab to see how you are related.' : (z.chain || '');
   }
   $('rz-pp-kin').addEventListener('click', function(){
@@ -15031,6 +15159,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   $('rz-add').addEventListener('click', function(){ rzPlace('new'); });
   function rzListTap(e){
     var r = e.target.closest('[data-rz]'); if (r) { rzWhoOpen(r.getAttribute('data-rz')); return; }
+    var fw = e.target.closest('[data-flwho]'); if (fw) { flWhoOpen(fw.getAttribute('data-flwho')); return; }
     var pl = e.target.closest('[data-rzplace]'); if (pl) { rzPlace(pl.getAttribute('data-rzplace')); return; }
     if (e.target.closest('[data-rzretry]')) { if (!treeMembers.length) rzState = 'loading'; rzRender(); refresh(); }
   }
@@ -15044,7 +15173,439 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   $('rz-who-place').addEventListener('click', function(){ rzPlace($('rz-who').dataset.mid); });
   document.addEventListener('keydown', function(e){
     if (e.key !== 'Escape') return;
+    if (!$('fl-who').hidden) return;   // a linked person's sheet is on top: it closes first
     if (!$('rz-who').hidden) rzWhoClose(); else if (!$('rz-sheet').hidden) rzClose();
+  });
+
+  // ---------- the wider family ----------
+  // Three things behind /api/circle: linked families (api/_famlink.mjs),
+  // family facts (api/_famfacts.mjs) and days of remembrance
+  // (api/_remember.mjs). The server decides who sees what; this only draws it.
+  function widerPost(body){
+    body.code = state.code; body.memberId = state.memberId;
+    return post(API.circle, body);
+  }
+  function widerFirst(n){ return String(n || '').trim().split(/\s+/)[0] || ''; }
+
+  // ---- linked families: two related families see each other's tree
+  var flData = null, flState = 'loading', flAt = 0, flFrom = null, flWhoFrom = null, flDrawn = '';
+  function flRefresh(force){
+    if (!state || famKind === 'group') return;
+    if (!force && Date.now() - flAt < 30000) return;
+    flAt = Date.now();
+    widerPost({ action: 'link_state' }).then(function(j){
+      if (j && j.ok) { flData = { max: j.max || 6, links: j.links || [], incoming: j.incoming || [], outgoing: j.outgoing || [] }; flState = 'ok'; }
+      else flState = 'error:' + humanFail(j && j.error, 'Could not load linked families. Try again in a moment.');
+      flRenderAll();
+    }).catch(function(){ flState = 'offline'; flRenderAll(); });
+  }
+  function flRenderAll(){ flRenderTrees(); flRender(); rzRender(); }
+  function flLink(id){ return ((flData && flData.links) || []).filter(function(l){ return l.id === id; })[0] || null; }
+  // Home name first when there is one, then the English word. Someone who is
+  // also in this family is named as this family names them.
+  function flWords(l, p){
+    if (p.same) { var own = rzMember(p.same); return own ? (own.id === state.memberId ? 'You' : relLabel(own)) + ' · in both families' : 'In both families'; }
+    var z = p.rz || {}, first = z.hindi || p.kin || '', second = z.english || '';
+    if (!first) return 'In ' + l.name;
+    var t = first;
+    if (second && second.toLowerCase() !== first.toLowerCase()) t += ' · ' + second;
+    else if (p.kin && p.kin.toLowerCase() !== first.toLowerCase()) t += ' · ' + p.kin;
+    return t;
+  }
+  function flPerson(l, p){
+    return '<button type="button" class="tperson" data-flwho="' + esc(l.id + ':' + p.id) + '"><b>' + esc(p.name) + '</b><small>' + esc(flWords(l, p)) + '</small></button>';
+  }
+  // The other family's tree, drawn the way this family's own tree is.
+  function flTreeDraw(l){
+    var ms = l.people || [], byId = {}, done = {};
+    ms.forEach(function(m){ byId[m.id] = m; });
+    var placed = ms.filter(function(m){ return m.gen; });
+    function unit(m){
+      var sp = m.spouse_id && byId[m.spouse_id], ids = [m.id];
+      done[m.id] = 1; if (sp) { done[sp.id] = 1; ids.push(sp.id); }
+      var kids = ms.filter(function(c){ return c.parent_id && ids.indexOf(c.parent_id) >= 0 && !done[c.id]; });
+      return '<div class="tnode"><div class="tunit">' + flPerson(l, m) +
+             (sp ? '<span class="tpair"><span class="tand" aria-label="married to">♥</span>' + flPerson(l, sp) + '</span>' : '') + '</div>' +
+             (kids.length ? '<div class="tkids">' + kids.map(unit).join('') + '</div>' : '') + '</div>';
+    }
+    var roots = placed.filter(function(m){
+      var sp = m.spouse_id && byId[m.spouse_id];
+      return !m.parent_id && !(sp && sp.parent_id);
+    }).sort(function(a, b){ return (a.gen || 9) - (b.gen || 9) || (a.gender === 'm' ? -1 : 1); });
+    var html = '';
+    roots.forEach(function(r){ if (!done[r.id]) html += unit(r); });
+    return html;
+  }
+  function flRenderTrees(){
+    var box = $('fl-trees'); if (!box) return;
+    var links = (flData && flData.links) || [], h = '';
+    links.forEach(function(l){
+      var loose = (l.people || []).filter(function(p){ return !p.gen; }).map(function(p){ return p.name; });
+      var tree = flTreeDraw(l);
+      h += '<div class="fl-fam" data-flfam="' + esc(l.id) + '"><p class="eyebrow">Linked family: ' + esc(l.name) + '</p>' +
+           '<p class="hint fl-say">You can look, not change. Linked through ' + esc(l.bridgeName || 'one person') + '. Tap anyone to see how you are related.</p>' +
+           (tree ? '<div class="tree">' + tree + '</div>' : '<p class="hint fl-say">' + esc(l.name) + ' has not started their tree yet.</p>') +
+           (loose.length && tree ? '<p class="hint fl-say">Not in their tree yet: ' + esc(loose.join(', ')) + '</p>' : '') + '</div>';
+    });
+    var asks = ((flData && flData.incoming) || []).length;
+    $('fl-open').textContent = asks ? 'Linked families: ' + asks + (asks === 1 ? ' request' : ' requests') + ' waiting' : 'Linked families';
+    if (h === box.getAttribute('data-sig')) return;
+    box.setAttribute('data-sig', h);
+    box.innerHTML = h;
+  }
+  // People of linked families for one Rishtedaar group, as rows.
+  function flRzList(group, q){
+    var out = [];
+    ((flData && flData.links) || []).forEach(function(l){
+      (l.people || []).forEach(function(p){
+        if (p.same || !p.rz || p.rz.group !== group) return;
+        var hay = [p.name, p.rz.hindi, p.rz.english, p.kin, l.name].join(' ').toLowerCase();
+        if (q && hay.indexOf(q) < 0) return;
+        out.push([l, p]);
+      });
+    });
+    return out;
+  }
+  function flRzRows(group, q){
+    return flRzList(group, q).map(function(x){
+      var l = x[0], p = x[1];
+      return '<button type="button" class="crow rz-row" data-flwho="' + esc(l.id + ':' + p.id) + '"><span class="txt"><b>' + esc(p.name) + '</b>' +
+             '<span class="rz-kin">' + esc(flWords(l, p) + ' · ' + l.name) + '</span><small>' + esc(p.rz.chain || 'In the family tree of ' + l.name) + '</small></span></button>';
+    }).join('');
+  }
+  function flRzCount(q){ return flRzList('ghar', q).length + flRzList('kareebi', q).length + flRzList('door', q).length; }
+  function flWhoOpen(key){
+    var at = String(key || '').indexOf(':'), l = flLink(String(key).slice(0, at)); if (!l) return;
+    var p = (l.people || []).filter(function(x){ return x.id === String(key).slice(at + 1); })[0]; if (!p) return;
+    $('fl-who-name').textContent = p.name;
+    $('fl-who-kin').textContent = flWords(l, p);
+    $('fl-who-chain').textContent = p.same ? 'This person is in your own family too.' : ((p.rz && p.rz.chain) || 'Not connected in the family tree of ' + l.name + ' yet.');
+    $('fl-who-fam').textContent = l.name;
+    $('fl-who-city-row').hidden = !p.city; if (p.city) $('fl-who-city').textContent = p.city;
+    $('fl-who-born-row').hidden = !p.born; if (p.born) $('fl-who-born').textContent = String(p.born);
+    // A number is here only when their family said yes to sharing numbers.
+    if (p.phone) { $('fl-who-call').href = 'tel:' + encodeURIComponent(p.phone); $('fl-who-call').hidden = false; }
+    else { $('fl-who-call').hidden = true; $('fl-who-call').removeAttribute('href'); }
+    flWhoFrom = document.activeElement;
+    $('fl-who').hidden = false;
+    try { $('fl-who-x').focus(); } catch (e) {}
+  }
+  function flWhoClose(){ $('fl-who').hidden = true; if (flWhoFrom && flWhoFrom.focus && document.contains(flWhoFrom)) { try { flWhoFrom.focus(); } catch (e) {} } }
+  function flRender(){
+    var sheet = $('fl-sheet'); if (!sheet || sheet.hidden) return;
+    var note = $('fl-note'), msg = '', h = '', d = flData, first = false;
+    if (!d && flState === 'loading') msg = 'Loading linked families…';
+    else if (!d && flState === 'offline') msg = 'You are offline. Linked families will show when the internet is back.';
+    else if (!d) msg = esc(flState.slice(6)) + ' <button type="button" class="cbtn ghost" data-flretry="1">Try again</button>';
+    else {
+      if (flState === 'offline') msg = 'You are offline. This is what this phone last saw.';
+      else if (flState !== 'ok') msg = esc(flState.slice(6)) + ' Showing what was loaded last. <button type="button" class="cbtn ghost" data-flretry="1">Try again</button>';
+      var mine = treeMembers.map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.id === state.memberId ? 'Me (' + m.name + ')' : m.name) + '</option>'; }).join('');
+      if (d.incoming.length) h += '<p class="eyebrow">Waiting for your answer</p>' + d.incoming.map(function(r){
+        return '<div class="plan fl-ask" data-flask="' + esc(r.id) + '"><b>' + esc(r.fromName) + ' asks to link family trees</b>' +
+          '<p class="hint fl-say">' + esc((r.askedBy || 'Someone there') + ' says ' + r.bridgeName + ' belongs to both families' + (r.theirName && r.theirName !== r.bridgeName ? ', known to you as ' + r.theirName : '') + '.') +
+          ' If you say yes, each family sees the other\'s family tree and Rishtedaar list. Nothing else is shared.</p>' +
+          '<label class="pick"><span>Who is ' + esc(widerFirst(r.theirName || r.bridgeName)) + ' in your family?</span><select data-flpick="1"><option value="">Choose…</option>' +
+          mine.replace('value="' + esc(r.guess || '-') + '"', 'value="' + esc(r.guess || '-') + '" selected') + '</select></label>' +
+          '<label class="seniorchk"><input type="checkbox" data-flshare="1"> Share our phone numbers with them</label>' +
+          '<p class="fielderr" data-flerr="1" role="alert" hidden></p>' +
+          '<div class="fl-acts"><button type="button" class="cbtn" data-flyes="' + esc(r.id) + '">Yes, link our trees</button>' +
+          '<button type="button" class="cbtn no" data-flno="' + esc(r.id) + '">No</button></div></div>';
+      }).join('');
+      if (d.links.length) h += '<p class="eyebrow">Linked now: ' + d.links.length + ' of ' + d.max + '</p>' + d.links.map(function(l){
+        return '<div class="plan fl-ask" data-fllink="' + esc(l.id) + '"><b>' + esc(l.name) + '</b>' +
+          '<p class="hint fl-say">' + esc('Linked through ' + (l.bridgeName || 'one person') + '. ' + (l.people || []).length + ' people in their tree. ' +
+            (l.theyShare ? 'They share phone numbers with you.' : 'They do not share phone numbers.')) + '</p>' +
+          '<label class="seniorchk"><input type="checkbox" data-flphones="' + esc(l.id) + '"' + (l.weShare ? ' checked' : '') + '> Share our phone numbers with them</label>' +
+          '<div class="fl-acts"><button type="button" class="cbtn no" data-flend="' + esc(l.id) + '" data-name="' + esc(l.name) + '">End this link</button></div></div>';
+      }).join('');
+      if (d.outgoing.length) h += '<p class="eyebrow">Waiting for their answer</p>' + d.outgoing.map(function(o){
+        return '<div class="crow fl-row"><span class="txt"><b>' + esc(o.toName) + '</b><small>You asked to link through ' + esc(o.bridgeName) + '. An adult there can say yes.</small></span>' +
+          '<button type="button" class="cbtn ghost" data-flback="' + esc(o.id) + '">Take it back</button></div>';
+      }).join('');
+      // Nothing yet: one first step, and the form open.
+      if (!d.links.length && !d.incoming.length && !d.outgoing.length) {
+        msg += (msg ? '<br><br>' : '') + 'No linked family yet. Ask a related family for their family code. They can find it on their Profile. Then write it below.';
+        first = true;
+      }
+      $('fl-send').disabled = d.links.length >= d.max;
+      if (d.links.length >= d.max) msg += (msg ? '<br><br>' : '') + 'Your family has ' + d.max + ' linked families, the most there can be. End one to add another.';
+    }
+    var cur = $('fl-bridge').value;
+    $('fl-bridge').innerHTML = '<option value="">Choose…</option>' + treeMembers.map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.id === state.memberId ? 'Me (' + m.name + ')' : m.name) + '</option>'; }).join('');
+    if (cur) $('fl-bridge').value = cur;
+    // The refresh must not take a row out from under a finger.
+    var sig = msg + '|fl|' + h;
+    if (sig === flDrawn) return;
+    flDrawn = sig;
+    note.hidden = !msg; note.innerHTML = msg;
+    $('fl-list').innerHTML = h;
+    if (first) $('fl-new').open = true;
+  }
+  function flOpen(){
+    flFrom = document.activeElement; flDrawn = '';
+    $('fl-err').hidden = true;
+    $('fl-sheet').hidden = false;
+    if (!flData) flState = 'loading';
+    flRender(); flRefresh(true);
+    try { $('fl-x').focus(); } catch (e) {}
+  }
+  function flClose(){ $('fl-sheet').hidden = true; if (flFrom && flFrom.focus && document.contains(flFrom)) { try { flFrom.focus(); } catch (e) {} } }
+  function flAct(body, btn, errEl, done){
+    if (btn) btn.disabled = true;
+    if (errEl) errEl.hidden = true;
+    widerPost(body).then(function(j){
+      if (btn) btn.disabled = false;
+      if (!j.ok) { var m = humanFail(j.error, 'That did not work. Try again.'); if (errEl) { errEl.textContent = m; errEl.hidden = false; } else toast(m); flRefresh(true); return; }
+      if (done) done(j);
+      flRefresh(true);
+    }).catch(function(){ if (btn) btn.disabled = false; var m = 'No connection. Try again.'; if (errEl) { errEl.textContent = m; errEl.hidden = false; } else toast(m); });
+  }
+  $('fl-open').addEventListener('click', flOpen);
+  $('fl-x').addEventListener('click', flClose);
+  $('fl-sheet').addEventListener('click', function(e){ if (e.target === this) flClose(); });
+  $('fl-who-x').addEventListener('click', flWhoClose);
+  $('fl-who').addEventListener('click', function(e){ if (e.target === this) flWhoClose(); });
+  $('fl-trees').addEventListener('click', function(e){ var b = e.target.closest('[data-flwho]'); if (b) flWhoOpen(b.getAttribute('data-flwho')); });
+  $('fl-note').addEventListener('click', function(e){ if (e.target.closest('[data-flretry]')) { if (!flData) flState = 'loading'; flRender(); flRefresh(true); } });
+  $('fl-list').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    var box = b.closest('[data-flask]'), err = box ? box.querySelector('[data-flerr]') : null;
+    if (b.hasAttribute('data-flyes')) {
+      var pick = box.querySelector('[data-flpick]').value;
+      if (!pick) { err.textContent = 'Choose who this person is in your family.'; err.hidden = false; return; }
+      flAct({ action: 'link_approve', linkId: b.getAttribute('data-flyes'), bridgeId: pick, sharePhones: box.querySelector('[data-flshare]').checked }, b, err,
+            function(){ toast('Your family trees are linked 🌳'); });
+    } else if (b.hasAttribute('data-flno')) {
+      flAct({ action: 'link_decline', linkId: b.getAttribute('data-flno') }, b, err, function(){ toast('You said no'); });
+    } else if (b.hasAttribute('data-flback')) {
+      flAct({ action: 'link_end', linkId: b.getAttribute('data-flback') }, b, null, function(){ toast('Request taken back'); });
+    } else if (b.hasAttribute('data-flend')) {
+      askSheet('End the link with ' + b.getAttribute('data-name') + '?', 'Both families stop seeing each other\'s tree and Rishtedaar list at once. You can ask to link again later.', 'End the link', 'Keep it', true).then(function(y){
+        if (y) flAct({ action: 'link_end', linkId: b.getAttribute('data-flend') }, b, null, function(){ toast('The link has ended'); });
+      });
+    }
+  });
+  $('fl-list').addEventListener('change', function(e){
+    var c = e.target.closest('[data-flphones]'); if (!c) return;
+    flAct({ action: 'link_phones', linkId: c.getAttribute('data-flphones'), on: c.checked }, null, null, function(){ toast(c.checked ? 'They can now see your family\'s phone numbers' : 'They no longer see your family\'s phone numbers'); });
+  });
+  $('fl-send').addEventListener('click', function(){
+    var err = $('fl-err'), code = ($('fl-code').value || '').replace(/\s+/g, '').toUpperCase(), bridge = $('fl-bridge').value, btn = this;
+    var say = function(t, el){ err.textContent = t; err.hidden = false; if (el) { try { el.focus(); } catch (e) {} } };
+    err.hidden = true;
+    if (!/^[A-Z0-9]{4,12}$/.test(code)) { say('Write the other family\'s code. It is 4 to 12 letters and numbers.', $('fl-code')); return; }
+    if (code === String(state.code || '').toUpperCase()) { say('That is the code of this family. Write the code of the other family.', $('fl-code')); return; }
+    if (!bridge) { say('Choose the person who belongs to both families.', $('fl-bridge')); return; }
+    var nm = $('fl-name').value.trim();
+    if (nm && nameCheck(nm)) { say(nameCheck(nm), $('fl-name')); return; }
+    flAct({ action: 'link_request', otherCode: code, bridgeId: bridge, bridgeName: nm || undefined, sharePhones: $('fl-phones').checked }, btn, err, function(j){
+      $('fl-code').value = ''; $('fl-name').value = ''; $('fl-phones').checked = false; $('fl-bridge').value = ''; $('fl-new').open = false;
+      toast(j.message || 'Your request has gone to them');
+    });
+  });
+
+  // ---- family facts: what is worth writing down about the family
+  var ffData = null, ffState = 'loading', ffFrom = null, ffEdit = null, ffDrawn = '';
+  var FF_KINDS = [['gotra', 'Gotra', 80], ['native', 'Native village or town', 120], ['kuldevta', 'Kuldevta or kuldevi', 120], ['deity_place', "Family deity's place", 160],
+                  ['tongue', 'Mother tongue', 80], ['surname', 'Our surname story', 600], ['custom', 'A custom worth writing down', 600]];
+  var FF_AUD = { family: 'Whole family', chosen: 'People I choose', me: 'Only me' };
+  function ffKind(k){ return FF_KINDS.filter(function(x){ return x[0] === k; })[0] || FF_KINDS[6]; }
+  function ffRefresh(){
+    if (!state) return;
+    widerPost({ action: 'fact_list' }).then(function(j){
+      if (j && j.ok) { ffData = j.facts || []; ffState = 'ok'; }
+      else ffState = 'error:' + humanFail(j && j.error, 'Could not load family facts. Try again in a moment.');
+      ffRender();
+    }).catch(function(){ ffState = 'offline'; ffRender(); });
+  }
+  function ffRender(){
+    var sheet = $('ff-sheet'); if (!sheet || sheet.hidden) return;
+    var note = $('ff-note'), msg = '', h = '', d = ffData;
+    if (!d && ffState === 'loading') msg = 'Loading family facts…';
+    else if (!d && ffState === 'offline') msg = 'You are offline. Family facts will show when the internet is back.';
+    else if (!d) msg = esc(ffState.slice(6)) + ' <button type="button" class="cbtn ghost" data-ffretry="1">Try again</button>';
+    else {
+      if (ffState === 'offline') msg = 'You are offline. This is what this phone last saw.';
+      else if (ffState !== 'ok') msg = esc(ffState.slice(6)) + ' Showing what was loaded last. <button type="button" class="cbtn ghost" data-ffretry="1">Try again</button>';
+      if (!d.length) msg += (msg ? '<br><br>' : '') + 'Nothing is written down yet. Start with one thing you know, like your native village or town.' +
+        ' <button type="button" class="cbtn" data-ffadd="native">Add the first fact</button>';
+      FF_KINDS.forEach(function(k){
+        var rows = d.filter(function(f){ return f.kind === k[0]; });
+        if (!rows.length) return;
+        h += '<p class="eyebrow">' + esc(k[0] === 'custom' ? 'Customs' : k[1]) + '</p>' + rows.map(function(f){
+          return '<div class="crow fl-row" data-ff="' + esc(f.id) + '"><span class="txt"><span class="ff-text">' + esc(f.text) + '</span>' +
+            '<small>' + esc((f.mine ? 'Written by you' : 'Written by ' + (f.by_name || 'someone who has left')) + ' · ' + (FF_AUD[f.audience] || FF_AUD.family)) + '</small></span>' +
+            (f.canEdit ? '<button type="button" class="cbtn ghost" data-ffedit="' + esc(f.id) + '">Change</button><button type="button" class="cbtn no" data-ffdel="' + esc(f.id) + '">Remove</button>' : '') + '</div>';
+        }).join('');
+      });
+    }
+    var sig = msg + '|ff|' + h;
+    if (sig === ffDrawn) return;
+    ffDrawn = sig;
+    note.hidden = !msg; note.innerHTML = msg;
+    $('ff-list').innerHTML = h;
+  }
+  function ffAud(){ var b = $('ff-aud').querySelector('.sel'); return b ? b.getAttribute('data-aud') : 'family'; }
+  function ffSetAud(a){
+    $('ff-aud').querySelectorAll('button').forEach(function(b){ var on = b.getAttribute('data-aud') === a; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+    $('ff-people').hidden = a !== 'chosen';
+  }
+  function ffPeople(picked){
+    var on = {}; (picked || []).forEach(function(id){ on[id] = true; });
+    var list = (membersCache || []).filter(function(m){ return m.id !== state.memberId && onApp(m); });
+    $('ff-people').innerHTML = list.length
+      ? '<p class="hint fl-say">Tick who can see it.</p><div class="frpeople ff-ticks">' + list.map(function(m){ return '<label class="gchk"><input type="checkbox" value="' + esc(m.id) + '"' + (on[m.id] ? ' checked' : '') + '> ' + esc(m.name) + '</label>'; }).join('') + '</div>'
+      : '<p class="hint fl-say">Nobody else in this family is on Parwah yet. Pick another choice for now.</p>';
+  }
+  // The form, for a new fact or for one being changed. An elder changing
+  // someone else's fact changes the words only: who sees it stays the writer's.
+  function ffForm(fact, kind){
+    ffEdit = fact || null;
+    var k = ffKind(fact ? fact.kind : kind), own = !fact || fact.mine;
+    $('ff-kind').innerHTML = FF_KINDS.map(function(x){ return '<option value="' + x[0] + '">' + esc(x[1]) + '</option>'; }).join('');
+    $('ff-kind').value = k[0]; $('ff-kind').disabled = !!fact;
+    $('ff-text').value = fact ? fact.text : ''; $('ff-text').maxLength = k[2];
+    $('ff-form-head').textContent = fact ? 'Change this fact' : 'Add a fact';
+    $('ff-audwrap').hidden = !own;
+    ffPeople(fact ? fact.chosen : []);
+    ffSetAud(fact ? fact.audience : 'family');
+    $('ff-err').hidden = true;
+    $('ff-form').hidden = false; $('ff-add').hidden = true;
+    try { $('ff-text').focus(); $('ff-form').scrollIntoView({ block: 'nearest' }); } catch (e) {}
+  }
+  function ffFormClose(){ ffEdit = null; $('ff-form').hidden = true; $('ff-add').hidden = false; }
+  function ffOpen(){
+    ffFrom = document.activeElement; ffDrawn = '';
+    ffFormClose();
+    $('ff-sheet').hidden = false;
+    if (!ffData) ffState = 'loading';
+    ffRender(); ffRefresh();
+    try { $('ff-x').focus(); } catch (e) {}
+  }
+  function ffClose(){ $('ff-sheet').hidden = true; if (ffFrom && ffFrom.focus && document.contains(ffFrom)) { try { ffFrom.focus(); } catch (e) {} } }
+  $('ff-open').addEventListener('click', ffOpen);
+  $('ff-x').addEventListener('click', ffClose);
+  $('ff-sheet').addEventListener('click', function(e){ if (e.target === this) ffClose(); });
+  $('ff-add').addEventListener('click', function(){ ffForm(null, 'gotra'); });
+  $('ff-cancel').addEventListener('click', ffFormClose);
+  $('ff-kind').addEventListener('change', function(){ $('ff-text').maxLength = ffKind(this.value)[2]; });
+  $('ff-aud').addEventListener('click', function(e){ var b = e.target.closest('[data-aud]'); if (b) ffSetAud(b.getAttribute('data-aud')); });
+  $('ff-note').addEventListener('click', function(e){
+    if (e.target.closest('[data-ffretry]')) { if (!ffData) ffState = 'loading'; ffRender(); ffRefresh(); return; }
+    var a = e.target.closest('[data-ffadd]'); if (a) ffForm(null, a.getAttribute('data-ffadd'));
+  });
+  $('ff-list').addEventListener('click', function(e){
+    var ed = e.target.closest('[data-ffedit]'), del = e.target.closest('[data-ffdel]');
+    var id = ed ? ed.getAttribute('data-ffedit') : del ? del.getAttribute('data-ffdel') : null; if (!id) return;
+    var f = (ffData || []).filter(function(x){ return x.id === id; })[0]; if (!f) return;
+    if (ed) { ffForm(f); return; }
+    askSheet('Remove this from the family facts?', 'It goes for everyone who could see it. This cannot be undone.', 'Remove', 'Keep it', true).then(function(y){
+      if (!y) return;
+      del.disabled = true;
+      widerPost({ action: 'fact_remove', id: id }).then(function(j){
+        del.disabled = false;
+        if (!j.ok) { toast(humanFail(j.error, 'Could not remove this. Try again in a moment.')); return; }
+        toast('Removed'); ffRefresh();
+      }).catch(function(){ del.disabled = false; toast('No connection. Try again.'); });
+    });
+  });
+  $('ff-save').addEventListener('click', function(){
+    var err = $('ff-err'), btn = this, text = $('ff-text').value.trim(), aud = ffAud();
+    var say = function(t){ err.textContent = t; err.hidden = false; };
+    err.hidden = true;
+    if (!text) { say('Write it down first.'); try { $('ff-text').focus(); } catch (e) {} return; }
+    var own = !ffEdit || ffEdit.mine, chosen = [];
+    if (own && aud === 'chosen') {
+      $('ff-people').querySelectorAll('input:checked').forEach(function(c){ chosen.push(c.value); });
+      if (!chosen.length) { say('Tick at least one person, or pick another choice.'); return; }
+    }
+    var body = ffEdit ? { action: 'fact_edit', id: ffEdit.id, text: text } : { action: 'fact_add', kind: $('ff-kind').value, text: text };
+    if (own) { body.audience = aud; body.chosen = chosen; }
+    btn.disabled = true;
+    widerPost(body).then(function(j){
+      btn.disabled = false;
+      if (!j.ok) { say(humanFail(j.error, 'Could not save this. Try again in a moment.')); return; }
+      ffFormClose(); toast('Saved'); ffRefresh();
+    }).catch(function(){ btn.disabled = false; say('No connection. Try again.'); });
+  });
+
+  // ---- days of remembrance: someone who is no longer with us
+  var rmFrom = null, rmFor = null;
+  function rmRenderToday(list){
+    var box = $('rm-today'); if (!box) return;
+    var h = (list || []).map(function(r){
+      return '<div class="crow rm-card"><span class="txt"><b>🪔 ' + esc(r.title) + '</b><small>' + esc(r.sub + (r.line ? ' "' + r.line + '"' : '')) + '</small></span>' +
+             '<button type="button" class="cbtn ghost" data-rmsee="' + esc(r.id) + '">See ' + esc(widerFirst(r.name)) + '</button></div>';
+    }).join('');
+    h = h ? '<div class="bondtoday">' + h + '</div>' : '';
+    if (h === box.getAttribute('data-sig')) return;
+    box.setAttribute('data-sig', h);
+    box.innerHTML = h;
+  }
+  // The line and the button on a person's profile sheet.
+  function rmSheetLine(m){
+    var gone = rmGone(m), self = state && m.id === state.memberId, fam = famKind !== 'group';
+    $('rm-mp-row').hidden = !gone;
+    if (gone) $('rm-mp-when').textContent = rmWhen(m) || 'Remembered here';
+    $('rm-mp-say').hidden = !(gone && m.remember_line); $('rm-mp-say').textContent = gone && m.remember_line ? '"' + m.remember_line + '"' : '';
+    $('rm-mp-open').hidden = self || !fam;
+    $('rm-mp-open').textContent = gone ? '🪔 Day of remembrance' : '🪔 No longer with us?';
+    // Nothing is asked of someone who is remembered.
+    if (gone) { $('mp-remind').hidden = true; $('mp-call').hidden = true; }
+  }
+  function rmOpen(id){
+    var m = (membersCache || []).filter(function(x){ return x.id === id; })[0]; if (!m) return;
+    rmFor = m; rmFrom = document.activeElement;
+    var gone = rmGone(m), first = widerFirst(m.name);
+    $('rm-title').textContent = gone ? 'Remembering ' + first : first + ' is no longer with us';
+    $('rm-sub').textContent = gone ? 'Change the date or the line, or take the mark off.' : 'Write the year. Add the day and the month if you know them.';
+    $('rm-year').value = m.passed_year || ''; $('rm-month').value = m.passed_month || ''; $('rm-day').value = m.passed_day || '';
+    $('rm-line').value = m.remember_line || '';
+    $('rm-undo').hidden = !gone;
+    $('rm-err').hidden = true;
+    $('msheet').hidden = true;
+    $('rm-sheet').hidden = false;
+    try { $('rm-year').focus(); } catch (e) {}
+  }
+  function rmClose(){ $('rm-sheet').hidden = true; if (rmFrom && rmFrom.focus && document.contains(rmFrom)) { try { rmFrom.focus(); } catch (e) {} } }
+  $('rm-mp-open').addEventListener('click', function(){ rmOpen($('msheet').dataset.mid); });
+  $('rm-x').addEventListener('click', rmClose);
+  $('rm-sheet').addEventListener('click', function(e){ if (e.target === this) rmClose(); });
+  $('rm-today').addEventListener('click', function(e){ var b = e.target.closest('[data-rmsee]'); if (b) openMemberSheet(b.getAttribute('data-rmsee')); });
+  $('rm-save').addEventListener('click', function(){
+    var err = $('rm-err'), btn = this, y = $('rm-year').value.trim(), mo = $('rm-month').value, d = $('rm-day').value.trim();
+    var say = function(t, el){ err.textContent = t; err.hidden = false; if (el) { try { el.focus(); } catch (e) {} } };
+    err.hidden = true;
+    if (!rmFor) return;
+    if (!/^\d{4}$/.test(y)) { say('Write the year in four numbers, like 2019.', $('rm-year')); return; }
+    if (d && !/^\d{1,2}$/.test(d)) { say('Write the day as a number, like 12.', $('rm-day')); return; }
+    if (d && !mo) { say('Choose the month as well, or leave the day empty.', $('rm-month')); return; }
+    btn.disabled = true;
+    widerPost({ action: 'remember_mark', targetId: rmFor.id, year: y, month: mo || null, day: d || null, line: $('rm-line').value.trim() }).then(function(j){
+      btn.disabled = false;
+      if (!j.ok) { say(humanFail(j.error, 'Could not save this. Try again in a moment.')); return; }
+      $('rm-sheet').hidden = true; toast('Saved 🪔'); refresh();
+    }).catch(function(){ btn.disabled = false; say('No connection. Try again.'); });
+  });
+  $('rm-undo').addEventListener('click', function(){
+    var btn = this, m = rmFor; if (!m) return;
+    askSheet('Take this mark off ' + m.name + '?', 'The date and the line go with it. Anyone grown up in the family can put it back.', 'Take it off', 'Keep it', true).then(function(y){
+      if (!y) return;
+      btn.disabled = true;
+      widerPost({ action: 'remember_undo', targetId: m.id }).then(function(j){
+        btn.disabled = false;
+        if (!j.ok) { $('rm-err').textContent = humanFail(j.error, 'Could not change this. Try again in a moment.'); $('rm-err').hidden = false; return; }
+        $('rm-sheet').hidden = true; toast('The mark is off'); refresh();
+      }).catch(function(){ btn.disabled = false; toast('No connection. Try again.'); });
+    });
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    if (!$('fl-who').hidden) flWhoClose();
+    else if (!$('rm-sheet').hidden) rmClose();
+    else if (!$('fl-sheet').hidden && $('rz-who').hidden) flClose();
+    else if (!$('ff-sheet').hidden) ffClose();
   });
 
   // ---------- location sharing (consent first) ----------
@@ -15176,7 +15737,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     // Not sharing: ask them, the way Find My lets you ask. Only they can
     // turn it on.
     var sharing = {}; locShares.forEach(function(x){ sharing[x.memberId] = 1; });
-    var askable = (membersCache || []).filter(function(m){ return m.id !== state.memberId && m.on_app !== false && !sharing[m.id]; });
+    var askable = (membersCache || []).filter(function(m){ return m.id !== state.memberId && onApp(m) && !sharing[m.id]; });
     $('loc-ask-head').hidden = !askable.length;
     $('loc-ask').innerHTML = askable.map(function(m){
       var lostM = findMe && (findMe.lostMembers || []).indexOf(m.id) >= 0;
@@ -15524,7 +16085,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     $('mp-av').textContent = (m.name || '?').trim().charAt(0).toUpperCase();
     $('mp-name').textContent = m.name;
     // Only the family word: "senior mode" and "admin" labelled people.
-    $('mp-role').textContent = relLabel(m) + (m.on_app === false ? ' · not on Parwah' : '');
+    $('mp-role').textContent = relLabel(m) + rmTag(m);
     $('mp-phone').textContent = m.phone ? fmtPhone(m.phone) : 'not shared';
     $('mp-since').textContent = m.created_at ? fmtDue(String(m.created_at).slice(0, 10)) : '-';
     $('mp-place').textContent = placeLine(m) || 'not shared';
@@ -15539,6 +16100,7 @@ body.senior .mbcard p{font-size:var(--fs-16)}
     $('mp-remind').hidden = false;
     $('mp-gift').hidden = self || !onApp(m);
     $('mp-dm').hidden = self || !onApp(m);
+    rmSheetLine(m);
     $('mp-docs').textContent = self ? '📄 My documents' : '📄 Their documents';
     $('mp-page').textContent = self ? '👤 My page' : '👤 Their page';
     $('giftbox').hidden = true;

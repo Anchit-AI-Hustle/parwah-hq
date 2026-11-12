@@ -59,9 +59,9 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | **Names for the wider family: Devar, Nanad, Saala, Bhabhi, Jija, Samdhi, second cousins, a parent's cousin** | **Building** | kin labels |
 | **The chain that connects any two people, in words** | **Building** | kin chain |
 | **A Rishtedaar list: near, close and far, with search** | **Building** | Rishtedaar screen |
-| Two households that are related (maika and sasural, two brothers' homes) seeing each other's tree, by consent of both | Next | linked families, tranche 2 |
+| Two households that are related (maika and sasural, two brothers' homes) seeing each other's tree, by consent of both | Live | linked families |
 | Birthdays, anniversaries and the shared card | Live | bond cards |
-| Gotra, native village, kuldevta, family customs written down | Next | family facts, tranche 2 |
+| Gotra, native village, kuldevta, family customs written down | Live | family facts |
 | A family directory to print or share for a wedding | Later | |
 
 ### E. Staying close (bonding)
@@ -110,7 +110,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 |---|---|---|
 | Festivals the family keeps, planned together | Live | festival kits |
 | A wedding or function: guests, tasks, who is arriving when | Next | an event kit on top of plans and Rishtedaar |
-| Shradh and death anniversaries remembered gently | Next | dates on a person, tranche 2 |
+| Days of remembrance kept gently (the calendar date; a tithi is not worked out yet) | Live | days of remembrance |
 
 ## 2. The architecture every feature follows
 
@@ -126,7 +126,7 @@ whose name starts with an underscore, reached through an existing route by an
 | `/api/care` | reminders, requests, refill, bills, sibling tasks, doses, ladders, expenses, staff, renewals |
 | `/api/plans` | plans, visits, shared cards and polls, **watch together**, **cost split** |
 | `/api/games` | games, **pasand** |
-| `/api/circle` | family, members, **tree and kin** |
+| `/api/circle` | family, members, **tree and kin**, linked families, family facts, days of remembrance |
 | `/api/settings` | keys, push, coins, plan, day, PIN, location |
 | `/api/chats`, `/api/events`, `/api/ekta`, `/api/auth`, `/api/diag` | as named |
 
@@ -159,8 +159,10 @@ Where it matters (vault, register, family book) the owner can see who looked.
 **The family graph.** A person has two links: a parent and a spouse. Every
 relation, near or far, is worked out from those two links by `api/_kin.mjs`,
 which is pure and runs the same on the server and the phone. Nothing about a
-relation is typed in by hand, so it cannot go stale. Linked families (next)
-join two graphs at one person who belongs to both, by consent of both sides.
+relation is typed in by hand, so it cannot go stale. Linked families join two
+graphs at one person who belongs to both, in memory, by consent of both
+sides. Across a link go a name, he or she, the two tree links, the year of
+birth and the city, and a phone only when that side ticks it. Nothing else.
 
 ## 3. This round (tranche 1), built in parallel
 
@@ -199,9 +201,11 @@ Honest limits:
 
 **Tranche 2: the wider family**
 - Linked families: two circles agree to show each other their tree and their
-  Rishtedaar list. Nothing else crosses over.
+  Rishtedaar list. Nothing else crosses over. **Live** (`api/_famlink.mjs`).
 - Family facts: gotra, native village, kuldevta, customs, with an audience.
+  **Live** (`api/_famfacts.mjs`).
 - Days of remembrance on a person, with a gentle reminder to the family.
+  **Live** (`api/_remember.mjs`).
 - ~~"When someone passes away": a checklist drawn from the register (which
   bank, which policy, who is the nominee), shown only to the people chosen.~~
   Live as "What needs doing". It has no viewing rule of its own: every step
