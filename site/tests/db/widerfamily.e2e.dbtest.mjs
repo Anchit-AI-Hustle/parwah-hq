@@ -441,9 +441,11 @@ await design(PA, '#msheet', 'my own sheet when I was marked by mistake');
 await PA.click('#rm-mp-open');
 ok('it asks first, in plain words, and never opens the date sheet', await shown(PA, '#asksheet') && /Take this mark off yourself\?/.test(await PA.textContent('#as-q')) && await PA.isHidden('#rm-sheet'));
 await PA.click('#as-yes');
-ok('the mark is off me, in the database and on the tree', await PA.waitForFunction(() => /The mark is off/.test(document.getElementById('toast').textContent), null, T).then(() => true, () => false)
-   && (await admin.query('select remembered, passed_year from members where id = $1', [a.Arjun.memberId])).rows[0].remembered === false
-   && (await admin.query('select passed_year from members where id = $1', [a.Arjun.memberId])).rows[0].passed_year === null);
+// The server's answer is the thing to wait for: the toast still holds the same words from Dadaji's undo above.
+const offMe = async () => { const end = Date.now() + T.timeout; for (;;) { const x = (await admin.query('select remembered, passed_year from members where id = $1', [a.Arjun.memberId])).rows[0];
+  if (x.remembered === false && x.passed_year === null) return true; if (Date.now() > end) return false; await new Promise(r => setTimeout(r, 150)); } };
+ok('the mark is off me in the database, date and all', await offMe(), JSON.stringify((await admin.query('select remembered, passed_year from members where id = $1', [a.Arjun.memberId])).rows[0]));
+ok('and my own sheet closes', await gone(PA, '#msheet'));
 ok('nobody can mark themself: with no mark there is no such button on my own sheet', await (async () => {
   await admin.query(`update members set remembered = false where id = $1`, [a.Arjun.memberId]);
   await PA.evaluate(() => { location.hash = '#home'; }); await PA.evaluate(() => { location.hash = '#people'; });

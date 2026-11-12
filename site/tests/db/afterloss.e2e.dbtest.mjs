@@ -416,8 +416,14 @@ ok('Papa sees that the list was started for him, and that he can close it', awai
 await P.click('#al-body [data-alclose]');
 ok('closing it as the person says it will be removed, and who is told', await shown(P, '#asksheet') && /Closing it removes it, and the people who started it are told\./.test(await P.textContent('#as-sub')));
 await P.click('#as-yes'); await hiddenNow(P, '#asksheet');
-ok('it is gone: no list for Papa, in the page and in the database', await has(P, '#al-body', /This list is started by the family, for someone else\./) && (await lists()).length === 0
-   && (await admin.query('select 1 from afterloss_steps')).rows.length === 0);
+// The server first (the database is the fact), then what Papa's page says about it.
+const voided = async () => { const end = Date.now() + T; for (;;) { if ((await lists()).length === 0) return true; if (Date.now() > end) return false; await new Promise(r => setTimeout(r, 150)); } };
+ok('it is gone from the database: the list and every step', await voided() && (await admin.query('select 1 from afterloss_steps')).rows.length === 0, 'lists ' + (await lists()).length);
+// With no list about him, Papa is no longer in his own picker (nobody starts one for themself), so the
+// page settles on "Choose a person"; on the way there it may say the list is for someone else.
+ok('and Papa\'s page has no list for him: nothing to tick or close, and he is not in his own picker', await has(P, '#al-body', /Choose a person above\.|This list is started by the family, for someone else\./)
+   && await P.waitForFunction((id) => !document.querySelector('#al-person option[value="' + id + '"]') && !document.querySelector('#al-body [data-alclose], #al-body [data-altick]'), papa.id, { timeout: T }).then(() => true, () => false),
+   await body(P));
 ok('the mark the list set is off Papa', (await admin.query('select remembered from members where id = $1', [papa.id])).rows[0].remembered === false);
 ok('Meera\'s phone follows: nothing has been started for Papa, and it would take two again', await has(M, '#al-body', /Nothing has been started for Papa/) && await shown(M, '#al-body #al-ask'));
 
