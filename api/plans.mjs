@@ -14,7 +14,7 @@ import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 import { ensureVisitSchema, visitState, visitAction } from './_visits.mjs';
 import { reqTz } from './_recur.mjs';
-import { ensureBondSchema, bondState, bondAction, cardRead, entryAudio } from './_bond.mjs';
+import { ensureBondSchema, bondState, bondAction, cardRead, entryAudio, thanksAudio } from './_bond.mjs';
 import { TOGETHER_KIND, ensureTogetherSchema, togetherPrepare, togetherAnswer, isTogetherAnswer } from './_together.mjs';
 import { ensureSplitSchema, splitState, splitAction, splitSettling } from './_split.mjs';
 
@@ -98,6 +98,7 @@ export default async function handler(req, res) {
       if (req.method === 'GET') {
         if (q.card) { const r = await cardRead(sql, circle, me, String(q.card)); return res.status(r.status).json(r.json); }
         if (q.entry) { const r = await entryAudio(sql, circle, me, String(q.entry)); return res.status(r.status).json(r.json); }
+        if (q.thanks) { const r = await thanksAudio(sql, circle, me, String(q.thanks), String(q.by || '')); return res.status(r.status).json(r.json); }
         return res.status(200).json({ ok: true, ...(await bondState(sql, circle, me)) });
       }
       if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return res.status(405).json({ ok: false, error: 'GET or POST only' }); }

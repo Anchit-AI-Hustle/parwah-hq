@@ -23,7 +23,21 @@
 // each is claimed by one insert or one conditional UPDATE, so it is sent
 // once however many phones look at the same moment.
 //
+// BEING HEARD, AND ANSWERED (Nov 2026):
+//   - a date poll can be a SECRET BALLOT (no name of who said what is sent
+//     to any phone), says who it is "Waiting for", takes ONE reminder from
+//     the host, shows the host the tally before the date is locked, and
+//     the lock records what was decided. A vote can be given for someone
+//     not on the app, kept as "for Dadi, by Rohan". Every vote counts once.
+//   - a card: the evening before, people who have not written are reminded
+//     once; if it is still empty the other adults are told, never the
+//     person, and an empty card is never handed over. The person can say
+//     thank you to everyone who wrote, in one tap or by voice.
+//   - festivals are added and taken off one at a time, with a feed line
+//     saying who changed what. Nobody can replace the whole list.
+//
 // GET  ?area=bond&circle=&member=            → state for this person
+// GET  ?area=bond&thanks=CARD&by=MEMBER      → a voice thank-you, for the writers
 // GET  ?area=bond&card=ID                    → one card with its entries
 // GET  ?area=bond&entry=ID                   → one voice note's data
 // POST {code, memberId, action:'bond_...'}   → see bondAction
@@ -33,6 +47,9 @@ import { pushCircle } from './_push.mjs';
 import { placeOf } from './_places.mjs';
 import { localDate, validTz, fromWall } from './_recur.mjs';
 import { FESTIVALS, FEST_NOTE, festivalOf, festivalsDue, nextYearly, daysBetween, KIT_DAYS } from './_tyohaar.mjs';
+import { isAdult } from './_rememberrules.mjs';
+import { awardHeard } from './_coins.mjs';
+import { cardEveDue, dateTally, decidedLine, proxyLabel, waitingFor, waitingLine, festChangeLine } from './_heardrules.mjs';
 
 export const CARD_DAYS_BEFORE = 3;
 export const POLL_MIN = 2, POLL_MAX = 5;
@@ -137,6 +154,24 @@ async function bondTables(sql) {
       seconds int,
       created_at timestamptz not null default now()
     )`;
+    // The evening-before reminder, sent once; and the thank-you from the
+    // person the card was for, one per person.
+    await sql`alter table cards add column if not exists eve_at timestamptz`;
+    await sql`create table if not exists card_thanks (
+      card_id uuid not null references cards(id) on delete cascade,
+      member_id uuid not null references members(id) on delete cascade,
+      audio text,
+      mime text,
+      seconds int,
+      at timestamptz not null default now(),
+      primary key (card_id, member_id)
+    )`;
+    // Equal votes: a secret ballot, the one reminder, what was decided, and
+    // a vote given for someone who is not on the app.
+    await sql`alter table plan_polls add column if not exists secret boolean not null default false`;
+    await sql`alter table plan_polls add column if not exists reminded_at timestamptz`;
+    await sql`alter table plan_polls add column if not exists decided jsonb`;
+    await sql`alter table plan_votes add column if not exists by_member uuid references members(id) on delete set null`;
     await sql`create table if not exists circle_festivals (
       circle_id uuid not null references circles(id) on delete cascade,
       fkey text not null,
@@ -167,7 +202,8 @@ async function bondTables(sql) {
 
 // A person's own today, from where they live (never from the phone that is
 // asking, which anyone could set to the far side of the date line).
-export function todayFor(m) { return localDate(Date.now(), placeOf(m && m.place, m && m.country, null).tz); }
+export function todayFor(m, nowMs = Date.now()) { return localDate(nowMs, placeOf(m && m.place, m && m.country, null).tz); }
+const tzFor = (m) => placeOf(m && m.place, m && m.country, null).tz;
 // A date column comes back as midnight on the server's own clock: read it
 // with the local parts, never through toISOString, which can shift the day.
 const dstr = (d) => d instanceof Date
@@ -184,16 +220,20 @@ export function sealedTo(card, me) {
 
 async function pushOthers(sql, circleId, except, payload) {
   const rows = await sql`select id from members where circle_id = ${circleId} and user_id is not null`;
-  for (const r of rows) if (!except.includes(r.id)) await pushCircle(sql, circleId, payload, { only: r.id });
+  await pushIds(sql, circleId, rows.map(r => r.id).filter(id => !except.includes(id)), payload);
+}
+// To each of these people, all at once.
+async function pushIds(sql, circleId, ids, payload) {
+  await Promise.allSettled([...new Set(ids)].map(id => pushCircle(sql, circleId, payload, { only: id })));
 }
 
 // ------------------------------------------------------------ the sweep
 // Birthdays and anniversaries 3 days out make their card (one insert, once),
 // a card is handed over on the day (one UPDATE, once), and a chosen
 // festival 14 days out is announced (one insert, once).
-export async function sweepBond(sql, circle) {
+export async function sweepBond(sql, circle, nowMs = Date.now()) {
   let sent = 0;
-  const members = await sql`select id, name, dob, place, country, anniversary, anniv_with, remembered from members where circle_id = ${circle.id}`;
+  const members = await sql`select id, name, dob, place, country, anniversary, anniv_with, remembered, user_id from members where circle_id = ${circle.id}`;
   const byId = new Map(members.map(m => [m.id, m]));
   const make = async (key, occ, title, day, a, b) => {
     const row = await sql`insert into cards (circle_id, for_member, for_member2, occasion, title, date, auto_key)
@@ -207,32 +247,60 @@ export async function sweepBond(sql, circle) {
   };
   for (const m of members) {
     if (!m.dob || m.remembered) continue;   // no birthday card for someone remembered
-    const t = todayFor(m), nx = nextYearly(dstr(m.dob), t);
+    const t = todayFor(m, nowMs), nx = nextYearly(dstr(m.dob), t);
     if (nx && nx.inDays <= CARD_DAYS_BEFORE) await make('bday:' + m.id + ':' + nx.year, 'birthday', m.name + "'s birthday", nx.day, m.id, null);
   }
   for (const m of members) {
     const w = m.anniv_with && byId.get(m.anniv_with);
     if (!m.anniversary || !w || m.id > w.id) continue;   // each couple once
     if (m.remembered || w.remembered) continue;          // nor an anniversary card
-    const t = todayFor(m), nx = nextYearly(dstr(m.anniversary), t);
+    const t = todayFor(m, nowMs), nx = nextYearly(dstr(m.anniversary), t);
     if (nx && nx.inDays <= CARD_DAYS_BEFORE) await make('anniv:' + m.id + ':' + w.id + ':' + nx.year, 'anniversary', first(m.name) + ' and ' + first(w.name) + "'s anniversary", nx.day, m.id, w.id);
   }
-  // On the day: the person gets their card, once.
-  const due = await sql`select c.id, c.title, c.for_member, c.for_member2, c.date from cards c
+  // THE EVENING BEFORE (from 6pm where the person lives, or on the day if
+  // no phone was awake): everyone who has not written yet is reminded,
+  // once. If nobody has written at all, the other ADULTS are told the card
+  // is still empty. The person it is for is never told either thing.
+  const eve = await sql`select c.id, c.title, c.for_member, c.for_member2, c.date from cards c
+                        where c.circle_id = ${circle.id} and c.for_member is not null and c.eve_at is null and c.delivered_at is null
+                          and c.date between current_date - 1 and current_date + 2`;
+  for (const c of eve) {
+    const who = byId.get(c.for_member), who2 = c.for_member2 ? byId.get(c.for_member2) : null;
+    if (!who || who.remembered || (who2 && who2.remembered)) continue;
+    if (!cardEveDue(dstr(c.date), nowMs, tzFor(who))) continue;
+    const got = await sql`update cards set eve_at = now() where id = ${c.id} and eve_at is null returning id`;
+    if (!got[0]) continue;                 // another phone sent it
+    const writers = (await sql`select distinct member_id from card_entries where card_id = ${c.id}`).map(r => r.member_id);
+    const others = members.filter(m => m.user_id && !m.remembered && m.id !== c.for_member && m.id !== c.for_member2);
+    const when = dstr(c.date) === todayFor(who, nowMs) ? 'today' : 'tomorrow';
+    const remind = { title: '💌 ' + c.title + ' is ' + when, body: 'Your line is not on the card yet. Add a line, a photo or a voice note. It stays a surprise.', url: '/#home' };
+    if (!writers.length) {
+      const adults = others.filter(m => isAdult(m.dob, todayFor(m, nowMs)));
+      await pushIds(sql, circle.id, adults.map(m => m.id), { title: '💌 ' + c.title + ' is ' + when + ', and the card is still empty',
+        body: 'Nobody has written yet. Add a line tonight so there is a card to open. ' + first(who.name) + ' is not told.', url: '/#home' });
+      await pushIds(sql, circle.id, others.filter(m => !adults.includes(m)).map(m => m.id), remind);
+    } else {
+      await pushIds(sql, circle.id, others.filter(m => !writers.includes(m.id)).map(m => m.id), remind);
+    }
+    sent++;
+  }
+  // On the day: the person gets their card, once. A card nobody wrote in is
+  // NEVER marked as handed over and never announced: it waits (for three
+  // days) until someone writes, and is handed over then.
+  const due = await sql`select c.id, c.title, c.for_member, c.for_member2, c.date,
+                               (select count(*)::int from card_entries e where e.card_id = c.id) as n
+                        from cards c
                         where c.circle_id = ${circle.id} and c.for_member is not null and c.delivered_at is null
-                          and c.date <= current_date + 1`;
+                          and c.date <= current_date + 1 and c.date >= current_date - 3`;
   for (const c of due) {
     const who = byId.get(c.for_member), who2 = c.for_member2 ? byId.get(c.for_member2) : null;
     // A card still waiting for someone since marked as remembered is never sent.
-    if (!who || who.remembered || (who2 && who2.remembered) || dstr(c.date) > todayFor(who)) continue;
+    if (!who || who.remembered || (who2 && who2.remembered) || dstr(c.date) > todayFor(who, nowMs)) continue;
+    if (!c.n) continue;                    // empty: not delivered
     const got = await sql`update cards set delivered_at = now() where id = ${c.id} and delivered_at is null returning id`;
     if (!got[0]) continue;
-    const n = await sql`select count(*)::int as n from card_entries where card_id = ${c.id}`;
-    if (!n[0].n) continue;
     sent++;
-    for (const id of [c.for_member, c.for_member2].filter(Boolean)) {
-      await pushCircle(sql, circle.id, { title: '💌 Your ' + (circle.kind === 'group' ? 'group' : 'family') + ' made you a card', body: n[0].n + ' messages are waiting for you on Parwah', url: '/#home' }, { only: id });
-    }
+    await pushIds(sql, circle.id, [c.for_member, c.for_member2].filter(Boolean), { title: '💌 Your ' + (circle.kind === 'group' ? 'group' : 'family') + ' made you a card', body: c.n + (c.n === 1 ? ' message is' : ' messages are') + ' waiting for you on Parwah', url: '/#home' });
   }
   // Festivals the circle chose, 14 days out, once each.
   const keys = (await sql`select fkey from circle_festivals where circle_id = ${circle.id}`).map(r => r.fkey);
@@ -254,20 +322,45 @@ export async function bondState(sql, circle, me) {
   const today = todayFor(me);
   const kind = circle.kind === 'group' ? 'group' : 'family';
   const polls = await sql`
-    select p.id, p.title, p.kind, p.place, p.items, p.status, p.plan_id, p.by_member, b.name as by_name, p.created_at
+    select p.id, p.title, p.kind, p.place, p.items, p.status, p.plan_id, p.by_member, b.name as by_name, p.created_at,
+           p.secret, p.reminded_at, p.decided
     from plan_polls p left join members b on b.id = p.by_member
     where p.circle_id = ${circle.id} and (p.status = 'open' or p.locked_at > now() - interval '2 days')
     order by p.created_at desc limit 10`;
   const opts = polls.length ? await sql`
     select o.id, o.poll_id, o.at,
-           coalesce((select json_agg(json_build_object('m', v.member_id, 'a', v.answer, 'n', vm.name) order by v.at) from plan_votes v join members vm on vm.id = v.member_id where v.option_id = o.id), '[]') as votes
+           coalesce((select json_agg(json_build_object('m', v.member_id, 'a', v.answer, 'n', vm.name, 'by', v.by_member, 'bn', bm.name) order by v.at)
+                     from plan_votes v join members vm on vm.id = v.member_id left join members bm on bm.id = v.by_member
+                     where v.option_id = o.id), '[]') as votes
     from plan_options o where o.poll_id = any(${polls.map(p => p.id)}::uuid[]) order by o.at` : [];
+  const voters = polls.length ? await sql`select m.id, m.name, (m.user_id is not null) as on_app from members m
+                                          where m.circle_id = ${circle.id} and not m.remembered order by m.created_at` : [];
   for (const p of polls) {
-    p.options = opts.filter(o => o.poll_id === p.id).map(o => {
+    const mine = opts.filter(o => o.poll_id === p.id);
+    const voted = [...new Set(mine.flatMap(o => (o.votes || []).map(x => x.m)))];
+    const tally = dateTally(mine);
+    p.options = mine.map(o => {
       const v = o.votes || [];
       const pick = a => v.filter(x => x.a === a).map(x => x.m);
-      return { id: o.id, at: o.at, yes: pick('yes'), maybe: pick('maybe'), no: pick('no'), yesNames: v.filter(x => x.a === 'yes').map(x => x.m === me.id ? 'You' : x.n), mine: (v.find(x => x.m === me.id) || {}).a || null };
+      const nameOf = x => x.by && x.by !== x.m ? proxyLabel(x.n, x.bn) : x.m === me.id ? 'You' : x.n;
+      const t = tally.rows.find(r => r.id === o.id);
+      // A SECRET BALLOT: the counts, and my own answer. No id and no name of
+      // anyone else is put in the reply, so no screen can show one.
+      return { id: o.id, at: o.at, n: { yes: t.yes, maybe: t.maybe, no: t.no },
+        yes: p.secret ? [] : pick('yes'), maybe: p.secret ? [] : pick('maybe'), no: p.secret ? [] : pick('no'),
+        yesNames: p.secret ? [] : v.filter(x => x.a === 'yes').map(nameOf),
+        mine: (v.find(x => x.m === me.id && !(x.by && x.by !== x.m)) || {}).a || null,
+        mineFor: v.filter(x => x.by === me.id && x.by !== x.m).map(x => ({ id: x.m, name: x.n, answer: x.a, label: proxyLabel(x.n, x.bn) })) };
     });
+    const waiting = p.status === 'open' ? waitingFor(voters.filter(x => x.on_app), voted) : [];
+    p.secret = !!p.secret;
+    p.waiting = p.status === 'open' ? waitingLine(waiting) : null;
+    p.reminded = !!p.reminded_at; delete p.reminded_at;
+    p.canRemind = p.status === 'open' && p.by_member === me.id && !p.reminded && waiting.length > 0;
+    // The host sees the tally before locking a date: the counts for every
+    // date, and the date most people can make.
+    p.tally = p.by_member === me.id && p.status === 'open' ? tally : null;
+    p.offApp = p.status === 'open' ? voters.filter(x => !x.on_app).map(x => ({ id: x.id, name: x.name })) : [];
   }
   const items = await sql`
     select i.id, i.plan_id, i.label, i.by_member, i.claimed_by, c.name as claimed_name
@@ -280,10 +373,15 @@ export async function bondState(sql, circle, me) {
   const cardsAll = await sql`
     select c.id, c.occasion, c.title, c.date, c.for_member, c.for_member2, c.for_name, c.by_member, c.delivered_at,
            (select count(*)::int from card_entries e where e.card_id = c.id) as n,
-           (select count(*)::int from card_entries e where e.card_id = c.id and e.member_id = ${me.id}) as mine
+           (select count(*)::int from card_entries e where e.card_id = c.id and e.member_id = ${me.id}) as mine,
+           exists (select 1 from card_thanks t where t.card_id = c.id and t.member_id = ${me.id}) as thanked,
+           (select string_agg(tm.name, ', ' order by t.at) from card_thanks t join members tm on tm.id = t.member_id where t.card_id = c.id) as thanks,
+           -- Someone not on the app cannot open it here: the family shows, prints or sends it.
+           (c.for_member is null or exists (select 1 from members fm where fm.id = c.for_member and fm.user_id is null)) as off_app
     from cards c where c.circle_id = ${circle.id} and c.date >= current_date - 3 and c.date <= current_date + 60
     order by c.date asc limit 30`;
-  const cards = cardsAll.filter(c => !sealedTo(c, me)).map(c => ({
+  // A card nobody has written in yet is never shown to the person it is for.
+  const cards = cardsAll.filter(c => !sealedTo(c, me) && !((c.for_member === me.id || c.for_member2 === me.id) && !c.n)).map(c => ({
     ...c, date: dstr(c.date), forMe: c.for_member === me.id || c.for_member2 === me.id, inDays: daysBetween(today, dstr(c.date))
   }));
   const chosen = (await sql`select fkey from circle_festivals where circle_id = ${circle.id}`).map(r => r.fkey);
@@ -313,7 +411,26 @@ export async function cardRead(sql, circle, me, cardId) {
                                    case when e.kind = 'photo' then e.data else null end as data
                             from card_entries e join members m on m.id = e.member_id
                             where e.card_id = ${c.id} order by e.created_at`;
-  return { status: 200, json: { ok: true, card: { ...c, date: dstr(c.date) }, entries } };
+  const forMe = c.for_member === me.id || c.for_member2 === me.id;
+  // An empty card is not shown to the person it is for.
+  if (forMe && !entries.length) return { status: 404, json: { ok: false, error: 'That card is not here' } };
+  const thanks = await sql`select t.member_id, m.name, (t.audio is not null) as has_audio, t.seconds from card_thanks t join members m on m.id = t.member_id
+                           where t.card_id = ${c.id} order by t.at`;
+  const off = !c.for_member || !!(await sql`select 1 as x from members where id = ${c.for_member} and user_id is null`)[0];
+  return { status: 200, json: { ok: true, card: { ...c, date: dstr(c.date), forMe, offApp: off,
+    canThank: forMe && entries.length > 0 && !thanks.some(t => t.member_id === me.id) }, entries,
+    thanks: thanks.map(t => ({ memberId: t.member_id, name: t.name, hasAudio: t.has_audio, secs: t.seconds })) } };
+}
+
+// A voice thank-you from the person the card was for: for anyone who may
+// read the card (the writers, and the family once it is opened).
+export async function thanksAudio(sql, circle, me, cardId, byId) {
+  if (!isUuid(cardId) || !isUuid(byId)) return { status: 400, json: { ok: false, error: 'Bad id' } };
+  const r = (await sql`select t.audio, t.mime, t.seconds, c.date, c.for_member, c.for_member2 from card_thanks t join cards c on c.id = t.card_id
+                       where t.card_id = ${cardId} and t.member_id = ${byId} and c.circle_id = ${circle.id} and t.audio is not null`)[0];
+  if (!r) return { status: 404, json: { ok: false, error: 'That voice note is not here' } };
+  if (sealedTo(r, me)) return { status: 403, json: { ok: false, error: 'This card is a surprise until the day' } };
+  return { status: 200, json: { ok: true, mime: r.mime, data: r.audio, seconds: r.seconds } };
 }
 
 export async function entryAudio(sql, circle, me, entryId) {
@@ -362,8 +479,8 @@ export async function bondAction(sql, circle, me, body) {
     if (ats.length !== raw.length) return bad('Every date must be in the future, and each one different');
     const kind = KINDS.includes(body.kind) ? body.kind : 'meet';
     const items = (Array.isArray(body.items) ? body.items : []).map(x => cleanText(x, 60)).filter(Boolean).slice(0, ITEMS_MAX);
-    const p = await sql`insert into plan_polls (circle_id, by_member, title, kind, place, items)
-                        values (${circle.id}, ${me.id}, ${title}, ${kind}, ${cleanText(body.place, 120) || null}, ${JSON.stringify(items)}::jsonb) returning id`;
+    const p = await sql`insert into plan_polls (circle_id, by_member, title, kind, place, items, secret)
+                        values (${circle.id}, ${me.id}, ${title}, ${kind}, ${cleanText(body.place, 120) || null}, ${JSON.stringify(items)}::jsonb, ${!!body.secret}) returning id`;
     for (const at of ats) await sql`insert into plan_options (poll_id, at) values (${p[0].id}, ${at})`;
     await feed(sql, circle.id, me.id, `${me.name} asked: when can we do "${title}"? 🗳`);
     await pushCircle(sql, circle.id, { title: '🗳 ' + me.name + ' asks: which date?', body: title + ': tap Yes, Maybe or No on each date', url: '/#fun' }, { except: me.id });
@@ -377,13 +494,38 @@ export async function bondAction(sql, circle, me, body) {
                          where o.id = ${body.optionId} and p.circle_id = ${circle.id}`)[0];
     if (!o) return bad('That date is not here', 404);
     if (o.status !== 'open') return bad('The date is already chosen', 409);
-    await sql`insert into plan_votes (option_id, member_id, answer) values (${o.id}, ${me.id}, ${ans})
-              on conflict (option_id, member_id) do update set answer = excluded.answer, at = now()`;
+    // A vote for someone not on the app: in this circle, cannot vote
+    // themself, not remembered. Kept as "for Dadi, by Rohan"; counts once.
+    let voter = me.id, by = null;
+    if (body.forId) {
+      if (!isUuid(body.forId)) return bad('Choose who you are answering for');
+      const t = (await sql`select id, name, user_id from members where id = ${body.forId} and circle_id = ${circle.id} and not remembered`)[0];
+      if (!t) return bad('Choose someone in this ' + space, 404);
+      if (t.user_id) return bad(t.name + ' is on Parwah and answers for themself');
+      voter = t.id; by = me.id;
+    }
+    await sql`insert into plan_votes (option_id, member_id, answer, by_member) values (${o.id}, ${voter}, ${ans}, ${by})
+              on conflict (option_id, member_id) do update set answer = excluded.answer, by_member = excluded.by_member, at = now()`;
     return good({ answer: ans });
+  }
+  // ONE reminder from the host to the people who have not answered any
+  // date. Claimed by one UPDATE: a second tap sends nothing.
+  if (a === 'bond_poll_remind') {
+    if (!isUuid(body.pollId)) return bad('Bad poll');
+    const p = (await sql`select id, by_member, title, status from plan_polls where id = ${body.pollId} and circle_id = ${circle.id}`)[0];
+    if (!p) return bad('That poll is not here', 404);
+    if (p.by_member !== me.id) return bad('Only the person who asked can send the reminder', 403);
+    if (p.status !== 'open') return bad('The date is already chosen', 409);
+    const got = await sql`update plan_polls set reminded_at = now() where id = ${p.id} and reminded_at is null returning id`;
+    if (!got[0]) return bad('The reminder has already been sent. It goes only once.', 409);
+    const who = await sql`select m.id from members m where m.circle_id = ${circle.id} and m.user_id is not null and not m.remembered and m.id <> ${me.id}
+                          and not exists (select 1 from plan_votes v join plan_options o on o.id = v.option_id where o.poll_id = ${p.id} and v.member_id = m.id)`;
+    await pushIds(sql, circle.id, who.map(w => w.id), { title: '🗳 ' + me.name + ' is waiting for your answer', body: p.title + ': tap Yes, Maybe or No on each date', url: '/#fun' });
+    return good({ reminded: who.length });
   }
   if (a === 'bond_poll_lock') {
     if (!isUuid(body.pollId) || !isUuid(body.optionId)) return bad('Bad poll');
-    const p = (await sql`select id, by_member, title, kind, place, items, status from plan_polls where id = ${body.pollId} and circle_id = ${circle.id}`)[0];
+    const p = (await sql`select id, by_member, title, kind, place, items, status, secret from plan_polls where id = ${body.pollId} and circle_id = ${circle.id}`)[0];
     if (!p) return bad('That poll is not here', 404);
     if (p.by_member !== me.id) return bad('Only the person who asked can lock the date', 403);
     const o = (await sql`select id, at from plan_options where id = ${body.optionId} and poll_id = ${p.id}`)[0];
@@ -391,17 +533,29 @@ export async function bondAction(sql, circle, me, body) {
     // The claim: one UPDATE, so two taps (or two phones) make one plan.
     const got = await sql`update plan_polls set status = 'locked', locked_at = now() where id = ${p.id} and status = 'open' returning id`;
     if (!got[0]) return bad('The date is already locked', 409);
+    // WHAT WAS DECIDED is written down with the lock: the date, who locked
+    // it, and the count for every date as it stood. Counts only, never a
+    // name, and every vote counted once, whoever cast it.
+    const all = await sql`select o.id, o.at, coalesce((select json_agg(json_build_object('a', v.answer)) from plan_votes v join members m on m.id = v.member_id
+                                                       where v.option_id = o.id and m.circle_id = ${circle.id}), '[]') as votes
+                          from plan_options o where o.poll_id = ${p.id} order by o.at`;
+    const tally = dateTally(all), row = tally.rows.find(r => r.id === o.id);
+    const decided = { optionId: o.id, at: o.at, by: me.id, byName: me.name, yes: row.yes, maybe: row.maybe, no: row.no,
+                      mostYes: tally.best === o.id, tally: tally.rows, line: decidedLine(p.title, row) };
+    await sql`update plan_polls set decided = ${JSON.stringify(decided)}::jsonb where id = ${p.id}`;
     const yes = (await sql`select v.member_id from plan_votes v join members m on m.id = v.member_id
                            where v.option_id = ${o.id} and v.answer = 'yes' and m.circle_id = ${circle.id}`).map(r => r.member_id);
-    const going = [...new Set([me.id, ...yes])];
+    // A secret ballot stays secret: nobody is put on the "going" list from
+    // their vote. Each person says "I'm in" themself.
+    const going = [...new Set([me.id, ...(p.secret ? [] : yes)])];
     const room = (p.kind === 'call' || p.kind === 'party') ? roomUrl() : null;
     const plan = await sql`insert into plans (circle_id, by_member, title, kind, at, place, room, going)
                            values (${circle.id}, ${me.id}, ${p.title}, ${p.kind}, ${o.at}, ${p.place}, ${room}, ${'{' + going.join(',') + '}'}) returning id`;
     await sql`update plan_polls set plan_id = ${plan[0].id} where id = ${p.id}`;
     await addItems(sql, circle, plan[0].id, me.id, p.items || []);
-    await feed(sql, circle.id, me.id, `${me.name} locked the date for ${p.title} 🗓`);
+    await feed(sql, circle.id, me.id, `${me.name} locked the date for ${p.title} 🗓 (${row.yes} yes, ${row.maybe} maybe, ${row.no} no)`);
     await pushCircle(sql, circle.id, { title: '🗓 Date locked: ' + p.title, body: 'Open Parwah to see the day, in your own time', url: '/#fun' }, { except: me.id });
-    return good({ planId: plan[0].id, going: going.length });
+    return good({ planId: plan[0].id, going: going.length, decided });
   }
   if (a === 'bond_poll_cancel') {
     if (!isUuid(body.pollId)) return bad('Bad poll');
@@ -498,7 +652,34 @@ export async function bondAction(sql, circle, me, body) {
       const secs = Math.max(1, Math.min(VOICE_MAX_SEC, parseInt(body.seconds, 10) || 1));
       await sql`insert into card_entries (card_id, member_id, kind, data, mime, seconds) values (${c.id}, ${me.id}, 'voice', ${d}, ${mime}, ${secs})`;
     } else return bad('Add a line, a photo or a voice note');
+    await awardHeard(sql, circle.id, me.id, 'card_line', todayFor(me));
     return good({}, 201);
+  }
+  // "Say thank you": from the person the card was for, to everyone who
+  // wrote in it. One tap, or a voice note. Once per card per person.
+  if (a === 'bond_card_thanks') {
+    if (!isUuid(body.cardId)) return bad('Bad card');
+    const c = (await sql`select id, title, date, for_member, for_member2 from cards where id = ${body.cardId} and circle_id = ${circle.id}`)[0];
+    if (!c) return bad('That card is not here', 404);
+    if (c.for_member !== me.id && c.for_member2 !== me.id) return bad('Only the person the card is for says thank you here', 403);
+    if (sealedTo(c, me)) return bad('This card is a surprise until the day', 403);
+    const writers = (await sql`select distinct e.member_id from card_entries e join members m on m.id = e.member_id
+                               where e.card_id = ${c.id} and m.user_id is not null and not m.remembered and e.member_id <> ${me.id}`).map(r => r.member_id);
+    if (!writers.length) return bad('Nobody has written in this card yet', 409);
+    let audio = null, mime = null, secs = null;
+    if (body.data) {
+      mime = String(body.mime || '').split(';')[0];
+      if (!VOICE_TYPES.includes(mime)) return bad('That recording type is not supported');
+      audio = String(body.data || '');
+      if (audio.length > VOICE_MAX_B64 || !/^[A-Za-z0-9+/=]+$/.test(audio)) return bad('A voice note can be up to ' + VOICE_MAX_SEC + ' seconds');
+      secs = Math.max(1, Math.min(VOICE_MAX_SEC, parseInt(body.seconds, 10) || 1));
+    }
+    const got = await sql`insert into card_thanks (card_id, member_id, audio, mime, seconds) values (${c.id}, ${me.id}, ${audio}, ${mime}, ${secs})
+                          on conflict (card_id, member_id) do nothing returning card_id`;
+    if (!got[0]) return good({ already: true });
+    await pushIds(sql, circle.id, writers, { title: '🙏 ' + first(me.name) + ' says thank you for the card',
+      body: audio ? 'With a voice note. Open Parwah to hear it.' : 'Shukriya. It made the day.', url: '/#home' });
+    return good({ told: writers.length }, 201);
   }
   if (a === 'bond_card_remove') {
     if (!isUuid(body.entryId)) return bad('Bad entry');
@@ -529,11 +710,19 @@ export async function bondAction(sql, circle, me, body) {
   }
 
   // ---- 3. festivals
-  if (a === 'bond_fest_set') {
-    const keys = [...new Set((Array.isArray(body.keys) ? body.keys : []).filter(k => festivalOf(k)))];
-    await sql`delete from circle_festivals where circle_id = ${circle.id}`;
-    for (const k of keys) await sql`insert into circle_festivals (circle_id, fkey) values (${circle.id}, ${k}) on conflict do nothing`;
-    return good({ chosen: keys });
+  // One festival at a time. Nobody replaces the whole family's list: a
+  // member adds one or takes one off, and the feed says who changed what.
+  if (a === 'bond_fest_add' || a === 'bond_fest_remove') {
+    const f = festivalOf(body.key);
+    if (!f) return bad('Pick a festival from the list');
+    const add = a === 'bond_fest_add';
+    const got = add
+      ? await sql`insert into circle_festivals (circle_id, fkey) values (${circle.id}, ${f.key}) on conflict do nothing returning fkey`
+      : await sql`delete from circle_festivals where circle_id = ${circle.id} and fkey = ${f.key} returning fkey`;
+    // Only a real change is announced: a second tap says nothing twice.
+    if (got[0]) await feed(sql, circle.id, me.id, festChangeLine(me.name, f.name, f.icon, add));
+    const chosen = (await sql`select fkey from circle_festivals where circle_id = ${circle.id}`).map(r => r.fkey);
+    return good({ chosen, changed: !!got[0] });
   }
   if (a === 'bond_fest_kit') {
     const f = festivalOf(body.key);

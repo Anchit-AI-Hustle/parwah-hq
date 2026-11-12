@@ -5,7 +5,7 @@
 //   GET  /api/games?area=pasand&circle=CODE&member=UUID
 //        -> { ok, me: { audience, chosen, likes, platforms }, people, forMe, fromMe }
 //   POST /api/games?area=pasand {code, memberId, action, ...}
-//        like_add      {kind, text}
+//        like_add      {kind, text, forId?}   forId: for someone in the family who is not on the app
 //        like_remove   {id}
 //        audience_set  {audience: family|chosen|me, chosen?: [memberId]}
 //        platform_set  {platform, on, link?}
@@ -17,6 +17,12 @@
 // and platforms go to the whole circle, to the members they chose, or to
 // nobody but them. A recommendation is read only by whoever sent it and
 // whoever it was sent to.
+//
+// SOMEONE NOT ON THE APP has likes too. The family can note them ("Dadi
+// loves old Lata songs"), each one labelled with who wrote it. They are the
+// family's notes, not that person's own words: the day the person joins and
+// writes their first like, the notes are taken away and their own entries
+// stand in their place.
 //
 // NO ACCOUNT IS LINKED AND NO PASSWORD IS KEPT. The streaming services have
 // no sign-in for other apps, so a person ticks what they have and may add
@@ -54,6 +60,8 @@ async function pasandTables(sql) {
     created_at timestamptz not null default now()
   )`;
   await sql`create unique index if not exists pasand_likes_one on pasand_likes (member_id, kind, lower(text))`;
+  // Who noted it, when it was written for someone not on the app. Null: the person's own.
+  await sql`alter table pasand_likes add column if not exists by_member uuid references members(id) on delete set null`;
   await sql`create index if not exists pasand_likes_circle on pasand_likes (circle_id)`;
   await sql`create table if not exists pasand_platforms (
     member_id uuid not null references members(id) on delete cascade,
@@ -105,8 +113,9 @@ async function state(sql, circle, me) {
   // The audience rule, in the query: mine, or shared with the whole circle,
   // or shared with members the owner chose and I am one of them.
   const likes = await sql`
-    select l.id, l.member_id, l.kind, l.text
+    select l.id, l.member_id, l.kind, l.text, l.by_member, b.name as by_name
     from pasand_likes l left join pasand_prefs p on p.member_id = l.member_id
+    left join members b on b.id = l.by_member
     where l.circle_id = ${circle.id}
       and (l.member_id = ${me.id} or coalesce(p.audience, 'family') = 'family'
            or (p.audience = 'chosen' and ${me.id}::uuid = any(p.chosen)))
@@ -122,9 +131,12 @@ async function state(sql, circle, me) {
   const people = [];
   for (const m of names) {
     if (m.id === me.id) continue;
-    const ls = likes.filter(l => l.member_id === m.id).map(l => ({ id: l.id, kind: l.kind, text: l.text }));
+    // A like noted for someone carries who wrote it, and only that person can take it off.
+    const ls = likes.filter(l => l.member_id === m.id).map(l => ({ id: l.id, kind: l.kind, text: l.text,
+      by: l.by_member && l.by_member !== m.id ? 'noted by ' + String(l.by_name || 'the family').split(' ')[0] : null, mine: l.by_member === me.id }));
     const ps = plats.filter(s => s.member_id === m.id).map(s => ({ platform: s.platform, link: s.link }));
-    if (ls.length || ps.length) people.push({ memberId: m.id, name: m.name, onApp: m.on_app, likes: ls, platforms: ps });
+    // Someone not on the app is always listed, so the family can note what they like.
+    if (ls.length || ps.length || !m.on_app) people.push({ memberId: m.id, name: m.name, onApp: m.on_app, likes: ls, platforms: ps, canNote: !m.on_app });
   }
   // A recommendation is read by its sender and its recipients, nobody else.
   // "to" (who answered what) is built for the sender only.
@@ -144,7 +156,8 @@ async function state(sql, circle, me) {
                           toAll: r.to_all, created_at: r.created_at, by_member: r.by_member, by_name: r.by_name });
   return {
     me: { audience: prefs.audience, chosen: prefs.chosen || [],
-          likes: likes.filter(l => l.member_id === me.id).map(l => ({ id: l.id, kind: l.kind, text: l.text })),
+          likes: likes.filter(l => l.member_id === me.id).map(l => ({ id: l.id, kind: l.kind, text: l.text,
+            by: l.by_member && l.by_member !== me.id ? 'noted by ' + String(l.by_name || 'the family').split(' ')[0] : null })),
           platforms: plats.filter(s => s.member_id === me.id).map(s => ({ platform: s.platform, link: s.link })) },
     people,
     forMe: recs.filter(r => r.for_me).slice(0, PASAND_MAX.list).map(r => ({ ...shape(r), response: r.response, reply: r.reply })),
@@ -181,6 +194,23 @@ export default async function handler(req, res) {
       if (!t.value) return bad('Write what you like first.');
       const risk = pasandRisk(t.value);
       if (risk) return bad(risk);
+      // FOR SOMEONE NOT ON THE APP: in this circle, cannot write for
+      // themself, not remembered. Kept with who wrote it.
+      if (body.forId) {
+        if (!isUuid(body.forId)) return bad('Choose who this is about.');
+        const who = (await sql`select id, name, user_id, remembered from members where id = ${body.forId} and circle_id = ${circle.id}`)[0];
+        if (!who) return bad('Choose someone in this ' + (circle.kind === 'group' ? 'group' : 'family') + '.', 404);
+        if (who.remembered) return bad(who.name + ' is remembered here.');
+        if (who.user_id) return bad(who.name + ' is on Parwah and writes their own likes.');
+        const cnt = await sql`select count(*)::int as n from pasand_likes where member_id = ${who.id}`;
+        if (cnt[0].n >= PASAND_MAX.likes) return bad(who.name + ' has ' + PASAND_MAX.likes + ' likes noted. Remove one to add another.');
+        const rf = await sql`insert into pasand_likes (circle_id, member_id, kind, text, by_member) values (${circle.id}, ${who.id}, ${body.kind}, ${t.value}, ${me.id})
+                             on conflict do nothing returning id`;
+        return good({ id: rf[0] ? rf[0].id : null, already: !rf[0], by: 'noted by ' + String(me.name).split(' ')[0] }, rf[0] ? 201 : 200);
+      }
+      // MY OWN WORDS REPLACE THE FAMILY'S NOTES: what the family noted for
+      // me before I joined goes the moment I write a like of my own.
+      await sql`delete from pasand_likes where member_id = ${me.id} and circle_id = ${circle.id} and by_member is not null and by_member <> ${me.id}`;
       const n = await sql`select count(*)::int as n from pasand_likes where member_id = ${me.id}`;
       if (n[0].n >= PASAND_MAX.likes) return bad('You have ' + PASAND_MAX.likes + ' likes. Remove one to add another.');
       const r = await sql`insert into pasand_likes (circle_id, member_id, kind, text) values (${circle.id}, ${me.id}, ${body.kind}, ${t.value})
@@ -189,7 +219,9 @@ export default async function handler(req, res) {
     }
     if (action === 'like_remove') {
       if (!isUuid(body.id)) return bad('Bad like');
-      const r = await sql`delete from pasand_likes where id = ${body.id} and member_id = ${me.id} and circle_id = ${circle.id} returning id`;
+      // My own like, a note the family wrote about me, or a note I wrote for someone.
+      const r = await sql`delete from pasand_likes where id = ${body.id} and circle_id = ${circle.id}
+                            and (member_id = ${me.id} or by_member = ${me.id}) returning id`;
       if (!r[0]) return bad('That like is not here any more', 404);
       return good();
     }

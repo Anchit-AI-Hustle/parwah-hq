@@ -17,6 +17,10 @@
 //        album_save    {id?, name, date?, year?, audience, chosen?: [memberId]}
 //        album_remove  {id}
 //        today_hide    {}              not this week
+//        photo_react   {id, emoji|null}  one reaction per person per photo, no push
+//        photo_voice   {id, audio, mime, secs}   a voice caption, from whoever added the photo
+//        photo_voice_remove {id}
+//   GET  /api/book?area=album&view=voice&id=UUID -> { audio }  for someone the album is for
 //
 // WHO SEES WHAT is said by the queries, not by the screen. An album is for
 // the whole circle, for the people its maker chose, or for its maker alone,
@@ -29,15 +33,23 @@
 // Blob) changes those two functions and nothing else; the count of photos
 // per circle is already exposed (count, cap) for that day.
 //
-// NOTHING LEAVES THE CIRCLE. There is no public link, no share outside the
-// family and no download of everything. One photo at a time can be saved to
-// the phone of someone who is already allowed to see it.
+// NOTHING LEAVES THE CIRCLE BY ITSELF. There is no public link and no
+// download of everything. One photo at a time can be saved to the phone of
+// someone who is already allowed to see it, or passed on by that person
+// through their own phone's share sheet: their own act, one photo, never a
+// link back into the album.
+//
+// NEW PHOTOS, QUIETLY. A family is pushed about new photos in a family
+// album at most once a day, however many are added.
 import { db, ensureSchema, schemaOnce, requireMember, isUuid, rateLimit, spaceWord } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { noteRisk } from './_notesapi.mjs';
 import { reqTz, validTz } from './_recur.mjs';
 import { dayOf, ensureBondSchema } from './_memorybond.mjs';
+import { pushCircle } from './_push.mjs';
+import { audioCheck } from './_memorybond.mjs';
+import { ALBUM_REACTIONS, ALBUM_PUSH_PER_DAY } from './_heardrules.mjs';
 import { ALBUM_MAX, ALBUM_AUDIENCES, imageError, jpegInfo, cleanB64, cleanLine, cleanYear, cleanDate,
          lockedOut, capLine, capError, albumAlt, isoWeekKey, weeklyPick } from './_albumrules.mjs';
 
@@ -110,6 +122,21 @@ async function albumTables(sql) {
     if (c.attname === 'photo') await sql`alter table album_bytes alter column photo set storage external`;
     else await sql`alter table album_bytes alter column thumb set storage external`;
   }
+  // A reaction: one per person per photo. And a voice caption: one per photo.
+  await sql`create table if not exists album_reactions (
+    photo_id uuid not null references album_photos(id) on delete cascade,
+    member_id uuid not null references members(id) on delete cascade,
+    emoji text not null,
+    created_at timestamptz not null default now(),
+    primary key (photo_id, member_id)
+  )`;
+  await sql`create table if not exists album_voice (
+    photo_id uuid primary key references album_photos(id) on delete cascade,
+    by_member uuid references members(id) on delete set null,
+    audio text not null,
+    secs int,
+    created_at timestamptz not null default now()
+  )`;
   // The weekly photo on Today: claimed once per person per week.
   await sql`create table if not exists album_weeks (
     member_id uuid not null references members(id) on delete cascade,
@@ -184,7 +211,11 @@ async function photosFor(sql, circle, me, { album = null, person = null, id = nu
     select p.id, p.album_id, p.caption, p.taken_year, p.width, p.height, p.by_member, b.name as by_name, p.created_at,
            a.name as album_name, a.by_member as album_by,
            (select coalesce(jsonb_agg(jsonb_build_object('id', m.id, 'name', m.name) order by m.name), '[]'::jsonb)
-              from album_people ap join members m on m.id = ap.member_id where ap.photo_id = p.id) as people
+              from album_people ap join members m on m.id = ap.member_id where ap.photo_id = p.id) as people,
+           (select coalesce(jsonb_agg(jsonb_build_object('e', r.emoji, 'm', r.member_id, 'n', rm.name) order by r.created_at), '[]'::jsonb)
+              from album_reactions r join members rm on rm.id = r.member_id where r.photo_id = p.id) as reactions,
+           (select v.secs from album_voice v where v.photo_id = p.id) as voice_secs,
+           exists (select 1 from album_voice v where v.photo_id = p.id) as has_voice
     from album_photos p
     join album_albums a on a.id = p.album_id
     left join members b on b.id = p.by_member
@@ -197,7 +228,14 @@ async function photosFor(sql, circle, me, { album = null, person = null, id = nu
     limit ${limit}`;
   return rows.map(p => {
     const people = p.people || [];
-    return { id: p.id, albumId: p.album_id, albumName: p.album_name, caption: p.caption || '', year: p.taken_year,
+    // Reactions, grouped: the emoji, how many, who, and whether one is mine.
+    const rx = [];
+    (p.reactions || []).forEach(r => {
+      let g = rx.find(x => x.emoji === r.e);
+      if (!g) { g = { emoji: r.e, count: 0, names: [], mine: false }; rx.push(g); }
+      g.count++; g.names.push(r.m === me.id ? 'You' : r.n); if (r.m === me.id) g.mine = true;
+    });
+    return { reactions: rx, hasVoice: !!p.has_voice, voiceSecs: p.voice_secs || null, id: p.id, albumId: p.album_id, albumName: p.album_name, caption: p.caption || '', year: p.taken_year,
       width: p.width, height: p.height, byMember: p.by_member, byName: p.by_name, createdAt: p.created_at, people,
       alt: albumAlt(p.caption, people.map(x => x.name), p.taken_year),
       canChange: p.by_member === me.id || p.album_by === me.id,
@@ -338,6 +376,16 @@ export default async function albumApi(req, res) {
         res.status(200);
         return res.end(bytes);
       }
+      if (view === 'voice') {
+        // The voice caption, to someone the album is for. The rule is in the query.
+        if (!isUuid(q.id)) return bad('That photo is not here, or it is not shared with you.', 404);
+        const v = await sql`
+          select v.audio from album_voice v join album_photos p on p.id = v.photo_id join album_albums a on a.id = p.album_id
+          where v.photo_id = ${q.id} and p.circle_id = ${circle.id} and a.circle_id = ${circle.id}
+            and (a.audience = 'family' or a.by_member = ${me.id} or (a.audience = 'chosen' and ${me.id}::uuid = any(a.chosen)))`;
+        if (!v[0]) return bad('That photo is not here, or it is not shared with you.', 404);
+        return good({ audio: v[0].audio });
+      }
       if (view === 'today') return good({ pick: await todayView(sql, circle, me, nowMs, tz) });
       if (view === 'list') return res.status(200).json(await listView(sql, circle, me, q));
       return bad('Unknown view');
@@ -440,6 +488,11 @@ export default async function albumApi(req, res) {
       if (album.audience === 'family') {
         await sql`insert into events (circle_id, member_id, type, text)
                   values (${circle.id}, ${me.id}, 'care', ${me.name + ' added ' + (ids.length === 1 ? 'a photo' : ids.length + ' photos') + ' to ' + album.name + ' 📷'})`;
+        // At most ONE "new photos" push a day for the whole family, whoever
+        // adds and however many: the day's count is kept on the server.
+        if (await rateLimit(sql, 'album_push', circle.id, ALBUM_PUSH_PER_DAY, 86400, { failClosed: true })) {
+          await pushCircle(sql, circle.id, { title: '📷 New photos in ' + album.name, body: me.name + ' added to the family album. Have a look when you like.', url: '/#memory' }, { except: me.id });
+        }
       }
       const count = before + ids.length;
       return good({ ids, count, cap: ALBUM_MAX.perCircle, left: Math.max(0, ALBUM_MAX.perCircle - count), line: capLine(count, word) }, 201);
@@ -470,6 +523,37 @@ export default async function albumApi(req, res) {
       await sql`delete from album_people where photo_id = ${p.id} and not (member_id = any(${people.ids}::uuid[]))`;
       if (people.ids.length) await sql`insert into album_people (photo_id, member_id) select ${p.id}, unnest(${people.ids}::uuid[]) on conflict do nothing`;
       return good();
+    }
+    // A reaction: one per person per photo, from anyone the album is for.
+    // Quiet: it never sends a push and never goes on the feed.
+    if (action === 'photo_react') {
+      const p = await photoFor(body.id);
+      if (!p) return bad('That photo is not here, or it is not shared with you.', 404);
+      const e = body.emoji;
+      if (e === null || e === undefined || e === '') {
+        await sql`delete from album_reactions where photo_id = ${p.id} and member_id = ${me.id}`;
+      } else {
+        if (!ALBUM_REACTIONS.includes(e)) return bad('Pick one of the five reactions');
+        await sql`insert into album_reactions (photo_id, member_id, emoji) values (${p.id}, ${me.id}, ${e})
+                  on conflict (photo_id, member_id) do update set emoji = excluded.emoji, created_at = now()`;
+      }
+      return good({ photo: (await photosFor(sql, circle, me, { id: p.id, limit: 1 }))[0] || null });
+    }
+    // A voice caption: "this was Shimla, 1987". From whoever added the photo
+    // or made the album; heard by everyone the album is for.
+    if (action === 'photo_voice' || action === 'photo_voice_remove') {
+      const p = await photoFor(body.id);
+      if (!p) return bad('That photo is not here, or it is not shared with you.', 404);
+      if (p.by_member !== me.id && p.album_by !== me.id) return bad('Only the person who added this photo, or whoever made the album, can change its voice caption.', 403);
+      if (action === 'photo_voice_remove') {
+        await sql`delete from album_voice where photo_id = ${p.id}`;
+        return good();
+      }
+      const v = audioCheck(body.mime, body.audio, body.secs);
+      if (v.err) return bad(v.err);
+      await sql`insert into album_voice (photo_id, by_member, audio, secs) values (${p.id}, ${me.id}, ${v.uri}, ${v.secs})
+                on conflict (photo_id) do update set by_member = excluded.by_member, audio = excluded.audio, secs = excluded.secs, created_at = now()`;
+      return good({}, 201);
     }
     // Anyone named in a photo can take their own name off it. Only their own.
     if (action === 'untag') {
