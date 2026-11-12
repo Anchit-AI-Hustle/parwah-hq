@@ -254,12 +254,27 @@ let s2text;
   // remembered: nothing automatic about them, ever
   ok('nobody can mark themselves remembered', (await call(rohan, { body: { action: 'remembered', targetId: rohan.id, on: true } })).status === 400);
   ok('another group cannot touch Papa', (await call(vikramG, { body: { action: 'remembered', targetId: papa.id, on: true } })).status === 403);
+  // Adults only, as for days of remembrance: a child in the family cannot set it.
+  await admin.query(`update members set dob = current_date - interval '12 years' where id = $1`, [rohan.id]);
+  ok('a child cannot mark someone remembered', (await call(rohan, { body: { action: 'remembered', targetId: papa.id, on: true } })).status === 403);
+  await admin.query(`update members set dob = null where id = $1`, [rohan.id]);
+  // Papa signed in today: one person alone cannot mark someone who used Parwah in the last 30 days.
   r = await call(rohan, { body: { action: 'remembered', targetId: papa.id, on: true } });
-  ok('the family marks Papa remembered', r.status === 200);
+  ok('someone who used Parwah recently cannot be marked', r.status === 409 && r.error === 'Papa used Parwah recently. If this is right, ask them or an elder to check.'
+     && (await q1(`select remembered from members where id = $1`, [papa.id])).remembered === false, JSON.stringify(r));
+  // Forty days with no session used and nothing done: now the family may.
+  const papaUser = (await q1(`select user_id from members where id = $1`, [papa.id])).user_id;
+  const aged = (await admin.query(`update events set created_at = created_at - interval '40 days' where member_id = $1 and created_at > now() - interval '30 days' returning id`, [papa.id])).rows.map(x => x.id);
+  await admin.query(`update sessions set last_used_at = now() - interval '40 days' where user_id = $1`, [papaUser]);
+  r = await call(rohan, { body: { action: 'remembered', targetId: papa.id, on: true } });
+  ok('the family marks Papa remembered', r.status === 200 && (await q1(`select remembered from members where id = $1`, [papa.id])).remembered === true, JSON.stringify(r));
+  await admin.query(`update events set created_at = created_at + interval '40 days' where id = any($1::uuid[])`, [aged]);
   t = await today(meera);
   ok('his story never comes back by itself', !t.yaad || t.yaad.key !== 'story:' + old);
   ok('and he is asked no more questions', (await q1(`select status from story_tellers where member_id = $1`, [papa.id])).status === 'no');
-  await call(rohan, { body: { action: 'remembered', targetId: papa.id, on: false } });
+  // Papa is here after all: he takes the mark off himself. He still cannot put one on himself.
+  ok('the marked person cannot mark themself, but can undo their own mark', (await call(papa, { body: { action: 'remembered', targetId: papa.id, on: true } })).status === 400
+     && (await call(papa, { body: { action: 'remembered', targetId: papa.id, on: false } })).status === 200 && (await q1(`select remembered from members where id = $1`, [papa.id])).remembered === false);
   function addD(d, k) { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + k); return x.toISOString().slice(0, 10); }
 }
 

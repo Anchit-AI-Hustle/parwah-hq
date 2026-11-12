@@ -30,8 +30,12 @@ import { GAPS, gapTitle, taskAction, ensureTaskSchema } from './_tasks.mjs';
 import { biomarkersApi, preauthApi, locatorApi, auditApi } from './_careprep.mjs';
 import { ensureBookSchema } from './_bookschema.mjs';
 import admissionApi from './_admission.mjs';
+// "What needs doing": the checklist for when someone passes away (api/_afterlossapi.mjs).
+import afterlossApi from './_afterlossapi.mjs';
 // Family Memory's bonding half: stories, yaadein, recipes, nudges (api/_memorybond.mjs).
 import bondApi from './_memorybond.mjs';
+// Yaadon ki album: the family's own photos (api/_album.mjs).
+import albumApi from './_album.mjs';
 
 const KINDS = ['contact', 'address', 'med', 'fact', 'insurance'];
 const CATS = ['housework', 'doctor', 'vet', 'driver', 'shops', 'repairs', 'emergency', 'local', 'other'];
@@ -48,10 +52,12 @@ export default async function handler(req, res) {
   if (area === 'vault' || area === 'pay') return vaultApi(req, res);
   if (area === 'notes') return notesApi(req, res);
   if (area === 'bond') return bondApi(req, res);
+  if (area === 'album') return albumApi(req, res);
   if (area === 'biomarkers' || (req.body && typeof req.body.action === 'string' && /^biomarker_/.test(req.body.action))) return biomarkersApi(req, res);
   if (area === 'preauth') return preauthApi(req, res);
   if (area === 'locator' || (req.body && typeof req.body.action === 'string' && /^locator_/.test(req.body.action))) return locatorApi(req, res);
   if (area === 'audit') return auditApi(req, res);
+  if (area === 'afterloss' || (req.body && typeof req.body.action === 'string' && /^afterloss_/.test(req.body.action))) return afterlossApi(req, res);
   // The hospital screen (api/_admission.mjs).
   if (area === 'admission' || (req.body && typeof req.body.action === 'string' && /^admission_/.test(req.body.action))) return admissionApi(req, res);
   let sql;

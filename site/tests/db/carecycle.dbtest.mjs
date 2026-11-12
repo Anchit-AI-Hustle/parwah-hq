@@ -237,6 +237,17 @@ let maaToday;
   await admin.query(`update medicine_doses set status = 'taken', taken_at = now(), marked_by = $2 where id = $1`, [marked, maa.id]);
   await sweepDoses(sql, sharma);
   ok('a marked dose is never announced', !(await q1(`select alerted_at from medicine_doses where id = $1`, [marked])).alerted_at);
+  // Someone marked as remembered is never nudged, and nobody is told they missed a dose.
+  await admin.query(`alter table members add column if not exists remembered boolean not null default false`);
+  await admin.query(`update members set remembered = true where id = $1`, [maa.id]);
+  const gone1 = await ins(70, NOON), gone2 = await ins(125, NOON);
+  await sweepDoses(sql, sharma);
+  const g1 = await q1(`select nudged_at, alerted_at from medicine_doses where id = $1`, [gone1]), g2 = await q1(`select nudged_at, alerted_at from medicine_doses where id = $1`, [gone2]);
+  ok('a remembered person is not nudged, and the family is not told of a missed dose', !g1.nudged_at && !g1.alerted_at && !g2.nudged_at && !g2.alerted_at, JSON.stringify([g1, g2]));
+  await admin.query(`update members set remembered = false where id = $1`, [maa.id]);
+  await sweepDoses(sql, sharma);
+  ok('with the mark off, both go out as before', !!(await q1(`select nudged_at from medicine_doses where id = $1`, [gone1])).nudged_at && !!(await q1(`select alerted_at from medicine_doses where id = $1`, [gone2])).alerted_at);
+  await admin.query(`delete from medicine_doses where id = any($1::uuid[])`, [[gone1, gone2]]);
   const to = (await alertRecipients(sql, sharma, maa.id, [thyro])).map(r => r.id).sort();
   ok('a private medicine alerts only those it is shared with, never the person', JSON.stringify(to) === JSON.stringify([sunita.id]), JSON.stringify(to));
   const toAll = (await alertRecipients(sql, sharma, maa.id, [amlo])).map(r => r.id).sort();

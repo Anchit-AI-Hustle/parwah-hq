@@ -564,3 +564,101 @@ Checked at 320 and 390, light and dark, on the real app with a family and a frie
 | 135 | 8 Minimalist | Old recommendations would crowd Today | 2 | Fixed: Today shows only the unanswered ones, three at most, then a count. The rest live under For me |
 
 New patterns: none beyond page-specific classes that start with `ps-`, built from existing tokens.
+
+### Review 16, plans: watch together and splitting a cost (2026-11-12)
+
+Checked at 320 and 390, light and dark, normal and senior mode, on the real app (`site/tests/db/plantogether.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the Today row and From me with Watch together, the Watch together sheet with and without a refusal, the together plan card at the time and answered, the plan form with Watch something together, the costs sheet empty, refused, offline, with three costs, with Pay and I have paid, with a line waiting, with everyone square, and the cost form with a refusal and with uneven shares). Screens: Together, Plans and Pasand; Today.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 149 | 6 Recognition | A recommendation ended at "Will try it"; making a time for it meant typing the name again into a plan | 3 | Fixed: one button on every recommendation (Today, For me, From me), worded by what it is: Watch, Listen, Play, Go or Read together. The sheet opens on this Saturday 8pm with the people it was between already ticked |
+| 150 | 1 Visibility | At the time of the plan, the link was three screens away | 3 | Fixed: the plan card says "On Prime Video" and, from 10 minutes before until 3 hours after, shows Open it and Call the family. Before that it says when they will show |
+| 151 | 4 Consistency | A second answer system (yes, maybe, no) beside the plan's own "I'm in" | 2 | Fixed: I am in, Maybe, Cannot go through the same answer on the same plan; "in" is still the plan's going list, so the hour-before reminder reaches who said yes |
+| 152 | 5 Error prevention | A link on a plan could be anything | 4 | Fixed: https only, under Pasand's own rule, checked on the server, checked again when a plan is made from a recommendation, and once more before it is put in the page. A refusal sits under the link box |
+| 153 | 2 Real-world match | "Settle up" can read as Parwah paying | 4 | Fixed: said once, near the button, in plain words: "Parwah does not move money. This opens your own UPI app." Where there is no app to open it says Parwah only does the sums |
+| 154 | 5 Error prevention | One person could mark a debt as gone | 4 | Fixed: I have paid and Received are two taps by two people, in either order. Until both, the line reads "waiting" and can be undone by whoever marked it |
+| 155 | 5 Error prevention | A UPI id could be shown to someone its owner never allowed | 4 | Fixed: the link is built on the server only for the person who has to pay, only in rupees, and only when the owner already allowed them in Ways to pay. Otherwise: "Ask Meera for a UPI id", and no link |
+| 156 | 1 Visibility | Owes and settled told apart by colour | 3 | Fixed: each state is a mark and words in ink (✓ Is owed, ! Owes, ✓ All square, ⏳ Waiting, ✓ Settled). No vibe colour carries a status |
+| 157 | 9 Error recovery | Uneven shares that do not add up failed only on save | 2 | Fixed: a running line under the boxes says what they add up to and what they must add up to; the same words come back if saved anyway |
+| 158 | 3 User control | Someone not on the plan tapped Costs and saw a blank sheet | 2 | Fixed: "Only people on this plan can see its costs. Say you are in first.", with Try again. Offline and a failed load say so in plain words too |
+
+New patterns: the answer group (`.tgans`), the ledger list and line (`.splist`, `.spline`, `.spstate`), the total row (`.sptotal`) and the share box (`.spshare`). All built from existing tokens; no new token.
+
+### Review 17, "What needs doing": the checklist for when someone passes away (2026-11-12)
+
+Checked at 320 and 390, light and dark, normal and senior mode, on the real app with a family of four (`site/tests/db/afterloss.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the list before a person is chosen, starting it, waiting for the second adult, being asked to confirm, the list in use on three phones, a refusal under a step, a closed list, the two sheets, the line at the top of the Vault, the link on a person's page and the offline message). Screens: Vault, Family register; one link on a person's page.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 159 | 2 Real-world match | The register says where things are, but in the week a family loses someone nobody knows what to do with each one | 4 | Fixed: one list in two parts. Nine first things for India (death certificate, bank, insurer, employer or pension office, phone and utilities, a will, landlord or society, Aadhaar and PAN, subscriptions), then one step per register entry, worded by its kind, with the nominee and where the papers are |
+| 160 | 5 Error prevention | A list like this could be started by mistake, or in a quarrel | 4 | Fixed: two adults start it. The first names a second adult, who alone can say yes, and both are asked once more in the app's own sheet. With only one adult on Parwah, one is enough. It can be closed and opened again |
+| 161 | 5 Error prevention | Starting it could quietly widen who reads an entry | 4 | Fixed: it never changes any entry. Each person sees only the steps for entries they could already see, by the register's own rule. "Only in an emergency" entries open for the two who started it and the nominee the entry names, only while the list is open, and the register form now says so where the choice is made |
+| 162 | 1 Visibility | "Only me" entries would be lost with the person | 3 | Fixed: whoever wrote one reads a gentle line that they hold entries nobody else can see and may share them now, with a link to the register. Nobody else is told they exist |
+| 163 | 4 Consistency | Status colours could borrow the alert red or the bright primary at the worst moment | 3 | Fixed: the ways in are text links, the buttons are the plain ones, done is the status green, and nothing on the screen uses an alert or vibe colour |
+| 164 | 1 Visibility | Three people working one list could not tell who had done what | 2 | Fixed: each step shows who ticked it, who is doing it and a short note; "2 of 11 done" and a bar follow on every phone without a reload |
+| 165 | 9 Error recovery | A refused note or a failed load would be a toast that vanished | 2 | Fixed: a refusal sits under the step it is about (a password in a note says so there); loading, nothing chosen, offline and a server error each have their own words and Try again |
+| 166 | 10 Help | A family could read the list as legal advice | 3 | Fixed: said once, at the top: "This is a list to help you remember, not legal advice. Rules differ by bank and state." No step promises an outcome or a time |
+| 167 | 8 Minimalist | A feature like this could nag | 2 | Fixed: two pushes in all, one to the adult asked and one to the family when it starts. No reminders |
+
+New patterns: the checklist step (`.alstep`, `.altick`, `.almeta`, `.alacts`) and the quiet line (`.alnote`, `.alline`). All built from existing tokens; no new token. The progress bar is the first-run bar (`.frbar`) with the status green (`.albar`).
+
+### Review 18, the wider family: linked families, family facts, days of remembrance (2026-11-12)
+
+Checked at 320 and 390, light and dark, on the real app with two families that share one daughter (`site/tests/db/widerfamily.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the tree card with its two new buttons and with a linked tree under it, the Linked families sheet (empty, with a request, with a link, with a message), a linked person's sheet, Rishtedaar with a linked family in it, the question before a link ends, Family facts (empty, the form, the list, an error), the remembrance sheet, a person's sheet with and without the mark, the tree with a remembered person, and the card on Today). Screens: Family, Today.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 168 | 5 Error prevention | Linking two families could be read as sharing everything | 4 | Fixed: the sheet, the request and the yes each say what is shared (the tree and the Rishtedaar list) and that nothing else is: no chats, no papers, no health, no location. The server sends only name, he or she, the two tree links, the year of birth and the city |
+| 169 | 3 User control | A link, once made, might feel permanent | 3 | Fixed: "End this link" on every linked family, for either side, asked first in the app's own sheet, and it takes effect at once. A request still waiting can be taken back |
+| 170 | 5 Error prevention | Phone numbers of one family shown to another without anyone choosing it | 4 | Fixed: off by default. Each side has its own tick, "Share our phone numbers with them", and can change it later |
+| 171 | 2 Real-world match | A person of the other family with no single word for the relation | 2 | Fixed: the home name when there is one (Saas, Saala, Damaad, Samdhi), otherwise the chain told short, with the full chain in words on a tap |
+| 172 | 4 Consistency | The same person listed twice, once from each family | 2 | Fixed: the bridge, and her father added by name, are one person. They show once in Rishtedaar and are marked "in both families" in the linked tree |
+| 173 | 1 Visibility | A request from another family could sit unseen | 2 | Fixed: the button on the tree card says "Linked families: 1 request waiting", and the family gets one push |
+| 174 | 3 User control | Who sees a family fact was not a choice | 3 | Fixed: Whole family (the default), People I choose, Only me, as one labelled group. An elder can change the words of a fact, never who sees it |
+| 175 | 9 Error recovery | A refused fact (an OTP in a note) would vanish as a toast | 2 | Fixed: the reason sits under the form; a failed load keeps what was loaded last and offers Try again; offline says so |
+| 176 | 2 Real-world match | Words for someone who has passed away can read as clinical | 3 | Fixed: "No longer with us", "day of remembrance", "We remember". A test refuses clinical words in the sheet and on Today |
+| 177 | 4 Consistency | A remembered person still said "not on Parwah", and was offered a task, a gift, a birthday | 3 | Fixed: one helper decides it for every list. The tree and the person's sheet say "🪔 No longer with us" in words, never by colour alone |
+| 178 | 8 Minimalist | A yearly reminder could crowd Today | 2 | Fixed: one calm row, on the day only, with one button. One push the evening before, once a year |
+| 179 | 3 User control | A mark made by mistake | 3 | Fixed: any adult in the family can take it off, asked first; the date and the line go with it |
+
+New patterns: none. Sheets are `.msheet`, rows are `.crow` and `.plan`, buttons are `.cbtn` and `.go`, messages reuse `.rz-msg`; the page-specific classes start with `fl-`, `ff-` and `rm-` and use existing tokens only.
+
+### Review 19, the family photo album (2026-11-12)
+
+Checked at 320 and 390, light and dark, normal and senior mode, on the real app with three phones (`site/tests/db/album.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the empty album, the grid, the grid when nearly full, the add sheet (empty, with photos ready, with one to retry, when full), one photo full width, the change and new album sheets, the "remove?" sheet, the row on Today, the card on a person's page and the offline message). Screens: Family Memory, Album; one photo; Today; a person's page.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 180 | 5 Error prevention | A phone photo carries where it was taken, and a family would not know it was being stored | 4 | Fixed: every photo is drawn again on the phone before it is sent, which leaves the location out. The add sheet says so in one line ("Parwah removes the location from your photos before saving them."), and the server refuses any file that still carries camera details |
+| 181 | 5 Error prevention | A 6 MB camera photo would be refused by the server, or six of them by Vercel's 4.5 MB body limit, and the family would be told to "make it smaller" | 3 | Fixed: the phone makes each photo 1600 pixels at most and under 600 KB (a 4000 by 3000 photo measured 265 KB), with a 320 pixel preview, and sends them one at a time |
+| 182 | 1 Visibility | Several photos sent at once gave one spinner and one error for all of them | 3 | Fixed: each photo has its own row and its own state (getting ready, ready with its size, sending 2 of 3, saved, or the reason it did not go) and its own Retry |
+| 183 | 3 User control | A photo could only be for everyone | 3 | Fixed: an album is for the whole family, the people I choose, or only me, with one line that says what each means. The server applies it to the list and to the picture itself, so a private photo cannot be opened by its address |
+| 184 | 3 User control | Being named in a photo was someone else's decision | 3 | Fixed: anyone named in a photo can take their own name off it with one button. Changing or removing the photo stays with whoever added it or made the album, and removing asks first in the app's own sheet |
+| 185 | 1 Visibility | The 400 photo limit would arrive as a surprise refusal | 2 | Fixed: the count is always on the screen ("38 of 400 photos"), it is said louder from 360 ("nearly full, you can add 28 more"), and at the limit the refusal offers "Show the oldest photos I can remove" |
+| 186 | 4 Consistency | Pictures arriving one by one push a grid around | 2 | Fixed: every tile is a fixed square before its picture arrives, and only the tiles near the screen are fetched (with 372 photos, the first screen asks for about 15) |
+| 187 | 7 Flexibility | Moving between photos needed a small target | 2 | Fixed: Previous and Next are full-width buttons, the arrow keys and a sideways swipe do the same, Escape closes, and the focus goes back to the photo that was tapped |
+| 188 | 10 Help | A picture with no words is nothing to a screen reader | 2 | Fixed: alt text is built from the caption, the people and the year ("Diwali at Nani's house. With Nani and Rohan, 1987") |
+| 189 | 8 Minimalist | A weekly memory could become a daily nag, or bring up someone the family has lost | 3 | Fixed: one older photo a week for each person, the same one all week, as a quiet row on Today with "Not now". No notification is ever sent for it. A photo of someone marked as remembered is never brought up by itself |
+| 190 | 2 Real-world match | Dignity: an album can drift into stock pictures and sample content | 3 | Fixed: the album shows only what the family added. The empty state is words and one button, with no sample picture, and there is no public link, no share outside the family and no download of everything |
+
+New patterns: the photo grid (`.abgrid`, `.abtile`), one photo full width (`.abview` and its parts), the upload row (`.abq`) and the picker buttons (`.abpick`). All built from existing tokens; no new token.
+
+### Review 20, "Aaj kya hua": the daily digest from Ekta (2026-11-12)
+
+Checked at 320 and 390, light and dark, on the real app with a family of four and a second family (`site/tests/db/digest.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the Today row, the button on Ekta's screen, and the sheet in each state: loading, the note, "Since then", a quiet day, an error, offline, written by Ekta, and senior mode).
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 191 | 10 Privacy | A summary of the family's day could read out what one person kept from another | 4 | Fixed: the list is gathered per viewer with each feature's own rule in the SQL, and checked a second time in `api/_digestrules.mjs`. Notes, the vault, the register and health numbers are never read. Medicines are counts, never names. A card meant for the viewer stays a surprise |
+| 192 | 2 Real-world match | A note written by a model could add a number, give advice, or judge a person ("Maa forgot again") | 4 | Fixed: the plain writer states each fact once, neutrally ("Maa has not checked in today"). A model's reply is shown only if every number in it was in the list and it holds no advice or judgement word; otherwise the plain note is shown, with nothing said about it |
+| 193 | 1 Visibility | The reader could not tell when the note was written, or who wrote it | 2 | Fixed: "Written today at 7:10 pm." under the note. When Ekta wrote it, one quiet line: "Written by Ekta from what you can see in the family today." |
+| 194 | 1 Visibility | Something serious after the note was written (an SOS, a missed check-in) would be missing from a kept note | 3 | Fixed: the kept note is shown with one line, "Since then: ...", in plain words |
+| 195 | 8 Minimalist | A row on Today all day would crowd the morning, when there is nothing to tell yet | 2 | Fixed: the row shows from 6pm. The button on Ekta's screen works at any hour and says "This is the day so far" |
+| 196 | 3 User control | A daily notification nobody asked for | 3 | Fixed: none by default. "Tell me each evening" is a tick box, off until ticked, one notification at 8pm with the first line, never after 10pm |
+| 197 | 7 Flexibility | Senior mode had the same controls in a bigger size | 2 | Fixed: senior mode shows the note at 24px with Close only: no thumbs, no setting |
+| 198 | 9 Error recovery | A failed load left an empty sheet | 2 | Fixed: plain words, "Try again", and the note as the phone last loaded it today. Offline says "You are offline. Aaj kya hua will load when the internet is back." |
+| 199 | 6 Recognition | Thumbs with no feedback, and a second tap that could count twice | 1 | Fixed: one answer per person per day, the chosen one is marked, and "Thank you. Your answer is saved." |
+| 200 | 2 Real-world match | A person the family has marked as remembered could be named in an everyday note | 4 | Fixed: never named, except in "Tomorrow the family remembers ..." on their own day. Open: the date of that day is not stored anywhere yet (the next tranche adds it), so that line cannot appear until then |
+| 201 | 4 Consistency | The time under the note follows the phone's own format ("7:23 PM") while the note says "7:23 pm" | 1 | Open: cosmetic, left as the phone shows times everywhere else |
+
+New patterns: none. The sheet is the app's one bond sheet; the row is a `bondtoday` row; the note is `bondtext`; the thumbs are a `pkind` pair. No new CSS. Ids start with `dg-`.

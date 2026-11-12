@@ -180,6 +180,8 @@ export async function taskHistory(sql, circleId, taskId) {
 // ---------- overdue ----------
 // Each occurrence alerts once. The UPDATE is the lock: a second sweep, even
 // a simultaneous one, finds overdue_alerted_for already equal to due_at.
+// A task about someone marked as remembered is never chased: no "running
+// late" and no reminder. It stays on the list for the family to close.
 export async function sweepOverdue(sql, circleId) {
   const due = await sql`
     update requests set overdue_alerted_for = due_at
@@ -187,6 +189,7 @@ export async function sweepOverdue(sql, circleId) {
       and due_at is not null
       and due_at < now() - make_interval(mins => case when remind_before is null then 0 else ${LATE_GRACE_MIN} end)
       and overdue_alerted_for is distinct from due_at
+      and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))
     returning id, circle_id, title, status, by_member, claimed_by, escalate`;
   for (const t of due) {
     const who = t.claimed_by ? await memberIn(sql, circleId, t.claimed_by) : null;
@@ -220,6 +223,7 @@ export async function sweepReminders(sql, circleId) {
       and due_at - make_interval(mins => remind_before) <= now()
       and due_at - make_interval(mins => remind_before) > now() - interval '30 minutes'
       and reminded_for is distinct from due_at
+      and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))
     returning id, circle_id, title, status, by_member, claimed_by, remind_before, due_at`;
   for (const t of due) {
     const payload = { title: '⏰ ' + remindText(t), body: 'Open Parwah to mark it done', url: '/#care', urgent: true };

@@ -107,6 +107,10 @@ async function bondTables(sql) {
     // each other, so either person's page shows and edits the same day.
     await sql`alter table members add column if not exists anniversary date`;
     await sql`alter table members add column if not exists anniv_with uuid references members(id) on delete set null`;
+    // Someone who is no longer with us (api/_remember.mjs, Family Memory)
+    // gets no birthday or anniversary card. The column is made here too,
+    // so this sweep never depends on which screen a family opened first.
+    await sql`alter table members add column if not exists remembered boolean not null default false`;
     await sql`create table if not exists cards (
       id uuid primary key default gen_random_uuid(),
       circle_id uuid not null references circles(id) on delete cascade,
@@ -189,7 +193,7 @@ async function pushOthers(sql, circleId, except, payload) {
 // festival 14 days out is announced (one insert, once).
 export async function sweepBond(sql, circle) {
   let sent = 0;
-  const members = await sql`select id, name, dob, place, country, anniversary, anniv_with from members where circle_id = ${circle.id}`;
+  const members = await sql`select id, name, dob, place, country, anniversary, anniv_with, remembered from members where circle_id = ${circle.id}`;
   const byId = new Map(members.map(m => [m.id, m]));
   const make = async (key, occ, title, day, a, b) => {
     const row = await sql`insert into cards (circle_id, for_member, for_member2, occasion, title, date, auto_key)
@@ -202,13 +206,14 @@ export async function sweepBond(sql, circle) {
     await pushOthers(sql, circle.id, [a, b].filter(Boolean), { title: '🎉 ' + title + ' in ' + CARD_DAYS_BEFORE + ' days', body: 'Add a line, a photo or a voice note to the card. It stays a surprise.', url: '/#home' });
   };
   for (const m of members) {
-    if (!m.dob) continue;
+    if (!m.dob || m.remembered) continue;   // no birthday card for someone remembered
     const t = todayFor(m), nx = nextYearly(dstr(m.dob), t);
     if (nx && nx.inDays <= CARD_DAYS_BEFORE) await make('bday:' + m.id + ':' + nx.year, 'birthday', m.name + "'s birthday", nx.day, m.id, null);
   }
   for (const m of members) {
     const w = m.anniv_with && byId.get(m.anniv_with);
     if (!m.anniversary || !w || m.id > w.id) continue;   // each couple once
+    if (m.remembered || w.remembered) continue;          // nor an anniversary card
     const t = todayFor(m), nx = nextYearly(dstr(m.anniversary), t);
     if (nx && nx.inDays <= CARD_DAYS_BEFORE) await make('anniv:' + m.id + ':' + w.id + ':' + nx.year, 'anniversary', first(m.name) + ' and ' + first(w.name) + "'s anniversary", nx.day, m.id, w.id);
   }
@@ -217,8 +222,9 @@ export async function sweepBond(sql, circle) {
                         where c.circle_id = ${circle.id} and c.for_member is not null and c.delivered_at is null
                           and c.date <= current_date + 1`;
   for (const c of due) {
-    const who = byId.get(c.for_member);
-    if (!who || dstr(c.date) > todayFor(who)) continue;
+    const who = byId.get(c.for_member), who2 = c.for_member2 ? byId.get(c.for_member2) : null;
+    // A card still waiting for someone since marked as remembered is never sent.
+    if (!who || who.remembered || (who2 && who2.remembered) || dstr(c.date) > todayFor(who)) continue;
     const got = await sql`update cards set delivered_at = now() where id = ${c.id} and delivered_at is null returning id`;
     if (!got[0]) continue;
     const n = await sql`select count(*)::int as n from card_entries where card_id = ${c.id}`;

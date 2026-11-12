@@ -29,7 +29,7 @@ import { reqTz } from './_recur.mjs';
 import { spend, EARN } from './_coins.mjs';
 
 const ASSISTANT_NAME = 'Ekta'; // one-line swap if the persona name changes
-const MODEL_PRIMARY  = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
+export const MODEL_PRIMARY  = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
 const MODEL_DEEP     = process.env.ANTHROPIC_DEEP_MODEL || 'claude-3-opus-20240229';
 const MODEL_FALLBACK = process.env.ANTHROPIC_FALLBACK_MODEL || 'claude-3-5-haiku-20241022';
 
@@ -473,6 +473,17 @@ export function failureReason(failures, hadAnyKey) {
   return 'unreachable';
 }
 
+// ONE WAY TO MAKE THE CLIENT, used by a conversation (below) and by the
+// daily digest (api/_digest.mjs), so the two can never drift apart.
+// Identity-linked keys must name the workspace they act in; keys on the
+// default workspace need no header at all.
+export function anthropicClient(vault) {
+  const ws = (vault && vault.anthropic_ws) || process.env.ANTHROPIC_WORKSPACE_ID;
+  return new Anthropic(Object.assign(
+    { apiKey: vault.anthropic },
+    ws ? { defaultHeaders: { 'anthropic-workspace-id': ws } } : {}));
+}
+
 // The cascade driver, shared by the API handler and /api/ekta-selftest.
 // Order: Anthropic Sonnet → Opus → Haiku (full tools), then every other
 // configured provider key (text-only) until one answers. The final model
@@ -486,14 +497,7 @@ export async function ektaTurn(sql, circle, me, history) {
   try { vault = (await providerKeys(sql, circle.id)).keys; } catch (e) { /* vault optional */ }
 
   if (vault.anthropic) {
-    // Identity-linked API keys may name a workspace; the default workspace
-    // needs no header at all.
-    // Identity-linked keys must name the workspace they act in; keys on the
-    // default workspace need no header at all.
-    const ws = vault.anthropic_ws || process.env.ANTHROPIC_WORKSPACE_ID;
-    const client = new Anthropic(Object.assign(
-      { apiKey: vault.anthropic },
-      ws ? { defaultHeaders: { 'anthropic-workspace-id': ws } } : {}));
+    const client = anthropicClient(vault);
     const tiers = [MODEL_PRIMARY, MODEL_DEEP, MODEL_FALLBACK];
     for (let i = 0; i < tiers.length; i++) {
       try {
@@ -553,6 +557,14 @@ export default async function handler(req, res) {
   // The phone says its zone; the profile (or the phone) says the country.
   me.tz = reqTz(req) || null;
   me.iso = isoOf(me, req.body);
+
+  // "Aaj kya hua", the daily digest (api/_digest.mjs): digest, digest_vote,
+  // digest_evening. Behind this route because the project is at its
+  // function cap. It never spends a coin.
+  if (req.body && typeof req.body.action === 'string' && /^digest(_|$)/.test(req.body.action)) {
+    const { digestHandle } = await import('./_digest.mjs');
+    return digestHandle(sql, circle, me, req, res);
+  }
 
   if (req.body && req.body.action === 'voice_intent') {
     const { extractVoiceIntent } = await import('./_careprep.mjs');

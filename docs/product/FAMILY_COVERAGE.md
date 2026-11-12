@@ -48,7 +48,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | Renewals and due dates with reminders | Live | renewals |
 | Shared notes and lists; private notes | Live | notes |
 | Useful contacts (plumber, doctor), shared or private | Live | family book |
-| What to do when someone passes away: a checklist built from the register | Next | tranche 2 |
+| What to do when someone passes away: a checklist built from the register, started by two adults, never legal advice | Live | "What needs doing" (`api/_afterlossapi.mjs`), under the Family register |
 | A will or nomination reminder, never legal advice | Later | |
 
 ### D. Who is who (the family itself)
@@ -59,9 +59,9 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | **Names for the wider family: Devar, Nanad, Saala, Bhabhi, Jija, Samdhi, second cousins, a parent's cousin** | **Building** | kin labels |
 | **The chain that connects any two people, in words** | **Building** | kin chain |
 | **A Rishtedaar list: near, close and far, with search** | **Building** | Rishtedaar screen |
-| Two households that are related (maika and sasural, two brothers' homes) seeing each other's tree, by consent of both | Next | linked families, tranche 2 |
+| Two households that are related (maika and sasural, two brothers' homes) seeing each other's tree, by consent of both | Live | linked families |
 | Birthdays, anniversaries and the shared card | Live | bond cards |
-| Gotra, native village, kuldevta, family customs written down | Next | family facts, tranche 2 |
+| Gotra, native village, kuldevta, family customs written down | Live | family facts |
 | A family directory to print or share for a wedding | Later | |
 
 ### E. Staying close (bonding)
@@ -75,16 +75,16 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | **Everyone's interests, visible to who they choose** | **Building** | Pasand |
 | **Where each person watches and listens** | **Building** | Pasand platforms |
 | **Recommend a show, song, game, book or place to anyone, and hear back** | **Building** | Pasand recommendations |
-| Watch or listen together at a set time (a plan with a link) | Next | builds on plans and Pasand |
-| A shared family photo album | Decide | needs paid storage (Cloudflare R2 or Vercel Blob) |
-| A daily "what happened today" digest | Decide | has a running AI cost |
+| Watch or listen together at a set time (a plan with a link) | Live | a `together` plan, made from a recommendation in one tap |
+| A shared family photo album | Live | Yaadon ki album: photos kept in the database like vault files, made small on the phone first; 400 a family. A move to paid storage later is one change |
+| A daily "what happened today" digest | Live | Aaj kya hua, from Ekta: plain words for everyone; one model call per member per day at most, 12 a circle a day, only when the owner's key is set |
 
 ### F. Money between family
 | Need | Status | Where |
 |---|---|---|
 | Who paid for care, and settling up | Live | expenses, split |
 | Saved ways to pay each other (UPI id, never a PIN) | Live | pay methods |
-| Splitting a trip or a function | Decide | UPI links sit close to the no-payments rule |
+| Splitting a trip or a function | Live | plan costs: who paid, who owes whom, a two-sided "paid" and "received". Parwah never moves money; it can open the payer's own UPI app |
 | Pocket money and chores for children | Later | |
 | A family budget | Later | out of the care wedge for now |
 
@@ -110,7 +110,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 |---|---|---|
 | Festivals the family keeps, planned together | Live | festival kits |
 | A wedding or function: guests, tasks, who is arriving when | Next | an event kit on top of plans and Rishtedaar |
-| Shradh and death anniversaries remembered gently | Next | dates on a person, tranche 2 |
+| Days of remembrance kept gently (the calendar date; a tithi is not worked out yet) | Live | days of remembrance |
 
 ## 2. The architecture every feature follows
 
@@ -122,13 +122,14 @@ whose name starts with an underscore, reached through an existing route by an
 
 | Route | Areas behind it |
 |---|---|
-| `/api/book` | health and contacts, vault, pay, notes, memory bond, biomarkers, pre-auth, **register (locator)**, audit, admission |
+| `/api/book` | health and contacts, vault, pay, notes, memory bond, **album**, biomarkers, pre-auth, **register (locator)**, audit, admission, **what needs doing (afterloss)** |
 | `/api/care` | reminders, requests, refill, bills, sibling tasks, doses, ladders, expenses, staff, renewals |
-| `/api/plans` | plans, visits, shared cards and polls |
+| `/api/plans` | plans, visits, shared cards and polls, **watch together**, **cost split** |
 | `/api/games` | games, **pasand** |
-| `/api/circle` | family, members, **tree and kin** |
+| `/api/circle` | family, members, **tree and kin**, linked families, family facts, days of remembrance |
 | `/api/settings` | keys, push, coins, plan, day, PIN, location |
-| `/api/chats`, `/api/events`, `/api/ekta`, `/api/auth`, `/api/diag` | as named |
+| `/api/ekta` | the assistant, **the daily digest** (`action: digest`) |
+| `/api/chats`, `/api/events`, `/api/auth`, `/api/diag` | as named |
 
 **Rules for a module**
 1. Tables are created by the module itself, through `schemaOnce`, so two
@@ -147,10 +148,10 @@ whose name starts with an underscore, reached through an existing route by an
 
 | Choice | Who can read | Used by |
 |---|---|---|
-| Only me | the owner | notes, register, interests |
-| People I choose | the owner and named members | vault, family book, register, interests, recommendations |
+| Only me | the owner | notes, register, interests, albums |
+| People I choose | the owner and named members | vault, family book, register, interests, recommendations, albums |
 | Whole family | everyone in the circle | most things, by default |
-| Only in an emergency | the circle, while that person has an open SOS | register |
+| Only in an emergency | the circle, while that person has an open SOS; and, while the family's "What needs doing" list for that person is open, the two adults who started it and the nominee the entry names | register |
 | Sealed until the day | everyone but the person it is for | shared cards |
 
 The person an entry is about, and whoever wrote it, can always read it back.
@@ -159,8 +160,10 @@ Where it matters (vault, register, family book) the owner can see who looked.
 **The family graph.** A person has two links: a parent and a spouse. Every
 relation, near or far, is worked out from those two links by `api/_kin.mjs`,
 which is pure and runs the same on the server and the phone. Nothing about a
-relation is typed in by hand, so it cannot go stale. Linked families (next)
-join two graphs at one person who belongs to both, by consent of both sides.
+relation is typed in by hand, so it cannot go stale. Linked families join two
+graphs at one person who belongs to both, in memory, by consent of both
+sides. Across a link go a name, he or she, the two tree links, the year of
+birth and the city, and a phone only when that side ticks it. Nothing else.
 
 ## 3. This round (tranche 1), built in parallel
 
@@ -178,16 +181,54 @@ Honest limits of this round:
 - **The register stores where things are and who should know, not the money
   itself.** No balances are fetched from a bank.
 
+**Shipped after tranche 1 (2026-11-12)**
+
+| Feature | Module | Route | Tables |
+|---|---|---|---|
+| Watch or listen together | `api/_together.mjs` | `/api/plans` (kind `together`) | columns on `plans`: platform, link, rec_id, rec_kind, invited, maybe, cannot |
+| Splitting the cost of a trip or a function | `api/_split.mjs`, `api/_splitmath.mjs` | `/api/plans?area=split` | `plan_costs`, `plan_cost_shares`, `plan_settles`; `plans.cost_currency` |
+
+Honest limits:
+- **Parwah never moves money.** The split only does the sums. "Pay" opens
+  the payer's own UPI app with the amount filled in, and only with a UPI id
+  its owner has already allowed that person to use. A UPI PIN is never asked
+  for. A line is closed only when both people say so.
+- **A plan is in one currency**, from the country of whoever made it. UPI
+  links appear only on plans in rupees.
+- **A together plan is seen by the whole circle**, like every plan. Only the
+  people ticked are told.
+
 ## 4. What comes next
 
 **Tranche 2: the wider family**
 - Linked families: two circles agree to show each other their tree and their
-  Rishtedaar list. Nothing else crosses over.
+  Rishtedaar list. Nothing else crosses over. **Live** (`api/_famlink.mjs`).
 - Family facts: gotra, native village, kuldevta, customs, with an audience.
+  **Live** (`api/_famfacts.mjs`).
 - Days of remembrance on a person, with a gentle reminder to the family.
-- "When someone passes away": a checklist drawn from the register (which
-  bank, which policy, who is the nominee), shown only to the people chosen.
-- Watch together: a plan made from a recommendation in one tap.
+  **Live** (`api/_remember.mjs`).
+- ~~"When someone passes away": a checklist drawn from the register (which
+  bank, which policy, who is the nominee), shown only to the people chosen.~~
+  Live as "What needs doing". It has no viewing rule of its own: every step
+  from the register goes through `registerRowFor`, and starting a list never
+  changes who can see an entry. Tables: `afterloss_lists`, `afterloss_steps`.
+- Watch together: a plan made from a recommendation in one tap. **Live**
+  (`api/_together.mjs`). A recommendation that was not sent to everyone asks
+  first, because a plan is seen by the whole family.
+
+**Safeguards added after the second review (2026-11-12)**
+- "What needs doing" needs a second adult to start AND to open again. One
+  adult alone is enough only when the family has no other adult and the
+  person is not on Parwah. The person it is about can close it, which removes
+  it. A list in force marks the person as remembered.
+- Marking someone as remembered destroys nothing, the marked person can undo
+  it, and someone who used Parwah in the last 30 days cannot be marked.
+- A plan with costs cannot be cancelled, and stays under "Costs to settle"
+  after its day until the ledger is settled.
+- Asking to link two families is counted and capped, and waits 7 days after
+  a no.
+- A remembered person is refused by the server as an invitee, a cost sharer,
+  a step owner and a chosen audience.
 
 **Tranche 3: children and the home**
 - A child's page: school, fees, exams, pick-up duty, vaccines.
@@ -196,9 +237,9 @@ Honest limits of this round:
   arrivals.
 
 **Waiting on the owner**
-- Photo album: choose and pay for storage.
-- Trip and function cost split with UPI links.
-- Ekta daily digest: accept the AI running cost or not.
+- Photo album storage: the album is live on the database, capped at 400 photos a family (about 256 MB at the very most, nearer 120 MB in practice). Choose and pay for file storage only if families outgrow that; the bytes are read and written in two functions (`albumPutBytes`, `albumGetBytes` in `api/_album.mjs`), so the move is one change.
+- ~~Trip and function cost split with UPI links.~~ Live (`api/_split.mjs`). Parwah never moves money; the UPI link is built for the payer only.
+- Ekta daily digest: accepted and built (2026-11-12). Still to decide: where the owner reads the usage counter (`digest_usage`); there is no admin screen for counters yet.
 - SMS sign-in stays off, by the owner's decision.
 
 ## 5. How a new need gets added

@@ -107,7 +107,7 @@ for (const [k, pane, field] of [['task', '#pane-care', 'r-title'], ['event', '#p
 // ---- 2. Events: an appointment is a kind of event
 await R.evaluate(() => { location.hash = '#home'; }); await R.waitForTimeout(400);
 await R.click('.quickadd [data-qadd="event"]'); await R.waitForTimeout(800);
-ok('the kinds include appointments, functions and trips', (await R.$$eval('#p-kind button', bs => bs.map(b => b.getAttribute('data-kind')))).join() === 'call,party,meet,appointment,function,trip');
+ok('the kinds include appointments, functions and trips', (await R.$$eval('#p-kind button', bs => bs.map(b => b.getAttribute('data-kind')))).join() === 'call,party,meet,appointment,function,trip,together');
 const tmr = new Date(Date.now() + 86400000), d = tmr.getFullYear() + '-' + String(tmr.getMonth() + 1).padStart(2, '0') + '-' + String(tmr.getDate()).padStart(2, '0');
 await R.fill('#p-title', "Papa's eye check-up");
 await R.click('#p-kind [data-kind="appointment"]');

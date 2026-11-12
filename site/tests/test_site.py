@@ -871,6 +871,8 @@ CIRCLE_WIDE_OK = {
     ("_staff.mjs", "not marked in yet"):  "anyone in the family may be the one who can check at home",
     ("_renewals.mjs", "payload, {})"):    "a household date nobody looks after yet: anyone may take it",
     ("_bond.mjs", "Plan it together on Parwah"): "a festival the circle itself chose, once, 14 days ahead",
+    ("_famlink.mjs", "asks to link family trees"): "another family asks to link trees: any adult of this one may be the one who answers",
+    ("_remember.mjs", "A quiet day to remember"): "a day of remembrance is the whole family's, once a year",
 }
 def _push_calls(src):
     out = []
@@ -3185,10 +3187,605 @@ _fr_static = [i for i in _static_ids if i.startswith("fr-")]
 check(f"register: its new ids all start with fr- and none is the first-run card's ({len(_fr_static)})",
       len(_fr_static) >= 20 and all(_fr_static.count(i) == 1 for i in _fr_static))
 _testdb_fr = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
-check("register: the unit test is in the gate, and both database tests are last in test:db",
+# Not "last": a check that needs its test to be the last entry breaks the
+# moment the next feature appends its own, which is what happened here.
+check("register: the unit test is in the gate, and both database tests run in test:db, one after the other",
       "node site/tests/famregistertest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
-      and _testdb_fr.endswith("site/tests/db/famregister.dbtest.mjs && node --import ./site/tests/db/register.mjs site/tests/db/famregister.e2e.dbtest.mjs")
+      and "site/tests/db/famregister.dbtest.mjs && node --import ./site/tests/db/register.mjs site/tests/db/famregister.e2e.dbtest.mjs" in _testdb_fr
       and (REPO / "site/tests/db/famregister.dbtest.mjs").exists() and (REPO / "site/tests/db/famregister.e2e.dbtest.mjs").exists())
+
+# Watch together and splitting a cost (2026-11-12): proved in splitmathtest
+# (the sums), plantogether.dbtest (the handlers on PostgreSQL) and
+# plantogether.e2e (real phones). These guard what must not drift.
+_tg = (API_DIR / "_together.mjs").read_text(encoding="utf-8")
+_sp = (API_DIR / "_split.mjs").read_text(encoding="utf-8")
+_spm = (API_DIR / "_splitmath.mjs").read_text(encoding="utf-8")
+_tg_plans = (API_DIR / "plans.mjs").read_text(encoding="utf-8")
+_tg_app = _app_src.split("// ---------- Watch or listen together (api/_together.mjs) ----------")[1].split("// ---------- games: Snakes & Ladders ----------")[0]
+check("together and split: both ride /api/plans in underscore modules, never a new serverless function",
+      "from './_together.mjs';" in _tg_plans and "from './_split.mjs';" in _tg_plans
+      and "if (area === 'split' || (typeof body.action === 'string' && /^split_/.test(body.action)))" in _tg_plans
+      and "var splitApi = '/api/plans?area=split';" in _app_src
+      and not any((API_DIR / f).exists() for f in ("together.mjs", "split.mjs", "splitmath.mjs")))
+check("together: a plan of kind together, on the plans table, made through the same create and answered through the same rsvp",
+      "'trip', 'other', TOGETHER_KIND]" in _tg_plans and "export const TOGETHER_KIND = 'together';" in _tg
+      and "tg = await togetherPrepare(sql, circle, me, body);" in _tg_plans and "togetherAnswer(sql, circle, me, rows[0].id, body.answer)" in _tg_plans
+      and "create table" not in _tg and "pushCircle" not in _tg and "together: '🍿'" in (API_DIR / "_plansweep.mjs").read_text(encoding="utf-8"))
+check("together: only the sender or a recipient can make a plan from a recommendation, in the query itself",
+      "and (r.by_member = ${me.id} or exists (select 1 from pasand_rec_to t where t.rec_id = r.id and t.member_id = ${me.id}))" in _tg
+      and "title = r[0].title; platform = r[0].platform || null; link = r[0].link || null;" in _tg)
+check("together: a link is https only, under Pasand's own rule, on the server and again before it is put in the page",
+      "import { isPlatform, isRecKind, platformName, cleanLink, credRisk } from './_pasandrules.mjs';" in _tg
+      and _tg.count("cleanLink(") >= 2 and "noteRisk(v) || credRisk(v)" in _tg
+      and "var on = pasandOn(p.platform), link = pasandLink(p.link)" in _tg_app
+      and 'data-tgopen="1" href="\' + esc(link) + \'" target="_blank" rel="noopener noreferrer"' in _tg_app
+      and "if (tgOn && pasandLinkErr(tgLink)) { fieldErr('tg-link', pasandLinkErr(tgLink)); return; }" in _app_src)
+check("together: Open it shows from 10 minutes before until 3 hours after, and the call button starts the app's own family call",
+      "TOGETHER_OPEN = { beforeMin: 10, afterMin: 180 }" in _tg and "n >= t - 10 * 60000 && n <= t + 180 * 60000" in _tg_app
+      and "if (d.tgcall) askCall();" in _tg_app and "function askCall(){" in _app_src)
+check("split: the screen and the server say it once, in the same words: Parwah does not move money",
+      "export const SPLIT_NOTE = 'Parwah does not move money. This opens your own UPI app.';" in _sp
+      and "var SP_NOTE = 'Parwah does not move money. This opens your own UPI app.';" in _tg_app
+      and _tg_app.count("SP_NOTE") == 2 and 'id="sp-note"' in _tg_app)
+check("split: every sum is whole paise; the sums file imports nothing and has no fraction in it",
+      not re.search(r"^\s*import\s", _spm, re.M) and not re.search(r"parseFloat|toFixed|Math\.round|Math\.floor|Math\.ceil", _spm)
+      and not re.search(r"\d\.\d", re.sub(r"'[^'\n]*'", "''", re.sub(r"//.*", "", _spm)))
+      and "amount_paise bigint not null check (amount_paise > 0)" in _sp and "share_paise bigint not null" in _sp
+      and "numeric" not in _sp and "Math.round" not in _sp and "parseFloat" not in _sp
+      and "const amount = parsePaise(b.amount);" in _sp)
+check("split: a UPI id reaches only the payer, only in rupees, and only when its owner already allowed them (pay_perms)",
+      "join pay_perms pp on pp.method_id = p.id and pp.member_id = ${me.id}" in _sp
+      and "const payees = rupees ? d.book.owes.filter(o => o.from === me.id).map(o => o.to) : [];" in _sp
+      and "p.kind = 'upi'" in _sp and _sp.count("handle") == 3 and _sp.count("upiLink(") == 1
+      and "if (!isUpiId(x.pa)) return null;" in _spm and "if ((x.cu || 'INR') !== 'INR') return null;" in _spm
+      and _spm.count("encodeURIComponent(") == 2
+      and "function splitUpi(u){ return /^upi:\\/\\/pay\\?[A-Za-z0-9%&=._~-]+$/.test(String(u || '')) ? String(u) : ''; }" in _tg_app)
+check("split: a UPI PIN is never taken or kept, and no money is ever moved from here",
+      "for (const k of Object.keys(b)) if (/pin$/i.test(k)) return bad(SPLIT_NO_PIN);" in _sp and "const risk = noteRisk(what);" in _sp
+      and not re.search(r"fetch\(|https?://", _sp) and not re.search(r"type=.password|upi ?pin", _tg_app, re.I))
+check("split: who sees a plan's costs is decided in the query: on the plan, or sharing one of its costs",
+      "(p.by_member = ${me.id} or ${me.id}::uuid = any(p.going) or ${me.id}::uuid = any(p.maybe) or ${me.id}::uuid = any(p.invited)" in _sp
+      and "if (!r[0].on_plan) return { err: bad(NOT_ON, 403) };" in _sp
+      and _sp.count("await planFor(sql, circle, me,") == 5)
+check("split: settling is two-sided, and a cost is changed only by whoever added it or made the plan",
+      "check (paid_at is not null or received_at is not null)" in _sp and "where paid_at is null or received_at is null" in _sp
+      and "if (r[0].paid_at && r[0].received_at) return bad('Both of you have confirmed this one, so it stays.', 409);" in _sp
+      and "if (r[0].added_by !== me.id && g.plan.by_member !== me.id)" in _sp
+      and "const line = d.book.owes.find(o => o.from === from && o.to === to);" in _sp)
+_plans_src = (API_DIR / "plans.mjs").read_text(encoding="utf-8")
+check("together and split: tables and columns through schemaOnce; every push names one person",
+      "schemaOnce(() => togetherColumns(sql))" in _tg and "schemaOnce(() => splitTables(sql))" in _sp
+      and _sp.count("await pushCircle(") == 1 and "await pushCircle(sql, circle.id, payload, { only: other });" in _sp)
+check("split: a settle-up push is capped at six an hour from one person to one person; the action itself is never refused",
+      "rateLimit(sql, 'split_push', me.id + ':' + other, 6, 3600, { failClosed: true })" in _sp
+      and _sp.count("await splitTell(sql, circle, me, other, {") == 2 and "return bad('That is a lot" not in _sp)
+check("split: a plan past its time with an unsettled ledger stays reachable: on the plan, any age, newest first, at most 20, marked settling",
+      "export const SPLIT_SETTLING_MAX = 20;" in _sp and "order by p.at desc limit 200" in _sp
+      and "moves.some(m => !(m.paid && m.received)) || ledger(list, moves).owes.length > 0" in _sp
+      and "const openIds = await splitSettling(sql, circle, me);" in _plans_src and "true as settling" in _plans_src
+      and "return res.status(200).json({ ok: true, plans, settling: past });" in _plans_src
+      and '<p class="eyebrow" id="plist-settle">Costs to settle</p>' in _app_src
+      and "renderPlans(j.plans, j.settling || [])" in _app_src)
+check("plans: a plan with costs on it cannot be cancelled; the delete itself checks again",
+      _plans_src.count("'This plan has costs on it. Remove the costs first, or settle up.'") == 2
+      and "and not exists (select 1 from plan_costs k where k.plan_id = plans.id) returning id" in _plans_src
+      and "await sql`delete from plans where id = ${rows[0].id}`;" not in _plans_src
+      and "humanFail(j.error, 'Could not cancel this plan. Try again in a moment.')" in _app_src)
+check("remembered people are refused by the server on a plan invite and on a cost (who paid, who shares, uneven shares)",
+      "if (lost) return bad(lost.name + ' is remembered here, so cannot be invited.');" in _tg
+      and "const goneWhy = (id) => gone.get(id) + ' is remembered here, so cannot be on a cost.';" in _sp
+      and "if (gone.has(paidBy)) return { error: goneWhy(paidBy) };" in _sp and _sp.count("if (lost) return { error: goneWhy(lost) };") == 2)
+check("together: a plan from a recommendation that did not go to everyone needs an explicit yes, said in the sheet above the button",
+      "if (!r[0].to_all && body.shareConfirmed !== true) return bad(togetherShareLine(word), 409);" in _tg
+      and "' will see this plan and its link.'" in _tg
+      and "<p class=\"hint\" id=\"tg-share\">Everyone in the ' + word + ' will see this plan and its link.</p>" in _app_src
+      and "shareConfirmed: !!$('tg-share') || undefined" in _app_src
+      and _app_src.index('id="tg-share"') < _app_src.index('id="tg-send" data-tgfor='))
+check("together and split: loading, empty, error and offline are all said, and errors go through humanFail",
+      'id="sp-load">Loading' in _tg_app and 'id="sp-empty"' in _tg_app and 'id="sp-fail" role="alert"' in _tg_app
+      and "No connection. The costs will show when you are back online." in _tg_app
+      and "humanFail(j && j.error, 'Could not load the costs. Try again in a moment.')" in _tg_app
+      and "humanFail(j.error, 'That did not work. Try again.')" in _tg_app.split("function splitPost(")[1][:500]
+      and "humanFail(j.error, 'Could not set the plan. Try again.')" in _tg_app)
+check("together and split: status is said in words and a mark, never by colour alone, and never in the vibe colours",
+      "'✓ Is owed '" in _tg_app and "'! Owes '" in _tg_app and "'✓ All square'" in _tg_app and "(on ? '✔ ' : '') + a[1]" in _tg_app
+      and not re.search(r"--(rani|peacock|flame|grad)\b", "".join(l for l in _app_src.splitlines() if re.match(r"\.(tg|sp)[a-z]", l))))
+_tg_names = re.findall(r"^  function ([A-Za-z0-9_$]+)\(", _tg_app, re.M)
+_tg_ids = sorted(set(re.findall(r'\bid="((?:tg|sp)-[a-z-]+)"', _app_src)))
+check(f"together and split: every new function starts with together or split, every new id with tg- or sp- ({len(_tg_names)} functions, {len(_tg_ids)} ids)",
+      len(_tg_names) >= 25 and all(re.match(r"(together|split)[A-Z]", n) for n in _tg_names)
+      and len(_tg_ids) >= 20 and all(_static_ids.count(i) <= 1 for i in _tg_ids))
+_testdb_tg = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("together and split: the sums are tested in the gate, and the database and browser tests are in test:db",
+      "node site/tests/splitmathtest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all(("site/tests/db/" + f) in _testdb_tg and (REPO / "site/tests/db" / f).exists() for f in ("plantogether.dbtest.mjs", "plantogether.e2e.dbtest.mjs")))
+# ---------- 10za. "What needs doing": the checklist for when someone passes away ----------
+# A list drawn from the family register. Behaviour is proved against a real
+# database in afterloss.dbtest and in real browsers in afterloss.e2e; these
+# keep the three promises in the source: one viewing rule, the words "not
+# legal advice", and that starting a list never changes who sees an entry.
+_al = (API_DIR / "_afterloss.mjs").read_text(encoding="utf-8")
+_al_api = (API_DIR / "_afterlossapi.mjs").read_text(encoding="utf-8")
+_al_app = _fr_app
+_al_js = _al_app[_al_app.index('// ---------- "What needs doing"'):_al_app.index("// ---------- Biomarkers & SVG Trendlines")]
+_al_html = _al_app[_al_app.index('<div class="alwrap" id="al-wrap">'):_al_app.index("<!-- ONE PERSON - the sections")]
+_al_css = "\n".join(l for l in _al_app.splitlines() if l.startswith((".al", ".card p.al")))
+_al_legal = "This is a list to help you remember, not legal advice. Rules differ by bank and state."
+_al_sorry = "We are sorry. This list is here so nothing is forgotten."
+check("afterloss: its rules import nothing, and take the register's viewing rule as an argument",
+      not re.search(r"^\s*import\s", _al, re.M) and "rowFor(row, viewerId" in _al
+      and "if (typeof rowFor !== 'function') throw" in _al)
+check("afterloss: the single viewing rule is reused: registerRowFor, never a second rule",
+      "import { registerRowFor, registerLogsView, registerSecretRisk } from './_register.mjs';" in _al_api
+      and "afterlossSteps({ rows, viewerId: me.id, rowFor: registerRowFor, opens, marks })" in _al_api
+      and "registerRowFor(row, m.id, opens(row, m.id))" in _al_api
+      and not re.search(r"unlock_policy|designated_recipients|canViewAssetLocator\s*\(", _al_api)
+      # The rules may label a step the viewer already holds as "only you";
+      # they never compare a policy to decide whether to show one.
+      and not re.search(r"unlock_policy\s*===\s*'(IMMEDIATE|NOMINEES_ONLY|EMERGENCY_ONLY)'|designated_recipients|canView", _al))
+check("afterloss: starting a list never changes who sees an entry: this module never writes to the register",
+      not re.search(r"(update|insert\s+into|delete\s+from)\s+legacy_asset_(locators|views)", _al_api, re.I)
+      and "it never writes to legacy_asset_locators at all" in _al_api
+      and _al_app.count("Starting it does not change who can see any entry in the register.") == 1)
+check("afterloss: an active list is the emergency only for that person and the two who started it; a nominee's name opens nothing",
+      "if (list.status !== 'active' || list.person_id !== row.person_id) return false;" in _al
+      and "if (memberId === list.started_by || memberId === list.confirmed_by) return true;" in _al
+      and "afterlossNominees" not in _al and "name is not a person" in _al
+      and "inSos.has(row.person_id) || alOpens(row, g.me.id)" in _fr_api
+      and "registerRowFor(row, g.me.id, emergency(row))" in _fr_api and "registerRowFor(r, g.me.id, emergency(r), { details: !brief })" in _fr_api)
+check("afterloss: the register form says what Only in an emergency means now",
+      "<b>Only in an emergency</b><small>Opens during an emergency, or when the family starts 'What needs doing' for this person.</small>" in _al_app)
+check("afterloss: it says once, plainly, that it is not legal advice, and that it is sorry",
+      f"export const AFTERLOSS_LEGAL = '{_al_legal}';" in _al and f"export const AFTERLOSS_SORRY = '{_al_sorry}';" in _al
+      and _al_app.count(_al_legal) == 1 and _al_app.count(_al_sorry) == 1
+      and f'<p class="hint" id="al-legal">{_al_legal}</p>' in _al_html and f'id="al-sorry">{_al_sorry}</p>' in _al_html)
+check("afterloss: two people start it: a second adult is asked, and only they can confirm",
+      "Choose a second adult in the family to confirm. Two people start this together." in _al
+      and "where id = ${list.id} and status = 'pending' and ask_member = ${g.me.id} returning id" in _al_api
+      and "on conflict (circle_id, person_id) do nothing returning id" in _al_api)
+check("afterloss: a tick, an assignment and a note are one statement each, so none undoes another",
+      _al_api.count("on conflict (list_id, step_key) do update set") == 3
+      and "do update set done = excluded.done, done_by = excluded.done_by," in _al_api
+      and "do update set assigned_to = excluded.assigned_to," in _al_api and "do update set note = excluded.note," in _al_api
+      and _al_api.count("from afterloss_lists l where l.id = ${list.id} and l.status = 'active'") == 3)
+check("afterloss: a note is checked for a card number, CVV, OTP, PIN or password",
+      "afterlossNote(body.note, [noteRisk, registerSecretRisk])" in _al_api)
+check("afterloss: its pushes are the ask (one place, at most three an hour per person about one person), the family once when it comes into force, and the two starters when the person closes it; nothing timed",
+      _al_api.count("await pushCircle(") == 4 and "afterlossPush('ask', { starter: me.name, person: person.name }), { only: askId }" in _al_api
+      and _al_api.count("afterlossPush('ask'") == 1 and _al_api.count("await pushAsk(sql, g.circle.id, g.me,") == 2
+      and "rateLimit(sql, 'afterloss_ask', me.id + ':' + person.id, 3, 3600, { failClosed: true })" in _al_api
+      and "afterlossPush(can.reopening ? 'reopened' : 'started'," in _al_api and _al_api.count("afterlossPush('void'") == 1
+      and "runTick" not in _al_api and "setTimeout" not in _al_api and "remind" not in _al_api.lower())
+check("afterloss: opening a closed list again goes through the start rule, waits for a second adult, and clears the old confirmation",
+      _al_api.count("afterlossStartRule({ me: meRow, personId: list.person_id, members, askId: isUuid(body.askId) ? body.askId : null })") == 1
+      and "confirmed_by = null, confirmed_at = ${rule.needs ? null : new Date().toISOString()}::timestamptz" in _al_api
+      and "set status = ${state}, started_by = ${g.me.id}, ask_member = ${rule.needs ? rule.askId : null}," in _al_api
+      and "set status = 'active', reopened_by" not in _al_api
+      and "afterlossPost('afterloss_reopen', { listId: l.id, askId: alAskPick || null });" in _al_app)
+check("afterloss: one adult alone is refused for someone on Parwah; in force means confirmed, or that one allowed start",
+      "export const AFTERLOSS_NEEDS_SECOND = 'This needs a second adult on Parwah to confirm.';" in _al
+      and "if (person && (person.user_id || person.on_app)) return { error: AFTERLOSS_NEEDS_SECOND, status: 400, solo: false };" in _al
+      and "return !!list.confirmed_by || (list.solo === true && !personOnApp);" in _al
+      and "if (!list.confirmed_by && list.solo !== true) return false;" in _al
+      and "return !!r[0] && afterlossInForce(r[0], r[0].on_app);" in _al_api
+      and ".filter(l => afterlossInForce(l, l.on_app));" in _al_api
+      and "and status = 'active'`;\n    return !!r[0];" not in _al_api)
+check("afterloss: the person it is about closes it and it is removed, with its steps; the mark comes off only if the list set it",
+      "if (g.me.id === list.person_id) {" in _al_api and "await voidList(sql, g.circle.id, list)" in _al_api
+      and "delete from afterloss_lists where id = ${list.id} and circle_id = ${circleId} returning set_remembered" in _al_api
+      and "if (gone[0].set_remembered) {" in _al_api
+      and "body: person + ' closed the list that was started for them.'" in _al
+      and "Closing it removes it, and the people who started it are told." in _al_app)
+check("afterloss: a list in force marks the person as remembered, with no date, and records that it did",
+      "update members set remembered = true where id = ${list.person_id} and circle_id = ${circleId} and not remembered returning id" in _al_api
+      and "update afterloss_lists set set_remembered = true where id = ${list.id}" in _al_api
+      and _al_api.count("await markRemembered(sql, g.circle.id,") == 3 and "passed_year =" not in _al_api)
+check("register: the comment on Only in an emergency says the real rule: the two who started and confirmed, never a nominee by name",
+      "only the two who started and\n//                   confirmed it. A nominee is a name, and a name opens\n//                   nothing" in (API_DIR / "_register.mjs").read_text(encoding="utf-8")
+      and "the nominee\n//                   the entry names" not in (API_DIR / "_register.mjs").read_text(encoding="utf-8"))
+check("afterloss: the rule takes no members list and has no unused name key",
+      "export function afterlossOpens(list, row, memberId) {" in _al and "nameKey" not in _al
+      and "afterlossOpens(by.get(row.person_id), row, memberId)" in _al_api and "(inForce && afterlossOpens(list, row, memberId))" in _al_api and not re.search(r"afterlossOpens\([^)]*, members\)", _al_api))
+check("afterloss: it rides behind /api/book as area=afterloss; tables are made through schemaOnce; every request passes requireMember",
+      "if (area === 'afterloss' || (req.body && typeof req.body.action === 'string' && /^afterloss_/.test(req.body.action))) return afterlossApi(req, res);"
+        in (API_DIR / "book.mjs").read_text(encoding="utf-8")
+      and "await schemaOnce(() => afterlossTables(sql));" in _al_api and _al_api.count("await requireMember(sql,") == 2
+      and "create table if not exists afterloss_lists" in _al_api and "create table if not exists afterloss_steps" in _al_api
+      and "afterloss: '/api/book?area=afterloss'" in _al_app)
+check("afterloss: the ways in are quiet text links, never a bright button, and nothing wears an alert colour",
+      '<button type="button" class="linkbtn" id="al-open" aria-expanded="false" aria-controls="al-panel">When someone passes away: what needs doing</button>' in _al_html
+      and '<button type="button" class="linkbtn" id="al-pp-link" hidden>When someone passes away: what needs doing</button>' in _al_app
+      and 'class="go"' not in _al_html and 'class="go"' not in _al_js and 'class="cbtn"' not in _al_js and "urgent" not in _al_js
+      and len(_al_css) > 800
+      and not re.search(r"--alert|--sos|--rani|--flame|--sindoor|--marigold|--grad|tint-bad", _al_css)
+      and ".albar i{background:var(--ok)}" in _al_css and "accent-color:var(--ok)" in _al_css)
+check("afterloss: loading, empty, error and offline are each said, and errors go through humanFail",
+      '<div class="ev" role="status">Loading…</div>' in _al_js and "Choose a person above." in _al_js
+      and "You are offline. The list will load when the internet is back." in _al_js and "data-alretry" in _al_js
+      and "humanFail(j.error, 'Try again in a moment.')" in _al_js and "humanFail(j.error, 'That did not work. Try again in a moment.')" in _al_js
+      and not re.search(r"\b(alert|confirm|prompt)\(", _al_js))
+check("afterloss: the writer of an Only me entry is told gently, and offered the register",
+      "that nobody else can see. You may choose to share" in _al_js and 'data-alreg="1">Open the register</button>' in _al_js
+      and "afterlossActiveFor(sql, g.circle.id, row.person_id)" in _fr_api)
+_al_ids = ["al-top", "al-wrap", "al-open", "al-panel", "al-head", "al-sorry", "al-legal", "al-person", "al-body", "al-pp-link"]
+_al_dyn = ["al-ask", "al-first", "al-onlyme", "al-progress", "al-reg"]
+check(f"afterloss: its ids start with al-, each is in the page once, and none is the alarm sheet's ({len(_al_ids)})",
+      all(_static_ids.count(i) == 1 for i in _al_ids)
+      and sorted(set(re.findall(r'\bid="(al-[a-z-]+)"', _al_js))) == _al_dyn
+      and not set(_al_ids + _al_dyn) & {"al-title", "al-sub", "al-done", "al-snooze", "al-close"})
+_al_copy = _al + " " + _al_js + " " + _al_html
+_al_hits = sorted({k for k, pat in BANNED.items() if re.search(pat, _al_copy.lower())})
+_al_dash = [lab for nd, lab in EM_FORMS + EN_FORMS if nd.lower() in (_al + _al_api + _al_js + _al_html).lower()]
+check("afterloss: every word passes the banned-words scan, with no dashes, no promise and no pity",
+      not _al_hits and not _al_dash
+      and not re.search(r"\b(guarantee|will be paid|entitled|legally|by law|tragic|suffer|alas)\b", _al_copy, re.I),
+      ", ".join(_al_hits + _al_dash))
+_testdb_al = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("afterloss: the unit test is in the gate, and both database tests run in test:db",
+      "node site/tests/afterlosstest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and "node --import ./site/tests/db/register.mjs site/tests/db/afterloss.dbtest.mjs" in _testdb_al
+      and "node --import ./site/tests/db/register.mjs site/tests/db/afterloss.e2e.dbtest.mjs" in _testdb_al
+      and (REPO / "site/tests/db/afterloss.dbtest.mjs").exists() and (REPO / "site/tests/db/afterloss.e2e.dbtest.mjs").exists())
+# ---------- The wider family: linked families, family facts, days of remembrance ----------
+_wf_link = (API_DIR / "_famlink.mjs").read_text(encoding="utf-8")
+_wf_fact = (API_DIR / "_famfacts.mjs").read_text(encoding="utf-8")
+_wf_rem = (API_DIR / "_remember.mjs").read_text(encoding="utf-8")
+_wf_rules = (API_DIR / "_rememberrules.mjs").read_text(encoding="utf-8")
+_wf_kin = (API_DIR / "_kin.mjs").read_text(encoding="utf-8")
+_wf_circ = (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+_wf_evt = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_wf_app = _app_src
+_wf_code = lambda src: re.sub(r"(?m)^\s*//.*$", "", src)
+check("wider: no new function; three modules behind /api/circle, handed their actions by prefix",
+      all((API_DIR / f).exists() for f in ("_famlink.mjs", "_famfacts.mjs", "_remember.mjs"))
+      and not any((API_DIR / f).exists() for f in ("famlink.mjs", "famfacts.mjs", "remember.mjs", "link.mjs", "facts.mjs"))
+      and "famlinkAction(sql, req, circle, mRow[0], req.body)" in _wf_circ and "famfactsAction(sql, circle, mRow[0], req.body)" in _wf_circ
+      and "rememberAction(sql, circle, mRow[0], req.body)" in _wf_circ
+      and all(a in _wf_circ for a in ("'link_state'", "'link_request'", "'link_approve'", "'link_decline'", "'link_end'", "'fact_list'", "'fact_add'", "'fact_edit'", "'fact_remove'", "'remember_mark'", "'remember_undo'")))
+check("wider: the caller is proved to be a member of this family before any of the three is asked",
+      _wf_circ.index("const widerOf = ") < _wf_circ.index("await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name, role, dob, place, country`)") < _wf_circ.index("await famlinkAction("))
+check("wider: each module makes its own tables through schemaOnce",
+      all("await schemaOnce(() => " in m for m in (_wf_link, _wf_fact, _wf_rem))
+      and "create table if not exists family_links" in _wf_link and "create table if not exists family_facts" in _wf_fact
+      and "create table if not exists remember_sent" in _wf_rem and "alter table members add column if not exists passed_year int" in _wf_rem)
+_wf_people = _wf_link[_wf_link.index("async function peopleOf("):_wf_link.index("async function linkState(")]
+check("links: one read of the other family, and it names only what may cross",
+      _wf_code(_wf_link).count("from members where circle_id = ${circleId}") == 1
+      and "select id, name, gender, parent_id, spouse_id, to_char(dob, 'YYYY') as born, place," in _wf_people
+      and "case when ${!!withPhones}::boolean then phone else null end as phone" in _wf_people
+      and not re.search(r"\b(dob|relation|gift_info|country|role|user_id|remembered|passed_|remember_line|created_at)\b", _wf_people.replace("to_char(dob, 'YYYY') as born", "").replace("order by created_at, id", "")))
+check("links: nothing else of a family is ever read by the link module",
+      set(re.findall(r"(?:from|join|into|update)\s+([a-z_]+)\b", _wf_code(_wf_link))) <= {"family_links", "circles", "members", "events"}
+      and not re.search(r"family_links|famlink", _wf_code(_wf_fact)))
+check("links: a yes from an adult of the other family, either side ends it, six at most, one per pair",
+      "if (iAmA || l.status !== 'pending') return bad('That request has already been dealt with', 404);" in _wf_link
+      and "if (!adult()) return bad('An adult in the family answers this.', 403);" in _wf_link
+      and "export const LINKS_MAX = 6;" in _wf_link and _wf_link.count("activeCount(sql, ") >= 3
+      and "least(a_circle, b_circle), greatest(a_circle, b_circle)" in _wf_link and "where status in ('pending', 'active')" in _wf_link
+      and "set status = 'ended', ended_by = ${me.id}, ended_at = now()" in _wf_link and "rateLimit(sql, 'join', clientIp(req), 12, 600, { failClosed: true })" in _wf_link)
+check("links: asking is counted and fails closed: the join bucket per address, 10 tries a day per family (wrong codes too), 3 a day per pair, 6 a day reaching one family, 7 days after a no or a withdrawal",
+      "export const LINK_LIMITS = { perDay: 10, perPairDay: 3, incomingDay: 6, coolDays: 7 };" in _wf_link
+      and "rateLimit(sql, 'link_ask', circle.id, LINK_LIMITS.perDay, 86400, { failClosed: true })" in _wf_link
+      and "rateLimit(sql, 'link_pair', circle.id + ':' + other.id, LINK_LIMITS.perPairDay, 86400, { failClosed: true })" in _wf_link
+      and "rateLimit(sql, 'link_in', other.id, LINK_LIMITS.incomingDay, 86400, { failClosed: true })" in _wf_link
+      and _wf_link.count("{ failClosed: true }") == 4 and "rateLimit(sql, 'link'," not in _wf_link
+      and _wf_link.index("rateLimit(sql, 'link_ask'") < _wf_link.index("const other = await circleByCode(sql, body.otherCode);") < _wf_link.index("rateLimit(sql, 'link_in'") < _wf_link.index("insert into family_links (a_circle, b_circle, a_member, b_member, b_name, a_phones, asked_by)")
+      and "rateLimit(sql, 'join', clientIp(req), 12, 600)" in (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+      and "(status = 'ended' and decided_at is null and ended_at > now() - make_interval(days => ${LINK_LIMITS.coolDays}))" in _wf_link
+      and _wf_link.count("return slow();") == 4)
+check("links: the two trees are joined in memory, by a pure function with ids that cannot collide",
+      "export function joinGraphs(own, other, bridge, prefix = LINK_PREFIX)" in _wf_kin and "export function kinLinked(" in _wf_kin
+      and "export const LINK_MAX_PEOPLE = 400;" in _wf_kin and not re.search(r"(?m)^import ", _wf_kin)
+      and "kinLinked(ownShape, people.map(shape), { own: mine, other: theirs }, me.id," in _wf_link
+      and "dob: p.born ? p.born + '-01-01' : null" in _wf_link)
+check("facts: who reads a fact, and who may change it, is said in SQL",
+      _wf_fact.count("f.by_member = ${me.id} or f.audience = 'family' or (f.audience = 'chosen' and ${me.id}::uuid = any(f.chosen))") == 2
+      and _wf_fact.count("or (${elder}::boolean and (f.audience = 'family' or (f.audience = 'chosen' and ${me.id}::uuid = any(f.chosen)))))") == 2
+      and "check (audience in ('family', 'chosen', 'me'))" in _wf_fact and "audience text not null default 'family'" in _wf_fact
+      and "export const FACT_CUSTOMS_MAX = 20;" in _wf_fact and "['custom', 'A custom worth writing down', 600]" in _wf_fact)
+check("facts: every text passes the notes rule (no card number, CVV, OTP or banking PIN)",
+      "import { noteRisk } from './_notesapi.mjs';" in _wf_fact and _wf_fact.count("const risk = noteRisk(text);") == 2
+      and "const risk = noteRisk(line);" in _wf_rem)
+check("remembrance: only an adult marks or undoes (the marked person may undo their own mark, never set it), with the year at least",
+      "if (!selfUndo && !isAdult(me.dob, today)) return bad('An adult in the family does this.', 403);" in _wf_rem
+      and "const selfUndo = a === 'remember_undo' && body.targetId === me.id;" in _wf_rem
+      and "if (t.id === me.id && !selfUndo) return bad('This is for someone else in the family.');" in _wf_rem
+      and "const selfUndo = !body.on && t.id === me.id;" in _mb_api
+      and "if (t.id === me.id && !selfUndo) return bad(400," in _mb_api
+      and _wf_rem.index("if (!selfUndo && !isAdult(me.dob, today))") < _wf_rem.index("if (a === 'remember_mark')") < _wf_rem.index("if (a === 'remember_undo')")
+      and "if (year === null) return { error: 'Write the year." in _wf_rules and not re.search(r"(?m)^import ", _wf_rules))
+check("remembrance: marking destroys nothing undo cannot restore: the check-in time is never cleared",
+      not re.search(r"set\s+checkin_by\s*=\s*null", _wf_rem) and "checkin_ask = null" not in _wf_rem
+      and "Their check-in time is NOT cleared" in _wf_rem)
+check("remembrance: someone who used Parwah in the last 30 days is not marked by one person; one rule for both ways in; a marked person on Parwah is told once",
+      "export const REMEMBER_RECENT_DAYS = 30;" in _wf_rem
+      and "if (!t.remembered && await rememberRecent(sql, t)) return bad(rememberRecentWhy(t.name), 409, { recent: true });" in _wf_rem
+      and "' used Parwah recently. If this is right, ask them or an elder to check.'" in _wf_rem
+      and "if (await rememberRecent(sql, full)) return bad(409, rememberRecentWhy(t.name));" in _mb_api
+      and "' marked you as no longer with us. If this is a mistake, open Parwah to undo it.'" in _wf_rem
+      and "rateLimit(sql, 'remember_tell', me.id + ':' + target.id, 3, 3600, { failClosed: true })" in _wf_rem
+      and _wf_rem.count("await rememberTell(sql, circle.id, me, t);") == 1 and "await rememberTell(sql, circle.id, me, full);" in _mb_api)
+check("remembrance: every sweep that would chase or name a remembered person skips them (check-ins, doses, tasks, the call rota, cards)",
+      _fc_api.count("and not m.remembered") >= 2
+      and _dz.count("and not exists (select 1 from members m where m.id = d.person_id and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 2
+      and _tasksrc.count("and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 2
+      and _fc_api.count("and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 1
+      and "if (!who || who.remembered || (who2 && who2.remembered) || dstr(c.date) > todayFor(who)) continue;" in (API_DIR / "_bond.mjs").read_text(encoding="utf-8"))
+check("remembrance: my own sheet offers to take a mistaken mark off, and never to set one",
+      "$('rm-mp-open').hidden = (self && !gone) || !fam;" in _app_src and "This is a mistake. Take the mark off" in _app_src
+      and "if (state && id === state.memberId) { rmUndoAsk(" in _app_src)
+check("remembrance: the reminder is claimed once per person per year, and is wired into the timer",
+      "primary key (member_id, year)" in _wf_rem and "on conflict do nothing returning member_id" in _wf_rem
+      and "events += await one(() => sweepRemember(sql, id));" in _wf_evt
+      and "where remembered and passed_month is not null and passed_day is not null limit 500`)" in _wf_evt
+      and "remembrance: rememberToday(members)" in _wf_evt and "export const REMEMBER_EVE_HOUR = 18;" in _wf_rules)
+_wf_bond = (API_DIR / "_bond.mjs").read_text(encoding="utf-8")
+_wf_fc = (API_DIR / "_familycare.mjs").read_text(encoding="utf-8")
+_wf_ps = (API_DIR / "_pasand.mjs").read_text(encoding="utf-8")
+check("remembrance: no birthday or anniversary card, no check-in, no recommendation for someone remembered",
+      "if (!m.dob || m.remembered) continue;" in _wf_bond and "if (m.remembered || w.remembered) continue;" in _wf_bond
+      and _wf_fc.count("and not m.remembered") == 2 and "is remembered here, so is not asked" in _wf_fc
+      and "others.filter(m => m.user_id && !m.remembered)" in _wf_ps and "is remembered here, so is not sent recommendations." in _wf_ps
+      and "delete from cards where circle_id = ${circle.id} and auto_key is not null and delivered_at is null" in _wf_rem)
+check("remembrance: the words are gentle and plain, never clinical, on the server and in the app",
+      not re.search(r"(?i)\b(deceased|death anniversary|died|dead|expired|demise)\b", _wf_code(_wf_rem) + _wf_code(_wf_rules))
+      and "day of remembrance." in _wf_rules and "var RM_MARK = '🪔 No longer with us';" in _wf_app
+      and not re.search(r"(?i)\b(deceased|died|dead)\b", _wf_app[_wf_app.index('id="rm-sheet"'):_wf_app.index('id="asksheet"')]))
+check("remembrance: every list of people asks one helper, and the marker is words, not a colour alone",
+      "function onApp(m){ return !!m && m.on_app !== false && !rmGone(m); }" in _wf_app and "function rmTag(m)" in _wf_app
+      and _wf_app.count("if (!m.dob || rmGone(m)) return;") == 2 and "esc(rmTag(m)) + '</small></button>';" in _wf_app
+      and '<b>🪔 No longer with us</b>' in _wf_app and "rmRenderToday(data.remembrance);" in _wf_app)
+check("wider: the linked tree is read only, and Rishtedaar gains the other family in the same groups",
+      "var far = flRzRows(g[0], q);" in _wf_app and 'id="fl-trees"' in _wf_app and "Linked family: ' + esc(l.name)" in _wf_app
+      and "data-mprof" not in _wf_app[_wf_app.index("function flPerson(l, p)"):_wf_app.index("function flRenderTrees()")]
+      and "Nothing else is shared: no chats, no papers, no health, no location." in _wf_app)
+check("wider: loading, empty with a first step, error and offline are all said; errors go through humanFail",
+      all(t in _wf_app for t in ("Loading linked families…", "No linked family yet. Ask a related family for their family code.", "You are offline. Linked families will show when the internet is back.",
+                                 "Loading family facts…", "Nothing is written down yet. Start with one thing you know", "You are offline. Family facts will show when the internet is back.",
+                                 "humanFail(j && j.error, 'Could not load linked families. Try again in a moment.')", "humanFail(j && j.error, 'Could not load family facts. Try again in a moment.')",
+                                 "humanFail(j.error, 'Could not save this. Try again in a moment.')")))
+_wf_ids = [i for i in _static_ids if i.startswith(("fl-", "ff-", "rm-"))]
+check(f"wider: its new ids start with fl-, ff- or rm-, and none is used twice ({len(_wf_ids)})",
+      len(_wf_ids) >= 45 and all(_wf_ids.count(i) == 1 for i in _wf_ids))
+_wf_db = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+_wf_e2e = (REPO / "site/tests/db/widerfamily.e2e.dbtest.mjs").read_text(encoding="utf-8")
+# Other features add their tests too, so this never asks to be the last entry.
+check("wider: the unit test is in the gate, and both database tests are in test:db, in order",
+      "node site/tests/widerfamilytest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and "site/tests/db/widerfamily.dbtest.mjs && node --import ./site/tests/db/register.mjs site/tests/db/widerfamily.e2e.dbtest.mjs" in _wf_db)
+check("wider: the browser test waits for what it checks, never for a fixed time",
+      "waitForTimeout" not in _wf_e2e and "waitForFunction" in _wf_e2e and "waitForSelector" in _wf_e2e and _wf_e2e.count("await design(") >= 15)
+check("wider: the design review is written down",
+      "the wider family: linked families, family facts, days of remembrance (2026-11-12)" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
+# ---------- 10z. Yaadon ki album: the family photo album ----------
+# Proved in albumrulestest (the rules), album.dbtest (the handler on
+# PostgreSQL) and album.e2e (real phones). These guard what must not drift:
+# only a JPEG is kept and the sender's word for the type is never read; the
+# bytes are served private, through the signed-in route; who sees a photo is
+# said in every query; the bytes are touched in two functions only, so a
+# move to file storage is one change; and the add sheet says the location
+# is removed.
+_ab = (API_DIR / "_album.mjs").read_text(encoding="utf-8")
+_abr = (API_DIR / "_albumrules.mjs").read_text(encoding="utf-8")
+_ab_js = _app_src[_app_src.index("// ---------- Yaadon ki album: the family's own photos (api/_album.mjs)"):_app_src.index("// ---------- end of Yaadon ki album (api/_album.mjs)")]
+_ab_html = _app_src[_app_src.index('<div id="ab-root" hidden>'):_app_src.index('<div id="book-list-view">')] \
+    + _app_src[_app_src.index('<div class="abview" id="ab-viewer"'):_app_src.index('<!-- FAMILY MEMORY sheets (api/_memorybond.mjs)')] \
+    + _app_src[_app_src.index('<div class="card" id="ab-pp-card"'):_app_src.index('<div class="card"><h3>💡 Useful to know</h3>')]
+_ab_code = "\n".join(l for l in _ab.splitlines() if not l.strip().startswith("//"))
+def _ab_fn(name):
+    _i = _ab_code.index("export async function " + name + "(")
+    return _ab_code[_i:_ab_code.index("\n}\n", _i) + 3]
+_ab_put, _ab_get = _ab_fn("albumPutBytes"), _ab_fn("albumGetBytes")
+_ab_tables = _ab_code[_ab_code.index("async function albumTables(sql)"):]
+_ab_tables = _ab_tables[:_ab_tables.index("\n}\n") + 3]
+_AB_AUD = "(a.audience = 'family' or a.by_member = ${me.id} or (a.audience = 'chosen' and ${me.id}::uuid = any(a.chosen)))"
+check("album: it rides /api/book?area=album in an underscore module, never a new serverless function",
+      "import albumApi from './_album.mjs';" in (API_DIR / "book.mjs").read_text(encoding="utf-8")
+      and "if (area === 'album') return albumApi(req, res);" in (API_DIR / "book.mjs").read_text(encoding="utf-8")
+      and "var AB_API = '/api/book?area=album';" in _ab_js and not (API_DIR / "album.mjs").exists()
+      and not re.search(r"^\s*import\s", _abr, re.M))
+check("album: only a JPEG is kept: the first bytes are read, and the size, the pixels and camera details are checked",
+      "b[0] !== 0xFF || b[1] !== 0xD8 || b[2] !== 0xFF" in _abr and "export function imageError(bytes, kind)" in _abr
+      and "bytes.length > maxBytes" in _abr and "if (info.exif)" in _abr
+      and "photoBytes: 600000" in _abr and "thumbBytes: 40000" in _abr
+      and "imageError(pBytes, 'photo') || imageError(tBytes, 'thumb')" in _ab)
+check("album: any APP1 (Exif or XMP) and any APP13 (IPTC, Photoshop) segment is refused, not only one labelled Exif",
+      "if (m === 0xE1 || m === 0xED) exif = true;" in _abr and "b[i + 4] === 0x45 && b[i + 5] === 0x78" not in _abr)
+check("album: a tag its owner took off is remembered, and whoever added the photo cannot put it back",
+      "create table if not exists album_untagged" in _ab
+      and "insert into album_untagged (photo_id, member_id) values (${p.id}, ${me.id}) on conflict do nothing" in _ab
+      and "if (took[0]) return bad(took[0].name + ' took their name off this photo, so it stays off.', 409);" in _ab
+      and _ab.index("if (took[0]) return bad(") < _ab.index("update album_photos set caption = ${words.caption}"))
+check("remembered people are refused by the server as a chosen audience (family facts, albums) and as the person given an after-loss step; a photo tag is still allowed",
+      "if (lost) return { error: lost.name + ' is remembered here, so cannot be chosen.' };" in _wf_fact
+      and "if (lost) return bad(lost.name + ' is remembered here, so cannot be chosen.');" in _ab
+      and "remembered" not in _ab.split("const peopleOf = async (list) => {")[1].split("const wordsOf")[0]
+      and "if (m.remembered) return res.status(400).json({ ok: false, error: m.name + ' is remembered here, so cannot be given a step.' });" in _al_api
+      and "if (m.remembered) return bad(m.name + ' is remembered here, so is not sent recommendations.');" in (API_DIR / "_pasand.mjs").read_text(encoding="utf-8"))
+check("album: the sender's word for the type is never read; the server states image/jpeg itself",
+      not re.search(r"\b(?:it|photo)\.(?:mime|type|contentType|fileMime|fileName|name)\b|\bbody\.(?:mime|type|contentType|fileMime|fileName)\b", _ab_code)
+      and "content-type" not in _ab_code.lower().replace("res.setheader('content-type', 'image/jpeg')", "").replace("x-content-type-options", "")
+      and "res.setHeader('Content-Type', 'image/jpeg');" in _ab and "res.setHeader('X-Content-Type-Options', 'nosniff');" in _ab)
+check("album: a photo is served private, asked for again each time, and never as a public or shared address",
+      "res.setHeader('Cache-Control', 'private, no-cache');" in _ab and _ab_code.count("Cache-Control") == 1
+      and "public" not in _ab_code.lower() and "res.setHeader('Vary', 'X-Parwah-Token');" in _ab
+      and "headers: authHeaders({})" in _ab_js.split("function albumFetch(")[1][:500]
+      and "URL.createObjectURL(b)" in _ab_js.split("function albumFetch(")[1][:900]
+      and "navigator.share" not in _ab_js and "wa.me" not in _ab_js and not re.search(r"download all|public link", _ab_js + _ab_html, re.I))
+check(f"album: who may see a photo is decided in the query itself, every time one is read ({_ab_code.count(_AB_AUD)} queries)",
+      _ab_code.count(_AB_AUD) >= 6 and _AB_AUD.replace("${me.id}", "${meId}") in _ab_get
+      and all(_AB_AUD in _ab_code[m.start():m.start() + 1400] for m in re.finditer(r"from album_photos p\s+join album_albums a", _ab_code))
+      and "export function albumCanSee(album, viewerId)" in _abr)
+_ab_touch = [m.start() for m in re.finditer(r"album_bytes|\bb\.photo\b|\bb\.thumb\b|decode\(|encode\(", _ab_code)]
+_ab_ok = [(_ab_code.index(f), _ab_code.index(f) + len(f)) for f in (_ab_put, _ab_get, _ab_tables)]
+check("album: the picture bytes are read and written in two functions only, so a move to file storage is one change",
+      len(_ab_touch) >= 4 and all(any(a <= t < b for a, b in _ab_ok) for t in _ab_touch)
+      and "insert into album_bytes" in _ab_put and "from album_bytes b" in _ab_get
+      and "insert into album_bytes" not in _ab_tables and "select" not in _ab_put
+      and "THE ONLY TWO PLACES THE PICTURE BYTES ARE TOUCHED" in _ab
+      and all("album_bytes" not in f.read_text(encoding="utf-8") for f in API_DIR.glob("*.mjs") if f.name != "_album.mjs")
+      and "album_bytes" not in _app_src and "count, cap: ALBUM_MAX.perCircle" in _ab)
+check("album: the add sheet says the location is removed, and the browser makes every photo a fresh JPEG before sending",
+      "export const ALBUM_LOCATION_LINE = 'Parwah removes the location from your photos before saving them.';" in _abr
+      and "var AB_LOCATION = 'Parwah removes the location from your photos before saving them.';" in _ab_js
+      and "'<p class=\"hint ablead\" id=\"ab-a-loc\">' + AB_LOCATION + '</p>'" in _ab_js
+      and "var AB_STEPS = [[1600, 0.8]," in _ab_js and "var AB_THUMB_STEPS = [[320, 0.7]," in _ab_js
+      and "last.c.toBlob(res, 'image/jpeg', s[1])" in _ab_js and "if (b.size <= max)" in _ab_js
+      and "photoBytes: 600000, thumbBytes: 40000, photoSide: 1600, thumbSide: 320, perRequest: 6" in _ab_js
+      and 'accept="image/*" multiple hidden' in _ab_js and 'accept="image/*" capture="environment" hidden' in _ab_js)
+check("album: 400 a circle, 6 a request, 60 an hour failing closed, and one request stays under Vercel's body limit",
+      "perCircle: 400" in _abr and "perRequest: 6" in _abr and "perHour: 60" in _abr and "requestBytes: 3200000" in _abr
+      and "rateLimit(sql, 'album_up', me.id, ALBUM_MAX.perHour, 3600, { failClosed: true })" in _ab
+      and "where (select count(*) from album_photos where circle_id = ${circle.id}) < ${ALBUM_MAX.perCircle}" in _ab
+      and "capError(before, items.length)" in _ab and "list.length > ALBUM_MAX.perRequest" in _ab and "total > ALBUM_MAX.requestBytes" in _ab)
+check("album: tables through schemaOnce, every call through requireMember, ids through isUuid, failures through _fail",
+      "schemaOnce(() => albumTables(sql))" in _ab and "requireMember(sql, code, memberId, tokenOf(req))" in _ab
+      and _ab.count("isUuid(") >= 4 and "return fail(res, e);" in _ab and "return failDb(res, e);" in _ab
+      and "noteRisk(caption.value)" in _ab and "noteRisk(name.value)" in _ab)
+check("album: Today shows one older photo a week and never pushes; a person's page and Family Memory draw it too",
+      "pushCircle" not in _ab and "weeklyPick(me.id, today, cands.map(c => c.id))" in _ab
+      and "primary key (member_id, week)" in _ab_tables
+      and "\n    albumTodayLoad();\n" in _app_src and "\n    albumPersonRender(id);\n" in _app_src
+      and 'id="ab-today"' in _app_src and 'data-mbv="album"' in _app_src and "if (album) { albumLoad(); return; }" in _app_src
+      and "<b>A photo from ' + esc(String(t.year)) + '</b>" in _ab_js)
+check("album: removing asks first, errors go through humanFail, and every picture has alt text",
+      _ab_js.count("askSheet(") >= 2 and "humanFail(j.error, 'That did not work. Try again.')" in _ab_js.split("function abPost(")[1][:900]
+      and "'<img alt=\"' + esc(p.alt) + '\" data-abimg=" in _ab_js and "img.alt = p.alt;" in _ab_js
+      and "alt: albumAlt(p.caption, people.map(x => x.name), p.taken_year)" in _ab
+      and "You are offline. The album will show when you are back online." in _ab_js and "Loading the album…" in _ab_js
+      and "No photos yet." in _ab_js and "data-abqretry" in _ab_js)
+_ab_static = [i for i in _static_ids if i.startswith("ab-")]
+check(f"album: its ids all start with ab-, each used once ({len(_ab_static)}), and its functions start with album or ab",
+      len(_ab_static) >= 20 and all(_ab_static.count(i) == 1 for i in _ab_static)
+      and all(re.match(r"(album[A-Z]|ab[A-Z])", f) for f in re.findall(r"\n  function ([A-Za-z0-9_]+)\(", _ab_js)))
+_ab_hits = sorted({k for k, pat in BANNED.items() if re.search(pat, (_ab_js + " " + _ab_html + " " + _ab + " " + _abr).lower())})
+_ab_dash = [lab for nd, lab in EM_FORMS + EN_FORMS if nd.lower() in (_ab_js + _ab_html + _ab + _abr).lower()]
+check("album: its screens, messages and comments pass the banned-words scan, with no dashes",
+      not _ab_hits and not _ab_dash, ", ".join(_ab_hits + _ab_dash))
+_ab_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("album: the rules test runs in the gate, and the db and browser tests run in test:db",
+      "node site/tests/albumrulestest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all("site/tests/db/" + f in _ab_testdb and (REPO / "site/tests/db" / f).exists() for f in ("album.dbtest.mjs", "album.e2e.dbtest.mjs")))
+check("album: the coverage map says it is live, with no storage account, and its review is written down",
+      "| A shared family photo album | Live |" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
+      and "the family photo album" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
+# ---------- 10z. "Aaj kya hua": the daily digest from Ekta ----------
+# The owner accepted a small AI cost for this one feature. These checks keep
+# it small: only the list is sent, one call per member per day, a cap per
+# circle, never from the timer, and the plain version always there.
+_dg = (API_DIR / "_digest.mjs").read_text(encoding="utf-8")
+_dgr = (API_DIR / "_digestrules.mjs").read_text(encoding="utf-8")
+_dg_ekta = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
+_dg_ev = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_dg_fn = lambda src, name: src[src.index(name):].split("\n}\n", 1)[0]
+_dg_sweep = _dg_fn(_dg, "export async function digestSweep(")
+_dg_gather = _dg_fn(_dg, "export async function digestGather(")
+_dg_ask = _dg_fn(_dg, "async function digestAskModel(")
+_dg_by = _dg_fn(_dg, "async function digestByModel(")
+_dg_open = _dg_fn(_dg, "export async function digestOpen(")
+check("digest: it rides /api/ekta in underscore modules, after requireMember, never a new serverless function",
+      not (API_DIR / "digest.mjs").exists() and "/^digest(_|$)/.test(req.body.action)" in _dg_ekta
+      and "const { digestHandle } = await import('./_digest.mjs');" in _dg_ekta
+      and _dg_ekta.index("requireMember(sql, code, memberId, tokenOf(req))") < _dg_ekta.index("digestHandle(sql, circle, me, req, res)")
+      and _dg_ekta.index("digestHandle(sql, circle, me, req, res)") < _dg_ekta.index("await spend(sql, circle.id, me.id, 'ekta')"))
+check("digest: the rules module imports nothing, so the gate can test it before npm install",
+      not re.search(r"^\s*import\s", _dgr, flags=re.M) and "await import(" not in _dgr and "require(" not in _dgr
+      and "node site/tests/digesttest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
+check("digest: ONLY THE LIST IS SENT - the prompt is built from the facts' sentences and nothing else",
+      "list.map((f, i) => (i + 1) + '. ' + f.text).join('\\n')" in _dgr
+      and "const sent = facts.slice(0, 8), prompt = digestPrompt(sent);" in _dg_ask
+      and "({ system: prompt.system, user: prompt.user, maxTokens: DG.maxTokens, timeoutMs: ms })" in _dg_ask
+      and not re.search(r"\b(raw|row|sql|me\.|circle\.|phone|email)\b", _dg_ask.split("try {", 1)[1].split("} catch", 1)[0]))
+check("digest: what is gathered is only what the viewer may open - each feature's own rule is in the SQL, and notes, the vault, the register and health numbers are never read",
+      "b.visibility = 'circle' or b.about_member = ${mid} or b.by_member = ${mid}" in _dg_gather
+      and "s.visibility = 'circle' or s.about_member = ${mid} or (s.visibility = 'some' and ${mid} = any(s.share_with))" in _dg_gather
+      and "join pasand_rec_to t on t.rec_id = r.id and t.member_id = ${mid}" in _dg_gather
+      and "for_member is distinct from ${mid} and for_member2 is distinct from ${mid}" in _dg_gather
+      and not re.search(r"from\s+(notes|vault_\w+|legacy_asset_\w+|biomarker_records|pulse|messages|care_bills|care_expenses|pay_\w+|book_consent)\b", _dg)
+      and "b.name" not in _dg_gather and "answer_text" not in _dg and "export function digestMaySee(" in _dgr)
+check("digest: ONE CALL PER MEMBER PER DAY - the row is claimed final once, and only the claimer may ask the model",
+      "primary key (member_id, day)" in _dg and "where digest_daily.final = false" in _dg_open
+      and "if (mine[0] && evening) row = await digestByModel(" in _dg_open and _dg.count("digestByModel(") == 2
+      and _dg.count("digestAskModel(") == 2 and "set model_tried = true" in _dg_by)
+check("digest: THE CAP - 12 model calls a circle a day, taken in one statement, counted where the owner can read it",
+      "capPerCircle: 12" in _dgr and "create table if not exists digest_usage" in _dg
+      and "do update set calls = digest_usage.calls + 1" in _dg_by and "where digest_usage.calls < ${DG.capPerCircle}" in _dg_by
+      and "if (!slot[0]) return null;" in _dg_by and _dg_by.index("if (!slot[0]) return null;") < _dg_by.index("digestAskModel(facts")
+      and "set written = written + 1" in _dg_by)
+check("digest: only with the server's own key, only in the evening, never for a quiet day, and no coins are charged",
+      "if (!facts.length || !process.env.ANTHROPIC_API_KEY) return null;" in _dg_by and "eveningHour: 18" in _dgr
+      and "spend(" not in _dg and "from './_coins.mjs'" not in _dg and "NO COINS ARE CHARGED" in _dg)
+check("digest: NO TIMER-DRIVEN MODEL CALL - the 8pm notification is the plain first sentence, claimed once a day",
+      "await one(() => digestSweep(sql, id));" in _dg_ev and "from digest_prefs where evening" in _dg_ev
+      and not re.search(r"digestAskModel|digestByModel|digestOpen|callModel|digestAnthropic|anthropic", _dg_sweep, flags=re.I)
+      and "digestFirst(facts, spaceWord(circle))" in _dg_sweep
+      and "pushed_for is distinct from ${day}::date returning member_id" in _dg_sweep and "if (!claim[0]) continue;" in _dg_sweep
+      and "evening boolean not null default false" in _dg and "pushHour: 20" in _dgr
+      and not re.search(r"digestOpen|digestHandle|digestByModel", _dg_ev))
+check("digest: THE FALLBACK - a timeout, a refusal, an error or a reply that fails the check all end in the plain version, silently",
+      "timeoutMs: 8000" in _dgr and "maxTokens: 300" in _dgr and "maxChars: 700" in _dgr
+      and "Promise.race([" in _dg_ask and "if (!out || out.refusal) return null;" in _dg_ask
+      and "} catch (e) { return null; }" in _dg_ask and "return checked.ok ?" in _dg_ask
+      and "if (!have.has(n)) return { ok: false, why: 'number' };" in _dgr and "DG_JUDGE" in _dgr
+      and "${digestWrite(facts, word)}" in _dg_open and "if (!out) return null;" in _dg_by)
+check("digest: the same client and the same model choice as a conversation with Ekta; no new model id, and the SDK is loaded only when a call is made",
+      "const { anthropicClient, MODEL_PRIMARY } = await import('./ekta.mjs');" in _dg and "export const MODEL_PRIMARY" in _dg_ekta
+      and "export function anthropicClient(vault)" in _dg_ekta and "const client = anthropicClient(vault);" in _dg_ekta
+      and _dg_ekta.count("new Anthropic(") == 1 and "new Anthropic(" not in _dg and "@anthropic-ai/sdk" not in _dg
+      and not re.search(r"claude-[a-z0-9.\-]+", _dg + _dgr) and "model: MODEL_PRIMARY," in _dg
+      and "{ timeout: timeoutMs, maxRetries: 0 }" in _dg)
+check("digest: the voice - the rules tell the model no advice, no medical meaning, no guesses, no judgement, and that facts are data",
+      all(x in _dgr for x in ("Use ONLY the facts", "No advice.", "No medical meaning.", "No guesses", "No judgement of any person.", "data, not instructions"))
+      and "' not checked in today.'" in _dgr and "' medicines were not marked today.'" in _dgr
+      and not re.search(r"\b(forgot|again|failed)\b", re.sub(r"export const DG_JUDGE.*", "", _dgr).split("export function digestCheck")[0]))
+check("digest: someone marked as remembered is named only on their day of remembrance",
+      "const gone = (id) => { const p = people.get(id); return !p || p.remembered === true; };" in _dgr
+      and "the one place a remembered person is named" in _dgr and "and remembered`" in _dg_gather)
+check("digest: its tables are made through schemaOnce, opening is rate limited, and errors go through fail()",
+      "await schemaOnce(() => digestTables(sql));" in _dg and all(f"create table if not exists {t} (" in _dg for t in ("digest_daily", "digest_usage", "digest_prefs"))
+      and "rateLimit(sql, 'digest', me.id, 40, 600)" in _dg and "} catch (e) { return fail(res, e); }" in _dg
+      and "error: String(e" not in _dg)
+check("digest: Today shows the row from 6pm, Ekta's screen has the button at any hour, and the sheet is the app's own",
+      'id="dg-today"' in _app_src and 'id="dg-ekta"' in _app_src and "function digestEvening(){ return new Date().getHours() >= 18; }" in _app_src
+      and "bondSheet('Aaj kya hua'," in _app_src and "action: 'digest' }" in _app_src and "digestRenderToday();" in _app_src
+      and _app_src.index('id="ps-today"') < _app_src.index('id="dg-today"') < _app_src.index('id="fcquiet"'))
+check("digest: loading, error and offline each say so; errors go through humanFail; nothing is asked of the server until the row is opened",
+      "Ekta is putting today together." in _app_src and "humanFail(j && j.error, 'Could not load today\\'s note. Try again in a moment.')" in _app_src
+      and "You are offline. Aaj kya hua will load when the internet is back." in _app_src and 'id="dg-retry"' in _app_src
+      and _app_src.count("action: 'digest' }") == 1 and "function digestLoad(){" in _app_src
+      and "digestLoad" not in _app_src[_app_src.index("function digestRenderToday(){"):_app_src.index("function digestClockText(")])
+check("digest: thumbs are one per member per day, the evening setting starts off, and senior mode has the words only",
+      "action: 'digest_vote', vote: v" in _app_src and "action: 'digest_evening', on: on" in _app_src
+      and "set vote = ${v}, voted_at = now()" in _dg and "if (digestSenior()) return h;" in _app_src
+      and "Tell me each evening" in _app_src and "It is off until you turn it on." in _app_src
+      and "Written by Ekta from what you can see in the family today." in _dg)
+check("digest: one model call per member per UTC day as well as per local day, claimed before the circle's cap",
+      "create table if not exists digest_model_claim" in _dg
+      and "insert into digest_model_claim (member_id, day) values (${me.id}, ${utcDay}::date)" in _dg_by
+      and _dg_by.index("insert into digest_model_claim") < _dg_by.index("insert into digest_usage"))
+check("digest: if who is remembered cannot be read, nobody but the viewer may be named and no day of remembrance is announced",
+      "catch (e) { unsure = true; }" in _dg_gather
+      and "remembered: unsure ? p.id !== mid : remembered.has(p.id)" in _dg_gather
+      and "raw.remembrance = unsure ? [] :" in _dg_gather
+      and "q(() => sql`select id from members where circle_id = ${cid} and remembered`)" not in _dg)
+check("digest: tomorrow's day of remembrance uses the reminder's own rule on the person's own clock, never a month-and-day string match",
+      "import { remembranceDue } from './_rememberrules.mjs';" in _dg
+      and "remembranceDue({ year: m.passed_year, month: m.passed_month, day: m.passed_day }, nowMs + 86400000, placeOf(m.place, m.country, null).tz)" in _dg_gather
+      and "lpad(passed_month::text" not in _dg)
+_dg_static = [i for i in _static_ids if i.startswith("dg-")]
+_dg_all = set(re.findall(r'id="(dg-[a-z-]+)"', _app_src))
+check(f"digest: its ids all start with dg- ({len(_dg_all)}), none twice in the page, and its functions start with digest",
+      sorted(_dg_static) == ["dg-ekta", "dg-today"] and len(_dg_all) >= 12
+      and not re.findall(r"function dg\w*\(", _app_src)
+      and len(re.findall(r"function digest\w+\(", _app_src)) >= 10)
+_testdb_dg = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("digest: the rules test runs in the gate, and the db and browser tests run in test:db with no key and no network",
+      all(("site/tests/db/" + f) in _testdb_dg and (REPO / "site/tests/db" / f).exists() for f in ("digest.dbtest.mjs", "digest.e2e.dbtest.mjs"))
+      and all("globalThis.fetch = async" in (REPO / "site/tests/db" / f).read_text(encoding="utf-8")
+              and "digestSeams.callModel" in (REPO / "site/tests/db" / f).read_text(encoding="utf-8")
+              and "waitForTimeout" not in (REPO / "site/tests/db" / f).read_text(encoding="utf-8")
+              for f in ("digest.dbtest.mjs", "digest.e2e.dbtest.mjs"))
+      and "getHours()" not in (REPO / "site/tests/db/digest.dbtest.mjs").read_text(encoding="utf-8"))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

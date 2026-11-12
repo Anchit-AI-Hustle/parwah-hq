@@ -320,6 +320,17 @@ let given;
   await admin.query(`update requests set due_at = now() - interval '40 minutes', overdue_alerted_for = null where id = $1`, [alarm.id]);
   await sweepOverdue(sql, sharma);
   ok('but is after 30 minutes', (await admin.query(`select count(*)::int as n from events where text like 'Running late%Wake up%'`)).rows[0].n === 1);
+  // A task about someone since marked as remembered is never chased.
+  await admin.query(`alter table members add column if not exists remembered boolean not null default false`);
+  const forPapa = await act(meera, 'task_create', { title: 'Book the eye test', ownerId: 'me', aboutMemberId: papa.id, dueAt: at(1), tz: IN, remindBefore: 0 });
+  await admin.query(`update requests set due_at = now() - interval '1 minute' where id = $1`, [forPapa.id]);
+  await admin.query(`update members set remembered = true where id = $1`, [papa.id]);
+  ok('no reminder for a task about someone who is remembered', (await row(forPapa.id)).about_member === papa.id && (await sweepReminders(sql, sharma)) === 0 && (await row(forPapa.id)).reminded_for === null);
+  await admin.query(`update requests set due_at = now() - interval '40 minutes' where id = $1`, [forPapa.id]);
+  ok('and it is never announced as running late', (await sweepOverdue(sql, sharma)) === 0 && (await row(forPapa.id)).overdue_alerted_for === null
+     && (await admin.query(`select count(*)::int as n from events where text like 'Running late%eye test%'`)).rows[0].n === 0);
+  await admin.query(`update members set remembered = false where id = $1`, [papa.id]);
+  ok('with the mark off, the same task is chased again', (await sweepOverdue(sql, sharma)) === 1 && (await row(forPapa.id)).overdue_alerted_for !== null);
   // A reminder long missed is dropped, not sent late.
   const missed = await act(meera, 'task_create', { title: 'Missed one', ownerId: 'me', dueAt: at(1), tz: IN, remindBefore: 0 });
   await admin.query(`update requests set due_at = now() - interval '2 hours' where id = $1`, [missed.id]);

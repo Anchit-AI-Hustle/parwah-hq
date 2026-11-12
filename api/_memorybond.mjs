@@ -725,9 +725,27 @@ export default async function bondApi(req, res) {
     if (action === 'remembered') {
       const t = await memberIn(body.targetId);
       if (!t) return bad(403, 'That person is not in this ' + word);
-      if (t.id === me.id) return bad(400, 'This is for someone the ' + word + ' remembers');
+      // The same rules as days of remembrance (api/_remember.mjs). The
+      // marked person may take their own mark off: they are here, so it was
+      // a mistake. Nobody marks themself.
+      const selfUndo = !body.on && t.id === me.id;
+      if (t.id === me.id && !selfUndo) return bad(400, 'This is for someone the ' + word + ' remembers');
+      // Otherwise it is set, or taken back, by an adult who is on Parwah.
+      const { isAdult } = await import('./_rememberrules.mjs');
+      const mine = (await sql`select dob, user_id from members where id = ${me.id}`)[0] || {};
+      if (!selfUndo && (!mine.user_id || !isAdult(mine.dob, new Date().toISOString().slice(0, 10)))) return bad(403, 'An adult in the ' + word + ' can mark this.');
+      if (body.on && !t.remembered) {
+        // Someone who used Parwah in the last 30 days is not marked by one
+        // person alone; someone on Parwah who is marked is told, once.
+        const { rememberRecent, rememberRecentWhy, rememberTell } = await import('./_remember.mjs');
+        const full = (await sql`select id, name, user_id from members where id = ${t.id}`)[0];
+        if (await rememberRecent(sql, full)) return bad(409, rememberRecentWhy(t.name));
+        await sql`update members set remembered = true where id = ${t.id}`;
+        await sql`update story_tellers set status = 'no', decided_at = now() where member_id = ${t.id}`;
+        await rememberTell(sql, circle.id, me, full);
+        return res.status(200).json({ ok: true });
+      }
       await sql`update members set remembered = ${!!body.on} where id = ${t.id}`;
-      if (body.on) await sql`update story_tellers set status = 'no', decided_at = now() where member_id = ${t.id}`;
       return res.status(200).json({ ok: true });
     }
     if (action === 'nudge_act') {

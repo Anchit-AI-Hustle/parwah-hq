@@ -3,6 +3,8 @@
 // room; every plan renders in each member's local timezone client-side.
 // GET  /api/plans?circle=CODE&member=UUID → { ok, plans[] } (upcoming)
 // POST /api/plans {code, memberId, action:'create'|'rsvp'|'cancel', ...}
+// GET  /api/plans?area=split&plan=UUID, POST {action:'split_*'}: the costs of
+//      one plan (api/_split.mjs)
 import { randomBytes } from 'node:crypto';
 import { db, ensureSchema, circleByCode, isUuid , requireMember, schemaOnce } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
@@ -13,8 +15,12 @@ import { pushCircle } from './_push.mjs';
 import { ensureVisitSchema, visitState, visitAction } from './_visits.mjs';
 import { reqTz } from './_recur.mjs';
 import { ensureBondSchema, bondState, bondAction, cardRead, entryAudio } from './_bond.mjs';
+import { TOGETHER_KIND, ensureTogetherSchema, togetherPrepare, togetherAnswer, isTogetherAnswer } from './_together.mjs';
+import { ensureSplitSchema, splitState, splitAction, splitSettling } from './_split.mjs';
 
-const KINDS = ['call', 'party', 'meet', 'appointment', 'function', 'trip', 'other'];
+// `together` is watch or listen together (api/_together.mjs): a plan that
+// carries a platform and one https link.
+const KINDS = ['call', 'party', 'meet', 'appointment', 'function', 'trip', 'other', TOGETHER_KIND];
 
 async function feed(sql, circleId, memberId, text) {
   await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'care', ${text})`;
@@ -51,6 +57,10 @@ export default async function handler(req, res) {
     await sql`alter table plans add column if not exists expected int`;
     await sql`alter table plans add column if not exists reminded_at timestamptz`;
     });
+    // The columns a `together` plan carries, and the tables for splitting a
+    // cost: each through schemaOnce, after the plans table they hang from.
+    await ensureTogetherSchema(sql);
+    await ensureSplitSchema(sql);
     plansReady = true;
   } catch (e) { return failDb(res, e); }
 
@@ -95,15 +105,42 @@ export default async function handler(req, res) {
       return res.status(out.status).json(out.json);
     }
 
+    // Splitting the cost of a trip or a function (api/_split.mjs): who paid
+    // what, who owes whom, and a two-sided "paid" and "received". Parwah
+    // never moves money.
+    if (area === 'split' || (typeof body.action === 'string' && /^split_/.test(body.action))) {
+      if (req.method === 'GET') {
+        const r = await splitState(sql, circle, me, q.plan);
+        return res.status(r.status).json(r.json);
+      }
+      if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return res.status(405).json({ ok: false, error: 'GET or POST only' }); }
+      const out = await splitAction(sql, circle, me, body);
+      return res.status(out.status).json(out.json);
+    }
+
     if (req.method === 'GET') {
       const plans = await sql`
         select p.id, p.title, p.kind, p.at, p.place, p.room, p.going, p.by_member, p.expected,
+               p.platform, p.link, p.rec_kind, p.invited, p.maybe, p.cannot,
                b.name as by_name,
+               (select string_agg(g.name, ', ') from members g where g.id = any(p.maybe)) as maybe_names,
+               (select string_agg(g.name, ', ') from members g where g.id = any(p.cannot)) as cannot_names,
+               (select string_agg(g.name, ', ') from members g where g.id = any(p.invited)) as invited_names,
                (select string_agg(g.name, ', ') from members g where g.id = any(p.going)) as going_names
         from plans p left join members b on b.id = p.by_member
         where p.circle_id = ${circle.id} and p.at > now() - interval '3 hours'
         order by p.at asc limit 20`;
-      return res.status(200).json({ ok: true, plans });
+      // A trip is settled after it is over. Plans whose time has gone, that
+      // I am on, and whose costs are not square yet stay reachable: any age,
+      // newest first, at most 20. They are marked `settling` and carry no
+      // RSVP. A plan with a square ledger drops off as before.
+      const openIds = await splitSettling(sql, circle, me);
+      const past = openIds.length ? await sql`
+        select p.id, p.title, p.kind, p.at, p.place, p.by_member, b.name as by_name, true as settling
+        from plans p left join members b on b.id = p.by_member
+        where p.circle_id = ${circle.id} and p.id = any(${openIds}::uuid[])
+        order by p.at desc` : [];
+      return res.status(200).json({ ok: true, plans, settling: past });
     }
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'GET, POST');
@@ -111,9 +148,16 @@ export default async function handler(req, res) {
     }
 
     if (body.action === 'create') {
-      const title = String(body.title || '').trim().slice(0, 100);
-      if (!title) return res.status(400).json({ ok: false, error: 'Give the plan a name' });
       const kind = KINDS.includes(body.kind) ? body.kind : 'other';
+      // Watch or listen together: the name, platform and link are checked by
+      // api/_together.mjs, and taken from the recommendation when there is one.
+      let tg = null;
+      if (kind === TOGETHER_KIND) {
+        tg = await togetherPrepare(sql, circle, me, body);
+        if (tg.error) return res.status(tg.status).json({ ok: false, error: tg.error });
+      }
+      const title = tg ? tg.title : String(body.title || '').trim().slice(0, 100);
+      if (!title) return res.status(400).json({ ok: false, error: 'Give the plan a name' });
       const at = new Date(String(body.at || ''));
       if (isNaN(at) || at < new Date(Date.now() - 60000)) {
         return res.status(400).json({ ok: false, error: 'Pick a date and time in the future' });
@@ -124,12 +168,17 @@ export default async function handler(req, res) {
       if (cntErr) return res.status(400).json({ ok: false, error: cntErr });
       let expected = parseInt(body.expected, 10);
       expected = (expected >= 2 && expected <= 50) ? expected : null;
-      const p = await sql`insert into plans (circle_id, by_member, title, kind, at, place, room, going, expected)
-                          values (${circle.id}, ${me.id}, ${title}, ${kind}, ${at.toISOString()}, ${place}, ${room}, ${'{' + me.id + '}'}, ${expected})
+      const p = await sql`insert into plans (circle_id, by_member, title, kind, at, place, room, going, expected, platform, link, rec_id, rec_kind, invited)
+                          values (${circle.id}, ${me.id}, ${title}, ${kind}, ${at.toISOString()}, ${place}, ${room}, ${'{' + me.id + '}'}, ${expected},
+                                  ${tg ? tg.platform : null}, ${tg ? tg.link : null}, ${tg ? tg.recId : null}, ${tg ? tg.recKind : null}, ${tg ? tg.invited : []}::uuid[])
                           returning id`;
       await feed(sql, circle.id, me.id, `${me.name} planned: ${title} 🗓`);
       const whenTxt = whenText(at, body.tz);
-      await pushCircle(sql, circle.id, { title: '🗓 ' + me.name + ' planned: ' + title, body: whenTxt + ' - open Parwah to say you are in' }, { except: me.id });
+      const told = { title: '🗓 ' + me.name + ' planned: ' + title, body: whenTxt + ' - open Parwah to say you are in' };
+      // A plan made for named people tells those people; any other plan
+      // tells the whole circle, as before.
+      if (tg && tg.invited.length) await Promise.allSettled(tg.invited.map(id => pushCircle(sql, circle.id, told, { only: id })));
+      else await pushCircle(sql, circle.id, told, { except: me.id });
       return res.status(201).json({ ok: true, id: p[0].id });
     }
 
@@ -138,6 +187,19 @@ export default async function handler(req, res) {
       const rows = await sql`select id, going, title, by_member from plans where id = ${body.planId} and circle_id = ${circle.id}`;
       if (!rows[0]) return res.status(404).json({ ok: false, error: 'Plan not found' });
       const going = rows[0].going || [];
+      // I am in, Maybe, Cannot (api/_together.mjs): the same action with an
+      // answer named. Without one it is the old toggle, unchanged.
+      if (body.answer !== undefined) {
+        if (!isTogetherAnswer(body.answer)) return res.status(400).json({ ok: false, error: 'Pick one answer.' });
+        const out = await togetherAnswer(sql, circle, me, rows[0].id, body.answer);
+        if (out.status === 200 && body.answer === 'in' && going.indexOf(me.id) < 0) {
+          await feed(sql, circle.id, me.id, `${me.name} is in for: ${rows[0].title} 🙌`);
+          if (rows[0].by_member && rows[0].by_member !== me.id) {
+            await pushCircle(sql, circle.id, { title: '🙌 ' + me.name + ' is coming', body: rows[0].title }, { only: rows[0].by_member });
+          }
+        }
+        return res.status(out.status).json(out.json);
+      }
       if (going.indexOf(me.id) >= 0) {
         await sql`update plans set going = array_remove(going, ${me.id}::uuid) where id = ${rows[0].id}`;
         return res.status(200).json({ ok: true, going: false });
@@ -155,7 +217,14 @@ export default async function handler(req, res) {
       const rows = await sql`select id, by_member, title from plans where id = ${body.planId} and circle_id = ${circle.id}`;
       if (!rows[0]) return res.status(404).json({ ok: false, error: 'Plan not found' });
       // Every member is an equal admin of the circle - anyone can cancel.
-      await sql`delete from plans where id = ${rows[0].id}`;
+      // But not a plan with costs on it: the costs, the shares and every
+      // "paid" and "received" hang from the plan and would go with it.
+      const costs = await sql`select 1 as x from plan_costs where plan_id = ${rows[0].id} limit 1`;
+      if (costs[0]) return res.status(409).json({ ok: false, error: 'This plan has costs on it. Remove the costs first, or settle up.' });
+      // The same check inside the delete, for a cost added in the same moment.
+      const gone = await sql`delete from plans where id = ${rows[0].id}
+                               and not exists (select 1 from plan_costs k where k.plan_id = plans.id) returning id`;
+      if (!gone[0]) return res.status(409).json({ ok: false, error: 'This plan has costs on it. Remove the costs first, or settle up.' });
       await feed(sql, circle.id, me.id, `${me.name} cancelled: ${rows[0].title}`);
       await pushCircle(sql, circle.id, { title: '❌ Plan cancelled', body: me.name + ' cancelled: ' + rows[0].title }, { except: me.id });
       return res.status(200).json({ ok: true });

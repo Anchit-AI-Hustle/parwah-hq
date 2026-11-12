@@ -62,6 +62,11 @@ node site/tests/carepreptest.mjs
 # password, PIN or card number is saved. _register.mjs imports only
 # _money.mjs, which imports nothing, so this runs before npm install too.
 node site/tests/famregistertest.mjs
+# "What needs doing": the checklist for when someone passes away. The nine
+# first things, the wording for every register kind, the second adult, and
+# that no step is made for an entry the viewer may not see. _afterloss.mjs
+# imports nothing, so this runs before npm install too.
+node site/tests/afterlosstest.mjs
 # Quiet day, ask family first, the life certificate, the call rota: when a
 # missed check-in tells the family, the November window, and an
 # acknowledgement that is never an Aadhaar number. _carerules.mjs imports
@@ -75,6 +80,28 @@ node site/tests/bondtest.mjs
 # sign-in refusal, and who may see whose likes. _pasandrules.mjs imports
 # nothing, so this runs before npm install too.
 node site/tests/pasandtest.mjs
+# Splitting a cost: whole paise only, shares that always add up, who owes
+# whom in the fewest transfers, and a UPI link with every field encoded.
+# Watch together: the words and the "Open it" window. _splitmath.mjs imports
+# nothing and _together.mjs only the Pasand rules, so this runs before npm
+# install too.
+node site/tests/splitmathtest.mjs
+# The wider family: two family trees joined at one person (ids that cannot
+# collide, walks that end, the chain in words), and days of remembrance
+# (29 February, a year with no day, the evening before on the family's own
+# clock). _kin.mjs and _rememberrules.mjs import nothing, so this runs
+# before npm install too.
+node site/tests/widerfamilytest.mjs
+# Yaadon ki album: what counts as a JPEG (the first bytes, the size, no
+# camera details left inside), the limits, who may see and change what, and
+# the one older photo a week. _albumrules.mjs imports nothing, so this runs
+# before npm install too.
+node site/tests/albumrulestest.mjs
+# Aaj kya hua, the daily digest: the list a member may be told, the plain
+# writer (busy, quiet and hard days), the neutral voice, and the check on a
+# model's reply. _digestrules.mjs imports nothing, so this runs before npm
+# install too.
+node site/tests/digesttest.mjs
 # The native apps' copy of the server's rules (PINs, for now) is written by
 # the server itself. If a rule changes in api/ and the contract is not
 # regenerated, the phones would accept what the server then refuses. Vercel's

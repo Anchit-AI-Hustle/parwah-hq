@@ -124,7 +124,10 @@ await J.reload(); await J.waitForTimeout(1300);
 ok('a reload while waiting comes back to the waiting screen, not the old family', await J.isVisible('#pending-step') && !(await J.isVisible('#main')));
 const reqId = (await admin.query(`select id from join_requests where circle_id = (select id from circles where code = $1) and status = 'pending'`, [other.code])).rows[0]?.id;
 if (reqId) await call('circle', { action: 'approve_join', code: other.code, memberId: other.memberId, requestId: reqId }, {}, 'POST', U.Meera.token);
-await J.click('#pend-check'); await J.waitForTimeout(1600);
+await J.click('#pend-check');
+// Until the family's name is on the screen, not for a fixed 1.6 seconds:
+// after four other browser suites this once took longer and failed.
+await J.waitForFunction(() => { const m = document.getElementById('main'), t = document.getElementById('m-title'); return m && !m.hidden && t && /Verma Family/.test(t.textContent); }, null, { timeout: 15000 }).catch(() => {});
 ok('once they say yes, Check again takes you in', reqId && await J.isVisible('#main') && /Verma Family/.test(await J.textContent('#m-title')), String(reqId));
 ok('and only then is the invite used up', await J.evaluate(() => sessionStorage.getItem('parwah-join') === null && sessionStorage.getItem('parwah-join-wait') === null));
 
