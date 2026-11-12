@@ -197,6 +197,8 @@ const settles = (net, ts) => { const left = { ...net }; for (const t of ts) { le
   ok('it shows from 10 minutes before', T.togetherOpenNow(at, at - 10 * 60000) && T.togetherOpenNow(at, at));
   ok('until 3 hours after, and not a minute more', T.togetherOpenNow(at, at + 180 * 60000) && !T.togetherOpenNow(at, at + 181 * 60000));
   ok('a time that is not a time never opens', !T.togetherOpenNow('soon', at));
+  ok('the line before a private recommendation becomes a plan, for a family and for a group', T.togetherShareLine('family') === 'Everyone in the family will see this plan and its link.'
+     && T.togetherShareLine('group') === 'Everyone in the group will see this plan and its link.' && T.togetherShareLine() === 'Everyone in the family will see this plan and its link.');
   ok('"On Prime Video", and nothing for Other or none', T.togetherOn('prime') === 'On Prime Video' && T.togetherOn('other') === '' && T.togetherOn(null) === '' && T.togetherOn('hbo') === '');
   // 0 Sunday .. 6 Saturday
   ok('on a Thursday the default is this Saturday', T.togetherDaysToSaturday(4, 10, 0) === 2);

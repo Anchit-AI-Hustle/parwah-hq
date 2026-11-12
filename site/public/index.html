@@ -13288,8 +13288,21 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     renderCal();
     renderPlans(plansCache);
   });
-  function renderPlans(plans){
+  // Plans whose time has gone but whose costs are not settled yet (the
+  // server marks them `settling`): kept under the list so a trip can be
+  // settled after it is over.
+  var plansSettling = [];
+  function plansSettlingHtml(){
+    if (!plansSettling.length || calSel) return '';
+    return '<p class="eyebrow" id="plist-settle">Costs to settle</p>' + plansSettling.map(function(p){
+      var when = new Date(p.at);
+      return '<div class="plan" data-psettle="' + esc(p.id) + '"><b>💰 ' + esc(p.title) + '</b>' +
+        '<small>' + esc(fmtDue(pDay(when))) + ' · by ' + esc(p.by_name || 'family') + (p.place ? ' · ' + esc(p.place) : '') + '</small>' + splitPlanBtn(p) + '</div>';
+    }).join('');
+  }
+  function renderPlans(plans, settling){
     plansCache = plans;
+    if (settling) plansSettling = settling;
     renderCal();
     var list = calSel ? plans.filter(function(p){ return pDay(p.at) === calSel; }) : plans;
     var h = '';
@@ -13319,9 +13332,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         '</div>' + bondPlanExtra(p) + splitPlanBtn(p) + '</div>';
     });
     togetherWatch(plans);
-    $('plist').innerHTML = h || (calSel
+    $('plist').innerHTML = (h || (calSel
       ? '<div class="ev">No plans on ' + esc(fmtDue(calSel)) + ' yet - the date is set below, make one 🎈</div>'
-      : '<div class="ev">Nothing planned yet - make the first plan below 🎈</div>');
+      : '<div class="ev">Nothing planned yet - make the first plan below 🎈</div>')) + plansSettlingHtml();
     $('w-plan').textContent = plans.length ? plans.length + ' coming up - next: ' + plans[0].title : 'Calls, parties, get-togethers';
   }
   document.addEventListener('click', function(e){
@@ -13368,7 +13381,11 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (b.dataset.pcancel) {
       var pid = b.dataset.pcancel;
       askSheet('Cancel this plan for everyone?', 'Everyone who said they would come is told.', 'Cancel the plan', 'Keep it', true)
-        .then(function(y){ if (y) post(API.plans, { code: state.code, memberId: state.memberId, action: 'cancel', planId: pid }).then(refreshFun).catch(function(){}); });
+        .then(function(y){ if (y) post(API.plans, { code: state.code, memberId: state.memberId, action: 'cancel', planId: pid }).then(function(j){
+          // A plan with costs on it is kept: the server says why, in plain words.
+          if (j && !j.ok) toast(humanFail(j.error, 'Could not cancel this plan. Try again in a moment.'));
+          refreshFun();
+        }).catch(function(){}); });
     }
   });
 
@@ -14424,7 +14441,11 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       (others.length ? others.map(function(m){
         return '<label class="seniorchk"><input type="checkbox" data-tgwho="' + esc(m.id) + '"' + (between.indexOf(m.id) >= 0 ? ' checked' : '') + '> ' + esc(m.name) + '</label>';
       }).join('') : '<p class="hint">Nobody else is in this ' + word + ' yet.</p>') + '</div>' +
-      '<p class="hint">The people you tick are told. Everyone in the ' + word + ' can see the plan and join.</p>' +
+      // A recommendation sent to some people only: making a plan from it
+      // shows its name and link to everyone, so that is said before the
+      // button, and the server asks for this yes (shareConfirmed).
+      (r.toAll ? '<p class="hint">The people you tick are told. Everyone in the ' + word + ' can see the plan and join.</p>'
+               : '<p class="hint">The people you tick are told.</p><p class="hint" id="tg-share">Everyone in the ' + word + ' will see this plan and its link.</p>') +
       '<p class="bonderr" id="tg-err" role="alert" hidden></p>' +
       '<button type="button" class="go" id="tg-send" data-tgfor="' + esc(r.id) + '">Set the plan</button>');
   }
@@ -14437,7 +14458,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     document.querySelectorAll('#tg-who [data-tgwho]').forEach(function(c){ if (c.checked) who.push(c.getAttribute('data-tgwho')); });
     err.hidden = true;
     var btn = $('tg-send'); btn.disabled = true;
-    post(API.plans, { code: state.code, memberId: state.memberId, action: 'create', kind: 'together', recId: recId, at: at.toISOString(), invite: who, tz: homeTz() })
+    post(API.plans, { code: state.code, memberId: state.memberId, action: 'create', kind: 'together', recId: recId, at: at.toISOString(), invite: who, tz: homeTz(),
+                      shareConfirmed: !!$('tg-share') || undefined })
       .then(function(j){
         btn.disabled = false;
         if (!j.ok) { pasandSay(err, humanFail(j.error, 'Could not set the plan. Try again.')); return; }
@@ -15217,7 +15239,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         if (curGame && j.game) renderGame(j.game);
       }).catch(function(){});
     apiGet(API.plans + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
-      .then(function(j){ if (j.ok) renderPlans(j.plans); }).catch(function(){});
+      .then(function(j){ if (j.ok) renderPlans(j.plans, j.settling || []); }).catch(function(){});
     bondRefresh();
   }
   function gamePost(body, after){

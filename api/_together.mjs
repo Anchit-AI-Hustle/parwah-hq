@@ -46,6 +46,9 @@ export function togetherDaysToSaturday(day, hour, minute) {
   return d === 0 && (hour > 20 || (hour === 20 && minute > 0)) ? 7 : d;
 }
 
+// Said above the button, and by the server when the yes is missing.
+export const togetherShareLine = (word) => 'Everyone in the ' + (word === 'group' ? 'group' : 'family') + ' will see this plan and its link.';
+
 let ready = false;
 export async function ensureTogetherSchema(sql) {
   if (ready) return;
@@ -80,12 +83,16 @@ export async function togetherPrepare(sql, circle, me, body) {
     // Only whoever sent it, or one of the people it was sent to, can read a
     // recommendation; so only they can make a plan from it.
     const r = await sql`
-      select r.id, r.title, r.kind, r.platform, r.link, r.by_member,
+      select r.id, r.title, r.kind, r.platform, r.link, r.by_member, r.to_all,
              (select coalesce(array_agg(t.member_id), '{}') from pasand_rec_to t where t.rec_id = r.id) as tos
       from pasand_recs r
       where r.id = ${body.recId} and r.circle_id = ${circle.id}
         and (r.by_member = ${me.id} or exists (select 1 from pasand_rec_to t where t.rec_id = r.id and t.member_id = ${me.id}))`;
     if (!r[0]) return bad('That recommendation is not here any more', 404);
+    // A plan is seen by the whole circle. A recommendation that went to
+    // some people only becomes public this way, name and link, so it takes
+    // an explicit yes; one that went to everyone already is.
+    if (!r[0].to_all && body.shareConfirmed !== true) return bad(togetherShareLine(word), 409);
     // The name, the platform and the link come from the recommendation as
     // it was saved, never from what the phone sends.
     title = r[0].title; platform = r[0].platform || null; link = r[0].link || null;
@@ -118,11 +125,20 @@ export async function togetherPrepare(sql, circle, me, body) {
   if (Array.isArray(body.invite)) {
     const ids = [...new Set(body.invite)].filter(id => id !== me.id);
     if (ids.length > 60 || !ids.every(isUuid)) return bad('Bad person');
-    const rows = ids.length ? await sql`select id from members where circle_id = ${circle.id} and id = any(${ids}::uuid[])` : [];
+    // In this circle AND not marked as remembered: the picker leaves such a
+    // person out, and this is the rule itself, for a request made by hand.
+    const rows = ids.length ? await sql`select m.id, m.name, coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered
+                                        from members m where m.circle_id = ${circle.id} and m.id = any(${ids}::uuid[])` : [];
     if (rows.length !== ids.length) return bad('Pick people from this ' + word + '.');
+    const lost = rows.find(m => m.remembered);
+    if (lost) return bad(lost.name + ' is remembered here, so cannot be invited.');
     invited = ids;
   } else {
-    invited = between.filter(id => id && id !== me.id);
+    // The people a recommendation was between, minus anyone since marked.
+    const ids = between.filter(id => id && id !== me.id);
+    const gone = ids.length ? await sql`select m.id from members m where m.circle_id = ${circle.id} and m.id = any(${ids}::uuid[])
+                                          and coalesce((to_jsonb(m)->>'remembered')::boolean, false)` : [];
+    invited = ids.filter(id => !gone.some(g => g.id === id));
   }
   return { title, platform, link, recId, recKind, invited };
 }

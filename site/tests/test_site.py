@@ -3252,9 +3252,35 @@ check("split: settling is two-sided, and a cost is changed only by whoever added
       and "if (r[0].paid_at && r[0].received_at) return bad('Both of you have confirmed this one, so it stays.', 409);" in _sp
       and "if (r[0].added_by !== me.id && g.plan.by_member !== me.id)" in _sp
       and "const line = d.book.owes.find(o => o.from === from && o.to === to);" in _sp)
+_plans_src = (API_DIR / "plans.mjs").read_text(encoding="utf-8")
 check("together and split: tables and columns through schemaOnce; every push names one person",
       "schemaOnce(() => togetherColumns(sql))" in _tg and "schemaOnce(() => splitTables(sql))" in _sp
-      and _sp.count("pushCircle(") == 2 and _sp.count("{ only: other }") == 2)
+      and _sp.count("await pushCircle(") == 1 and "await pushCircle(sql, circle.id, payload, { only: other });" in _sp)
+check("split: a settle-up push is capped at six an hour from one person to one person; the action itself is never refused",
+      "rateLimit(sql, 'split_push', me.id + ':' + other, 6, 3600, { failClosed: true })" in _sp
+      and _sp.count("await splitTell(sql, circle, me, other, {") == 2 and "return bad('That is a lot" not in _sp)
+check("split: a plan past its time with an unsettled ledger stays reachable: on the plan, any age, newest first, at most 20, marked settling",
+      "export const SPLIT_SETTLING_MAX = 20;" in _sp and "order by p.at desc limit 200" in _sp
+      and "moves.some(m => !(m.paid && m.received)) || ledger(list, moves).owes.length > 0" in _sp
+      and "const openIds = await splitSettling(sql, circle, me);" in _plans_src and "true as settling" in _plans_src
+      and "return res.status(200).json({ ok: true, plans, settling: past });" in _plans_src
+      and '<p class="eyebrow" id="plist-settle">Costs to settle</p>' in _app_src
+      and "renderPlans(j.plans, j.settling || [])" in _app_src)
+check("plans: a plan with costs on it cannot be cancelled; the delete itself checks again",
+      _plans_src.count("'This plan has costs on it. Remove the costs first, or settle up.'") == 2
+      and "and not exists (select 1 from plan_costs k where k.plan_id = plans.id) returning id" in _plans_src
+      and "await sql`delete from plans where id = ${rows[0].id}`;" not in _plans_src
+      and "humanFail(j.error, 'Could not cancel this plan. Try again in a moment.')" in _app_src)
+check("remembered people are refused by the server on a plan invite and on a cost (who paid, who shares, uneven shares)",
+      "if (lost) return bad(lost.name + ' is remembered here, so cannot be invited.');" in _tg
+      and "const goneWhy = (id) => gone.get(id) + ' is remembered here, so cannot be on a cost.';" in _sp
+      and "if (gone.has(paidBy)) return { error: goneWhy(paidBy) };" in _sp and _sp.count("if (lost) return { error: goneWhy(lost) };") == 2)
+check("together: a plan from a recommendation that did not go to everyone needs an explicit yes, said in the sheet above the button",
+      "if (!r[0].to_all && body.shareConfirmed !== true) return bad(togetherShareLine(word), 409);" in _tg
+      and "' will see this plan and its link.'" in _tg
+      and "<p class=\"hint\" id=\"tg-share\">Everyone in the ' + word + ' will see this plan and its link.</p>" in _app_src
+      and "shareConfirmed: !!$('tg-share') || undefined" in _app_src
+      and _app_src.index('id="tg-share"') < _app_src.index('id="tg-send" data-tgfor='))
 check("together and split: loading, empty, error and offline are all said, and errors go through humanFail",
       'id="sp-load">Loading' in _tg_app and 'id="sp-empty"' in _tg_app and 'id="sp-fail" role="alert"' in _tg_app
       and "No connection. The costs will show when you are back online." in _tg_app

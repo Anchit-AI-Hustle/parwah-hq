@@ -239,6 +239,10 @@ const def = await M.evaluate(() => {
 });
 ok('the day is this Saturday in her own timezone, at 8pm', def.day === 6 && def.ahead >= 0 && def.ahead <= 7 && def.time === '20:00', JSON.stringify(def));
 ok('the people it was between are ticked: Rohan, and not Papa', await M.isChecked(`#tg-who [data-tgwho="${rohan.id}"]`) && !(await M.isChecked(`#tg-who [data-tgwho="${papa.id}"]`)));
+// It was sent to Meera alone, and a plan is seen by everyone: said once, above the button.
+ok('A PRIVATE RECOMMENDATION: the sheet says, above the button, that everyone will see the plan and its link', await see(M, '#tg-share')
+   && (await M.textContent('#tg-share')) === 'Everyone in the family will see this plan and its link.'
+   && await M.evaluate(() => !!(document.getElementById('tg-share').compareDocumentPosition(document.getElementById('tg-send')) & Node.DOCUMENT_POSITION_FOLLOWING)));
 await design(M, '#bondsheet .mp', 'the Watch together sheet');
 await shot(M, 'together-sheet');
 await M.fill('#tg-date', '2020-01-04');
@@ -504,6 +508,31 @@ const ERR = await phone(rohan, { block: route => route.fulfill({ status: 500, co
 await plans(ERR);
 await ERR.click(`#plist [data-spopen="${trip.id}"]`);
 ok('A SERVER ERROR is a plain sentence, never the database\'s words', await see(ERR, '#sp-fail') && (await ERR.textContent('#sp-fail')) === 'Could not load the costs. Try again in a moment.' && !/relation|does not exist/.test(await ERR.textContent('#bs-body')));
+
+// ================================================================ 11. a plan with costs cannot be cancelled, and stays reachable after its time
+const R2 = await phone(rohan);
+await plans(R2);
+await see(R2, `#plist [data-pcancel="${trip.id}"]`);
+await R2.click(`#plist [data-pcancel="${trip.id}"]`);
+await see(R2, '#asksheet'); await R2.click('#as-yes');
+ok('CANCELLING A PLAN WITH COSTS is refused in plain words, and the plan stays', await textHas(R2, '#toast', 'This plan has costs on it. Remove the costs first, or settle up.')
+   && (await one(`select count(*)::int as n from plans where id = $1`, [trip.id])).n === 1 && (await one(`select count(*)::int as n from plan_costs where plan_id = $1`, [trip.id])).n === 3
+   && await see(R2, `#plist [data-spopen="${trip.id}"]`));
+// The trip is over, everyone is square: it leaves the list. Then one more cost is written down.
+await admin.query(`update plans set at = now() - interval '2 days' where id = $1`, [trip.id]);
+await plans(R2);
+ok('a trip that is over and square is not listed', await when(R2, (id) => !document.querySelector(`#plist [data-spopen="${id}"]`), trip.id) && !(await R2.$('#plist-settle')));
+const lateCost = (await admin.query(`insert into plan_costs (plan_id, circle_id, what, amount_paise, paid_by, added_by) values ($1, $2, 'Taxi home', 80000, $3, $3) returning id`, [trip.id, fam, meera.id])).rows[0].id;
+await admin.query(`insert into plan_cost_shares (cost_id, member_id, share_paise) values ($1, $2, 40000), ($1, $3, 40000)`, [lateCost, meera.id, rohan.id]);
+await plans(R2);
+ok('A TRIP THAT IS OVER BUT NOT SETTLED is under a quiet heading, "Costs to settle"', await see(R2, '#plist-settle') && (await R2.textContent('#plist-settle')) === 'Costs to settle'
+   && await see(R2, `#plist [data-psettle="${trip.id}"] [data-spopen="${trip.id}"]`) && /Goa/.test(await R2.textContent(`#plist [data-psettle="${trip.id}"]`)));
+ok('with its costs button and none of the RSVP controls', await R2.evaluate((id) => { const c = document.querySelector(`#plist [data-psettle="${id}"]`);
+  return !!c && c.querySelectorAll('button').length === 1 && !c.querySelector('[data-rsvp],[data-pcancel],[data-tgans],a'); }, trip.id));
+await design(R2, '#plist', 'the plans list with Costs to settle');
+await R2.click(`#plist [data-psettle="${trip.id}"] [data-spopen="${trip.id}"]`);
+ok('the button opens the costs, where Rohan sees what he owes', await see(R2, '#sp-owes') && await textHas(R2, '#sp-owes', '₹400'));
+await closeSheet(R2);
 
 ok('no script errors', errors.length === 0, errors.join(' | '));
 await browser.close();

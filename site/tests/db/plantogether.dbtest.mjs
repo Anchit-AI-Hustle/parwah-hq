@@ -28,6 +28,11 @@ const admin = new pg.Client({ connectionString: url });
 await admin.connect();
 await admin.query('drop schema public cascade; create schema public;');
 
+// Every push is counted here instead of leaving the machine.
+const webpush = (await import('web-push')).default;
+const pushed = [];
+webpush.sendNotification = async (sub, body) => { pushed.push({ endpoint: sub.endpoint, body: JSON.parse(body) }); return {}; };
+
 const { default: plans } = await import('../../../api/plans.mjs');
 const { default: games } = await import('../../../api/games.mjs');
 const { default: book } = await import('../../../api/book.mjs');
@@ -61,6 +66,12 @@ const rohan = await seat(fam, 'KAPOOR', U.rohan), meera = await seat(fam, 'KAPOO
 const vikram = await seat(grp, 'COUSIN', U.vikram);
 const anil = await seat(lon, 'LONDON', U.anil, 'GB'), sara = await seat(lon, 'LONDON', U.sara, 'IN');
 const dadi = (await admin.query(`insert into members (circle_id, name) values ($1,'Dadi') returning id`, [fam])).rows[0];
+
+{
+  const { ensurePushSchema } = await import('../../../api/_push.mjs');
+  await ensurePushSchema(db());
+  for (const m of [rohan, meera, papa, bua]) await admin.query(`insert into push_subs (member_id, endpoint, p256dh, auth) values ($1, $2, 'BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM', 'tBHItJI5svbpez7KI4CCXg')`, [m.id, 'https://fcm.googleapis.com/fcm/send/' + m.id]);
+}
 
 async function run(handler, who, method, query, body, as) {
   const req = { method, headers: { 'x-parwah-token': who.token }, query: { circle: who.code, member: as || who.id, ...query }, body: { code: who.code, memberId: as || who.id, ...body } };
@@ -101,7 +112,13 @@ let tgPlan;
   ok('a recommendation id that is not an id is refused', (await P(meera, { action: 'create', kind: 'together', recId: 'panchayat', at: soon(600) })).status === 400);
 
   // Meera, a recipient, makes it. What she sends for the name and the link is ignored.
-  const made = await P(meera, { action: 'create', kind: 'together', recId: rec.id, at: soon(600), title: 'Something else', link: 'https://evil.example/x', platform: 'netflix', tz: 'Asia/Kolkata' });
+  // The recommendation went to Meera alone, and a plan is seen by everyone: that takes an explicit yes.
+  const quiet = await P(meera, { action: 'create', kind: 'together', recId: rec.id, at: soon(600) });
+  ok('A PLAN FROM A PRIVATE RECOMMENDATION is refused without the yes, in the same words the sheet shows', quiet.status === 409 && quiet.error === 'Everyone in the family will see this plan and its link.'
+     && (await one(`select count(*)::int as n from plans`)).n === 0, JSON.stringify(quiet));
+  ok('a yes that is not exactly true does not count', (await P(meera, { action: 'create', kind: 'together', recId: rec.id, at: soon(600), shareConfirmed: 'yes' })).status === 409
+     && (await P(rohan, { action: 'create', kind: 'together', recId: rec.id, at: soon(600), shareConfirmed: 1 })).status === 409 && (await one(`select count(*)::int as n from plans`)).n === 0);
+  const made = await P(meera, { action: 'create', kind: 'together', recId: rec.id, at: soon(600), shareConfirmed: true, title: 'Something else', link: 'https://evil.example/x', platform: 'netflix', tz: 'Asia/Kolkata' });
   ok('MEERA, a recipient, makes a plan from it', made.status === 201 && made.id, JSON.stringify(made));
   tgPlan = made.id;
   const row = await one(`select title, kind, platform, link, rec_id, rec_kind, invited, going, room from plans where id = $1`, [tgPlan]);
@@ -112,25 +129,41 @@ let tgPlan;
   ok('the plans list carries the platform, the link and who it is for', seen && seen.kind === 'together' && seen.platform === 'prime' && seen.link === 'https://www.primevideo.com/detail/Panchayat' && seen.invited_names === 'Rohan' && seen.going_names === 'Meera', JSON.stringify(seen));
 
   // The sender makes one too, choosing who.
-  const mine = await P(rohan, { action: 'create', kind: 'together', recId: rec.id, at: soon(900), invite: [meera.id, papa.id] });
+  const mine = await P(rohan, { action: 'create', kind: 'together', recId: rec.id, at: soon(900), invite: [meera.id, papa.id], shareConfirmed: true });
   const r2 = await one(`select invited from plans where id = $1`, [mine.id]);
   ok('ROHAN, the sender, can make one and choose who', mine.status === 201 && r2.invited.slice().sort().join() === [meera.id, papa.id].sort().join());
-  ok('someone from another circle cannot be invited', (await P(rohan, { action: 'create', kind: 'together', recId: rec.id, at: soon(900), invite: [vikram.id] })).status === 400);
-  ok('a bad id in the invite list is refused', (await P(rohan, { action: 'create', kind: 'together', recId: rec.id, at: soon(900), invite: ['x'] })).status === 400);
+  ok('someone from another circle cannot be invited', (await P(rohan, { action: 'create', kind: 'together', recId: rec.id, at: soon(900), invite: [vikram.id], shareConfirmed: true })).status === 400);
+  ok('a bad id in the invite list is refused', (await P(rohan, { action: 'create', kind: 'together', recId: rec.id, at: soon(900), invite: ['x'], shareConfirmed: true })).status === 400);
+  // Someone marked as remembered is refused on the server, not only left out of the picker.
+  await admin.query(`alter table members add column if not exists remembered boolean not null default false`);
+  await admin.query(`update members set remembered = true where id = $1`, [bua.id]);
+  const lost = await P(rohan, { action: 'create', kind: 'together', recId: rec.id, at: soon(900), invite: [meera.id, bua.id], shareConfirmed: true });
+  ok('SOMEONE MARKED AS REMEMBERED cannot be invited, and the reason is said', lost.status === 400 && lost.error === 'Bua is remembered here, so cannot be invited.' && !lost.id, JSON.stringify(lost));
+  await admin.query(`update members set remembered = false where id = $1`, [bua.id]);
   await P(rohan, { action: 'cancel', planId: mine.id });
+  // One that went to the whole family is already everyone's: no yes is asked for.
+  const recAll = await pasand(rohan, { action: 'rec_add', title: 'Sholay', kind: 'film', toAll: true });
+  const pAll = await P(papa, { action: 'create', kind: 'together', recId: recAll.id, at: soon(900) });
+  ok('a recommendation sent to everyone needs no such yes', recAll.status === 201 && pAll.status === 201, JSON.stringify(pAll));
+  await P(papa, { action: 'cancel', planId: pAll.id });
 
   // A recipient does not learn who else it went to.
   const rec2 = await pasand(rohan, { action: 'rec_add', title: 'Gullak', kind: 'show', to: [meera.id, papa.id] });
-  const p2 = await P(papa, { action: 'create', kind: 'together', recId: rec2.id, at: soon(900) });
+  const p2 = await P(papa, { action: 'create', kind: 'together', recId: rec2.id, at: soon(900), shareConfirmed: true });
   const r3 = await one(`select invited, link, platform from plans where id = $1`, [p2.id]);
   ok('a recipient\'s default is the sender only: the other recipients are not named', p2.status === 201 && r3.invited.join() === rohan.id && r3.link === null && r3.platform === null);
   await P(papa, { action: 'cancel', planId: p2.id });
+  await admin.query(`update members set remembered = true where id = $1`, [papa.id]);
+  const p2b = await P(rohan, { action: 'create', kind: 'together', recId: rec2.id, at: soon(900), shareConfirmed: true });
+  ok('the default list leaves out someone since marked as remembered', p2b.status === 201 && (await one(`select invited from plans where id = $1`, [p2b.id])).invited.join() === meera.id);
+  await admin.query(`update members set remembered = false where id = $1`, [papa.id]);
+  await P(rohan, { action: 'cancel', planId: p2b.id });
 
   // A link that is not https could only be on a recommendation if it got
   // there some other way. A plan still will not carry it.
   const odd = await pasand(rohan, { action: 'rec_add', title: 'Odd one', kind: 'film', to: [meera.id] });
   await admin.query(`update pasand_recs set link = 'javascript:alert(1)' where id = $1`, [odd.id]);
-  const p3 = await P(meera, { action: 'create', kind: 'together', recId: odd.id, at: soon(900) });
+  const p3 = await P(meera, { action: 'create', kind: 'together', recId: odd.id, at: soon(900), shareConfirmed: true });
   ok('THE LINK IS CHECKED AGAIN when a plan is made from a recommendation: not https, no plan', p3.status === 400 && /start with https/.test(p3.error)
      && (await one(`select count(*)::int as n from plans where title = 'Odd one'`)).n === 0, JSON.stringify(p3));
   await admin.query(`delete from pasand_recs where id = $1`, [odd.id]);
@@ -292,6 +325,23 @@ let rooms, taxi, sweets;
   const d = await P(meera, { action: 'split_add', planId: trip, what: 'For Dadi', amount: '300', between: [dadi.id], paidBy: meera.id });
   ok('a relative who is not on the app can share a cost by name', d.status === 201);
   await P(meera, { action: 'split_remove', id: d.id });
+  // Someone marked as remembered is refused on a cost by the server, in words.
+  await admin.query(`update members set remembered = true where id = $1`, [dadi.id]);
+  const why = 'Dadi is remembered here, so cannot be on a cost.';
+  const n0 = (await one(`select count(*)::int as n from plan_costs where plan_id = $1`, [trip])).n;
+  const g1 = await P(meera, { action: 'split_add', planId: trip, what: 'For Dadi', amount: '300', between: [meera.id, dadi.id] });
+  const g2 = await P(meera, { action: 'split_add', planId: trip, what: 'For Dadi', amount: '300', paidBy: dadi.id, between: [meera.id] });
+  const g3 = await P(meera, { action: 'split_add', planId: trip, what: 'For Dadi', amount: '300', mode: 'uneven', shares: { [meera.id]: '100', [dadi.id]: '200' } });
+  ok('A REMEMBERED PERSON cannot share a cost, pay one, or be given an uneven share', [g1, g2, g3].every(x => x.status === 400 && x.error === why) && (await one(`select count(*)::int as n from plan_costs where plan_id = $1`, [trip])).n === n0, JSON.stringify([g1, g2, g3]));
+  ok('nor be put on a cost by an edit', (await P(meera, { action: 'split_edit', id: rooms.id, what: 'Rooms', amount: '6000', between: [meera.id, rohan.id, dadi.id] })).error === why
+     && (await one(`select count(*)::int as n from plan_cost_shares where cost_id = $1 and member_id = $2`, [rooms.id, dadi.id])).n === 0);
+  await admin.query(`update plans set going = array_append(going, $2::uuid) where id = $1`, [trip, dadi.id]);
+  const g4 = await P(meera, { action: 'split_add', planId: trip, what: 'Tea', amount: '90' });
+  ok('"everyone going" quietly leaves a remembered person out', g4.status === 201 && (await one(`select count(*)::int as n from plan_cost_shares where cost_id = $1 and member_id = $2`, [g4.id, dadi.id])).n === 0
+     && (await one(`select count(*)::int as n from plan_cost_shares where cost_id = $1`, [g4.id])).n === 3);
+  await P(meera, { action: 'split_remove', id: g4.id });
+  await admin.query(`update plans set going = array_remove(going, $2::uuid) where id = $1`, [trip, dadi.id]);
+  await admin.query(`update members set remembered = false where id = $1`, [dadi.id]);
 }
 
 // ================================================================ the UPI id: only what the viewer may already see
@@ -401,11 +451,70 @@ const everything = async (who) => JSON.stringify(await costs(who, trip)) + JSON.
   ok('the family in the other circle cannot see this plan\'s costs', (await costs(meera, t)).status === 404);
 }
 
-// ---- removing the plan removes its costs
+// ---- a plan whose time has gone stays reachable while its costs are not square
 {
-  await P(meera, { action: 'cancel', planId: trip });
-  ok('cancelling the plan takes its costs and lines with it', (await one(`select count(*)::int as n from plan_costs where plan_id = $1`, [trip])).n === 0 && (await one(`select count(*)::int as n from plan_settles where plan_id = $1`, [trip])).n === 0);
+  const settling = async (who) => (await run(plans, who, 'GET', {}, {})).settling || [];
+  ok('while the trip is still ahead it is in the list, and not under "costs to settle"', (await list(meera)).some(p => p.id === trip) && !(await settling(meera)).some(p => p.id === trip));
+  await admin.query(`update plans set at = now() - interval '2 days' where id = $1`, [trip]);
+  const sq = await costs(meera, trip);
+  ok('the trip is over and its costs are square: it drops off, as before', sq.owes.length === 0 && sq.waiting.length === 0 && !(await list(meera)).some(p => p.id === trip) && !(await settling(meera)).some(p => p.id === trip), JSON.stringify([sq.owes, sq.waiting]));
+  // A cost written down after the trip: Rohan paid for the taxi home, shared with Bua.
+  const late = await P(rohan, { action: 'split_add', planId: trip, what: 'Taxi home', amount: '800', paidBy: rohan.id, between: [rohan.id, bua.id] });
+  ok('a cost can still be added after the trip', late.status === 201);
+  const sm = (await settling(meera)).find(p => p.id === trip);
+  ok('A PLAN THREE HOURS PAST ITS TIME with an open line is returned, marked settling, with nothing to RSVP', !!sm && sm.settling === true && sm.title === 'Goa trip' && sm.going === undefined && sm.going_names === undefined
+     && !(await list(meera)).some(p => p.id === trip), JSON.stringify(sm));
+  ok('for everyone on the plan, and for Bua who now shares a cost', (await settling(rohan)).some(p => p.id === trip) && (await settling(papa)).some(p => p.id === trip) && (await settling(bua)).some(p => p.id === trip));
+  await P(rohan, { action: 'split_remove', id: late.id });
+  const lateP = await P(rohan, { action: 'split_add', planId: trip, what: 'Taxi home', amount: '800', paidBy: rohan.id, between: [rohan.id, papa.id] });
+  ok('not for Bua once she is not on it, and never for another circle', !(await settling(bua)).some(p => p.id === trip) && (await settling(vikram)).length === 0 && (await settling(anil)).length === 0);
+  ok('the costs of that plan open as before', (await costs(papa, trip)).owes.some(o => o.from === papa.id && o.to === rohan.id && o.amount === 40000));
+  // One side has spoken: nothing is "owed" in the sums, but the line still waits.
+  const half = await P(papa, { action: 'split_paid', planId: trip, to: rohan.id });
+  ok('a line waiting for the other side keeps the plan there', half.status === 201 && (await costs(papa, trip)).owes.length === 0 && (await settling(rohan)).some(p => p.id === trip));
+  ok('once both have confirmed, the plan drops off', (await P(rohan, { action: 'split_received', planId: trip, from: papa.id })).closed === true && !(await settling(rohan)).some(p => p.id === trip)
+     && !(await settling(papa)).some(p => p.id === trip));
+
+  // THE PUSHES ARE CAPPED, NOT THE ACTIONS: paid, undo, paid again must not ring a phone all day.
+  const noisy = await P(rohan, { action: 'split_add', planId: trip, what: 'Snacks on the way', amount: '200', paidBy: rohan.id, between: [rohan.id, bua.id] });
+  const before = pushed.length;
+  const marks = [];
+  for (let i = 0; i < 8; i++) {
+    const m = await P(bua, { action: 'split_paid', planId: trip, to: rohan.id });
+    marks.push(m.status);
+    if (i < 7) marks.push((await P(bua, { action: 'split_undo', id: m.id })).status);
+  }
+  const toRohan = pushed.slice(before).filter(x => x.endpoint.endsWith(rohan.id));
+  ok('eight "I have paid" in a row all happen, and Rohan is pushed six times, not eight', marks.filter(x => x === 201).length === 8 && marks.filter(x => x === 200).length === 7 && toRohan.length === 6
+     && pushed.length === before + 6 && (await one(`select count(*)::int as n from plan_settles where plan_id = $1 and from_member = $2 and received_at is null`, [trip, bua.id])).n === 1, marks.join() + ' pushes ' + toRohan.length);
+  ok('the limit is per pair: Rohan confirming still tells Bua', (await P(rohan, { action: 'split_received', planId: trip, from: bua.id })).closed === true && pushed.slice(before).filter(x => x.endpoint.endsWith(bua.id)).length === 1);
+
+  // Newest first, and at most 20.
+  for (let i = 1; i <= 22; i++) {
+    const id = (await P(meera, { action: 'create', kind: 'meet', title: 'Old dinner ' + i, at: soon(600) })).id;
+    await P(meera, { action: 'split_add', planId: id, what: 'Dinner', amount: '100', paidBy: meera.id, between: [meera.id, rohan.id] });
+    await admin.query(`update plans set at = now() - make_interval(days => $2) where id = $1`, [id, i + 10]);
+  }
+  const many = await settling(rohan);
+  ok('at most 20 are returned, newest first, however old', many.length === 20 && many[0].title === 'Old dinner 1' && many[19].title === 'Old dinner 20' && many.every(p => p.settling === true), many.map(p => p.title).join());
+  await admin.query(`delete from plans where title like 'Old dinner %'`);
+}
+
+// ---- a plan with costs on it cannot be cancelled: the ledger would go with it
+{
+  const before = await one(`select (select count(*)::int from plan_costs where plan_id = $1) as costs, (select count(*)::int from plan_settles where plan_id = $1) as lines`, [trip]);
+  const no = await P(meera, { action: 'cancel', planId: trip });
+  ok('CANCELLING A PLAN WITH COSTS is refused, with the reason and what to do', no.status === 409 && no.error === 'This plan has costs on it. Remove the costs first, or settle up.', JSON.stringify(no));
+  ok('by its maker and by anyone else alike', (await P(papa, { action: 'cancel', planId: trip })).status === 409 && (await P(bua, { action: 'cancel', planId: trip })).status === 409);
+  const after = await one(`select (select count(*)::int from plans where id = $1) as plan, (select count(*)::int from plan_costs where plan_id = $1) as costs, (select count(*)::int from plan_settles where plan_id = $1) as lines`, [trip]);
+  ok('the plan, its costs and every "paid" and "received" are all still there', after.plan === 1 && before.costs > 0 && after.costs === before.costs && after.lines === before.lines && before.lines > 0, JSON.stringify([before, after]));
+  ok('nobody was told it was cancelled', (await one(`select count(*)::int as n from events where circle_id = $1 and text like '%cancelled: Goa trip%'`, [fam])).n === 0);
+  // Removing a cost is for whoever added it or whoever made the plan: Meera made it.
+  for (const c of (await admin.query(`select id from plan_costs where plan_id = $1`, [trip])).rows) await P(meera, { action: 'split_remove', id: c.id });
+  ok('with the costs removed by the plan\'s maker, it can be cancelled', (await one(`select count(*)::int as n from plan_costs where plan_id = $1`, [trip])).n === 0 && (await P(meera, { action: 'cancel', planId: trip })).status === 200
+     && (await one(`select count(*)::int as n from plans where id = $1`, [trip])).n === 0);
   ok('and its costs are not found any more', (await costs(meera, trip)).status === 404);
+  ok('a plan with no costs is cancelled as before', await (async () => { const id = (await P(papa, { action: 'create', kind: 'meet', title: 'Chai', at: soon(600) })).id; return (await P(rohan, { action: 'cancel', planId: id })).status === 200; })());
 }
 
 await admin.end();

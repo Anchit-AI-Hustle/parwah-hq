@@ -31,7 +31,7 @@
 // allowed that person to use it (pay_perms). An id the viewer could not see
 // in the vault is never in any answer from here. A UPI PIN is never asked
 // for, never accepted and never kept.
-import { isUuid, schemaOnce } from './_db.mjs';
+import { isUuid, schemaOnce, rateLimit } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import { noteRisk } from './_notesapi.mjs';
 import { currencyOf, money } from './_money.mjs';
@@ -128,6 +128,40 @@ async function planFor(sql, circle, me, planId) {
   return { plan };
 }
 
+// PLANS WHOSE TIME HAS GONE BUT WHOSE COSTS ARE NOT SQUARE YET. A trip is
+// settled after it is over, so these stay reachable from the Plans list:
+// any age, newest first, at most 20. Only plans the caller is on (the same
+// rule as planFor above), and only while someone still owes someone or a
+// "paid" / "received" waits for the other side. Returns their ids in order.
+export const SPLIT_SETTLING_MAX = 20;
+export async function splitSettling(sql, circle, me) {
+  const plans = await sql`
+    select p.id from plans p
+    where p.circle_id = ${circle.id} and p.at <= now() - interval '3 hours'
+      and exists (select 1 from plan_costs k where k.plan_id = p.id)
+      and (p.by_member = ${me.id} or ${me.id}::uuid = any(p.going) or ${me.id}::uuid = any(p.maybe) or ${me.id}::uuid = any(p.invited)
+           or exists (select 1 from plan_costs k where k.plan_id = p.id and (k.paid_by = ${me.id}
+                      or exists (select 1 from plan_cost_shares s where s.cost_id = k.id and s.member_id = ${me.id}))))
+    order by p.at desc limit 200`;
+  if (!plans.length) return [];
+  const ids = plans.map(p => p.id);
+  const costs = await sql`select id, plan_id, amount_paise, paid_by from plan_costs where plan_id = any(${ids}::uuid[]) and circle_id = ${circle.id}`;
+  const shares = costs.length ? await sql`select cost_id, member_id, share_paise from plan_cost_shares where cost_id = any(${costs.map(c => c.id)}::uuid[])` : [];
+  const settles = await sql`select plan_id, from_member, to_member, amount_paise, paid_at, received_at from plan_settles where plan_id = any(${ids}::uuid[]) and circle_id = ${circle.id}`;
+  const out = [];
+  for (const id of ids) {
+    const list = costs.filter(c => c.plan_id === id).map(c => {
+      const sh = {}; shares.filter(x => x.cost_id === c.id).forEach(x => { sh[x.member_id] = num(x.share_paise); });
+      return { id: c.id, amount: num(c.amount_paise), paidBy: c.paid_by, shares: sh };
+    });
+    const moves = settles.filter(x => x.plan_id === id).map(x => ({ from: x.from_member, to: x.to_member, amount: num(x.amount_paise), paid: !!x.paid_at, received: !!x.received_at }));
+    const open = moves.some(m => !(m.paid && m.received)) || ledger(list, moves).owes.length > 0;
+    if (open) out.push(id);
+    if (out.length >= SPLIT_SETTLING_MAX) break;
+  }
+  return out;
+}
+
 async function readAll(sql, circle, plan) {
   const costs = await sql`
     select k.id, k.what, k.amount_paise, k.paid_by, k.mode, k.added_by, k.created_at
@@ -210,16 +244,23 @@ async function cleanCost(sql, circle, me, plan, b) {
   if (risk) return { error: risk };
   const amount = parsePaise(b.amount);
   if (amount === null || amount <= 0) return { error: 'Write the amount as a number above 0, like 1250 or 1250.50.' };
-  const members = await sql`select id from members where circle_id = ${circle.id}`;
+  // Someone marked as remembered is not asked to pay or to share a cost.
+  // The screen leaves them out of the pickers; this is the rule itself.
+  const members = await sql`select m.id, m.name, coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered from members m where m.circle_id = ${circle.id}`;
   const inCircle = new Set(members.map(m => m.id));
+  const gone = new Map(members.filter(m => m.remembered).map(m => [m.id, m.name]));
+  const goneWhy = (id) => gone.get(id) + ' is remembered here, so cannot be on a cost.';
   const paidBy = b.paidBy == null || b.paidBy === '' ? me.id : b.paidBy;
   if (!isUuid(paidBy) || !inCircle.has(paidBy)) return { error: 'Pick who paid from this ' + word + '.' };
+  if (gone.has(paidBy)) return { error: goneWhy(paidBy) };
   const mode = b.mode === 'uneven' ? 'uneven' : 'equal';
   let shares;
   if (mode === 'uneven') {
     const src = b.shares && typeof b.shares === 'object' && !Array.isArray(b.shares) ? b.shares : {};
     const ids = Object.keys(src);
     if (ids.length > SPLIT_MAX.people || !ids.every(id => isUuid(id) && inCircle.has(id))) return { error: 'Pick people from this ' + word + '.' };
+    const lost = ids.find(id => gone.has(id));
+    if (lost) return { error: goneWhy(lost) };
     const typed = {};
     for (const id of ids) {
       const blank = src[id] == null || String(src[id]).trim() === '';
@@ -232,9 +273,15 @@ async function cleanCost(sql, circle, me, plan, b) {
     shares = u.shares;
   } else {
     // Shared between everyone going, unless people were chosen.
-    let ids = Array.isArray(b.between) && b.between.length ? [...new Set(b.between)] : (plan.going || []).slice();
+    const chosen = Array.isArray(b.between) && b.between.length;
+    let ids = chosen ? [...new Set(b.between)] : (plan.going || []).slice();
+    // "Everyone going" quietly leaves out someone since marked as remembered;
+    // naming them is refused, in words.
+    if (!chosen) ids = ids.filter(id => !gone.has(id));
     if (!ids.length) ids = [me.id];
     if (ids.length > SPLIT_MAX.people || !ids.every(id => isUuid(id) && inCircle.has(id))) return { error: 'Pick people from this ' + word + '.' };
+    const lost = ids.find(id => gone.has(id));
+    if (lost) return { error: goneWhy(lost) };
     shares = equalShares(amount, ids);
   }
   return { what, amount, paidBy, mode, shares };
@@ -249,6 +296,15 @@ async function costFor(sql, circle, me, id) {
   // Whoever added it, or whoever made the plan. Nobody else.
   if (r[0].added_by !== me.id && g.plan.by_member !== me.id) return { err: bad('Only the person who added it, or who made the plan, can change it.', 403) };
   return { cost: r[0], plan: g.plan };
+}
+
+// A settle-up push goes to one person, and paid, undo, paid again would
+// ring their phone each time. Six an hour from one person to one person;
+// past that the line is still marked, and they see it when they open Parwah.
+async function splitTell(sql, circle, me, other, payload) {
+  if (!(await rateLimit(sql, 'split_push', me.id + ':' + other, 6, 3600, { failClosed: true }))) return false;
+  await pushCircle(sql, circle.id, payload, { only: other });
+  return true;
 }
 
 export async function splitAction(sql, circle, me, b) {
@@ -311,8 +367,8 @@ export async function splitAction(sql, circle, me, b) {
       : await sql`update plan_settles set received_at = now() where plan_id = ${g.plan.id} and from_member = ${from} and to_member = ${to}
                   and received_at is null and paid_at is not null returning id, amount_paise`;
     if (closed[0]) {
-      await pushCircle(sql, circle.id, { title: '✅ Settled: ' + g.plan.title,
-        body: me.name + (payer ? ' confirms paying ' : ' confirms receiving ') + splitMoney(num(closed[0].amount_paise), g.plan.currency) + '.', url: '/#fun' }, { only: other });
+      await splitTell(sql, circle, me, other, { title: '✅ Settled: ' + g.plan.title,
+        body: me.name + (payer ? ' confirms paying ' : ' confirms receiving ') + splitMoney(num(closed[0].amount_paise), g.plan.currency) + '.', url: '/#fun' });
       return good({ id: closed[0].id, closed: true });
     }
     // Otherwise this is the first word on it. The amount is the one the
@@ -326,9 +382,9 @@ export async function splitAction(sql, circle, me, b) {
       : await sql`insert into plan_settles (plan_id, circle_id, from_member, to_member, amount_paise, received_at)
                   values (${g.plan.id}, ${circle.id}, ${from}, ${to}, ${line.amount}, now()) on conflict do nothing returning id`;
     if (!r[0]) return bad('That is already marked. Open the costs again to see the latest.', 409);
-    await pushCircle(sql, circle.id, { title: '💰 ' + g.plan.title,
+    await splitTell(sql, circle, me, other, { title: '💰 ' + g.plan.title,
       body: me.name + (payer ? ' says ' + splitMoney(line.amount, g.plan.currency) + ' is paid to you. Open Parwah and tap Received if it has come.'
-                             : ' says ' + splitMoney(line.amount, g.plan.currency) + ' has come from you. Open Parwah and tap I have paid to agree.'), url: '/#fun' }, { only: other });
+                             : ' says ' + splitMoney(line.amount, g.plan.currency) + ' has come from you. Open Parwah and tap I have paid to agree.'), url: '/#fun' });
     return good({ id: r[0].id, closed: false }, 201);
   }
 

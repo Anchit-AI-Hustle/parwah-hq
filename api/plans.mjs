@@ -16,7 +16,7 @@ import { ensureVisitSchema, visitState, visitAction } from './_visits.mjs';
 import { reqTz } from './_recur.mjs';
 import { ensureBondSchema, bondState, bondAction, cardRead, entryAudio } from './_bond.mjs';
 import { TOGETHER_KIND, ensureTogetherSchema, togetherPrepare, togetherAnswer, isTogetherAnswer } from './_together.mjs';
-import { ensureSplitSchema, splitState, splitAction } from './_split.mjs';
+import { ensureSplitSchema, splitState, splitAction, splitSettling } from './_split.mjs';
 
 // `together` is watch or listen together (api/_together.mjs): a plan that
 // carries a platform and one https link.
@@ -130,7 +130,17 @@ export default async function handler(req, res) {
         from plans p left join members b on b.id = p.by_member
         where p.circle_id = ${circle.id} and p.at > now() - interval '3 hours'
         order by p.at asc limit 20`;
-      return res.status(200).json({ ok: true, plans });
+      // A trip is settled after it is over. Plans whose time has gone, that
+      // I am on, and whose costs are not square yet stay reachable: any age,
+      // newest first, at most 20. They are marked `settling` and carry no
+      // RSVP. A plan with a square ledger drops off as before.
+      const openIds = await splitSettling(sql, circle, me);
+      const past = openIds.length ? await sql`
+        select p.id, p.title, p.kind, p.at, p.place, p.by_member, b.name as by_name, true as settling
+        from plans p left join members b on b.id = p.by_member
+        where p.circle_id = ${circle.id} and p.id = any(${openIds}::uuid[])
+        order by p.at desc` : [];
+      return res.status(200).json({ ok: true, plans, settling: past });
     }
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'GET, POST');
@@ -207,7 +217,14 @@ export default async function handler(req, res) {
       const rows = await sql`select id, by_member, title from plans where id = ${body.planId} and circle_id = ${circle.id}`;
       if (!rows[0]) return res.status(404).json({ ok: false, error: 'Plan not found' });
       // Every member is an equal admin of the circle - anyone can cancel.
-      await sql`delete from plans where id = ${rows[0].id}`;
+      // But not a plan with costs on it: the costs, the shares and every
+      // "paid" and "received" hang from the plan and would go with it.
+      const costs = await sql`select 1 as x from plan_costs where plan_id = ${rows[0].id} limit 1`;
+      if (costs[0]) return res.status(409).json({ ok: false, error: 'This plan has costs on it. Remove the costs first, or settle up.' });
+      // The same check inside the delete, for a cost added in the same moment.
+      const gone = await sql`delete from plans where id = ${rows[0].id}
+                               and not exists (select 1 from plan_costs k where k.plan_id = plans.id) returning id`;
+      if (!gone[0]) return res.status(409).json({ ok: false, error: 'This plan has costs on it. Remove the costs first, or settle up.' });
       await feed(sql, circle.id, me.id, `${me.name} cancelled: ${rows[0].title}`);
       await pushCircle(sql, circle.id, { title: '❌ Plan cancelled', body: me.name + ' cancelled: ' + rows[0].title }, { except: me.id });
       return res.status(200).json({ ok: true });
