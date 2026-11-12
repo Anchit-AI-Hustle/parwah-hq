@@ -393,7 +393,7 @@ await fallsBack('an error from the provider', async () => { throw new Error('529
   for (let i = 1; i <= 14; i++) many.push(await person(big, 'BIGFAM', 'Member' + String.fromCharCode(64 + i)));
   await call(events, many[0], { type: 'checkin', text: '' });
   frozen = Date.now() + 3000;
-  modelReply = async () => ({ text: 'MemberA checked in today. Otherwise the day was quiet.', model: 'fake-model' });
+  modelReply = async () => ({ text: 'There was a check-in today. Otherwise the day was quiet.', model: 'fake-model' });
   const out = [];
   for (const m of many) out.push((await digest(m)).digest.by);
   ok('the first 12 in a circle are written by Ekta', out.slice(1, 12).every(b => b === 'ekta') && out[0] === 'ekta', out.join());
@@ -417,6 +417,8 @@ await fallsBack('an error from the provider', async () => { throw new Error('529
   ok('nor does any other zone that day', (await digest(rohan, { tz: 'Etc/GMT-12' })).status === 200 && (await digest(rohan, { tz: 'Etc/GMT+10' })).status === 200 && modelCalls.length === 1);
   ok('one claim for that member on that UTC day, and the circle\'s counter says one call', (await rows(`select to_char(day, 'YYYY-MM-DD') as day from digest_model_claim where member_id = $1`, [rohan.id])).map(x => x.day).join() === '2027-03-10'
      && (await rows(`select sum(calls)::int as n from digest_usage where circle_id = $1`, [fam]))[0].n === 1);
+  // Papa's own facts say "You", so a reply that names him would be refused.
+  modelReply = async () => ({ text: 'You checked in today. Otherwise the day was quiet.', model: 'fake-model' });
   ok('another member is not held back by it', (await digest(papa, { tz: 'Etc/GMT-13' })).digest.by === 'ekta' && modelCalls.length === 2);
   await rows(`insert into events (circle_id, member_id, type, created_at) values ($1, $2, 'checkin', $3)`, [fam, papa.id, new Date(frozen + 86400000 - 3600000)]);
   frozen += 86400000;
