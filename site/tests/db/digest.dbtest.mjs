@@ -46,6 +46,8 @@ const MB = await import('../../../api/_memorybond.mjs');
 const BOND = await import('../../../api/_bond.mjs');
 const D = await import('../../../api/_digest.mjs');
 const R = await import('../../../api/_digestrules.mjs');
+const RM = await import('../../../api/_remember.mjs');
+const RR = await import('../../../api/_rememberrules.mjs');
 
 const sql = db();
 await ensureSchema(sql);
@@ -308,7 +310,7 @@ let rohanFirst;
 // 8. WITH A MODEL (a fake one, through the seam; the real API is never called)
 // =====================================================================
 process.env.ANTHROPIC_API_KEY = 'test-key-not-real';
-const reset = async () => { await admin.query(`delete from digest_daily`); await admin.query(`delete from digest_usage`); modelCalls.length = 0; };
+const reset = async () => { await admin.query(`delete from digest_daily`); await admin.query(`delete from digest_usage`); await admin.query(`delete from digest_model_claim`); modelCalls.length = 0; };
 await reset();
 frozen = Date.now() + 3000;
 const expectedFor = async (who, zone = EVE.zone) => R.digestFacts(await D.digestGather(sql, { id: fam, kind: 'family' }, { id: who.id }, zone, frozen));
@@ -399,6 +401,69 @@ await fallsBack('an error from the provider', async () => { throw new Error('529
   ok('12 calls were made, no more', modelCalls.length === 12 && (await rows(`select calls, written from digest_usage where circle_id = $1`, [big]))[0].calls === 12);
   ok('the cap is per circle: another family is still served', (await digest(rohan)).digest.by === 'ekta' && modelCalls.length === 13);
   ok('nothing went to the network in the whole test', netCalls.length === 0, netCalls.join());
+}
+
+// ---- one model call per member per UTC day, whatever local day the phone names
+{
+  await reset();
+  // 06:00 UTC: 7pm on the 9th at UTC-11, and 7pm on the 10th at UTC+13. One instant, two local days, both evening.
+  frozen = Date.UTC(2027, 2, 10, 6, 0, 0);
+  await rows(`insert into events (circle_id, member_id, type, created_at) values ($1, $2, 'checkin', $3)`, [fam, papa.id, new Date(frozen - 3600000)]);
+  modelReply = async () => ({ text: 'Papa checked in today. Otherwise the day was quiet.', model: 'fake-model' });
+  const west = (await digest(rohan, { tz: 'Etc/GMT+11' })).digest;
+  ok('7pm on the 9th, far west: the day\'s digest, written by Ekta, one call', west.day === '2027-03-09' && west.final === true && west.by === 'ekta' && modelCalls.length === 1, JSON.stringify(west).slice(0, 200) + ' ' + modelCalls.length);
+  const east = (await digest(rohan, { tz: 'Etc/GMT-13' })).digest;
+  ok('THE SAME MOMENT WITH ANOTHER ZONE is another local day, but buys no second model call', east.day === '2027-03-10' && east.final === true && east.by === 'plain' && modelCalls.length === 1, JSON.stringify(east).slice(0, 200) + ' ' + modelCalls.length);
+  ok('nor does any other zone that day', (await digest(rohan, { tz: 'Etc/GMT-12' })).status === 200 && (await digest(rohan, { tz: 'Etc/GMT+10' })).status === 200 && modelCalls.length === 1);
+  ok('one claim for that member on that UTC day, and the circle\'s counter says one call', (await rows(`select to_char(day, 'YYYY-MM-DD') as day from digest_model_claim where member_id = $1`, [rohan.id])).map(x => x.day).join() === '2027-03-10'
+     && (await rows(`select sum(calls)::int as n from digest_usage where circle_id = $1`, [fam]))[0].n === 1);
+  ok('another member is not held back by it', (await digest(papa, { tz: 'Etc/GMT-13' })).digest.by === 'ekta' && modelCalls.length === 2);
+  await rows(`insert into events (circle_id, member_id, type, created_at) values ($1, $2, 'checkin', $3)`, [fam, papa.id, new Date(frozen + 86400000 - 3600000)]);
+  frozen += 86400000;
+  ok('the next UTC day is a new call, as before', (await digest(rohan, { tz: 'Etc/GMT-13' })).digest.by === 'ekta' && modelCalls.length === 3);
+  await rows(`delete from events where circle_id = $1 and created_at > now() + interval '1 day'`, [fam]);
+}
+
+// ---- if who is remembered cannot be read, nobody but the viewer is named
+{
+  await reset();
+  frozen = Date.now() + 3000;
+  await rows(`insert into events (circle_id, member_id, type, created_at) values ($1, $2, 'checkin', $3)`, [fam, papa.id, new Date(frozen - 60000)]);
+  const before = await D.digestGather(sql, { id: fam, kind: 'family' }, { id: rohan.id }, EVE.zone, frozen);
+  ok('control: with the read working, Papa\'s check-in is in Rohan\'s list', before.unsure === false && R.digestFacts(before).some(f => /Papa checked in/.test(f.text)));
+  // The stand-in model answers nothing of its own here, so the words are the plain writer's.
+  modelReply = async () => ({ refusal: true });
+  await admin.query(`alter table members rename column remembered to remembered_gone`);
+  let raw, r;
+  try {
+    raw = await D.digestGather(sql, { id: fam, kind: 'family' }, { id: rohan.id }, EVE.zone, frozen);
+    r = await D.digestOpen(sql, { id: fam, kind: 'family', name: 'Kapoor Family' }, { id: rohan.id, name: 'Rohan' }, EVE.zone, frozen);
+  } finally { await admin.query(`alter table members rename column remembered_gone to remembered`); }
+  const facts = R.digestFacts(raw);
+  ok('THE READ OF WHO IS REMEMBERED FAILS: nobody but the viewer may be named', raw.unsure === true && raw.people.every(p => p.id === rohan.id ? p.remembered === false : p.remembered === true)
+     && raw.remembrance.length === 0 && !facts.some(f => /Papa|Maa|Priya|Chachu/.test(f.text)), JSON.stringify(facts.map(f => f.text)));
+  ok('the digest still answers, names nobody else, and the model is not asked about anyone', !!r && typeof r.text === 'string' && r.text.length > 0 && !/Papa|Maa|Priya|Chachu/.test(r.text) && modelCalls.every(c => !/Papa|Maa|Priya|Chachu/.test(c.user)), r && r.text);
+  await reset();
+}
+
+// ---- "tomorrow is a day of remembrance": the reminder's own rule, on the person's own clock
+{
+  const add = async (name, y, m, d, place, country) => (await rows(`insert into members (circle_id, name, remembered, passed_year, passed_month, passed_day, place, country, created_at)
+    values ($1, $2, true, $3, $4, $5, $6, $7, now() - interval '400 days') returning id`, [fam, name, y, m, d, place, country]))[0].id;
+  await RM.ensureRememberSchema(sql);
+  const dadi = await add('Dadi', 2020, 2, 29, null, 'IN'), nana = await add('Nana', 2019, 3, 12, 'Auckland', 'NZ');
+  const ist = (y, mo, d, h) => Date.UTC(y, mo - 1, d, h - 5, -30);
+  const tomorrowFor = async (ms) => (await D.digestGather(sql, { id: fam, kind: 'family' }, { id: rohan.id }, 'Asia/Kolkata', ms)).remembrance;
+  ok('29 FEBRUARY IN A YEAR WITHOUT ONE: on the evening of the 27th, tomorrow is Dadi\'s day', (await tomorrowFor(ist(2027, 2, 27, 19))).join() === dadi);
+  ok('and the words are in the digest', R.digestFacts(await D.digestGather(sql, { id: fam, kind: 'family' }, { id: rohan.id }, 'Asia/Kolkata', ist(2027, 2, 27, 19))).some(f => f.text === 'Tomorrow the family remembers Dadi.'));
+  ok('not a day early, and not on the day itself', (await tomorrowFor(ist(2027, 2, 26, 19))).length === 0 && (await tomorrowFor(ist(2027, 2, 28, 19))).length === 0);
+  ok('in a leap year it is the 29th: said on the 28th, not on the 27th', (await tomorrowFor(ist(2028, 2, 28, 19))).join() === dadi && (await tomorrowFor(ist(2028, 2, 27, 19))).length === 0);
+  ok('it agrees with the reminder the family gets, at the same moments', RR.remembranceDue({ year: 2020, month: 2, day: 29 }, ist(2027, 2, 27, 19), 'Asia/Kolkata').when === 'eve'
+     && RR.remembranceDue({ year: 2020, month: 2, day: 29 }, ist(2027, 2, 28, 9), 'Asia/Kolkata').when === 'day');
+  // Nana lived in Auckland: 7pm on 10 March in India is already 11 March there, so his 12th is tomorrow.
+  ok('THE PERSON\'S OWN PLACE decides the day: Nana\'s 12 March in Auckland', (await tomorrowFor(ist(2027, 3, 10, 19))).join() === nana && (await tomorrowFor(ist(2027, 3, 10, 9))).length === 0);
+  ok('in the year they passed there is no day yet', (await tomorrowFor(ist(2019, 3, 10, 19))).length === 0);
+  await rows(`delete from members where id = any($1::uuid[])`, [[dadi, nana]]);
 }
 
 await admin.end();

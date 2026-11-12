@@ -36,6 +36,8 @@ import { schemaOnce, rateLimit, spaceWord } from './_db.mjs';
 import { fail } from './_fail.mjs';
 import { dayIn, reqTz, validTz, fromWall } from './_recur.mjs';
 import { pushCircle } from './_push.mjs';
+import { placeOf } from './_places.mjs';
+import { remembranceDue } from './_rememberrules.mjs';
 import { DG, digestFacts, digestWrite, digestFirst, digestSince, digestPrompt, digestCheck, digestHour } from './_digestrules.mjs';
 
 const HOME_TZ = 'Asia/Kolkata';
@@ -80,6 +82,19 @@ async function digestTables(sql) {
     written int not null default 0,
     primary key (circle_id, day)
   )`;
+  // ONE MODEL CALL PER MEMBER PER UTC DAY, as well as per local day. The
+  // local day comes from a header the phone sends, so changing the zone
+  // could make "a new day" and buy another call. This row cannot be bought:
+  // it is keyed on the server's own clock.
+  await sql`create table if not exists digest_model_claim (
+    member_id uuid not null references members(id) on delete cascade,
+    day date not null,
+    at timestamptz not null default now(),
+    primary key (member_id, day)
+  )`;
+  // The flag every digest reads, so its read can only fail for a real
+  // reason (see digestGather), never because no other module made it yet.
+  await sql`alter table members add column if not exists remembered boolean not null default false`;
   // "Tell me each evening": off until the member turns it on. pushed_for is
   // the claim, so the 8pm notification goes once a day however many timers run.
   await sql`create table if not exists digest_prefs (
@@ -109,9 +124,15 @@ export async function digestGather(sql, circle, me, tz, nowMs = Date.now()) {
   const q = async (f) => { try { return (await f()) || []; } catch (e) { return []; } };
   const people = await sql`select id, name, user_id is not null as on_app, created_at, to_char(dob, 'MM-DD') as bd
                            from members where circle_id = ${cid}`;
-  const remembered = new Set((await q(() => sql`select id from members where circle_id = ${cid} and remembered`)).map(r => r.id));
-  const raw = { viewerId: mid, word: spaceWord(circle), tz: w.zone,
-    people: people.map(p => ({ id: p.id, name: p.name, remembered: remembered.has(p.id) })) };
+  // WHO IS REMEMBERED. If this one read fails, the digest must not go on as
+  // if nobody were: it would name someone who has passed away as though
+  // they had a day today. So it fails safe: nobody but the viewer may be
+  // named, and no day of remembrance is announced from half-read data.
+  let remembered = new Set(), unsure = false;
+  try { remembered = new Set((await sql`select id from members where circle_id = ${cid} and remembered`).map(r => r.id)); }
+  catch (e) { unsure = true; }
+  const raw = { viewerId: mid, word: spaceWord(circle), tz: w.zone, unsure,
+    people: people.map(p => ({ id: p.id, name: p.name, remembered: unsure ? p.id !== mid : remembered.has(p.id) })) };
 
   // Check-ins are on the family feed, which every member reads.
   raw.checkins = (await q(() => sql`
@@ -155,11 +176,17 @@ export async function digestGather(sql, circle, me, tz, nowMs = Date.now()) {
       and to_char(anniversary, 'MM-DD') = ${w.tomorrowMd}`)).map(r => [r.id, r.anniv_with].filter(Boolean));
   // A day of remembrance (api/_remember.mjs keeps the month and the day a
   // person passed). If those columns are not there yet on this database the
-  // read fails and gives nothing.
-  raw.remembrance = (await q(() => sql`
-    select id from members where circle_id = ${cid} and remembered
-      and passed_month is not null and passed_day is not null
-      and lpad(passed_month::text, 2, '0') || '-' || lpad(passed_day::text, 2, '0') = ${w.tomorrowMd}`)).map(r => r.id);
+  // read fails and gives nothing. "Tomorrow" is worked out by the same rule
+  // as the family's reminder (remembranceDue in _rememberrules.mjs), on the
+  // clock of the person's own place: so 29 February falls on 28 February in
+  // a year without one, here exactly as it does there.
+  raw.remembrance = unsure ? [] : (await q(() => sql`
+    select id, place, country, passed_year, passed_month, passed_day from members where circle_id = ${cid} and remembered
+      and passed_month is not null and passed_day is not null`))
+    .filter(m => {
+      const due = remembranceDue({ year: m.passed_year, month: m.passed_month, day: m.passed_day }, nowMs + 86400000, placeOf(m.place, m.country, null).tz);
+      return !!due && due.when === 'day';
+    }).map(r => r.id);
   // Tasks: the family's shared list. Counts, not titles.
   raw.tasks = (await q(() => sql`
     select completed_by as id, count(*)::int as n from requests
@@ -269,8 +296,13 @@ export async function digestOpen(sql, circle, me, tz, nowMs = Date.now()) {
 async function digestByModel(sql, circle, me, day, facts, nowMs) {
   // A quiet day needs no model, and with no key on the server there is none.
   if (!facts.length || !process.env.ANTHROPIC_API_KEY) return null;
-  // The cap, taken in one statement so two members cannot both be the 12th.
   const utcDay = new Date(nowMs).toISOString().slice(0, 10);
+  // At most one call per member per UTC day, whatever local day the phone
+  // names. Taken before the circle's cap, so a refused try costs nothing.
+  const once = await sql`insert into digest_model_claim (member_id, day) values (${me.id}, ${utcDay}::date)
+                         on conflict do nothing returning member_id`;
+  if (!once[0]) return null;
+  // The cap, taken in one statement so two members cannot both be the 12th.
   const slot = await sql`
     insert into digest_usage (circle_id, day, calls) values (${circle.id}, ${utcDay}::date, 1)
     on conflict (circle_id, day) do update set calls = digest_usage.calls + 1

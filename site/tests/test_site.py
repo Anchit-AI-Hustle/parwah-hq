@@ -3759,6 +3759,19 @@ check("digest: thumbs are one per member per day, the evening setting starts off
       and "set vote = ${v}, voted_at = now()" in _dg and "if (digestSenior()) return h;" in _app_src
       and "Tell me each evening" in _app_src and "It is off until you turn it on." in _app_src
       and "Written by Ekta from what you can see in the family today." in _dg)
+check("digest: one model call per member per UTC day as well as per local day, claimed before the circle's cap",
+      "create table if not exists digest_model_claim" in _dg
+      and "insert into digest_model_claim (member_id, day) values (${me.id}, ${utcDay}::date)" in _dg_by
+      and _dg_by.index("insert into digest_model_claim") < _dg_by.index("insert into digest_usage"))
+check("digest: if who is remembered cannot be read, nobody but the viewer may be named and no day of remembrance is announced",
+      "catch (e) { unsure = true; }" in _dg_gather
+      and "remembered: unsure ? p.id !== mid : remembered.has(p.id)" in _dg_gather
+      and "raw.remembrance = unsure ? [] :" in _dg_gather
+      and "q(() => sql`select id from members where circle_id = ${cid} and remembered`)" not in _dg)
+check("digest: tomorrow's day of remembrance uses the reminder's own rule on the person's own clock, never a month-and-day string match",
+      "import { remembranceDue } from './_rememberrules.mjs';" in _dg
+      and "remembranceDue({ year: m.passed_year, month: m.passed_month, day: m.passed_day }, nowMs + 86400000, placeOf(m.place, m.country, null).tz)" in _dg_gather
+      and "lpad(passed_month::text" not in _dg)
 _dg_static = [i for i in _static_ids if i.startswith("dg-")]
 _dg_all = set(re.findall(r'id="(dg-[a-z-]+)"', _app_src))
 check(f"digest: its ids all start with dg- ({len(_dg_all)}), none twice in the page, and its functions start with digest",
