@@ -32,6 +32,20 @@ import { index as kinIndex, generations, kinLinked } from './_kin.mjs';
 import { wallIn, isAdult } from './_rememberrules.mjs';
 
 export const LINKS_MAX = 6;
+// A request to link pushes every phone in the family that is asked, and a
+// family code is short. So asking is counted, and a limiter that cannot
+// count says no (failClosed):
+//   - tries per address, in the SAME bucket as joining a family by code,
+//     so guessing codes here and there shares one allowance;
+//   - 10 tries a day from one family, a wrong code counted like a right one;
+//   - 3 requests a day from one family to one other family;
+//   - 6 requests a day reaching one family, from anyone. Past it the
+//     request is not made and nobody is pushed;
+//   - after a no, or a request taken back, the same two families wait 7 days.
+// Every limit answers with the same status and the same words.
+export const LINK_LIMITS = { perDay: 10, perPairDay: 3, incomingDay: 6, coolDays: 7 };
+export const LINK_SLOW = 'Too many tries. Please wait a while and try again.';
+export const LINK_COOL = 'A request between your two families was closed in the last 7 days. You can ask again after that.';
 
 let ready = false;
 export async function ensureFamlinkSchema(sql) {
@@ -141,8 +155,12 @@ export async function famlinkAction(sql, req, circle, me, body) {
   if (a === 'link_state') return linkState(sql, circle, me);
 
   if (a === 'link_request') {
-    // A family code is short enough to guess if you may keep trying. You may not.
-    if (!(await rateLimit(sql, 'link', clientIp(req), 12, 600))) return bad('Too many tries on this device. Please wait a few minutes and try again.', 429);
+    // A family code is short enough to guess if you may keep trying. You may
+    // not: the same allowance as joining by code, and ten tries a day from
+    // one family. Both are counted before the code is even looked up.
+    const slow = () => bad(LINK_SLOW, 429);
+    if (!(await rateLimit(sql, 'join', clientIp(req), 12, 600, { failClosed: true }))) return slow();
+    if (!(await rateLimit(sql, 'link_ask', circle.id, LINK_LIMITS.perDay, 86400, { failClosed: true }))) return slow();
     const other = await circleByCode(sql, body.otherCode);
     if (!other) return bad('No family found with that code', 404, { field: 'code' });
     if (other.id === circle.id) return bad('That is the code of this family. Write the code of the other family.', 400, { field: 'code' });
@@ -156,9 +174,23 @@ export async function famlinkAction(sql, req, circle, me, body) {
                           and least(a_circle, b_circle) = least(${circle.id}::uuid, ${other.id}::uuid)
                           and greatest(a_circle, b_circle) = greatest(${circle.id}::uuid, ${other.id}::uuid)`;
     if (dup[0]) return bad(dup[0].status === 'active' ? 'Your two families are already linked.' : 'A request between your two families is already waiting.', 409);
+    // They said no, or the request was taken back: the same two families
+    // wait a week, whoever asks. (An ended link that had been said yes to
+    // is not a withdrawal: it has a decided_at.)
+    const cool = await sql`select 1 as x from family_links
+                           where least(a_circle, b_circle) = least(${circle.id}::uuid, ${other.id}::uuid)
+                             and greatest(a_circle, b_circle) = greatest(${circle.id}::uuid, ${other.id}::uuid)
+                             and ((status = 'declined' and decided_at > now() - make_interval(days => ${LINK_LIMITS.coolDays}))
+                               or (status = 'ended' and decided_at is null and ended_at > now() - make_interval(days => ${LINK_LIMITS.coolDays})))
+                           limit 1`;
+    if (cool[0]) return bad(LINK_COOL, 409);
     if (await activeCount(sql, circle.id) >= LINKS_MAX) return bad('Your family ' + FULL, 409);
     const waiting = await sql`select count(*)::int as n from family_links where a_circle = ${circle.id} and status = 'pending'`;
     if (waiting[0].n >= LINKS_MAX) return bad('Your family has ' + LINKS_MAX + ' requests waiting already. Wait for an answer, or take one back.', 409);
+    // Now it would be made, and a family would be pushed: at most three a
+    // day to one family, and at most six a day reaching one family at all.
+    if (!(await rateLimit(sql, 'link_pair', circle.id + ':' + other.id, LINK_LIMITS.perPairDay, 86400, { failClosed: true }))) return slow();
+    if (!(await rateLimit(sql, 'link_in', other.id, LINK_LIMITS.incomingDay, 86400, { failClosed: true }))) return slow();
     // Who the bridge is in the other family, when it can be told: the same
     // sign-in, or the same name. Otherwise whoever says yes picks them.
     let theirs = null;

@@ -39,6 +39,7 @@ const Fc = await import('../../../api/_familycare.mjs');
 const Mb = await import('../../../api/_memorybond.mjs');
 const { ensureTaskSchema } = await import('../../../api/_tasks.mjs');
 const { wallIn } = await import('../../../api/_rememberrules.mjs');
+const { LINK_SLOW, LINK_COOL } = await import('../../../api/_famlink.mjs');
 const sql = db();
 await ensureSchema(sql);
 
@@ -152,8 +153,18 @@ ok('and mark Kishan\'s late father, with a line', (await (async () => {
   return act(b.Sarla, 'remember_mark', { targetId: dadaV, year: 2011, month: 6, day: 9, line: 'remember-line-secret' });
 })()).status === 200);
 
+// A no stands for a week: the same two families cannot ask again at once, from either side.
+const feedB = async () => (await admin.query(`select count(*)::int as n from events where circle_id = $1 and text like '%asked to link family trees%'`, [B.id])).rows[0].n;
+const fb0 = await feedB();
+r = await act(a.Arjun, 'link_request', { otherCode: B.code, bridgeId: a.Kavya.id });
+ok('after a no, the same family cannot ask again for 7 days', r.status === 409 && r.error === 'A request between your two families was closed in the last 7 days. You can ask again after that.' && !r.linkId, JSON.stringify(r));
+ok('nor can the other family ask back', (await act(b.Karan, 'link_request', { otherCode: A.code, bridgeId: b.Kavya.id })).status === 409);
+ok('and the family that said no heard nothing more', (await feedB()) === fb0 && (await admin.query(`select count(*)::int as n from family_links where status = 'pending'`)).rows[0].n === 0);
+await admin.query(`update family_links set decided_at = now() - interval '6 days 23 hours' where id = $1`, [link1]);
+ok('six days and 23 hours later it is still too soon', (await act(a.Arjun, 'link_request', { otherCode: B.code, bridgeId: a.Kavya.id })).status === 409);
+await admin.query(`update family_links set decided_at = now() - interval '8 days' where id = $1`, [link1]);
 r = await act(a.Arjun, 'link_request', { otherCode: B.code, bridgeId: a.Kavya.id, sharePhones: false });
-ok('Arjun asks again, without sharing phone numbers', r.status === 202);
+ok('after the week, Arjun asks again, without sharing phone numbers', r.status === 202);
 const link2 = r.linkId;
 ok('a bridge from another family is refused at the yes', (await act(b.Kishan, 'link_approve', { linkId: link2, bridgeId: a.Arjun.id })).status === 400);
 r = await act(b.Kishan, 'link_approve', { linkId: link2, sharePhones: true });
@@ -243,6 +254,7 @@ for (let i = 1; i <= 6; i++) {
 }
 for (const e of extra.slice(0, 5)) await admin.query(`insert into family_links (a_circle, b_circle, a_member, b_member, status, decided_at) values ($1,$2,$3,$4,'active', now())`, [e.id, A.id, e.member, a.Kavya.id]);
 ok('the Sharmas now have 6 linked families', (await act(a.Arjun, 'link_state')).links.length === 6);
+await admin.query(`delete from rate_limit where bucket like 'link%'`);   // another day: this is about the limit of six links, not about how often one may ask
 r = await act(a.Arjun, 'link_request', { otherCode: 'EXTRA6', bridgeId: a.Kavya.id });
 ok('a seventh cannot be asked for', r.status === 409 && /6 linked families already/.test(r.error), JSON.stringify(r));
 const waiting = (await admin.query(`insert into family_links (a_circle, b_circle, a_member, b_member, status) values ($1,$2,$3,$4,'pending') returning id`, [extra[5].id, A.id, extra[5].member, a.Kavya.id])).rows[0].id;
@@ -258,7 +270,72 @@ sa = await act(a.Arjun, 'link_state'); sb = await act(b.Sarla, 'link_state');
 ok('an ended link exposes nothing, to either side, at once', sa.links.length === 0 && sb.links.length === 0 && !/Sarla|Karan|Meena|Tara/.test(JSON.stringify(sa)) && !/Ramesh|Bharat|Arjun/.test(JSON.stringify(sb)));
 ok('ending twice is harmless', (await act(a.Arjun, 'link_end', { linkId: link2 })).already === true);
 r = await act(b.Karan, 'link_request', { otherCode: A.code, bridgeId: b.Kavya.id });
-ok('either family may ask again later; the one that asked can take it back', r.status === 202 && (await act(a.Arjun, 'link_end', { linkId: r.linkId })).status === 400 && (await act(b.Sarla, 'link_end', { linkId: r.linkId })).status === 200);
+ok('either family may ask again after a link that was ended; the one that asked can take it back', r.status === 202 && (await act(a.Arjun, 'link_end', { linkId: r.linkId })).status === 400 && (await act(b.Sarla, 'link_end', { linkId: r.linkId })).status === 200);
+const back = r.linkId;
+ok('a request taken back also stands for 7 days, for both families', (await act(b.Karan, 'link_request', { otherCode: A.code, bridgeId: b.Kavya.id })).error === LINK_COOL
+   && (await act(a.Arjun, 'link_request', { otherCode: B.code, bridgeId: a.Kavya.id })).error === LINK_COOL);
+
+// ---- asking is counted: nobody can ring a family all day, or guess codes
+{
+  const pushedTo = async (cid) => (await admin.query(`select count(*)::int as n from events where circle_id = $1 and text like '%asked to link family trees%'`, [cid])).rows[0].n;
+  const newDay = () => admin.query(`delete from rate_limit where bucket like 'link%' or bucket = 'join'`);
+  const clearLinks = () => admin.query(`delete from family_links where status in ('pending', 'ended', 'declined')`);
+  await newDay(); await clearLinks();
+  // Three a day from one family to one other family. An ended link is not a withdrawal, so only the count stops it.
+  const askEnd = async () => {
+    const x = await act(a.Arjun, 'link_request', { otherCode: B.code, bridgeId: a.Kavya.id });
+    if (x.status === 202) await admin.query(`delete from family_links where id = $1`, [x.linkId]);
+    return x;
+  };
+  const three = [await askEnd(), await askEnd(), await askEnd()];
+  const before = await pushedTo(B.id);
+  const fourth = await askEnd();
+  ok('three requests a day from one family to another go through; the fourth is refused like any rate limit', three.every(x => x.status === 202) && fourth.status === 429 && fourth.error === LINK_SLOW && !fourth.linkId, JSON.stringify(fourth));
+  ok('and the family that was asked hears nothing of the fourth', (await pushedTo(B.id)) === before && (await admin.query(`select count(*)::int as n from family_links where status = 'pending'`)).rows[0].n === 0);
+  ok('the Sharmas can still ask a different family', await (async () => { const x = await act(a.Arjun, 'link_request', { otherCode: C.code, bridgeId: a.Kavya.id }); if (x.linkId) await admin.query(`delete from family_links where id = $1`, [x.linkId]); return x.status === 202; })());
+
+  // Ten tries a day from one family, a wrong code counted like a right one.
+  await newDay(); await clearLinks();
+  const tries = [];
+  for (let i = 0; i < 10; i++) tries.push(await act(a.Arjun, 'link_request', { otherCode: 'NOPE' + i, bridgeId: a.Kavya.id }));
+  ok('a wrong code still says so, for ten tries', tries.every(x => x.status === 404 && x.error === 'No family found with that code'));
+  const eleventh = await act(a.Arjun, 'link_request', { otherCode: 'NOPE11', bridgeId: a.Kavya.id });
+  const right = await act(a.Bharat, 'link_request', { otherCode: B.code, bridgeId: a.Kavya.id });
+  ok('the eleventh try of the day is refused whether the code is wrong or right, in the same words and status', eleventh.status === 429 && right.status === 429 && eleventh.error === LINK_SLOW && right.error === eleventh.error
+     && JSON.stringify(Object.keys(eleventh).sort()) === JSON.stringify(Object.keys(right).sort()), JSON.stringify([eleventh, right]));
+  ok('so guessing told them nothing, and nothing was made', (await admin.query(`select count(*)::int as n from family_links where status = 'pending'`)).rows[0].n === 0);
+  ok('another family is not held back by the Sharmas\' tries', await (async () => { const x = await act(b.Karan, 'link_request', { otherCode: 'NOPE99', bridgeId: b.Kavya.id }); return x.status === 404; })());
+
+  // Guessing here uses up the same allowance as guessing a code to join.
+  await newDay();
+  const ipCall = (who, action, extra) => { const req = { method: 'POST', headers: { 'x-parwah-token': who.token, 'x-forwarded-for': '10.99.99.99' }, query: {}, body: { action, code: who.code, memberId: who.id, ...extra } };
+    let status = 200, json = null; const res = { status(x) { status = x; return this; }, json(j) { json = j; return this; }, setHeader() {} };
+    return api.circle(req, res).then(() => ({ ...(json || {}), status })); };
+  for (let i = 0; i < 6; i++) await ipCall(a.Arjun, 'link_request', { otherCode: 'GUESS' + i, bridgeId: a.Kavya.id });
+  const joins = [];
+  for (let i = 0; i < 7; i++) joins.push(await ipCall(a.Arjun, 'join', { code: 'WRONG' + i, memberName: 'Arjun', userId: a.Arjun.userId }));
+  ok('wrong codes to link and wrong codes to join share one allowance per address', joins.slice(0, 6).every(x => x.status === 404) && joins[6].status === 429, joins.map(x => x.status).join());
+  ok('and once it is used up, linking from that address is refused too', (await ipCall(b.Karan, 'link_request', { otherCode: A.code, bridgeId: b.Kavya.id })).status === 429);
+
+  // Six a day reaching one family, from anyone. The seventh is not made and nobody is pushed.
+  await newDay(); await clearLinks();
+  const askers = [];
+  for (let i = 0; i < 7; i++) {
+    const F = await family('Asker ' + i, ['Head' + i]);
+    askers.push(F);
+  }
+  const got = [];
+  const heard0 = await pushedTo(C.id);
+  for (const F of askers) {
+    const head = Object.values(F.m)[0];
+    const x = await act(head, 'link_request', { otherCode: C.code, bridgeId: head.id });
+    got.push(x);
+    if (x.linkId) await admin.query(`delete from family_links where id = $1`, [x.linkId]);
+  }
+  ok('six families reach one family in a day; the seventh is refused quietly, like any rate limit', got.slice(0, 6).every(x => x.status === 202) && got[6].status === 429 && got[6].error === LINK_SLOW, got.map(x => x.status).join());
+  ok('the family heard of six, not seven', (await pushedTo(C.id)) === heard0 + 6);
+  await newDay(); await clearLinks();
+}
 ok('both families were told in their own feed, never with the other\'s people', (await admin.query(`select count(*)::int as n from events where circle_id = $1 and text like '%family tree%'`, [A.id])).rows[0].n >= 3
    && (await admin.query(`select count(*)::int as n from events where circle_id = $1 and text ~ 'Sarla|Karan|Meena'`, [A.id])).rows[0].n === 0);
 

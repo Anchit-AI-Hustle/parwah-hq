@@ -3462,7 +3462,17 @@ check("links: a yes from an adult of the other family, either side ends it, six 
       and "if (!adult()) return bad('An adult in the family answers this.', 403);" in _wf_link
       and "export const LINKS_MAX = 6;" in _wf_link and _wf_link.count("activeCount(sql, ") >= 3
       and "least(a_circle, b_circle), greatest(a_circle, b_circle)" in _wf_link and "where status in ('pending', 'active')" in _wf_link
-      and "set status = 'ended', ended_by = ${me.id}, ended_at = now()" in _wf_link and "rateLimit(sql, 'link', clientIp(req), 12, 600)" in _wf_link)
+      and "set status = 'ended', ended_by = ${me.id}, ended_at = now()" in _wf_link and "rateLimit(sql, 'join', clientIp(req), 12, 600, { failClosed: true })" in _wf_link)
+check("links: asking is counted and fails closed: the join bucket per address, 10 tries a day per family (wrong codes too), 3 a day per pair, 6 a day reaching one family, 7 days after a no or a withdrawal",
+      "export const LINK_LIMITS = { perDay: 10, perPairDay: 3, incomingDay: 6, coolDays: 7 };" in _wf_link
+      and "rateLimit(sql, 'link_ask', circle.id, LINK_LIMITS.perDay, 86400, { failClosed: true })" in _wf_link
+      and "rateLimit(sql, 'link_pair', circle.id + ':' + other.id, LINK_LIMITS.perPairDay, 86400, { failClosed: true })" in _wf_link
+      and "rateLimit(sql, 'link_in', other.id, LINK_LIMITS.incomingDay, 86400, { failClosed: true })" in _wf_link
+      and _wf_link.count("{ failClosed: true }") == 4 and "rateLimit(sql, 'link'," not in _wf_link
+      and _wf_link.index("rateLimit(sql, 'link_ask'") < _wf_link.index("const other = await circleByCode(sql, body.otherCode);") < _wf_link.index("rateLimit(sql, 'link_in'") < _wf_link.index("insert into family_links (a_circle, b_circle, a_member, b_member, b_name, a_phones, asked_by)")
+      and "rateLimit(sql, 'join', clientIp(req), 12, 600)" in (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+      and "(status = 'ended' and decided_at is null and ended_at > now() - make_interval(days => ${LINK_LIMITS.coolDays}))" in _wf_link
+      and _wf_link.count("return slow();") == 4)
 check("links: the two trees are joined in memory, by a pure function with ids that cannot collide",
       "export function joinGraphs(own, other, bridge, prefix = LINK_PREFIX)" in _wf_kin and "export function kinLinked(" in _wf_kin
       and "export const LINK_MAX_PEOPLE = 400;" in _wf_kin and not re.search(r"(?m)^import ", _wf_kin)
