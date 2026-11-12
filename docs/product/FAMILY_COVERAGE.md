@@ -212,7 +212,23 @@ Honest limits:
   Live as "What needs doing". It has no viewing rule of its own: every step
   from the register goes through `registerRowFor`, and starting a list never
   changes who can see an entry. Tables: `afterloss_lists`, `afterloss_steps`.
-- Watch together: a plan made from a recommendation in one tap.
+- Watch together: a plan made from a recommendation in one tap. **Live**
+  (`api/_together.mjs`). A recommendation that was not sent to everyone asks
+  first, because a plan is seen by the whole family.
+
+**Safeguards added after the second review (2026-11-12)**
+- "What needs doing" needs a second adult to start AND to open again. One
+  adult alone is enough only when the family has no other adult and the
+  person is not on Parwah. The person it is about can close it, which removes
+  it. A list in force marks the person as remembered.
+- Marking someone as remembered destroys nothing, the marked person can undo
+  it, and someone who used Parwah in the last 30 days cannot be marked.
+- A plan with costs cannot be cancelled, and stays under "Costs to settle"
+  after its day until the ledger is settled.
+- Asking to link two families is counted and capped, and waits 7 days after
+  a no.
+- A remembered person is refused by the server as an invitee, a cost sharer,
+  a step owner and a chosen audience.
 
 **Tranche 3: children and the home**
 - A child's page: school, fees, exams, pick-up duty, vaccines.
@@ -222,7 +238,7 @@ Honest limits:
 
 **Waiting on the owner**
 - Photo album storage: the album is live on the database, capped at 400 photos a family (about 256 MB at the very most, nearer 120 MB in practice). Choose and pay for file storage only if families outgrow that; the bytes are read and written in two functions (`albumPutBytes`, `albumGetBytes` in `api/_album.mjs`), so the move is one change.
-- Trip and function cost split with UPI links.
+- ~~Trip and function cost split with UPI links.~~ Live (`api/_split.mjs`). Parwah never moves money; the UPI link is built for the payer only.
 - Ekta daily digest: accepted and built (2026-11-12). Still to decide: where the owner reads the usage counter (`digest_usage`); there is no admin screen for counters yet.
 - SMS sign-in stays off, by the owner's decision.
 
