@@ -1911,6 +1911,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     <!-- DAYS OF REMEMBRANCE (api/_remember.mjs): one calm line on the day
          the family keeps for someone who is no longer with us. -->
     <div id="rm-today"></div>
+    <!-- AAJ KYA HUA (api/_digest.mjs): what happened in the family today,
+         from Ekta. One row, from 6pm, that opens the day's note. -->
+    <div id="dg-today"></div>
     <!-- The daily check-in: off until the person it is about says yes. -->
     <div class="card fccard" id="fcquiet" hidden>
       <h3>🕚 Daily check-in</h3>
@@ -3250,6 +3253,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button data-chip="I got a message asking for an OTP for a payment. Is it a scam?">🛡 Scam check</button>
       <button data-chip="Please ask the family for help with something I need.">🤝 Ask for help</button>
     </div>
+    <!-- The day's note, any time of day (before 6pm it is the day so far). -->
+    <button type="button" class="cbtn ghost bondwide" id="dg-ekta">🌙 Aaj kya hua: what happened today</button>
   </section>
 
   <!-- NOTIFICATIONS -->
@@ -5241,6 +5246,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     mbTodayLoad();
     pasandRefresh();
     albumTodayLoad();
+    digestRenderToday();
     refreshChats();
     refreshGroups();
     renderFirstRun();
@@ -13942,6 +13948,109 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       bondPost({ action: 'bond_card_start', occasion: ob ? ob.getAttribute('data-bco') : 'other', forMember: fm || null, forName: nm, date: dt }, er).then(function(j){ if (j.ok) bondCardOpen(j.id); });
     }
   });
+
+  // ---------- Aaj kya hua: the daily digest from Ekta (api/_digest.mjs) ----------
+  // What happened in the family today, in a few plain sentences, made only
+  // from what this person may already see. The server writes it and keeps
+  // it for the day; this only asks for it when the person opens it, so
+  // nothing is written (and no model is asked) for someone who does not look.
+  var digestData = null, digestDay = '', digestBusy = false;
+  function digestEvening(){ return new Date().getHours() >= 18; }
+  function digestSenior(){ return document.body.classList.contains('senior'); }
+  function digestWord(){ return spaceWord() === 'group' ? 'group' : 'family'; }
+  function digestRenderToday(){
+    var box = $('dg-today'); if (!box) return;
+    box.innerHTML = (state && digestEvening())
+      ? '<div class="bondtoday"><div class="crow"><span class="txt"><b>🌙 Aaj kya hua</b><small>What happened in the ' + digestWord() + ' today.</small></span>' +
+        '<button type="button" class="cbtn" data-dgopen="1">Read it</button></div></div>'
+      : '';
+  }
+  function digestClockText(iso){
+    var d = new Date(iso);
+    return isNaN(d) ? '' : dtf([], { hour: 'numeric', minute: '2-digit' }).format(d);
+  }
+  // Senior mode shows the same words, larger, and nothing to tap but Close.
+  function digestBody(){
+    var d = digestData, t = digestClockText(d.writtenAt);
+    var h = '<div class="bondtext" id="dg-text"><p>' + esc(d.text) + '</p></div>';
+    if (d.since) h += '<div class="bondline" id="dg-since">' + esc(d.since) + '</div>';
+    h += '<p class="hint" id="dg-when">' + esc(d.final ? 'Written today' + (t ? ' at ' + t : '') + '.'
+      : 'This is the day so far' + (t ? ', at ' + t : '') + '. The full note comes after 6 pm.') + '</p>';
+    if (d.how) h += '<p class="hint" id="dg-how">' + esc(d.how) + '</p>';
+    if (digestSenior()) return h;
+    h += '<div class="pkind" id="dg-votes" role="group" aria-label="Was this note useful?">' +
+      '<button type="button" id="dg-up"' + (d.vote === 'up' ? ' class="sel"' : '') + ' aria-pressed="' + (d.vote === 'up') + '">👍 Useful</button>' +
+      '<button type="button" id="dg-down"' + (d.vote === 'down' ? ' class="sel"' : '') + ' aria-pressed="' + (d.vote === 'down') + '">👎 Not useful</button></div>' +
+      '<p class="hint" id="dg-thanks" role="status"' + (d.vote ? '' : ' hidden') + '>Thank you. Your answer is saved.</p>' +
+      '<label class="seniorchk"><input type="checkbox" id="dg-eve"' + (d.evening ? ' checked' : '') + '> Tell me each evening</label>' +
+      '<p class="hint" id="dg-eve-note">One notification at 8 pm, with the first line. It is off until you turn it on.</p>' +
+      '<p class="bonderr" id="dg-err" role="alert" hidden></p>';
+    return h;
+  }
+  function digestOpenNow(){ return !$('bondsheet').hidden && !!$('bs-body').querySelector('[id^="dg-"]'); }
+  function digestFail(msg){
+    if (!digestOpenNow()) return;
+    var last = digestData && digestDay === new Date().toDateString();
+    $('bs-body').innerHTML = '<p class="bonderr" id="dg-err" role="alert">' + esc(msg) + '</p>' +
+      (last ? '<p class="hint" id="dg-last">This is the note as this phone last loaded it.</p><div class="bondtext" id="dg-text"><p>' + esc(digestData.text) + '</p></div>' : '') +
+      '<button type="button" class="cbtn bondwide" id="dg-retry">Try again</button>';
+  }
+  function digestLoad(){
+    if (!state || digestBusy) return;
+    digestBusy = true;
+    $('bs-body').innerHTML = '<p class="hint" id="dg-load" role="status">Ekta is putting today together.</p>';
+    post(API.ekta, { code: state.code, memberId: state.memberId, action: 'digest' }).then(function(j){
+      digestBusy = false;
+      if (j && j.ok && j.digest) {
+        digestData = j.digest; digestDay = new Date().toDateString();
+        if (digestOpenNow()) $('bs-body').innerHTML = digestBody();
+        return;
+      }
+      digestFail(humanFail(j && j.error, 'Could not load today\'s note. Try again in a moment.'));
+    }).catch(function(){
+      digestBusy = false;
+      digestFail(navigator.onLine === false ? 'You are offline. Aaj kya hua will load when the internet is back.' : 'No connection. Try again in a moment.');
+    });
+  }
+  function digestShow(){
+    bondSheet('Aaj kya hua', '<p class="hint" id="dg-load" role="status">Ekta is putting today together.</p>');
+    digestLoad();
+  }
+  function digestSay(msg){ var e = $('dg-err'); if (e) { e.textContent = msg; e.hidden = !msg; } }
+  function digestVote(v){
+    digestSay('');
+    post(API.ekta, { code: state.code, memberId: state.memberId, action: 'digest_vote', vote: v }).then(function(j){
+      if (!j || !j.ok) { digestSay(humanFail(j && j.error, 'Could not save that. Try again.')); return; }
+      if (digestData) digestData.vote = j.vote;
+      if (!$('dg-up')) return;
+      [['dg-up', 'up'], ['dg-down', 'down']].forEach(function(p){ var on = j.vote === p[1]; $(p[0]).classList.toggle('sel', on); $(p[0]).setAttribute('aria-pressed', on); });
+      $('dg-thanks').hidden = false;
+    }).catch(function(){ digestSay('No connection. Try again.'); });
+  }
+  function digestEve(box){
+    var on = box.checked;
+    digestSay('');
+    post(API.ekta, { code: state.code, memberId: state.memberId, action: 'digest_evening', on: on }).then(function(j){
+      if (!j || !j.ok) { box.checked = !on; digestSay(humanFail(j && j.error, 'Could not save that. Try again.')); return; }
+      if (digestData) digestData.evening = j.evening;
+      var note = $('dg-eve-note'); if (!note) return;
+      if (!j.evening) { note.textContent = 'Off. Nothing will be sent in the evening.'; return; }
+      var can = pushSupported();
+      if (can && Notification.permission === 'default') enablePush();
+      note.textContent = can && Notification.permission !== 'denied'
+        ? 'On. One notification at 8 pm, with the first line.'
+        : 'Saved. Notifications are off on this phone, so turn them on in Profile to get it here.';
+    }).catch(function(){ box.checked = !on; digestSay('No connection. Try again.'); });
+  }
+  $('dg-today').addEventListener('click', function(e){ if (e.target.closest('[data-dgopen]')) digestShow(); });
+  $('dg-ekta').addEventListener('click', digestShow);
+  $('bondsheet').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.id === 'dg-retry') digestLoad();
+    if (b.id === 'dg-up') digestVote('up');
+    if (b.id === 'dg-down') digestVote('down');
+  });
+  $('bondsheet').addEventListener('change', function(e){ if (e.target && e.target.id === 'dg-eve') digestEve(e.target); });
 
   // ---------- Pasand: likes, where I watch, recommendations (api/_pasand.mjs) ----------
   // What each person likes, where they watch and listen, and "you will love

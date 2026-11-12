@@ -77,7 +77,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | **Recommend a show, song, game, book or place to anyone, and hear back** | **Building** | Pasand recommendations |
 | Watch or listen together at a set time (a plan with a link) | Live | a `together` plan, made from a recommendation in one tap |
 | A shared family photo album | Live | Yaadon ki album: photos kept in the database like vault files, made small on the phone first; 400 a family. A move to paid storage later is one change |
-| A daily "what happened today" digest | Decide | has a running AI cost |
+| A daily "what happened today" digest | Live | Aaj kya hua, from Ekta: plain words for everyone; one model call per member per day at most, 12 a circle a day, only when the owner's key is set |
 
 ### F. Money between family
 | Need | Status | Where |
@@ -128,7 +128,8 @@ whose name starts with an underscore, reached through an existing route by an
 | `/api/games` | games, **pasand** |
 | `/api/circle` | family, members, **tree and kin**, linked families, family facts, days of remembrance |
 | `/api/settings` | keys, push, coins, plan, day, PIN, location |
-| `/api/chats`, `/api/events`, `/api/ekta`, `/api/auth`, `/api/diag` | as named |
+| `/api/ekta` | the assistant, **the daily digest** (`action: digest`) |
+| `/api/chats`, `/api/events`, `/api/auth`, `/api/diag` | as named |
 
 **Rules for a module**
 1. Tables are created by the module itself, through `schemaOnce`, so two
@@ -222,7 +223,7 @@ Honest limits:
 **Waiting on the owner**
 - Photo album storage: the album is live on the database, capped at 400 photos a family (about 256 MB at the very most, nearer 120 MB in practice). Choose and pay for file storage only if families outgrow that; the bytes are read and written in two functions (`albumPutBytes`, `albumGetBytes` in `api/_album.mjs`), so the move is one change.
 - Trip and function cost split with UPI links.
-- Ekta daily digest: accept the AI running cost or not.
+- Ekta daily digest: accepted and built (2026-11-12). Still to decide: where the owner reads the usage counter (`digest_usage`); there is no admin screen for counters yet.
 - SMS sign-in stays off, by the owner's decision.
 
 ## 5. How a new need gets added

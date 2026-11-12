@@ -639,3 +639,22 @@ Checked at 320 and 390, light and dark, normal and senior mode, on the real app 
 | P11 | 2 Real-world match | Dignity: an album can drift into stock pictures and sample content | 3 | Fixed: the album shows only what the family added. The empty state is words and one button, with no sample picture, and there is no public link, no share outside the family and no download of everything |
 
 New patterns: the photo grid (`.abgrid`, `.abtile`), one photo full width (`.abview` and its parts), the upload row (`.abq`) and the picker buttons (`.abpick`). All built from existing tokens; no new token.
+### Review TBD-digest, "Aaj kya hua": the daily digest from Ekta (2026-11-12)
+
+Checked at 320 and 390, light and dark, on the real app with a family of four and a second family (`site/tests/db/digest.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the Today row, the button on Ekta's screen, and the sheet in each state: loading, the note, "Since then", a quiet day, an error, offline, written by Ekta, and senior mode).
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| D1 | 10 Privacy | A summary of the family's day could read out what one person kept from another | 4 | Fixed: the list is gathered per viewer with each feature's own rule in the SQL, and checked a second time in `api/_digestrules.mjs`. Notes, the vault, the register and health numbers are never read. Medicines are counts, never names. A card meant for the viewer stays a surprise |
+| D2 | 2 Real-world match | A note written by a model could add a number, give advice, or judge a person ("Maa forgot again") | 4 | Fixed: the plain writer states each fact once, neutrally ("Maa has not checked in today"). A model's reply is shown only if every number in it was in the list and it holds no advice or judgement word; otherwise the plain note is shown, with nothing said about it |
+| D3 | 1 Visibility | The reader could not tell when the note was written, or who wrote it | 2 | Fixed: "Written today at 7:10 pm." under the note. When Ekta wrote it, one quiet line: "Written by Ekta from what you can see in the family today." |
+| D4 | 1 Visibility | Something serious after the note was written (an SOS, a missed check-in) would be missing from a kept note | 3 | Fixed: the kept note is shown with one line, "Since then: ...", in plain words |
+| D5 | 8 Minimalist | A row on Today all day would crowd the morning, when there is nothing to tell yet | 2 | Fixed: the row shows from 6pm. The button on Ekta's screen works at any hour and says "This is the day so far" |
+| D6 | 3 User control | A daily notification nobody asked for | 3 | Fixed: none by default. "Tell me each evening" is a tick box, off until ticked, one notification at 8pm with the first line, never after 10pm |
+| D7 | 7 Flexibility | Senior mode had the same controls in a bigger size | 2 | Fixed: senior mode shows the note at 24px with Close only: no thumbs, no setting |
+| D8 | 9 Error recovery | A failed load left an empty sheet | 2 | Fixed: plain words, "Try again", and the note as the phone last loaded it today. Offline says "You are offline. Aaj kya hua will load when the internet is back." |
+| D9 | 6 Recognition | Thumbs with no feedback, and a second tap that could count twice | 1 | Fixed: one answer per person per day, the chosen one is marked, and "Thank you. Your answer is saved." |
+| D10 | 2 Real-world match | A person the family has marked as remembered could be named in an everyday note | 4 | Fixed: never named, except in "Tomorrow the family remembers ..." on their own day. Open: the date of that day is not stored anywhere yet (the next tranche adds it), so that line cannot appear until then |
+| D11 | 4 Consistency | The time under the note follows the phone's own format ("7:23 PM") while the note says "7:23 pm" | 1 | Open: cosmetic, left as the phone shows times everywhere else |
+
+New patterns: none. The sheet is the app's one bond sheet; the row is a `bondtoday` row; the note is `bondtext`; the thumbs are a `pkind` pair. No new CSS. Ids start with `dg-`.
