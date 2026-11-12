@@ -21,6 +21,7 @@ import { randomUUID } from 'node:crypto';
 import { isUuid, rateLimit } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import { REPEATS, validTz, fromWall, nextDue, localDate } from './_recur.mjs';
+import { TASK_FAMILY_AFTER_MIN, taskOwnerText, taskFamilyText, taskFamilyFeed } from './_safetyrules.mjs';
 export { REPEATS, nextDue };
 
 // The gaps that matter at a hospital counter. Suggested as "Record Papa's
@@ -82,6 +83,10 @@ async function createTaskSchema(sql) {
   await sql`alter table requests add column if not exists completion_note text`;
   await sql`alter table requests add column if not exists archived_at timestamptz`;
   await sql`alter table requests add column if not exists overdue_alerted_for timestamptz`;
+  // When the owner was told, and the occurrence the family was told about
+  // a second window later (sweepOverdue).
+  await sql`alter table requests add column if not exists overdue_alerted_at timestamptz`;
+  await sql`alter table requests add column if not exists family_alerted_for timestamptz`;
   // A reminder AT the time (0) or before it (minutes), sent once per
   // occurrence. Null: no reminder, only the running-late alert.
   await sql`alter table requests add column if not exists remind_before integer`;
@@ -138,12 +143,17 @@ async function tell(sql, circleId, ids, payload, notMe) {
 }
 async function memberIn(sql, circleId, id) {
   if (!isUuid(id)) return null;
-  const r = await sql`select id, name, role, user_id is not null as on_app from members where id = ${id} and circle_id = ${circleId}`;
+  const r = await sql`select m.id, m.name, m.role, m.user_id is not null as on_app,
+                             coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered
+                      from members m where m.id = ${id} and m.circle_id = ${circleId}`;
   return r[0] || null;
 }
 // Someone added to the family tree by name never signs in: a task can be
-// ABOUT them, never given TO them.
-function offApp(m) { return m && m.on_app === false ? m.name + ' is not on Parwah, so cannot take a task. Give it to someone who is.' : null;
+// ABOUT them, never given TO them. Someone who has passed away is never
+// given one either.
+function offApp(m) {
+  if (m && m.remembered) return m.name + ' is remembered here, so cannot take a task.';
+  return m && m.on_app === false ? m.name + ' is not on Parwah, so cannot take a task. Give it to someone who is.' : null;
 }
 const clip = (s, n) => { const t = String(s == null ? '' : s).trim().slice(0, n); return t || null; };
 
@@ -182,9 +192,15 @@ export async function taskHistory(sql, circleId, taskId) {
 // a simultaneous one, finds overdue_alerted_for already equal to due_at.
 // A task about someone marked as remembered is never chased: no "running
 // late" and no reminder. It stays on the list for the family to close.
+//
+// WHO HEARS, AND WHEN. The person who has the task hears first, and alone:
+// nothing goes in the family feed. Only if it is still open a second window
+// later (TASK_FAMILY_AFTER_MIN) is the family told, and in words that name
+// nobody. A task nobody has yet shames nobody, so the family hears at once.
 export async function sweepOverdue(sql, circleId) {
   const due = await sql`
-    update requests set overdue_alerted_for = due_at
+    update requests set overdue_alerted_for = due_at, overdue_alerted_at = now(),
+                        family_alerted_for = case when claimed_by is null then due_at else family_alerted_for end
     where circle_id = ${circleId} and status in ('open','assigned','claimed')
       and due_at is not null
       and due_at < now() - make_interval(mins => case when remind_before is null then 0 else ${LATE_GRACE_MIN} end)
@@ -192,23 +208,34 @@ export async function sweepOverdue(sql, circleId) {
       and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))
     returning id, circle_id, title, status, by_member, claimed_by, escalate`;
   for (const t of due) {
-    const who = t.claimed_by ? await memberIn(sql, circleId, t.claimed_by) : null;
-    await log(sql, t, null, 'overdue', null);
-    await feed(sql, circleId, null, who
-      ? `Running late: ${t.title} (${who.name} has it)`
-      : `Running late and nobody has it yet: ${t.title}`);
-    const payload = {
-      title: '⏰ Running late: ' + t.title,
-      body: who
-        ? (t.status === 'assigned' ? who.name + ' has not said yes yet. ' : who.name + ' has it. ')
-          + 'Open Parwah to mark it done, set a new time or hand it to someone.'
-        : 'Nobody has taken it yet. Open Parwah to take it or give it to someone.',
-      url: '/#care'
-    };
-    if (t.escalate === 'everyone' || !t.claimed_by) await pushCircle(sql, circleId, payload, {});
-    else await tell(sql, circleId, [t.claimed_by, t.by_member], payload, null);
+    await log(sql, t, null, 'overdue', t.claimed_by ? 'owner told' : 'family told');
+    if (t.claimed_by) {
+      await pushCircle(sql, circleId, { ...taskOwnerText(t.title, t.status), url: '/#care' }, { only: t.claimed_by });
+    } else {
+      await feed(sql, circleId, null, taskFamilyFeed(t.title, false));
+      await pushCircle(sql, circleId, { ...taskFamilyText(t.title, false), url: '/#care' }, {});
+    }
   }
-  return due.length;
+  // The second window: still open, the owner was told a while ago. Claimed
+  // the same way, once per occurrence.
+  const still = await sql`
+    update requests set family_alerted_for = due_at
+    where circle_id = ${circleId} and status in ('open','assigned','claimed')
+      and due_at is not null and claimed_by is not null
+      and overdue_alerted_for = due_at and family_alerted_for is distinct from due_at
+      and overdue_alerted_at is not null
+      and overdue_alerted_at < now() - make_interval(mins => ${TASK_FAMILY_AFTER_MIN})
+      and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))
+    returning id, circle_id, title, by_member, claimed_by, escalate`;
+  for (const t of still) {
+    await log(sql, t, null, 'overdue', 'family told');
+    await feed(sql, circleId, null, taskFamilyFeed(t.title, true));
+    const payload = { ...taskFamilyText(t.title, true), url: '/#care' };
+    // "Everyone" tells the whole family; otherwise the person who asked.
+    if (t.escalate === 'everyone') await pushCircle(sql, circleId, payload, { except: t.claimed_by });
+    else await tell(sql, circleId, [t.by_member], payload, t.claimed_by);
+  }
+  return due.length + still.length;
 }
 
 // Reminders due now: to whoever has the task (or, if nobody has it yet, to
@@ -226,7 +253,8 @@ export async function sweepReminders(sql, circleId) {
       and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))
     returning id, circle_id, title, status, by_member, claimed_by, remind_before, due_at`;
   for (const t of due) {
-    const payload = { title: '⏰ ' + remindText(t), body: 'Open Parwah to mark it done', url: '/#care', urgent: true };
+    // A reminder arrives on time, but it is not an emergency.
+    const payload = { title: '⏰ ' + remindText(t), body: 'Open Parwah to mark it done', url: '/#care', soon: true };
     if (t.claimed_by) await tell(sql, circleId, [t.claimed_by], payload, null);
     else await pushCircle(sql, circleId, { ...payload, body: 'Nobody has it yet - first to tap "I\'m on it" takes it' }, {});
   }

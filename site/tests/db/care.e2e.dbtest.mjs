@@ -207,7 +207,7 @@ const tomorrow = localDay(Date.now() + 86400000);
   await R.waitForFunction(() => document.querySelector('#r-title').value === '', null, { timeout: 10000 }).catch(() => {});
   await Promise.all([reload(R), reload(M)]);
   // Written down after its time: it shows as late, but nobody is woken.
-  ok('a task written down after its time wakes nobody', (await admin.query(`select count(*)::int as n from events where text like 'Running late%electricity%'`)).rows[0].n === 0);
+  ok('a task written down after its time wakes nobody', (await admin.query(`select count(*)::int as n from events where text like 'Still open%electricity%'`)).rows[0].n === 0);
   // It runs late after it was set (as if set yesterday morning for the evening).
   // It has a reminder (the form's default), so the family is told it is
   // running late 30 minutes after its time, not the minute it passes.
@@ -216,12 +216,12 @@ const tomorrow = localDay(Date.now() + 86400000);
   ok('a task past its time is under Needs attention', (await groupOf(M, 'Pay the electricity bill')) === 'g-need');
   ok('marked as running late', /running late/.test(await rowOf(M, 'Pay the electricity bill').textContent()));
   ok('with a next step right there: I\'m on it', await rowOf(M, 'Pay the electricity bill').locator('[data-tack]').isVisible());
-  const alerts = (await admin.query(`select count(*)::int as n from events where text like 'Running late%electricity%'`)).rows[0].n;
+  const alerts = (await admin.query(`select count(*)::int as n from events where text like 'Still open%electricity%'`)).rows[0].n;
   ok('two phones opened: the family was told exactly once', alerts === 1, alerts);
   await rowOf(R, 'Pay the electricity bill').locator('.tlink').click();
   await R.waitForTimeout(600);
   ok('opened, it says what to do next', await R.isVisible('#ts-late') && /Nobody has it yet|new time/.test(await R.textContent('#ts-late')));
-  ok('and its history records the alert', /Running late - the family was told/.test(await R.textContent('#ts-hist')));
+  ok('and its history records the alert', /Still open - the family was told/.test(await R.textContent('#ts-hist')));
   await R.keyboard.press('Escape');
   ok('Escape closes it', !(await R.isVisible('#tsheet')));
   ok('Home says what needs attention', /need(s)? attention/.test(await R.textContent('#w-rem')), await R.textContent('#w-rem'));

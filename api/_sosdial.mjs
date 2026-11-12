@@ -25,6 +25,15 @@
 // Nothing here ever throws into the SOS.
 
 import { normPhone } from './_phone.mjs';
+import { rememberedPhones } from './_sos.mjs';
+import { CALLS_OFF_LINE } from './_safetyrules.mjs';
+
+// Said plainly when calls and texts are not set up, in settings and on the
+// SOS screen, so a family never believes a phone will ring when it will not.
+export function dialStatus(env = process.env) {
+  const c = dialConfig(env);
+  return { on: c.on, texts: !!(c.on && (c.sms || c.whatsapp)), calls: !!(c.on && c.voice), line: c.on ? null : CALLS_OFF_LINE };
+}
 export const CALL_MAX = 2;
 export const TEXT_MAX = 8;
 // Texts and calls one family can cost in a day. Each is paid for, and a
@@ -132,11 +141,19 @@ async function twilio(cfg, path, form, fetchImpl) {
 export async function dialOut(sql, sosId, contacts, { name, text, map, cc }, { env = process.env, fetchImpl = globalThis.fetch } = {}) {
   const cfg = dialConfig(env);
   const out = { configured: cfg.on, sms: 0, whatsapp: 0, call: 0, failed: 0 };
+  // Not set up: said in words the SOS screen shows, never a silent nothing.
+  if (!cfg.on) out.line = CALLS_OFF_LINE;
   if (!cfg.on || !sosId) return out;
   try {
     await ensureDialSchema(sql);
+    const sc =await sql`select circle_id from sos where id = ${sosId}`;
+    // The last check before anything is sent: the number of someone in this
+    // family who has passed away is never texted or rung, whoever put it on
+    // the list. If this cannot be read, the catch below sends nothing.
+    const gone = new Set();
+    if (sc[0]) for (const m of await rememberedPhones(sql, sc[0].circle_id)) { const g = e164(m.phone, m.phone_cc || cc); if (g) gone.add(g); }
     const people = [];
-    for (const c of contacts || []) { const to = e164(c.phone, cc); if (to && !people.some(p => p.to === to)) people.push({ to, name: c.name }); }
+    for (const c of contacts || []) { const to = e164(c.phone, cc); if (to && !gone.has(to) && !people.some(p => p.to === to)) people.push({ to, name: c.name }); }
     const jobs = [];
     people.slice(0, TEXT_MAX).forEach((p, i) => {
       if (cfg.sms) jobs.push({ p, channel: 'sms', path: 'Messages.json', form: { To: p.to, From: cfg.sms, Body: text } });
@@ -148,7 +165,6 @@ export async function dialOut(sql, sosId, contacts, { name, text, map, cc }, { e
       }
       if (cfg.voice && i < CALL_MAX) jobs.push({ p, channel: 'call', path: 'Calls.json', form: { To: p.to, From: cfg.voice, Twiml: callScript(name, cc) } });
     });
-    const sc = await sql`select circle_id from sos where id = ${sosId}`;
     // If this count cannot be read, the catch below sends nothing: a paid
     // send fails closed.
     const left = Math.max(0, DIAL_DAY_MAX - (sc[0] ? await sentToday(sql, sc[0].circle_id) : DIAL_DAY_MAX));

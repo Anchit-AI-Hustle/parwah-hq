@@ -102,6 +102,11 @@ node site/tests/albumrulestest.mjs
 # model's reply. _digestrules.mjs imports nothing, so this runs before npm
 # install too.
 node site/tests/digesttest.mjs
+# Safety and alerts: each SOS has its own push topic, nobody who has passed
+# away is on an SOS list, who counts as an adult with no date of birth, the
+# timer line, and words that never read as blame. _safetyrules.mjs imports
+# nothing, so this runs before npm install too.
+node site/tests/safetytest.mjs
 # The native apps' copy of the server's rules (PINs, for now) is written by
 # the server itself. If a rule changes in api/ and the contract is not
 # regenerated, the phones would accept what the server then refuses. Vercel's

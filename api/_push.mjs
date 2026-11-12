@@ -4,6 +4,7 @@
 // that triggered it, and dead subscriptions are pruned as they 404/410.
 // Loaded on demand: code paths that never send a notification (game
 // engines, tests) must not depend on the push library being installed.
+import { pushOptions } from './_safetyrules.mjs';
 let webpush = null;
 async function lib() {
   if (!webpush) webpush = (await import('web-push')).default;
@@ -64,29 +65,40 @@ export async function vapidPublicKey(sql) {
   return pub;
 }
 
-// Send {title, body} to circle members' devices. except = member to skip
-// (usually the person who did the thing). only = restrict to one member.
-export async function pushCircle(sql, circleId, payload, { except = null, only = null } = {}) {
+// Whose phones one push goes to. except = member to skip (usually the person
+// who did the thing). only = restrict to one member.
+// Someone marked as no longer with us is never pushed: not an SOS, not a
+// reminder, nothing, whichever module asks. The one exception is the note
+// that tells a person on Parwah they were marked, so a mistake can be undone
+// (evenRemembered, api/_remember.mjs). The flag is read through the row, so
+// this works on a database where no module has made that column yet.
+export async function pushTargets(sql, circleId, { except = null, only = null, evenRemembered = false } = {}) {
+  return sql`
+    select s.id, s.member_id, s.endpoint, s.p256dh, s.auth
+    from push_subs s join members m on m.id = s.member_id
+    where m.circle_id = ${circleId}
+      and (${except}::uuid is null or s.member_id <> ${except})
+      and (${only}::uuid is null or s.member_id = ${only})
+      and (${!!evenRemembered} or not coalesce((to_jsonb(m)->>'remembered')::boolean, false))
+    limit 60`;
+}
+
+// Send {title, body} to circle members' devices.
+export async function pushCircle(sql, circleId, payload, who = {}) {
   try {
     const wp = await lib();
     await vapidPublicKey(sql);
-    const subs = await sql`
-      select s.id, s.endpoint, s.p256dh, s.auth
-      from push_subs s join members m on m.id = s.member_id
-      where m.circle_id = ${circleId}
-        and (${except}::uuid is null or s.member_id <> ${except})
-        and (${only}::uuid is null or s.member_id = ${only})
-      limit 60`;
+    const subs = await pushTargets(sql, circleId, who || {});
     // An emergency is sent as one: high urgency (delivered at once, even to
     // a phone saving battery), kept for a day if the phone is off, and marked
     // so the phone keeps it on screen and keeps buzzing until it is seen.
-    const urgent = !!payload.urgent;
+    // Each emergency has a topic of its own, so nothing takes an SOS's
+    // place while it waits to be delivered (api/_safetyrules.mjs).
     // Ringing a lost phone: delivered at once, but only worth anything for
     // the two minutes it rings, and never in the SOS's place on the screen.
-    const ring = !urgent && !!payload.ring;
-    const body = JSON.stringify({ title: payload.title, body: payload.body || '', url: payload.url || '/', urgent, ring });
-    const opts = urgent ? { TTL: 86400, urgency: 'high', topic: 'parwah-sos' }
-      : ring ? { TTL: 120, urgency: 'high', topic: 'parwah-ring' } : { TTL: 3600 };
+    const how = pushOptions(payload);
+    const body = JSON.stringify({ title: payload.title, body: payload.body || '', url: payload.url || '/', urgent: how.urgent, ring: how.ring, tag: how.tag || undefined });
+    const opts = how.opts;
     // A row saved before the host rule is never sent to either.
     await Promise.allSettled(subs.filter(s => isPushEndpoint(s.endpoint)).map(s =>
       wp.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, opts)

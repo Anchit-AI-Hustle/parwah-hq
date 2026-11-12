@@ -40,8 +40,9 @@ self.addEventListener('push', function (e) {
   var d = {};
   try { d = e.data.json(); } catch (err) {}
   // An SOS stays on the screen until someone deals with it, buzzes in the
-  // long pattern a phone uses for an emergency, and replaces (rather than
-  // stacks under) an earlier SOS alert.
+  // long pattern a phone uses for an emergency. Each emergency comes with
+  // its own tag: pressing the same SOS again replaces its own alert, and
+  // nothing else (a reminder, someone else's SOS) ever takes its place.
   // A phone being rung to find it buzzes long too, under its own tag so it
   // never replaces an SOS.
   var urgent = !!d.urgent, ring = !urgent && !!d.ring;
@@ -50,7 +51,7 @@ self.addEventListener('push', function (e) {
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     data: { url: d.url || '/' },
-    tag: urgent ? 'parwah-sos' : ring ? 'parwah-ring' : undefined,
+    tag: (typeof d.tag === 'string' && d.tag.length <= 32 && d.tag) || (urgent ? 'parwah-urgent' : ring ? 'parwah-ring' : undefined),
     renotify: urgent || ring,
     requireInteraction: urgent || ring,
     silent: false,

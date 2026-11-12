@@ -114,7 +114,7 @@ await R.selectOption('#r-about', U.Papa.memberId).catch(() => {});
 await R.click('#r-add'); await R.waitForTimeout(1200);
 const tb = (await admin.query(`select due_at, overdue_alerted_for from requests where title = $1`, ["Papa's tablets"])).rows[0];
 ok('a time that already went by today is set for tomorrow', tb && new Date(tb.due_at) > new Date(), JSON.stringify(tb));
-ok('so nobody is told it is running late', (await admin.query(`select count(*)::int as n from events where text like 'Running late%tablets%'`)).rows[0].n === 0);
+ok('so nobody is told it is running late', (await admin.query(`select count(*)::int as n from events where text like 'Running late%tablets%' or text like 'Still open%tablets%'`)).rows[0].n === 0);
 ok('the form goes back to Once, anyone, the whole family', await R.$eval('#r-seg .sel', b => b.dataset.rep) === 'once' && await R.$eval('#r-for', s => s.value) === 'any' && await R.$eval('#r-about', s => s.value) === '');
 ok('options read as sentences', (await R.textContent('#r-for')).includes('Anyone in the family'));
 ok('with nobody given it, a late task tells everyone, and says so', /Everyone \(nobody has it yet\)/.test(await R.textContent('#r-esc')));

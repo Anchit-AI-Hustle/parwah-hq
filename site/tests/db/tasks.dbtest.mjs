@@ -263,23 +263,37 @@ let given;
   await call(events, papa, { method: 'GET' });
   await admin.query(`update requests set overdue_alerted_for = null where id = $1`, [late.id]);
   await admin.query(`delete from task_log where task_id = $1 and action = 'overdue'`, [late.id]);
-  const before = (await admin.query(`select count(*)::int as n from events where text like 'Running late%'`)).rows[0].n;
+  // The person who has it hears first, and alone: what is counted is the
+  // claim in the task's own history, and the family feed stays silent.
+  const told = async () => (await admin.query(`select count(*)::int as n from task_log where action = 'overdue' and note = 'owner told'`)).rows[0].n;
+  const feedLines = async () => (await admin.query(`select count(*)::int as n from events where text like 'Running late%' or text like 'Still open%'`)).rows[0].n;
+  const before = await told(), feedBefore = await feedLines();
   await Promise.all([
     ...[rohan, meera, papa, rohan].map(p => call(care, p, { method: 'GET' })),
     ...[meera, papa, rohan, meera].map(p => call(events, p, { method: 'GET' }))
   ]);
-  const after = (await admin.query(`select count(*)::int as n from events where text like 'Running late%'`)).rows[0].n;
+  const after = await told();
   ok('eight phones looking at once: announced exactly once', after - before === 1, after - before);
+  ok('and only to the person who has it: nothing in the family feed yet', (await feedLines()) === feedBefore);
   const logged = (await admin.query(`select count(*)::int as n from task_log where task_id = $1 and action = 'overdue'`, [late.id])).rows[0].n;
   ok('and recorded once in its history', logged === 1);
   await sweepOverdue(sql, sharma);
-  ok('looking again later does not repeat it', (await admin.query(`select count(*)::int as n from events where text like 'Running late%'`)).rows[0].n === after);
+  ok('looking again later does not repeat it', (await told()) === after);
+  // A second window later it is still open: now the family hears, once,
+  // in words that name nobody.
+  await admin.query(`update requests set overdue_alerted_at = now() - interval '61 minutes' where id = $1`, [late.id]);
+  await Promise.all([sweepOverdue(sql, sharma), sweepOverdue(sql, sharma), sweepOverdue(sql, sharma)]);
+  const famLine = (await admin.query(`select text from events where text like 'Still open%bill%'`)).rows;
+  ok('a second window later the family is told, exactly once', famLine.length === 1, JSON.stringify(famLine));
+  ok('and the words name nobody', famLine[0] && !/Meera|Rohan|Papa/.test(famLine[0].text), famLine[0] && famLine[0].text);
+  await sweepOverdue(sql, sharma);
+  ok('and not again', (await admin.query(`select count(*)::int as n from events where text like 'Still open%bill%'`)).rows[0].n === 1);
   const l = await list(meera);
   ok('the family sees it marked late', (l.find(x => x.id === late.id) || {}).overdue === true);
   // A new time is a new occurrence.
   await act(rohan, 'task_edit', { taskId: late.id, dueAt: new Date(Date.now() - 1000).toISOString() });
   await Promise.all([sweepOverdue(sql, sharma), sweepOverdue(sql, sharma), sweepOverdue(sql, sharma)]);
-  ok('given a new time that also passes, it is announced once more', (await admin.query(`select count(*)::int as n from events where text like 'Running late%'`)).rows[0].n === after + 1);
+  ok('given a new time that also passes, it is announced once more', (await told()) === after + 1);
   await act(meera, 'task_ack', { taskId: late.id });
   await act(meera, 'task_done', { taskId: late.id });
   const done = await act(rohan, 'task_create', { title: 'Already sorted', ownerId: 'me', dueAt: new Date(Date.now() - 5000).toISOString() });
@@ -314,12 +328,12 @@ let given;
   ok('at the time, the alarm goes', (await sweepReminders(sql, sharma)) === 1 && (await row(alarm.id)).reminded_for !== null);
   ok('and only once', (await sweepReminders(sql, sharma)) === 0);
   // Grace: an alarm a few minutes old is not yet "running late".
-  const lateBefore = (await admin.query(`select count(*)::int as n from events where text like 'Running late%'`)).rows[0].n;
+  const lateOf = async id => (await admin.query(`select count(*)::int as n from task_log where task_id = $1 and action = 'overdue'`, [id])).rows[0].n;
   await sweepOverdue(sql, sharma);
-  ok('a task with a reminder is not "running late" a minute after', (await admin.query(`select count(*)::int as n from events where text like 'Running late%'`)).rows[0].n === lateBefore);
+  ok('a task with a reminder is not "running late" a minute after', (await lateOf(alarm.id)) === 0);
   await admin.query(`update requests set due_at = now() - interval '40 minutes', overdue_alerted_for = null where id = $1`, [alarm.id]);
   await sweepOverdue(sql, sharma);
-  ok('but is after 30 minutes', (await admin.query(`select count(*)::int as n from events where text like 'Running late%Wake up%'`)).rows[0].n === 1);
+  ok('but is after 30 minutes', (await lateOf(alarm.id)) === 1);
   // A task about someone since marked as remembered is never chased.
   await admin.query(`alter table members add column if not exists remembered boolean not null default false`);
   const forPapa = await act(meera, 'task_create', { title: 'Book the eye test', ownerId: 'me', aboutMemberId: papa.id, dueAt: at(1), tz: IN, remindBefore: 0 });
@@ -328,7 +342,7 @@ let given;
   ok('no reminder for a task about someone who is remembered', (await row(forPapa.id)).about_member === papa.id && (await sweepReminders(sql, sharma)) === 0 && (await row(forPapa.id)).reminded_for === null);
   await admin.query(`update requests set due_at = now() - interval '40 minutes' where id = $1`, [forPapa.id]);
   ok('and it is never announced as running late', (await sweepOverdue(sql, sharma)) === 0 && (await row(forPapa.id)).overdue_alerted_for === null
-     && (await admin.query(`select count(*)::int as n from events where text like 'Running late%eye test%'`)).rows[0].n === 0);
+     && (await admin.query(`select count(*)::int as n from events where text like 'Running late%eye test%' or text like 'Still open%eye test%'`)).rows[0].n === 0);
   await admin.query(`update members set remembered = false where id = $1`, [papa.id]);
   ok('with the mark off, the same task is chased again', (await sweepOverdue(sql, sharma)) === 1 && (await row(forPapa.id)).overdue_alerted_for !== null);
   // A reminder long missed is dropped, not sent late.

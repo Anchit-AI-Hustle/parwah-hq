@@ -78,7 +78,7 @@ export default async function handler(req, res) {
   // each lives in its own module and is handed its actions below.
   const WIDER = { link_: ['link_state', 'link_request', 'link_approve', 'link_decline', 'link_end', 'link_phones'],
                   fact_: ['fact_list', 'fact_add', 'fact_edit', 'fact_remove'],
-                  remember_: ['remember_mark', 'remember_undo'] };
+                  remember_: ['remember_mark', 'remember_undo', 'remember_confirm', 'remember_cancel'] };
   const NAMELESS = ['join_status', 'update_member', 'leave', 'set_code', 'approve_join', 'decline_join', 'set_join_policy', 'place', 'unplace', 'add_person', 'remove_person',
                     ...WIDER.link_, ...WIDER.fact_, ...WIDER.remember_];
   if (!name && !NAMELESS.includes(action)) return res.status(400).json({ ok: false, error: 'Please tell us your name' });

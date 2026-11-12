@@ -27,6 +27,7 @@ import { db, ensureSchema, requireMember, isUuid, schemaOnce, rateLimit, clientI
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
+import { pushTopic } from './_safetyrules.mjs';
 import { dialConfig, dialLadder } from './_sosdial.mjs';
 
 export const LADDER_MAX = 6;          // people per person
@@ -119,8 +120,10 @@ export async function ladderApi(req, res) {
 
     if (b.action === 'ladder_add') {
       if (!isUuid(b.personId)) return res.status(400).json({ ok: false, error: 'Pick whose nearby person this is' });
-      const p = await sql`select id, name from members where id = ${b.personId} and circle_id = ${circle.id}`;
+      const p = await sql`select m.id, m.name, coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered
+                          from members m where m.id = ${b.personId} and m.circle_id = ${circle.id}`;
       if (!p[0]) return res.status(403).json({ ok: false, error: 'That person is not in this family' });
+      if (p[0].remembered) return res.status(400).json({ ok: false, error: p[0].name + ' is remembered here, so nobody nearby is asked.' });
       let name = clip(b.name, 80), phone = cleanPhone(b.phone), entry = null;
       if (isUuid(b.bookEntryId)) {
         const e = await sql`select id, name, phone from family_book where id = ${b.bookEntryId} and circle_id = ${circle.id}
@@ -301,7 +304,7 @@ export async function ladderEscalate(sql, circleId, windowMin, opts = {}) {
           ? '📞 Nobody in the family has answered ' + s.name + "'s SOS, so Parwah is calling " + h.name + where + '.'
           : '📞 Nobody has answered ' + s.name + "'s SOS. " + h.name + where + ' said they can help: call ' + h.phone + '.';
         await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${s.member_id}, 'care', ${text})`;
-        await pushCircle(sql, circleId, { title: '📞 ' + (d.called ? 'Calling ' : 'Call ') + h.name + ' for ' + s.name, body: text, url: '/#home', urgent: true }, { except: s.member_id });
+        await pushCircle(sql, circleId, { title: '📞 ' + (d.called ? 'Calling ' : 'Call ') + h.name + ' for ' + s.name, body: text, url: '/#home', urgent: true, topic: pushTopic('soslad', s.id) }, { except: s.member_id });
         n++;
       }
     }

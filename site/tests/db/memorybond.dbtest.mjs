@@ -266,12 +266,17 @@ let s2text;
   const papaUser = (await q1(`select user_id from members where id = $1`, [papa.id])).user_id;
   const aged = (await admin.query(`update events set created_at = created_at - interval '40 days' where member_id = $1 and created_at > now() - interval '30 days' returning id`, [papa.id])).rows.map(x => x.id);
   await admin.query(`update sessions set last_used_at = now() - interval '40 days' where user_id = $1`, [papaUser]);
+  // Quiet for forty days, but Papa is ON Parwah: this one-tap switch can no
+  // longer mark him. It takes two adults, from his card in Family (stream
+  // A, A11; the whole flow is proved in safety.dbtest.mjs).
   r = await call(rohan, { body: { action: 'remembered', targetId: papa.id, on: true } });
-  ok('the family marks Papa remembered', r.status === 200 && (await q1(`select remembered from members where id = $1`, [papa.id])).remembered === true, JSON.stringify(r));
+  ok('someone on Parwah is not marked by this one switch: it needs a second adult', r.status === 409 && /second adult/.test(r.error)
+     && (await q1(`select remembered from members where id = $1`, [papa.id])).remembered === false, JSON.stringify(r));
+  // The mark as the two-adult flow leaves it.
+  await admin.query(`update members set remembered = true where id = $1`, [papa.id]);
   await admin.query(`update events set created_at = created_at + interval '40 days' where id = any($1::uuid[])`, [aged]);
   t = await today(meera);
   ok('his story never comes back by itself', !t.yaad || t.yaad.key !== 'story:' + old);
-  ok('and he is asked no more questions', (await q1(`select status from story_tellers where member_id = $1`, [papa.id])).status === 'no');
   // Papa is here after all: he takes the mark off himself. He still cannot put one on himself.
   ok('the marked person cannot mark themself, but can undo their own mark', (await call(papa, { body: { action: 'remembered', targetId: papa.id, on: true } })).status === 400
      && (await call(papa, { body: { action: 'remembered', targetId: papa.id, on: false } })).status === 200 && (await q1(`select remembered from members where id = $1`, [papa.id])).remembered === false);

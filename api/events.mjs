@@ -2,7 +2,9 @@
 // POST /api/events {code, memberId, type, text} - record a check-in, SOS, pill or message
 import { timingSafeEqual } from 'node:crypto';
 import { db, ensureSchema, circleByCode, requireMember, isUuid, ensureCircleChat, rateLimit } from './_db.mjs';
-import { ensureSosSchema, sosText, parsePos, sosContacts, mapLink, SOS_AUDIO_MAX, SOS_AUDIO_TYPES } from './_sos.mjs';
+import { ensureSosSchema, sosText, parsePos, sosContacts, sosOtherFamilies, rememberedPhones, mapLink, SOS_AUDIO_MAX, SOS_AUDIO_TYPES } from './_sos.mjs';
+import { pushTopic, phoneTail } from './_safetyrules.mjs';
+import { tickSeen, tickMark, safetyState } from './_safety.mjs';
 import { lockForSos, unlockSos, ensureLocationSchema } from './_locationapi.mjs';
 import { findState } from './_findme.mjs';
 import { dialOut, dialConfig } from './_sosdial.mjs';
@@ -105,7 +107,40 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
     await one(() => digestSweep(sql, id));
     done++;
   }
+  // The run is written down, so the family can be told honestly when the
+  // timer last ran (api/_safety.mjs).
+  await one(() => tickMark(sql));
   return { circles: done, reminded, late, events };
+}
+
+// "STILL NOBODY HAS ANSWERED": an SOS open for SOS_ESCALATE_MIN minutes with
+// nobody on it shouts once, louder. The `escalated` flag makes it exactly
+// once, however many phones are polling and however often the timer runs.
+// AT MODULE SCOPE, because the timer (runTick) calls it: declared inside
+// the handler, the timer could not reach it and the error was swallowed.
+export async function escalateStaleSos(sql, circleId) {
+  let n = 0;
+  try {
+    const stale = await sql`
+      select s.id, s.member_id, m.name, m.phone
+      from sos s join members m on m.id = s.member_id
+      where s.circle_id = ${circleId} and s.status = 'open' and s.escalated = false
+        and s.created_at < now() - make_interval(mins => ${SOS_ESCALATE_MIN})`;
+    for (const s of stale) {
+      const claimed = await sql`update sos set escalated = true
+                                where id = ${s.id} and escalated = false returning id`;
+      if (!claimed[0]) continue;   // another instance got there first
+      n++;
+      await sql`insert into events (circle_id, member_id, type, text)
+                values (${circleId}, ${s.member_id}, 'care', ${'🆘 Nobody has answered ' + s.name + "'s SOS yet - please call them now"})`;
+      await pushCircle(sql, circleId, {
+        title: '🆘 STILL NOBODY - ' + s.name + ' needs help',
+        body: 'No one has picked this up in ' + SOS_ESCALATE_MIN + ' minutes. Call ' + (s.phone || 'them') + ' now.',
+        url: '/#home', urgent: true, topic: pushTopic('sosesc', s.id)
+      }, {});
+    }
+  } catch (e) { /* escalation must never break a read */ }
+  return n;
 }
 
 export default async function handler(req, res) {
@@ -137,32 +172,6 @@ export default async function handler(req, res) {
     await sql`create index if not exists sos_circle_open on sos (circle_id, status, created_at desc)`;
     await ensureSosSchema(sql);
   } catch (e) { return failDb(res, e); }
-
-// There is no scheduler on this platform, so escalation rides on the polling
-// the family is already doing: any read of the circle checks for an SOS that
-// nobody has answered and shouts once, louder. The `escalated` flag makes it
-// exactly once, however many devices are polling.
-async function escalateStaleSos(sql, circleId) {
-  try {
-    const stale = await sql`
-      select s.id, s.member_id, m.name, m.phone
-      from sos s join members m on m.id = s.member_id
-      where s.circle_id = ${circleId} and s.status = 'open' and s.escalated = false
-        and s.created_at < now() - make_interval(mins => ${SOS_ESCALATE_MIN})`;
-    for (const s of stale) {
-      const claimed = await sql`update sos set escalated = true
-                                where id = ${s.id} and escalated = false returning id`;
-      if (!claimed[0]) continue;   // another instance got there first
-      await sql`insert into events (circle_id, member_id, type, text)
-                values (${circleId}, ${s.member_id}, 'care', ${'🆘 Nobody has answered ' + s.name + "'s SOS yet - please call them now"})`;
-      await pushCircle(sql, circleId, {
-        title: '🆘 STILL NOBODY - ' + s.name + ' needs help',
-        body: 'No one has picked this up in ' + SOS_ESCALATE_MIN + ' minutes. Call ' + (s.phone || 'them') + ' now.',
-        url: '/#home', urgent: true
-      }, {});
-    }
-  } catch (e) { /* escalation must never break a read */ }
-}
 
   try {
     // THE TIMER. Reminders and every other timed alert are also checked by
@@ -240,6 +249,8 @@ async function escalateStaleSos(sql, circleId) {
       // hours late on a free account, so whichever signed-in phone polls
       // first each minute (any family) runs the whole timer, under a time
       // budget so this read stays quick. Claimed per alert, never doubled.
+      // Read first: when the timer last ran BEFORE this phone woke it.
+      const tickBefore = await tickSeen(sql).catch(() => null);
       try {
         if (await rateLimit(sql, 'tick', 'all', 1, 50, { failClosed: true })) await runTick(sql, PIGGYBACK_BUDGET_MS);
       } catch (e) { /* the timer never breaks a read */ }
@@ -293,7 +304,9 @@ async function escalateStaleSos(sql, circleId) {
           ladderCalls: (() => { const c = dialConfig(); return !!(c.on && c.voice); })() }))),
         sosEscalateMin: SOS_ESCALATE_MIN, pulse, remembrance: rememberToday(members),
         findme: await findState(sql, circle, g.me, tokenOf(req)).catch(() => null),
-        familyCare: await familyCareState(sql, circle.id, g.me.id).catch(() => null) });
+        familyCare: await familyCareState(sql, circle.id, g.me.id).catch(() => null),
+        // Said honestly: are calls set up, when did the timer last run.
+        safety: await safetyState(sql, circle, g.me, tickBefore).catch(() => null) });
     }
 
     if (req.method === 'POST') {
@@ -389,6 +402,8 @@ async function escalateStaleSos(sql, circleId) {
         if (type === 'sos_safe') {
           await sql`update sos set status = 'resolved', resolved_at = now(), resolved_by = ${memberId}, safe_at = now() where id = ${r[0].id}`;
           await unlockSos(sql, circle.id, memberId);
+          // "I am safe" is true in every family that heard this SOS.
+          await sosSafeElsewhere(sql, circle.id, sm[0]);
           await sql`insert into events (circle_id, member_id, type, text)
                     values (${circle.id}, ${memberId}, 'care', ${sm[0].name + ' is safe now - the SOS is closed ✅'})`;
           await pushCircle(sql, circle.id, { title: '✅ ' + sm[0].name + ' is safe',
@@ -407,7 +422,7 @@ async function escalateStaleSos(sql, circleId) {
         const ins = await sql`insert into sos_media (sos_id, member_id, mime, data, seconds)
                               values (${r[0].id}, ${memberId}, ${mime}, ${data}, ${secs}) returning id`;
         await pushCircle(sql, circle.id, { title: '🎙 A recording from ' + sm[0].name + "'s SOS",
-          body: 'Open Parwah to listen', url: '/#home', urgent: true }, { except: memberId });
+          body: 'Open Parwah to listen', url: '/#home', urgent: true, topic: pushTopic('sosrec', r[0].id) }, { except: memberId });
         return res.status(201).json({ ok: true, audioId: ins[0].id });
       }
 
@@ -449,11 +464,11 @@ async function escalateStaleSos(sql, circleId) {
 }
 
 // ONE PRESS OF SOS (see api/_sos.mjs for what it does and why).
-async function raiseSos(sql, res, circle, me, said, body) {
-  const pos = parsePos(body);
+// Opens the SOS in one family, or refreshes the one already open there.
+async function sosOpenIn(sql, circleId, memberId, said, pos) {
   // Already open: a second press is a fresh position and a fresh alert, not
   // a second emergency.
-  const open = await sql`select id from sos where circle_id = ${circle.id} and member_id = ${me.id} and status <> 'resolved'
+  const open = await sql`select id from sos where circle_id = ${circleId} and member_id = ${memberId} and status <> 'resolved'
                          order by created_at desc limit 1`;
   let sosId, again = false;
   if (open[0]) {
@@ -461,14 +476,37 @@ async function raiseSos(sql, res, circle, me, said, body) {
     if (pos) await sql`update sos set lat = ${pos.lat}, lng = ${pos.lng}, accuracy = ${pos.accuracy} where id = ${sosId}`;
   } else {
     const r = await sql`insert into sos (circle_id, member_id, lat, lng, accuracy)
-                        values (${circle.id}, ${me.id}, ${pos ? pos.lat : null}, ${pos ? pos.lng : null}, ${pos ? pos.accuracy : null})
+                        values (${circleId}, ${memberId}, ${pos ? pos.lat : null}, ${pos ? pos.lng : null}, ${pos ? pos.accuracy : null})
                         returning id, created_at`;
     sosId = r[0].id;
-    await sql`insert into events (circle_id, member_id, type, text) values (${circle.id}, ${me.id}, 'sos', ${said || null})`;
+    await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'sos', ${said || null})`;
   }
   // Location on, exact, held on until the family marks them safe.
+  await lockForSos(sql, circleId, memberId, sosId, pos);
+  return { sosId, again };
+}
+
+// "I am safe" closes the SOS in every other family that heard it too.
+async function sosSafeElsewhere(sql, circleId, me) {
+  try {
+    for (const o of await sosOtherFamilies(sql, circleId, me.user_id)) {
+      const done = await sql`update sos set status = 'resolved', resolved_at = now(), resolved_by = ${o.member_id}, safe_at = now()
+                             where circle_id = ${o.id} and member_id = ${o.member_id} and status <> 'resolved' returning id`;
+      if (!done[0]) continue;
+      await unlockSos(sql, o.id, o.member_id);
+      await sql`insert into events (circle_id, member_id, type, text)
+                values (${o.id}, ${o.member_id}, 'care', ${o.member_name + ' is safe now - the SOS is closed ✅'})`;
+      await pushCircle(sql, o.id, { title: '✅ ' + o.member_name + ' is safe',
+        body: 'They closed their SOS themselves. A call to check in never hurts.', url: '/#home' }, { except: o.member_id });
+    }
+  } catch (e) { /* this family's SOS is closed; the others can close theirs */ }
+}
+
+async function raiseSos(sql, res, circle, me, said, body) {
+  const pos = parsePos(body);
   await ensureLocationSchema(sql);
-  await lockForSos(sql, circle.id, me.id, sosId, pos);
+  const first = await sosOpenIn(sql, circle.id, me.id, said, pos);
+  const sosId = first.sosId, again = first.again;
   // Pressing again keeps the position fresh, always. What is limited is
   // the ALERTS: three per person in ten minutes, ten per family in an
   // hour. Past that the family has already been told, many times, and an
@@ -482,21 +520,53 @@ async function raiseSos(sql, res, circle, me, said, body) {
     return res.status(201).json({ ok: true, sosId, again, located: !!pos, map: mapLink(pos), throttled: true,
       message: 'Your family has already been sent this SOS. Call 112 if you need help now.' });
   }
-  const text = sosText(me.name, pos, Date.now(), body && body.tz) + (said ? ' "' + said + '"' : '');
-  // In the family chat, where everyone looks, with the map link.
-  try {
-    const chatId = await ensureCircleChat(sql, circle.id);
-    await sql`insert into messages (chat_id, member_id, text) values (${chatId}, ${me.id}, ${text})`;
-  } catch (e) { /* the alert below still goes */ }
-  await pushCircle(sql, circle.id, {
-    title: '🆘 SOS from ' + me.name + (again ? ' (again)' : ''),
-    body: (pos ? 'Tap to see where they are and call them now' : 'Call them right now'),
-    url: '/#home', urgent: true
-  }, { except: me.id });
-  const contacts = await sosContacts(sql, circle.id, me.id);
+  // EVERY FAMILY THE PERSON BELONGS TO, not only the one open on the phone
+  // (a daughter-in-law has two; a parent may be in each child's). A group of
+  // friends hears only when it is the one that is open. Each family has its
+  // own SOS, its own count, and closes its own; a failure in one never
+  // stops the next.
+  const places = [{ circleId: circle.id, memberId: me.id, name: me.name, sosId, again }];
+  let others = [];
+  try { others = await sosOtherFamilies(sql, circle.id, me.user_id); } catch (e) { /* this family still hears */ }
+  for (const o of others) {
+    try {
+      if (!(await rateLimit(sql, 'sosfam', o.id, 10, 3600))) continue;
+      const s = await sosOpenIn(sql, o.id, o.member_id, said, pos);
+      places.push({ circleId: o.id, memberId: o.member_id, name: o.member_name, sosId: s.sosId, again: s.again });
+    } catch (e) { /* the next family still hears */ }
+  }
+  const words = name => sosText(name, pos, Date.now(), body && body.tz) + (said ? ' "' + said + '"' : '');
+  const text = words(me.name);
+  const lists = [], gone = new Set();
+  for (const p of places) {
+    try {
+      // In the family chat, where everyone looks, with the map link.
+      try {
+        const chatId = await ensureCircleChat(sql, p.circleId);
+        await sql`insert into messages (chat_id, member_id, text) values (${chatId}, ${p.memberId}, ${words(p.name)})`;
+      } catch (e) { /* the alert below still goes */ }
+      await pushCircle(sql, p.circleId, {
+        title: '🆘 SOS from ' + p.name + (p.again ? ' (again)' : ''),
+        body: (pos ? 'Tap to see where they are and call them now' : 'Call them right now'),
+        url: '/#home', urgent: true, topic: pushTopic('sos', p.sosId)
+      }, { except: p.memberId });
+      lists.push(await sosContacts(sql, p.circleId, p.memberId));
+      for (const g of await rememberedPhones(sql, p.circleId)) gone.add(phoneTail(g.phone));
+    } catch (e) { /* the next family still hears */ }
+  }
+  // One list for the phone and for Parwah's own texts and calls: this
+  // family's first, then the others', nobody twice, and never the number of
+  // someone who has passed away in any of these families.
+  const contacts = [], seen = new Set();
+  for (const c of lists.flat()) {
+    const t = phoneTail(c.phone);
+    if (!t || seen.has(t) || gone.has(t)) continue;
+    seen.add(t); contacts.push(c);
+  }
+  contacts.splice(8);
   // Texts, WhatsApp and calls sent by Parwah itself, once a Twilio account
-  // is added (api/_sosdial.mjs). Without one, this sends nothing.
+  // is added (api/_sosdial.mjs). Without one, this sends nothing, and says so.
   const meCc = me.phone_cc || ((await sql`select phone_cc from members where id = ${me.id}`)[0] || {}).phone_cc || null;
   const dialed = await dialOut(sql, sosId, contacts, { name: me.name, text, map: mapLink(pos), cc: meCc });
-  return res.status(201).json({ ok: true, sosId, again, text, map: mapLink(pos), located: !!pos, contacts, dialed });
+  return res.status(201).json({ ok: true, sosId, again, text, map: mapLink(pos), located: !!pos, contacts, dialed, families: places.length });
 }

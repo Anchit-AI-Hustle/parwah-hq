@@ -740,6 +740,9 @@ export default async function bondApi(req, res) {
         const { rememberRecent, rememberRecentWhy, rememberTell } = await import('./_remember.mjs');
         const full = (await sql`select id, name, user_id from members where id = ${t.id}`)[0];
         if (await rememberRecent(sql, full)) return bad(409, rememberRecentWhy(t.name));
+        // Someone on Parwah is never marked by one person alone: that goes
+        // through the family tree, where a second adult confirms it.
+        if (full.user_id) return bad(409, 'This needs a second adult to confirm. Open ' + String(t.name).split(' ')[0] + "'s card in Family and choose No longer with us.");
         await sql`update members set remembered = true where id = ${t.id}`;
         await sql`update story_tellers set status = 'no', decided_at = now() where member_id = ${t.id}`;
         await rememberTell(sql, circle.id, me, full);

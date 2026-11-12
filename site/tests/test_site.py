@@ -863,7 +863,7 @@ CIRCLE_WIDE_OK = {
     ("events.mjs", "on now"):             "a live call is open to all",
     ("events.mjs", "could do with a call"): "the point of the pulse",
     ("care.mjs",   "needs a hand"):       "a job anyone can pick up",
-    ("_tasks.mjs", "payload, {})"):       "late, and nobody has it - or the family chose to tell everyone",
+    ("_tasks.mjs", "taskFamilyText(t.title, false)"): "past its time and nobody has it: anyone may take it (a task someone has tells only them first)",
     ("_tasks.mjs", "Nobody has it yet - first to tap"): "its time has come and nobody has it: anyone may take it",
     ("plans.mjs",  ""):                   "a plan invites the whole circle",
     ("games.mjs",  "lobby is open"):      "an open lobby invites everyone",
@@ -2501,14 +2501,15 @@ check("sos: a countdown with Cancel stands in for the question, and every SOS bu
       "SOS_COUNT = 5" in _app_src and "$('btn-sos').addEventListener('click', function(){ sosStart(''); });" in _app_src
       and "sosStart(said)" in _app_src)
 check("sos: sent as an emergency push (high urgency, stays on screen, long buzz)",
-      "urgency: 'high'" in (API_DIR / "_push.mjs").read_text(encoding="utf-8")
+      "urgency: 'high'" in (API_DIR / "_safetyrules.mjs").read_text(encoding="utf-8")
+      and "const how = pushOptions(payload);" in (API_DIR / "_push.mjs").read_text(encoding="utf-8")
       and "requireInteraction: urgent" in (REPO / "site/public/sw.js").read_text(encoding="utf-8"))
 check("sos: the message goes in the family chat with a map link",
-      "ensureCircleChat(sql, circle.id)" in _evt and "maps.google.com/?q=" in _sosmod)
+      "ensureCircleChat(sql, p.circleId)" in _evt and "maps.google.com/?q=" in _sosmod)
 # Owner (2026-10-10): anyone in the family or group ends an SOS, the person
 # who sent it included; until then the location stays held on (sos.e2e).
 check("sos: location is held on until the SOS is closed, by the sender or anyone in the family",
-      "lockForSos(sql, circle.id, me.id, sosId, pos)" in _evt and "unlockSos(sql, circle.id, row[0].member_id)" in _evt
+      "lockForSos(sql, circleId, memberId, sosId, pos)" in _evt and "unlockSos(sql, circle.id, row[0].member_id)" in _evt
       and "unlockSos(sql, circle.id, memberId)" in _evt
       and "status(423)" in _locapi and "s.sos_lock is null" in _locapi
       and "othersOnApp(sql, circle.id, memberId)) > 0" not in _evt)
@@ -3313,7 +3314,9 @@ _al_css = "\n".join(l for l in _al_app.splitlines() if l.startswith((".al", ".ca
 _al_legal = "This is a list to help you remember, not legal advice. Rules differ by bank and state."
 _al_sorry = "We are sorry. This list is here so nothing is forgotten."
 check("afterloss: its rules import nothing, and take the register's viewing rule as an argument",
-      not re.search(r"^\s*import\s", _al, re.M) and "rowFor(row, viewerId" in _al
+      re.findall(r"(?m)^import .*$", _al) == ["import { surelyAdult, ADULT_HOW } from './_safetyrules.mjs';"]
+      and not re.search(r"(?m)^\s*import\s", (API_DIR / "_safetyrules.mjs").read_text(encoding="utf-8"))
+      and "rowFor(row, viewerId" in _al
       and "if (typeof rowFor !== 'function') throw" in _al)
 check("afterloss: the single viewing rule is reused: registerRowFor, never a second rule",
       "import { registerRowFor, registerLogsView, registerSecretRisk } from './_register.mjs';" in _al_api
@@ -3351,7 +3354,8 @@ check("afterloss: a tick, an assignment and a note are one statement each, so no
 check("afterloss: a note is checked for a card number, CVV, OTP, PIN or password",
       "afterlossNote(body.note, [noteRisk, registerSecretRisk])" in _al_api)
 check("afterloss: its pushes are the ask (one place, at most three an hour per person about one person), the family once when it comes into force, and the two starters when the person closes it; nothing timed",
-      _al_api.count("await pushCircle(") == 4 and "afterlossPush('ask', { starter: me.name, person: person.name }), { only: askId }" in _al_api
+      _al_api.count("await pushCircle(") == 5 and "afterlossPush('ask', { starter: me.name, person: person.name }), { only: askId }" in _al_api
+      and "await pushCircle(sql, g.circle.id, told, { only: list.person_id, evenRemembered: true });" in _al_api
       and _al_api.count("afterlossPush('ask'") == 1 and _al_api.count("await pushAsk(sql, g.circle.id, g.me,") == 2
       and "rateLimit(sql, 'afterloss_ask', me.id + ':' + person.id, 3, 3600, { failClosed: true })" in _al_api
       and "afterlossPush(can.reopening ? 'reopened' : 'started'," in _al_api and _al_api.count("afterlossPush('void'") == 1
@@ -3487,12 +3491,12 @@ check("facts: every text passes the notes rule (no card number, CVV, OTP or bank
       "import { noteRisk } from './_notesapi.mjs';" in _wf_fact and _wf_fact.count("const risk = noteRisk(text);") == 2
       and "const risk = noteRisk(line);" in _wf_rem)
 check("remembrance: only an adult marks or undoes (the marked person may undo their own mark, never set it), with the year at least",
-      "if (!selfUndo && !isAdult(me.dob, today)) return bad('An adult in the family does this.', 403);" in _wf_rem
+      "if (!selfUndo && !selfCancel && !isAdult(me.dob, today)) return bad('An adult in the family does this.', 403);" in _wf_rem
       and "const selfUndo = a === 'remember_undo' && body.targetId === me.id;" in _wf_rem
-      and "if (t.id === me.id && !selfUndo) return bad('This is for someone else in the family.');" in _wf_rem
+      and "if (t.id === me.id && !selfUndo && !selfCancel) return bad('This is for someone else in the family.');" in _wf_rem
       and "const selfUndo = !body.on && t.id === me.id;" in _mb_api
       and "if (t.id === me.id && !selfUndo) return bad(400," in _mb_api
-      and _wf_rem.index("if (!selfUndo && !isAdult(me.dob, today))") < _wf_rem.index("if (a === 'remember_mark')") < _wf_rem.index("if (a === 'remember_undo')")
+      and _wf_rem.index("if (!selfUndo && !selfCancel && !isAdult(me.dob, today))") < _wf_rem.index("if (a === 'remember_mark')") < _wf_rem.index("if (a === 'remember_undo')")
       and "if (year === null) return { error: 'Write the year." in _wf_rules and not re.search(r"(?m)^import ", _wf_rules))
 check("remembrance: marking destroys nothing undo cannot restore: the check-in time is never cleared",
       not re.search(r"set\s+checkin_by\s*=\s*null", _wf_rem) and "checkin_ask = null" not in _wf_rem
@@ -3504,11 +3508,11 @@ check("remembrance: someone who used Parwah in the last 30 days is not marked by
       and "if (await rememberRecent(sql, full)) return bad(409, rememberRecentWhy(t.name));" in _mb_api
       and "' marked you as no longer with us. If this is a mistake, open Parwah to undo it.'" in _wf_rem
       and "rateLimit(sql, 'remember_tell', me.id + ':' + target.id, 3, 3600, { failClosed: true })" in _wf_rem
-      and _wf_rem.count("await rememberTell(sql, circle.id, me, t);") == 1 and "await rememberTell(sql, circle.id, me, full);" in _mb_api)
+      and _wf_rem.count("await rememberTell(sql, circle.id, by, t);") == 1 and "await rememberTell(sql, circle.id, me, full);" in _mb_api)
 check("remembrance: every sweep that would chase or name a remembered person skips them (check-ins, doses, tasks, the call rota, cards)",
       _fc_api.count("and not m.remembered") >= 2
       and _dz.count("and not exists (select 1 from members m where m.id = d.person_id and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 2
-      and _tasksrc.count("and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 2
+      and _tasksrc.count("and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 3
       and _fc_api.count("and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 1
       and "if (!who || who.remembered || (who2 && who2.remembered) || dstr(c.date) > todayFor(who)) continue;" in (API_DIR / "_bond.mjs").read_text(encoding="utf-8"))
 check("remembrance: my own sheet offers to take a mistaken mark off, and never to set one",

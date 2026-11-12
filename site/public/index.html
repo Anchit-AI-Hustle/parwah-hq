@@ -5132,7 +5132,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (e.type === 'sos' || e.type === 'join') return true;
     var t = e.text || '', me = state && state.name ? String(state.name).split(' ')[0] : '';
     // Something running late, or waiting for someone to take it.
-    if (/running late|needs someone|nobody has it/i.test(t)) return true;
+    if (/running late|still open|needs someone|nobody has it/i.test(t)) return true;
     // Someone waiting at the door (the request is a care event, not a join).
     if (/has asked to join/i.test(t)) return true;
     // Something given to you, asked of you, or about you by name.
@@ -7349,7 +7349,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         if (id !== tsId) return;
         if (!j.ok) { $('ts-hist').innerHTML = '<div class="ev">Could not load what happened - try again in a moment.</div>'; return; }
         $('ts-hist').innerHTML = j.history.map(function(h){
-          var line = h.action === 'overdue' ? 'Running late - the family was told'
+          var line = h.action === 'overdue' ? (h.note === 'owner told' ? 'Past its time - whoever has it was told' : h.note === 'family told' ? 'Still open - the family was told' : 'Running late - the family was told')
             : esc(h.name || 'Someone') + ' ' + TS_WORD[h.action] + ((h.action === 'assigned' || h.action === 'nudged') && h.note ? ' ' + esc(h.note) : '');
           var note = h.action !== 'assigned' && h.action !== 'nudged' && h.note ? '<small>“' + esc(h.note) + '”</small>' : '';
           return '<div class="crow"><span class="txt">' + line + note + '<small>' + esc(fmtTime(h.created_at)) + '</small></span></div>';
