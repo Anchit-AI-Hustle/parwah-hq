@@ -75,6 +75,11 @@ node site/tests/bondtest.mjs
 # sign-in refusal, and who may see whose likes. _pasandrules.mjs imports
 # nothing, so this runs before npm install too.
 node site/tests/pasandtest.mjs
+# Yaadon ki album: what counts as a JPEG (the first bytes, the size, no
+# camera details left inside), the limits, who may see and change what, and
+# the one older photo a week. _albumrules.mjs imports nothing, so this runs
+# before npm install too.
+node site/tests/albumrulestest.mjs
 # The native apps' copy of the server's rules (PINs, for now) is written by
 # the server itself. If a rule changes in api/ and the contract is not
 # regenerated, the phones would accept what the server then refuses. Vercel's

@@ -76,7 +76,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | **Where each person watches and listens** | **Building** | Pasand platforms |
 | **Recommend a show, song, game, book or place to anyone, and hear back** | **Building** | Pasand recommendations |
 | Watch or listen together at a set time (a plan with a link) | Next | builds on plans and Pasand |
-| A shared family photo album | Decide | needs paid storage (Cloudflare R2 or Vercel Blob) |
+| A shared family photo album | Live | Yaadon ki album: photos kept in the database like vault files, made small on the phone first; 400 a family. A move to paid storage later is one change |
 | A daily "what happened today" digest | Decide | has a running AI cost |
 
 ### F. Money between family
@@ -122,7 +122,7 @@ whose name starts with an underscore, reached through an existing route by an
 
 | Route | Areas behind it |
 |---|---|
-| `/api/book` | health and contacts, vault, pay, notes, memory bond, biomarkers, pre-auth, **register (locator)**, audit, admission |
+| `/api/book` | health and contacts, vault, pay, notes, memory bond, **album**, biomarkers, pre-auth, **register (locator)**, audit, admission |
 | `/api/care` | reminders, requests, refill, bills, sibling tasks, doses, ladders, expenses, staff, renewals |
 | `/api/plans` | plans, visits, shared cards and polls |
 | `/api/games` | games, **pasand** |
@@ -147,8 +147,8 @@ whose name starts with an underscore, reached through an existing route by an
 
 | Choice | Who can read | Used by |
 |---|---|---|
-| Only me | the owner | notes, register, interests |
-| People I choose | the owner and named members | vault, family book, register, interests, recommendations |
+| Only me | the owner | notes, register, interests, albums |
+| People I choose | the owner and named members | vault, family book, register, interests, recommendations, albums |
 | Whole family | everyone in the circle | most things, by default |
 | Only in an emergency | the circle, while that person has an open SOS | register |
 | Sealed until the day | everyone but the person it is for | shared cards |
@@ -196,7 +196,7 @@ Honest limits of this round:
   arrivals.
 
 **Waiting on the owner**
-- Photo album: choose and pay for storage.
+- Photo album storage: the album is live on the database, capped at 400 photos a family (about 256 MB at the very most, nearer 120 MB in practice). Choose and pay for file storage only if families outgrow that; the bytes are read and written in two functions (`albumPutBytes`, `albumGetBytes` in `api/_album.mjs`), so the move is one change.
 - Trip and function cost split with UPI links.
 - Ekta daily digest: accept the AI running cost or not.
 - SMS sign-in stays off, by the owner's decision.
