@@ -23,6 +23,7 @@ import { award, today } from './_coins.mjs';
 import { reqTz } from './_recur.mjs';
 import { sweepRemember, ensureRememberSchema, rememberToday } from './_remember.mjs';
 import { digestSweep } from './_digest.mjs';
+import { ektaNudgeSweep } from './_ektaday.mjs';
 
 import { index as kinIndex, kinLabel, generations, kinEveryone, kinChainWords } from './_kin.mjs';
 import { pulseToday, ensurePulseSchema, optionOf, styleFor, today as pulseDay } from './_pulse.mjs';
@@ -74,6 +75,7 @@ async function dueCircles(sql) {
   await q(() => sql`select distinct circle_id from members where remembered and passed_month is not null and passed_day is not null limit 500`);
   // "Aaj kya hua": members who asked to be told each evening.
   await q(() => sql`select distinct circle_id from digest_prefs where evening limit 500`);
+  await q(() => sql`select distinct circle_id from ekta_prefs where nudge_talk or nudge_bday or nudge_renewal limit 500`);
   return [...ids];
 }
 export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
@@ -103,6 +105,7 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
     events += await one(() => sweepRemember(sql, id));
     // The 8pm "Aaj kya hua" notification: plain words, never a model call.
     await one(() => digestSweep(sql, id));
+    await one(() => ektaNudgeSweep(sql, id));   // Ekta's private nudges: off until a member turns one on (api/_ektaday.mjs)
     done++;
   }
   return { circles: done, reminded, late, events };

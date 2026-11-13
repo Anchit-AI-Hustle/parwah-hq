@@ -1,7 +1,7 @@
 // The chat system: one default "Everyone" chat per circle, unlimited named
 // group chats, and personal (1:1) chats - all private to the circle.
-// Ekta is an automatic participant: mention "Ekta" in any chat and she
-// replies into the chat itself (as a message with member_id null).
+// Ekta joins when she is asked: write "@Ekta", or start the message with her
+// name, and she replies into the chat itself (a message with member_id null).
 //
 // GET  /api/chats?circle=CODE&member=UUID           → chat list (+ previews)
 // GET  /api/chats?circle=CODE&member=UUID&chat=UUID → messages of one chat
@@ -14,12 +14,17 @@
 //   poll_create  {chatId, question, options[], multi, closeAt}
 //   poll_vote    {chatId, pollId, choices[]}          [] takes the vote back
 //   poll_close   {chatId, pollId}                     the person who asked only
-import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat , requireMember, spaceWord} from './_db.mjs';
+import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat , requireMember, spaceWord, rateLimit } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { safeImageUri } from './_sec.mjs';
 import { pushCircle } from './_push.mjs';
-import { ektaTurn, isoOf } from './ekta.mjs';
+import { ektaTurn, isoOf, ektaSeams } from './ekta.mjs';
+import { ektaMentioned, stripMention, EKTA } from './_ektarules.mjs';
+import { ektaSwitches } from './_ektaagent.mjs';
+import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
+import { spend } from './_coins.mjs';
+import { reqTz } from './_recur.mjs';
 import { classify, mentionsUrgent, urgentToo, renderEmergency, renderCrisis, LOCAL_MODEL } from './_ektalocal.mjs';
 import { ensureChatBond, checkVoice, voiceLabel, attachBond, react, createPoll, votePoll, closePoll } from './_chatbond.mjs';
 
@@ -83,7 +88,7 @@ async function listChats(sql, circle, me) {
 // it), and a "chest pain" from last week sent an emergency reply to a
 // routine question. Photos are "[photo]": a picture's bytes are never sent.
 export function ektaChatTurns(chatName, spaceName, recent, text) {
-  const question = String(text || '').replace(/@?\s*(ekta|एकता)\b[\s,:;.!?-]*/gi, ' ').replace(/\s+/g, ' ').trim() || String(text || '').trim();
+  const question = stripMention(text) || String(text || '').trim();
   // A voice note is "[voice note]": its sound never leaves the family.
   const before = (recent || []).slice(0, -1).map(r => r.name + ': ' + (r.kind === 'image' ? '[photo]'
     : r.kind === 'audio' ? '[voice note]' : r.kind === 'poll' ? '[poll] ' + String(r.text || '').slice(0, 200) : String(r.text || '').slice(0, 500)));
@@ -97,9 +102,20 @@ export function ektaChatTurns(chatName, spaceName, recent, text) {
   return turns;
 }
 
-async function maybeEktaReply(sql, circle, me, chat, text) {
-  if (!/\bekta\b|एकता/i.test(text)) return null;
-  // any configured provider (env or vault) is enough for her to reply
+// WHEN SHE ANSWERS IN A CHAT. Only when the message is really for her:
+// "@Ekta", or her name as its first word (ektaMentioned in
+// api/_ektarules.mjs). "Ekta" is also the word for unity, and a family
+// writing about its ekta used to get a bot in the room.
+//
+// What she posts is read by everyone in the chat, so: she reads only what
+// the whole family sees and prepares nothing there (ektaTurn, open: true);
+// a reply that is only her records fallback, or "I could not answer", is
+// never posted; the asker pays the same coins as on her own screen; and one
+// member can ask for only so many replies in a few minutes. Emergency words
+// come first, free and unlimited, exactly as before.
+// Returns { replied, emergency } or { note } (a line for the asker alone).
+async function maybeEktaReply(sql, circle, me, chat, text, req) {
+  if (!ektaMentioned(text)) return null;
   try {
     const recent = await sql`
       select coalesce(mem.name, 'Ekta') as name, m.text, m.kind
@@ -107,22 +123,42 @@ async function maybeEktaReply(sql, circle, me, chat, text) {
       where m.chat_id = ${chat.id} order by m.created_at desc limit 10`;
     const history = ektaChatTurns(chat.name, spaceWord(circle), recent.reverse(), text);
     const question = history[history.length - 1].content;
+    const post = (reply) => sql`insert into messages (chat_id, member_id, text) values (${chat.id}, null, ${String(reply).slice(0, 2000)})`;
     // Someone may be in danger: the same fixed words as on Ekta's own
     // screen, at once, with no model in between. Read from the question
     // only, never from what was said before it.
     const asked = classify(question);
-    let out;
     if (asked === 'emergency' || asked === 'crisis') {
-      out = { reply: asked === 'crisis' ? renderCrisis(isoOf(me)) : renderEmergency(isoOf(me)), emergency: true, model: LOCAL_MODEL, actions: [] };
-    } else {
-      out = await ektaTurn(sql, circle, me, history);
-      // Told as the past but it names an emergency: the way to 112 comes too.
-      if (out && out.reply && mentionsUrgent(question)) { out.reply += '\n\n' + urgentToo(isoOf(me)); out.emergency = true; }
+      await post(asked === 'crisis' ? renderCrisis(isoOf(me)) : renderEmergency(isoOf(me)));
+      return { replied: true, model: LOCAL_MODEL, actions: [], emergency: true };
     }
-    if (out && out.reply) {
-      await sql`insert into messages (chat_id, member_id, text) values (${chat.id}, null, ${String(out.reply).slice(0, 2000)})`;
-      return { replied: true, model: out.model, actions: out.actions, emergency: !!out.emergency };
+    if ((await ektaSwitches(sql, circle, me)).paused) return { note: 'Ekta is paused for this ' + spaceWord(circle) + ' right now.' };
+    if (!(await rateLimit(sql, 'ektamention', me.id, EKTA.mentionRate.n, EKTA.mentionRate.sec, { failClosed: true }))) {
+      return { note: 'Ekta has answered you a lot here in the last few minutes. She will be ready again shortly.' };
     }
+    // With no AI key she can only read records back, and that never goes into a chat.
+    let brain = !!ektaSeams.client;
+    try { const { keys } = await providerKeys(sql, circle.id); brain = brain || MODEL_PROVIDERS.some(k => keys[k]); } catch (e) { /* no key read: no reply */ }
+    if (!brain) return { note: 'Ekta cannot answer inside a chat right now. Ask her on her own screen.' };
+    // The same coin rule as her own screen.
+    const paid = await spend(sql, circle.id, me.id, 'ekta');
+    if (!paid.ok) return { note: 'The ' + spaceWord(circle) + ' is out of coins for Ekta (a question uses ' + paid.cost + '). Her own screen still reads your records for free.' };
+    const refund = async () => {
+      if (!paid.cost) return;
+      try { await sql`insert into coins (circle_id, member_id, delta, reason) values (${circle.id}, ${me.id}, ${paid.cost}, 'refund')`; } catch (_) {}
+    };
+    let out = null;
+    try { out = await ektaTurn(sql, circle, me, history, { open: true, tz: reqTz(req) }); } catch (e) { out = null; }
+    // Her records fallback and "I could not answer" are for one person, on
+    // her own screen. They are never put in front of the family.
+    if (!out || !out.reply || out.offline || out.unanswered || out.unfinished) {
+      await refund();
+      return { note: 'Ekta could not answer that in the chat. Ask her on her own screen.' };
+    }
+    // Told as the past but it names an emergency: the way to 112 comes too.
+    const urgent = mentionsUrgent(question);
+    await post(urgent ? out.reply + '\n\n' + urgentToo(isoOf(me)) : out.reply);
+    return { replied: true, model: out.model, actions: [], emergency: urgent };
   } catch (e) { /* Ekta being unreachable must never block the human message */ }
   return null;
 }
@@ -233,10 +269,14 @@ export default async function handler(req, res) {
           }
         }
       } catch (e) { /* alerts never block the message */ }
-      const ekta = kind === 'text' ? await maybeEktaReply(sql, circle, me, chat, text) : null;
+      // fromEkta: the member said yes to a card she prepared (api/_ektaagent.mjs).
+      // The words are theirs, so she does not answer her own message.
+      const ekta = kind === 'text' && !body.fromEkta ? await maybeEktaReply(sql, circle, me, chat, text, req) : null;
       // ektaEmergency: her reply says to call for help, so the chat shows
       // the Call and SOS buttons under it, as Ekta's own screen does.
-      return res.status(201).json({ ok: true, ekta: ekta ? true : false, ektaEmergency: !!(ekta && ekta.emergency) });
+      // ektaNote: why she did not answer, for the person who asked only.
+      return res.status(201).json({ ok: true, ekta: !!(ekta && ekta.replied), ektaEmergency: !!(ekta && ekta.emergency),
+        ektaNote: (ekta && ekta.note) || undefined });
     }
 
     // Reactions and polls (api/_chatbond.mjs): only people in that chat.

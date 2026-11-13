@@ -227,21 +227,20 @@ export async function digestGather(sql, circle, me, tz, nowMs = Date.now()) {
 // conversation with Ekta (api/ekta.mjs: anthropicClient, MODEL_PRIMARY).
 // Loaded only when a call is really made, so the timer never loads the SDK.
 async function digestAnthropic({ system, user, maxTokens, timeoutMs }) {
-  const { anthropicClient, MODEL_PRIMARY } = await import('./ekta.mjs');
+  const { anthropicClient, MODEL_PRIMARY, modelRequest } = await import('./ekta.mjs');
   const client = anthropicClient({ anthropic: process.env.ANTHROPIC_API_KEY });
-  const response = await client.messages.create({
-    model: MODEL_PRIMARY,
-    max_tokens: maxTokens,
-    system: system,
-    messages: [{ role: 'user', content: user }]
-  }, { timeout: timeoutMs, maxRetries: 0 });
+  // modelRequest sizes the call for a model that thinks by default: the cap
+  // covers the thinking as well as the few sentences, and the depth is low.
+  const response = await client.messages.create(
+    modelRequest(MODEL_PRIMARY, { system, messages: [{ role: 'user', content: user }], maxTokens }),
+    { timeout: timeoutMs, maxRetries: 0 });
   if (response.stop_reason === 'refusal') return { refusal: true };
   return { text: response.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim(), model: response.model || MODEL_PRIMARY };
 }
 // Returns { text, model } for a reply that passed the check, otherwise null.
 // It never throws: a failure here is a reason to show (a), not an error.
-async function digestAskModel(facts, names) {
-  const sent = facts.slice(0, 8), prompt = digestPrompt(sent);
+async function digestAskModel(facts, names, promptOf = digestPrompt) {
+  const sent = facts.slice(0, 8), prompt = promptOf(sent);
   const ms = digestSeams.timeoutMs || DG.timeoutMs;
   let timer = null;
   try {
@@ -254,6 +253,36 @@ async function digestAskModel(facts, names) {
     return checked.ok ? { text: checked.text, model: String(out.model || 'model').slice(0, 80) } : null;
   } catch (e) { return null; }
   finally { if (timer) clearTimeout(timer); }
+}
+
+// ONE MODEL LINE A DAY, for the evening note or the morning one ("Aaj ka
+// din", api/_ektaday.mjs): the member's one claim for the UTC day, the
+// circle's cap, the names rule and digestCheck, all in one place so the two
+// notes can never spend two calls between them. Returns { text, model } or null.
+export async function digestModelOnce(sql, circle, me, facts, nowMs, { promptOf = digestPrompt, onTry = null } = {}) {
+  if (!facts.length || !process.env.ANTHROPIC_API_KEY) return null;
+  const utcDay = new Date(nowMs).toISOString().slice(0, 10);
+  // At most one call per member per UTC day, whatever local day the phone
+  // names. Taken before the circle's cap, so a refused try costs nothing.
+  const once = await sql`insert into digest_model_claim (member_id, day) values (${me.id}, ${utcDay}::date)
+                         on conflict do nothing returning member_id`;
+  if (!once[0]) return null;
+  // The cap, taken in one statement so two members cannot both be the 12th.
+  const slot = await sql`
+    insert into digest_usage (circle_id, day, calls) values (${circle.id}, ${utcDay}::date, 1)
+    on conflict (circle_id, day) do update set calls = digest_usage.calls + 1
+      where digest_usage.calls < ${DG.capPerCircle}
+    returning calls`;
+  if (!slot[0]) return null;
+  if (onTry) await onTry();
+  // Everyone's name, so the check can refuse a reply that names a person
+  // the facts did not. No list means no model line: fail safe.
+  let names;
+  try { names = (await sql`select name from members where circle_id = ${circle.id}`).map(r => r.name); }
+  catch (e) { return null; }
+  const out = await digestAskModel(facts, names, promptOf);
+  if (out) await sql`update digest_usage set written = written + 1 where circle_id = ${circle.id} and day = ${utcDay}::date`;
+  return out;
 }
 
 async function digestRow(sql, memberId, day) {
@@ -296,31 +325,12 @@ export async function digestOpen(sql, circle, me, tz, nowMs = Date.now()) {
 async function digestByModel(sql, circle, me, day, facts, nowMs) {
   // A quiet day needs no model, and with no key on the server there is none.
   if (!facts.length || !process.env.ANTHROPIC_API_KEY) return null;
-  const utcDay = new Date(nowMs).toISOString().slice(0, 10);
-  // At most one call per member per UTC day, whatever local day the phone
-  // names. Taken before the circle's cap, so a refused try costs nothing.
-  const once = await sql`insert into digest_model_claim (member_id, day) values (${me.id}, ${utcDay}::date)
-                         on conflict do nothing returning member_id`;
-  if (!once[0]) return null;
-  // The cap, taken in one statement so two members cannot both be the 12th.
-  const slot = await sql`
-    insert into digest_usage (circle_id, day, calls) values (${circle.id}, ${utcDay}::date, 1)
-    on conflict (circle_id, day) do update set calls = digest_usage.calls + 1
-      where digest_usage.calls < ${DG.capPerCircle}
-    returning calls`;
-  if (!slot[0]) return null;
-  await sql`update digest_daily set model_tried = true where member_id = ${me.id} and day = ${day}::date`;
-  // Everyone's name, so the check can refuse a reply that names a person
-  // the facts did not. No list means no model line: fail safe.
-  let names;
-  try { names = (await sql`select name from members where circle_id = ${circle.id}`).map(r => r.name); }
-  catch (e) { return null; }
-  const out = await digestAskModel(facts, names);
+  const out = await digestModelOnce(sql, circle, me, facts, nowMs, {
+    onTry: () => sql`update digest_daily set model_tried = true where member_id = ${me.id} and day = ${day}::date` });
   if (!out) return null;
   const up = await sql`update digest_daily set text = ${out.text}, by_model = true, model = ${out.model}
                        where member_id = ${me.id} and day = ${day}::date
                        returning text, fact_keys, final, by_model, written_at, vote`;
-  await sql`update digest_usage set written = written + 1 where circle_id = ${circle.id} and day = ${utcDay}::date`;
   return up[0] || null;
 }
 
