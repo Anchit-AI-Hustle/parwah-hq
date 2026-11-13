@@ -78,6 +78,13 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | Watch or listen together at a set time (a plan with a link) | Live | a `together` plan, made from a recommendation in one tap |
 | A shared family photo album | Live | Yaadon ki album: photos kept in the database like vault files, made small on the phone first; 400 a family. A move to paid storage later is one change |
 | A daily "what happened today" digest | Live | Aaj kya hua, from Ekta: plain words for everyone; one model call per member per day at most, 12 a circle a day, only when the owner's key is set |
+| A morning note of the day ahead | Live | Aaj ka din, from Ekta (`api/_ektaday.mjs`): medicine times of people the reader may see, plans, birthdays and anniversaries today, renewals this week, who is away. Plain rules by default; a model line only with `EKTA_MORNING_MODEL=on`, on the same one call a day as the evening note. Senior mode has a big "Sunao" button on both notes, and the thumbs |
+| An assistant that reads the family's own things back, and does small things for me | Live | Ekta asks before she acts (`api/_ektaagent.mjs`): she reads plans, polls, occasions, likes, renewals, today's medicine times, stories and what is waiting on me, each with that feature's own rule; a message, plan, poll, private note, reminder, request or card line is a card first ("Ekta wants to: ...", "Yes, do it" / "No"), run once on the yes, as me, through the same handler as the screen |
+| Someone who does not type can still send word ("Ekta, tell Rohan I reached") | Live | read by rule, with no AI key and no coins; the same confirm card; spoken and heard in English or Hindi (`members.lang`) |
+| A private nudge when I have not spoken with a parent, before a birthday, before a renewal | Live | off until I turn each on; only I see them; never 9pm to 8am; two a day at most; no model |
+| Reach a relative who is not on Parwah | Live | Ekta prepares the words and a button that opens WhatsApp for ME to send; Parwah sends nothing |
+| Ekta remembers small things about me | Live | only after "Shall I remember this?" and my yes; "What Ekta remembers about me" lists each with Forget, and "Forget everything"; never a password, PIN, OTP, card number or health reading |
+| A photo of a bill or an appliance label becomes a draft entry | Built, off | behind `EKTA_PHOTO_DRAFT=on`; a prescription or a report is refused; the owner turns it on after trying it with a real key |
 
 ### F. Money between family
 | Need | Status | Where |
@@ -240,6 +247,7 @@ Honest limits:
 - Photo album storage: the album is live on the database, capped at 400 photos a family (about 256 MB at the very most, nearer 120 MB in practice). Choose and pay for file storage only if families outgrow that; the bytes are read and written in two functions (`albumPutBytes`, `albumGetBytes` in `api/_album.mjs`), so the move is one change.
 - ~~Trip and function cost split with UPI links.~~ Live (`api/_split.mjs`). Parwah never moves money; the UPI link is built for the payer only.
 - Ekta daily digest: accepted and built (2026-11-12). Still to decide: where the owner reads the usage counter (`digest_usage`); there is no admin screen for counters yet.
+- Ekta, the family assistant (2026-11-13). What was ported from the owner's "Jarvis" assistant, where it fits a family: structured tool results, arguments checked before a tool runs, a 45 second turn, an honest report of what was done and what was not, dates and family words worked out before the model, the action card (here ALWAYS confirmed), remember and recall (here only with consent), a kill switch for the member and one for the family, an audit of confirmed actions, a morning briefing, and the WhatsApp deep link. Deliberately NOT built: a wake word or listening in the background, device control, WhatsApp sent by itself, payments, saving every exchange, health or research tools, posting to social accounts, app building, and automatic retries of anything that changes something. Still to decide: turning on photo drafts (`EKTA_PHOTO_DRAFT`) and the morning model line (`EKTA_MORNING_MODEL`), both off; whether the Hindi lines Ekta speaks may be shown in Devanagari to a member who chose Hindi (today they are, and only to that member).
 - SMS sign-in stays off, by the owner's decision.
 
 ## 5. How a new need gets added

@@ -709,7 +709,7 @@ export default async function handler(req, res) {
 
   // "Pause Ekta for this family": she says so, kindly, and does nothing else.
   let switches = { paused: false, noActions: false };
-  try { switches = await ektaSwitches(sql, circle, me); } catch (e) { /* off is the safe reading only for pause; see below */ }
+  try { switches = await ektaSwitches(sql, circle, me); } catch (e) { /* the switches could not be read: confirm and the write tools read them again and refuse on their own */ }
   if (switches.paused) return answer({ ok: true, reply: PAUSED_LINE, actions: [], model: LOCAL_MODEL, paused: true });
 
   // One member cannot run her without end: counted in the database, and a
