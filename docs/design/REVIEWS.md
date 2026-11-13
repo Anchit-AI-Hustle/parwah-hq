@@ -662,3 +662,21 @@ Checked at 320 and 390, light and dark, on the real app with a family of four an
 | 201 | 4 Consistency | The time under the note follows the phone's own format ("7:23 PM") while the note says "7:23 pm" | 1 | Open: cosmetic, left as the phone shows times everywhere else |
 
 New patterns: none. The sheet is the app's one bond sheet; the row is a `bondtoday` row; the note is `bondtext`; the thumbs are a `pkind` pair. No new CSS. Ids start with `dg-`.
+
+## Review N (stream F): Notifications, can be reached, the self-check and the waiting row
+
+Screens: the Notifications card and "Is Parwah working?" in Profile; the "Will send when the network is back" row and the "nobody's phone will ring" card on Today; the "Updated. Tap to refresh" bar. Measured in `notifyfair.e2e.dbtest.mjs` at 320 and 390, light and dark: nothing sideways, 44px targets (a tick box is measured by its label), 12px floor, AA contrast.
+
+| # | Heuristic | Finding | Severity | Outcome |
+|---|---|---|---|---|
+| F1 | 3 User control | Every push rang at any hour; the only choice was all or nothing | 4 | Fixed: quiet hours (10pm to 7am unless changed) and six switches, saved as each is changed, one choice for every family the person is in |
+| F2 | 5 Error prevention | Quiet hours could have silenced an emergency | 4 | Fixed: an SOS, a missed check-in, a hospital stay and the person's own medicine times are never held, and the card says so in its first lines |
+| F3 | 1 Visibility of status | Nobody could tell whether a parent's SOS would ring anyone | 4 | Fixed: a dot and words per person for adults; one gentle card on Today when nobody would be reached, with the one button that fixes it |
+| F4 | 1 Visibility of status | "All is well" with no network showed "No connection - try again" and was lost | 4 | Fixed: kept on the phone, shown as waiting with what and when, sent by itself; the button says "Saved on this phone", never "reached the family" |
+| F5 | 2 Real-world match | A status shown by colour alone | 2 | Fixed: every line carries a mark (✓ or !) and a word (on, off, resting, not set up), in the status colours, never the vibe colours |
+| F6 | 9 Error recovery | A self-check that only said "off" | 3 | Fixed: each line that is off says what to do next in one sentence |
+| F7 | 10 Help | The reach card could read as blame | 2 | Fixed: it states the fact and the fix; no "you must", no count of days |
+| F8 | 4 Consistency | The update bar has two wordings ("A newer Parwah is ready" and "Updated. Tap to refresh") | 1 | Open: the second is used only when the new copy is already on the phone; left as two |
+| F9 | 7 Flexibility | No way to mute one chat from the screen | 2 | Open: the server honours a `chat_mutes` table when another stream adds one |
+
+New patterns: `nt-line` (a mark, a bold fact, a small "what to do"), `nt-reach` (a dot, a name, words), `nt-times` (two time fields in a row that wraps). All from tokens; ids start with `nt-`.

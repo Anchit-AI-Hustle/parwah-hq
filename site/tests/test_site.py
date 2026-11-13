@@ -620,8 +620,10 @@ check("games: in Get Away each player is sent only their own hand",
       "bhabhiView(game.state, memberId)" in _gm and "v.hands = st.hands.map((h, i) => (i === me ? h : []))" in _bg)
 _bare = [l.strip() for l in appsrc.splitlines()
          if "fetch(" in l and "authHeaders" not in l and "function apiGet" not in l
-         and "fetch(API.push)" not in l and "fetch('/', { method: 'HEAD'" not in l and not l.strip().startswith("//")]
-check("auth: every API call carries the sign-in token (apiGet/post; only the public push key, and the page's own version, are fetched bare)",
+         and "fetch(API.push)" not in l and "fetch('/', { method: 'HEAD'" not in l and not l.strip().startswith("//")
+         # The error report is sent bare ON PURPOSE: it must name nobody.
+         and "fetch(NT_REPORT, {" not in l]
+check("auth: every API call carries the sign-in token (apiGet/post; only the public push key, the page's own version and the nameless error report are fetched bare)",
       not _bare, "; ".join(_bare[:3]))
 check("todo: reminders and tasks are one list, in three parts: Needs attention, Today, Coming up",
       all(k in appsrc for k in ("'g-need', 'Needs attention'", "'g-today', 'Today'", "'g-soon', 'Coming up'"))
@@ -3786,6 +3788,64 @@ check("digest: the rules test runs in the gate, and the db and browser tests run
               and "waitForTimeout" not in (REPO / "site/tests/db" / f).read_text(encoding="utf-8")
               for f in ("digest.dbtest.mjs", "digest.e2e.dbtest.mjs"))
       and "getHours()" not in (REPO / "site/tests/db/digest.dbtest.mjs").read_text(encoding="utf-8"))
+
+# ---------- Fair notifications and a poor network (stream F) ----------
+# The rules that must never regress. Proved in pushrulestest (pure rules, three
+# clocks at one moment), notifyfair.dbtest (real handlers), notifyfair.e2e
+# (the screens) and offline.browser (a slow, silent and absent network).
+_nt_push = (API_DIR / "_push.mjs").read_text(encoding="utf-8")
+_nt_api = (API_DIR / "_pushapi.mjs").read_text(encoding="utf-8")
+_nt_rules = (API_DIR / "_pushrules.mjs").read_text(encoding="utf-8")
+_nt_off = (API_DIR / "_offline.mjs").read_text(encoding="utf-8")
+_nt_ev = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_nt_sw = (REPO / "site/public/sw.js").read_text(encoding="utf-8")
+_nt_pc = _nt_push[_nt_push.index("export async function pushCircle"):_nt_push.index("export async function pushMorning")]
+check("notify: a phone belongs to the person, so it rings for every family they are in; old rows are carried over and survive leaving one family",
+      "s.user_id = m.user_id) or s.member_id = m.id" in _nt_pc and "limit 60" not in _nt_push
+      and "add column if not exists user_id uuid references users(id) on delete cascade" in _nt_push
+      and "update push_subs s set user_id = m.user_id from members m" in _nt_push and "on delete set null" in _nt_push)
+check("notify: quiet hours, the kind switches and a muted chat are applied inside pushCircle, the one place a push is sent",
+      "decide(info," in _nt_pc and "pushKind(payload)" in _nt_pc and "mutedIn(sql, payload.chatId" in _nt_pc
+      and "insert into push_held" in _nt_pc and "sendNotification" not in "".join(
+          f.read_text(encoding="utf-8") for f in API_DIR.glob("*.mjs") if f.name != "_push.mjs"))
+check("notify: an SOS and the other urgent kinds are never held, dropped or capped; the rest keep a cap that leaves no member out",
+      "if (k.through) return 'send';" in _nt_rules and "if (!info.through) subs = capOrder(subs, PUSH_CAP);" in _nt_pc
+      and "if (p.urgent) return { kind: 'urgent', through: true" in _nt_rules and "/^🆘/" in _nt_rules and "has not checked in today" in _nt_rules)
+check("notify: someone whose time zone is not known is never held (a night is never guessed), and the morning line is counts only, claimed once",
+      "zone ? pref : { ...(pref || {}), quiet: false }" in _nt_pc and "delete from push_held where user_id = ${w.user_id} returning kind, circle_id" in _nt_push
+      and "title: '🌅 While you slept'" in _nt_rules and "text" not in _nt_push[_nt_push.index("create table if not exists push_held"):_nt_push.index("create index if not exists push_held_user")].replace("kind text", ""))
+check("notify: a phone the push service says is gone is removed; adults only see who can be reached, decided on the server",
+      "sc === 404 || sc === 410" in _nt_push and "if (!adult) return res.status(200).json({ ok: true, adult: false, members: [], uncovered: [] });" in _nt_api
+      and "This check is for the adults in the family." in _nt_api and "nobody\\'s phone will ring." in _app_src)
+check("timer: closed on the live site without its key, open on a laptop; starts where the last run stopped; says when it last ran; a failed sweep leaves a line with no names",
+      "if (!secret) return process.env.VERCEL_ENV !== 'production';" in _nt_ev and "return rotateFrom([...ids], await tickCursor(sql));" in _nt_ev
+      and "await one(() => afterTick(sql, circles, done));" in _nt_ev and "tickNote(e, 'sweep')" in _nt_ev
+      and "'last_tick_at'" in _nt_push and "probe === 'status'" in _diag and "console.error('[parwah tick '" in _nt_off)
+check("offline: a tap sent late counts once, only a check-in, a medicine tick or a pulse answer, only within a day, and never an SOS",
+      "OFFLINE_KINDS = ['checkin', 'pill', 'pulse']" in _nt_rules and "OFFLINE_MAX_AGE_MS = 24 * 3600000" in _nt_rules
+      and "on conflict (member_id, client_id) do nothing" in _nt_off
+      and _nt_ev.index("if (type === 'sos') return raiseSos(") < _nt_ev.index("const tap = await lateTap(sql, req.body, memberId, type);")
+      and "coalesce(${tap.at}::timestamptz, now())" in _nt_ev and "NT_QTYPES = { checkin: 'All is well', pill: 'Medicines taken' }" in _app_src
+      and "Will send when the network is back" in _app_src)
+check("offline: the saved app is shown when the network has not answered in 3 seconds, the API is never served from a saved copy, and a new copy says so",
+      "var SLOW_MS = 3000;" in _nt_sw and "Promise.race([net, slow])" in _nt_sw and "url.pathname.indexOf('/api/') === 0) return;" in _nt_sw
+      and "tellWindows({ parwah: 'updated' })" in _nt_sw and "'Updated. Tap to refresh'" in _app_src and "function ntSosReady()" in _app_src)
+check("errors: a broken page is reported as what and where only, with no sign-in token, limited per device, trimmed after 14 days, shown as counts",
+      "fetch(NT_REPORT, {" in _app_src and "REPORT_KEEP_DAYS = 14" in _nt_rules and "rateLimit(sql, 'cerr', limitKey(req), 5, 600, { failClosed: true })" in _nt_api
+      and "export function limitKey(req)" in (API_DIR / "_db.mjs").read_text(encoding="utf-8")
+      and not re.search(r"authHeaders|authToken\(\)|state\.", _app_src[_app_src.index("function ntReport("):_app_src.index("window.addEventListener('error'")]))
+_nt_static = [i for i in _static_ids if i.startswith("nt-")]
+check(f"notify: its ids all start with nt- ({len(_nt_static)}), none twice in the page, and its functions start with nt",
+      len(_nt_static) >= 14 and len(_nt_static) == len(set(_nt_static)) and len(re.findall(r"function nt[A-Za-z]+\(", _app_src)) >= 20)
+_nt_pkg = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]
+check("notify: the rules test runs in the gate; the db, screen and poor-network tests run in CI with a fixed clock and no fixed pauses",
+      "node site/tests/pushrulestest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all(("site/tests/db/" + f) in _nt_pkg["test:db"] for f in ("notifyfair.dbtest.mjs", "notifyfair.e2e.dbtest.mjs"))
+      and "site/tests/browser/offline.browser.mjs" in _nt_pkg["test:browser"]
+      and all("waitForTimeout" not in (REPO / p).read_text(encoding="utf-8")
+              for p in ("site/tests/db/notifyfair.dbtest.mjs", "site/tests/db/notifyfair.e2e.dbtest.mjs", "site/tests/browser/offline.browser.mjs"))
+      and "pushSeams.now = () =>" in (REPO / "site/tests/db/notifyfair.dbtest.mjs").read_text(encoding="utf-8")
+      and all(z in (REPO / "site/tests/pushrulestest.mjs").read_text(encoding="utf-8") for z in ("Asia/Kolkata", "Europe/London", "America/Los_Angeles")))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

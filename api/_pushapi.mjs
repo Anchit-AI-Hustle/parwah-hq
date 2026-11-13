@@ -108,7 +108,7 @@ export default async function handler(req, res) {
       if (body.action === 'reach') {
         if (!adult) return res.status(200).json({ ok: true, adult: false, members: [], uncovered: [] });
         const live = ms.filter(m => !m.remembered);
-        const members = live.filter(m => m.user_id).map(m => ({ id: m.id, reachable: m.reachable }));
+        const members = live.filter(m => m.user_id).map(m => ({ id: m.id, name: m.name, reachable: m.reachable }));
         const uncovered = live.filter(m => m.id !== me[0].id && (m.role === 'parent' || m.checks_in))
           .filter(l => !live.some(a => a.id !== l.id && adultOf(a) && a.reachable))
           .map(l => ({ id: l.id, name: l.name }));

@@ -102,6 +102,11 @@ node site/tests/albumrulestest.mjs
 # model's reply. _digestrules.mjs imports nothing, so this runs before npm
 # install too.
 node site/tests/digesttest.mjs
+# Fair notifications and a poor network: what kind a push is, quiet hours on
+# three clocks at one moment, the cap that leaves nobody out, the morning
+# line, a tap that arrives late, and what an error report may hold.
+# _pushrules.mjs imports nothing, so this runs before npm install too.
+node site/tests/pushrulestest.mjs
 # The native apps' copy of the server's rules (PINs, for now) is written by
 # the server itself. If a rule changes in api/ and the contract is not
 # regenerated, the phones would accept what the server then refuses. Vercel's

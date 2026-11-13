@@ -90,7 +90,7 @@ ok('one of a thing is singular, two families are both named, and nothing held is
    morningText([{ kind: 'chat', family: 'Sharma Family', n: 1 }, { kind: 'care', family: 'Kapoor Family', n: 2 }]).body
      === '1 message in Sharma Family, 2 care alerts in Kapoor Family. Open Parwah to see.'
    && morningText([]) === null && morningText([{ kind: 'chat', family: 'x', n: 0 }]) === null);
-ok('the morning line holds counts and family names only, with no dash', !/[–—]/.test(morningText([{ kind: 'games', family: 'A', n: 3 }, { kind: 'zzz', family: 'B', n: 2 }]).body));
+ok('the morning line holds counts and family names only, with no dash', !new RegExp("[" + String.fromCharCode(8211, 8212) + "]").test(morningText([{ kind: 'games', family: 'A', n: 3 }, { kind: 'zzz', family: 'B', n: 2 }]).body));
 
 // ---- which family
 ok('someone in two families is told which one; someone in one is not',

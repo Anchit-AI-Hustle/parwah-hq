@@ -1,5 +1,5 @@
 // Parwah app service worker - makes the app installable and keeps the shell
-// available offline. API calls always go to the network.
+// available offline and on a slow network. API calls always go to the network.
 var CACHE = 'parwah-app-v42';
 var SHELL = ['/', '/manifest.webmanifest', '/icon-192.png'];
 
@@ -49,7 +49,7 @@ self.addEventListener('push', function (e) {
     body: d.body || '',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    data: { url: d.url || '/' },
+    data: { url: d.url || '/', family: d.family || null },
     tag: urgent ? 'parwah-sos' : ring ? 'parwah-ring' : undefined,
     renotify: urgent || ring,
     requireInteraction: urgent || ring,
@@ -60,11 +60,68 @@ self.addEventListener('push', function (e) {
 
 self.addEventListener('notificationclick', function (e) {
   e.notification.close();
+  // Someone in two families: the alert says which family it is from, and
+  // the open window is told, so it can show that family.
+  var fam = e.notification.data && e.notification.data.family;
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
-    for (var i = 0; i < list.length; i++) { if ('focus' in list[i]) return list[i].focus(); }
+    for (var i = 0; i < list.length; i++) {
+      if ('focus' in list[i]) {
+        if (fam) { try { list[i].postMessage({ parwah: 'open-family', family: fam }); } catch (err) {} }
+        return list[i].focus();
+      }
+    }
     return self.clients.openWindow((e.notification.data && e.notification.data.url) || '/');
   }));
 });
+
+// A POOR NETWORK MUST NOT MEAN A BLANK SCREEN. The page is more than a
+// megabyte, and it used to be fetched in full on every open, with the saved
+// copy used only once the network had failed outright; on one bar of signal
+// that is a white screen for a minute. Now the network is still asked first,
+// but if it has not answered within three seconds the saved copy is shown.
+// The fresh one keeps coming in the background, replaces the saved one, and
+// if it is different the open window is told: "Updated. Tap to refresh".
+// Nothing under /api/ ever comes from here: a saved answer about a family is
+// an old answer.
+var SLOW_MS = 3000;
+function tellWindows(msg) {
+  return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+    list.forEach(function (c) { try { c.postMessage(msg); } catch (err) {} });
+  });
+}
+function page(e, url) {
+  var shownSaved = false;
+  var saved = caches.match(e.request, { ignoreSearch: true });
+  // The page itself always comes from Parwah, never from the browser's own
+  // cache: a phone must not keep showing last week's app.
+  // redirect: 'manual' hands a redirect (an old /app link) back to the
+  // browser to follow, so the address bar and the worker's scope stay right.
+  var net = fetch(url.href, { cache: 'no-store', credentials: 'same-origin', redirect: 'manual' });
+  var kept = net.then(function (res) {
+    if (!res.ok) return null;
+    var copy = res.clone();
+    return caches.open(CACHE).then(function (c) {
+      if (!shownSaved) return c.put(e.request, copy);
+      return saved.then(function (old) {
+        return Promise.all([old ? old.clone().text() : null, copy.clone().text()]).then(function (t) {
+          return c.put(e.request, copy).then(function () {
+            if (t[0] !== null && t[0] !== t[1]) return tellWindows({ parwah: 'updated' });
+          });
+        });
+      });
+    });
+  }).catch(function () {});
+  // The worker stays alive until the fresh copy is in, however slow.
+  e.waitUntil(kept);
+  var slow = new Promise(function (resolve) {
+    setTimeout(function () {
+      saved.then(function (old) { if (old) { shownSaved = true; resolve(old.clone()); } });
+    }, SLOW_MS);
+  });
+  return Promise.race([net, slow]).catch(function () {
+    return saved.then(function (old) { return old ? old.clone() : Response.error(); });
+  });
+}
 
 self.addEventListener('fetch', function (e) {
   var url = new URL(e.request.url);
@@ -73,11 +130,8 @@ self.addEventListener('fetch', function (e) {
   // theirs is kept here, and a slow one held by this worker would hold up
   // the next version of Parwah until it finished.
   if (url.origin !== location.origin) return;
-  // The page itself always comes from Parwah, never from the browser's own
-  // cache: a phone must not keep showing last week's app.
-  // redirect: 'manual' hands a redirect (an old /app link) back to the
-  // browser to follow, so the address bar and the worker's scope stay right.
-  var req = e.request.mode === 'navigate' ? fetch(url.href, { cache: 'no-store', credentials: 'same-origin', redirect: 'manual' }) : fetch(e.request);
+  if (e.request.mode === 'navigate') { e.respondWith(page(e, url)); return; }
+  var req = fetch(e.request);
   e.respondWith(
     req.then(function (res) {
       if (res.ok && url.origin === location.origin) {

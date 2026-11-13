@@ -527,6 +527,28 @@ button.pcard:disabled{opacity:.45;cursor:default}
 /* profile */
 .kv{display:flex;justify-content:space-between;gap:var(--space-12);font-size:var(--fs-14);padding:var(--space-8) 0;border-bottom:1px dashed var(--bone-2)}
 .kv:last-child{border-bottom:0}
+/* Notifications, can-be-reached and the self-check (stream F). Status is a
+   mark and a word, in the status colours, never the vibe colours. */
+#nt-queue{margin-bottom:var(--space-12);border-left:3px solid var(--marigold)}
+#nt-queue .cbtn,#nt-reach .cbtn{min-height:var(--tap-min)}
+#nt-reach .crow{margin-bottom:var(--space-12);border-left:3px solid var(--alert)}
+.nt-times{display:flex;flex-wrap:wrap;gap:var(--space-8) var(--space-12);align-items:center;margin:var(--space-8) 0 var(--space-12)}
+.nt-times label{font-size:var(--fs-14);color:var(--ink-soft);margin:0}
+.nt-times input{flex:1 1 110px;width:auto;min-width:0}
+.nt-times[aria-disabled=true]{opacity:.6}
+.nt-kind span{display:block}
+.nt-kind small{display:block;font-size:var(--fs-12);color:var(--ink-soft)}
+.nt-reach{display:flex;align-items:center;gap:var(--space-8);min-height:var(--tap-min);font-size:var(--fs-14);border-bottom:1px dashed var(--bone-2)}
+.nt-reach small{margin-left:auto;font-size:var(--fs-12);color:var(--ink-soft);text-align:right}
+.nt-dot{flex:none;width:12px;height:12px;border-radius:var(--radius-pill);border:2px solid var(--ink-soft)}
+.nt-dot.on{background:var(--ok);border-color:var(--ok)}
+.nt-line{display:flex;gap:var(--space-12);align-items:flex-start;padding:var(--space-8) 0;border-bottom:1px dashed var(--bone-2);font-size:var(--fs-14)}
+.nt-line:last-child{border-bottom:0}
+.nt-line b{display:block;color:var(--ink)}
+.nt-line small{display:block;font-size:var(--fs-12);color:var(--ink-soft)}
+.nt-mark{flex:none;width:24px;text-align:center;font-weight:800;color:var(--alert)}
+.nt-mark.ok{color:var(--ok)}
+#nt-check-out{margin-top:var(--space-12)}
 .kv b{font-weight:600}
 .kv span{color:var(--ink-soft);text-align:right}
 .plantag{display:inline-block;background:var(--tint-ok);color:var(--ok);font-size:var(--fs-12);font-weight:700;letter-spacing:.12em;text-transform:uppercase;border-radius:var(--radius-pill);padding:var(--space-4) var(--space-12);margin-bottom:var(--space-8)}
@@ -1874,6 +1896,13 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <span class="txt"><b>Could not reach Parwah</b><small>This is the last thing we saw, not what is happening now. It will retry on its own.</small></span>
       <button class="cbtn" data-retryload="1">Try now</button>
     </div>
+    <!-- Taps made with no network, kept on this phone until it is back. -->
+    <div class="crow" id="nt-queue" hidden role="status" aria-live="polite">
+      <span class="txt"><b>Will send when the network is back</b><small id="nt-queue-list"></small></span>
+      <button class="cbtn" type="button" id="nt-queue-try">Try now</button>
+    </div>
+    <!-- Someone who is looked after, and no adult whose phone would ring. -->
+    <div id="nt-reach" aria-live="polite"></div>
     <!-- Family care alerts (api/_familycare.mjs): someone asking the family
          first before paying, a missed daily check-in, a parent asking for
          help with the phone. Alerts come first on Today (docs/design/TODAY.md). -->
@@ -3712,11 +3741,37 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         <button type="button" data-theme-set="dark">🌙 Dark</button>
       </div>
     </div>
-    <div class="card">
-      <h3>Alerts on this phone</h3>
-      <div class="kv"><b>Alerts</b><span id="p-push">-</span></div>
+    <!-- Notifications (api/_push.mjs, api/_pushrules.mjs): what this person
+         hears about and when. One choice for every family they are in. -->
+    <div class="card" id="nt-card">
+      <h3>Notifications</h3>
+      <div class="kv"><b>Alerts on this phone</b><span id="p-push">-</span></div>
       <button class="linkbtn" id="p-push-on">🔔 Turn on alerts on this device</button>
+      <div id="nt-prefs" hidden>
+        <label class="seniorchk"><input type="checkbox" id="nt-quiet"> Quiet hours at night</label>
+        <p class="hint" style="margin:0 0 var(--space-8)">Chat, plans and games wait until morning and come as one line. An SOS, a missed check-in and your own medicine times always come through.</p>
+        <div class="nt-times" id="nt-times">
+          <label for="nt-from">From</label><input type="time" id="nt-from">
+          <label for="nt-to">Until</label><input type="time" id="nt-to">
+        </div>
+        <p class="eyebrow">What you want to hear about</p>
+        <div id="nt-kinds"></div>
+        <p class="hint" id="nt-saved" role="status" aria-live="polite"></p>
+      </div>
+      <div id="nt-reachbox" hidden>
+        <p class="eyebrow">Who alerts can reach</p>
+        <div id="nt-reachlist"></div>
+        <p class="hint">A filled dot means an SOS would ring that person's phone. An empty one means they have not turned alerts on yet.</p>
+      </div>
       <p style="margin-top:var(--space-12)"><b style="color:var(--ink)">Install as an app:</b> Android - Chrome menu → <i>Install app</i>. iPhone - Share → <i>Add to Home Screen</i>. <a href="get/" target="_blank" rel="noopener">Full install guide →</a></p>
+    </div>
+    <!-- "Parwah is working": a check an adult can run, line by line, each
+         with what to do when it is off. -->
+    <div class="card" id="nt-check" hidden>
+      <h3>Is Parwah working?</h3>
+      <p class="hint" style="margin:var(--space-2) 0 var(--space-12)">A quick look at this phone and at the parts Parwah depends on.</p>
+      <button class="cbtn" type="button" id="nt-check-run">Check now</button>
+      <div id="nt-check-out" role="status" aria-live="polite"></div>
     </div>
     <div class="card">
       <h3>Privacy promise</h3>
@@ -4572,6 +4627,32 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   var $ = function(id){ return document.getElementById(id); };
   var API = { notes: '/api/book?area=notes', circle: '/api/circle', events: '/api/events', care: '/api/care', ekta: '/api/ekta', chats: '/api/chats', games: '/api/games', plans: '/api/plans', auth: '/api/auth', book: '/api/book', vault: '/api/book?area=vault', pay: '/api/book?area=pay', push: '/api/settings?area=push', keys: '/api/settings?area=keys', coins: '/api/settings?area=coins', plan: '/api/settings?area=plan', day: '/api/settings?area=day', pin: '/api/settings?area=pin', location: '/api/settings?area=location', refill: '/api/care?area=refill', bills: '/api/care?area=bills', tasks: '/api/care?area=tasks', biomarkers: '/api/book?area=biomarkers', preauth: '/api/book?area=preauth', locator: '/api/book?area=locator', afterloss: '/api/book?area=afterloss', audit: '/api/book?area=audit' };
   var TABS = ['home','people','person','memory','vault','care','day','chat','ekta','profile','fun','notifs'];
+
+  // WHEN THE PAGE BREAKS ON SOMEONE'S PHONE, WE HEAR OF IT. Set up before
+  // anything else runs, so a mistake further down this script is caught too.
+  // What is sent: the error's own words, the file and line, the app version
+  // and the screen size. Nothing about the person or the family: no token,
+  // no name, no number, nothing they typed. At most three a visit and ten a
+  // day from one phone; the server limits it again and trims after 14 days.
+  var ntErrN = 0, NT_REPORT = API.push;   // sent bare on purpose: a report carries no sign-in token
+  function ntReport(msg, where){
+    msg = String(msg || '').slice(0, 300);
+    if (!msg || ntErrN >= 3 || navigator.onLine === false || /Failed to fetch|NetworkError|Load failed|AbortError|aborted|Script error/i.test(msg)) return;
+    var day = new Date().toDateString();
+    try {
+      var s = JSON.parse(localStorage.getItem('parwah-errs') || '{}'), n = s.day === day ? (+s.n || 0) : 0;
+      if (n >= 10) return;
+      localStorage.setItem('parwah-errs', JSON.stringify({ day: day, n: n + 1 }));
+    } catch (e) {}
+    ntErrN++;
+    try {
+      fetch(NT_REPORT, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', 'X-Parwah-Device': ntDevice() },
+        body: JSON.stringify({ action: 'report', message: msg, where: String(where || ''), version: ntVersion(), viewport: window.innerWidth + 'x' + window.innerHeight }) })
+        .catch(function(){});
+    } catch (e) {}
+  }
+  window.addEventListener('error', function(e){ if (e && e.message) ntReport(e.message, (e.filename || '') + ':' + (e.lineno || 0) + ':' + (e.colno || 0)); });
+  window.addEventListener('unhandledrejection', function(e){ var r = e && e.reason; if (r && r.message) ntReport((r.name ? r.name + ': ' : '') + r.message, ''); });
   var state = null;
   var pollTimer = null, toastTimer = null;
   var curChat = null, chatsCache = [], membersCache = [];
@@ -4658,6 +4739,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (t) h['X-Parwah-Token'] = t;
     // So the server's "today" is this family's today, wherever they are.
     try { var z = Intl.DateTimeFormat().resolvedOptions().timeZone; if (z) h['X-Parwah-Tz'] = z; } catch (e) {}
+    // A random id for this phone (not for the person): limits are counted
+    // by it, so one busy phone on a shared mobile address holds back nobody else.
+    h['X-Parwah-Device'] = ntDevice();
     return h;
   }
   // A session that has expired or been signed out elsewhere must land the
@@ -7784,13 +7868,20 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     return state && state.role === 'parent' ? 'Shown - All is well, Medicines taken and SOS on Today' : 'Not shown - turn on in Edit profile if the family looks after you';
   }
 
+  // "All is well" and "Medicines taken" must not be lost to a poor network:
+  // each carries an id of its own, and when it cannot be sent it is kept on
+  // this phone with the time it was pressed (ntKeep, below) and sent later.
   function sendEvent(type, text, after){
-    post(API.events, { code: state.code, memberId: state.memberId, type: type, text: text || '' })
+    var late = NT_QTYPES[type] ? { id: ntId(), at: new Date().toISOString() } : null;
+    var body = { code: state.code, memberId: state.memberId, type: type, text: text || '' };
+    if (late) body.clientId = late.id;
+    (late ? ntFetch(API.events, body) : post(API.events, body))
       .then(function(j){
         if (j.ok) { refresh(); if (after) after(); }
+        else if (late && j._status >= 500) ntKeep(type, text, late);
         else toast(j.error || 'Could not send - try again');
       })
-      .catch(function(){ toast('No connection - try again'); });
+      .catch(function(){ if (late) ntKeep(type, text, late); else toast('No connection - try again'); });
   }
 
   // ---------- phone-first sign in / sign up ----------
@@ -11012,12 +11103,15 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         if (!j.ok || !j.publicKey) throw new Error('no key');
         return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64(j.publicKey) });
       }).then(function(sub){
-        return post(API.push, { code: state.code, memberId: state.memberId, action: 'subscribe', sub: sub.toJSON() });
+        // The phone is registered to the person, not to this one family: it
+        // rings for every family they are in. Its own time zone goes with
+        // it, so quiet hours are on this phone's clock.
+        return post(API.push, { code: state.code, memberId: state.memberId, action: 'subscribe', sub: sub.toJSON(), device: ntDevice(), tz: homeTz() });
       }).then(function(r2){
         // 409: this phone's alerts already belong to another account on it.
         // Nothing to do here, and nothing worth a message.
         if (r2 && r2._status === 409) return;
-        if (r2 && r2.ok) { if (!quiet) toast('Device alerts on 🔔'); $('push-card').hidden = true; pushStatusLine(); }
+        if (r2 && r2.ok) { if (!quiet) { toast('Device alerts on 🔔'); ntReachLoad(); } $('push-card').hidden = true; pushStatusLine(); }
       });
     }).catch(function(){ if (!quiet) toast('Could not turn on alerts - try again'); });
   }
@@ -11036,11 +11130,266 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   });
   function pushBoot(){
     pushStatusLine();
+    ntBoot();
     if (!pushSupported()) return;
     if (Notification.permission === 'granted') { subscribePush(true); return; }
     var later = false;
     try { later = localStorage.getItem('parwah-push-later') === '1'; } catch (e) {}
     $('push-card').hidden = !(Notification.permission === 'default' && !later) || !$('firstrun').hidden;
+  }
+
+  // ---------- fair notifications, and a poor network ----------
+  // (api/_push.mjs, api/_pushrules.mjs, api/_offline.mjs)
+  // A random id for this phone, made once. It names the device, never the
+  // person, and stays when someone signs out.
+  function ntDevice(){
+    var d = null;
+    try { d = localStorage.getItem('parwah-device'); } catch (e) {}
+    if (!d || !/^[A-Za-z0-9_-]{16,64}$/.test(d)) {
+      var a = new Uint8Array(15), i;
+      try { crypto.getRandomValues(a); } catch (e) { for (i = 0; i < a.length; i++) a[i] = Math.floor(Math.random() * 256); }
+      d = 'd_';
+      for (i = 0; i < a.length; i++) d += ('0' + a[i].toString(16)).slice(-2);
+      try { localStorage.setItem('parwah-device', d); } catch (e) {}
+    }
+    return d;
+  }
+  function ntPost(action, body){ return post(API.push, Object.assign({ code: state.code, memberId: state.memberId, action: action }, body || {})); }
+  function ntClock(hhmm){
+    var p = String(hhmm || '').split(':'), h = +p[0], m = p[1] || '00';
+    if (isNaN(h)) return '';
+    return (h % 12 || 12) + (m === '00' ? '' : ':' + m) + (h < 12 ? ' am' : ' pm');
+  }
+
+  // ---- what I want to hear about, and when ----
+  var ntPrefs = null;
+  function ntPrefsLoad(){
+    if (!state) return;
+    ntPost('prefs_get').then(function(j){ if (j.ok && j.prefs) { ntPrefs = j.prefs; ntPrefsDraw(); } }).catch(function(){});
+  }
+  function ntPrefsDraw(){
+    var p = ntPrefs; if (!p) return;
+    $('nt-prefs').hidden = false;
+    $('nt-quiet').checked = !!p.quiet; $('nt-from').value = p.from; $('nt-to').value = p.to;
+    $('nt-from').disabled = $('nt-to').disabled = !p.quiet;
+    $('nt-times').setAttribute('aria-disabled', p.quiet ? 'false' : 'true');
+    $('nt-kinds').innerHTML = (p.words || []).map(function(w){
+      return '<label class="seniorchk nt-kind"><input type="checkbox" data-ntkind="' + esc(w.kind) + '"' + (p.kinds[w.kind] === false ? '' : ' checked') + '> <span>' +
+        esc(w.label) + '<small>' + esc(w.hint) + '</small></span></label>';
+    }).join('');
+  }
+  function ntPrefsSave(){
+    if (!ntPrefs || !state) return;
+    var kinds = {};
+    $('nt-kinds').querySelectorAll('[data-ntkind]').forEach(function(c){ kinds[c.getAttribute('data-ntkind')] = c.checked; });
+    var want = { quiet: $('nt-quiet').checked, from: $('nt-from').value || ntPrefs.from, to: $('nt-to').value || ntPrefs.to, kinds: kinds };
+    $('nt-from').disabled = $('nt-to').disabled = !want.quiet;
+    $('nt-times').setAttribute('aria-disabled', want.quiet ? 'false' : 'true');
+    $('nt-saved').textContent = 'Saving…';
+    ntPost('prefs_set', { prefs: want, tz: homeTz() }).then(function(j){
+      if (j.ok && j.prefs) {
+        ntPrefs = j.prefs;
+        $('nt-saved').textContent = j.prefs.quiet ? 'Saved. Quiet from ' + ntClock(j.prefs.from) + ' until ' + ntClock(j.prefs.to) + '. An SOS always comes through.' : 'Saved. No quiet hours.';
+      } else $('nt-saved').textContent = humanFail(j.error, 'Could not save that') + '. Try again.';
+    }).catch(function(){ $('nt-saved').textContent = 'No connection. Your choice is not saved yet.'; });
+  }
+  $('nt-card').addEventListener('change', function(e){ if (e.target.closest('#nt-prefs')) ntPrefsSave(); });
+
+  // ---- can be reached ----
+  // Adults only (the server decides): a dot for each person on Parwah, and
+  // a gentle card when someone who is looked after has no adult whose phone
+  // would ring.
+  var ntReachData = null;
+  function ntReachLoad(){
+    if (!state) return;
+    ntPost('reach').then(function(j){ ntReachData = j && j.ok ? j : null; ntReachDraw(); }).catch(function(){});
+  }
+  function ntReachDraw(){
+    var d = ntReachData, card = $('nt-reach'), box = $('nt-reachbox');
+    $('nt-check').hidden = !(d && d.adult);
+    if (!d || !d.adult) { card.innerHTML = ''; box.hidden = true; return; }
+    var canHere = pushSupported() && Notification.permission !== 'denied';
+    card.innerHTML = (d.uncovered || []).map(function(u){
+      return '<div class="crow"><span class="txt"><b>If ' + esc(ftFirst(u.name)) + ' presses SOS, nobody\'s phone will ring.</b><small>' +
+        (canHere ? 'Turn on alerts here, so it rings on this phone.' : 'This phone cannot ring here. Put Parwah on your home screen, or ask another adult in the family to turn on alerts.') +
+        '</small></span>' + (canHere ? '<button class="cbtn" type="button" data-nton="1">Turn on alerts</button>' : '') + '</div>';
+    }).join('');
+    var ms = d.members || [];
+    box.hidden = !ms.length;
+    $('nt-reachlist').innerHTML = ms.map(function(m){
+      var me = m.id === state.memberId;
+      return '<div class="nt-reach"><span class="nt-dot' + (m.reachable ? ' on' : '') + '" aria-hidden="true"></span><span>' + esc(me ? 'You' : m.name) + '</span><small>' +
+        (m.reachable ? (me ? 'Alerts can reach you' : 'Alerts can reach them') : (me ? 'Alerts are off on your phones' : 'Alerts are off')) + '</small></div>';
+    }).join('');
+  }
+  $('nt-reach').addEventListener('click', function(e){ if (e.target.closest('[data-nton]')) enablePush(); });
+
+  // ---- "Is Parwah working?" ----
+  function ntVersion(){ return String(appTag || '').replace(/^W\//, '').replace(/[^\w.+-]/g, '').slice(0, 40); }
+  function ntAgo(min){
+    if (min < 2) return 'a moment ago';
+    if (min < 60) return min + ' minutes ago';
+    var h = Math.round(min / 60);
+    return h < 48 ? h + (h === 1 ? ' hour ago' : ' hours ago') : Math.round(h / 24) + ' days ago';
+  }
+  function ntLine(ok, head, words){
+    return '<div class="nt-line"><span class="nt-mark' + (ok ? ' ok' : '') + '" aria-hidden="true">' + (ok ? '✓' : '!') + '</span><span><b>' + esc(head) + '</b><small>' + esc(words) + '</small></span></div>';
+  }
+  function ntCheckDraw(j, perm){
+    var h = '', q = ntqLoad().length;
+    if (!pushSupported()) h += ntLine(false, 'Alerts on this phone: not possible here', 'This browser cannot show alerts. Put Parwah on your home screen from Get the app, then turn alerts on.');
+    else if (perm === 'denied') h += ntLine(false, 'Alerts on this phone: blocked', 'Open this phone\'s settings, find Parwah or this browser, and allow notifications.');
+    else if (perm !== 'granted') h += ntLine(false, 'Alerts on this phone: off', 'Tap "Turn on alerts on this device" under Notifications, above.');
+    else if (j && j.ok && !j.push.known) h += ntLine(false, 'Alerts on this phone: allowed, not connected yet', 'Tap "Turn on alerts on this device" under Notifications, above.');
+    else h += ntLine(true, 'Alerts on this phone: on', 'An SOS from your family will ring here.');
+    if (!j || !j.ok) {
+      h += ntLine(false, 'Could not reach Parwah', navigator.onLine === false ? 'This phone is offline. The emergency card still opens. Check again when the internet is back.' : 'Check the internet on this phone and tap Check now again.');
+    } else {
+      var a = j.timer && j.timer.age_min;
+      if (a === null || a === undefined) h += ntLine(false, 'Timer: has not run yet', 'Reminders still ring while anyone in any family has Parwah open. Nothing for you to do.');
+      else if (a <= 20) h += ntLine(true, 'Timer: ran ' + ntAgo(a), 'Reminders and missed check-ins are being watched.');
+      else h += ntLine(false, 'Timer: last ran ' + ntAgo(a), 'Timed reminders may be late. Opening Parwah, as you just did, starts it again.');
+      h += j.ekta === 'ready' ? ntLine(true, 'Ekta: ready', 'She can answer questions.')
+        : ntLine(false, 'Ekta: resting', 'She still reads back your saved records and helps in an emergency. To wake her, add an AI key under Advanced, below.');
+      h += j.calls ? ntLine(true, 'Calls and texts: set up', 'On an SOS, Parwah also calls and texts the family.')
+        : ntLine(false, 'Calls and texts: not set up', 'An SOS still rings every phone that has alerts on. Keep ' + myEmergencyNo() + ' and family numbers in your phone too.');
+    }
+    h += q ? ntLine(false, q + (q === 1 ? ' tap is' : ' taps are') + ' waiting to send', 'Kept on this phone. They go by themselves when the network is back.')
+           : ntLine(true, 'Nothing is waiting to send', 'Every tap on this phone has reached the family.');
+    var v = (j && j.version) || ntVersion();
+    h += ntLine(true, 'App version: ' + (v || 'not known yet'), 'Parwah updates by itself. If a bar says "Updated. Tap to refresh", tap it.');
+    $('nt-check-out').innerHTML = h;
+  }
+  function ntCheckRun(){
+    if (!state) return;
+    $('nt-check-out').innerHTML = '<p class="hint">Checking…</p>';
+    var perm = pushSupported() ? Notification.permission : 'none';
+    var ep = perm === 'granted'
+      ? Promise.race([navigator.serviceWorker.ready.then(function(reg){ return reg.pushManager.getSubscription(); }).then(function(s){ return s ? s.endpoint : ''; }),
+                      new Promise(function(r){ setTimeout(function(){ r(''); }, 2500); })]).catch(function(){ return ''; })
+      : Promise.resolve('');
+    ep.then(function(e){ return ntPost('selfcheck', { endpoint: e }); }).then(function(j){ ntCheckDraw(j, perm); }).catch(function(){ ntCheckDraw(null, perm); });
+  }
+  $('nt-check-run').addEventListener('click', ntCheckRun);
+
+  // ---- a tap made with no network ----
+  // Kept on this phone with the time it was pressed, shown as waiting, and
+  // sent when the network is back. The server takes each one once (its id)
+  // and only within a day. An SOS is never kept: it must say at once that
+  // it did not go.
+  var NT_Q = 'parwah-queue', ntBusy = false;
+  var NT_QTYPES = { checkin: 'All is well', pill: 'Medicines taken' };
+  function ntId(){ return 'q_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10); }
+  function ntqLoad(){ try { var a = JSON.parse(localStorage.getItem(NT_Q) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function ntqSave(a){ try { localStorage.setItem(NT_Q, JSON.stringify(a.slice(-20))); } catch (e) {} }
+  // A post that gives up: on a poor network a request can hang for minutes,
+  // and a button that seems to do nothing gets pressed again and again.
+  function ntFetch(url, body){
+    var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var t = ctl ? setTimeout(function(){ ctl.abort(); }, 10000) : null;
+    return fetch(url, { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined })
+      .then(function(r){ clearTimeout(t); return r.json().then(function(j){ j._status = r.status; checkSignedOut(j); return j; }); },
+            function(e){ clearTimeout(t); throw e; });
+  }
+  function ntqShow(){
+    var a = ntqLoad(), box = $('nt-queue');
+    box.hidden = !a.length;
+    if (!a.length) return;
+    $('nt-queue-list').textContent = a.map(function(x){
+      return (NT_QTYPES[x.type] || 'A tap') + ', ' + new Date(x.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }).join(' · ') + '. Kept on this phone.';
+  }
+  function ntKeep(type, text, late){
+    var a = ntqLoad();
+    a.push({ id: late.id, at: late.at, type: type, text: text || '', code: state.code, memberId: state.memberId });
+    ntqSave(a); ntqShow();
+    if (type === 'checkin') { var b = $('btn-checkin'); b.classList.add('done'); b.innerHTML = 'Saved on this phone ✅<span class="sub">Will send when the network is back</span>'; }
+    if (type === 'pill') { try { localStorage.setItem(pillKey(), String(new Date(late.at).getTime())); } catch (e) {} pillShow(); }
+    toast('No network. Saved here. It will send when the network is back.');
+  }
+  function ntqFlush(manual){
+    if (ntBusy || !authToken() || !ntqLoad().length) return;
+    ntBusy = true;
+    var went = 0;
+    var stop = function(){ ntBusy = false; ntqShow(); if (manual === true && ntqLoad().length) toast('Still no network. It is safe on this phone.'); };
+    (function next(){
+      var it = ntqLoad()[0];
+      if (!it) {
+        ntBusy = false; ntqShow();
+        if (went) {
+          var b = $('btn-checkin');
+          if (b.classList.contains('done')) b.innerHTML = 'Thank you ✅<span class="sub">Your check-in reached the whole family</span>';
+          toast('Sent. The family can see it now.'); refresh();
+        }
+        return;
+      }
+      ntFetch(API.events, { code: it.code, memberId: it.memberId, type: it.type, text: it.text || '', clientId: it.id, at: it.at }).then(function(j){
+        // Not now (signed out, too many at once, the server stumbled): keep it.
+        if (j.signin || j._status === 401 || j._status === 429 || j._status >= 500) { stop(); return; }
+        ntqSave(ntqLoad().filter(function(x){ return x.id !== it.id; }));
+        if (j.ok) went++; else if (j.stale && j.error) toast(j.error);
+        next();
+      }).catch(stop);
+    })();
+  }
+  $('nt-queue-try').addEventListener('click', function(){ ntqFlush(true); });
+  window.addEventListener('online', function(){ ntqFlush(); });
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) ntqFlush(); });
+  setInterval(function(){ ntqFlush(); }, 30000);
+
+  // ---- the SOS screen with no network ----
+  // The alert itself needs the network, and says so at once when it has
+  // none. The Call buttons must not wait for a reply that may never come:
+  // they are filled from the family this phone last saw, the moment the
+  // screen opens, and the reply replaces them when it arrives.
+  var ntSosT = null;
+  function ntSosReady(){
+    if (!state || $('ss-live').hidden || (sosLive && sosLive.id)) return;
+    var d = ecData(), txt = '🆘 SOS from ' + state.name + '. I need help now.';
+    var fam = (d.members || []).filter(function(m){ return m.id !== state.memberId && m.phone && !m.remembered; }).slice(0, 5);
+    if ($('ss-calls').children.length <= 1) {
+      $('ss-calls').innerHTML = '<a class="ss-btn solid" href="tel:' + myEmergencyNo() + '">📞 Call ' + myEmergencyNo() + '</a>' +
+        fam.map(function(m){ return '<a class="ss-btn solid" href="tel:' + encodeURIComponent(m.phone) + '">📞 ' + esc(ftFirst(m.name)) + '</a>'; }).join('');
+    }
+    if (!$('ss-wa').getAttribute('href')) {
+      $('ss-wa').href = 'https://wa.me/?text=' + encodeURIComponent(txt);
+      $('ss-sms').href = 'sms:' + fam.map(function(m){ return m.phone; }).join(',') + '?body=' + encodeURIComponent(txt);
+      $('ss-mail').href = 'mailto:?subject=' + encodeURIComponent('SOS from ' + state.name) + '&body=' + encodeURIComponent(txt);
+    }
+    clearTimeout(ntSosT);
+    ntSosT = setTimeout(function(){
+      if (!$('ss-live').hidden && !(sosLive && sosLive.id) && /Telling your family now/.test($('ss-status').textContent)) {
+        $('ss-status').textContent = 'This network is slow. Parwah is still trying. Use the Call buttons below now.';
+      }
+    }, 12000);
+  }
+  try { new MutationObserver(ntSosReady).observe($('ss-live'), { attributes: true, attributeFilter: ['hidden'] }); } catch (e) {}
+
+  // ---- the service worker speaks ----
+  // A newer copy was fetched in the background while the saved one was
+  // shown; or a notification from another family was tapped.
+  if ('serviceWorker' in navigator) {
+    try {
+      navigator.serviceWorker.addEventListener('message', function(e){
+        var d = e.data || {};
+        if (d.parwah === 'updated') { $('updbar').textContent = 'Updated. Tap to refresh'; $('updbar').hidden = false; }
+        if (d.parwah === 'open-family' && d.family && state && String(d.family) !== String(state.code)) {
+          var g = loadGroups().filter(function(c){ return String(c.code) === String(d.family); })[0];
+          if (g) enterCircle(g);
+        }
+      });
+    } catch (e) {}
+  }
+  // The Notifications card is filled when Profile is opened, not at every start.
+  try {
+    new MutationObserver(function(){ if (!$('pane-profile').hidden && state) { ntPrefsLoad(); ntReachLoad(); } })
+      .observe($('pane-profile'), { attributes: true, attributeFilter: ['hidden'] });
+  } catch (e) {}
+  function ntBoot(){
+    ntqShow(); ntqFlush();
+    ntReachLoad();
+    $('nt-check-out').innerHTML = '';
+    if (!$('pane-profile').hidden) ntPrefsLoad();
   }
 
   // ---------- Ekta: voice (JARVIS mode on the web platform) ----------
