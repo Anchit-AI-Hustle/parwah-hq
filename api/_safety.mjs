@@ -8,7 +8,7 @@
 //   doseTell      the person's own answer to "Tell the family if I miss a
 //                 medicine", and whether it is still to be asked.
 //   rememberAsks  a "no longer with us" mark waiting for a second adult.
-//   awayAsk       someone asked to pause my daily check-in: mine to answer.
+// (A pause someone asked for on my check-in comes with familyCare.quiet.)
 //
 // The timer's last run is one row in kv (the small key and value table the
 // push keys already live in). No scheduler is made here or anywhere.
