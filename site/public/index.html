@@ -1450,6 +1450,10 @@ summary{min-height:var(--tap-min);padding-block:var(--space-12);box-sizing:borde
    life certificate and the call rota (see api/_familycare.mjs). Tokens only. ---- */
 .big.askfirst{background:var(--dusk);color:var(--cream);font-family:var(--body);font-size:var(--fs-20);border:2px solid var(--marigold)}
 .fcrow{border-left-width:4px;margin-bottom:var(--space-8)}
+.sf-line{font-size:var(--fs-14);color:var(--ink-soft);margin:var(--space-8) 0 0}
+.sf-line.sf-warn{color:var(--sindoor);font-weight:600}
+.sf-mp{font-size:var(--fs-14);color:var(--ink);background:var(--tint-warm);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-12);margin:var(--space-12) 0}
+.sf-mp .prow2{margin-top:var(--space-8)}
 .fcrow .txt b{display:block}
 .fcrow a.cbtn,.fcstack a,.fcrow a.cbtn:hover{text-decoration:none}
 .fcsteps{margin:var(--space-4) 0 0;padding-left:var(--space-20);font-size:var(--fs-14);color:var(--ink-soft)}
@@ -1878,6 +1882,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
          first before paying, a missed daily check-in, a parent asking for
          help with the phone. Alerts come first on Today (docs/design/TODAY.md). -->
     <div id="fcalerts" aria-live="polite"></div>
+    <div id="sf-alerts" aria-live="polite"></div>
     <!-- For an elder the family looks after, their own buttons come first,
          calmest first (docs/design/TODAY.md): All is well, then today's
          medicines, then SOS. SOS is also docked in the tab bar (sidebar on
@@ -3718,6 +3723,18 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button class="linkbtn" id="p-push-on">🔔 Turn on alerts on this device</button>
       <p style="margin-top:var(--space-12)"><b style="color:var(--ink)">Install as an app:</b> Android - Chrome menu → <i>Install app</i>. iPhone - Share → <i>Add to Home Screen</i>. <a href="get/" target="_blank" rel="noopener">Full install guide →</a></p>
     </div>
+    <!-- SAFETY, SAID HONESTLY: are calls and texts set up, when did the
+         timer last run (adults), and my own answer about medicines. -->
+    <div class="card" id="sf-card">
+      <h3>Safety</h3>
+      <p class="sf-line" id="sf-calls">Checking…</p>
+      <p class="sf-line" id="sf-timer" hidden></p>
+      <div id="sf-tellbox" hidden>
+        <div class="kv" style="margin-top:var(--space-12)"><b>Tell the family if I miss a medicine</b><span id="sf-tell">Off</span></div>
+        <button class="linkbtn" id="sf-tellbtn" type="button">Turn it on</button>
+        <p class="hint" style="margin-top:var(--space-4)">Only you choose this. With it on, the family gets one gentle note when a medicine has no tick two hours after its time.</p>
+      </div>
+    </div>
     <div class="card">
       <h3>Privacy promise</h3>
       <p>Your family is private. No ads, no data selling, no public feed. What is kept here is seen only by the people in your family - papers and private entries only by whoever their owner chooses - and anything set <i>for</i> someone starts only when they accept it.</p>
@@ -3860,6 +3877,13 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     <div class="kv"><b>In the family since</b><span id="mp-since">-</span></div>
     <div class="kv" id="rm-mp-row" hidden><b>🪔 No longer with us</b><span id="rm-mp-when"></span></div>
     <p class="rm-say" id="rm-mp-say" hidden></p>
+    <div class="sf-mp" id="sf-mp-ask" hidden role="status">
+      <span id="sf-mp-asktext"></span>
+      <div class="prow2">
+        <button type="button" class="cbtn" id="sf-mp-yes" hidden>Yes, confirm</button>
+        <button type="button" class="cbtn ghost" id="sf-mp-no">Take it back</button>
+      </div>
+    </div>
     <div class="prow2">
       <a class="cbtn" id="mp-call" hidden>📞 Call</a>
       <button class="cbtn ecard-btn" id="mp-ecard">🚨 Emergency card</button>
@@ -4535,6 +4559,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     </div>
     <label class="pick" style="margin-top:var(--space-12)"><span>A line to remember them by, if you wish</span><input type="text" id="rm-line" maxlength="160" autocomplete="off" placeholder="e.g. He taught us all to ride a cycle"></label>
     <p class="hint" id="rm-hint">With the day and the month, the family gets one gentle reminder each year, the evening before. Parwah will not ask them to check in, and will not suggest calls, cards or birthdays for them. Their papers and stories stay.</p>
+    <label class="pick" id="sf-rm-askwrap" hidden style="margin-top:var(--space-12)"><span>A second adult to confirm</span><select id="sf-rm-ask"></select></label>
+    <p class="hint" id="sf-rm-askhint" hidden></p>
     <p class="fielderr" id="rm-err" role="alert" hidden></p>
     <button type="button" class="go" id="rm-save">Save</button>
     <button type="button" class="cbtn ghost" id="rm-undo" hidden style="width:100%;margin-top:var(--space-8)">Take this mark off</button>
@@ -5078,6 +5104,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     renderNotifs();
     pillFromFeed(data.events);
     fcRender(data.familyCare);
+    sfRender(data.safety);
     rmRenderToday(data.remembrance);
   }
 
@@ -9436,6 +9463,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         else $('ss-status').textContent = 'Your family has been alerted' + (j.again ? ' again' : '') + '. The message is in the family chat.' +
           (dl && (sent || dl.call) ? ' Parwah also sent ' + (sent ? sent + (sent === 1 ? ' text message' : ' text messages') : '') +
             (sent && dl.call ? ' and ' : '') + (dl.call ? 'is calling ' + dl.call + (dl.call === 1 ? ' person' : ' people') : '') + '.' : '');
+        // Calls and texts by Parwah are not set up: said, never left silent.
+        if (j.dialed && j.dialed.line && !j.throttled) $('ss-status').textContent += ' ' + j.dialed.line + ' Use the Call buttons below.';
         $('ss-loc').textContent = j.located ? '📍 Your exact location is shared with the family' + (pos && pos.accuracy ? ' (within ' + Math.round(pos.accuracy) + ' m)' : '') + '.'
           : '📍 Your location could not be found yet. Turn on location for this browser; Parwah keeps trying.';
         sosFillActions();
@@ -11720,6 +11749,13 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       if (q.memberId === me && q.ask) h += '<div class="crow fcrow urgent"><span class="txt"><b>🕚 ' + esc(q.askByName || 'The family') + ' asks: a daily check-in by ' + esc(q.ask) + '?</b>' +
         '<small>If you have not said you are okay by then, you get a gentle reminder. 30 minutes later the family is told, so someone can call. It stays off unless you say yes.</small></span>' +
         '<button class="cbtn" data-fcqyes="1">Yes, turn it on</button><button class="cbtn ghost" data-fcqno="1">Not now</button></div>';
+      // A pause (or turning it back on) that someone else asked for: mine
+      // to answer. Nothing changes until I say yes.
+      if (q.memberId === me && q.awayAsk) h += '<div class="crow fcrow urgent"><span class="txt"><b>' + (q.awayAsk === 'back'
+          ? '🏠 ' + esc(q.awayAskByName || 'The family') + ' asks: turn your daily check-in back on?'
+          : '🧳 ' + esc(q.awayAskByName || 'The family') + ' asks: pause your daily check-in until ' + esc(fcDay(q.awayAsk)) + '?') + '</b>' +
+        '<small>It is your check-in. Nothing changes until you say yes.</small></span>' +
+        '<button class="cbtn" data-sfawy="1">' + (q.awayAsk === 'back' ? 'Yes, turn it on' : 'Yes, pause it') + '</button><button class="cbtn ghost" data-sfawn="1">Not now</button></div>';
       if (q.memberId === me || !q.alerted) return;
       // 30 minutes on with nobody calling, the first nearby helper who said
       // yes is reached (api/_familycare.mjs quietLadder): Parwah rang them,
@@ -11781,6 +11817,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           : q.phase === 'alert' ? 'Not yet today. The family has been told.'
           : q.phase === 'nudge' ? 'Not yet today. A gentle reminder went to ' + fcPron(q.gender) + '.'
           : 'Not yet today. The time is ' + q.checkinBy + '.';
+        if (q.awayAsk) s2 += ' Asked ' + fcFirst(q.name) + ' to ' + (q.awayAsk === 'back' ? 'turn it back on' : 'pause it until ' + fcDay(q.awayAsk)) + '. Waiting for ' + fcPoss(q.gender) + ' yes.';
         rows += '<div class="crow fcrow' + (q.phase === 'alert' ? ' urgent' : '') + '"><span class="txt"><b>' + esc(q.name) + ': by ' + esc(q.checkinBy) + '</b><small>' + esc(s2) + '</small></span>' +
           '<button class="cbtn ghost" data-fcqset="' + q.memberId + '" aria-label="Pause or change ' + esc(q.name) + '’s check-in">' + (q.phase === 'away' ? 'Change' : 'Pause') + '</button></div>';
       } else if (q.ask) {
@@ -11838,11 +11875,11 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var q = fcqFor; if (!q) return;
     var d = $('fcq-away').value;
     if (!d) { fieldErr('fcq-away', 'Pick the day ' + (q.memberId === state.memberId ? 'you are' : fcFirst(q.name) + ' is') + ' back'); return; }
-    fcPost({ type: 'quiet_away', targetId: q.memberId, until: d }, 'Paused until ' + fcDay(d), function(){ fcSheet('fcqsheet', false); });
+    fcPost({ type: 'quiet_away', targetId: q.memberId, until: d }, null, function(j){ fcSheet('fcqsheet', false); toast(j.asked ? 'Asked. It pauses when ' + fcFirst(q.name) + ' says yes' : 'Paused until ' + fcDay(d)); });
   });
   $('fcq-back').addEventListener('click', function(){
     var q = fcqFor; if (!q) return;
-    fcPost({ type: 'quiet_away', targetId: q.memberId, until: null }, 'On again 🧡', function(){ fcSheet('fcqsheet', false); });
+    fcPost({ type: 'quiet_away', targetId: q.memberId, until: null }, null, function(j){ fcSheet('fcqsheet', false); toast(j.asked ? 'Asked. It turns on when ' + fcFirst(q.name) + ' says yes' : 'On again 🧡'); });
   });
   $('fcq-off').addEventListener('click', function(){
     askSheet('Turn off your daily check-in?', 'The family will no longer be told if you have not checked in.', 'Turn it off', 'Keep it on')
@@ -12037,6 +12074,91 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var c = e.target.closest('[data-fclc]'); if (!c || !tsId) return;
     var o = {}; o[c.getAttribute('data-fclc')] = c.checked;
     carePost({ action: 'lifecert_update', taskId: tsId, check: o });
+  });
+
+  // ---------- Safety, said honestly (api/_safety.mjs) ----------
+  // Are calls and texts set up; when the timer last ran (adults); my own
+  // answer to "Tell the family if I miss a medicine"; and a "no longer with
+  // us" mark that waits for a second adult.
+  var sfCache = null;
+  function sfAsk(id){ return ((sfCache && sfCache.rememberAsks) || []).filter(function(a){ return a.id === id; })[0] || null; }
+  function sfRender(s){
+    sfCache = s || null;
+    var box = $('sf-alerts'), h = '', me = state && state.memberId;
+    if (!s) { box.innerHTML = ''; return; }
+    // Me: calls, the timer, the medicine choice.
+    var c = s.calls || {};
+    $('sf-calls').textContent = c.on ? (c.calls && c.texts ? 'In an SOS, Parwah also texts and rings your family.' : c.calls ? 'In an SOS, Parwah also rings your family.' : 'In an SOS, Parwah also texts your family.')
+      : (c.line || 'Calls and texts are not set up. Family is told inside Parwah.');
+    var t = s.timer, tl = $('sf-timer');
+    tl.hidden = !t;
+    if (t) { tl.textContent = t.text; tl.classList.toggle('sf-warn', !!t.warn); }
+    var dt = s.doseTell;
+    $('sf-tellbox').hidden = !dt;
+    if (dt) {
+      $('sf-tell').textContent = dt.on === true ? 'On' : dt.on === false ? 'Off' : 'Off (not asked yet)';
+      $('sf-tellbtn').textContent = dt.on === true ? 'Turn it off' : 'Turn it on';
+      $('sf-tellbtn').setAttribute('data-on', dt.on === true ? '0' : '1');
+    }
+    // Today: asked once, on my own phone.
+    if (dt && dt.ask) h += '<div class="crow fcrow"><span class="txt"><b>💊 Tell the family if I miss a medicine?</b>' +
+      '<small>If a medicine has no tick two hours after its time, your family gets one gentle note. It stays off unless you say yes. You can change it under Profile.</small></span>' +
+      '<button class="cbtn" data-sftell="1">Yes, tell them</button><button class="cbtn ghost" data-sftell="0">No, keep it off</button></div>';
+    // A mark that waits for a second adult: the three people it concerns.
+    (s.rememberAsks || []).forEach(function(a){
+      if (a.id === me) h += '<div class="crow fcrow urgent"><span class="txt"><b>🪔 ' + esc(a.byName) + ' asked the family to mark you as no longer with us</b>' +
+        '<small>Nothing has changed. If this is a mistake, stop it here.</small></span><button class="cbtn" data-sfrmno="' + a.id + '">This is a mistake. Stop it</button></div>';
+      else if (a.canConfirm) h += '<div class="crow fcrow urgent"><span class="txt"><b>🪔 ' + esc(a.byName) + ' asks you to confirm: ' + esc(a.name) + ' is no longer with us</b>' +
+        '<small>' + (a.passed ? esc(a.passed) + '. ' : '') + 'Two adults decide this together. Nothing changes until you answer.</small></span>' +
+        '<button class="cbtn" data-sfrmyes="' + a.id + '">Yes, confirm</button><button class="cbtn ghost" data-sfrmno="' + a.id + '">Not right</button></div>';
+      else h += '<div class="crow fcrow"><span class="txt"><b>🪔 Waiting for ' + esc(a.askName) + ' to confirm about ' + esc(a.name) + '</b>' +
+        '<small>Nothing has changed yet.</small></span><button class="cbtn ghost" data-sfrmno="' + a.id + '">Take it back</button></div>';
+    });
+    if (h !== box.getAttribute('data-sig')) { box.setAttribute('data-sig', h); box.innerHTML = h; }
+    if (!$('msheet').hidden && $('msheet').dataset.mid) sfSheetLine($('msheet').dataset.mid);
+  }
+  // The same waiting mark, on the person's own card.
+  function sfSheetLine(id){
+    var a = sfAsk(id), me = state && state.memberId;
+    $('sf-mp-ask').hidden = !a;
+    if (!a) return;
+    $('sf-mp-asktext').textContent = a.id === me ? a.byName + ' asked the family to mark you as no longer with us. Nothing has changed.'
+      : a.canConfirm ? a.byName + ' asks you to confirm that ' + a.name + ' is no longer with us' + (a.passed ? ' (' + a.passed + ')' : '') + '. Nothing changes until you answer.'
+      : 'Waiting for ' + a.askName + ' to confirm. Nothing has changed yet.';
+    $('sf-mp-yes').hidden = !a.canConfirm;
+    $('sf-mp-no').textContent = a.id === me ? 'This is a mistake. Stop it' : a.canConfirm ? 'Not right' : 'Take it back';
+    $('rm-mp-open').hidden = true;
+  }
+  function sfTell(on){
+    post(API.care, { code: state.code, memberId: state.memberId, action: 'dose_tell_set', on: on }).then(function(j){
+      if (!j.ok) { toast(humanFail(j.error, 'Could not save this. Try again in a moment.')); return; }
+      toast(on ? 'Your family will be told 🧡' : 'Kept off. You can change it under Profile.'); refresh();
+    }).catch(function(){ toast('No connection. Try again.'); });
+  }
+  function sfRemember(id, yes){
+    var a = sfAsk(id); if (!a) return;
+    var go = function(){
+      widerPost({ action: yes ? 'remember_confirm' : 'remember_cancel', targetId: id }).then(function(j){
+        if (!j.ok) { toast(humanFail(j.error, 'Could not save this. Try again in a moment.')); return; }
+        toast(yes ? 'Confirmed 🪔' : 'Taken back. Nothing was changed.'); refresh();
+      }).catch(function(){ toast('No connection. Try again.'); });
+    };
+    if (!yes) { go(); return; }
+    askSheet('Confirm that ' + a.name + ' is no longer with us?', 'Parwah will stop asking ' + widerFirst(a.name) + ' to check in, and will not suggest calls, cards or birthdays. ' + widerFirst(a.name) + ' is told, and can undo it if this is a mistake.', 'Yes, confirm', 'Not yet')
+      .then(function(y){ if (y) go(); });
+  }
+  $('sf-tellbtn').addEventListener('click', function(){ sfTell(this.getAttribute('data-on') === '1'); });
+  $('sf-mp-yes').addEventListener('click', function(){ sfRemember($('msheet').dataset.mid, true); });
+  $('sf-mp-no').addEventListener('click', function(){ sfRemember($('msheet').dataset.mid, false); });
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-sftell],[data-sfrmyes],[data-sfrmno],[data-sfawy],[data-sfawn]');
+    if (!b || !state) return;
+    var d = b.dataset;
+    if (d.sftell) sfTell(d.sftell === '1');
+    if (d.sfrmyes) sfRemember(d.sfrmyes, true);
+    if (d.sfrmno) sfRemember(d.sfrmno, false);
+    if (d.sfawy) fcPost({ type: 'quiet_away_answer', yes: true }, null, function(j){ toast(j.awayUntil ? 'Paused until ' + fcDay(j.awayUntil) : 'On again 🧡'); });
+    if (d.sfawn) fcPost({ type: 'quiet_away_answer', yes: false }, 'Left as it was.');
   });
 
   // Every family-care button, in one place.
@@ -16388,6 +16510,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     $('rm-mp-open').textContent = self ? 'This is a mistake. Take the mark off' : gone ? '🪔 Day of remembrance' : '🪔 No longer with us?';
     // Nothing is asked of someone who is remembered.
     if (gone) { $('mp-remind').hidden = true; $('mp-call').hidden = true; }
+    // A mark that is waiting for a second adult shows here, with its answer.
+    sfSheetLine(m.id);
   }
   function rmOpen(id){
     var m = (membersCache || []).filter(function(x){ return x.id === id; })[0]; if (!m) return;
@@ -16399,6 +16523,16 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     $('rm-line').value = m.remember_line || '';
     $('rm-undo').hidden = !gone;
     $('rm-err').hidden = true;
+    // Someone who is on Parwah is never marked by one person alone: a
+    // second adult is named here, and the mark waits for their yes.
+    var two = !gone && m.on_app !== false;
+    var adults = two ? (membersCache || []).filter(function(x){ return x.on_app !== false && !rmGone(x) && x.id !== m.id && x.id !== state.memberId; }) : [];
+    $('sf-rm-askwrap').hidden = !two; $('sf-rm-askhint').hidden = !two;
+    if (two) {
+      $('sf-rm-ask').innerHTML = '<option value="">Choose…</option>' + adults.map(function(x){ return '<option value="' + x.id + '">' + esc(x.name) + '</option>'; }).join('');
+      $('sf-rm-askhint').textContent = first + ' is on Parwah, so two adults decide this together. Nothing changes until the second adult says yes.';
+    }
+    $('rm-save').textContent = two ? 'Ask them to confirm' : 'Save';
     $('msheet').hidden = true;
     $('rm-sheet').hidden = false;
     try { $('rm-year').focus(); } catch (e) {}
@@ -16420,11 +16554,13 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (!/^\d{4}$/.test(y)) { say('Write the year in four numbers, like 2019.', $('rm-year')); return; }
     if (d && !/^\d{1,2}$/.test(d)) { say('Write the day as a number, like 12.', $('rm-day')); return; }
     if (d && !mo) { say('Choose the month as well, or leave the day empty.', $('rm-month')); return; }
+    var askId = !$('sf-rm-askwrap').hidden ? $('sf-rm-ask').value : '';
+    if (!$('sf-rm-askwrap').hidden && !askId) { say('Choose a second adult in the family to confirm. Two people decide this together.', $('sf-rm-ask')); return; }
     btn.disabled = true;
-    widerPost({ action: 'remember_mark', targetId: rmFor.id, year: y, month: mo || null, day: d || null, line: $('rm-line').value.trim() }).then(function(j){
+    widerPost({ action: 'remember_mark', targetId: rmFor.id, year: y, month: mo || null, day: d || null, line: $('rm-line').value.trim(), askId: askId || undefined }).then(function(j){
       btn.disabled = false;
-      if (!j.ok) { say(humanFail(j.error, 'Could not save this. Try again in a moment.')); return; }
-      $('rm-sheet').hidden = true; toast('Saved 🪔'); refresh();
+      if (!j.ok) { say(humanFail(j.error, 'Could not save this. Try again in a moment.'), j.field === 'ask' ? $('sf-rm-ask') : null); return; }
+      $('rm-sheet').hidden = true; toast(j.pending ? 'Asked ' + widerFirst(j.askName) + ' to confirm. Nothing has changed yet.' : 'Saved 🪔'); refresh();
     }).catch(function(){ btn.disabled = false; say('No connection. Try again.'); });
   });
   function rmUndoAsk(m, btn){

@@ -3791,6 +3791,105 @@ check("digest: the rules test runs in the gate, and the db and browser tests run
               for f in ("digest.dbtest.mjs", "digest.e2e.dbtest.mjs"))
       and "getHours()" not in (REPO / "site/tests/db/digest.dbtest.mjs").read_text(encoding="utf-8"))
 
+# ---------- Safety and alert correctness (stream A) ----------
+# The rules that must never regress. Proved in site/tests/safetytest.mjs,
+# site/tests/db/safety.dbtest.mjs and safety.e2e.dbtest.mjs; held here.
+_sf_rules = (API_DIR / "_safetyrules.mjs").read_text(encoding="utf-8")
+_sf_push = (API_DIR / "_push.mjs").read_text(encoding="utf-8")
+_sf_dial = (API_DIR / "_sosdial.mjs").read_text(encoding="utf-8")
+_sf_find = (API_DIR / "_findme.mjs").read_text(encoding="utf-8")
+_sf_al = (API_DIR / "_afterloss.mjs").read_text(encoding="utf-8")
+_sf_alapi = (API_DIR / "_afterlossapi.mjs").read_text(encoding="utf-8")
+_sf_api = {f.name: f.read_text(encoding="utf-8") for f in sorted(API_DIR.glob("*.mjs"))}
+_sf_gone = "coalesce((to_jsonb(m)->>'remembered')::boolean, false)"
+# The timer can only call what exists where it lives: a function declared
+# inside the request handler is invisible to it, and the error was swallowed.
+_sf_tick = _evt[_evt.index("async function dueCircles(sql)"):_evt.index("export default async function handler")]
+_sf_tick = _sf_tick[:_sf_tick.index("export async function escalateStaleSos")] if "export async function escalateStaleSos" in _sf_tick else _sf_tick
+_sf_called = set(re.findall(r"\b([A-Za-z_]\w*)\(sql\b", _sf_tick)) - {"dueCircles", "runTick"}
+_sf_known = set()
+for _m in re.finditer(r"(?m)^import\s*\{([^}]*)\}\s*from", _evt):
+    for _n in _m.group(1).split(","):
+        _n = _n.strip()
+        if _n: _sf_known.add(_n.split(" as ")[-1].strip())
+_sf_known |= set(re.findall(r"(?m)^(?:export\s+)?(?:async\s+)?function\s+(\w+)", _evt))
+_sf_handler = _evt[_evt.index("export default async function handler"):_evt.index("// ONE PRESS OF SOS")]
+check("safety: every function the timer calls is at module scope or imported, and none is declared inside the handler",
+      len(_sf_called) >= 12 and not (_sf_called - _sf_known) and "escalateStaleSos" in _sf_called
+      and not re.search(r"(?m)^\s*(?:async\s+)?function\s+\w+\s*\(", _sf_handler),
+      ", ".join(sorted(_sf_called - _sf_known)))
+_sf_urgent = [(n, l.strip()) for n, s in _sf_api.items() for l in s.splitlines()
+              if "urgent: true" in l and not l.strip().startswith("//") and n not in ("_safetyrules.mjs",)]
+check("safety: every emergency push has a topic of its own, so nothing replaces an SOS that has not arrived",
+      len(_sf_urgent) >= 7 and all("topic: pushTopic(" in l for _, l in _sf_urgent)
+      and "'parwah-sos'" not in _sf_push and "const how = pushOptions(payload);" in _sf_push
+      and "topic: pushTopic('sos', p.sosId)" in _evt and "TOPIC_OK = /^[A-Za-z0-9_-]{1,32}$/" in _sf_rules
+      and "d.tag.length <= 32 && d.tag" in (REPO / "site/public/sw.js").read_text(encoding="utf-8"),
+      "; ".join(n for n, l in _sf_urgent if "topic: pushTopic(" not in l))
+check("safety: a medicine nudge, a task reminder and a plan reminder are never sent as an emergency",
+      all("urgent: true" not in _sf_api[n] for n in ("_doses.mjs", "_tasks.mjs", "_plansweep.mjs"))
+      and "url: '/#home', soon: true }" in _dz and "url: '/#care', soon: true }" in _tasksrc)
+# THE OWNER'S RULE: someone who has passed away is never called, texted,
+# pushed or listed. Each of these is the server, not the screen.
+check("safety: someone who has passed away is never in the SOS contacts, never texted or rung, never the Lost-mode call person",
+      "return orderContacts({ chosen, own:" in _sosmod and _sf_gone + " as remembered" in _sosmod
+      and "seen.has(t) || gone.has(t)" in _sf_rules and "const alive = family.filter(m => m && !m.remembered);" in _sf_rules
+      and "if (to && !gone.has(to) && !people.some(p => p.to === to))" in _sf_dial and "await rememberedPhones(sql, sc[0].circle_id)" in _sf_dial
+      and "seen.has(t) || gone.has(t)) continue;" in _evt
+      and _sf_find.count("and not " + _sf_gone) >= 4 and "so no phone is rung." in _sf_find)
+check("safety: someone who has passed away is never pushed, by any module; the one exception is the note that lets a mistake be undone",
+      "and (${!!evenRemembered} or not " + _sf_gone + ")" in _sf_push
+      and "const subs = await pushTargets(sql, circleId, who || {});" in _sf_push
+      and sorted(n for n, s in _sf_api.items() if "evenRemembered: true" in s) == ["_afterlossapi.mjs", "_remember.mjs"]
+      and sum(s.count("evenRemembered: true") for s in _sf_api.values()) == 2)
+check("safety: an SOS reaches every family the sender belongs to, and a group only when it is the one open",
+      "others = await sosOtherFamilies(sql, circle.id, me.user_id);" in _evt
+      and "and c.id <> ${circleId} and coalesce(c.kind, 'family') = 'family'" in _sosmod
+      and "await sosSafeElsewhere(sql, circle.id, sm[0]);" in _evt)
+check("safety: calls and texts not set up is said in words, in Profile and on the SOS screen",
+      "CALLS_OFF_LINE = 'Calls and texts are not set up. Family is told inside Parwah.'" in _sf_rules
+      and "if (!cfg.on) out.line = CALLS_OFF_LINE;" in _sf_dial and 'id="sf-calls"' in _app_src
+      and "if (j.dialed && j.dialed.line && !j.throttled) $('ss-status').textContent += " in _app_src)
+check("safety: any sign of life that day counts as checked in (the tap, a pulse, a medicine tick, a chat message), never an SOS message",
+      all(x in _fc_api for x in ("from events where member_id = ${memberId} and type = 'checkin'", "from pulse where member_id = ${memberId} and day = ${today}",
+                                 "from medicine_doses where marked_by = ${memberId} and taken_at >= ${from}",
+                                 "from messages where member_id = ${memberId} and created_at >= ${from} and text not like '🆘%'")))
+check("safety: pausing someone else's check-in is a question on their own phone, never a notice afterwards",
+      "if (t.id !== me.id && t.on_app) {" in _fc_api and "set away_ask = ${until || 'back'}, away_ask_by = ${me.id}" in _fc_api
+      and "'quiet_away_answer'" in _fc_api and "paused your daily check-in" not in _fc_api
+      and "data-sfawy" in _app_src and "data-sfawn" in _app_src)
+check("safety: a medicine with no tick tells the family only after the person's own yes; for someone not on Parwah only the carer; Ran out is a task",
+      "const who = doseTellWho({ onApp: p.on_app, tell: p.dose_tell, carerId: carers[0] });" in _dz
+      and "const to = await doseAlertTo(sql, circleId, rows[0].person_id," in _dz
+      and "update members set dose_tell = ${body.on} where id = ${me.id} and circle_id = ${circle.id}" in _dz
+      and "if (onApp) return tell === true ? 'family' : 'nobody';" in _sf_rules
+      and "else if (reason === RAN_OUT) ranOut.push(d);" in _dz and "data-sftell" in _app_src and 'id="sf-tellbtn"' in _app_src
+      and "are not marked" not in _dz)
+check("safety: a task past its time tells its owner first and alone; the family a window later, in words that name nobody",
+      "await pushCircle(sql, circleId, { ...taskOwnerText(t.title, t.status), url: '/#care' }, { only: t.claimed_by });" in _tasksrc
+      and "and overdue_alerted_at < now() - make_interval(mins => ${TASK_FAMILY_AFTER_MIN})" in _tasksrc
+      and "has it)" not in _tasksrc and "who.name + ' has" not in _tasksrc and "TASK_FAMILY_AFTER_MIN = 60" in _sf_rules)
+check("safety: no after-loss list about someone who used Parwah in the last 30 days, at start, confirm and reopen; no date of birth and no adult role is not an adult",
+      _sf_alapi.count("if (await recentStop(sql, res,") == 3 and "await rememberRecent(sql, person)" in _sf_alapi
+      and "return surelyAdult(m, today);" in _sf_al and "return age === null ? adultByRole(m) : age >= 18;" in _sf_rules
+      and "if (!m.dob) return true;" not in _sf_al)
+check("safety: someone on Parwah is never marked as no longer with us by one adult: a second adult confirms, and they can still undo it",
+      "if (!t.remembered && t.user_id) {" in _wf_rem and "create table if not exists remember_asks" in _wf_rem
+      and "if (ask.ask_member !== me.id) return bad('Only the person who was asked can confirm this.', 403);" in _wf_rem
+      and _wf_rem.count("await rememberRecent(sql, t)") == 2
+      and "'remember_confirm', 'remember_cancel'" in _sf_api["circle.mjs"]
+      and "if (full.user_id) return bad(409, 'This needs a second adult to confirm." in _mb_api
+      and 'id="sf-rm-ask"' in _app_src and 'id="sf-mp-ask"' in _app_src and "data-sfrmyes" in _app_src)
+check("safety: the timer writes down each run, the family reads the time from before this phone woke it, and no scheduler is made",
+      "await one(() => tickMark(sql));" in _evt
+      and _evt.index("const tickBefore = await tickSeen(sql)") < _evt.index("await runTick(sql, PIGGYBACK_BUDGET_MS)")
+      and "safety: await safetyState(sql, circle, g.me, tickBefore)" in _evt and "TIMER_LATE_MIN = 15" in _sf_rules
+      and 'id="sf-timer"' in _app_src and "setInterval" not in _sf_api["_safety.mjs"] and "cron" not in _sf_api["_safety.mjs"].lower())
+check("safety: its tests are in the gate and in npm run test:db, and its browser test never waits a fixed time",
+      "node site/tests/safetytest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all("site/tests/db/" + f in (REPO / "package.json").read_text(encoding="utf-8") for f in ("safety.dbtest.mjs", "safety.e2e.dbtest.mjs"))
+      and "waitForTimeout" not in (REPO / "site/tests/db/safety.e2e.dbtest.mjs").read_text(encoding="utf-8"))
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]
