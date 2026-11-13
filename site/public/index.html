@@ -9085,6 +9085,18 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       try { $('cc-code').scrollIntoView({ block: 'center' }); $('cc-code').focus(); } catch (x) {}
     }
   });
+  // The same two answers, on the linked-families sheet.
+  $('fl-list').addEventListener('click', function(e){
+    var b = e.target.closest('[data-aclyes],[data-aclno]'); if (!b) return;
+    var id = b.getAttribute('data-aclyes');
+    var after = function(){ try { flRefresh(true); } catch (x) {} };
+    if (id) { acCircle({ action: 'link_yes', linkId: id }).then(function(j){ toast(j.ok ? (j.active ? 'Your family trees are linked 🌳' : 'You said yes') : (j.error || 'Could not do that')); after(); acLoadFam(); }).catch(function(){ toast('No connection - try again'); }); return; }
+    id = b.getAttribute('data-aclno');
+    askSheet('Object to linking the family trees?', 'The two families will not be linked. They can ask again later.', 'I object', 'Go back', true).then(function(y){
+      if (!y) return;
+      acCircle({ action: 'link_object', linkId: id }).then(function(j){ toast(j.ok ? 'The trees will not be linked' : (j.error || 'Could not do that')); after(); acLoadFam(); }).catch(function(){ toast('No connection - try again'); });
+    });
+  });
   $('ac-famdel').addEventListener('click', function(){
     var many = acFam && acFam.adults > 1;
     var w = famKind === 'group' ? 'group' : 'family';
@@ -16558,7 +16570,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (!force && Date.now() - flAt < 30000) return;
     flAt = Date.now();
     widerPost({ action: 'link_state' }).then(function(j){
-      if (j && j.ok) { flData = { max: j.max || 6, links: j.links || [], incoming: j.incoming || [], outgoing: j.outgoing || [] }; flState = 'ok'; }
+      if (j && j.ok) { flData = { max: j.max || 6, links: j.links || [], incoming: j.incoming || [], outgoing: j.outgoing || [], agreed: j.agreed || [] }; flState = 'ok'; }
       else flState = 'error:' + humanFail(j && j.error, 'Could not load linked families. Try again in a moment.');
       flRenderAll();
     }).catch(function(){ flState = 'offline'; flRenderAll(); });
@@ -16676,6 +16688,15 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           '<div class="fl-acts"><button type="button" class="cbtn" data-flyes="' + esc(r.id) + '">Yes, link our trees</button>' +
           '<button type="button" class="cbtn no" data-flno="' + esc(r.id) + '">No</button></div></div>';
       }).join('');
+      // A yes starts a 48-hour wait: every adult of both families is told,
+      // and any of them can say yes too, or object.
+      if ((d.agreed || []).length) h += '<p class="eyebrow">Starting soon</p>' + d.agreed.map(function(l){
+        var may = acFam && acFam.me && acFam.me.may;
+        return '<div class="plan fl-ask" data-flwait="' + esc(l.id) + '"><b>' + esc(l.name) + '</b>' +
+          '<p class="hint fl-say">The family trees will be linked on ' + esc(acDay(l.startsAt)) + ', unless an adult in either family objects. It starts sooner if every adult says yes.</p>' +
+          (may ? '<div class="fl-acts">' + (l.iSaidYes ? '<span class="hint">You said yes.</span>' : '<button type="button" class="cbtn" data-aclyes="' + esc(l.id) + '">Yes, link them</button>') +
+            '<button type="button" class="cbtn no" data-aclno="' + esc(l.id) + '">I object</button></div>' : '') + '</div>';
+      }).join('');
       if (d.links.length) h += '<p class="eyebrow">Linked now: ' + d.links.length + ' of ' + d.max + '</p>' + d.links.map(function(l){
         return '<div class="plan fl-ask" data-fllink="' + esc(l.id) + '"><b>' + esc(l.name) + '</b>' +
           '<p class="hint fl-say">' + esc('Linked through ' + (l.bridgeName || 'one person') + '. ' + (l.people || []).length + ' people in their tree. ' +
@@ -16688,7 +16709,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           '<button type="button" class="cbtn ghost" data-flback="' + esc(o.id) + '">Take it back</button></div>';
       }).join('');
       // Nothing yet: one first step, and the form open.
-      if (!d.links.length && !d.incoming.length && !d.outgoing.length) {
+      if (!d.links.length && !d.incoming.length && !d.outgoing.length && !(d.agreed || []).length) {
         msg += (msg ? '<br><br>' : '') + 'No linked family yet. Ask a related family for their family code. They can find it on their Profile. Then write it below.';
         first = true;
       }
