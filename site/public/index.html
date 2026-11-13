@@ -12398,6 +12398,11 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (!o.msgs.length) { o.before = j.before || null; o.more = !!j.more; }
     var have = {}; (j.messages || []).forEach(function(m){ have[m.id] = 1; });
     o.msgs = o.msgs.filter(function(m){ return !have[m.id]; });
+    // While someone is reading back, new messages push older ones off the
+    // newest page: those are kept in view, so nothing drops out mid-read.
+    var firstAt = j.messages && j.messages.length ? new Date(j.messages[0].created_at).getTime() : 0;
+    if (o.msgs.length) (o.tail || []).forEach(function(m){ if (!have[m.id] && new Date(m.created_at).getTime() < firstAt) o.msgs.push(m); });
+    o.tail = j.messages || [];
     curChat.muted = !!(j.chat && j.chat.muted);
     return o.msgs.concat(j.messages || []);
   }
@@ -12430,7 +12435,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       if (!y) return;
       post(API.chats, { code: state.code, memberId: state.memberId, action: 'delete_message', chatId: chatId, messageId: mid }).then(function(j){
         if (!j.ok) { toast(humanFail(j.error, 'Could not delete it')); return; }
-        var o = hdOlder[chatId]; if (o) o.msgs = o.msgs.filter(function(x){ return x.id !== mid; });
+        var o = hdOlder[chatId]; if (o) { o.msgs = o.msgs.filter(function(x){ return x.id !== mid; }); o.tail = (o.tail || []).filter(function(x){ return x.id !== mid; }); }
         try { rxClose(); } catch (e) {}
         toast('Deleted'); loadMsgs(); refreshChats();
       }).catch(function(){ toast('No connection - try again'); });
