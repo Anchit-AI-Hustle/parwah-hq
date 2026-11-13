@@ -24,6 +24,12 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | Find a phone that is on silent | Live | find me |
 | A helper nearby is told when family is far | Live | nearby ladder |
 | Fall or no-movement signal from the phone | Later | needs the native apps (phase 2 onward) |
+| An alert reaches a person in every family they are in, and says which family | Live | push by person and device (`api/_push.mjs`) |
+| Alerts that respect a night: quiet hours on each person's own clock, six switches, one morning line; an SOS always comes through | Live | Notifications in Profile (`api/_pushrules.mjs`) |
+| Adults can see who an SOS would reach, and are told when a parent has nobody whose phone would ring | Live | can be reached |
+| "All is well" and "Medicines taken" pressed with no network are kept and sent later with their own time | Live | offline queue (`api/_offline.mjs`) |
+| The app opens on a slow or absent network, with the emergency card and Call buttons | Live | service worker, saved shell |
+| An adult can check that Parwah itself is working | Live | "Is Parwah working?" in Profile |
 
 ### B. Looking after health and care
 | Need | Status | Where |
@@ -197,6 +203,29 @@ Honest limits:
   links appear only on plans in rupees.
 - **A together plan is seen by the whole circle**, like every plan. Only the
   people ticked are told.
+
+### Fair notifications and a poor network (live)
+
+| Feature | Module | Route | Tables |
+|---|---|---|---|
+| One phone, every family; quiet hours; kinds; morning line | `api/_push.mjs`, `api/_pushrules.mjs` | `/api/settings?area=push` (`subscribe`, `prefs_get`, `prefs_set`) | `push_subs` (+ `user_id`, `device_id`, `tz`, `seen_at`), `push_prefs`, `push_held` |
+| Can be reached; "Is Parwah working?" | `api/_pushapi.mjs` | `/api/settings?area=push` (`reach`, `selfcheck`) | reads `push_subs` |
+| A tap sent late | `api/_offline.mjs` | `/api/events` (`clientId`, `at`) | `offline_taps` |
+| A page that broke | `api/_pushapi.mjs` | `/api/settings?area=push` (`report`), `/api/diag?probe=status` | `client_errors` (14 days) |
+| Timer: when it last ran, whose turn | `api/_push.mjs` (`afterTick`) | `/api/events?tick`, `/api/diag?probe=status` | `kv` rows `last_tick_at`, `tick_next` |
+
+Honest limits:
+- **Quiet hours need the phone's time zone.** It is sent each time Parwah
+  opens. Until a phone has opened Parwah once after this release, nothing is
+  held for that person: a night is never guessed.
+- **What waited is a count, never the words.** "6 messages in Family".
+- **Muting one chat** is read from a `chat_mutes` table if one exists; no
+  screen makes one yet.
+- **Only two taps wait on the phone**: All is well and Medicines taken. A
+  scheduled dose still needs the network. An SOS never waits: it says at once
+  that it did not go, and offers Call.
+- **The live timer needs its key.** With no `CRON_SECRET` set on the live
+  site the daily cron is refused; alerts still ring from every signed-in poll.
 
 ## 4. What comes next
 

@@ -13,6 +13,9 @@ import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
 import { pushCircle } from './_push.mjs';
+import { afterTick, tickCursor } from './_push.mjs';
+import { rotateFrom } from './_pushrules.mjs';
+import { tickNote, lateTap, lateArrived } from './_offline.mjs';
 import { ensureTaskSchema, sweepOverdue, sweepReminders } from './_tasks.mjs';
 import { sweepPlanReminders } from './_plansweep.mjs';
 import { sweepDoses } from './_doses.mjs';
@@ -20,7 +23,7 @@ import { sweepVisitAsk } from './_visits.mjs';
 import { sweepBond, ensureBondSchema } from './_bond.mjs';
 import { storySweep, ensureBondSchema as ensureMemoryBondSchema } from './_memorybond.mjs';
 import { award, today } from './_coins.mjs';
-import { reqTz } from './_recur.mjs';
+import { reqTz, dayIn } from './_recur.mjs';
 import { sweepRemember, ensureRememberSchema, rememberToday } from './_remember.mjs';
 import { digestSweep } from './_digest.mjs';
 
@@ -33,12 +36,13 @@ const SOS_ESCALATE_MIN = 5;   // nobody answered in this long → shout louder
 const TYPES = ['checkin', 'sos', 'pill', 'message'];
 
 // THE TIMER'S KEY. With CRON_SECRET set on the server, ?tick needs it, in
-// x-cron-secret or "Authorization: Bearer"; without one it stays open, as
-// before, so nothing stops before the owner sets it. Compared in constant
-// time.
+// x-cron-secret or "Authorization: Bearer". Compared in constant time.
+// With none set, the live site says no: an open timer there is work anyone
+// on the internet can start. A laptop, a preview and the tests stay open,
+// and the live site's alerts still ring from every signed-in poll.
 function tickAllowed(req) {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
+  if (!secret) return process.env.VERCEL_ENV !== 'production';
   const h = (req && req.headers) || {};
   const auth = String(h.authorization || h.Authorization || '');
   const given = String(h['x-cron-secret'] || (auth.startsWith('Bearer ') ? auth.slice(7) : ''));
@@ -74,7 +78,10 @@ async function dueCircles(sql) {
   await q(() => sql`select distinct circle_id from members where remembered and passed_month is not null and passed_day is not null limit 500`);
   // "Aaj kya hua": members who asked to be told each evening.
   await q(() => sql`select distinct circle_id from digest_prefs where evening limit 500`);
-  return [...ids];
+  // One fixed order, begun where the last run stopped: a run that spends
+  // its time budget on the first families must not spend it on the same
+  // ones every time.
+  return rotateFrom([...ids], await tickCursor(sql));
 }
 export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
   const t0 = Date.now();
@@ -82,10 +89,10 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
   const circles = await dueCircles(sql);
   let reminded = 0, late = 0, events = 0, done = 0;
   // Missed check-ins first: the alert families most need on time.
-  try { events += await quietSweepAll(sql); } catch (e) { /* never stops the timer */ }
+  try { events += await quietSweepAll(sql); } catch (e) { tickNote(e, 'quiet'); /* never stops the timer */ }
   // Each sweep on its own: a family that never opened one feature (no table
   // yet, or a bad row) must not stop the other alerts for that family.
-  const one = async f => { try { return (await f()) || 0; } catch (e) { return 0; } };
+  const one = async f => { try { return (await f()) || 0; } catch (e) { tickNote(e, 'sweep'); return 0; } };
   for (const id of circles) {
     if (Date.now() - t0 > budgetMs) break;
     await one(() => escalateStaleSos(sql, id));
@@ -105,6 +112,7 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
     await one(() => digestSweep(sql, id));
     done++;
   }
+  await one(() => afterTick(sql, circles, done));
   return { circles: done, reminded, late, events };
 }
 
@@ -318,16 +326,20 @@ async function escalateStaleSos(sql, circleId) {
         const pm = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
         if (!pm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
         await ensurePulseSchema(sql);
-        const day = pulseDay(reqTz(req)), styleKey = styleFor(day);
+        const tap = await lateTap(sql, req.body, pm[0].id, 'pulse');
+        if (tap.dup) return res.status(200).json({ ok: true, dup: true });
+        if (tap.error) return res.status(tap.status).json({ ok: false, error: tap.error, stale: tap.status === 422 });
+        const day = tap.at ? dayIn(reqTz(req), tap.at) : pulseDay(reqTz(req)), styleKey = styleFor(day);
         const opt = optionOf(styleKey, String(req.body.value || ''));
         if (!opt) return res.status(400).json({ ok: false, error: 'Pick how you are today' });
         const note = String(req.body.note || '').trim().slice(0, 120) || null;
-        await sql`insert into pulse (circle_id, member_id, day, style, value, note)
-                  values (${circle.id}, ${pm[0].id}, ${day}, ${styleKey}, ${opt.k}, ${note})
+        await sql`insert into pulse (circle_id, member_id, day, style, value, note, at)
+                  values (${circle.id}, ${pm[0].id}, ${day}, ${styleKey}, ${opt.k}, ${note}, coalesce(${tap.at}::timestamptz, now()))
                   on conflict (circle_id, member_id, day)
-                  do update set style = excluded.style, value = excluded.value, note = excluded.note, at = now()`;
-        await sql`insert into events (circle_id, member_id, type, text)
-                  values (${circle.id}, ${pm[0].id}, 'checkin', ${pm[0].name + ' is ' + opt.e + ' ' + opt.t})`;
+                  do update set style = excluded.style, value = excluded.value, note = excluded.note, at = excluded.at`;
+        await sql`insert into events (circle_id, member_id, type, text, created_at)
+                  values (${circle.id}, ${pm[0].id}, 'checkin', ${pm[0].name + ' is ' + opt.e + ' ' + opt.t}, coalesce(${tap.at}::timestamptz, now()))`;
+        if (tap.late) await lateArrived(sql, circle, pm[0], tap.at);
         // No coins for saying how you are: an adult's check-in is not a game.
         // "A call would be nice" is the reason this feature exists - it lets
         // someone say they are not fine without having to say it.
@@ -435,8 +447,14 @@ async function escalateStaleSos(sql, circleId) {
       const t = String(text || '').trim().slice(0, type === 'message' ? 300 : 120);
       if (type === 'message' && !t) return res.status(400).json({ ok: false, error: 'Empty message' });
       if (type === 'sos') return raiseSos(sql, res, circle, member[0], t, req.body);
-      await sql`insert into events (circle_id, member_id, type, text)
-                values (${circle.id}, ${memberId}, ${type}, ${t || null})`;
+      // Pressed with no network and sent now (api/_offline.mjs): once only,
+      // and with the time it was pressed.
+      const tap = await lateTap(sql, req.body, memberId, type);
+      if (tap.dup) return res.status(200).json({ ok: true, dup: true });
+      if (tap.error) return res.status(tap.status).json({ ok: false, error: tap.error, stale: tap.status === 422 });
+      await sql`insert into events (circle_id, member_id, type, text, created_at)
+                values (${circle.id}, ${memberId}, ${type}, ${t || null}, coalesce(${tap.at}::timestamptz, now()))`;
+      if (tap.late && type === 'checkin') await lateArrived(sql, circle, member[0], tap.at);
       // An adult's medicines and check-ins are not a game: no coins for them.
       return res.status(201).json({ ok: true });
     }
