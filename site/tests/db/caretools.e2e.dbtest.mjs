@@ -241,6 +241,10 @@ ok('Papa says yes: it is on', (await admin.query(`select checkin_by from members
 // The time comes and goes with no check-in (the sweep is told the time).
 await admin.query(`update members set quiet_nudged_for = null, quiet_alerted_for = null where id = $1`, [U.Papa.memberId]);
 await admin.query(`delete from events where member_id = $1 and type = 'checkin'`, [U.Papa.memberId]);
+// Any sign of life that day counts as checked in now (stream A, A6), and
+// earlier in this file Papa wrote to the family chat. For this part he has
+// been silent all day.
+await admin.query(`delete from messages where member_id = $1`, [U.Papa.memberId]);
 const tz = (await admin.query(`select tz from members where id = $1`, [U.Papa.memberId])).rows[0].tz;
 const { dayIn, fromWall } = await import('../../../api/_recur.mjs');
 const [y, m, d] = dayIn(tz).split('-').map(Number);
@@ -259,7 +263,15 @@ await shotAll(A, 'checkin-away');
 await design(A, '#fcqsheet', 'the daily check-in sheet');
 const later = new Date(Date.now() + 3 * 86400000); const ld = later.getFullYear() + '-' + String(later.getMonth() + 1).padStart(2, '0') + '-' + String(later.getDate()).padStart(2, '0');
 await A.fill('#fcq-away', ld); await A.click('#fcq-awaygo'); await A.waitForTimeout(1300);
-ok('the family can pause it while Papa travels', (await admin.query(`select to_char(away_until,'YYYY-MM-DD') as a from members where id = $1`, [U.Papa.memberId])).rows[0].a === ld);
+// Someone else's check-in is paused only with their own yes (stream A, A7):
+// Anchit's tap asks, Papa answers on his own phone, and only then is it paused.
+const awayRow = async () => (await admin.query(`select to_char(away_until,'YYYY-MM-DD') as a, away_ask from members where id = $1`, [U.Papa.memberId])).rows[0];
+ok('the family asking to pause it changes nothing by itself', (await awayRow()).a === null && (await awayRow()).away_ask === ld, JSON.stringify(await awayRow()));
+await reload(P);
+ok('Papa is asked on his own phone', /Anchit asks: pause your daily check-in until/.test(await P.textContent('#fcalerts')), await P.textContent('#fcalerts'));
+await P.click('#fcalerts [data-sfawy]');
+await P.waitForFunction(() => !/asks: pause/.test(document.querySelector('#fcalerts').textContent), null, { timeout: 15000 });
+ok('the family can pause it while Papa travels, once Papa says yes', (await awayRow()).a === ld, JSON.stringify(await awayRow()));
 
 // =====================================================================
 // THE LIFE CERTIFICATE AND THE CALL ROTA
