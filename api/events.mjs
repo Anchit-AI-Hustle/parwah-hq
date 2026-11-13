@@ -23,6 +23,7 @@ import { award, today } from './_coins.mjs';
 import { reqTz } from './_recur.mjs';
 import { sweepRemember, ensureRememberSchema, rememberToday } from './_remember.mjs';
 import { digestSweep } from './_digest.mjs';
+import { memberCards, standingSweepAll } from './_standing.mjs';
 
 import { index as kinIndex, kinLabel, generations, kinEveryone, kinChainWords } from './_kin.mjs';
 import { pulseToday, ensurePulseSchema, optionOf, styleFor, today as pulseDay } from './_pulse.mjs';
@@ -86,6 +87,7 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
   // Each sweep on its own: a family that never opened one feature (no table
   // yet, or a bad row) must not stop the other alerts for that family.
   const one = async f => { try { return (await f()) || 0; } catch (e) { return 0; } };
+  await one(() => standingSweepAll(sql));   // account and family deletes whose 7 days are up, tree links whose 48 hours are up
   for (const id of circles) {
     if (Date.now() - t0 > budgetMs) break;
     await one(() => escalateStaleSos(sql, id));
@@ -284,7 +286,9 @@ async function escalateStaleSos(sql, circleId) {
       const docsN = await sql`select count(*)::int as n from vault_docs where circle_id = ${circle.id}`.catch(() => null);
       return res.status(200).json({ ok: true, circleName: circle.name, code: circle.code,
         counts: docsN && docsN[0] ? { docs: docsN[0].n } : undefined,
-        kind: ck[0] ? ck[0].kind : 'family', familyType: ck[0] ? ck[0].family_type : null, members, events, seenAt, calls,
+        kind: ck[0] ? ck[0].kind : 'family', familyType: ck[0] ? ck[0].family_type : null,
+        // Each member chooses who sees their phone and birth year (api/_standing.mjs).
+        members: await memberCards(sql, circle, g.me, members), events, seenAt, calls,
         joinRequests: joinReqs, joinPolicy: (pol[0] && pol[0].join_policy) || 'approve',
         sos: await Promise.all(sosOpen.map(async x => ({ ...x, map: mapLink(x.lat === null ? null : { lat: x.lat, lng: x.lng }),
           // The nearby people who said yes, with Call buttons on the family's

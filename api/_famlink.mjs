@@ -6,6 +6,8 @@
 //   POST {..., action:'link_request', otherCode, bridgeId, bridgeName?, sharePhones?}
 //   POST {..., action:'link_approve', linkId, bridgeId?, sharePhones?}
 //   POST {..., action:'link_decline', linkId}
+//   POST {..., action:'link_yes',     linkId}     during the 48 hours: my yes too
+//   POST {..., action:'link_object',  linkId}     during the 48 hours: stop it
 //   POST {..., action:'link_end',     linkId}
 //   POST {..., action:'link_phones',  linkId, on}
 //
@@ -26,10 +28,11 @@
 // bridge, in memory (kinLinked in api/_kin.mjs). Nothing is copied.
 import { schemaOnce, isUuid, circleByCode, rateLimit, clientIp } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
-import { placeOf } from './_places.mjs';
 import { cleanName, nameError } from './_valid.mjs';
 import { index as kinIndex, generations, kinLinked } from './_kin.mjs';
-import { wallIn, isAdult } from './_rememberrules.mjs';
+import { standingOfCaller } from './_standing.mjs';
+import { standingRows } from './_account.mjs';
+import { actingAdults, todayIn, LINK_HOLD_HOURS } from './_standingrules.mjs';
 
 export const LINKS_MAX = 6;
 // A request to link pushes every phone in the family that is asked, and a
@@ -80,6 +83,19 @@ async function famlinkTables(sql) {
             where status in ('pending', 'active')`;
   await sql`create index if not exists family_links_a on family_links (a_circle, status)`;
   await sql`create index if not exists family_links_b on family_links (b_circle, status)`;
+  // A yes does not link the trees at once. Every adult of both families is
+  // told, and the link starts 48 hours after the yes unless an adult
+  // objects, or at once when every adult has said yes. Until then the row
+  // stays 'pending', with the time of the yes and the time it would start.
+  await sql`alter table family_links add column if not exists agreed_at timestamptz`;
+  await sql`alter table family_links add column if not exists effective_at timestamptz`;
+  await sql`create table if not exists family_link_votes (
+    link_id uuid not null references family_links(id) on delete cascade,
+    member_id uuid not null references members(id) on delete cascade,
+    yes boolean not null,
+    at timestamptz not null default now(),
+    primary key (link_id, member_id)
+  )`;
 }
 
 const bad = (error, status = 400, extra) => ({ status, json: { ok: false, error, ...(extra || {}) } });
@@ -101,19 +117,66 @@ async function peopleOf(sql, circleId, withPhones) {
                           born: r.born ? +r.born : null, city: (r.place && String(r.place).trim()) || null, phone: r.phone || null }));
 }
 
+// Every grown-up of both families, with which family each is in.
+async function bothAdults(sql, l) {
+  const today = todayIn();
+  const a = actingAdults(await standingRows(sql, l.a_circle), today), b = actingAdults(await standingRows(sql, l.b_circle), today);
+  return { a, b, all: [...a.map(m => ({ ...m, circle_id: l.a_circle })), ...b.map(m => ({ ...m, circle_id: l.b_circle }))] };
+}
+const yesVote = (sql, linkId, memberId) => sql`insert into family_link_votes (link_id, member_id, yes) values (${linkId}, ${memberId}, true)
+                                               on conflict (link_id, member_id) do update set yes = true, at = now()`;
+// The link starts: claimed once, and both families read it in the feed.
+async function activate(sql, l) {
+  const got = await sql`update family_links set status = 'active' where id = ${l.id} and status = 'pending' and agreed_at is not null returning id`;
+  if (!got[0]) return false;
+  const names = await sql`select id, name from circles where id in (${l.a_circle}, ${l.b_circle})`;
+  const nameOf = id => (names.find(n => n.id === id) || {}).name || 'the other family';
+  await feed(sql, l.a_circle, null, 'Your family tree is now linked with ' + nameOf(l.b_circle) + ' 🌳');
+  await feed(sql, l.b_circle, null, 'Your family tree is now linked with ' + nameOf(l.a_circle) + ' 🌳');
+  if (l.asked_by) await pushCircle(sql, l.a_circle, { title: '🌳 Family trees linked with ' + nameOf(l.b_circle),
+    body: 'You can now see each other\'s family tree and Rishtedaar list. Nothing else is shared.', url: '/#people' }, { only: l.asked_by });
+  return true;
+}
+// At once when every adult of both families has said yes.
+async function activateIfAllYes(sql, l) {
+  const { all } = await bothAdults(sql, l);
+  // A person who belongs to both families (the bridge, often) says yes once.
+  const votes = await sql`select m.user_id from family_link_votes v join members m on m.id = v.member_id where v.link_id = ${l.id} and v.yes`;
+  const said = new Set(votes.map(v => v.user_id));
+  return all.length && all.every(m => said.has(m.user_id)) ? activate(sql, l) : false;
+}
+// THE TIMER'S SHARE, and every read of the list: a yes whose 48 hours are up.
+export async function activateDueLinks(sql, circleId) {
+  await ensureFamlinkSchema(sql);
+  const due = await sql`select * from family_links where status = 'pending' and agreed_at is not null and effective_at <= now()
+                          and (${circleId || null}::uuid is null or a_circle = ${circleId || null} or b_circle = ${circleId || null}) limit 50`;
+  let n = 0;
+  for (const l of due) if (await activate(sql, l)) n++;
+  return n;
+}
+
 async function linkState(sql, circle, me) {
+  await activateDueLinks(sql, circle.id);
+  const myVotes = new Set((await sql`select link_id from family_link_votes where member_id = ${me.id} and yes`).map(v => v.link_id));
   const rows = await sql`
-    select l.id, l.a_circle, l.b_circle, l.a_member, l.b_member, l.b_name, l.status, l.a_phones, l.b_phones, l.created_at, l.decided_at,
+    select l.id, l.a_circle, l.b_circle, l.a_member, l.b_member, l.b_name, l.status, l.a_phones, l.b_phones, l.created_at, l.decided_at, l.agreed_at, l.effective_at,
            ca.name as a_name, cb.name as b_name_circle, am.name as a_member_name, bm.name as b_member_name, ab.name as asked_by_name
     from family_links l
     join circles ca on ca.id = l.a_circle join circles cb on cb.id = l.b_circle
     join members am on am.id = l.a_member left join members bm on bm.id = l.b_member left join members ab on ab.id = l.asked_by
     where (l.a_circle = ${circle.id} or l.b_circle = ${circle.id}) and l.status in ('pending', 'active')
     order by l.created_at, l.id`;
-  const links = [], incoming = [], outgoing = [];
+  const links = [], incoming = [], outgoing = [], agreed = [];
   let own = null;
   for (const l of rows) {
     const iAmA = l.a_circle === circle.id;
+    // Said yes to, and waiting out the 48 hours: any adult of either family
+    // can say yes too, or object.
+    if (l.status === 'pending' && l.agreed_at) {
+      agreed.push({ id: l.id, name: iAmA ? l.b_name_circle : l.a_name, bridgeName: iAmA ? l.a_member_name : (l.b_member_name || l.b_name || l.a_member_name),
+                    agreedAt: l.agreed_at, startsAt: l.effective_at, iSaidYes: myVotes.has(l.id) });
+      continue;
+    }
     if (l.status === 'pending') {
       if (iAmA) outgoing.push({ id: l.id, toName: l.b_name_circle, bridgeName: l.a_member_name, created_at: l.created_at });
       else incoming.push({ id: l.id, fromName: l.a_name, askedBy: l.asked_by_name || null, bridgeName: l.a_member_name,
@@ -142,7 +205,7 @@ async function linkState(sql, circle, me) {
       })
     });
   }
-  return good({ max: LINKS_MAX, links, incoming, outgoing });
+  return good({ max: LINKS_MAX, links, incoming, outgoing, agreed, holdHours: LINK_HOLD_HOURS });
 }
 
 // me: the caller's own membership (ownedMember proved it). circle: {id, name, kind, code}.
@@ -150,7 +213,9 @@ export async function famlinkAction(sql, req, circle, me, body) {
   await ensureFamlinkSchema(sql);
   const a = String(body.action || '');
   if (circle.kind === 'group') return bad('A group of friends has no family tree to link.');
-  const adult = () => isAdult(me.dob, wallIn(Date.now(), placeOf(me.place, me.country, null).tz).date);
+  // The one adult rule (isAdultMember), asked through the caller's standing.
+  const standing = await standingOfCaller(sql, circle, me.id);
+  const adult = () => standing.may;
 
   if (a === 'link_state') return linkState(sql, circle, me);
 
@@ -159,6 +224,8 @@ export async function famlinkAction(sql, req, circle, me, body) {
     // not: the same allowance as joining by code, and ten tries a day from
     // one family. Both are counted before the code is even looked up.
     const slow = () => bad(LINK_SLOW, 429);
+    // Joining two households is for a grown-up of the family to ask.
+    if (!adult()) return bad('An adult in the family asks for this.', 403);
     if (!(await rateLimit(sql, 'join', clientIp(req), 12, 600, { failClosed: true }))) return slow();
     if (!(await rateLimit(sql, 'link_ask', circle.id, LINK_LIMITS.perDay, 86400, { failClosed: true }))) return slow();
     const other = await circleByCode(sql, body.otherCode);
@@ -223,7 +290,7 @@ export async function famlinkAction(sql, req, circle, me, body) {
 
   if (a === 'link_approve' || a === 'link_decline') {
     // Only the family that was asked answers, and an adult of it.
-    if (iAmA || l.status !== 'pending') return bad('That request has already been dealt with', 404);
+    if (iAmA || l.status !== 'pending' || l.agreed_at) return bad('That request has already been dealt with', 404);
     if (!adult()) return bad('An adult in the family answers this.', 403);
     if (a === 'link_decline') {
       const got = await sql`update family_links set status = 'declined', decided_by = ${me.id}, decided_at = now()
@@ -239,21 +306,49 @@ export async function famlinkAction(sql, req, circle, me, body) {
     if (!b) return bad('Choose who this person is in your family.', 400, { field: 'bridge', needsBridge: true });
     if (await activeCount(sql, circle.id) >= LINKS_MAX) return bad('Your family ' + FULL, 409);
     if (await activeCount(sql, otherId) >= LINKS_MAX) return bad(otherName + ' ' + FULL, 409);
-    const got = await sql`update family_links set status = 'active', b_member = ${b.id}, b_phones = ${!!body.sharePhones}, decided_by = ${me.id}, decided_at = now()
-                          where id = ${l.id} and status = 'pending' returning id`;
+    // THE YES STARTS A WAIT, NOT THE LINK. Every adult of both families is
+    // told; the trees are linked 48 hours from now unless one of them
+    // objects, or at once if every one of them says yes.
+    const starts = new Date(Date.now() + LINK_HOLD_HOURS * 3600000).toISOString();
+    const got = await sql`update family_links set b_member = ${b.id}, b_phones = ${!!body.sharePhones}, decided_by = ${me.id}, decided_at = now(),
+                            agreed_at = now(), effective_at = ${starts}
+                          where id = ${l.id} and status = 'pending' and agreed_at is null returning *`;
     if (!got[0]) return bad('That request has already been dealt with', 404);
-    await feed(sql, circle.id, me.id, me.name + ' linked family trees with ' + otherName + ' 🌳');
-    await feed(sql, otherId, null, circle.name + ' said yes: your family trees are linked 🌳');
-    // The answer goes to the person who asked; the rest of that family reads it in the feed.
-    if (l.asked_by) await pushCircle(sql, otherId, { title: '🌳 ' + circle.name + ' said yes',
-      body: 'You can now see each other\'s family tree and Rishtedaar list. Nothing else is shared.', url: '/#people' }, { only: l.asked_by });
-    return good({ linkId: l.id });
+    await yesVote(sql, l.id, me.id);
+    // Whoever asked has already said yes, if they are still a grown-up there.
+    if (l.asked_by) await yesVote(sql, l.id, l.asked_by);
+    if (await activateIfAllYes(sql, got[0])) return good({ linkId: l.id, active: true });
+    await feed(sql, circle.id, me.id, me.name + ' said yes to linking family trees with ' + otherName + '. It starts in ' + LINK_HOLD_HOURS + ' hours unless an adult objects.');
+    await feed(sql, otherId, null, circle.name + ' said yes to linking family trees. It starts in ' + LINK_HOLD_HOURS + ' hours unless an adult objects.');
+    const { all } = await bothAdults(sql, got[0]);
+    for (const m of all) {
+      if (m.id === me.id) continue;
+      await pushCircle(sql, m.circle_id, { title: '🌳 Family trees will be linked in ' + LINK_HOLD_HOURS + ' hours',
+        body: (m.circle_id === circle.id ? otherName : circle.name) + ' and your family. Open the Family tab to say yes now, or to object.', url: '/#people' }, { only: m.id });
+    }
+    return good({ linkId: l.id, active: false, startsAt: starts, holdHours: LINK_HOLD_HOURS });
+  }
+
+  // During the wait: an adult of either family adds their yes, or objects.
+  if (a === 'link_yes' || a === 'link_object') {
+    if (l.status !== 'pending' || !l.agreed_at) return bad('That request has already been dealt with', 404);
+    if (!adult()) return bad('An adult in the family answers this.', 403);
+    if (a === 'link_object') {
+      const got = await sql`update family_links set status = 'declined', decided_by = ${me.id}, decided_at = now()
+                            where id = ${l.id} and status = 'pending' returning id`;
+      if (!got[0]) return bad('That request has already been dealt with', 404);
+      await feed(sql, circle.id, me.id, me.name + ' objected: the family trees will not be linked with ' + otherName);
+      await feed(sql, otherId, null, 'An adult in ' + circle.name + ' objected: the family trees will not be linked');
+      return good({ status: 'declined' });
+    }
+    await yesVote(sql, l.id, me.id);
+    return good({ active: !!(await activateIfAllYes(sql, l)) });
   }
 
   // Either side, any member, at once. A request still waiting is taken back
   // the same way by the family that sent it.
   if (a === 'link_end') {
-    if (l.status === 'pending' && !iAmA) return bad('Say yes or no to a request; only the family that asked can take it back.', 400);
+    if (l.status === 'pending' && !iAmA && !l.agreed_at) return bad('Say yes or no to a request; only the family that asked can take it back.', 400);
     const was = l.status;
     const got = await sql`update family_links set status = 'ended', ended_by = ${me.id}, ended_at = now()
                           where id = ${l.id} and status in ('pending', 'active') returning id`;

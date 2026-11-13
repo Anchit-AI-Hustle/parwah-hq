@@ -24,8 +24,8 @@ import { scryptSync, randomBytes, timingSafeEqual, createHash } from 'node:crypt
 // ---- the PIN ------------------------------------------------------------
 // One kind of secret, the same for everyone: a PIN of exactly 4 numbers.
 // Quick to type on a phone in a hurry, the same shape a bank card uses, and
-// nothing to choose between. Five wrong tries lock the number for fifteen
-// minutes, so ten thousand possibilities is far more than anyone can walk.
+// nothing to choose between. Five wrong tries lock the number, for longer
+// each time, so ten thousand possibilities is far more than anyone can walk.
 export const PIN_LEN = 4;
 // Every secret set before PINs were exactly 4 numbers was a PIN of 4 to 6
 // numbers or a password. users.secret_v says which rules a secret was chosen
@@ -80,10 +80,16 @@ export function verifyPin(pin, salt, hash) {
 }
 
 // ---- lockout ------------------------------------------------------------
-// Five tries, then fifteen minutes, per mobile number. Enough that a real
-// person who has forgotten which of two PINs they used gets there; far too
-// slow to walk through even ten thousand.
+// Five tries, then a lock that grows: fifteen minutes, then an hour, then
+// a day each time (lockPlan in _standingrules.mjs; seven days with no lock
+// and it starts again). Enough that a real person who has forgotten which
+// of two PINs they used gets there. At a flat fifteen minutes all ten
+// thousand PINs could be walked in about three weeks; at five tries a day
+// it is five and a half years. A phone that has signed in before keeps its
+// own count, so a stranger's tries never lock a parent out of their own
+// phone (api/_account.mjs).
 export const MAX_TRIES = 5;
+// The first lock. The later ones are in LOCK_STEPS_MIN.
 export const LOCK_MINUTES = 15;
 export function lockMessage(until) {
   const mins = Math.max(1, Math.ceil((new Date(until) - Date.now()) / 60000));

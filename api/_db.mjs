@@ -1,6 +1,6 @@
 // Shared database helpers for the Parwah app API.
 import { neon } from '@neondatabase/serverless';
-import { createHash } from 'node:crypto';
+import { createHash, randomInt } from 'node:crypto';
 
 let schemaReady = false;
 
@@ -355,12 +355,20 @@ export async function ensureCircleChat(sql, circleId) {
   return c[0].id;
 }
 
-// Join codes avoid look-alike characters so seniors can read them out on a call.
+// Join codes avoid look-alike characters so seniors can read them out on a
+// call. Eight of them, from the system's secure random source (Math.random
+// can be predicted from a few of its own answers), always with at least one
+// letter and one number: about 850 billion codes, so guessing one within
+// the join limits is not a plan.
+const CODE_LETTERS = 'ABCDEFGHJKMNPQRSTUVWXYZ', CODE_DIGITS = '23456789';
+export const CODE_LEN = 8;
 export function makeCode() {
-  const letters = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  let c = '';
-  for (let i = 0; i < 6; i++) c += letters[Math.floor(Math.random() * letters.length)];
-  return c;
+  const all = CODE_LETTERS + CODE_DIGITS;
+  for (;;) {
+    let c = '';
+    for (let i = 0; i < CODE_LEN; i++) c += all[randomInt(all.length)];
+    if (/[A-Z]/.test(c) && /[0-9]/.test(c)) return c;
+  }
 }
 
 // THE CALLER MUST BE IN THE CIRCLE. An invite code is a doorbell, not a key:
@@ -434,8 +442,9 @@ export const AUTH_REQUIRED = String(process.env.PARWAH_AUTH || 'on').toLowerCase
 
 export async function circleByCode(sql, code) {
   const clean = String(code || '').toUpperCase().trim();
-  // Generated codes are 6 chars from the look-alike-free alphabet; custom
-  // codes a family sets can be any 4-12 letters/digits.
+  // Generated codes are 8 chars from the look-alike-free alphabet (6 before
+  // that); a code a family sets is 8-12 letters and numbers, and one set
+  // before that rule can be as short as 4. All of them keep working.
   if (!/^[A-Z0-9]{4,12}$/.test(clean)) return null;
   const rows = await sql`select id, code, name, kind from circles where code = ${clean}`;
   return rows[0] || null;
