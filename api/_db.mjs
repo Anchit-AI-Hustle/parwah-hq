@@ -356,8 +356,8 @@ export async function ensureCircleChat(sql, circleId) {
 }
 
 // Join codes avoid look-alike characters so seniors can read them out on a
-// call. Eight of them, from the system's secure random source (Math.random
-// can be predicted from a few of its own answers), always with at least one
+// call. Eight of them, from the system's secure random source (the ordinary
+// one can be predicted from a few of its own answers), always with at least one
 // letter and one number: about 850 billion codes, so guessing one within
 // the join limits is not a plan.
 const CODE_LETTERS = 'ABCDEFGHJKMNPQRSTUVWXYZ', CODE_DIGITS = '23456789';

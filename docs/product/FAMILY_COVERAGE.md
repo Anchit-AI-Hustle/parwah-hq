@@ -112,6 +112,32 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | A wedding or function: guests, tasks, who is arriving when | Next | an event kit on top of plans and Rishtedaar |
 | Days of remembrance kept gently (the calendar date; a tithi is not worked out yet) | Live | days of remembrance |
 
+### J. The doors: accounts, joining and equal standing
+Every member is heard equally. A few doors are for the grown-ups, and the
+biggest of them two grown-ups open together. Sign-in stays a mobile number
+and a 4-number PIN; no text message is ever sent (owner's decision).
+
+| Need | Status | Where |
+|---|---|---|
+| Equal standing: who decides what | Live | ONE adult rule, `isAdultMember` in `api/_standingrules.mjs`; "Is Tara an adult?" asked once of an adult (`api/_standing.mjs`) |
+| A PIN nobody can walk through, and a parent nobody can lock out | Live | the lock grows (15 minutes, 1 hour, 24 hours); a phone that has signed in before keeps its own count (`api/_account.mjs`) |
+| Knowing when someone signs in as me | Live | a new phone is told to the older phones, with "Not me"; never a blocking step |
+| Nobody learns whether a number is on Parwah | Live | sign-in, a wrong PIN, the lock and a reset read the same for a number nobody has; the sign-in card asks "I have a profile" or "I am new here" |
+| Back in after a forgotten PIN, safely | Live | two numbers read out on a call, typed by a known grown-up of a family (never a group of friends) or the recovery contact; the owner's phones can stop it for 10 minutes |
+| A recovery contact for someone who is the only adult | Live | one trusted person, chosen in Profile |
+| A family code that is hard to guess, and a door that says nothing | Live | codes from the secure random source; 8 with a number for new custom codes; no family name before a yes; at most 10 waiting |
+| Opening the door to anyone needs two adults | Live | a second adult's yes when the family has two or more |
+| Removing someone who is on Parwah | Live | two adults agree; the person is told; never one adult alone unless the only adult and the person is a child |
+| Children and teens take part without the grown-ups' doors | Live | a member under 18 cannot approve joins or resets, change the code, move others in the tree, link households, remove anyone or delete the family |
+| "This is me": joining the profile the family already wrote | Live | a claim an adult approves, then "What your family wrote about you" with keep, hide or delete |
+| Who sees my phone and my birth year | Live | everyone here, only adults, or only me, chosen per circle; hidden by default in a group of friends |
+| A change to my place in the tree is mine to undo | Live | one tap, for 7 days |
+| Two households linked only when the grown-ups are fine with it | Live | 48 hours after the yes unless an adult objects; at once if every adult says yes |
+| Seeing what was looked at or changed about me | Live | the audit trail shows a member only their own rows; "My activity" in Profile |
+| My devices, with sign out for each | Live | Devices in Profile; "Sign out everywhere" |
+| A copy of my data, and a real delete | Live | "Download my data"; "Delete my account" and "Delete this family", each with a 7-day way back |
+| A sign-in that proves the number is mine (a text message or a call) | Decide | the owner chose no SMS; without it, making a new profile can still show that a number is free (it is counted per device) |
+
 ## 2. The architecture every feature follows
 
 **One app, one file, one database.** The app is `site/public/index.html`
