@@ -662,3 +662,25 @@ Checked at 320 and 390, light and dark, on the real app with a family of four an
 | 201 | 4 Consistency | The time under the note follows the phone's own format ("7:23 PM") while the note says "7:23 pm" | 1 | Open: cosmetic, left as the phone shows times everywhere else |
 
 New patterns: none. The sheet is the app's one bond sheet; the row is a `bondtoday` row; the note is `bondtext`; the thumbs are a `pkind` pair. No new CSS. Ids start with `dg-`.
+
+### Review N (stream B), consent, control and care both ways (2026-11-13)
+
+Checked at 320 and 390, light and dark, and at 1280, on the real app with a family of four (`site/tests/db/consent.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the Ashirwad sheet, the Reached safely sheet, every card on Today, the location card, Costs for the person cared for, Home staff for a child, the choices on the emergency card and a person's sheet).
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| B1 | 3 User control | Saving a place announced everyone's arrivals, with no say for the person | 4 | Fixed: "Announce my arrivals" is each person's own switch, off until they say yes. Saving a place asks each person once, on their own phone |
+| B2 | 3 User control | "Ask to share" could repeat every ten minutes with no way to decline | 3 | Fixed: the person sees who asked, with "Share my location" and "Not now". Not now stops that person asking for 7 days, and nobody is told off |
+| B3 | 1 Visibility | Nobody knew who had looked at where they were | 3 | Fixed: "Seen by Rohan, 10 min ago" on the person's own screen. A position is sent to someone else only when they open Family, and that look is written down |
+| B4 | 1 Visibility | An old position looked the same as a live one | 3 | Fixed: older than 5 minutes says "Last seen 12 min ago" on its own bold line, and the word "updated" is not used |
+| B5 | 3 User control | A daily call rota was arranged about a parent, without them | 3 | Fixed: they are told, choose "The time that suits me", or say "No daily call, thank you" (asked once, in the app's own sheet). After a no, only they can ask for one again |
+| B6 | 10 Privacy | The person cared for, and children, could read what their care costs | 4 | Fixed: the ledger is for the people who pay. "Show me the costs" is the person's own switch. The feed says only that a cost was noted |
+| B7 | 8 Minimalist | A late home-staff alert went to the whole family and the feed | 2 | Fixed: one named owner is told, with "Sunita came" and "On leave today" as one-tap answers. A day off marked ahead is skipped |
+| B8 | 10 Privacy | A child could read salaries, advances and the safe word | 4 | Fixed: an adult-only read, decided on the server. An adult can mark someone with no date of birth as a child; the sheet says plainly what a child is and is not sent |
+| B9 | 2 Real-world match | Care only flowed one way: children checked on a parent | 3 | Fixed: Ashirwad, on the parent's own big button, with a few one-tap lines or a voice note, answered with "🙏 Pranam" or a voice reply; and "How is your day?" asked of a child |
+| B10 | 5 Error prevention | "Reached safely" could worry people if forgotten, or ask the wrong people | 3 | Fixed: only the people the traveller chose are told. The ask to call comes once, 30 minutes after the time, in gentle words, with "30 minutes more" on the traveller's own card |
+| B11 | 10 Privacy | Anyone in the family could open anyone's emergency card | 3 | Fixed: the person and the adults they chose; all adults while that person's SOS is open. The card says who to call first, carries the line "a record your family keeps, not medical advice", prints without the private choices, and opens with no signal once opened |
+| B12 | 7 Flexibility | Open: the card cannot be saved as a picture | 1 | Open: Print (and the phone's Save as PDF) only, for now |
+| B13 | 4 Consistency | Open: the SOS alarm and the missed-dose push still go to children | 3 | Open: those pushes belong to another stream; `audienceFor` is exported for them to adopt at merge |
+
+New patterns: the care card (`.cn-card`, with `.late` and `.ok`), its row of answers (`.cn-acts`), the person chips (`.cn-who`), the one-tap lines (`.cn-lines`), a switch row (`.cn-switch`), the "Last seen" line (`.cn-last`) and the "Seen by" line (`.cn-seen`). All built from existing tokens; no new token. Ids start with `cn-`.

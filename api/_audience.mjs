@@ -20,8 +20,8 @@
 // (the gate refuses string-built SQL):
 //   (m.is_child or (m.dob is not null and m.dob > current_date - interval '18 years'))
 //
-//   POST /api/circle is not used: the standing is set through the Ashirwad
-//   area, action standing_set {targetId, child: true|false}, by an adult.
+// The mark is set by an adult through /api/chats?area=ashirwad, action
+// standing_set {targetId, child: true|false} (standingAction below).
 import { schemaOnce, isUuid } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import { adultOnly } from './_consentrules.mjs';

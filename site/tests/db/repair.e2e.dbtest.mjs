@@ -238,6 +238,9 @@ await ctxG.close();
 // =====================================================================
 // 3. THE OFFLINE EMERGENCY CARD survives a load where the family list fails
 // =====================================================================
+// A card opens for the person and the adults they chose (api/_ecard.mjs):
+// Papa chooses Anchit, on his own account, before Anchit opens it.
+await call('book', { action: 'ecard_set', code, memberId: U.Papa.memberId, viewers: [U.Anchit.memberId], contacts: [] }, { area: 'ecard' }, 'POST', U.Papa.token);
 const ctxE = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
 const E = await phone(as('Anchit'), { ctx: ctxE });
 await E.waitForTimeout(800);

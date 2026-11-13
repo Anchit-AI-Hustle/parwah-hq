@@ -21,6 +21,9 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | A daily "I am okay" from a parent, and a nudge to the family when it is missed | Live | check-in, quiet ladder |
 | One-tap emergency, with who is nearest and who to call | Live | SOS, SOS ladder, SOS dial |
 | Where everyone is, only while they agree to share | Live | location shares, places |
+| My location stays mine: "Announce my arrivals" is my own switch (off until I say yes), an ask to share has a "Not now" that mutes that person for 7 days, I see who looked ("Seen by Rohan, 10 min ago"), and an old position says "Last seen" | Live | `api/_locationapi.mjs`: `location_consent`, `location_asks`, `location_looks`; other people's positions are sent only on a read with `look=1` |
+| "Reached safely": I say where I am going and by when; one tap tells the people I chose; if I forget, they are asked gently to call, 30 minutes after the time | Live | `api/_ashirwad.mjs` (`trips`), `sweepTripsAll` from the timer |
+| An emergency card for each person, shown to that person and the adults they chose, with two contacts they chose, printable, and open with no signal once opened | Live | the card on the phone, plus `api/_ecard.mjs` behind `/api/book?area=ecard` |
 | Find a phone that is on silent | Live | find me |
 | A helper nearby is told when family is far | Live | nearby ladder |
 | Fall or no-movement signal from the phone | Later | needs the native apps (phase 2 onward) |
@@ -32,7 +35,8 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | Doctor visits: before, during, after, and the follow-ups | Live | visits, audio consultations |
 | Reports and numbers over time | Live | biomarkers, health records in the vault |
 | A hospital stay: papers, insurer, pre-auth, discharge | Live | admissions, pre-auth packets |
-| Home staff: attendance, salary, advances, late alerts | Live | staff |
+| Home staff: attendance, salary, advances, late alerts | Live | staff. The late alert goes to one named owner with a one-tap answer ("Sunita came" / "On leave today"); a day off marked ahead is skipped; salary and advances are for adults only |
+| The daily call rota is the parent's too: they are told, choose the time that suits them, and can say "No daily call, thank you" | Live | `api/_rotaconsent.mjs` |
 | Who does what between brothers and sisters, and who paid | Live | sibling tasks, expenses, split, bills |
 | Care for a child (vaccines, school, growth) | Next | section 4, tranche 3 |
 | Care for a pet | Later | |
@@ -77,12 +81,13 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | **Recommend a show, song, game, book or place to anyone, and hear back** | **Building** | Pasand recommendations |
 | Watch or listen together at a set time (a plan with a link) | Live | a `together` plan, made from a recommendation in one tap |
 | A shared family photo album | Live | Yaadon ki album: photos kept in the database like vault files, made small on the phone first; 400 a family. A move to paid storage later is one change |
+| Care that flows back from a parent: Ashirwad (a one-tap blessing or a voice note, answered with "🙏 Pranam" or a voice reply) and "How is your day?" asked of a child | Live | `api/_ashirwad.mjs` behind `/api/chats?area=ashirwad`; the parent's big button is on the senior Today |
 | A daily "what happened today" digest | Live | Aaj kya hua, from Ekta: plain words for everyone; one model call per member per day at most, 12 a circle a day, only when the owner's key is set |
 
 ### F. Money between family
 | Need | Status | Where |
 |---|---|---|
-| Who paid for care, and settling up | Live | expenses, split |
+| Who paid for care, and settling up | Live | expenses, split. The ledger is read by the people who pay; the person cared for sees only what they paid until they turn on "Show me the costs" on their own phone; no amount goes in the feed |
 | Saved ways to pay each other (UPI id, never a PIN) | Live | pay methods |
 | Splitting a trip or a function | Live | plan costs: who paid, who owes whom, a two-sided "paid" and "received". Parwah never moves money; it can open the payer's own UPI app |
 | Pocket money and chores for children | Later | |
@@ -101,6 +106,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 ### H. Children and learning
 | Need | Status | Where |
 |---|---|---|
+| A child's or teenager's standing: under 18 by date of birth, or marked as a child by an adult, is not sent SOS details, missed-dose alerts, staff salaries, the safe word, emergency items or cost ledgers, and still gets plans, cards, games, the album, stories and Ashirwad | Live (the pushes and reads listed in section 3; a child's own page is later) | `audienceFor(sql, circleId, kind)` in `api/_audience.mjs` |
 | School timetable, fees, exam dates, pick-up duty | Next | tranche 3 |
 | Vaccination record | Next | tranche 3 |
 | Screen-time agreement the family writes together | Later | |
@@ -122,12 +128,13 @@ whose name starts with an underscore, reached through an existing route by an
 
 | Route | Areas behind it |
 |---|---|
-| `/api/book` | health and contacts, vault, pay, notes, memory bond, **album**, biomarkers, pre-auth, **register (locator)**, audit, admission, **what needs doing (afterloss)** |
+| `/api/book` | health and contacts, vault, pay, notes, memory bond, **album**, **emergency card (ecard)**, biomarkers, pre-auth, **register (locator)**, audit, admission, **what needs doing (afterloss)** |
 | `/api/care` | reminders, requests, refill, bills, sibling tasks, doses, ladders, expenses, staff, renewals |
 | `/api/plans` | plans, visits, shared cards and polls, **watch together**, **cost split** |
 | `/api/games` | games, **pasand** |
 | `/api/circle` | family, members, **tree and kin**, linked families, family facts, days of remembrance |
 | `/api/settings` | keys, push, coins, plan, day, PIN, location |
+| `/api/chats` | chats, **Ashirwad, How is your day, Reached safely, a child's standing** (`area=ashirwad`) |
 | `/api/ekta` | the assistant, **the daily digest** (`action: digest`) |
 | `/api/chats`, `/api/events`, `/api/auth`, `/api/diag` | as named |
 
@@ -197,6 +204,34 @@ Honest limits:
   links appear only on plans in rupees.
 - **A together plan is seen by the whole circle**, like every plan. Only the
   people ticked are told.
+
+### Consent, control and care both ways (stream B, live)
+
+Care used to be done to the parent. These make the person who is cared for
+an equal, and each rule is enforced on the server:
+
+- **Location.** Announce my arrivals (own switch, off by default), "Not now"
+  to an ask (7 days), who looked, and "Last seen" for a position older than
+  5 minutes.
+- **Call rota.** The person called is told, chooses the time, can say "No
+  daily call, thank you"; nobody else can restart it for them.
+- **Costs.** Shown to the people who pay. "Show me the costs" is the
+  person's own switch. A child reads none of it.
+- **Home staff.** One named owner hears a late alert and answers in one tap.
+  Salary and advances are for adults.
+- **A child's standing.** `audienceFor(sql, circleId, kind)` and
+  `pushAudience(...)` in `api/_audience.mjs` are the one filter. Adult-only
+  kinds: `sos_details`, `missed_dose`, `staff_money`, `staff_late`,
+  `safe_word`, `emergency_items`, `costs`. A kind nobody listed is adult
+  only. Used today by: the staff late alert, the costs and staff reads, the
+  safe word, emergency-only register entries, the emergency card, Ashirwad
+  and trips. Still to adopt it (owned by other modules): the SOS push and
+  the SOS block of the family read, and the missed-dose push.
+- **Ashirwad and "How is your day?"**, **Reached safely**, and **who may
+  open an emergency card** (see the rows above).
+
+Not built here: a child's own page; a card saved as an image (Print, and
+the phone's "Save as PDF", is the way today).
 
 ## 4. What comes next
 

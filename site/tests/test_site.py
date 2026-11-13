@@ -868,7 +868,6 @@ CIRCLE_WIDE_OK = {
     ("plans.mjs",  ""):                   "a plan invites the whole circle",
     ("games.mjs",  "lobby is open"):      "an open lobby invites everyone",
     ("_ladder.mjs", "Calling "):          "nobody answered an SOS: everyone sees who is being called next",
-    ("_staff.mjs", "not marked in yet"):  "anyone in the family may be the one who can check at home",
     ("_renewals.mjs", "payload, {})"):    "a household date nobody looks after yet: anyone may take it",
     ("_bond.mjs", "Plan it together on Parwah"): "a festival the circle itself chose, once, 14 days ahead",
     ("_famlink.mjs", "asks to link family trees"): "another family asks to link trees: any adult of this one may be the one who answers",
@@ -3786,6 +3785,128 @@ check("digest: the rules test runs in the gate, and the db and browser tests run
               and "waitForTimeout" not in (REPO / "site/tests/db" / f).read_text(encoding="utf-8")
               for f in ("digest.dbtest.mjs", "digest.e2e.dbtest.mjs"))
       and "getHours()" not in (REPO / "site/tests/db/digest.dbtest.mjs").read_text(encoding="utf-8"))
+
+# ---------- Consent, control and care both ways ----------
+# The person who is cared for is an equal: these are the rules that must not
+# quietly come undone. Each reads the code itself, not a neighbouring line.
+_cn = {f: (API_DIR / f).read_text(encoding="utf-8") for f in
+       ("_consentrules.mjs", "_audience.mjs", "_ashirwad.mjs", "_ecard.mjs", "_rotaconsent.mjs",
+        "_locationapi.mjs", "_expenses.mjs", "_staff.mjs", "_familycare.mjs", "_careprep.mjs",
+        "events.mjs", "chats.mjs", "book.mjs")}
+_cn_minor = "(m.is_child or (m.dob is not null and m.dob > current_date - interval '18 years'))"
+check("consent: the rules module imports only the remembrance rules, so the gate can test it before npm install",
+      re.findall(r"^import .* from '([^']+)'", _cn["_consentrules.mjs"], re.M) == ["./_rememberrules.mjs"]
+      and "node site/tests/consenttest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
+check("consent: no new serverless function - Ashirwad rides /api/chats and the card's rule rides /api/book",
+      "=== 'ashirwad') return ashirwadApi(req, res)" in _cn["chats.mjs"] and "area === 'ecard'" in _cn["book.mjs"]
+      and not (API_DIR / "ashirwad.mjs").exists() and not (API_DIR / "ecard.mjs").exists())
+check("consent: audienceFor is the one filter - on Parwah, never remembered, and a child only for the warm kinds",
+      "export async function audienceFor(sql, circleId, kind" in _cn["_audience.mjs"]
+      and "m.user_id is not null and not m.remembered" in _cn["_audience.mjs"] and _cn_minor in _cn["_audience.mjs"]
+      and "export async function pushAudience(" in _cn["_audience.mjs"]
+      and "export function adultOnly(kind) { return WARM_KINDS.indexOf(kind) < 0; }" in _cn["_consentrules.mjs"]
+      and all(k in _cn["_consentrules.mjs"].split("export const ADULT_ONLY_KINDS")[1].split("]")[0]
+              for k in ("sos_details", "missed_dose", "staff_money", "safe_word", "emergency_items", "costs")))
+check("consent: a child cannot be marked by a child, nobody marks themself, and an adult by date of birth cannot be marked",
+      "if (await minorOf(sql, circle.id, me.id)) return bad('An adult in the family does this.', 403)" in _cn["_audience.mjs"]
+      and "if (body.targetId === me.id)" in _cn["_audience.mjs"] and "if (child && t.grown)" in _cn["_audience.mjs"])
+check("consent: the safe word and 'only in an emergency' entries are not sent to a child",
+      "coalesce((to_jsonb(v)->>'is_child')::boolean, false) or (v.dob is not null and v.dob > current_date - interval '18 years')" in _cn["_familycare.mjs"]
+      and "const emergency = (row) => !cnMinor && " in _cn["_careprep.mjs"])
+_cn_news = _cn["_locationapi.mjs"][_cn["_locationapi.mjs"].index("async function placeNews("):]
+check("location: an arrival is announced only for a person who said yes, and only they can say it",
+      "from location_consent where circle_id = ${circle.id} and member_id = ${me.id} and announce" in _cn_news
+      and _cn_news.index("and announce`") < _cn_news.index("arrived at")
+      and "announce boolean not null default false" in _cn["_locationapi.mjs"]
+      and "values (${circle.id}, ${me.id}, ${body.on}, now())" in _cn["_locationapi.mjs"]
+      and "set announce = true" not in _cn["_locationapi.mjs"] and _cn["_locationapi.mjs"].count("announce = ${body.on}") == 1)
+check("location: 'Not now' mutes that asker for 7 days, and a muted ask is refused before it is sent",
+      "export const ASK_MUTE_DAYS = 7;" in _cn["_consentrules.mjs"]
+      and "status = 'declined', muted_until = ${until}" in _cn["_locationapi.mjs"]
+      and "target_id = ${me.id} and asker_id = " in _cn["_locationapi.mjs"]
+      and _cn["_locationapi.mjs"].index("and muted_until > now()") < _cn["_locationapi.mjs"].index("would like to know where you are"))
+check("location: other people's positions are sent only on a look, the look is written down, and the person is shown who looked",
+      "const look = q.look === '1';" in _cn["_locationapi.mjs"] and "insert into location_looks" in _cn["_locationapi.mjs"]
+      and "lat: open ? r.lat : null, lng: open ? r.lng : null" in _cn["_locationapi.mjs"]
+      and "seenBy: seen.map(" in _cn["_locationapi.mjs"]
+      and "locUrl() + (curTab === 'people' ? '&look=1' : '')" in _app_src and "'Seen by ' + cnFirst(s.name)" in _app_src)
+check("location: older than five minutes is 'Last seen', on its own line, never 'updated'",
+      "export const LIVE_MINUTES = 5;" in _cn["_consentrules.mjs"] and "live: isLive(r.updated_at)" in _cn["_locationapi.mjs"]
+      and "var cnOld = x.live === false || x.stale;" in _app_src and "if (!cnOld) bits.push('updated ' + locAgo(x.updatedAt));" in _app_src
+      and 'class="cn-last"' in _app_src)
+check("call rota: the person who is called is told, chooses the time, and alone can say no; nobody restarts it for them",
+      "if (t.about_member !== me.id) return bad(403" in _cn["_rotaconsent.mjs"]
+      and "await rotaTellPerson(sql, circle.id, me, about, time)" in _cn["_familycare.mjs"]
+      and "about.id !== me.id && await rotaRefused(sql, circle.id, about.id)" in _cn["_familycare.mjs"]
+      and all(a in _cn["_rotaconsent.mjs"] for a in ("'rota_time'", "'rota_decline'", "'rota_welcome'"))
+      and "No daily call, thank you" in _app_src and "data-cnrotasave" in _app_src)
+_cn_exget = _cn["_expenses.mjs"][_cn["_expenses.mjs"].index("if (req.method === 'GET')"):]
+check("costs: who reads the ledger is decided in the query - payers, the person's own switch, never a child - and no amount goes in the feed",
+      "and not (v.is_child or (v.dob is not null and v.dob > current_date - interval '18 years'))" in _cn_exget
+      and "coalesce(cp.show, false) or e.paid_by = v.id or e.created_by = v.id" in _cn_exget
+      and "(v.role <> 'parent' and e.for_member is distinct from v.id)" in _cn_exget
+      and "values (${circle.id}, ${me.id}, ${b.on}, now())" in _cn["_expenses.mjs"]
+      and "me.name + ' noted a care cost'" in _cn["_expenses.mjs"] and "' noted ' + money(" not in _cn["_expenses.mjs"]
+      and 'id="cn-costs"' in _app_src and "Show me the costs" in _app_src)
+_cn_late = _cn["_staff.mjs"][_cn["_staff.mjs"].index("export async function sweepStaffLate("):]
+check("home staff: the late alert goes to one named owner, never the whole family and never the feed; a marked day is skipped",
+      "{ only: to[0] }" in _cn_late and "insert into events" not in _cn_late and "}, {})" not in _cn_late
+      and "where not exists (select 1 from staff_attendance" in _cn_late
+      and "export const OFF_MARK = 'off';" in _cn["_staff.mjs"] and "owner_id uuid references members(id)" in _cn["_staff.mjs"]
+      and "data-cnstaff" in _app_src and "On leave today" in _app_src)
+check("home staff: salary, advances and what is due are read only for an adult, and the money actions refuse a child",
+      "case when ${adult}::boolean then s.salary end as salary" in _cn["_staff.mjs"]
+      and _cn["_staff.mjs"].count("and ${adult}::boolean") >= 2 and "pay: adult ? payFor(s, month, mk, av) : null" in _cn["_staff.mjs"]
+      and "MONEY_ACTIONS.includes(b.action) && await minorOf(sql, circle.id, me.id)" in _cn["_staff.mjs"]
+      and "noted an advance of" not in _cn["_staff.mjs"])
+check("ashirwad: a card is read by the person it is for and the sender; sending is rate limited, failing closed; voice is checked like a chat voice note",
+      "(a.to_member = ${me.id} or a.to_member is null)" in _cn["_ashirwad.mjs"]
+      and "(from_member = ${me.id} or to_member = ${me.id} or to_member is null)" in _cn["_ashirwad.mjs"]
+      and "(a.from_member = ${me.id} or r.member_id = ${me.id})" in _cn["_ashirwad.mjs"]
+      and _cn["_ashirwad.mjs"].count("{ failClosed: true }") >= 4 and "checkVoice(b.voice, b.secs)" in _cn["_ashirwad.mjs"]
+      and "requireMember(sql," in _cn["_ashirwad.mjs"] and "schemaOnce(" in _cn["_ashirwad.mjs"])
+check("ashirwad: the parent's way in is a big button on the senior Today, and anyone has one too",
+      _app_src.index('id="seniorui"') < _app_src.index('id="cn-bless-big"') < _app_src.index('class="homehero"')
+      and 'id="cn-bless-open"' in _app_src and "data-cnpranam" in _app_src and "data-cnanswer" in _app_src)
+_cn_sweep = _cn["_ashirwad.mjs"][_cn["_ashirwad.mjs"].index("export async function sweepTripsAll("):].split("\n}\n", 1)[0]
+check("reached safely: the ask to call is one claiming UPDATE, 30 minutes after the expected time, on an injected clock, from the timer",
+      "export const TRIP_GRACE_MIN = 30;" in _cn["_consentrules.mjs"]
+      and "export async function sweepTripsAll(sql, nowMs = Date.now())" in _cn["_ashirwad.mjs"]
+      and "update trips set asked_at" in _cn_sweep and "asked_at is null and expect_at <= ${lateBy}" in _cn_sweep and "Date.now()" not in _cn_sweep.split("{", 1)[1]
+      and "await one(() => sweepTripsAll(sql));" in _cn["events.mjs"]
+      and _cn["events.mjs"].index("await one(() => sweepTripsAll(sql));") > _cn["events.mjs"].index("export async function runTick("))
+check("reached safely: a remembered person is never told, chosen or asked about; only the traveller says they reached",
+      "if (!who || who.remembered) continue;" in _cn_sweep and "pushAudience(sql, t.circle_id, 'trip'" in _cn_sweep
+      and "const tell = await audienceFor(sql, circle.id, 'trip', { only: want });" in _cn["_ashirwad.mjs"]
+      and "and circle_id = ${circle.id} and member_id = ${me.id}`)[0];" in _cn["_ashirwad.mjs"]
+      and "(t.member_id = ${me.id} or ${me.id} = any(t.tell))" in _cn["_ashirwad.mjs"])
+check("emergency card: the person, the adults they chose, the adults during an SOS; never a child, never a remembered person",
+      "where p.circle_id = ${circleId} and not p.remembered" in _cn["_ecard.mjs"]
+      and "v.id = any(coalesce(e.viewers, '{}'))" in _cn["_ecard.mjs"] and "p.id = any(${sos}::uuid[])" in _cn["_ecard.mjs"]
+      and "not (v.is_child or (v.dob is not null and v.dob > current_date - interval '18 years'))" in _cn["_ecard.mjs"]
+      and "await audienceFor(sql, circle.id, 'emergency_items', { only: wantV })" in _cn["_ecard.mjs"]
+      and "id = any(${wantC}::uuid[]) and not remembered" in _cn["_ecard.mjs"]
+      and "export const ECARD_CONTACTS_MAX = 2;" in _cn["_consentrules.mjs"])
+check("emergency card: the app asks before it opens someone else's, keeps the answer for offline, prints the legal line and not the choices",
+      "if (!cnEcMay(memberId)) { cnEcAsk(memberId); return; }" in _app_src and "localStorage.setItem(cnEc.key" in _app_src
+      and "It is not medical advice" in _cn["_consentrules.mjs"] and 'id="cn-ec-legal"' in _app_src
+      and "@media print{#cn-ec-mine{display:none!important} #ecard .cn-legal{display:block!important}}" in _app_src)
+_cn_ids = re.findall(r'id="(cn-[a-z0-9-]+)"', _app_src)
+check(f"consent: its ids all start with cn- ({len(set(_cn_ids))}), none twice in the page, and its functions start with cn",
+      len(_cn_ids) == len(set(_cn_ids)) and len(set(_cn_ids)) >= 30
+      and len(re.findall(r"function cn[A-Z]\w*\(", _app_src)) >= 30)
+_cn_copy = " ".join(re.findall(r"'([^'\n]{12,})'", _app_src[_app_src.index("// ---------- consent, control and care both ways ----------"):_app_src.index("// ---------- location sharing (consent first) ----------")]))
+check("consent: its screens pass the banned-words scan, with no long dashes",
+      not re.search(r"\b(elderly|burden|cure|treat|heal|therapy|remedy|medicinal|prevents|reverses|guaranteed|arthritis|diabetes)\b", _cn_copy, re.I)
+      and "\u2014" not in _cn_copy and "\u2013" not in _cn_copy and len(_cn_copy) > 2000)
+_cn_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("consent: the db and browser tests run in test:db, and the browser test waits for state, never for a clock",
+      all(("site/tests/db/" + f) in _cn_testdb and (REPO / "site/tests/db" / f).exists() for f in ("consent.dbtest.mjs", "consent.e2e.dbtest.mjs"))
+      and "waitForTimeout" not in (REPO / "site/tests/db/consent.e2e.dbtest.mjs").read_text(encoding="utf-8"))
+_cn_cov = (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
+check("consent: the coverage map says what is live, and the leader review is written down",
+      all(w in _cn_cov for w in ("Ashirwad", "Reached safely", "Announce my arrivals", "Show me the costs", "audienceFor"))
+      and "stream B" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
