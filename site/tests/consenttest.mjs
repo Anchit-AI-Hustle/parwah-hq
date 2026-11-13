@@ -44,7 +44,7 @@ ok('a line is found by its key, and nothing else is', R.blessLine('khush') === '
 ok('the one-tap answer is Pranam', R.PRANAM === '🙏 Pranam');
 ok('the day has a few answers, one of them asks for a call', R.DAY_ANSWERS.length >= 3 && R.DAY_ANSWERS.some(a => /call me/i.test(a.t)) && R.dayAnswer('good') && R.dayAnswer('nope') === null);
 const words = R.BLESS_LINES.map(l => l.t).concat(R.DAY_ANSWERS.map(a => a.t), [R.DAY_ASK, R.ECARD_LEGAL, R.tripAskLine('Asha'), R.tripLine('Asha', 'Delhi', 'train')]).join(' ');
-ok('no long dashes in the words people read', !/[–—]/.test(words));
+ok('no long dashes in the words people read', words.indexOf(String.fromCharCode(0x2013)) < 0 && words.indexOf(String.fromCharCode(0x2014)) < 0);
 ok('none of the words Parwah never uses', !/\b(elderly|burden|cure|treat|heal|therapy|remedy|medicinal|prevents|reverses|guaranteed|arthritis|diabetes)\b/i.test(words), words);
 
 // ---- Reached safely

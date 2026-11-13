@@ -362,7 +362,7 @@ export default async function handler(req, res) {
     // Ask someone to announce theirs. It is only an ask: at most one a week
     // from one person to another, and never to someone who already said yes.
     if (action === 'announce_ask') {
-      const t = await sql`select id, name, user_id from members where id = ${String(body.targetId || '')}::uuid and circle_id = ${circle.id}`
+      const t = await sql`select id, name, user_id from members where id = ${String(body.askWho || '')}::uuid and circle_id = ${circle.id}`
         .catch(() => []);
       if (!t[0] || t[0].id === me.id) return res.status(404).json({ ok: false, error: 'Choose someone else in this ' + (circle.kind === 'group' ? 'group' : 'family') });
       if (!t[0].user_id) return res.status(400).json({ ok: false, error: t[0].name + ' is not on Parwah, so cannot be asked.' });

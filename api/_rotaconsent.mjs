@@ -74,12 +74,13 @@ export async function rotaConsentAction(sql, circle, me, body, tz, h) {
   if (action === 'rota_time') {
     const time = validHHMM(body.time);
     if (!time) return bad(400, 'Choose a time, like 7:30 in the evening');
-    const zone = validTz(t.tz) || validTz(tz) || 'Asia/Kolkata';
+    // Their own clock: 8:30 means 8:30 where the person who is called lives.
+    const zone = validTz(tz) || validTz(t.tz) || 'Asia/Kolkata';
     const today = dayIn(zone);
     let at = h.deadlineOf(today, time, zone);
     if (at <= Date.now()) at = h.deadlineOf(addDays(today, 1), time, zone);
     const dueAt = new Date(at);
-    const r = await sql`update requests set due_at = ${dueAt}, due_date = ${localDate(at, zone)}, series_anchor = ${dueAt},
+    const r = await sql`update requests set due_at = ${dueAt}, due_date = ${localDate(at, zone)}, series_anchor = ${dueAt}, tz = ${zone},
                           template_data = ${JSON.stringify({ ...d, time, timeBy: me.id })}::jsonb
                         where id = ${t.id} and status in ('open','assigned','claimed') returning id`;
     if (!r[0]) return bad(409, 'This changed a moment ago. Have another look.');

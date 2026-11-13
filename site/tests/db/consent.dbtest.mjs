@@ -172,8 +172,8 @@ const said = async (like) => (await admin.query(`select text from events where c
   await sloc(rohan, { action: 'announce_set', on: false });
   await sloc(rohan, { action: 'update', lat: HOME.lat, lng: HOME.lng, accuracy: 10 });
   ok('and after he turns it off, coming back is told to nobody', (await moved()).length === 1, (await moved()).join(' | '));
-  ok('asking someone to announce is one ask a week', (await sloc(meera, { action: 'announce_ask', targetId: papa.id })).status === 200
-     && (await sloc(meera, { action: 'announce_ask', targetId: papa.id })).status === 429 && (await peek(papa)).me.announce === false);
+  ok('asking someone to announce is one ask a week', (await sloc(meera, { action: 'announce_ask', askWho: papa.id })).status === 200
+     && (await sloc(meera, { action: 'announce_ask', askWho: papa.id })).status === 429 && (await peek(papa)).me.announce === false);
 
   // ---- who looked
   let seen = (await peek(rohan)).me.seenBy;

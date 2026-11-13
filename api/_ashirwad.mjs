@@ -186,10 +186,14 @@ export default async function ashirwadApi(req, res) {
         order by t.expect_at`;
       // The people who can be sent to, chosen or told: on Parwah, with us.
       const people = await audienceFor(sql, circle.id, 'ashirwad', { except: me.id });
+      const kids = await sql`select m.id, m.is_child from members m where m.circle_id = ${circle.id} and not m.remembered
+                             and (m.is_child or (m.dob is not null and m.dob > current_date - interval '18 years'))`;
       return res.status(200).json({ ok: true,
         lines: BLESS_LINES, dayAnswers: DAY_ANSWERS, dayAsk: DAY_ASK, pranam: PRANAM, graceMin: TRIP_GRACE_MIN,
-        me: { minor: await minorOf(sql, circle.id, me.id) },
-        people,
+        me: { minor: await minorOf(sql, circle.id, me.id),
+              // "No daily call, thank you" (api/_rotaconsent.mjs): only they can lift it.
+              rotaNo: !!((await sql`select to_jsonb(m) ->> 'rota_no_at' as no from members m where m.id = ${me.id}`)[0] || {}).no },
+        people, names: Object.fromEntries((await sql`select id, name from members where circle_id = ${circle.id} and not remembered`).map(m => [m.id, m.name])), minors: kids.map(k => k.id), marked: kids.filter(k => k.is_child).map(k => k.id),
         inbox: inbox.map(r => cardOut(r, me.id)),
         sent: sent.map(r => ({ ...cardOut(r, me.id),
           replies: replies.filter(x => x.ashirwad_id === r.id).map(x => ({ memberId: x.member_id, name: x.name, kind: x.kind, line: x.line, hasVoice: !!x.has_audio, secs: x.audio_secs || null, at: x.at })) })),
