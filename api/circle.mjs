@@ -239,10 +239,12 @@ export default async function handler(req, res) {
       }
       if (!circleId) return res.status(200).json({ ok: true, status: 'none' });
       const cur = await sql`select code, name from circles where id = ${circleId}`;
-      // The family's name is said only once they are in.
-      const now = cur[0] ? { code: cur[0].code } : {};
+      // The family's name, and its code if that has changed, are said only
+      // once they are in: a family may have changed its code to keep someone
+      // out, and that someone may be the one still waiting.
+      const now = {};
       const m = await sql`select id, role from members where circle_id = ${circleId} and user_id = ${su.user_id}`;
-      if (m[0]) return res.status(200).json({ ok: true, status: 'in', ...now, circleName: cur[0] ? cur[0].name : undefined, memberId: m[0].id, role: m[0].role });
+      if (m[0]) return res.status(200).json({ ok: true, status: 'in', code: cur[0] ? cur[0].code : undefined, circleName: cur[0] ? cur[0].name : undefined, memberId: m[0].id, role: m[0].role });
       const q = reqRow ? [reqRow] : await sql`select status from join_requests where circle_id = ${circleId} and user_id = ${su.user_id}
                           order by created_at desc limit 1`;
       return res.status(200).json({ ok: true, status: q[0] ? q[0].status : 'none', ...now });

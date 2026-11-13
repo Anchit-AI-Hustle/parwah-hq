@@ -235,7 +235,7 @@ export async function lockNotice(sql, user, minutes, ownDevice) {
     ? 'A phone you use typed a wrong PIN 5 times. It is locked for ' + t + '. Your other phones still work.'
     : 'Someone typed a wrong PIN for your number 5 times. New phones are locked for ' + t + '. The phones you already use still work.';
   await logEvent(sql, user.id, 'lock', body);
-  await pushUser(sql, user.id, { title: '🔒 Wrong PIN tries on your number', body, url: '/#profile' });
+  await pushUser(sql, user.id, { title: '🔒 Wrong PIN tries on your number', body, url: '/#home' });
 }
 
 // ---- sessions and devices --------------------------------------------------
@@ -261,7 +261,7 @@ export async function startSession(sql, user, { device, deviceHash, ua, quiet = 
     const text = 'New sign-in on another phone (' + name + '). Was this you?';
     await sql`insert into account_alerts (user_id, kind, sid, device_hash, text) values (${user.id}, 'new_device', ${made[0].sid}, ${deviceHash}, ${text})`;
     await logEvent(sql, user.id, 'signin', 'Signed in on a new phone: ' + name);
-    await pushUser(sql, user.id, { title: '📱 New sign-in on another phone', body: 'Was this you? If not, open Parwah and tap "Not me".', url: '/#profile' });
+    await pushUser(sql, user.id, { title: '📱 New sign-in on another phone', body: 'Was this you? If not, open Parwah and tap "Not me".', url: '/#home' });
   } else if (!quiet) {
     await logEvent(sql, user.id, 'signin', 'Signed in on ' + name);
   }
@@ -564,7 +564,7 @@ export async function accountAction(sql, req, body, token) {
     if (!(await rateLimit(sql, 'recovery', uid, 6, 86400, { failClosed: true }))) return bad('You have changed this a lot today. Please try again tomorrow.', 429);
     await sql`update users set recovery_user = ${pick.user_id} where id = ${uid}`;
     await logEvent(sql, uid, 'recovery', 'You chose ' + pick.name + ' as your recovery contact.');
-    await pushUser(sql, pick.user_id, { title: '🤝 ' + su.name + ' trusts you', body: su.name + ' chose you to let them back in if they forget their PIN. Call them before you say yes.', url: '/#profile' });
+    await pushUser(sql, pick.user_id, { title: '🤝 ' + su.name + ' trusts you', body: su.name + ' chose you to let them back in if they forget their PIN. Call them before you say yes.', url: '/#home' });
     return good({ recovery: { userId: pick.user_id, name: pick.name } });
   }
 
@@ -596,7 +596,7 @@ export async function accountAction(sql, req, body, token) {
     const at = new Date(Date.now() + UNDO_DAYS * 86400000).toISOString();
     await sql`update users set delete_at = ${at}, delete_posts = ${body.removePosts === true} where id = ${uid}`;
     await logEvent(sql, uid, 'delete', 'You asked to delete your account. It will be deleted in ' + UNDO_DAYS + ' days unless you keep it.');
-    await pushUser(sql, uid, { title: 'Your Parwah account will be deleted in ' + UNDO_DAYS + ' days', body: 'Not you, or changed your mind? Open Parwah and tap "Keep my account".', url: '/#profile' });
+    await pushUser(sql, uid, { title: 'Your Parwah account will be deleted in ' + UNDO_DAYS + ' days', body: 'Not you, or changed your mind? Open Parwah and tap "Keep my account".', url: '/#home' });
     return good({ deleteAt: at });
   }
   return bad('Unknown action');

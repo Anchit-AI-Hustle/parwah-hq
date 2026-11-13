@@ -304,7 +304,7 @@ export default async function handler(req, res) {
           { only: w.member_id });
       }
       await logEvent(sql, ur[0].id, 'reset', 'Someone asked the family to reset your PIN.');
-      await pushUser(sql, ur[0].id, { title: '🔑 Someone asked to reset your PIN', body: 'Was this you? If not, open Parwah and tap "Not me" to stop it.', url: '/#profile' });
+      await pushUser(sql, ur[0].id, { title: '🔑 Someone asked to reset your PIN', body: 'Was this you? If not, open Parwah and tap "Not me" to stop it.', url: '/#home' });
       await padTo(t0, 500);
       return res.status(200).json(same);
     }
@@ -361,7 +361,7 @@ export default async function handler(req, res) {
       if (!done[0]) return res.status(404).json({ ok: false, error: 'That request is already decided' });
       if (status === 'approved') {
         await logEvent(sql, r[0].user_id, 'reset', approver.name + ' said yes to resetting your PIN.');
-        await pushUser(sql, r[0].user_id, { title: '🔑 ' + approver.name + ' said yes to a new PIN for you', body: 'Was this you? If not, open Parwah and tap "Not me" to stop it.', url: '/#profile' });
+        await pushUser(sql, r[0].user_id, { title: '🔑 ' + approver.name + ' said yes to a new PIN for you', body: 'Was this you? If not, open Parwah and tap "Not me" to stop it.', url: '/#home' });
       }
       return res.status(200).json({ ok: true, status });
     }

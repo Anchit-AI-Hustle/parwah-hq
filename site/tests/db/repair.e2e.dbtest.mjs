@@ -120,6 +120,8 @@ for (const [name, rel] of [['Rahul', 'son'], ['Papa', 'father']]) {
   U[name].memberId = j.memberId;
 }
 await admin.query(`update members set role = 'parent' where id = $1`, [U.Papa.memberId]);
+// Letting someone back in is for a known grown-up: Anchit has a date of birth.
+await admin.query(`update members set dob = '1988-01-01' where id = $1`, [U.Anchit.memberId]);
 const as = (name) => ({ ...U[name], code, circleName: 'Tandon Family' });
 const book = (name, body) => call('book', { code, memberId: U[name].memberId, ...body }, {}, 'POST', U[name].token);
 await book('Anchit', { action: 'add', kind: 'fact', category: 'blood', name: 'Blood group', forwhat: 'B+', aboutId: U.Papa.memberId });
@@ -144,6 +146,10 @@ ok('with "Let them in" and "Not now", 44px or more', await S.$$eval('#pinresets 
 await S.click('#bell'); await S.waitForTimeout(300);
 ok('the same question is in Notifications', /Rahul cannot get in/.test(await S.textContent('#npinresets')));
 await shotAll(S, 'pinreset-notifs');
+await S.click('#npinresets [data-resetok]'); await S.waitForTimeout(200);
+ok('"Let them in" does nothing until the two numbers on their screen are typed', !(await S.isVisible('#asksheet')) && /two numbers/.test(await S.textContent('#toast')));
+// The two numbers Rahul's phone shows, heard from him on a call.
+await S.fill('#npinresets [data-resetcode]', asked.sayCode);
 await S.click('#npinresets [data-resetok]'); await S.waitForTimeout(200);
 ok('"Let them in" asks once more, in the app\'s own sheet', await S.isVisible('#asksheet') && /Let Rahul back in\?/.test(await S.textContent('#as-q')));
 await S.click('#as-yes'); await S.waitForTimeout(900);
@@ -195,7 +201,14 @@ ok('"Check now" before anyone answers says not yet, and keeps waiting', await F.
 const A2 = await phone(as('Anchit'), { hash: '#home' });
 await A2.waitForTimeout(800);
 ok('on another phone, the family sees "Papa cannot get in" (from the background refresh)', /Papa cannot get in/.test(await A2.textContent('#pinresets')), await A2.textContent('#pinresets'));
+ok('the phone that asked shows two numbers to read out', /^\d \d$/.test((await F.textContent('#ac-rs-code')).trim()));
+await A2.fill('#pinresets [data-resetcode]', JSON.parse(kept1.s).say);
 await A2.click('#pinresets [data-resetok]'); await A2.click('#as-yes'); await A2.waitForTimeout(900);
+// Papa is still signed in on another phone, so the yes waits ten minutes in
+// which that phone could say "not me". Here the ten minutes have passed.
+await F.click('#au-rs-check'); await F.waitForTimeout(900);
+ok('while Papa\'s own phone could still stop it, the asking phone is told to wait', await F.isVisible('#au-reset') && /family said yes/i.test(await F.textContent('#au-rs-msg')), await F.textContent('#au-rs-msg'));
+await admin.query(`update pin_resets set veto_until = now() - interval '1 second' where status = 'approved'`);
 await F.click('#au-rs-check'); await F.waitForTimeout(900);
 ok('the yes reaches the phone that asked: choose a new PIN', await F.isVisible('#au-pin') && await F.isVisible('#au-pin2') && /family said yes/.test(await F.textContent('#au-pinnote')) && /Save my new PIN/.test(await F.textContent('#au-go')));
 await shotAll(F, 'reset-newpin');

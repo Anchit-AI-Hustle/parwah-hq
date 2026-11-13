@@ -9051,6 +9051,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     // Changing the door is for the grown-ups.
     $('jp-toggle').hidden = !j.me.may; $('code-edit').hidden = !j.me.may;
     $('ac-famdel').hidden = !j.me.may || !!j.deleteAt;
+    $('ac-famdel').textContent = famKind === 'group' ? 'Delete this group' : 'Delete this family';
     $('ac-seephone').value = j.privacy.phone; $('ac-seebirth').value = j.privacy.birth;
     $('ac-seehint').textContent = 'In ' + (state.circleName || 'this ' + (famKind === 'group' ? 'group' : 'family')) + '. You choose again for each family or group you are in.';
     renderJoinReqs();
@@ -9086,7 +9087,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   });
   $('ac-famdel').addEventListener('click', function(){
     var many = acFam && acFam.adults > 1;
-    askSheet('Delete this family from Parwah?', (many ? 'Every adult in the family has to say yes. ' : '') + 'Then it is deleted after 7 days, with everything in it: chats, papers, the tree. Any adult can stop it before then.', 'Ask to delete it', 'Keep it', true)
+    var w = famKind === 'group' ? 'group' : 'family';
+    askSheet('Delete this ' + w + ' from Parwah?', (many ? 'Every adult in the ' + w + ' has to say yes. ' : '') + 'Then it is deleted after 7 days, with everything in it: chats, papers and plans. Any adult can stop it before then.', 'Ask to delete it', 'Keep it', true)
       .then(function(y){ if (y) acFamAct({ action: 'family_delete_ask' }, many ? 'The other adults have been asked' : 'It will be deleted in 7 days. You can stop it in the Family tab.'); });
   });
   // "This is": when someone joining says the family already added them by name.
