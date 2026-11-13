@@ -680,3 +680,25 @@ Screens: the Notifications card and "Is Parwah working?" in Profile; the "Will s
 | F9 | 7 Flexibility | No way to mute one chat from the screen | 2 | Open: the server honours a `chat_mutes` table when another stream adds one |
 
 New patterns: `nt-line` (a mark, a bold fact, a small "what to do"), `nt-reach` (a dot, a name, words), `nt-times` (two time fields in a row that wraps). All from tokens; ids start with `nt-`.
+### Review N (stream C), Ekta: the confirm card, "Ekta and me", and "Aaj ka din" (2026-11-13)
+
+Checked at 320 and 390, light and dark, and at 1280 for sideways scroll and small text, on the real app with a family of three and a relative who is not on Parwah (`site/tests/db/ektaagent.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on Ekta's screen with a card waiting in senior mode, after a yes, with a WhatsApp hand-off, on the "Ekta and me" sheet, on the morning row on Today and on the "Aaj ka din" sheet).
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| C1 | 3 User control | An assistant that can send a message or make a plan could do it on a misheard word | 4 | Fixed: she never acts. Every such thing is a card, "Ekta wants to: send "I reached" to Rohan", with "Yes, do it" and "No". The server runs it once on the yes, as that member, through the same handler as the screen. A second tap does nothing; a card is good for 30 minutes |
+| C2 | 1 Visibility | "Done!" from an assistant when nothing was done | 4 | Fixed: under her words the server writes what really happened: "Waiting for your yes", "Not done" with the reason, and that time or steps ran out. The old "Ho gaya!" on an unfinished turn is gone |
+| C3 | 10 Privacy | She could read out what one person kept from another, or post it into the family chat | 4 | Fixed: each read uses the owning feature's own rule for this member. In a shared chat she is given only what the whole family sees and can prepare nothing. A reply that is only her records fallback is never posted there |
+| C4 | 2 Real-world match | "Ekta" is also the word for unity: she answered a family talking about its ekta | 3 | Fixed: she answers to "@Ekta" or her name as the first word. The chat screen says so |
+| C5 | 7 Flexibility | A parent who does not type could not send word | 3 | Fixed: "Ekta, tell Rohan I reached" by voice makes the card with no AI key and no coins. In senior mode the two buttons are 56px tall and the answer is read aloud |
+| C6 | 2 Real-world match | "Papa", "Dadi" and "kal" guessed by a model | 3 | Fixed: worked out by rule in the member's own family and time zone before any model. Two grandmothers: she asks which one. A guess ("kal" as tomorrow, "at 7" as the morning) is marked for her to check |
+| C7 | 3 User control | Memory that fills up by itself | 4 | Fixed: she asks "Shall I remember this?" and saves on a yes only. "What Ekta remembers about me" lists each thing with Forget, and "Forget everything" asks first. Passwords, PINs, OTPs, card numbers and health readings are refused |
+| C8 | 3 User control | No way to stop her | 3 | Fixed: "Ekta may do things for me" (off: she only reads out), and for adults "Pause Ekta for this family". Emergency words and SOS work either way. "What Ekta did for me" lists each confirmed action by kind and time, never its words |
+| C9 | 8 Minimalist | Nudges can nag or shame | 3 | Fixed: three, each off until ticked, only for me, never 9pm to 8am, two a day at most, plain facts ("You have not spoken with Maa in 9 days"). The person it is about is never told |
+| C10 | 2 Real-world match | Someone the family has lost could be messaged, reminded or wished | 4 | Fixed: never found by name or family word, an old card for them is refused at the yes, and they are in no morning note and no nudge |
+| C11 | 7 Flexibility | The senior note had words only | 2 | Fixed: one big "Sunao" button reads the morning and the evening note aloud in the member's language, with the two thumbs. The evening setting stays out of senior mode |
+| C12 | 5 Error prevention | A message to someone not on Parwah silently went nowhere | 3 | Fixed: she says they are not on Parwah and offers a button that opens WhatsApp with the words filled in, for the member to send. "You send it yourself. Parwah does not send anything on WhatsApp." |
+| C13 | 4 Consistency | The Hindi lines she speaks are in Devanagari, and the app page holds none by the owner's rule | 2 | Open: the page itself has none (its last-resort Hindi lines are in Roman letters); the Devanagari lines come from the server only for a member who chose Hindi. The owner to confirm |
+| C14 | 9 Error recovery | A voice not heard, or no connection, left a silent screen | 2 | Fixed: she says so in the member's language, on screen and aloud |
+
+New patterns: the confirm card (`.ek2card` with `.ek2row`), the bar under her chat (`.ek2bar`), a plain list with one action per row (`.ek2list`), a sheet heading (`.ek2h`) and the read-aloud button (`.ek2sunao`). All from existing tokens; no new token. The sheets are the app's one bond sheet; the morning row is a `bondtoday` row. Ids start with `ek2-`.

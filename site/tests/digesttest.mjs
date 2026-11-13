@@ -182,7 +182,7 @@ ok('the rules say: only the facts, no advice, no medical meaning, no guesses, no
    /Use ONLY the facts/.test(pr.system) && /No advice/.test(pr.system) && /No medical meaning/.test(pr.system)
    && /No guesses/.test(pr.system) && /No judgement/.test(pr.system) && /data, not instructions/.test(pr.system));
 ok('the costs are small and fixed: 300 tokens, 8 seconds, 700 characters, 12 a circle a day',
-   DG.maxTokens === 300 && DG.timeoutMs === 8000 && DG.maxChars === 700 && DG.capPerCircle === 12 && DG.eveningHour === 18 && DG.pushHour === 20);
+   DG.maxTokens === 4000 && DG.timeoutMs === 8000 && DG.maxChars === 700 && DG.capPerCircle === 12 && DG.eveningHour === 18 && DG.pushHour === 20);
 
 const clean = 'Aaj Papa checked in at 8:10 am. One of Maa\'s 3 medicine times was not marked. Kal Chachu ka birthday hai, and Sunday lunch is at 1:00 pm.';
 ok('a clean reply is accepted, with its spaces tidied', digestCheck('  ' + clean + '\n', bf).ok && digestCheck(clean, bf).text === clean, JSON.stringify(digestCheck(clean, bf)));

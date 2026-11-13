@@ -8,8 +8,8 @@
 //     and says it is the day so far.
 //   - The sheet opens with the note and when it was written. Thumbs up is
 //     stored. "Tell me each evening" is off until ticked.
-//   - Papa, in senior mode, reads the same note, larger, with nothing to tap
-//     but Close.
+//   - Papa, in senior mode, reads the same note, larger, with one big
+//     "Sunao" (read aloud) button and the two thumbs, and no setting.
 //   - Loading, a quiet day, an error and offline each say what is happening.
 //   - With a (fake) model the sheet says how the note was made.
 //
@@ -309,8 +309,12 @@ const fs = await S1.$eval('#dg-text', el => parseFloat(getComputedStyle(el).font
 const fsR = await P1.evaluate(() => { const d = document.createElement('div'); d.className = 'bondtext'; document.body.appendChild(d); const v = parseFloat(getComputedStyle(d).fontSize); d.remove(); return v; });
 ok('the same kind of note, in his words ("You checked in")', /You checked in at \d{1,2}:\d\d [ap]m\./.test(sNote) && /Sunday lunch/.test(sNote), sNote);
 ok('larger: ' + fs + 'px against ' + fsR + 'px', fs >= 23.9 && fs > fsR, fs + ' ' + fsR);
-ok('fewer controls: no thumbs, no setting, only Close', (await S1.$('#dg-up')) === null && (await S1.$('#dg-eve')) === null && await S1.isVisible('#bs-x')
-   && (await S1.$$('#bs-body button, #bs-body input')).length === 0);
+ok('senior mode: a big "Sunao" button and the two thumbs, no setting to work out', await S1.isVisible('#ek2-sunao-dg') && await S1.isVisible('#dg-up') && await S1.isVisible('#dg-down')
+   && (await S1.$('#dg-eve')) === null && await S1.isVisible('#bs-x') && (await S1.$$('#bs-body button')).length === 3 && (await S1.$$('#bs-body input')).length === 0);
+ok('"Sunao" is at least 56px tall', await S1.$eval('#ek2-sunao-dg', el => el.getBoundingClientRect().height) >= 55.5);
+await S1.click('#dg-up');
+await S1.waitForFunction(() => document.getElementById('dg-up').getAttribute('aria-pressed') === 'true', null, { timeout: 5000 });
+ok('his thumbs up is stored', (await admin.query(`select vote from digest_daily where member_id = $1`, [papa.id])).rows[0].vote === 1);
 await design(S1, '#bondsheet .mp', 'the sheet, senior mode');
 await shotAll(S1, 'sheet-senior');
 await S1.click('#bs-x'); await S1.waitForSelector('#bondsheet', { state: 'hidden' });

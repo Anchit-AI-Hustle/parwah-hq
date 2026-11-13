@@ -847,6 +847,26 @@ details.more[open]>summary::before{content:"▾ "}
 .em .from{display:block;font-size:var(--fs-12);font-weight:700;color:var(--sindoor);margin-bottom:var(--space-2)}
 .em.ekta{border-color:var(--marigold);background:var(--tint-warm-2)}
 .em.ekta .from{color:var(--marigold-d)}
+/* Ekta: a card that waits for the member's yes, the bar under her chat, and
+   the settings sheet (api/_ektaagent.mjs). Tokens only. */
+.ek2card{align-self:stretch;background:var(--surface);border:1.5px solid var(--marigold);border-radius:var(--radius-16);padding:var(--space-12) var(--space-16);box-shadow:var(--sh-sm)}
+.ek2card b{display:block;font-size:var(--fs-14);color:var(--ink-soft)}
+.ek2card p{margin:var(--space-4) 0 var(--space-12);font-size:var(--fs-16);color:var(--ink);overflow-wrap:anywhere}
+.ek2card small{display:block;margin-top:var(--space-8);font-size:var(--fs-14);color:var(--ink-soft)}
+.ek2row{display:flex;flex-wrap:wrap;gap:var(--space-8)}
+.ek2row .cbtn{flex:1 1 40%;min-height:var(--tap-min);display:inline-flex;align-items:center;justify-content:center;text-decoration:none;text-align:center}
+.ek2bar{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-12)}
+.ek2bar .cbtn{flex:1 1 40%;min-height:var(--tap-min)}
+.ek2list{list-style:none;margin:var(--space-8) 0 0;padding:0}
+.ek2list li{display:flex;align-items:center;gap:var(--space-12);padding:var(--space-8) 0;border-bottom:1px solid var(--bone-2);font-size:var(--fs-16);color:var(--ink)}
+.ek2list li span{flex:1;min-width:0;overflow-wrap:anywhere}
+.ek2list li small{display:block;color:var(--ink-soft);font-size:var(--fs-12)}
+.ek2list .cbtn{flex:none;min-height:var(--tap-min)}
+.ek2h{font-family:var(--disp);font-size:var(--fs-18);margin:var(--space-24) 0 var(--space-4)}
+.ek2sunao{width:100%;min-height:56px;font-size:var(--fs-18);margin-top:var(--space-12)}
+body.senior .ek2card p{font-size:var(--fs-20)}
+body.senior .ek2row .cbtn{min-height:56px;font-size:var(--fs-18)}
+body.senior .ek2sunao{min-height:64px;font-size:var(--fs-20)}
 .gchk{display:flex;align-items:center;gap:var(--space-8);background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-pill);padding:var(--space-8) var(--space-12);font-size:var(--fs-14);font-weight:600}
 
 /* Ekta voice */
@@ -1940,6 +1960,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     <!-- DAYS OF REMEMBRANCE (api/_remember.mjs): one calm line on the day
          the family keeps for someone who is no longer with us. -->
     <div id="rm-today"></div>
+    <!-- AAJ KA DIN (api/_ektaday.mjs): what today holds, from Ekta. One row
+         in the morning, written by plain rules. -->
+    <div id="ek2-today"></div>
     <!-- AAJ KYA HUA (api/_digest.mjs): what happened in the family today,
          from Ekta. One row, from 6pm, that opens the day's note. -->
     <div id="dg-today"></div>
@@ -3238,7 +3261,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         <div class="members" id="g-mem"></div>
         <button class="go" id="g-create">Create group</button>
       </div>
-      <p class="hint">Mention <b>Ekta</b> in any chat and she replies right there.</p>
+      <p class="hint">Write <b>@Ekta</b>, or start a message with her name, and she replies right there.</p>
       <button class="linkbtn" id="askhelp">Need something done? Ask the family for help →</button>
     </div>
     <div id="chatview" hidden>
@@ -3282,6 +3305,17 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button data-chip="I got a message asking for an OTP for a payment. Is it a scam?">🛡 Scam check</button>
       <button data-chip="Please ask the family for help with something I need.">🤝 Ask for help</button>
     </div>
+    <!-- She never does anything on her own: each thing waits here as a card
+         for a yes. The bar: the morning note, what she remembers and may do,
+         a photo of a bill or a label (only when it is turned on), and
+         clearing this chat. -->
+    <div class="ek2bar" id="ek2-bar">
+      <button type="button" class="cbtn ghost" id="ek2-morning">🌅 Aaj ka din</button>
+      <button type="button" class="cbtn ghost" id="ek2-me">🧡 Ekta and me</button>
+      <button type="button" class="cbtn ghost" id="ek2-photo" hidden>📷 Bill or label</button>
+      <button type="button" class="cbtn ghost" id="ek2-clear">Clear this chat</button>
+    </div>
+    <input type="file" id="ek2-file" accept="image/*" hidden aria-label="A photo of a bill or an appliance label">
     <!-- The day's note, any time of day (before 6pm it is the day so far). -->
     <button type="button" class="cbtn ghost bondwide" id="dg-ekta">🌙 Aaj kya hua: what happened today</button>
   </section>
@@ -4838,6 +4872,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     $('ncsheet').hidden = true;
     $('tsheet').hidden = true;
     if (t !== 'ekta' && window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (e) {} }
+    // Ekta's screen shows the member's chat as the server keeps it.
+    if (t === 'ekta' && typeof ek2Load === 'function') ek2Load();
     clearInterval(gameTimer);
     if (t === 'fun') gameTimer = setInterval(function(){ refreshFun(); boardSync(); }, 3000);
     if (t === 'notifs') { $('ndetail').hidden = true; $('nlist-view').hidden = false; }
@@ -5331,6 +5367,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     pasandRefresh();
     albumTodayLoad();
     digestRenderToday();
+    ek2RenderToday();
     refreshChats();
     refreshGroups();
     renderFirstRun();
@@ -5374,8 +5411,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     $('chatlist').hidden = true;
     $('chatview').hidden = false;
     $('cv-name').textContent = chatTitle(c);
-    $('cv-sub').textContent = c.kind === 'dm' ? 'Personal chat - mention Ekta to bring her in'
-      : 'Whole ' + (c.kind === 'circle' ? spaceWord() : 'group') + ' - mention Ekta and she joins in';
+    $('cv-sub').textContent = c.kind === 'dm' ? 'Personal chat - write @Ekta to bring her in'
+      : 'Whole ' + (c.kind === 'circle' ? spaceWord() : 'group') + ' - write @Ekta and she joins in';
     var call = $('cv-call');
     if (c.kind === 'dm' && c.otherPhone) { call.href = 'tel:' + encodeURIComponent(c.otherPhone); call.hidden = false; }
     else call.hidden = true;
@@ -10888,6 +10925,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   // for a family in India (it hears Hinglish best), the phone's language
   // elsewhere - an accent the recogniser expects is one it understands.
   function speechLang(){
+    // The member's own choice (Ekta and me), when they have made one.
+    if (typeof ek2Voice === 'string' && ek2Voice) return ek2Voice;
     var l = '';
     try { l = (navigator.languages && navigator.languages[0]) || navigator.language || ''; } catch (e) {}
     if (/^hi\b/i.test(l)) return 'hi-IN';
@@ -11410,13 +11449,19 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(String(text).replace(/[🧡🙏✨✔✅🆘💊]/g, '').trim());
       u.lang = speechLang(); u.rate = 0.95;
-      var vs = speechSynthesis.getVoices() || [];
-      var v = null;
-      vs.forEach(function(x){ if (!v && /en-IN|hi-IN/i.test(x.lang)) v = x; });
-      if (!v) vs.forEach(function(x){ if (!v && /^en/i.test(x.lang)) v = x; });
+      var v = ek2PickVoice(u.lang);
       if (v) u.voice = v;
       speechSynthesis.speak(u);
     } catch (e) {}
+  }
+  // A voice in the language asked for: Hindi for Hindi, Indian English for
+  // English, then any voice of that language.
+  function ek2PickVoice(lang){
+    var vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [], v = null, two = String(lang || 'en').slice(0, 2).toLowerCase();
+    vs.forEach(function(x){ if (!v && String(x.lang).toLowerCase() === String(lang).toLowerCase()) v = x; });
+    if (!v && two === 'en') vs.forEach(function(x){ if (!v && /en-IN/i.test(x.lang)) v = x; });
+    if (!v) vs.forEach(function(x){ if (!v && String(x.lang).slice(0, 2).toLowerCase() === two) v = x; });
+    return v;
   }
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   var rec = null, listening = false;
@@ -11426,10 +11471,12 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       rec.lang = speechLang(); rec.interimResults = false; rec.maxAlternatives = 1;
       rec.onresult = function(e){
         var t = e.results && e.results[0] && e.results[0][0] ? e.results[0][0].transcript : '';
-        if (t) { $('msg').value = t; checkVoiceIntent(t); ektaSend(true); }
+        // "Tell Rohan I reached" is a message for Ekta to prepare, not a to-do.
+        if (t) { $('msg').value = t; if (!ek2IsTell(t)) checkVoiceIntent(t); ektaSend(true); }
       };
       rec.onend = function(){ listening = false; $('emic').classList.remove('rec'); };
-      rec.onerror = function(){ listening = false; $('emic').classList.remove('rec'); };
+      // Not heard: she says so, in the member's language, rather than going quiet.
+      rec.onerror = function(){ listening = false; $('emic').classList.remove('rec'); var t = ek2Line('notHeard'); ektaAppend('assistant', t, 'thinking'); speak(t); };
     } catch (e) { rec = null; }
   }
   $('emic').addEventListener('click', function(){
@@ -11437,12 +11484,12 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (listening) { try { rec.stop(); } catch (e) {} return; }
     try {
       if (window.speechSynthesis) speechSynthesis.cancel();
+      rec.lang = speechLang();
       rec.start(); listening = true; $('emic').classList.add('rec');
     } catch (e) { listening = false; $('emic').classList.remove('rec'); }
   });
 
   // ---------- Ekta ----------
-  var ektaMsgs = [];
   // Why Ekta is answering from records rather than talking. Named plainly,
   // because "something went wrong" teaches a family to stop trying.
   var EKTA_WHY = {
@@ -11487,16 +11534,19 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     $('msg').value = '';
     // A voice message has been checked for a to-do already.
     if (intentDone !== true && /\b(goli|tablet|medicine|doctor|bp|badal|subah|shaam|dawa|hospital|appointment|report|creatinine|sugar|glucose)\b/i.test(v)) { checkVoiceIntent(v); }
-    ektaMsgs.push({ role:'user', content:v });
     ektaAppend('user', v);
-    var wait = ektaAppend('assistant', 'Ekta soch rahi hai…', 'thinking');
-    post(API.ekta, { code: state.code, memberId: state.memberId, messages: ektaMsgs, iso: guessIso() })
+    var wait = ektaAppend('assistant', ek2Line('thinking'), 'thinking');
+    // Only the new message is sent. What was said before is the server's
+    // own copy of this chat (api/_ektaagent.mjs), never this phone's.
+    post(API.ekta, { code: state.code, memberId: state.memberId, text: v, iso: guessIso() })
       .then(function(j){
         wait.remove();
         if (j.ok) {
-          ektaMsgs.push({ role:'assistant', content:j.reply });
           ektaAppend('assistant', j.reply);
           if (j.emergency || j.urgentToo) ektaUrgent(v);
+          // What she prepared waits as a card; nothing is done until the yes.
+          (j.proposals || []).forEach(ek2Card);
+          (j.handoffs || []).forEach(ek2Handoff);
           speak(j.reply);
           // An answer read out of the family's own records is a real answer,
           // not a failure - but the family is told exactly what they are
@@ -11516,8 +11566,296 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           ektaAppend('assistant', j.error || 'Kuch gadbad ho gayi - try again?', 'thinking');
         }
       })
-      .catch(function(){ wait.remove(); ektaAppend('assistant', 'No connection - try again.', 'thinking'); });
+      .catch(function(){ wait.remove(); var t = ek2Line('offline'); ektaAppend('assistant', t, 'thinking'); speak(t); });
   }
+
+  // ---------- Ekta: cards, memory, switches, the saved chat (api/_ektaagent.mjs) ----------
+  // Ekta never acts on her own. What she wants to do arrives as a card:
+  // "Ekta wants to: send "Khana kha liya?" to Maa", with "Yes, do it" and
+  // "No". The server runs it once, as this member, on the yes. The chat is
+  // kept on the server, private to this member, and so is what she remembers.
+  var ek2State = null, ek2Voice = '', ek2Busy = false, ek2Sheet = '';
+  // The lines she speaks come from the server in the member's language
+  // (Hindi in its own script, for the Hindi voice). If the server cannot be
+  // reached at all, these two sets are what is left: the page itself holds
+  // no Devanagari, so the Hindi here is in Roman letters.
+  var EK2_SAY = {
+    en: { thinking: 'Ekta is thinking.', offline: 'No connection. Try again.', error: 'Something went wrong. Try again?', notHeard: 'I did not hear that. Tap the mic and say it again.',
+          done: 'Done.', cancelled: 'Okay. I have not done it.', expired: 'That waited too long, so I have not done it. Ask me again.', listen: 'Listen', stop: 'Stop' },
+    hi: { thinking: 'Ekta soch rahi hai.', offline: 'Internet nahin hai. Phir se koshish kijiye.', error: 'Kuch gadbad ho gayi. Phir se koshish karein?', notHeard: 'Mujhe sunai nahin diya. Mic dabakar phir se boliye.',
+          done: 'Ho gaya.', cancelled: 'Theek hai. Maine yeh nahin kiya.', expired: 'Bahut der ho gayi, isliye maine yeh nahin kiya. Phir se kahiye.', listen: 'Sunao', stop: 'Ruko' }
+  };
+  function ek2Lang(){ return ek2State && ek2State.lang === 'hi' ? 'hi' : 'en'; }
+  // Words that ask Ekta to pass something on to a person.
+  function ek2IsTell(t){
+    return /^(@?ekta[\s,:]*)?(please\s+)?(tell|message|text|inform)\s/i.test(String(t || '')) || /\bko\s+(bolo|bol do|batao|bata do|keh do|kaho|message kar)/i.test(String(t || ''));
+  }
+  function ek2Line(k){ var say = ek2State && ek2State.say; return (say && say[k]) || EK2_SAY[ek2Lang()][k] || EK2_SAY.en[k] || ''; }
+  function ek2Post(action, extra){
+    var b = { code: state.code, memberId: state.memberId, action: action };
+    Object.keys(extra || {}).forEach(function(k){ b[k] = extra[k]; });
+    return post(API.ekta, b);
+  }
+  function ek2Scroll(){ $('emsgs').scrollTop = $('emsgs').scrollHeight; }
+  function ek2Card(p){
+    if ($('emsgs').querySelector('[data-ek2card="' + p.id + '"]')) return;
+    var d = document.createElement('div');
+    d.className = 'ek2card'; d.setAttribute('data-ek2card', p.id);
+    d.innerHTML = '<b>Ekta wants to:</b><p>' + esc(p.label) + '</p>' +
+      '<div class="ek2row"><button type="button" class="cbtn" data-ek2yes="' + esc(p.id) + '">Yes, do it</button>' +
+      '<button type="button" class="cbtn ghost" data-ek2no="' + esc(p.id) + '">No</button></div>' +
+      '<small role="status" hidden></small>';
+    $('emsgs').appendChild(d); ek2Scroll();
+  }
+  // For someone who is not on Parwah: the words, and a button that opens
+  // WhatsApp with them filled in. The member sends it. Parwah sends nothing.
+  function ek2Handoff(h){
+    if (!/^https:\/\/wa\.me\//.test(String(h.url || ''))) return;
+    var d = document.createElement('div');
+    d.className = 'ek2card';
+    d.innerHTML = '<b>Ready for WhatsApp, to ' + esc(h.name) + ':</b><p>' + esc(h.text) + '</p>' +
+      '<div class="ek2row"><a class="cbtn" data-ek2wa="1" target="_blank" rel="noopener" href="' + esc(h.url) + '">Open WhatsApp to send it</a></div>' +
+      '<small>You send it yourself. Parwah does not send anything on WhatsApp.</small>';
+    $('emsgs').appendChild(d); ek2Scroll();
+  }
+  function ek2CardSay(card, text){
+    var row = card.querySelector('.ek2row'); if (row) row.remove();
+    var st = card.querySelector('small'); st.textContent = text; st.hidden = false;
+  }
+  function ek2Decide(id, yes){
+    var card = $('emsgs').querySelector('[data-ek2card="' + id + '"]'); if (!card || card.getAttribute('data-busy')) return;
+    card.setAttribute('data-busy', '1');
+    card.querySelectorAll('button').forEach(function(b){ b.disabled = true; });
+    var fail = function(msg){
+      card.removeAttribute('data-busy');
+      card.querySelectorAll('button').forEach(function(b){ b.disabled = false; });
+      var st = card.querySelector('small'); st.textContent = msg; st.hidden = false;
+    };
+    ek2Post(yes ? 'ekta_confirm' : 'ekta_cancel', { id: id }).then(function(j){
+      if (!yes) { if (j && j.ok) { ek2CardSay(card, ek2Line('cancelled')); speak(ek2Line('cancelled')); } else fail(humanFail(j && j.error, ek2Line('error'))); return; }
+      if (j && j.ok) {
+        ek2CardSay(card, ek2Line('done') + ' ✅'); speak(ek2Line('done'));
+        refresh(); if (typeof refreshChats === 'function') refreshChats();
+        return;
+      }
+      // Too late, said no, or it could not be done: closed, and said plainly.
+      if (j && (j.expired || j.notDone || j.status === 409)) { ek2CardSay(card, j.expired ? ek2Line('expired') : (j.error || ek2Line('error'))); speak(j.expired ? ek2Line('expired') : ek2Line('error')); return; }
+      fail(humanFail(j && j.error, ek2Line('error')));
+    }).catch(function(){ fail(ek2Line('offline')); });
+  }
+  $('emsgs').addEventListener('click', function(e){
+    var y = e.target.closest('[data-ek2yes]'), n = e.target.closest('[data-ek2no]');
+    if (y) ek2Decide(y.getAttribute('data-ek2yes'), true);
+    else if (n) ek2Decide(n.getAttribute('data-ek2no'), false);
+  });
+  // The member's chat with her, from the server: the same on every phone.
+  function ek2Load(){
+    if (!state || ek2Busy) return;
+    ek2Busy = true;
+    ek2Post('ekta_state').then(function(j){
+      ek2Busy = false;
+      if (!j || !j.ok) return;
+      ek2State = j; ek2Voice = (j.say && j.say.speechLang) || '';
+      $('ek2-photo').hidden = !j.photo;
+      var box = $('emsgs');
+      // Only when nothing is in flight: never over a reply being written.
+      if (!box.querySelector('.thinking')) {
+        Array.prototype.slice.call(box.children).forEach(function(c, i){ if (i > 0) c.remove(); });
+        (j.thread || []).forEach(function(t){ ektaAppend(t.role === 'user' ? 'user' : 'assistant', t.content); });
+        (j.proposals || []).forEach(ek2Card);
+      }
+    }).catch(function(){ ek2Busy = false; });
+  }
+  $('ek2-clear').addEventListener('click', function(){
+    askSheet('Clear this chat?', 'Your chat with Ekta is removed for good. What she remembers about you stays until you remove it.', 'Clear it', 'Keep it', true).then(function(y){
+      if (!y) return;
+      ek2Post('ekta_thread_clear').then(function(j){
+        if (j && j.ok) { ek2Load(); toast('Cleared'); } else toast(humanFail(j && j.error, 'Could not clear it. Try again.'));
+      }).catch(function(){ toast('No connection. Try again.'); });
+    });
+  });
+
+  // "Ekta and me": what she remembers, what she may do, the nudges, her
+  // language, and what she did. Every list and switch is this member's own.
+  function ek2When(iso){ var d = new Date(iso); return isNaN(d) ? '' : dtf([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(d); }
+  function ek2MeBody(mem, audit){
+    var sw = (ek2State && ek2State.switches) || {}, h = '';
+    h += '<h4 class="ek2h" id="ek2-mem-h">What Ekta remembers about me</h4>';
+    h += '<p class="hint" id="ek2-mem-note">She asks "Shall I remember this?" first, and saves only on your yes. Never a password, a PIN, an OTP, a card number or a health reading.</p>';
+    if (!mem.length) h += '<p class="hint" id="ek2-mem-none">Nothing yet.</p>';
+    else {
+      h += '<ul class="ek2list" id="ek2-mem-list">' + mem.map(function(m){
+        return '<li><span><b>' + esc(m.key) + '</b>: ' + esc(m.value) + '</span><button type="button" class="cbtn ghost" data-ek2forget="' + esc(m.id) + '" aria-label="Forget ' + esc(m.key) + '">Forget</button></li>'; }).join('') + '</ul>';
+      h += '<button type="button" class="cbtn ghost bondwide" id="ek2-forget-all">Forget everything</button>';
+    }
+    h += '<h4 class="ek2h">What Ekta may do</h4>';
+    h += '<label class="seniorchk"><input type="checkbox" id="ek2-acts"' + (sw.noActions ? '' : ' checked') + '> Ekta may do things for me</label>';
+    h += '<p class="hint" id="ek2-acts-note">She always shows you a card and waits for your yes. With this off she only reads things out.</p>';
+    if (ek2State && ek2State.canPause) {
+      h += '<label class="seniorchk"><input type="checkbox" id="ek2-pause"' + (sw.paused ? ' checked' : '') + '> Pause Ekta for this ' + (spaceWord() === 'group' ? 'group' : 'family') + '</label>';
+      h += '<p class="hint" id="ek2-pause-note">For everyone, until an adult turns her back on. Emergency help and SOS always work.</p>';
+    }
+    h += '<h4 class="ek2h">Gentle reminders, only for me</h4>';
+    h += '<label class="seniorchk"><input type="checkbox" id="ek2-n-talk"' + (sw.nudgeTalk ? ' checked' : '') + '> When I have not spoken with a parent in 9 days</label>';
+    h += '<label class="seniorchk"><input type="checkbox" id="ek2-n-bday"' + (sw.nudgeBday ? ' checked' : '') + '> The day before a birthday</label>';
+    h += '<label class="seniorchk"><input type="checkbox" id="ek2-n-renew"' + (sw.nudgeRenewal ? ' checked' : '') + '> When a renewal is due this week</label>';
+    h += '<p class="hint" id="ek2-n-note">Each is off until you turn it on. Only you see them. Never between 9 pm and 8 am, and at most two a day.</p>';
+    h += '<h4 class="ek2h">The language Ekta speaks and listens in</h4>';
+    h += '<div class="pkind" id="ek2-lang" role="group" aria-label="Language for reading aloud and for speaking to Ekta">' +
+      '<button type="button" data-ek2lang="en"' + (ek2Lang() === 'en' ? ' class="sel"' : '') + ' aria-pressed="' + (ek2Lang() === 'en') + '">English</button>' +
+      '<button type="button" data-ek2lang="hi"' + (ek2Lang() === 'hi' ? ' class="sel"' : '') + ' aria-pressed="' + (ek2Lang() === 'hi') + '">Hindi</button></div>';
+    h += '<h4 class="ek2h">What Ekta did for me</h4>';
+    h += audit.length ? '<ul class="ek2list" id="ek2-audit">' + audit.map(function(a){
+        return '<li><span>' + esc(a.label) + (a.outcome === 'done' ? '' : ' (not done)') + '<small>' + esc(ek2When(a.created_at)) + '</small></span></li>'; }).join('') + '</ul>'
+      : '<p class="hint" id="ek2-audit-none">Nothing yet. Each thing she does on your yes is listed here: what kind, and when. Never the words.</p>';
+    h += '<p class="bonderr" id="ek2-err" role="alert" hidden></p>';
+    return h;
+  }
+  function ek2SheetOpen(kind){ return !$('bondsheet').hidden && ek2Sheet === kind && !!$('bs-body').querySelector('[id^="ek2-"]'); }
+  function ek2MeShow(){
+    ek2Sheet = 'me';
+    bondSheet('Ekta and me', '<p class="hint" id="ek2-load" role="status">Loading what Ekta has for you.</p>');
+    Promise.all([ek2Post('ekta_state'), ek2Post('ekta_memory'), ek2Post('ekta_audit')]).then(function(r){
+      if (!ek2SheetOpen('me')) return;
+      if (!r[0] || !r[0].ok || !r[1] || !r[1].ok) { $('bs-body').innerHTML = '<p class="bonderr" id="ek2-err" role="alert">' + esc(humanFail(r[0] && r[0].error, 'Could not load this. Try again in a moment.')) + '</p><button type="button" class="cbtn bondwide" id="ek2-retry">Try again</button>'; return; }
+      ek2State = r[0]; ek2Voice = (r[0].say && r[0].say.speechLang) || '';
+      $('bs-body').innerHTML = ek2MeBody(r[1].memory || [], (r[2] && r[2].audit) || []);
+    }).catch(function(){
+      if (ek2SheetOpen('me')) $('bs-body').innerHTML = '<p class="bonderr" id="ek2-err" role="alert">' + esc(navigator.onLine === false ? 'You are offline. This will load when the internet is back.' : 'No connection. Try again in a moment.') + '</p><button type="button" class="cbtn bondwide" id="ek2-retry">Try again</button>';
+    });
+  }
+  function ek2Err(msg){ var e = $('ek2-err'); if (e) { e.textContent = msg; e.hidden = !msg; } }
+  function ek2Save(action, extra, box){
+    ek2Err('');
+    ek2Post(action, extra).then(function(j){
+      if (!j || !j.ok) { if (box) box.checked = !box.checked; ek2Err(humanFail(j && j.error, 'Could not save that. Try again.')); return; }
+      if (j.switches && ek2State) ek2State.switches = j.switches;
+      if (action === 'ekta_prefs' && extra.noActions === true) ek2Load();
+      if (j.lang) { if (ek2State) { ek2State.lang = j.lang; ek2State.say = j.say; } ek2Voice = (j.say && j.say.speechLang) || ''; ek2MeShow(); }
+      if (j.memory) ek2MeShow();
+      if ((action === 'ekta_prefs') && (extra.nudgeTalk || extra.nudgeBday || extra.nudgeRenewal) && pushSupported() && Notification.permission === 'default') enablePush();
+    }).catch(function(){ if (box) box.checked = !box.checked; ek2Err('No connection. Try again.'); });
+  }
+  $('ek2-me').addEventListener('click', ek2MeShow);
+  $('bondsheet').addEventListener('change', function(e){
+    var t = e.target; if (!t || !t.id) return;
+    if (t.id === 'ek2-acts') ek2Save('ekta_prefs', { noActions: !t.checked }, t);
+    if (t.id === 'ek2-pause') ek2Save('ekta_pause', { on: t.checked }, t);
+    if (t.id === 'ek2-n-talk') ek2Save('ekta_prefs', { nudgeTalk: t.checked }, t);
+    if (t.id === 'ek2-n-bday') ek2Save('ekta_prefs', { nudgeBday: t.checked }, t);
+    if (t.id === 'ek2-n-renew') ek2Save('ekta_prefs', { nudgeRenewal: t.checked }, t);
+  });
+  $('bondsheet').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.id === 'ek2-retry') { if (ek2Sheet === 'morning') ek2MorningShow(); else ek2MeShow(); }
+    if (b.getAttribute('data-ek2forget')) ek2Save('ekta_memory_delete', { id: b.getAttribute('data-ek2forget') });
+    if (b.id === 'ek2-forget-all') askSheet('Forget everything?', 'Ekta removes everything she remembers about you. It cannot be brought back.', 'Forget everything', 'Keep it', true).then(function(y){ if (y) ek2Save('ekta_memory_clear', {}); });
+    if (b.getAttribute('data-ek2lang')) ek2Save('ekta_lang', { lang: b.getAttribute('data-ek2lang') });
+    if (b.getAttribute('data-ek2sunao')) ek2Sunao(b);
+    if (b.id === 'ek2-m-up') ek2MorningVote('up');
+    if (b.id === 'ek2-m-down') ek2MorningVote('down');
+  });
+
+  // "Sunao": read a note aloud, in the member's language. One big button in
+  // senior mode. It reads on a tap, whatever the read-aloud switch says.
+  function ek2SunaoBtn(target){
+    return '<button type="button" class="cbtn ek2sunao" id="ek2-sunao-' + target + '" data-ek2sunao="' + target + '" aria-pressed="false">🔊 ' + 'Sunao (listen)' + '</button>';
+  }
+  function ek2Sunao(btn){
+    if (!window.speechSynthesis) { toast('This phone cannot read aloud.'); return; }
+    var on = btn.getAttribute('aria-pressed') === 'true';
+    try { speechSynthesis.cancel(); } catch (e) {}
+    var label = '🔊 Sunao (listen)';
+    if (on) { btn.setAttribute('aria-pressed', 'false'); btn.textContent = label; return; }
+    var src = $(btn.getAttribute('data-ek2sunao') === 'dg' ? 'dg-text' : 'ek2-m-text');
+    var extra = btn.getAttribute('data-ek2sunao') === 'dg' && $('dg-since') ? ' ' + $('dg-since').textContent : '';
+    if (!src) return;
+    try {
+      var u = new SpeechSynthesisUtterance((src.textContent + extra).trim());
+      u.lang = speechLang(); u.rate = 0.9;
+      var v = ek2PickVoice(u.lang); if (v) u.voice = v;
+      u.onend = u.onerror = function(){ btn.setAttribute('aria-pressed', 'false'); btn.textContent = label; };
+      btn.setAttribute('aria-pressed', 'true'); btn.textContent = '⏹ ' + ek2Line('stop');
+      speechSynthesis.speak(u);
+    } catch (e) { btn.setAttribute('aria-pressed', 'false'); btn.textContent = label; }
+  }
+
+  // "Aaj ka din": what today holds, in the morning (api/_ektaday.mjs).
+  var ek2Morning = null;
+  function ek2IsMorning(){ var h = new Date().getHours(); return h >= 5 && h < 12; }
+  function ek2RenderToday(){
+    var box = $('ek2-today'); if (!box) return;
+    box.innerHTML = (state && ek2IsMorning())
+      ? '<div class="bondtoday"><div class="crow"><span class="txt"><b>🌅 Aaj ka din</b><small>What today holds for the ' + (spaceWord() === 'group' ? 'group' : 'family') + '.</small></span>' +
+        '<button type="button" class="cbtn" data-ek2open="1">Read it</button></div></div>'
+      : '';
+  }
+  function ek2MorningBody(){
+    var d = ek2Morning;
+    var h = '<div class="bondtext" id="ek2-m-text"><p>' + esc(d.text) + '</p></div>';
+    if (d.paused) return h;
+    h += '<p class="hint" id="ek2-m-how">' + (d.by === 'ekta' ? 'Written by Ekta from what you can see in the family today.' : 'Put together from what you can see in the family today.') + '</p>';
+    h += ek2SunaoBtn('m');
+    h += '<div class="pkind" id="ek2-m-votes" role="group" aria-label="Was this note useful?">' +
+      '<button type="button" id="ek2-m-up"' + (d.vote === 'up' ? ' class="sel"' : '') + ' aria-pressed="' + (d.vote === 'up') + '">👍 Useful</button>' +
+      '<button type="button" id="ek2-m-down"' + (d.vote === 'down' ? ' class="sel"' : '') + ' aria-pressed="' + (d.vote === 'down') + '">👎 Not useful</button></div>' +
+      '<p class="hint" id="ek2-m-thanks" role="status"' + (d.vote ? '' : ' hidden') + '>Thank you. Your answer is saved.</p>' +
+      '<p class="bonderr" id="ek2-err" role="alert" hidden></p>';
+    return h;
+  }
+  function ek2MorningShow(){
+    ek2Sheet = 'morning';
+    bondSheet('Aaj ka din', '<p class="hint" id="ek2-load" role="status">Ekta is putting today together.</p>');
+    ek2Post('ekta_morning').then(function(j){
+      if (!ek2SheetOpen('morning')) return;
+      if (j && j.ok && j.morning) { ek2Morning = j.morning; $('bs-body').innerHTML = ek2MorningBody(); return; }
+      $('bs-body').innerHTML = '<p class="bonderr" id="ek2-err" role="alert">' + esc(humanFail(j && j.error, 'Could not load today\'s note. Try again in a moment.')) + '</p><button type="button" class="cbtn bondwide" id="ek2-retry">Try again</button>';
+    }).catch(function(){
+      if (ek2SheetOpen('morning')) $('bs-body').innerHTML = '<p class="bonderr" id="ek2-err" role="alert">' + esc(navigator.onLine === false ? 'You are offline. Aaj ka din will load when the internet is back.' : 'No connection. Try again in a moment.') + '</p><button type="button" class="cbtn bondwide" id="ek2-retry">Try again</button>';
+    });
+  }
+  function ek2MorningVote(v){
+    ek2Err('');
+    ek2Post('ekta_morning_vote', { vote: v }).then(function(j){
+      if (!j || !j.ok) { ek2Err(humanFail(j && j.error, 'Could not save that. Try again.')); return; }
+      if (ek2Morning) ek2Morning.vote = j.vote;
+      if (!$('ek2-m-up')) return;
+      [['ek2-m-up', 'up'], ['ek2-m-down', 'down']].forEach(function(p){ var on = j.vote === p[1]; $(p[0]).classList.toggle('sel', on); $(p[0]).setAttribute('aria-pressed', on); });
+      $('ek2-m-thanks').hidden = false;
+    }).catch(function(){ ek2Err('No connection. Try again.'); });
+  }
+  $('ek2-today').addEventListener('click', function(e){ if (e.target.closest('[data-ek2open]')) ek2MorningShow(); });
+  $('ek2-morning').addEventListener('click', ek2MorningShow);
+
+  // A photo of a bill or an appliance label, to a draft she shows as a card.
+  // Made small on this phone first: the server takes at most a few MB.
+  function ek2Shrink(file){
+    return new Promise(function(done, fail){
+      var img = new Image(), url = URL.createObjectURL(file);
+      img.onload = function(){
+        try {
+          var max = 1400, k = Math.min(1, max / Math.max(img.width, img.height));
+          var c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url);
+          done(c.toDataURL('image/jpeg', 0.72));
+        } catch (e) { fail(e); }
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); fail(new Error('not a photo')); };
+      img.src = url;
+    });
+  }
+  $('ek2-photo').addEventListener('click', function(){ $('ek2-file').value = ''; $('ek2-file').click(); });
+  $('ek2-file').addEventListener('change', function(){
+    var f = this.files && this.files[0]; if (!f) return;
+    ektaAppend('user', '📷 A photo of a bill or a label');
+    var wait = ektaAppend('assistant', ek2Line('thinking'), 'thinking');
+    ek2Shrink(f).then(function(uri){ return ek2Post('ekta_photo', { image: uri }); }).then(function(j){
+      wait.remove();
+      if (j && j.ok) { ektaAppend('assistant', j.reply); (j.proposals || []).forEach(ek2Card); speak(j.reply); }
+      else ektaAppend('assistant', humanFail(j && j.error, ek2Line('error')), 'thinking');
+    }).catch(function(){ wait.remove(); ektaAppend('assistant', 'That photo could not be read on this phone. Try another one.', 'thinking'); });
+  });
 
 
   // ---------- messages (into the open chat) ----------
@@ -11529,6 +11867,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         if (j.ok) {
           loadMsgs(); refreshChats();
           if (j.ektaEmergency) chatUrgent(v);
+          // Why Ekta did not answer in the chat: told to the asker alone.
+          if (j.ektaNote) toast(j.ektaNote);
         }
         else toast(j.error || 'Could not send - try again');
       })
@@ -14347,7 +14687,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var d = new Date(iso);
     return isNaN(d) ? '' : dtf([], { hour: 'numeric', minute: '2-digit' }).format(d);
   }
-  // Senior mode shows the same words, larger, and nothing to tap but Close.
+  // Senior mode shows the same words, larger, with Sunao and the two thumbs.
   function digestBody(){
     var d = digestData, t = digestClockText(d.writtenAt);
     var h = '<div class="bondtext" id="dg-text"><p>' + esc(d.text) + '</p></div>';
@@ -14355,12 +14695,15 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     h += '<p class="hint" id="dg-when">' + esc(d.final ? 'Written today' + (t ? ' at ' + t : '') + '.'
       : 'This is the day so far' + (t ? ', at ' + t : '') + '. The full note comes after 6 pm.') + '</p>';
     if (d.how) h += '<p class="hint" id="dg-how">' + esc(d.how) + '</p>';
-    if (digestSenior()) return h;
+    // "Sunao" reads the note aloud. Senior mode gets it large, with the two
+    // thumbs, and nothing else to work out.
+    h += ek2SunaoBtn('dg');
     h += '<div class="pkind" id="dg-votes" role="group" aria-label="Was this note useful?">' +
       '<button type="button" id="dg-up"' + (d.vote === 'up' ? ' class="sel"' : '') + ' aria-pressed="' + (d.vote === 'up') + '">👍 Useful</button>' +
       '<button type="button" id="dg-down"' + (d.vote === 'down' ? ' class="sel"' : '') + ' aria-pressed="' + (d.vote === 'down') + '">👎 Not useful</button></div>' +
-      '<p class="hint" id="dg-thanks" role="status"' + (d.vote ? '' : ' hidden') + '>Thank you. Your answer is saved.</p>' +
-      '<label class="seniorchk"><input type="checkbox" id="dg-eve"' + (d.evening ? ' checked' : '') + '> Tell me each evening</label>' +
+      '<p class="hint" id="dg-thanks" role="status"' + (d.vote ? '' : ' hidden') + '>Thank you. Your answer is saved.</p>';
+    if (digestSenior()) return h + '<p class="bonderr" id="dg-err" role="alert" hidden></p>';
+    h += '<label class="seniorchk"><input type="checkbox" id="dg-eve"' + (d.evening ? ' checked' : '') + '> Tell me each evening</label>' +
       '<p class="hint" id="dg-eve-note">One notification at 8 pm, with the first line. It is off until you turn it on.</p>' +
       '<p class="bonderr" id="dg-err" role="alert" hidden></p>';
     return h;

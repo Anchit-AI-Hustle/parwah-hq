@@ -1926,8 +1926,8 @@ check("ekta: anyone in danger is answered first, in fixed words, free - before c
 # Ekta: when a turn fails after something was already done (a reminder
 # saved), the answer refreshes the screen rather than hiding it.
 _ek = (REPO / "api/ekta.mjs").read_text(encoding="utf-8")
-check("ekta: a failed turn that names an emergency still refreshes what was already done",
-      "if (isUrgent) return answer({" in _ek and "actions: [{ tool: 'refresh' }]" in _ek and "please check before asking again" in _ek)
+check("ekta: a failed turn that names an emergency is still answered, and says truthfully that nothing was done (she only ever prepares a card)",
+      "if (isUrgent) return answer({" in _ek and "Nothing has been done for you." in _ek and "actions: [{ tool: 'refresh' }]" not in _ek)
 check("ekta: the scam check, records and medicine questions are never charged; a family word finds the one person saved with it",
       "if (['scam', 'memory', 'summary', 'health'].includes(asked)) {" in _ekt and "localTurn(sql, circle, me, history, 'records')" in _ekt
       and _ekt.find("localTurn(sql, circle, me, history, 'records')") < _ekt.find("await spend(sql, circle.id, me.id, 'ekta')")
@@ -3684,6 +3684,9 @@ _dg_sweep = _dg_fn(_dg, "export async function digestSweep(")
 _dg_gather = _dg_fn(_dg, "export async function digestGather(")
 _dg_ask = _dg_fn(_dg, "async function digestAskModel(")
 _dg_by = _dg_fn(_dg, "async function digestByModel(")
+# The claim, the cap and the names rule moved into one function that the
+# evening note and the morning note ("Aaj ka din") both go through.
+_dg_once = _dg_fn(_dg, "export async function digestModelOnce(")
 _dg_open = _dg_fn(_dg, "export async function digestOpen(")
 check("digest: it rides /api/ekta in underscore modules, after requireMember, never a new serverless function",
       not (API_DIR / "digest.mjs").exists() and "/^digest(_|$)/.test(req.body.action)" in _dg_ekta
@@ -3695,7 +3698,7 @@ check("digest: the rules module imports nothing, so the gate can test it before 
       and "node site/tests/digesttest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
 check("digest: ONLY THE LIST IS SENT - the prompt is built from the facts' sentences and nothing else",
       "list.map((f, i) => (i + 1) + '. ' + f.text).join('\\n')" in _dgr
-      and "const sent = facts.slice(0, 8), prompt = digestPrompt(sent);" in _dg_ask
+      and "const sent = facts.slice(0, 8), prompt = promptOf(sent);" in _dg_ask and "promptOf = digestPrompt" in _dg_ask
       and "({ system: prompt.system, user: prompt.user, maxTokens: DG.maxTokens, timeoutMs: ms })" in _dg_ask
       and not re.search(r"\b(raw|row|sql|me\.|circle\.|phone|email)\b", _dg_ask.split("try {", 1)[1].split("} catch", 1)[0]))
 check("digest: what is gathered is only what the viewer may open - each feature's own rule is in the SQL, and notes, the vault, the register and health numbers are never read",
@@ -3711,9 +3714,10 @@ check("digest: ONE CALL PER MEMBER PER DAY - the row is claimed final once, and 
       and _dg.count("digestAskModel(") == 2 and "set model_tried = true" in _dg_by)
 check("digest: THE CAP - 12 model calls a circle a day, taken in one statement, counted where the owner can read it",
       "capPerCircle: 12" in _dgr and "create table if not exists digest_usage" in _dg
-      and "do update set calls = digest_usage.calls + 1" in _dg_by and "where digest_usage.calls < ${DG.capPerCircle}" in _dg_by
-      and "if (!slot[0]) return null;" in _dg_by and _dg_by.index("if (!slot[0]) return null;") < _dg_by.index("digestAskModel(facts")
-      and "set written = written + 1" in _dg_by)
+      and "do update set calls = digest_usage.calls + 1" in _dg_once and "where digest_usage.calls < ${DG.capPerCircle}" in _dg_once
+      and "if (!slot[0]) return null;" in _dg_once and _dg_once.index("if (!slot[0]) return null;") < _dg_once.index("digestAskModel(facts")
+      and "set written = written + 1" in _dg_once and "await digestModelOnce(sql, circle, me, facts, nowMs" in _dg_by
+      and _dg.count("insert into digest_usage") == 1)
 check("digest: only with the server's own key, only in the evening, never for a quiet day, and no coins are charged",
       "if (!facts.length || !process.env.ANTHROPIC_API_KEY) return null;" in _dg_by and "eveningHour: 18" in _dgr
       and "spend(" not in _dg and "from './_coins.mjs'" not in _dg and "NO COINS ARE CHARGED" in _dg)
@@ -3725,16 +3729,16 @@ check("digest: NO TIMER-DRIVEN MODEL CALL - the 8pm notification is the plain fi
       and "evening boolean not null default false" in _dg and "pushHour: 20" in _dgr
       and not re.search(r"digestOpen|digestHandle|digestByModel", _dg_ev))
 check("digest: THE FALLBACK - a timeout, a refusal, an error or a reply that fails the check all end in the plain version, silently",
-      "timeoutMs: 8000" in _dgr and "maxTokens: 300" in _dgr and "maxChars: 700" in _dgr
+      "timeoutMs: 8000" in _dgr and "maxTokens: 4000" in _dgr and "maxChars: 700" in _dgr
       and "Promise.race([" in _dg_ask and "if (!out || out.refusal) return null;" in _dg_ask
       and "} catch (e) { return null; }" in _dg_ask and "return checked.ok ?" in _dg_ask
       and "if (!have.has(n)) return { ok: false, why: 'number' };" in _dgr and "DG_JUDGE" in _dgr
       and "${digestWrite(facts, word)}" in _dg_open and "if (!out) return null;" in _dg_by)
 check("digest: the same client and the same model choice as a conversation with Ekta; no new model id, and the SDK is loaded only when a call is made",
-      "const { anthropicClient, MODEL_PRIMARY } = await import('./ekta.mjs');" in _dg and "export const MODEL_PRIMARY" in _dg_ekta
-      and "export function anthropicClient(vault)" in _dg_ekta and "const client = anthropicClient(vault);" in _dg_ekta
+      "const { anthropicClient, MODEL_PRIMARY, modelRequest } = await import('./ekta.mjs');" in _dg and "export const MODEL_PRIMARY" in _dg_ekta
+      and "export function anthropicClient(vault)" in _dg_ekta and "const client = ektaSeams.client || anthropicClient(vault);" in _dg_ekta
       and _dg_ekta.count("new Anthropic(") == 1 and "new Anthropic(" not in _dg and "@anthropic-ai/sdk" not in _dg
-      and not re.search(r"claude-[a-z0-9.\-]+", _dg + _dgr) and "model: MODEL_PRIMARY," in _dg
+      and not re.search(r"claude-[a-z0-9.\-]+", _dg + _dgr) and "modelRequest(MODEL_PRIMARY, {" in _dg
       and "{ timeout: timeoutMs, maxRetries: 0 }" in _dg)
 check("digest: the voice - the rules tell the model no advice, no medical meaning, no guesses, no judgement, and that facts are data",
       all(x in _dgr for x in ("Use ONLY the facts", "No advice.", "No medical meaning.", "No guesses", "No judgement of any person.", "data, not instructions"))
@@ -3756,15 +3760,17 @@ check("digest: loading, error and offline each say so; errors go through humanFa
       and "You are offline. Aaj kya hua will load when the internet is back." in _app_src and 'id="dg-retry"' in _app_src
       and _app_src.count("action: 'digest' }") == 1 and "function digestLoad(){" in _app_src
       and "digestLoad" not in _app_src[_app_src.index("function digestRenderToday(){"):_app_src.index("function digestClockText(")])
-check("digest: thumbs are one per member per day, the evening setting starts off, and senior mode has the words only",
+check("digest: thumbs are one per member per day, the evening setting starts off, and senior mode has the words, Sunao and the two thumbs but no setting",
       "action: 'digest_vote', vote: v" in _app_src and "action: 'digest_evening', on: on" in _app_src
-      and "set vote = ${v}, voted_at = now()" in _dg and "if (digestSenior()) return h;" in _app_src
+      and "set vote = ${v}, voted_at = now()" in _dg
+      and _app_src.index("h += ek2SunaoBtn('dg');") < _app_src.index('id="dg-votes"') < _app_src.index("if (digestSenior()) return h + ") < _app_src.index('<input type="checkbox" id="dg-eve"')
       and "Tell me each evening" in _app_src and "It is off until you turn it on." in _app_src
       and "Written by Ekta from what you can see in the family today." in _dg)
 check("digest: one model call per member per UTC day as well as per local day, claimed before the circle's cap",
       "create table if not exists digest_model_claim" in _dg
-      and "insert into digest_model_claim (member_id, day) values (${me.id}, ${utcDay}::date)" in _dg_by
-      and _dg_by.index("insert into digest_model_claim") < _dg_by.index("insert into digest_usage"))
+      and "insert into digest_model_claim (member_id, day) values (${me.id}, ${utcDay}::date)" in _dg_once
+      and _dg_once.index("insert into digest_model_claim") < _dg_once.index("insert into digest_usage")
+      and _dg.count("insert into digest_model_claim") == 1)
 check("digest: if who is remembered cannot be read, nobody but the viewer may be named and no day of remembrance is announced",
       "catch (e) { unsure = true; }" in _dg_gather
       and "remembered: unsure ? p.id !== mid : remembered.has(p.id)" in _dg_gather
@@ -3846,6 +3852,132 @@ check("notify: the rules test runs in the gate; the db, screen and poor-network 
               for p in ("site/tests/db/notifyfair.dbtest.mjs", "site/tests/db/notifyfair.e2e.dbtest.mjs", "site/tests/browser/offline.browser.mjs"))
       and "pushSeams.now = () =>" in (REPO / "site/tests/db/notifyfair.dbtest.mjs").read_text(encoding="utf-8")
       and all(z in (REPO / "site/tests/pushrulestest.mjs").read_text(encoding="utf-8") for z in ("Asia/Kolkata", "Europe/London", "America/Los_Angeles")))
+
+# ---------- 10zz. Ekta, the family assistant (stream C) ----------
+# She reads only what the member may open, she never acts without a yes, and
+# she never runs on a model that has been retired.
+_ek2 = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
+_ek2r = (API_DIR / "_ektarules.mjs").read_text(encoding="utf-8")
+_ek2a = (API_DIR / "_ektaagent.mjs").read_text(encoding="utf-8")
+_ek2d = (API_DIR / "_ektaday.mjs").read_text(encoding="utf-8")
+_ek2c = (API_DIR / "chats.mjs").read_text(encoding="utf-8")
+_ek2ev = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+# Model ids Anthropic has retired. A default on this list is a family with no assistant.
+RETIRED_MODELS = [
+    "claude-3-5-sonnet-20241022", "claude-3-5-sonnet-20240620", "claude-3-opus-20240229", "claude-3-5-haiku-20241022",
+    "claude-3-haiku-20240307", "claude-3-sonnet-20240229", "claude-3-7-sonnet-20250219", "claude-2.1", "claude-2.0",
+    "claude-instant-1.2", "claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-opus-4-1-20250805",
+]
+_api_all = {f.name: f.read_text(encoding="utf-8") for f in sorted(API_DIR.glob("*.mjs"))}
+_retired_hits = [n + ": " + m for n, t in _api_all.items() for m in RETIRED_MODELS if m in t]
+_claude_ids = sorted({m for t in _api_all.values() for m in re.findall(r"'(claude-[a-z0-9.\-]+)'", t)})
+check("ekta: no model id anywhere in api/ is on the retired list", not _retired_hits, "; ".join(_retired_hits[:4]))
+check("ekta: the defaults are the current ids, with no date suffix, and the env overrides stay",
+      "main: 'claude-sonnet-5-5', deep: 'claude-opus-5-5', light: 'claude-haiku-5-5'" in _ek2r
+      and "process.env.ANTHROPIC_MODEL || EKTA_MODELS.main" in _ek2 and "process.env.ANTHROPIC_DEEP_MODEL || EKTA_MODELS.deep" in _ek2
+      and "process.env.ANTHROPIC_FALLBACK_MODEL || EKTA_MODELS.light" in _ek2
+      and not [m for m in _claude_ids if re.search(r"-\d{8}$", m)], ", ".join(_claude_ids))
+check("ekta: the request leaves room for thinking, sets depth with effort, and never sends a thinking budget or a temperature",
+      "maxTokens: 16000" in _ek2r and "req.thinking = { type: 'adaptive' };" in _ek2 and "req.output_config = { effort:" in _ek2
+      and "budget_tokens" not in _ek2 and "temperature" not in _ek2 and "max_tokens: 1024" not in _ek2
+      and "if (response.stop_reason === 'max_tokens' && !text) return { reply: '', model: served, escalate: true };" in _ek2)
+check("ekta: the system prompt is cached and never carries the clock; the date travels in the member's own turn",
+      "cache_control: { type: 'ephemeral' }" in _ek2 and "export const SYSTEM = `" in _ek2
+      and "whereWhen(" not in _ek2 and "new Date()" not in _ek2[_ek2.index("export const SYSTEM = `"):_ek2.index("async function turnContext(")]
+      and "resolveWhen(text, zone" in _ek2 and "context + '\\n\\n' + text" in _ek2)
+check("ekta: history and memory come from the server, never from the phone",
+      "const past = await threadLoad(sql, me, EKTA.threadSend - 1);" in _ek2 and "memory = await memoryList(sql, me);" in _ek2
+      and "req.body.memory" not in _ek2 and "body.memory" not in _ek2a and ".slice(-12)" not in _ek2
+      and "post(API.ekta, { code: state.code, memberId: state.memberId, text: v, iso: guessIso() })" in _app_src and "ektaMsgs" not in _app_src)
+check("ekta: in a chat she answers only to @Ekta or her name as the first word",
+      "if (!ektaMentioned(text)) return null;" in _ek2c and "/\\bekta\\b|एकता/i.test(text)" not in _ek2c
+      and "export function ektaMentioned(text)" in _ek2r)
+check("ekta: a records-only or unanswered reply is never posted into a chat; the coin rule and a fail-closed limit apply there and on her own screen",
+      "if (!out || !out.reply || out.offline || out.unanswered || out.unfinished) {" in _ek2c
+      and _ek2c.index("out.offline || out.unanswered") < _ek2c.index("await post(urgent ?")
+      and "await spend(sql, circle.id, me.id, 'ekta');" in _ek2c
+      and "rateLimit(sql, 'ektamention', me.id, EKTA.mentionRate.n, EKTA.mentionRate.sec, { failClosed: true })" in _ek2c
+      and "rateLimit(sql, 'ekta', me.id, EKTA.rate.n, EKTA.rate.sec, { failClosed: true })" in _ek2
+      and _ek2.index("asked === 'emergency' || asked === 'crisis'") < _ek2.index("rateLimit(sql, 'ekta', me.id"))
+check("ekta: in a shared chat she is given only what the whole family sees, and nothing that changes anything",
+      "ektaTurn(sql, circle, me, history, { open: true," in _ek2c and "const tools = ctx.open ? TOOLS_OPEN : TOOLS;" in _ek2
+      and "if (ctx.open && !tool.open) return no(" in _ek2a and "not ${open} and (b.about_member = ${me.id}" in _ek2)
+check("ekta: a tool's arguments are checked before it runs, results say ok true or false, and the turn has 45 seconds",
+      "const checked = validateArgs(tool.input_schema, input || {});" in _ek2a and "if (!checked.ok) return no(checked.error, { invalid: true });" in _ek2a
+      and "const checked = validateArgs(own.input_schema, input || {});" in _ek2 and "deadlineMs: 45000" in _ek2r
+      and "{ timeout: left, maxRetries: 0 }" in _ek2 and "is_error: true" in _ek2 and "Ho gaya!" not in _ek2
+      and "completionReport(ledger)" in _ek2)
+_ek2_write = _ek2a[_ek2a.index("async function writeTool("):_ek2a.index("// ---------------------------------------------------------------- running one card")]
+check("ekta: a write tool only ever makes a proposal - nothing in it inserts, updates, sends or pushes",
+      not re.search(r"insert into (?!ekta_actions)|update (?!ekta_actions)\w+ set|delete from|pushCircle|createReminder\(|createRequest\(|viaRoute\(", _ek2_write)
+      and _ek2_write.count("return propose(ctx, ") >= 8
+      and "create_reminder" not in _ek2[_ek2.index("async function runTool("):_ek2.index("async function runLoop(")])
+check("ekta: a card runs once, as that member, through the real handler, and is good for 30 minutes",
+      "and status = 'proposed' and claimed_at is null and created_at >= ${cutoff(nowMs)}" in _ek2a
+      and "where id = ${id} and member_id = ${me.id} and circle_id = ${circle.id}" in _ek2a
+      and "body: Object.assign({}, body, { code: b.code, memberId: b.memberId })" in _ek2a and "headers: req.headers || {}" in _ek2a
+      and "proposalMinutes: 30" in _ek2r and "status in ('proposed', 'done', 'cancelled', 'expired')" in _ek2a
+      and all(x in _ek2a for x in ("import('./chats.mjs')", "import('./plans.mjs')", "import('./book.mjs')", "import('./care.mjs')")))
+check("ekta: someone who is remembered is never found by name or family word, and an old card for them is refused at the yes",
+      "filter(m => m && m.id !== meId && !m.remembered)" in _ek2r and "filter(m => m && !m.remembered &&" in _ek2r
+      and _ek2a.count("if (!t || t.remembered) return { ok: false") == 3)
+check("ekta: memory is private in the query, saved only from a confirmed card, and never a password, a PIN or a reading",
+      _ek2a.count("insert into ekta_memory") == 1 and "from ekta_memory where member_id = ${me.id}" in _ek2a
+      and "delete from ekta_memory where id = ${body.id} and member_id = ${me.id}" in _ek2a
+      and "memoryRisk(key, value) || noteRisk(key) || noteRisk(value) || credRisk(key) || credRisk(value)" in _ek2a
+      and "export function memoryRisk(" in _ek2r and "MEMORY_REFUSE_HEALTH" in _ek2r
+      and _ek2a.index("const risk = memoryRefusal(p.key, p.value);") < _ek2a.index("insert into ekta_memory"))
+check("ekta: the saved chat is private in the query, 30 turns, and can be cleared",
+      "from ekta_thread where member_id = ${me.id} order by id desc limit ${n}" in _ek2a and "threadKeep: 30" in _ek2r
+      and "delete from ekta_thread where member_id = ${me.id}`" in _ek2a and 'id="ek2-clear"' in _app_src)
+check("ekta: every confirmed action is audited without its words; the member's switch and the family's switch are enforced on the server",
+      "insert into ekta_audit (circle_id, member_id, kind, label, outcome)" in _ek2a and "auditLabel(row.kind, row.payload)" in _ek2a
+      and "if (sw.noActions) return { status: 403" in _ek2a and "if (sw.paused) return { status: 403" in _ek2a
+      and "if (switches.paused) return answer(" in _ek2 and "if (!(await isAdult(sql, me))) return res.status(403)" in _ek2a
+      and _ek2.index("asked === 'emergency' || asked === 'crisis'") < _ek2.index("if (switches.paused) return answer("))
+check("ekta: she reads no register, no vault contents, no health numbers and nobody else's notes",
+      not re.search(r"from\s+(notes|legacy_asset_\w+|biomarker_records|pay_\w+|care_expenses|vault_files|register_\w+)\b", _ek2a + _ek2d)
+      and "d.label" in _ek2a and "answer_text" in _ek2a and "from notes" not in _ek2)
+check("ekta: the morning note is plain by default, shares the evening note's one model call a day, and never names someone remembered",
+      "morningWrite(facts, word)" in _ek2d and "EKTA_MORNING_MODEL" in _ek2d and "digestModelOnce(sql, circle, me, facts, nowMs, { promptOf: morningPrompt })" in _ek2d
+      and "remembered: unsure ? p.id !== mid : remembered.has(p.id)" in _ek2d and "b.name" not in _ek2d[_ek2d.index("export async function morningGather("):_ek2d.index("const morningModelOn")]
+      and 'id="ek2-today"' in _app_src and "function ek2IsMorning(){ var h = new Date().getHours(); return h >= 5 && h < 12; }" in _app_src)
+check("ekta: nudges are off until turned on, private, model-free, quiet from 9pm to 8am, two a day, and one line in the timer",
+      _ek2a.count("boolean not null default false") >= 4 and "quietFrom: 21, quietTo: 8" in _ek2r and "nudgeCap: 2" in _ek2r
+      and "if (quietHour(hour)) continue;" in _ek2d and "{ only: p.member_id }" in _ek2d
+      and not re.search(r"anthropic|callModel|ektaTurn|digestModelOnce", _ek2d[_ek2d.index("export async function ektaNudgeSweep("):], flags=re.I)
+      and _ek2ev.count("ektaNudgeSweep(") == 1 and "await one(() => ektaNudgeSweep(sql, id));" in _ek2ev
+      and re.search(r"^export async function ektaNudgeSweep\(", _ek2d, flags=re.M) is not None)
+check("ekta: reading a photo is off unless EKTA_PHOTO_DRAFT=on, is limited in size and rate, and refuses anything medical in the app's own words",
+      "String(process.env.EKTA_PHOTO_DRAFT || '').toLowerCase() === 'on'" in _ek2a and "if (!photoOn()) return { status: 200, json: { ok: true, off: true" in _ek2a
+      and "photoMaxChars: 3500000" in _ek2r and "rateLimit(sql, 'ektaphoto'" in _ek2a
+      and "Parwah and Ekta never read or explain a prescription or a report." in _ek2r
+      and "Parwah and Ekta never read or explain a prescription or a report." in _app_src and "c.toDataURL('image/jpeg', 0.72)" in _app_src)
+check("ekta: WhatsApp is a button the member presses; the server never calls WhatsApp",
+      "export function waLink(" in _ek2r and "https://wa.me/" in _ek2r and "fetch(" not in _ek2a and "fetch(" not in _ek2d
+      and 'target="_blank" rel="noopener" href="\' + esc(h.url)' in _app_src and "You send it yourself. Parwah does not send anything on WhatsApp." in _app_src)
+check("ekta: her spoken lines exist in English and Hindi on the server, and the member's language is a per-member field",
+      "alter table members add column if not exists lang text not null default 'en'" in _ek2a and "speechLang: 'hi-IN'" in _ek2r and "speechLang: 'en-IN'" in _ek2r
+      and "if (typeof ek2Voice === 'string' && ek2Voice) return ek2Voice;" in _app_src and "rec.lang = speechLang();" in _app_src)
+check("ekta: what was deliberately not built is written down",
+      all(x in _ek2r for x in ("no wake word", "no device\n// control", "no WhatsApp sent by itself", "no payments", "no saving of every\n// exchange", "no automatic retry")))
+check("ekta: it all rides /api/ekta in underscore modules, after requireMember",
+      "/^ekta_/.test(req.body.action)" in _ek2 and _ek2.index("requireMember(sql, code, memberId, tokenOf(req))") < _ek2.index("return ektaAgentHandle(sql, circle, me, req, res);")
+      and not (API_DIR / "ektaagent.mjs").exists() and not (API_DIR / "ektaday.mjs").exists())
+_ek2_static = [i for i in _static_ids if i.startswith("ek2-")]
+check(f"ekta: its new ids all start with ek2- ({len(_ek2_static)} in the page), none twice, and its functions start with ek2",
+      len(_ek2_static) == len(set(_ek2_static)) >= 7 and len(re.findall(r"function ek2\w+\(", _app_src)) >= 20)
+_ek2_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("ekta: the rules test runs in the gate, and the db and browser tests run in test:db with no key, no network and no fixed waits",
+      "node site/tests/ektarulestest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all(("site/tests/db/" + f) in _ek2_testdb and (REPO / "site/tests/db" / f).exists() for f in ("ektaagent.dbtest.mjs", "ektaagent.e2e.dbtest.mjs"))
+      and all("globalThis.fetch = async" in (REPO / "site/tests/db" / f).read_text(encoding="utf-8")
+              and "ektaSeams.client" in (REPO / "site/tests/db" / f).read_text(encoding="utf-8")
+              and "waitForTimeout" not in (REPO / "site/tests/db" / f).read_text(encoding="utf-8")
+              for f in ("ektaagent.dbtest.mjs", "ektaagent.e2e.dbtest.mjs")))
+check("ekta: the coverage map says what is live and what was left out, and the review is written down",
+      "Ekta asks before she acts" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
+      and "Ekta: the confirm card" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

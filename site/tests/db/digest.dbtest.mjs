@@ -325,7 +325,7 @@ const expectedFor = async (who, zone = EVE.zone) => R.digestFacts(await D.digest
   const sent = modelCalls[0];
   ok('ONLY THE LIST IS SENT: the prompt is the numbered sentences of the list and nothing else',
      sent.user === 'Facts for today, most important first:\n' + facts.slice(0, 8).map((f, i) => (i + 1) + '. ' + f.text).join('\n') + '\n\nWrite the note now.', sent.user);
-  ok('with the fixed rules, 300 tokens and an 8 second limit', sent.system === R.DIGEST_SYSTEM && sent.maxTokens === 300 && sent.timeoutMs === 8000
+  ok('with the fixed rules, room for thinking plus the note (4000 tokens) and an 8 second limit', sent.system === R.DIGEST_SYSTEM && sent.maxTokens === 4000 && sent.timeoutMs === 8000
      && Object.keys(sent).sort().join() === 'maxTokens,system,timeoutMs,user');
   const all = sent.system + '\n' + sent.user;
   ok('no email, no phone number, no id, no code, no token', !/@/.test(all) && !/\+?91\d{8,}|\d{7,}/.test(all)

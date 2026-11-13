@@ -21,6 +21,11 @@ node site/tests/gametest.mjs
 # Ekta with no credit: she retrieves from the family's own records rather
 # than dying. _ektalocal.mjs imports nothing, so this runs before npm install.
 node site/tests/ektatest.mjs
+# Ekta's own rules: current model ids, when a chat message is for her, dates
+# and family words worked out before any model, the confirm card, what she
+# never remembers, the morning note and the nudges. _ektarules.mjs imports
+# only _digestrules.mjs, which imports nothing.
+node site/tests/ektarulestest.mjs
 # A family outside India: phone numbers, SOS dialling and time, emergency and
 # crisis lines, money and "today". Every module it loads imports only data.
 node site/tests/globaltest.mjs
