@@ -32,7 +32,8 @@ const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   let p = u.pathname;
   if (p.startsWith('/api/')) {
-    if (req.method === 'GET') { net.apiGets++; res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'not in this test', n: net.apiGets })); return; }
+    // Counted for the one address only the test reads (the page polls others).
+    if (req.method === 'GET') { if (p === '/api/diag') net.apiGets++; res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: 'not in this test', n: net.apiGets })); return; }
     let raw = ''; for await (const c of req) raw += c;
     const body = raw ? JSON.parse(raw) : {};
     if (p === '/api/events' && ['checkin', 'pill'].includes(body.type)) {
