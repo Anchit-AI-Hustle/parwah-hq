@@ -3829,7 +3829,7 @@ check("location: other people's positions are sent only on a look, the look is w
       "const look = q.look === '1';" in _cn["_locationapi.mjs"] and "insert into location_looks" in _cn["_locationapi.mjs"]
       and "lat: open ? r.lat : null, lng: open ? r.lng : null" in _cn["_locationapi.mjs"]
       and "seenBy: seen.map(" in _cn["_locationapi.mjs"]
-      and "locUrl() + (curTab === 'people' ? '&look=1' : '')" in _app_src and "'Seen by ' + cnFirst(s.name)" in _app_src)
+      and "locUrl() + (cnLooked ? '&look=1' : '')" in _app_src and "if (!cnLooked && curTab === 'people') { refreshLoc(); return; }" in _app_src and "'Seen by ' + cnFirst(s.name)" in _app_src)
 check("location: older than five minutes is 'Last seen', on its own line, never 'updated'",
       "export const LIVE_MINUTES = 5;" in _cn["_consentrules.mjs"] and "live: isLive(r.updated_at)" in _cn["_locationapi.mjs"]
       and "var cnOld = x.live === false || x.stale;" in _app_src and "if (!cnOld) bits.push('updated ' + locAgo(x.updatedAt));" in _app_src

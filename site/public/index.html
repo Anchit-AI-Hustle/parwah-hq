@@ -17182,8 +17182,12 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var gen = locGen;
     // Other people's positions are sent only on a look, which the server
     // writes down for them to see. Away from this tab, nobody is looked at.
-    apiGet(locUrl() + (curTab === 'people' ? '&look=1' : '')).then(function(j){
+    var cnLooked = curTab === 'people';
+    apiGet(locUrl() + (cnLooked ? '&look=1' : '')).then(function(j){
       if (gen !== locGen || locStopping) return;   // read before or during a Stop: out of date
+      // Asked before the Family tab opened, answered after: it carries no
+      // positions, so it must not be drawn over a look. Ask again, as a look.
+      if (!cnLooked && curTab === 'people') { refreshLoc(); return; }
       if (!j.ok) { $('loc-list').innerHTML = '<div class="ev">Could not load locations - try again in a moment.</div>'; return; }
       locMe = j.me; locShares = j.shares || []; locPrec = locMe.precision || 'exact'; locPlaces = j.places || [];
       renderLoc();
