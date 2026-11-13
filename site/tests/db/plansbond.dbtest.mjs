@@ -216,11 +216,11 @@ ok('an unknown bond action is refused', (await act(rohan, 'bond_nope')).status =
 
 // ---------------------------------------------------------------- 3. festivals
 {
-  ok('the dates are all inside Nov 2026 to Dec 2027', T.FESTIVALS.every(f => f.dates.every(d => d >= '2026-11-01' && d <= '2027-12-31')) && T.FESTIVALS.length === 16);
+  ok('the dates are all inside Nov 2026 to Dec 2030', T.FESTIVALS.every(f => f.dates.every(d => d >= '2026-11-01' && d <= '2030-12-31')) && T.FESTIVALS.length === 21);
   const sql = db(); const circle = { id: fam, kind: 'family' };
   // Off until the family picks: nothing is assumed.
   let s = await state(rohan);
-  ok('off until the family picks', s.festivals.chosen.length === 0 && s.festivals.due.length === 0 && s.festivals.list.length === 16);
+  ok('off until the family picks', s.festivals.chosen.length === 0 && s.festivals.due.length === 0 && s.festivals.list.length === 21);
   // A festival 10 days away, made up for the test so the clock does not matter.
   T.FESTIVALS.push({ key: 'testfest', name: 'Test Festival', icon: '🎉', dates: [dayPlus(10)] });
   T.FESTIVALS.push({ key: 'farfest', name: 'Far Festival', icon: '🎉', dates: [dayPlus(30)] });

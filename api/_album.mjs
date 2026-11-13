@@ -18,7 +18,7 @@
 //        album_remove  {id}
 //        today_hide    {}              not this week
 //        photo_react   {id, emoji|null}  one reaction per person per photo, no push
-//        photo_voice   {id, audio, mime, secs}   a voice caption, from whoever added the photo
+//        photo_voice   {id, audio, voiceMime, secs}   a voice caption, from whoever added the photo
 //        photo_voice_remove {id}
 //   GET  /api/book?area=album&view=voice&id=UUID -> { audio }  for someone the album is for
 //
@@ -549,7 +549,7 @@ export default async function albumApi(req, res) {
         await sql`delete from album_voice where photo_id = ${p.id}`;
         return good();
       }
-      const v = audioCheck(body.mime, body.audio, body.secs);
+      const v = audioCheck(body.voiceMime, body.audio, body.secs);
       if (v.err) return bad(v.err);
       await sql`insert into album_voice (photo_id, by_member, audio, secs) values (${p.id}, ${me.id}, ${v.uri}, ${v.secs})
                 on conflict (photo_id) do update set by_member = excluded.by_member, audio = excluded.audio, secs = excluded.secs, created_at = now()`;

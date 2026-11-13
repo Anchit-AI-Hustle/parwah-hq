@@ -113,6 +113,7 @@ const EV = (who) => call(api.events, { method: 'GET', token: who.token, query: {
 const count = async (q, p) => (await admin.query(q, p)).rows[0].n;
 const feed = async () => (await admin.query(`select text from events where circle_id = $1 order by created_at`, [fam])).rows.map(r => r.text);
 const to = (who) => pushed.filter(p => p.to === who.id);
+const AVOICE = { audio: 'GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYEC', voiceMime: 'audio/webm', secs: 4 };
 const VOICE = { audio: 'GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQRChYEC', mime: 'audio/webm', secs: 4 };
 
 // ================================================================ 1. the mood
@@ -245,7 +246,9 @@ const remembrancePushes = [];
   ok('3. someone remembered cannot be thanked here', (await H(rohan, 'shukriya_send', { toId: dadaji.id, line: 'x' })).status === 404);
   ok('3. nor oneself, nor a stranger', (await H(rohan, 'shukriya_send', { toId: rohan.id, line: 'x' })).status === 404 && (await H(rohan, 'shukriya_send', { toId: vikramG.id, line: 'x' })).status === 404);
 
-  // The weekly quiet prompt.
+  // The weekly quiet prompt. (Reading Today earlier in this test already made this week's prompts,
+  // before anyone had thanked anyone; they are cleared so this part starts from what is true now.)
+  await admin.query('delete from shukriya_prompts');
   const prompts = {};
   for (const who of [rohan, meena, papa, kabir]) prompts[who.name] = (await HG(who)).shukriya.prompt;
   ok('3. each member is quietly offered someone to thank', Object.values(prompts).every(p => p && p.toId && p.name));
@@ -455,14 +458,14 @@ const plus = (day, k) => { const d = new Date(day + 'T00:00:00Z'); d.setUTCDate(
   ok('4. and taken back', (await AG(papa)).photos.find(p => p.id === photoId).reactions.length === 1);
   ok('4. only the five reactions', (await A(meena, 'photo_react', { id: photoId, emoji: '💩' })).status === 400);
   ok('4. a reaction never goes on the feed', !(await feed()).some(x => /react/i.test(x)));
-  ok('4. only whoever added the photo can give it a voice caption', (await A(meena, 'photo_voice', { id: photoId, ...VOICE })).status === 403);
-  r = await A(rohan, 'photo_voice', { id: photoId, ...VOICE });
+  ok('4. only whoever added the photo can give it a voice caption', (await A(meena, 'photo_voice', { id: photoId, ...AVOICE })).status === 403);
+  r = await A(rohan, 'photo_voice', { id: photoId, ...AVOICE });
   ph = (await AG(kabir)).photos.find(p => p.id === photoId);
   ok('4. Rohan adds a voice caption; everyone the album is for can play it', r.status === 201 && ph.hasVoice === true && ph.voiceSecs === 4 && (await AG(kabir, { view: 'voice', id: photoId })).audio.startsWith('data:audio/webm'));
   // A private album: its photos take no reaction or listen from anyone else.
   r = await A(rohan, 'album_save', { name: 'Only mine', audience: 'me' });
   const mine = await A(rohan, 'photo_add', { albumId: r.id, photos: [one()] });
-  await A(rohan, 'photo_voice', { id: mine.ids[0], ...VOICE });
+  await A(rohan, 'photo_voice', { id: mine.ids[0], ...AVOICE });
   ok('4. a photo in a private album takes no reaction and plays no caption for anyone else', (await A(meena, 'photo_react', { id: mine.ids[0], emoji: '❤️' })).status === 404
     && (await AG(meena, { view: 'voice', id: mine.ids[0] })).status === 404 && (await AG(outsider, { view: 'voice', id: photoId })).status === 403);
   ok('4. the voice caption can be taken off', (await A(rohan, 'photo_voice_remove', { id: photoId })).status === 200 && (await AG(kabir, { view: 'voice', id: photoId })).status === 404);

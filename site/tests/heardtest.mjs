@@ -126,7 +126,7 @@ const BANNED = /\b(elderly|burden|cures?|treat\w*|heal\w*|therapy|remedy|remedie
 ok('at least forty questions', H.FAMILY_QUESTIONS.length >= 40, String(H.FAMILY_QUESTIONS.length));
 ok('no question is there twice', new Set(H.FAMILY_QUESTIONS.map(q => q.toLowerCase())).size === H.FAMILY_QUESTIONS.length);
 ok('no banned word in any question', !H.FAMILY_QUESTIONS.some(q => BANNED.test(q)), H.FAMILY_QUESTIONS.find(q => BANNED.test(q)));
-ok('no long dash in any question', !H.FAMILY_QUESTIONS.some(q => /[–—]/.test(q)));
+ok('no long dash in any question', !H.FAMILY_QUESTIONS.some(q => new RegExp('[' + String.fromCharCode(8211, 8212) + ']').test(q)));
 ok('each is short and plain: one or two sentences, under 100 letters, words of four syllables at most', H.FAMILY_QUESTIONS.every(q => q.length <= 100 && /[?.]$/.test(q)
   && q.split(/\s+/).every(w => w.replace(/[^a-z]/gi, '').length <= 11)), H.FAMILY_QUESTIONS.find(q => q.length > 100 || q.split(/\s+/).some(w => w.replace(/[^a-z]/gi, '').length > 11)));
 ok('it is about India: our food, festivals and families', ['Diwali', 'Holi', 'Chai', 'Rakhi', 'mango', 'monsoon', 'Dadi', 'cricket'].every(w => H.FAMILY_QUESTIONS.some(q => q.includes(w))));
