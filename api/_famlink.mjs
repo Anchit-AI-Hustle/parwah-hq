@@ -105,18 +105,6 @@ const activeCount = async (sql, circleId) =>
   (await sql`select count(*)::int as n from family_links where status = 'active' and (a_circle = ${circleId} or b_circle = ${circleId})`)[0].n;
 const FULL = 'has ' + LINKS_MAX + ' linked families already. End one to add another.';
 
-// THE ONLY READ OF ANOTHER FAMILY. The columns are named here and nowhere
-// else: name, he or she, the two tree links, the date of birth (cut to its
-// year before it leaves this function), the city, and the phone only when
-// that side said yes to sharing numbers.
-async function peopleOf(sql, circleId, withPhones) {
-  const rows = await sql`select id, name, gender, parent_id, spouse_id, to_char(dob, 'YYYY') as born, place,
-                                case when ${!!withPhones}::boolean then phone else null end as phone
-                         from members where circle_id = ${circleId} order by created_at, id`;
-  return rows.map(r => ({ id: r.id, name: r.name, gender: r.gender || null, parent_id: r.parent_id || null, spouse_id: r.spouse_id || null,
-                          born: r.born ? +r.born : null, city: (r.place && String(r.place).trim()) || null, phone: r.phone || null }));
-}
-
 // Every grown-up of both families, with which family each is in.
 async function bothAdults(sql, l) {
   const today = todayIn();
@@ -124,7 +112,7 @@ async function bothAdults(sql, l) {
   return { a, b, all: [...a.map(m => ({ ...m, circle_id: l.a_circle })), ...b.map(m => ({ ...m, circle_id: l.b_circle }))] };
 }
 const yesVote = (sql, linkId, memberId) => sql`insert into family_link_votes (link_id, member_id, yes) values (${linkId}, ${memberId}, true)
-                                               on conflict (link_id, member_id) do update set yes = true, at = now()`;
+                                               on conflict (link_id, member_id) do nothing`;
 // The link starts: claimed once, and both families read it in the feed.
 async function activate(sql, l) {
   const got = await sql`update family_links set status = 'active' where id = ${l.id} and status = 'pending' and agreed_at is not null returning id`;
@@ -153,6 +141,18 @@ export async function activateDueLinks(sql, circleId) {
   let n = 0;
   for (const l of due) if (await activate(sql, l)) n++;
   return n;
+}
+
+// THE ONLY READ OF ANOTHER FAMILY. The columns are named here and nowhere
+// else: name, he or she, the two tree links, the date of birth (cut to its
+// year before it leaves this function), the city, and the phone only when
+// that side said yes to sharing numbers.
+async function peopleOf(sql, circleId, withPhones) {
+  const rows = await sql`select id, name, gender, parent_id, spouse_id, to_char(dob, 'YYYY') as born, place,
+                                case when ${!!withPhones}::boolean then phone else null end as phone
+                         from members where circle_id = ${circleId} order by created_at, id`;
+  return rows.map(r => ({ id: r.id, name: r.name, gender: r.gender || null, parent_id: r.parent_id || null, spouse_id: r.spouse_id || null,
+                          born: r.born ? +r.born : null, city: (r.place && String(r.place).trim()) || null, phone: r.phone || null }));
 }
 
 async function linkState(sql, circle, me) {

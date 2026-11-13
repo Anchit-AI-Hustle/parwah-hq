@@ -307,6 +307,7 @@ export async function resetApprovers(sql, userId) {
 // private things go; what they shared stays with the family (the author
 // becomes "a former member") unless they asked for it to go too. Everything
 // recorded ABOUT them goes with the member row (the same cascade as leaving).
+export const FORMER_MARK = String.fromCharCode(0x2063);
 export async function forgetMember(sql, memberId, { removePosts = false } = {}) {
   const quiet = async f => { try { await f(); } catch (e) { /* that feature has no table yet */ } };
   await quiet(() => sql`delete from notes where by_member = ${memberId} and private`);
@@ -315,6 +316,11 @@ export async function forgetMember(sql, memberId, { removePosts = false } = {}) 
     await quiet(() => sql`delete from messages where member_id = ${memberId}`);
     await quiet(() => sql`delete from events where member_id = ${memberId}`);
     await quiet(() => sql`delete from notes where by_member = ${memberId}`);
+  } else {
+    // What they wrote in a chat stays, marked so the app can say "A former
+    // member" (a message with no author is otherwise read as Ekta's). The
+    // mark is one unseen character at the start of the text.
+    await quiet(() => sql`update messages set text = ${FORMER_MARK} || text where member_id = ${memberId} and kind = 'text'`);
   }
   await sql`delete from members where id = ${memberId}`;
 }

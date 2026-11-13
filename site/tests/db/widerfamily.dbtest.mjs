@@ -170,6 +170,11 @@ ok('a bridge from another family is refused at the yes', (await act(b.Kishan, 'l
 r = await act(b.Kishan, 'link_approve', { linkId: link2, sharePhones: true });
 ok('Kishan says yes, and ticks "share phone numbers" for his side', r.status === 200, JSON.stringify(r));
 ok('a second yes does nothing', (await act(b.Sarla, 'link_approve', { linkId: link2 })).status === 404);
+// The yes starts a 48-hour wait in which any adult of either family can
+// object (site/tests/db/standing.dbtest.mjs proves the wait). Here the 48
+// hours pass with no objection.
+ok('the yes starts a wait, not the link', r.active === false && r.holdHours === 48 && (await act(a.Arjun, 'link_state')).agreed.length === 1 && (await act(a.Arjun, 'link_state')).links.length === 0, JSON.stringify(r));
+await admin.query(`update family_links set effective_at = now() - interval '1 minute' where id = $1`, [link2]);
 
 sa = await act(a.Arjun, 'link_state'); sb = await act(b.Karan, 'link_state');
 const LA = sa.links[0], LB = sb.links[0];

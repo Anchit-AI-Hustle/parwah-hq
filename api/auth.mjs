@@ -1,12 +1,12 @@
-// Phone-first sign-in. One action does both directions:
-//   POST /api/auth {action:'enter', phone, name?}
-//   - phone known   → sign in: returns the profile + every circle membership
-//   - phone unknown → if name given, creates the profile and signs in
-//                     (sign-up and sign-in in one seamless step);
-//                     without a name returns exists:false so the client
-//                     can ask for it.
-// No OTP yet (SMS provider is a roadmap item) - the shape is ready for an
-// OTP check to slot in here without any client-flow change.
+// Sign-in: a mobile number and a 4-number PIN. No text message is ever sent
+// (the owner's decision), so the family is the way back in.
+//   POST /api/auth {action:'enter', phone, pin}            sign in
+//   POST /api/auth {action:'enter', phone, name, pin}      "I am new here"
+// A name means "make my profile". Without one it is a sign-in, and the reply
+// to a number nobody has is the same as to one with an account: asked for a
+// PIN, told the number and PIN do not match, locked after five tries. Nothing
+// here says whether a number is registered. The rest of the account (devices,
+// "Not me", recovery contact, download, delete) is in api/_account.mjs.
 import { db, ensureSchema, isUuid, normPhone, phoneError, rateLimit, clientIp, sessionUser, sessionIs } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { pushCircle } from './_push.mjs';
@@ -135,7 +135,7 @@ export default async function handler(req, res) {
   try {
     const body = req.body || {};
     const t0 = Date.now();
-    // Until SMS one-time codes are in, a phone number is the whole key - so
+    // A number and a 4-number PIN are the whole key (no text message), so
     // the number of tries from one device is capped.
     // A SIGN-IN ATTEMPT AND A BACKGROUND REFRESH ARE NOT THE SAME EVENT. The
     // app re-reads the circle list for a number it already holds every 60
@@ -270,8 +270,8 @@ export default async function handler(req, res) {
       }
       // The secret and the two-number code go back to this device only.
       // Every reply carries both and looks the same, for a number with no
-      // account, one with no family, and one with a family: the reply says
-      // nothing about whether a number is registered.
+      // account, one with no family, and one with a family: it says nothing about
+      // whether a number is registered.
       const secret = newToken(), code2 = sayCode();
       const same = { ok: true, asked: true, resetSecret: secret, sayCode: code2, expiresInMinutes: RESET_MINUTES };
       const ur = await sql`select id, name from users where phone = ${npr.e164}`;
@@ -392,14 +392,13 @@ export default async function handler(req, res) {
     // the circle list for the number it holds; it has no PIN to send, and
     // must not need one. Its session token says who it is.
     if (user && body.refresh === true) {
-      const tok = tokenOf(req);
-      const su = await sessionUser(sql, tok);
+      const su = await sessionUser(sql, tokenOf(req));
       if (su && su.user_id === user.id) {
         const circles = await circlesOf(sql, user.id);
         return res.status(200).json({ ok: true, exists: true,
           user: { id: user.id, name: user.name, phone: user.phone },
           toured: !!user.toured_at, circles, pinResets: await resetsFor(sql, user.id),
-          security: await securityFor(sql, user.id, tok),
+          security: await securityFor(sql, user.id, tokenOf(req)),
           // An older PIN or a password, or a "Not me" on a new sign-in:
           // the app asks for a new 4-number PIN.
           changeSecret: !user.pin_hash || user.secret_v !== SECRET_V || !!user.must_change_pin,

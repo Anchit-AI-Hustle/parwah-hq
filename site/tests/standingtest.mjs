@@ -151,7 +151,7 @@ ok('nothing known is still a name', S.deviceName('') === 'A phone or computer' &
   const words = [S.codeProblem('AB'), S.codeProblem('SHARMASS'), S.lockWords(NOW + DAY, NOW),
     S.removalRule({ me: papa, target: rohan, members: [papa, rohan], today: TODAY }).error,
     S.openJoinRule({ me: aarav, members: [aarav], today: TODAY }).error].join(' ');
-  ok('no copy uses an em or en dash', !/[–—]/.test(words));
+  ok('no copy uses an em or en dash', !/[\u2013\u2014]/.test(words));
 }
 
 if (fails.length) {

@@ -872,6 +872,8 @@ CIRCLE_WIDE_OK = {
     ("_renewals.mjs", "payload, {})"):    "a household date nobody looks after yet: anyone may take it",
     ("_bond.mjs", "Plan it together on Parwah"): "a festival the circle itself chose, once, 14 days ahead",
     ("_famlink.mjs", "asks to link family trees"): "another family asks to link trees: any adult of this one may be the one who answers",
+    ("_standing.mjs", "Anyone with the code can now join"): "two adults opened the door: it changes who can walk in, for everyone",
+    ("_standing.mjs", "will be deleted in"): "the whole family is about to be deleted: every member must hear, with the way to stop it",
     ("_remember.mjs", "A quiet day to remember"): "a day of remembrance is the whole family's, once a year",
 }
 def _push_calls(src):
@@ -1042,8 +1044,11 @@ check("flow: an empty name is refused out loud",
       "Please type your name so your family knows who joined." in _appf)
 check("flow: and a sign-in error is scrolled to, on a screen taller than a phone",
       "function authErr(" in _appf and "scrollIntoView({ block: 'center'" in _appf)
-check("flow: a number nobody has seen before is told it is new",
-      'id="au-newnote"' in _appf and "This number is new to Parwah" in _appf)
+# The server used to say "this number is new", which told anyone who typed a
+# number whether its owner uses Parwah. The person says it themselves now.
+check("flow: the sign-in card asks 'new here or signing in?', so the server never has to say which numbers have a profile",
+      'id="au-newnote"' in _appf and 'id="ac-mode"' in _appf and 'data-acmode="new"' in _appf and "I am new here" in _appf
+      and "This number is new to Parwah" not in _appf)
 check("flow: signing up, signing in and navigating are walked in a browser",
       (REPO / "site/tests/browser/flow.browser.mjs").exists()
       and "flow.browser.mjs" in (REPO / "package.json").read_text(encoding="utf-8"))
@@ -1258,8 +1263,22 @@ check("signin: PINs are compared in constant time",
       "timingSafeEqual" in _au)
 check("signin: the PINs a thief tries first are refused",
       "'1234'" in _au and "'0000'" in _au)
+_acct = (API_DIR / "_account.mjs").read_text(encoding="utf-8")
+_strules = (API_DIR / "_standingrules.mjs").read_text(encoding="utf-8")
 check("signin: wrong PINs lock the account rather than allowing a million tries",
-      "MAX_TRIES" in _au and "locked_until" in _authmjs and "lockMessage" in _authmjs)
+      "MAX_TRIES" in _au and "locked_until" in _acct and "pinGate(sql, key" in _authmjs and "lockReply(g.until)" in _authmjs)
+check("signin: the lock grows (15 minutes, 1 hour, 24 hours) and forgets after 7 clean days",
+      "export const LOCK_STEPS_MIN = [15, 60, 1440];" in _strules and "export const LOCK_DECAY_DAYS = 7;" in _strules
+      and "lockPlan(level, lastEnd" in _acct)
+check("signin: a phone that has signed in before keeps its own count, so a stranger cannot lock a parent out",
+      "const key = lockKey(phone, trusted ? deviceHash : null);" in _authmjs and "isKnownDevice(sql, user.id, deviceHash)" in _authmjs
+      and "deviceId: acDeviceId()" in _appa)
+check("signin: a number nobody has is counted and locked the same way, with the same slow hash",
+      "if (!user || !user.pin_hash) { hashPin(String(body.pin || ''), '00'); return false; }" in _authmjs
+      and "return res.status(200).json({ ok: true, exists: true, needPin: true, older: false });" in _authmjs
+      and "exists: false })" not in _authmjs)
+check("signin: no SMS anywhere in sign-in (owner's decision)",
+      not re.search(r"twilio|sendSms|sms_otp|\botp\b|_sosdial", _authmjs + _acct, re.I))
 # One secret for everyone: a PIN of exactly 4 numbers (owner, 2026-10-04).
 # An older PIN or a password signs in once, then a 4-number PIN is chosen
 # before any session is issued.
@@ -1268,12 +1287,12 @@ check("signin: a PIN of exactly 4 numbers, and no password option",
       and "SECRET_V = 3" in _au)
 check("signin: an older PIN or password is marked, and replaced before a session is issued",
       "add column if not exists secret_v" in _dbs and "changeSecret: true" in _authmjs
-      and 0 < _authmjs.find("if (user.secret_v !== SECRET_V) {") < _authmjs.find("const token = newToken()"))
+      and 0 < _authmjs.find("if (user.secret_v !== SECRET_V || user.must_change_pin) {") < _authmjs.rfind("return signedIn();"))
 # The try is claimed in the database, while unlocked, BEFORE the PIN is
 # checked. Read-check-then-write let a burst of guesses all be checked.
-_claim = re.search(r"pin_tries = pin_tries \+ 1\s+where id = \$\{user\.id\} and \(locked_until is null or locked_until <= now\(\)\)", _authmjs)
+_claim = re.search(r"on conflict \(k\) do update set tries = pin_locks\.tries \+ 1, updated_at = now\(\)\s+where pin_locks\.locked_until is null or pin_locks\.locked_until <= now\(\)", _acct)
 check("signin: each try is claimed before it is checked, so a burst cannot beat the lock",
-      _claim is not None and _claim.start() < _authmjs.find("verifyPin(body.pin, user.pin_salt, user.pin_hash)"))
+      _claim is not None and _claim.start() < _acct.find("if (!check()) {"))
 check("signin: a background refresh proves itself with the session, not a PIN",
       "sessionUser(sql, tokenOf(req))" in _authmjs and "su.user_id === user.id" in _authmjs)
 _pinbox = _appa.split('id="au-pin"')[1][:200]
@@ -1290,7 +1309,7 @@ check("signin: the lock and the old-PIN path are tested against a real database"
       and "test:db" in (REPO / "package.json").read_text(encoding="utf-8")
       and "npm run test:db" in (REPO / ".github/workflows/pr.yml").read_text(encoding="utf-8"))
 check("signin: a session token is issued, and only its hash is stored",
-      "newToken()" in _authmjs and "tokenHash(token)" in _authmjs and "createHash('sha256')" in _au)
+      "const token = newToken();" in _acct and "values (${tokenHash(token)}, ${user.id}" in _acct and "createHash('sha256')" in _au)
 check("signin: sessions expire", "SESSION_DAYS" in _au and "expires_at" in _dbs)
 check("signin: signing out revokes the session on the server",
       "action === 'signout'" in _authmjs and "delete from sessions" in _authmjs)
@@ -2246,9 +2265,12 @@ check("waitlist: it costs no serverless slot, it rides the front door",
 # real database in site/tests/db/authz.dbtest.mjs; this pins the wiring.
 check("auth: profile update and the tour flag act only as the signed-in person",
       _auth_src.count("await sessionIs(sql, tokenOf(req), body.userId)") == 2)
-check("auth: a family is created or joined only as the signed-in person",
-      "(action === 'create' || action === 'join') && !(await sessionIs(sql, tokenOf(req), uid))"
-      in (API_DIR / "circle.mjs").read_text(encoding="utf-8"))
+# Leaving the userId out used to skip the check altogether. Now the session
+# is asked for on every create and join, and says who it is.
+check("auth: a family is created or joined only as the signed-in person, whether or not a userId is sent",
+      "if (!su || (uid && String(su.user_id) !== String(uid))) {" in (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+      and "uid = su.user_id;" in (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+      and "if (uid && (action === 'create' || action === 'join')" not in (API_DIR / "circle.mjs").read_text(encoding="utf-8"))
 check("auth: and the database suite proves it", "authz.dbtest.mjs" in (REPO / "package.json").read_text(encoding="utf-8"))
 check("waitlist: the table is created by the schema, not by hand in a console",
       "create table if not exists waitlist" in _dbsrc)
@@ -3145,7 +3167,11 @@ check("register: only the person it is about, or whoever wrote it, can edit, re-
       and "Only the person it is about, or whoever wrote it, can change this." in _fr_api)
 check("register: once the person it is about makes it theirs alone, only they can widen it; the audit list keeps quiet about it",
       "if (row.unlock_policy === 'ONLY_ME' && row.person_id !== g.me.id) {" in _fr_api
-      and _fr_api.count("l.unlock_policy = 'ONLY_ME'") == 2
+      # The audit list shows a member only rows they did or that are about
+      # them, in both of its reads, so an entry that is someone's alone is
+      # never in anyone else's list.
+      and _fr_api.count("where l.id = ae.resource_id and l.person_id = ${g.me.id})))") == 2
+      and _fr_api.count("and (ae.actor_id = ${g.me.id}") == 2
       and "is not on Parwah yet, so an emergency could never open this" in _fr_api)
 check("register: the people lists are refilled when the family arrives, not only when the screen opens",
       "if (frSig !== frPeopleSig) { frPeopleSig = frSig; try { frFillPeople(); } catch (e) {} }" in _app_src)
@@ -3455,10 +3481,10 @@ check("links: one read of the other family, and it names only what may cross",
       and "case when ${!!withPhones}::boolean then phone else null end as phone" in _wf_people
       and not re.search(r"\b(dob|relation|gift_info|country|role|user_id|remembered|passed_|remember_line|created_at)\b", _wf_people.replace("to_char(dob, 'YYYY') as born", "").replace("order by created_at, id", "")))
 check("links: nothing else of a family is ever read by the link module",
-      set(re.findall(r"(?:from|join|into|update)\s+([a-z_]+)\b", _wf_code(_wf_link))) <= {"family_links", "circles", "members", "events"}
+      set(re.findall(r"(?:from|join|into|update)\s+([a-z_]+)\b", _wf_code(_wf_link))) <= {"family_links", "family_link_votes", "circles", "members", "events"}
       and not re.search(r"family_links|famlink", _wf_code(_wf_fact)))
 check("links: a yes from an adult of the other family, either side ends it, six at most, one per pair",
-      "if (iAmA || l.status !== 'pending') return bad('That request has already been dealt with', 404);" in _wf_link
+      "if (iAmA || l.status !== 'pending' || l.agreed_at) return bad('That request has already been dealt with', 404);" in _wf_link
       and "if (!adult()) return bad('An adult in the family answers this.', 403);" in _wf_link
       and "export const LINKS_MAX = 6;" in _wf_link and _wf_link.count("activeCount(sql, ") >= 3
       and "least(a_circle, b_circle), greatest(a_circle, b_circle)" in _wf_link and "where status in ('pending', 'active')" in _wf_link

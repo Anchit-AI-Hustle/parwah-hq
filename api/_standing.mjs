@@ -238,7 +238,12 @@ async function stateOf(sql, circle, s) {
                             and ${s.me.id}::uuid = any(e.people) and e.by_member is distinct from ${s.me.id}
                           order by e.created_at desc limit 5`;
   const mine = (await sql`select see_phone, see_birth, hidden_fields, claim_review, name, relation, dob, phone, place, gift_info from members where id = ${s.me.id}`)[0] || {};
+  // For the grown-ups who answer the door: which waiting request says
+  // "this is me", and the profiles the family made by name.
+  const joins = s.may ? await sql`select id, claim_member, wants_claim from join_requests where circle_id = ${circle.id} and status = 'pending' and user_id is not null` : [];
   return {
+    joins: joins.map(j => ({ id: j.id, claimMember: j.claim_member, wantsClaim: !!j.wants_claim })),
+    byName: s.may ? s.rows.filter(r => !r.user_id && !r.remembered).map(r => ({ id: r.id, name: r.name })) : [],
     me: { standing: standingOf(s.me, s.today), may: s.may },
     adults: adults.length,
     // Asked of the grown-ups, once per person: "Is Aarav an adult?"

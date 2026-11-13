@@ -689,7 +689,7 @@ ok('setup: five Vermas', (await rows('select id from members where circle_id = $
   ok('E8: but he is still signed in, and his account is his', (await enter('9850000003', { refresh: true }, { token: rohan.token })).ok === true);
   ok('E8: he is told, with who decided', (await A(rohan.token, { action: 'activity' })).activity.some(a => /removed from Verma/.test(a.text) && /Papa and Maa decided this together/.test(a.text)));
   ok('E8: his private note is gone, not handed to the family', !(await one(`select 1 as x from notes where title = 'My own list'`)));
-  ok('E8: what he shared stays', !!(await one(`select 1 as x from notes where title = 'Shopping' and by_member is null`)) && !!(await one(`select 1 as x from messages where text = 'Namaste sab ko' and member_id is null`)));
+  ok('E8: what he shared stays', !!(await one(`select 1 as x from notes where title = 'Shopping' and by_member is null`)) && !!(await one(`select 1 as x from messages where text = E'\u2063Namaste sab ko' and member_id is null`)));
   ok('E8: the family reads who decided it', !!(await one(`select 1 as x from events where circle_id = $1 and text like 'Rohan is no longer in the family. Papa and Maa decided this together.%'`, [verma.id])));
   // A no from the second adult.
   r = await C(maa.token, { action: 'remove_ask', code, memberId: maa.m, targetId: tara.m });
@@ -710,7 +710,7 @@ ok('setup: five Vermas', (await rows('select id from members where circle_id = $
   ok('E15: Download my data: my profile, my families, what I wrote', r.ok && r.json.profile.name === 'Tara' && r.json.families.length === 2 && /Tara ka message/.test(txt) && /Tara private/.test(txt), txt.slice(0, 300));
   ok('E15: nothing written by someone else, and nobody else\'s private note', !/Maa ka message/.test(txt) && !/Maa private/.test(txt));
   ok('E15: no PIN, no hash, no session, no push address', !/pin_hash|pin_salt|token_hash|secret_hash|p256dh|device_hash/.test(txt) && !txt.includes(tara.pin + '"'));
-  ok('E15: a readable page comes with it', /^<!doctype html>/.test(r.html) && /<h1>My Parwah data<\/h1>/.test(r.html) && /Tara ka message/.test(r.html) && !/[–—]/.test(r.html.replace(/Tara ka message/g, '')));
+  ok('E15: a readable page comes with it', /^<!doctype html>/.test(r.html) && /<h1>My Parwah data<\/h1>/.test(r.html) && /Tara ka message/.test(r.html) && !/[\u2013\u2014]/.test(r.html.replace(/Tara ka message/g, '')));
   ok('E15: the page cannot run anything a message says', !/<script/i.test(r.html));
   await A(tara.token, { action: 'export_me' }); await A(tara.token, { action: 'export_me' });
   r = await A(tara.token, { action: 'export_me' });
@@ -736,7 +736,7 @@ ok('setup: five Vermas', (await rows('select id from members where circle_id = $
   ok('E15: after 7 days the timer deletes the account', !(await one('select 1 as x from users where id = $1', [tara.id])));
   ok('E15: in both families', !(await one('select 1 as x from members where id = $1', [tara.m])) && (await rows(`select 1 from members m join circles c on c.id = m.circle_id where c.code = 'SHARMA24'`)).length === 1);
   ok('E15: her private note went with her', !(await one(`select 1 as x from notes where title = 'Tara private'`)));
-  ok('E15: what she shared stays, with no name on it', !!(await one(`select 1 as x from messages where text = 'Tara ka message' and member_id is null`)));
+  ok('E15: what she shared stays, with no name on it', !!(await one(`select 1 as x from messages where text = E'\u2063Tara ka message' and member_id is null`)));
   ok('E15: other people\'s things are untouched', !!(await one(`select 1 as x from notes where title = 'Maa private'`)) && !!(await one(`select 1 as x from messages where text = 'Maa ka message' and member_id = $1`, [maa.m])));
   ok('E15: her number is free again, and tells nobody it was ever used', (await enter(tara.phone)).needPin === true && (await enter(tara.phone, { pin: tara.pin })).http === 401);
   // "Remove my posts too".

@@ -102,6 +102,10 @@ node site/tests/albumrulestest.mjs
 # model's reply. _digestrules.mjs imports nothing, so this runs before npm
 # install too.
 node site/tests/digesttest.mjs
+# Equal standing: the one adult rule, the PIN lock that grows, family codes,
+# who is sent a phone and a birth year, and who decides what together.
+# _standingrules.mjs imports nothing, so this runs before npm install too.
+node site/tests/standingtest.mjs
 # The native apps' copy of the server's rules (PINs, for now) is written by
 # the server itself. If a rule changes in api/ and the contract is not
 # regenerated, the phones would accept what the server then refuses. Vercel's
