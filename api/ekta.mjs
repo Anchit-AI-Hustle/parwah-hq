@@ -685,6 +685,8 @@ export default async function handler(req, res) {
   try {
     await ensureEktaSchema(sql);
     const past = await threadLoad(sql, me, EKTA.threadSend - 1);
+    // A conversation sent to a model starts with the member's turn.
+    while (past.length && past[0].role !== 'user') past.shift();
     history = past.map(t => ({ role: t.role, content: String(t.content).slice(0, 2000) })).concat([{ role: 'user', content: text }]);
   } catch (e) { return failDb(res, e); }
   // Both sides of the turn are kept, for this member only.

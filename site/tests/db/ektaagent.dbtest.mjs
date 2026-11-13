@@ -479,7 +479,8 @@ let msgCard;
   reset(); script.push(says('Trimmed.'));
   await ask(rohan, 'One more.');
   ok('only the last 30 turns are kept', await count(`select count(*)::int as n from ekta_thread where member_id = $1`, [rohan.id]) === 30);
-  ok('and only the last few go to the model', calls[0].params.messages.length === R.EKTA.threadSend);
+  ok('and only the last few go to the model, starting with the member\'s own turn', calls[0].params.messages.length === R.EKTA.threadSend - 1 && calls[0].params.messages[0].role === 'user'
+     && calls[0].params.messages.every((m, i) => m.role === (i % 2 ? 'assistant' : 'user')), calls[0].params.messages.map(m => m.role).join());
   const clr = await act(rohan, 'ekta_thread_clear');
   ok('"Clear this chat" removes the member\'s own and nobody else\'s', clr.ok && (await act(rohan, 'ekta_state')).thread.length === 0 && (await act(priya, 'ekta_state')).thread.length === 2);
 }
