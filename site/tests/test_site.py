@@ -4335,7 +4335,7 @@ check("consent: the db and browser tests run in test:db, and the browser test wa
 _cn_cov = (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
 check("consent: the coverage map says what is live, and the leader review is written down",
       all(w in _cn_cov for w in ("Ashirwad", "Reached safely", "Announce my arrivals", "Show me the costs", "audienceFor"))
-      and "stream B" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
+      and "consent, control and care both ways" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
 
 # ---------- 10za. Accounts, joining and equal standing ----------
 # The doors of the app. Each check is a rule that must not quietly go back:
