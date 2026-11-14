@@ -24,7 +24,7 @@
 import { validPosition } from './_geo.mjs';
 import { schemaOnce } from './_db.mjs';
 import { orderContacts } from './_safetyrules.mjs';
-import { isAdult } from './_rememberrules.mjs';
+import { isMinor } from './_standingrules.mjs';
 
 export const SOS_AUDIO_MAX = 1600000;       // base64 characters, about 1.2 MB
 export const SOS_AUDIO_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/aac'];
@@ -97,13 +97,14 @@ export async function sosContacts(sql, circleId, memberId) {
   const me = await sql`select phone from members where id = ${memberId}`;
   // remembered is read through the row: it works before any module made it.
   const fam = await sql`select m.name, m.phone, m.user_id is not null as on_app, to_char(m.dob, 'YYYY-MM-DD') as dob,
+                               coalesce((to_jsonb(m)->>'is_child')::boolean, false) as is_child, (to_jsonb(m)->>'adult_confirmed')::boolean as adult_confirmed,
                                coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered
                         from members m
                         where m.circle_id = ${circleId} and m.id <> ${memberId} and m.phone is not null
                         order by m.created_at limit 40`;
   const today = new Date().toISOString().slice(0, 10);
   return orderContacts({ chosen, own: me[0] && me[0].phone,
-    family: fam.map(m => ({ ...m, adult: isAdult(m.dob, today) })) });
+    family: fam.map(m => ({ ...m, adult: !isMinor(m, today) })) });
 }
 
 // The numbers of everyone in this family who has passed away, as dialable

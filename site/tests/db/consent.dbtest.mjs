@@ -99,8 +99,24 @@ const said = async (like) => (await admin.query(`select text from events where c
 
 // ===================================================== B5: a child's standing
 {
+  // Tara is on Parwah with no date of birth. Marking her as a child takes
+  // her say in the family away, so it is never one person's word: Tara
+  // herself or a second adult has to agree (api/_standing.mjs, childMark).
   let r = await post('chats', rohan, { area: 'ashirwad', action: 'standing_set', targetId: tara.id, child: true });
-  ok('an adult marks Tara, who has no date of birth on file, as a child', r.status === 200 && r.child === true, JSON.stringify(r));
+  ok('an adult marks Tara, who has no date of birth on file, as a child: it waits for a second voice', r.status === 202 && r.pending === true && r.child === false && !!r.askId
+     && (await admin.query('select is_child from members where id = $1', [tara.id])).rows[0].is_child === false, JSON.stringify(r));
+  ok('until then she is told everything an adult is', (await Aud.audienceFor(sql, F.id, 'costs')).includes(tara.id) && !(await Aud.minorOf(sql, F.id, tara.id)));
+  r = await post('circle', chintu, { action: 'ask_vote', askId: r.askId, yes: true });
+  ok('a child is not that second voice', r.status === 403, JSON.stringify(r));
+  const waiting = (await admin.query(`select id from standing_asks where circle_id = $1 and kind = 'child_mark' and status = 'pending'`, [F.id])).rows[0];
+  r = await post('circle', meera, { action: 'ask_vote', askId: waiting.id, yes: true });
+  ok('a second adult agrees, and Tara is marked', r.status === 200 && r.child === true
+     && (await admin.query('select is_child, adult_confirmed from members where id = $1', [tara.id])).rows[0].is_child === true, JSON.stringify(r));
+  // "Not an adult" (adult_confirmed false) is the same mark by another
+  // door, and is read by the same rule: it alone keeps her out too.
+  await admin.query('update members set is_child = false where id = $1', [tara.id]);
+  ok('"not an adult" alone keeps her out of an adult-only audience, in SQL', await Aud.minorOf(sql, F.id, tara.id) && !(await Aud.audienceFor(sql, F.id, 'costs')).includes(tara.id));
+  await admin.query('update members set is_child = true where id = $1', [tara.id]);
   ok('a child cannot mark anyone', (await post('chats', chintu, { area: 'ashirwad', action: 'standing_set', targetId: papa.id, child: true })).status === 403);
   ok('nobody marks themself', (await post('chats', rohan, { area: 'ashirwad', action: 'standing_set', targetId: rohan.id, child: true })).status === 400);
   r = await post('chats', rohan, { area: 'ashirwad', action: 'standing_set', targetId: meera.id, child: true });
@@ -517,6 +533,112 @@ const VOICE = 'data:audio/webm;base64,' + Buffer.concat([Buffer.from([0x1A, 0x45
   ok('a contact later marked as no longer with us is left off the card', (await card(rohan, papa.id)).card.contacts.map(c => c.name).join() === 'Meera');
   await admin.query(`update members set remembered = false where id = $1`, [dadi]);
   ok('mayOpen is the same rule the unit test checks', (await Ec.mayOpen(sql, F.id, rohan.id)).includes(papa.id) && !(await Ec.mayOpen(sql, F.id, meera.id)).includes(papa.id));
+}
+
+// ============================ THE REVIEW OF THE COMBINED BUILD: what it found
+// 7. The card's lock is on the server: the Family book's own read does not
+//    hand a child, or an adult who was not chosen, what the card shows.
+{
+  const bookOf = async (who) => get('book', who, {});
+  await get('book', rohan, {});   // the table exists
+  await admin.query(`delete from family_book where circle_id = $1`, [F.id]);
+  const add = (kind, name, category, about, by, vis = 'circle') => admin.query(
+    `insert into family_book (circle_id, kind, name, category, forwhat, about_member, by_member, visibility) values ($1, $2, $3, $4, 'x', $5, $6, $7)`, [F.id, kind, name, category, about, by, vis]);
+  await add('fact', 'PAPA-BLOOD-B+', 'blood', papa.id, papa.id);
+  await add('fact', 'PAPA-ALLERGY-PENICILLIN', 'allergy', papa.id, papa.id);
+  await add('med', 'PAPA-MEDICINE-ONE', null, papa.id, meera.id);       // Meera wrote this one
+  await add('insurance', 'PAPA-POLICY', null, papa.id, papa.id);
+  await add('contact', 'PAPA-DOCTOR', 'doctor', papa.id, papa.id);       // a contact: not a health detail
+  await add('fact', 'PAPA-LIKES-CHAI', 'preference', papa.id, papa.id);  // not shown on the card
+  await add('med', 'DADI-MEDICINE', null, dadi, rohan.id);                // Dadi is not on Parwah
+  await add('contact', 'FAMILY-PLUMBER', 'local', null, rohan.id);
+  await admin.query(`delete from ecard_prefs where circle_id = $1`, [F.id]);
+  const names = async (who) => ((await bookOf(who)).entries || []).map(e => e.name).sort().join();
+  const HEALTH = ['PAPA-BLOOD-B+', 'PAPA-ALLERGY-PENICILLIN', 'PAPA-MEDICINE-ONE', 'PAPA-POLICY'];
+  let r = await bookOf(chintu);
+  ok('fix 7: a child is not sent Papa\'s blood group, allergies, medicines or insurance by the Family book', r.status === 200 && !HEALTH.some(h => JSON.stringify(r).includes(h)), await names(chintu));
+  ok('fix 7: nor Dadi\'s medicines (a child opens no card but their own)', !JSON.stringify(r).includes('DADI-MEDICINE'));
+  ok('fix 7: a child still sees the family\'s contacts and what is not a health detail', /FAMILY-PLUMBER/.test(await names(chintu)) && /PAPA-DOCTOR/.test(await names(chintu)) && /PAPA-LIKES-CHAI/.test(await names(chintu)));
+  ok('fix 7: the screen is told whose details are kept on a card, by name only', r.cardLocked.map(x => x.name).sort().join() === 'Dadi,Papa' && r.cardLocked.every(x => Object.keys(x).sort().join() === 'id,name'), JSON.stringify(r.cardLocked));
+  r = await bookOf(tara);
+  ok('fix 7: Tara, marked as a child, is not sent them either', !HEALTH.some(h => JSON.stringify(r).includes(h)) && !JSON.stringify(r).includes('DADI-MEDICINE'), await names(tara));
+  r = await bookOf(rohan);
+  ok('fix 7: an adult Papa has not chosen is not sent them', !HEALTH.some(h => JSON.stringify(r).includes(h)) && r.cardLocked.map(x => x.name).join() === 'Papa', await names(rohan));
+  ok('fix 7: an adult keeps the health details of someone who is not on Parwah', /DADI-MEDICINE/.test(await names(rohan)));
+  ok('fix 7: whoever wrote an entry still reads it', /PAPA-MEDICINE-ONE/.test(await names(meera)) && !/PAPA-BLOOD/.test(await names(meera)));
+  const papaAll = await names(papa);
+  ok('fix 7: Papa reads everything about himself', HEALTH.every(h => papaAll.includes(h)) && (await bookOf(papa)).cardLocked.length === 0);
+  ok('fix 7: preparedness still counts what is recorded, without saying what it is', (await bookOf(chintu)).prep.find(x => x.memberId === papa.id).items.blood === 'ok');
+  await post('book', papa, { action: 'ecard_set', viewers: [rohan.id], contacts: [] });
+  r = await bookOf(rohan);
+  ok('fix 7: once Papa chooses Rohan, Rohan is sent them', HEALTH.every(h => JSON.stringify(r).includes(h)) && r.cardLocked.length === 0, await names(rohan));
+  ok('fix 7: and Meera, not chosen, still is not', !/PAPA-BLOOD/.test(await names(meera)));
+  await admin.query(`insert into sos (circle_id, member_id, status) values ($1, $2, 'open')`, [F.id, papa.id]);
+  ok('fix 7: while Papa\'s SOS is open every adult is sent them', /PAPA-BLOOD/.test(await names(meera)));
+  ok('fix 7: a child still is not', !/PAPA-BLOOD/.test(await names(chintu)));
+  await admin.query(`update sos set status = 'resolved' where circle_id = $1`, [F.id]);
+  ok('fix 7: and when it closes, it closes', !/PAPA-BLOOD/.test(await names(meera)));
+  // An entry Papa shared with Meera by name is hers to read, as before.
+  const shared = (await admin.query(`select id from family_book where name = 'PAPA-POLICY'`)).rows[0].id;
+  await admin.query(`insert into book_access (entry_id, member_id, granted_by) values ($1, $2, $3)`, [shared, meera.id, papa.id]);
+  ok('fix 7: an entry shared with someone by name is still theirs to read', /PAPA-POLICY/.test(await names(meera)) && !/PAPA-BLOOD/.test(await names(meera)));
+}
+
+// 9. A phone its owner keeps to themself is not sent by a trip or a card.
+{
+  const ash = (who, body) => post('chats', who, { area: 'ashirwad', ...body });
+  const box = (who) => get('chats', who, { area: 'ashirwad' });
+  await admin.query(`delete from trips where circle_id = $1`, [F.id]);
+  await admin.query(`delete from rate_limit`);
+  let r = await ash(rohan, { action: 'trip_start', to: 'Jaipur', by: 'car', expectAt: new Date(Date.now() + 3600000).toISOString(), tell: [meera.id, chintu.id] });
+  ok('fix 9: (Rohan leaves for Jaipur and tells Meera and Chintu)', r.status === 201, JSON.stringify(r));
+  const tripId = r.id;
+  const rohanPhone = (await admin.query('select phone from members where id = $1', [rohan.id])).rows[0].phone;
+  ok('fix 9: by default the people he told see his number, to call him', !!rohanPhone && (await box(meera)).trips.watching[0].phone === rohanPhone);
+  await post('circle', rohan, { action: 'privacy_set', seePhone: 'adults' });
+  ok('fix 9: "only adults": Meera still sees it', (await box(meera)).trips.watching[0].phone === rohanPhone);
+  ok('fix 9: and Chintu, a child, does not', (await box(chintu)).trips.watching[0].phone === null && (await box(chintu)).trips.watching[0].name === 'Rohan');
+  await post('circle', rohan, { action: 'privacy_set', seePhone: 'me' });
+  ok('fix 9: "only me": nobody he told is sent his number', (await box(meera)).trips.watching[0].phone === null && !JSON.stringify(await box(meera)).includes(rohanPhone));
+  ok('fix 9: he still sees his own trip', (await box(rohan)).trips.mine.to === 'Jaipur');
+  // The card's "who to call first".
+  await post('book', papa, { action: 'ecard_set', viewers: [meera.id], contacts: [rohan.id] });
+  r = await get('book', meera, { area: 'ecard', person: papa.id });
+  ok('fix 9: a contact on a card who keeps their number to themself is named, with no number', r.status === 200 && r.card.contacts[0].name === 'Rohan' && r.card.contacts[0].phone === null && r.card.contacts[0].phoneKept === true
+     && !JSON.stringify(r).includes(rohanPhone), JSON.stringify(r.card.contacts));
+  await post('circle', rohan, { action: 'privacy_set', seePhone: 'family' });
+  r = await get('book', meera, { area: 'ecard', person: papa.id });
+  ok('fix 9: and with it when he shares it', r.card.contacts[0].phone === rohanPhone && r.card.contacts[0].phoneKept === false);
+
+  // 12. "Running late" is capped: each one tells up to eight people.
+  await admin.query(`delete from rate_limit`);
+  const late = (m) => ash(rohan, { action: 'trip_extend', id: tripId, expectAt: new Date(Date.now() + m * 60000).toISOString() });
+  const got = [];
+  for (let i = 0; i < 6; i++) got.push((await late(90 + i * 10)).status);
+  ok('fix 12: four changes of time in an hour, then it waits', got.join() === '200,200,200,200,429,429', got.join());
+
+  // 2. Someone did not reach: the ask to call is not held for the morning.
+  const { pushSeams, ensurePushSchema } = await import('../../../api/_push.mjs');
+  await ensurePushSchema(sql);
+  const sent = [];
+  pushSeams.send = async (sub, body) => { sent.push({ endpoint: sub.endpoint, ...JSON.parse(body) }); };
+  const meeraUser = (await admin.query('select user_id from members where id = $1', [meera.id])).rows[0].user_id;
+  await admin.query(`delete from push_subs`);
+  await admin.query(`insert into push_subs (member_id, user_id, endpoint, p256dh, auth, tz) values ($1, $2, 'https://fcm.googleapis.com/fcm/send/meera-night', 'k', 'a', 'Asia/Kolkata')`, [meera.id, meeraUser]);
+  // It is always her night, and Care alerts are off.
+  await admin.query(`insert into push_prefs (user_id, quiet, quiet_from, quiet_to, kinds, tz) values ($1, true, 0, 1439, '{"care": false}'::jsonb, 'Asia/Kolkata')
+                     on conflict (user_id) do update set quiet = true, quiet_from = 0, quiet_to = 1439, kinds = excluded.kinds, tz = excluded.tz`, [meeraUser]);
+  await admin.query(`delete from rate_limit`);
+  r = await late(45);
+  ok('fix 2: (it really is her night: "running late" waits for the morning)', r.status === 200 && sent.length === 0, JSON.stringify(sent.map(x => x.title)));
+  const exp = new Date((await admin.query(`select expect_at from trips where id = $1`, [tripId])).rows[0].expect_at).getTime();
+  const n = await Ash.sweepTripsAll(sql, exp + 31 * 60000);
+  ok('fix 2: "has not tapped Reached safely" reaches her in quiet hours, with Care alerts off', n === 1 && sent.length === 1 && /has not tapped Reached safely/.test(sent[0].title), JSON.stringify(sent.map(x => x.title)));
+  sent.length = 0;
+  r = await ash(rohan, { action: 'trip_reached', id: tripId });
+  ok('fix 2: and so does "reached safely", so nobody lies awake', r.status === 200 && sent.some(x => /reached Jaipur safely/.test(x.title)), JSON.stringify(sent.map(x => x.title)));
+  pushSeams.send = null;
+  await admin.query(`delete from push_prefs`); await admin.query(`delete from push_subs`);
 }
 
 await admin.end();

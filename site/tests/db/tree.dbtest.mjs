@@ -79,10 +79,14 @@ for (const [actor, target, where, of] of steps) {
   const r = await place(actor, { targetId: target.id, place: where, ofId: of.id });
   ok(`placing works (${where})`, r.status === 200, JSON.stringify(r));
 }
-// Aarav joined as a grandson with no date of birth, which reads as a child:
-// a child sets only their own place, so a grown-up adds the fourth generation.
+// Aarav joined as a grandson with no date of birth. A relation is not an
+// age (a grandson can be thirty), so the ONE adult rule reads the date of
+// birth and what the family said (api/_standingrules.mjs). The family has
+// said he is under 18: a child sets only their own place, so a grown-up
+// adds the fourth generation.
+await admin.query('update members set adult_confirmed = false where id = $1', [M.Aarav.id]);
 const r4child = await place(M.Aarav, { targetId: M.Vihaan.id, place: 'child', ofId: M.Aarav.id, gender: 'm' });
-ok('a grandson with no date of birth cannot place someone else', r4child.status === 403, JSON.stringify(r4child));
+ok('a grandson the family says is under 18 cannot place someone else', r4child.status === 403, JSON.stringify(r4child));
 const r4 = await place(papa, { targetId: M.Vihaan.id, place: 'child', ofId: M.Aarav.id, gender: 'm' });
 ok('a fourth generation can be added, with he or she', r4.status === 200 && (await admin.query('select gender from members where id = $1', [M.Vihaan.id])).rows[0].gender === 'm');
 ok('the family is told who was added to the tree',

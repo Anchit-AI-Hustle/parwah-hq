@@ -16,6 +16,7 @@ import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
 import { pushCircle } from './_push.mjs';
 import { afterTick, tickCursor } from './_push.mjs';
+import { minorOf } from './_audience.mjs';
 import { rotateFrom } from './_pushrules.mjs';
 import { tickNote, lateTap, lateArrived } from './_offline.mjs';
 import { ensureTaskSchema, sweepOverdue, sweepReminders } from './_tasks.mjs';
@@ -123,7 +124,9 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
     await one(() => ektaNudgeSweep(sql, id));   // Ekta's private nudges: off until a member turns one on (api/_ektaday.mjs)
     done++;
   }
-  await one(() => afterTick(sql, circles, done));
+  // The morning line is bounded too: a little past the budget at most, so
+  // a member's poll that ran the timer is never kept waiting on it.
+  await one(() => afterTick(sql, circles, done, Math.max(t0 + budgetMs, Date.now() + 1500)));
   // The run is written down, so the family can be told honestly when the
   // timer last ran (api/_safety.mjs).
   await one(() => tickMark(sql));
@@ -256,9 +259,12 @@ export default async function handler(req, res) {
         from calls c left join members m on m.id = c.by_member
         where c.circle_id = ${circle.id} and c.started_at > now() - interval '3 hours'
         order by c.started_at desc limit 3`;
-      // Requests waiting on the family - any member can decide.
+      // Requests waiting on the family. An adult answers the door, so the
+      // number of someone who is not in the family yet is sent to the
+      // adults only: a child or a teenager sees the name and nothing more.
+      const jrMinor = await minorOf(sql, circle.id, g.me.id).catch(() => true);
       const joinReqs = await sql`
-        select id, name, phone, relation, created_at from join_requests
+        select id, name, case when ${jrMinor}::boolean then null else phone end as phone, relation, created_at from join_requests
         where circle_id = ${circle.id} and status = 'pending'
         order by created_at limit 20`;
       const pol = await sql`select join_policy from circles where id = ${circle.id}`;
@@ -363,7 +369,7 @@ export default async function handler(req, res) {
         // who could do with a call, and told the family: whoever is on the
         // call rota for them today hears first, by name (api/_familycare.mjs).
         if (saved.call) await pulseCallNudge(sql, circle.id, pm[0], saved.call);
-        if (saved.one) await pushCircle(sql, circle.id, { title: '🧡 ' + pm[0].name + ' told only you how today is', body: saved.one.line + (saved.one.low ? '. A call would be nice.' : ''), url: '/#home' }, { only: saved.one.id });
+        if (saved.one) await pushCircle(sql, circle.id, { kind: 'care', title: '🧡 ' + pm[0].name + ' told only you how today is', body: saved.one.line + (saved.one.low ? '. A call would be nice.' : ''), url: '/#home' }, { only: saved.one.id });
         return res.status(saved.status).json(saved.json);
       }
 
@@ -384,7 +390,7 @@ export default async function handler(req, res) {
                     where id = ${row[0].id} and status = 'open'`;
           await sql`insert into events (circle_id, member_id, type, text)
                     values (${circle.id}, ${memberId}, 'care', ${am[0].name + ' is on their way to ' + row[0].name + ' 🧡'})`;
-          await pushCircle(sql, circle.id, { title: '🧡 ' + am[0].name + ' is on it',
+          await pushCircle(sql, circle.id, { kind: 'safety', title: '🧡 ' + am[0].name + ' is on it',
             body: 'They are helping ' + row[0].name + ' - you do not need to call as well' }, { except: memberId });
           return res.status(200).json({ ok: true });
         }
@@ -398,10 +404,10 @@ export default async function handler(req, res) {
         await sql`insert into events (circle_id, member_id, type, text)
                   values (${circle.id}, ${memberId}, 'care', ${am[0].name + ' marked ' + row[0].name + "'s SOS as sorted ✅"})`;
         if (row[0].member_id !== memberId) {
-          await pushCircle(sql, circle.id, { title: '✅ ' + am[0].name + ' marked you safe',
+          await pushCircle(sql, circle.id, { kind: 'safety', title: '✅ ' + am[0].name + ' marked you safe',
             body: 'Your location sharing is yours again - stop it whenever you like', url: '/#people' }, { only: row[0].member_id });
         }
-        await pushCircle(sql, circle.id, { title: '✅ ' + row[0].name + ' is alright',
+        await pushCircle(sql, circle.id, { kind: 'safety', title: '✅ ' + row[0].name + ' is alright',
           body: am[0].name + ' marked the SOS as sorted' }, { except: memberId });
         return res.status(200).json({ ok: true });
       }
@@ -423,7 +429,7 @@ export default async function handler(req, res) {
           await sosSafeElsewhere(sql, circle.id, sm[0]);
           await sql`insert into events (circle_id, member_id, type, text)
                     values (${circle.id}, ${memberId}, 'care', ${sm[0].name + ' is safe now - the SOS is closed ✅'})`;
-          await pushCircle(sql, circle.id, { title: '✅ ' + sm[0].name + ' is safe',
+          await pushCircle(sql, circle.id, { kind: 'safety', title: '✅ ' + sm[0].name + ' is safe',
             body: 'They closed their SOS themselves. A call to check in never hurts.', url: '/#home' }, { except: memberId });
           return res.status(200).json({ ok: true, resolved: true });
         }
@@ -452,7 +458,7 @@ export default async function handler(req, res) {
           if (room.indexOf('https://meet.jit.si/') !== 0 || room.length > 300) return res.status(400).json({ ok: false, error: 'Bad room' });
           const label = String(req.body.label || '').trim().slice(0, 60) || null;
           const r = await sql`insert into calls (circle_id, room, label, by_member) values (${circle.id}, ${room}, ${label}, ${memberId}) returning id`;
-          await pushCircle(sql, circle.id, { title: (label || '📞 Family call') + ' on now', body: cm[0].name + ' started it - tap to join everyone' }, { except: memberId });
+          await pushCircle(sql, circle.id, { kind: 'plans', title: (label || '📞 Family call') + ' on now', body: cm[0].name + ' started it - tap to join everyone' }, { except: memberId });
           return res.status(201).json({ ok: true, callId: r[0].id });
         }
         // anyone in the circle can end it - every member is an equal admin
@@ -519,7 +525,7 @@ async function sosSafeElsewhere(sql, circleId, me) {
       await unlockSos(sql, o.id, o.member_id);
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${o.id}, ${o.member_id}, 'care', ${o.member_name + ' is safe now - the SOS is closed ✅'})`;
-      await pushCircle(sql, o.id, { title: '✅ ' + o.member_name + ' is safe',
+      await pushCircle(sql, o.id, { kind: 'safety', title: '✅ ' + o.member_name + ' is safe',
         body: 'They closed their SOS themselves. A call to check in never hurts.', url: '/#home' }, { except: o.member_id });
     }
   } catch (e) { /* this family's SOS is closed; the others can close theirs */ }

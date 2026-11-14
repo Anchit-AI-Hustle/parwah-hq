@@ -34,11 +34,16 @@ export const PUSH_CAP = 60;
 //   through: true  - delivered even in quiet hours, and no switch stops it.
 //   timed:   true  - a time the person chose (their own medicine, a task
 //                    reminder): quiet hours do not hold it, the switch can.
+// Every pattern starts at the first character with the mark its own caller
+// writes, so a chat called "Mum is safe" (whose push starts with 💬) is
+// never mistaken for one. A caller that names its kind is believed first.
 const SAFETY = [
-  /^🆘/, /has not checked in today/, /could do with a call/, / is in hospital$/, /has lost their phone/,
-  /is asking the family first/, /has seen it, calling you now/, /marked you safe$/, / is alright$/, / is safe$/,
-  /^🎙 A recording from /, /^🧡 .+ is on it$/, /^📞 (Parwah is calling|Calling|Call) .+ for /, /marked you as no longer with us/,
-  /^🧡 .+ is calling /
+  /^🆘/, /^🧡 .+ has not checked in today$/, /^🧡 .+ could do with a call( - it is your turn today)?$/, /^🏥 .+ is in hospital$/,
+  /^📵 .+ has lost their phone$/, /^🛡 .+ is asking the family first$/, /^🧡 .+ has seen it, calling you now$/,
+  /^✅ .+ marked you safe$/, /^✅ .+ is alright$/, /^✅ .+ is safe$/, /^✅ .+ did check in$/, /^✅ .+ reached .+ safely$/,
+  /^🎙 A recording from /, /^🧡 .+ is on it$/, /^📞 (Parwah is calling|Calling|Call) .+ for /, /^(?![💬📊👥➕])\S+ marked you as no longer with us$/u,
+  /^🧡 .+ is calling /, /^🧡 .+ has not tapped Reached safely yet\. A call may help\.$/,
+  /^🔑 .+ cannot get in$/, /^🔑 Someone asked to reset your PIN$/, /^🔑 .+ said yes to a new PIN for you$/, /^🔒 Wrong PIN tries on your number$/, /^📱 New sign-in on another phone$/
 ];
 const TIMED = [/^💊 Your /, /^⏰/, /^🧡 Sab theek\?/, /^🌙 Aaj kya hua/];
 const BY_WORDS = [
@@ -56,9 +61,12 @@ export function pushKind(payload) {
   const title = String(p.title || '');
   if (p.urgent) return { kind: 'urgent', through: true, timed: false };
   if (p.ring) return { kind: 'ring', through: true, timed: false };
-  if (p.kind === 'safety' || SAFETY.some(re => re.test(title))) return { kind: 'safety', through: true, timed: false };
+  if (p.kind === 'safety') return { kind: 'safety', through: true, timed: false };
   const timed = !!p.timed || TIMED.some(re => re.test(title));
-  if (PUSH_KINDS.includes(p.kind)) return { kind: p.kind, through: false, timed };
+  // A KIND THE CALLER NAMED IS BELIEVED BEFORE ANY WORDS ARE READ: a chat
+  // message says it is a chat message, whatever the chat is called.
+  if (PUSH_KINDS.includes(p.kind) || p.kind === 'other') return { kind: p.kind, through: false, timed };
+  if (SAFETY.some(re => re.test(title))) return { kind: 'safety', through: true, timed: false };
   for (const [kind, res] of BY_WORDS) if (res.some(re => re.test(title))) return { kind, through: false, timed };
   // Anything else (the vault, a join, a code change): no switch turns it
   // off, and it still waits for the morning.

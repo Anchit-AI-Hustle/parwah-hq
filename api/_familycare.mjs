@@ -349,7 +349,8 @@ export async function familyCareState(sql, circleId, meId, nowMs = Date.now()) {
   // (the same under-18 rule as api/_audience.mjs, in the query itself).
   const fs = await sql`select safe_word from family_settings where circle_id = ${circleId}
                        and not exists (select 1 from members v where v.id = ${meId}
-                         and (coalesce((to_jsonb(v)->>'is_child')::boolean, false) or (v.dob is not null and v.dob > current_date - interval '18 years')))`;
+                         and (case when v.dob is not null then v.dob > current_date - interval '18 years'
+                                  else (coalesce((to_jsonb(v)->>'is_child')::boolean, false) or (to_jsonb(v)->>'adult_confirmed') = 'false') end))`;
   return { quiet, askfirst, helps, safeWord: fs[0] ? fs[0].safe_word : null };
 }
 
@@ -447,7 +448,7 @@ export async function familyCarePost(sql, req, res, reqTzValue) {
       if (t.remembered) return no(res, 400, t.name + ' is remembered here, so is not asked');
       if (!(await rateLimit(sql, 'awayask', t.id, 3, 86400, { failClosed: true }))) return no(res, 429, t.name + ' has been asked already today');
       await sql`update members set away_ask = ${until || 'back'}, away_ask_by = ${me.id} where id = ${t.id}`;
-      await pushCircle(sql, circle.id, { title: until ? '🧳 ' + me.name + ' asks: pause your daily check-in until ' + until + '?' : '🏠 ' + me.name + ' asks: turn your daily check-in back on?',
+      await pushCircle(sql, circle.id, { kind: 'care', title: until ? '🧳 ' + me.name + ' asks: pause your daily check-in until ' + until + '?' : '🏠 ' + me.name + ' asks: turn your daily check-in back on?',
         body: 'Nothing changes until you say yes on your phone.', url: '/#home' }, { only: t.id });
       return send(res, 200, { ok: true, asked: true, awayUntil: null });
     }
@@ -462,14 +463,14 @@ export async function familyCarePost(sql, req, res, reqTzValue) {
     if (!r || !r.away_ask) return no(res, 404, 'Nothing is waiting for your answer');
     await sql`update members set away_ask = null, away_ask_by = null where id = ${me.id}`;
     if (b.yes !== true) {
-      if (r.away_ask_by) await pushCircle(sql, circle.id, { title: me.name + ' said not now', body: 'The daily check-in stays as it was.', url: '/#home' }, { only: r.away_ask_by });
+      if (r.away_ask_by) await pushCircle(sql, circle.id, { kind: 'care', title: me.name + ' said not now', body: 'The daily check-in stays as it was.', url: '/#home' }, { only: r.away_ask_by });
       return send(res, 200, { ok: true, declined: true });
     }
     const until = r.away_ask === 'back' ? null : validDay(r.away_ask);
     if (r.away_ask !== 'back' && (!until || until < today)) return no(res, 409, 'That day has already passed. Nothing was changed.');
     await sql`update members set away_until = ${until} where id = ${me.id}`;
     await feed(sql, circle.id, me.id, until ? '🧳 Away until ' + until + ' (' + me.name + ' said yes): the daily check-in is paused' : '🏠 ' + me.name + ' is back: the daily check-in is on again');
-    if (r.away_ask_by) await pushCircle(sql, circle.id, { title: until ? '🧳 ' + me.name + ' said yes to the pause' : '🏠 ' + me.name + ' said yes: the check-in is on again',
+    if (r.away_ask_by) await pushCircle(sql, circle.id, { kind: 'care', title: until ? '🧳 ' + me.name + ' said yes to the pause' : '🏠 ' + me.name + ' said yes: the check-in is on again',
       body: until ? 'Paused until ' + until + '.' : 'Back on from today.', url: '/#home' }, { only: r.away_ask_by });
     return send(res, 200, { ok: true, awayUntil: until });
   }

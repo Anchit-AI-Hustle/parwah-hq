@@ -22,6 +22,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { fail, failDb } from './_fail.mjs';
 import { db, ensureSchema, circleByCode, isUuid , requireMember, spaceWord, rateLimit } from './_db.mjs';
 import { tokenOf } from './_token.mjs';
+import { ensureEcardSchema, openSos } from './_ecard.mjs';
+import { memberCards } from './_standing.mjs';
 import { careState } from './care.mjs';
 import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
 // Ekta without a model: retrieval from the family's own records. Its own
@@ -199,25 +201,54 @@ async function runTool(ctx, name, input) {
     // In a shared chat only what the whole family sees is read, so a reply
     // posted there can never carry an entry that was shared with one person.
     const open = !!ctx.open;
-    const entries = await sql`
+    // The emergency card's rule, as in the Family book's own read
+    // (api/book.mjs): what a card shows about a person is read out only to
+    // someone who may open that card, and never into a shared chat, where
+    // a child may be reading.
+    await ensureEcardSchema(sql);
+    const sosNow = await openSos(sql, circle.id);
+    const found = await sql`
       select b.kind, b.name, b.category, b.phone, b.address, b.forwhat, b.notes,
-             b.last_verified_at, am.name as about
+             b.last_verified_at, am.name as about,
+             (((b.visibility = 'circle'
+                   and (not ${open} or b.about_member is null
+                        or not (b.kind in ('med', 'insurance') or (b.kind = 'fact' and b.category in ('blood', 'allergy'))))
+                   and (b.about_member is null
+                       or not (b.kind in ('med', 'insurance') or (b.kind = 'fact' and b.category in ('blood', 'allergy')))
+                       or (not (case when v.dob is not null then v.dob > current_date - interval '18 years' else (v.is_child or v.adult_confirmed is false) end)
+                           and (am.user_id is null or v.id = any(coalesce(ep.viewers, '{}')) or b.about_member = any(${sosNow}::uuid[])))))
+                  or (not ${open} and (b.about_member = ${me.id}
+                  or b.by_member = ${me.id} or ba.member_id is not null)))) as may_read
       from family_book b
+      join members v on v.id = ${me.id}
       left join members am on am.id = b.about_member
       left join book_access ba on ba.entry_id = b.id and ba.member_id = ${me.id}
+      left join ecard_prefs ep on ep.circle_id = b.circle_id and ep.member_id = b.about_member
       where b.circle_id = ${circle.id}
         and (${aboutId}::uuid is null or b.about_member = ${aboutId})
         and (b.visibility = 'circle' or (not ${open} and (b.about_member = ${me.id}
              or b.by_member = ${me.id} or ba.member_id is not null)))
       order by b.kind, lower(b.name) limit 200`;
-    const people = await sql`select name, relation, phone, place, country, gift_info from members
-                             where circle_id = ${circle.id}
-                             and (${aboutId}::uuid is null or id = ${aboutId}) order by created_at`;
+    // What this asker may read; and whose health details were kept back by
+    // their emergency card, by name only, so the reply can say so honestly
+    // instead of "nothing is recorded".
+    const entries = found.filter(e => e.may_read).map(({ may_read, ...e }) => e);
+    const kept = [...new Set(found.filter(e => !e.may_read && e.about).map(e => e.about))];
+    // Each person's phone, place and likes as THIS asker may see them on a
+    // member card (cardFor). In a shared chat the reply is read by
+    // everyone, so only what the least of them may see is read at all.
+    const rows = await sql`select id, name, relation, phone, place, country, gift_info, dob from members
+                           where circle_id = ${circle.id}
+                           and (${aboutId}::uuid is null or id = ${aboutId}) order by created_at`;
+    const seen = open ? rows.map(r => ({ id: r.id, name: r.name, relation: r.relation, phone: null, place: null, country: null, gift_info: null }))
+                      : await memberCards(sql, circle, me, rows);
+    const people = seen.map(({ id, dob, dob_md, ...p }) => p);
     const staleBefore = Date.now() - 180 * 86400000;
     return {
       ok: true,
-      note: 'Quote lastVerified when sharing meds/insurance/health facts; if something is not here, it is NOT recorded - say so instead of guessing.',
+      note: 'Quote lastVerified when sharing meds/insurance/health facts. Some details are kept private by the person they are about (their emergency card, their phone number): if something is not here, say it is not available to read here, and never guess.',
       entries: entries.map(e => ({ ...e, stale: new Date(e.last_verified_at).getTime() < staleBefore })),
+      keptOnCard: kept,
       people
     };
   }
@@ -230,15 +261,26 @@ async function runTool(ctx, name, input) {
     const mrow = await sql`select id, name, relation, phone, place, country from members
                            where circle_id = ${circle.id} and lower(name) = ${who}`;
     if (!mrow[0]) return { ok: false, error: `No member named "${input.member_name}" in this ${spaceWord(circle)}` };
-    const m = mrow[0];
+    // The person's phone and place as this asker may see them on a card.
+    const m = (await memberCards(sql, circle, me, [mrow[0]]))[0];
     // Same rule as every other read path: a summary must not become a way
-    // to have the assistant read out what the asker cannot open themselves.
+    // to have the assistant read out what the asker cannot open themselves
+    // (the Family book's rule, with the emergency card's lock: api/book.mjs).
+    await ensureEcardSchema(sql);
+    const sosNow = await openSos(sql, circle.id);
     const entries = await sql`
       select b.kind, b.name, b.category, b.phone, b.address, b.forwhat, b.notes, b.last_verified_at
       from family_book b
+      join members v on v.id = ${me.id}
+      left join members am on am.id = b.about_member
       left join book_access ba on ba.entry_id = b.id and ba.member_id = ${me.id}
+      left join ecard_prefs ep on ep.circle_id = b.circle_id and ep.member_id = b.about_member
       where b.circle_id = ${circle.id} and b.about_member = ${m.id}
-        and (b.visibility = 'circle' or b.about_member = ${me.id}
+        and ((b.visibility = 'circle' and (b.about_member is null
+                  or not (b.kind in ('med', 'insurance') or (b.kind = 'fact' and b.category in ('blood', 'allergy')))
+                  or (not (case when v.dob is not null then v.dob > current_date - interval '18 years' else (v.is_child or v.adult_confirmed is false) end)
+                      and (am.user_id is null or v.id = any(coalesce(ep.viewers, '{}')) or b.about_member = any(${sosNow}::uuid[])))))
+             or b.about_member = ${me.id}
              or b.by_member = ${me.id} or ba.member_id is not null)
       order by b.kind limit 200`;
     let docs = [];
@@ -278,7 +320,8 @@ async function runTool(ctx, name, input) {
   return { ok: false, error: 'There is no tool called "' + name + '".' };
 }
 // For the code that answers from the records with no model.
-const readTool = (sql, circle, me, name, input) => runTool({ sql, circle, me, open: false, nowMs: clock(), ledger: newLedger() }, name, input);
+// Exported so the database tests can read exactly what a tool would hand her.
+export const readTool = (sql, circle, me, name, input) => runTool({ sql, circle, me, open: false, nowMs: clock(), ledger: newLedger() }, name, input);
 const newLedger = () => ({ proposed: [], failed: [], handoffs: [], cut: null });
 
 // One full agent loop on one model, inside the turn's deadline. Returns

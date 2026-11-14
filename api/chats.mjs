@@ -284,23 +284,25 @@ export default async function handler(req, res) {
         if (chat.kind === 'dm') {
           const others = await sql`select cm.member_id from chat_members cm where cm.chat_id = ${chat.id} and cm.member_id <> ${me.id}
                                    and not exists (select 1 from chat_mutes mu where mu.chat_id = cm.chat_id and mu.member_id = cm.member_id)`;
-          if (others[0]) await pushCircle(sql, circle.id, { title: '💬 ' + me.name, body: preview }, { only: others[0].member_id });
+          if (others[0]) await pushCircle(sql, circle.id, { kind: 'chat', title: '💬 ' + me.name, body: preview }, { only: others[0].member_id });
         } else {
           // everyone in this conversation hears about it - the people named
           // with @ get the louder "mentioned you" version, once each. All of
           // them are sent together, not one after another.
           const audience = chat.kind === 'circle'
             ? await sql`select m.id, m.name, exists (select 1 from chat_mutes mu where mu.chat_id = ${chat.id} and mu.member_id = m.id) as muted
-                        from members m where m.circle_id = ${circle.id} and m.id <> ${me.id}`
+                        from members m where m.circle_id = ${circle.id} and m.id <> ${me.id} and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`
             : await sql`select m.id, m.name, exists (select 1 from chat_mutes mu where mu.chat_id = ${chat.id} and mu.member_id = m.id) as muted
                         from chat_members cm join members m on m.id = cm.member_id
-                        where cm.chat_id = ${chat.id} and m.id <> ${me.id}`;
+                        where cm.chat_id = ${chat.id} and m.id <> ${me.id} and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`;
+          // Someone the family remembers is never in the audience: an @ with
+          // their name is a line of love, not a mention of someone to ping.
           const named = kind === 'text' && text.indexOf('@') >= 0
             ? audience.filter(p => new RegExp('@' + p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(text)).map(p => p.id) : [];
           const rest = audience.filter(p => !p.muted && named.indexOf(p.id) < 0).map(p => p.id);
           await Promise.allSettled([
-            pushMany(sql, circle.id, named, { title: '💬 ' + me.name + ' mentioned you in ' + label, body: preview }),
-            pushMany(sql, circle.id, rest, { title: '💬 ' + me.name + ' in ' + label, body: preview })
+            pushMany(sql, circle.id, named, { kind: 'chat', title: '💬 ' + me.name + ' mentioned you in ' + label, body: preview }),
+            pushMany(sql, circle.id, rest, { kind: 'chat', title: '💬 ' + me.name + ' in ' + label, body: preview })
           ]);
         }
       } catch (e) { /* alerts never block the message */ }
@@ -343,7 +345,7 @@ export default async function handler(req, res) {
       if (action === 'poll_remind') {
         const r = await remindPoll(sql, chat, me, body);
         if (r.status === 200) {
-          try { await pushMany(sql, circle.id, r.ids, { title: '📊 ' + me.name + ' is waiting for your vote', body: String(r.question || '').slice(0, 90) }); }
+          try { await pushMany(sql, circle.id, r.ids, { kind: 'chat', title: '📊 ' + me.name + ' is waiting for your vote', body: String(r.question || '').slice(0, 90) }); }
           catch (e) { /* alerts never block the poll */ }
         }
         return res.status(r.status).json(r.json);
@@ -354,9 +356,9 @@ export default async function handler(req, res) {
         try {
           const label = chat.kind === 'dm' ? me.name : (chat.name || spaceWord(circle) + ' chat');
           const audience = chat.kind === 'circle'
-            ? await sql`select id from members where circle_id = ${circle.id} and id <> ${me.id} and user_id is not null`
-            : await sql`select m.id from chat_members cm join members m on m.id = cm.member_id where cm.chat_id = ${chat.id} and m.id <> ${me.id}`;
-          await pushMany(sql, circle.id, audience.map(p => p.id), { title: '📊 ' + me.name + ' asked in ' + label, body: r.poll.question.slice(0, 90) });
+            ? await sql`select m.id from members m where m.circle_id = ${circle.id} and m.id <> ${me.id} and m.user_id is not null and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`
+            : await sql`select m.id from chat_members cm join members m on m.id = cm.member_id where cm.chat_id = ${chat.id} and m.id <> ${me.id} and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`;
+          await pushMany(sql, circle.id, audience.map(p => p.id), { kind: 'chat', title: '📊 ' + me.name + ' asked in ' + label, body: r.poll.question.slice(0, 90) });
         } catch (e) { /* alerts never block the poll */ }
       }
       return res.status(r.status).json(r.json);
@@ -367,14 +369,15 @@ export default async function handler(req, res) {
       if (!name) return res.status(400).json({ ok: false, error: 'The group needs a name' });
       const wanted = Array.isArray(body.memberIds) ? body.memberIds.filter(isUuid) : [];
       // Someone added to the tree by name never signs in: never in a chat.
-      const valid = await sql`select id from members where circle_id = ${circle.id} and id = any(${wanted}) and user_id is not null`;
+      // Someone the family remembers is never added to one either.
+      const valid = await sql`select m.id from members m where m.circle_id = ${circle.id} and m.id = any(${wanted}) and m.user_id is not null and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`;
       const ids = valid.map(v => v.id);
       if (ids.indexOf(me.id) < 0) ids.push(me.id);
       const c = await sql`insert into chats (circle_id, kind, name) values (${circle.id}, 'group', ${name}) returning id`;
       for (const id of ids) {
         await sql`insert into chat_members (chat_id, member_id) values (${c[0].id}, ${id}) on conflict do nothing`;
         if (id !== me.id) {
-          await pushCircle(sql, circle.id, { title: '👥 ' + me.name + ' started "' + name + '"', body: 'You have been added to the group' }, { only: id });
+          await pushCircle(sql, circle.id, { kind: 'chat', title: '👥 ' + me.name + ' started "' + name + '"', body: 'You have been added to the group' }, { only: id });
         }
       }
       return res.status(201).json({ ok: true, chatId: c[0].id });
@@ -383,8 +386,9 @@ export default async function handler(req, res) {
     if (action === 'open_dm') {
       const other = body.otherId;
       if (!isUuid(other) || other === me.id) return res.status(400).json({ ok: false, error: 'Pick a person to message' });
-      const oRow = await sql`select id, name, user_id from members where id = ${other} and circle_id = ${circle.id}`;
+      const oRow = await sql`select m.id, m.name, m.user_id, coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered from members m where m.id = ${other} and m.circle_id = ${circle.id}`;
       if (!oRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this family' });
+      if (oRow[0].remembered) return res.status(400).json({ ok: false, error: oRow[0].name + ' is remembered here, so there is no chat to open.' });
       if (!oRow[0].user_id) return res.status(400).json({ ok: false, error: oRow[0].name + ' is not on Parwah, so cannot be messaged here' });
       const existing = await sql`
         select c.id from chats c
@@ -404,17 +408,19 @@ export default async function handler(req, res) {
       if (chat.kind !== 'group') return res.status(400).json({ ok: false, error: chat.kind === 'circle' ? 'Everyone is already in the ' + spaceWord(circle) + ' chat' : 'Personal chats stay 1:1 - make a group instead' });
       const addId = body.addId;
       if (!isUuid(addId)) return res.status(400).json({ ok: false, error: 'Pick a person to add' });
-      const aRow = await sql`select id, name, user_id from members where id = ${addId} and circle_id = ${circle.id}`;
+      const aRow = await sql`select m.id, m.name, m.user_id, coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered from members m where m.id = ${addId} and m.circle_id = ${circle.id}`;
       if (!aRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this family' });
+      // Refused here, on the server, whatever the screen offered.
+      if (aRow[0].remembered) return res.status(400).json({ ok: false, error: aRow[0].name + ' is remembered here, so cannot be added to a chat.' });
       if (!aRow[0].user_id) return res.status(400).json({ ok: false, error: aRow[0].name + ' is not on Parwah, so cannot be in a chat' });
       await sql`insert into chat_members (chat_id, member_id) values (${chat.id}, ${addId}) on conflict do nothing`;
       await sql`insert into messages (chat_id, member_id, text) values (${chat.id}, ${me.id}, ${'➕ Added ' + aRow[0].name + ' to the group'})`;
       // the person added is told; so is everyone already in the group
-      await pushCircle(sql, circle.id, { title: '➕ ' + me.name + ' added you to ' + (chat.name || 'a group'), body: 'Open Parwah to say hello' }, { only: addId });
+      await pushCircle(sql, circle.id, { kind: 'chat', title: '➕ ' + me.name + ' added you to ' + (chat.name || 'a group'), body: 'Open Parwah to say hello' }, { only: addId });
       const inGroup = await sql`select m.id from chat_members cm join members m on m.id = cm.member_id
                                 where cm.chat_id = ${chat.id} and m.id <> ${me.id} and m.id <> ${addId}`;
       for (const p of inGroup) {
-        await pushCircle(sql, circle.id, { title: '➕ ' + aRow[0].name + ' joined ' + (chat.name || 'the group'), body: 'Added by ' + me.name }, { only: p.id });
+        await pushCircle(sql, circle.id, { kind: 'chat', title: '➕ ' + aRow[0].name + ' joined ' + (chat.name || 'the group'), body: 'Added by ' + me.name }, { only: p.id });
       }
       return res.status(200).json({ ok: true });
     }

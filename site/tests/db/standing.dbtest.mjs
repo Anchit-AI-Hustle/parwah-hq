@@ -61,7 +61,7 @@ const { db, makeCode } = await import('../../../api/_db.mjs');
 const { lockKey } = await import('../../../api/_account.mjs');
 
 let pass = 0; const fails = [];
-const ok = (name, cond, detail) => { if (cond) pass++; else fails.push(name + (detail !== undefined ? ' -> ' + detail : '')); };
+const ok = (name, cond, detail) => { if (cond) pass++; else { fails.push(name + (detail !== undefined ? ' -> ' + detail : '')); if (process.env.PARWAH_TEST_TRACE) console.log('FAIL  ' + fails[fails.length - 1]); } };
 
 let ipn = 0;
 const UA_ANDROID = 'Mozilla/5.0 (Linux; Android 13; SM-A135F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36';
@@ -360,8 +360,14 @@ ok('setup: five Vermas', (await rows('select id from members where circle_id = $
   const rs = await one(`select id from pin_resets where user_id = $1 and status = 'pending'`, [dadu]);
   const a = await A(maa.token, { action: 'reset_approve', resetId: rs.id, sayCode: r.sayCode });
   ok('E3: he asks the family, and a grown-up says yes', a.ok && a.status === 'approved');
-  const inn = await enter('9850000010', { resetSecret: r.resetSecret, newPin: '2957' });
-  ok('E3: he has no phone signed in, so there is no ten-minute wait, and he chooses his PIN', inn.ok && !!inn.token, JSON.stringify(inn).slice(0, 200));
+  // The new PIN ALWAYS waits ten minutes from the yes, even with no phone
+  // of his signed in: the wait is what lets him, or the family, stop it.
+  let inn = await enter('9850000010', { resetSecret: r.resetSecret, newPin: '2957' });
+  ok('E3: he has no phone signed in, and the new PIN still waits ten minutes', !inn.token && inn.reset === 'holding' && inn.readyInSeconds > 500 && inn.readyInSeconds <= 600, JSON.stringify(inn).slice(0, 200));
+  ok('E3: the yes itself says how long', a.readyInSeconds > 500 && a.readyInSeconds <= 600, JSON.stringify(a));
+  await admin.query(`update pin_resets set veto_until = now() - interval '1 second' where id = $1`, [rs.id]);
+  inn = await enter('9850000010', { resetSecret: r.resetSecret, newPin: '2957' });
+  ok('E3: after the wait he chooses his PIN', inn.ok && !!inn.token, JSON.stringify(inn).slice(0, 200));
   // With no family to vouch, it is as before.
   await admin.query(`insert into users (phone, phone_cc, phone_local, name) values ('+919850000011', '+91', '9850000011', 'Alone')`);
   r = await enter('9850000011');
@@ -453,8 +459,22 @@ ok('setup: five Vermas', (await rows('select id from members where circle_id = $
   ok('E9: a child cannot answer for her', r.http === 403);
   r = await C(tara.token, { action: 'adult_confirm', code, memberId: tara.m, targetId: tara.m, adult: true });
   ok('E9: nor she for herself', r.http === 404);
+  // "No, under 18" takes Tara's say away, so it is never one person's word:
+  // Tara herself, or a second adult, has to agree (review finding 4).
   r = await C(papa.token, { action: 'adult_confirm', code, memberId: papa.m, targetId: tara.m, adult: false });
-  ok('E9: Papa says she is under 18, and it is kept', r.ok && (await one('select adult_confirmed, adult_confirmed_by from members where id = $1', [tara.m])).adult_confirmed === false);
+  ok('E9: Papa says she is under 18: nothing changes yet, another voice is needed', r.http === 202 && r.pending === true
+     && (await one('select adult_confirmed, is_child from members where id = $1', [tara.m])).adult_confirmed === null, JSON.stringify(r));
+  ok('E9: Tara still acts while it waits', (await state(tara, code, tara.m)).me.may === true);
+  {
+    const mine = (await state(tara, code, tara.m)).asks.find(x => x.kind === 'child_mark');
+    ok('E9: Tara is shown what was said about her, and can answer', !!mine && mine.aboutMe === true && mine.askedByName === 'Papa', JSON.stringify(mine));
+    ok('E9: a child cannot be the second voice', (await C(aarav.token, { action: 'ask_vote', code, memberId: aarav.m, askId: mine.id, yes: true })).http === 403);
+    const again = await C(papa.token, { action: 'adult_confirm', code, memberId: papa.m, targetId: tara.m, adult: false });
+    ok('E9: Papa asking again is not a second voice', again.http === 202 && (await one('select adult_confirmed from members where id = $1', [tara.m])).adult_confirmed === null);
+    const v = await C(maa.token, { action: 'ask_vote', code, memberId: maa.m, askId: mine.id, yes: true });
+    const kept = await one('select adult_confirmed, adult_confirmed_by, is_child from members where id = $1', [tara.m]);
+    ok('E9: Maa agrees, and now it is kept', v.ok && v.status === 'done' && kept.adult_confirmed === false && kept.is_child === true && kept.adult_confirmed_by === papa.m, JSON.stringify([v, kept]));
+  }
   ok('E9: nobody is asked again', (await state(maa, code, maa.m)).unsure.length === 0);
   ok('E9: and now Tara is a teen for every gate', (await state(tara, code, tara.m)).me.may === false);
   // What a teen cannot do.
@@ -477,9 +497,43 @@ ok('setup: five Vermas', (await rows('select id from members where circle_id = $
   ok('E9: nor ask for someone to be removed', r.http === 403);
   r = await C(tara.token, { action: 'family_delete_ask', code, memberId: tara.m });
   ok('E9: nor for the family to be deleted', r.http === 403);
-  // Her own date of birth decides it in the end.
-  await C(tara.token, { action: 'update_member', code, memberId: tara.m, dob: '1996-03-03' });
+  // Her own date of birth decides it in the end. But someone the family
+  // sees as a child cannot make themself an adult by typing a date: that
+  // waits for one adult's yes (review finding 11).
+  r = await C(tara.token, { action: 'update_member', code, memberId: tara.m, dob: '1996-03-03', place: 'Pune' });
+  ok('E9: a date of birth that would make a teen an adult is not saved by the teen alone', r.ok && r.dobPending === true && /adult/.test(r.message || '')
+     && (await one('select dob from members where id = $1', [tara.m])).dob === null, JSON.stringify(r));
+  ok('E9: the rest of her profile is saved', (await one('select place from members where id = $1', [tara.m])).place === 'Pune');
+  ok('E9: and she is still a teen for every gate', (await state(tara, code, tara.m)).me.may === false);
+  {
+    const ask = (await state(papa, code, papa.m)).asks.find(x => x.kind === 'dob_change');
+    ok('E9: the adults are shown the new date and who asked', !!ask && ask.targetId === tara.m && ask.newDob === '1996-03-03', JSON.stringify(ask));
+    ok('E9: she cannot say yes to it herself', (await C(tara.token, { action: 'ask_vote', code, memberId: tara.m, askId: ask.id, yes: true })).http === 403);
+    ok('E9: nor can another child', (await C(aarav.token, { action: 'ask_vote', code, memberId: aarav.m, askId: ask.id, yes: true })).http === 403);
+    const v = await C(papa.token, { action: 'ask_vote', code, memberId: papa.m, askId: ask.id, yes: true });
+    const now = await one(`select to_char(dob, 'YYYY-MM-DD') as dob, is_child, adult_confirmed from members where id = $1`, [tara.m]);
+    ok('E9: Papa says yes: the date is saved and the marks are taken off', v.ok && v.status === 'done' && now.dob === '1996-03-03' && now.is_child === false && now.adult_confirmed === null, JSON.stringify([v, now]));
+  }
   ok('E9: her date of birth, once written, is what counts', (await state(tara, code, tara.m)).me.standing === 'adult');
+  // A child by date of birth: a new date that still says child is theirs to
+  // change; one that says adult, or no date at all, waits for an adult.
+  r = await C(aarav.token, { action: 'update_member', code, memberId: aarav.m, dob: '2013-02-02' });
+  ok('E9: a child may correct their own birthday when it still says child', r.ok && !r.dobPending && (await one(`select to_char(dob, 'YYYY-MM-DD') as d from members where id = $1`, [aarav.m])).d === '2013-02-02');
+  r = await C(aarav.token, { action: 'update_member', code, memberId: aarav.m, dob: '1999-02-02' });
+  ok('E9: a child cannot type themself 18', r.dobPending === true && (await one(`select to_char(dob, 'YYYY-MM-DD') as d from members where id = $1`, [aarav.m])).d === '2013-02-02', JSON.stringify(r));
+  r = await C(aarav.token, { action: 'update_member', code, memberId: aarav.m, dob: '' });
+  ok('E9: nor take their date of birth off to stop being a child', r.dobPending === true && (await one(`select to_char(dob, 'YYYY-MM-DD') as d from members where id = $1`, [aarav.m])).d === '2013-02-02'
+     && (await state(aarav, code, aarav.m)).me.may === false, JSON.stringify(r));
+  {
+    const ask = (await state(maa, code, maa.m)).asks.find(x => x.kind === 'dob_change' && x.targetId === aarav.m);
+    const v = await C(maa.token, { action: 'ask_vote', code, memberId: maa.m, askId: ask.id, yes: false });
+    ok('E9: an adult says no, and nothing changes', v.status === 'declined' && (await one(`select to_char(dob, 'YYYY-MM-DD') as d from members where id = $1`, [aarav.m])).d === '2013-02-02');
+  }
+  await admin.query(`update members set dob = '2014-02-02' where id = $1`, [aarav.m]);
+  // An adult's own change of birthday is their own, as before.
+  r = await C(rohan.token, { action: 'update_member', code, memberId: rohan.m, dob: '1990-05-06' });
+  ok('E9: an adult changes their own date of birth freely', r.ok && !r.dobPending && (await one(`select to_char(dob, 'YYYY-MM-DD') as d from members where id = $1`, [rohan.m])).d === '1990-05-06');
+  await admin.query(`update members set dob = '1990-05-05' where id = $1`, [rohan.m]);
 }
 
 // ============================================================ E12: the tree can be undone; linking waits 48 hours
@@ -801,10 +855,13 @@ ok('setup: five Vermas', (await rows('select id from members where circle_id = $
   await forgetLimits();
   r = await A(null, { action: 'reset_request', phone: '9850000050', cc: '+91' });
   const rs = await one(`select id, veto_until from pin_resets where user_id = $1 and status = 'pending'`, [amma.id]);
-  ok('one phone: with no phone signed in, there is no ten-minute wait', rs.veto_until === null);
+  ok('one phone: with no phone signed in, the ten-minute wait is still there', !!rs.veto_until && new Date(rs.veto_until) > new Date());
   const a = await A(beta.token, { action: 'reset_approve', resetId: rs.id, sayCode: r.sayCode });
-  const inn = await enter('9850000050', { resetSecret: r.resetSecret, newPin: '6047', deviceId: DEV(51) });
-  ok('one phone: her son says yes with the two numbers she reads out, and she is in', a.ok && inn.ok && !!inn.token);
+  let inn = await enter('9850000050', { resetSecret: r.resetSecret, newPin: '6047', deviceId: DEV(51) });
+  ok('one phone: her son says yes with the two numbers she reads out, and the new PIN waits', a.ok && !inn.token && inn.reset === 'holding', JSON.stringify(inn).slice(0, 200));
+  await admin.query(`update pin_resets set veto_until = now() - interval '1 second' where id = $1`, [rs.id]);
+  inn = await enter('9850000050', { resetSecret: r.resetSecret, newPin: '6047', deviceId: DEV(51) });
+  ok('one phone: after the wait she is in', inn.ok && !!inn.token);
   amma.token = inn.token; amma.pin = '6047';
   // A family with a single adult, from the child's side: see below.
   globalThis.__iyer = { fam, amma, beta };
@@ -905,6 +962,420 @@ ok('setup: five Vermas', (await rows('select id from members where circle_id = $
   ok('single adult: after 7 days the timer deletes the family', !(await one('select 1 as x from circles where id = $1', [fam.id])));
   ok('single adult: and everything in it', !(await one('select 1 as x from members where id = $1', [kid.m])));
   ok('single adult: her account, and her other circle, are untouched', (await enter(meena.phone, { refresh: true }, { token: meena.token })).circles.length === 1);
+}
+
+// ============================================================ WHAT THE REVIEW OF THE COMBINED BUILD FOUND
+// Each block is one finding, proved against the real handlers.
+{
+  await forgetLimits();
+  await admin.query('delete from pin_locks');
+  const { pushSeams, ensurePushSchema } = await import('../../../api/_push.mjs');
+  const { pushUser } = await import('../../../api/_account.mjs');
+  const { minorOf, audienceFor, standingAction: childSet } = await import('../../../api/_audience.mjs');
+  const { standingOf, isMinor, isAdultMember } = await import('../../../api/_standingrules.mjs');
+  const { surelyAdult } = await import('../../../api/_safetyrules.mjs');
+  const { ensureVaultSchema } = await import('../../../api/_vaultapi.mjs');
+  const sql = db();
+  // A call from a chosen address and browser (the helper above gives every
+  // call its own address).
+  const callAt = async (handler, body, token, ip, ua) => {
+    const req = { method: 'POST', body, headers: { 'x-forwarded-for': ip, 'user-agent': ua || UA_ANDROID } };
+    if (token) req.headers['x-parwah-token'] = token;
+    let status = 200, json = null;
+    const res = { status(x) { status = x; return this; }, json(j) { json = JSON.parse(JSON.stringify(j)); return this; }, setHeader() {} };
+    await handler(req, res);
+    return { status, ...json, http: status };
+  };
+  const sent = [];
+  pushSeams.send = async (sub, body) => { sent.push({ endpoint: sub.endpoint, ...JSON.parse(body) }); };
+  await ensurePushSchema(sql);
+  const EP = n => 'https://fcm.googleapis.com/fcm/send/fix-' + n;
+  const subFor = (u, n, device) => admin.query(`insert into push_subs (member_id, user_id, device_id, endpoint, p256dh, auth) values (null, $1, $2, $3, 'k', 'a')`, [u.id, device || null, EP(n)]);
+  const subsOf = async u => (await rows('select endpoint from push_subs where user_id = $1 order by endpoint', [u.id])).map(x => x.endpoint.split('fix-')[1]);
+
+  // The Kapoors: Kamal (an elder the family looks after: an adult by role),
+  // Bina and Esha (nothing written about their age), Dev (father), Chintu (2015).
+  const kamal = await signUp('9850000081', 'Kamal', '4829', { deviceId: DEV(81) });
+  const bina = await signUp('9850000082', 'Bina', '7351', { deviceId: DEV(82) });
+  const dev = await signUp('9850000083', 'Dev', '6142', { deviceId: DEV(83) });
+  const esha = await signUp('9850000084', 'Esha', '5937', { deviceId: DEV(84) });
+  const chintu = await signUp('9850000085', 'Chintu', '8264', { deviceId: DEV(85) });
+  const kap = await makeFamily(kamal, 'Kapoor');
+  kamal.m = kap.founderM;
+  bina.m = await joinIn(kap, kamal, bina);
+  dev.m = await joinIn(kap, kamal, dev, { relation: 'father' });
+  esha.m = await joinIn(kap, kamal, esha);
+  chintu.m = await joinIn(kap, kamal, chintu, { dob: '2015-03-03' });
+  const kc = { id: kap.id, code: kap.code, name: 'Kapoor', kind: 'family' };
+
+  // ---------------- 1. nobody resets another member's PIN alone
+  {
+    // Kamal asks for BINA's number from his own phone, then says yes himself.
+    let r = await callAt(auth, { action: 'reset_request', phone: bina.phone, cc: '+91', deviceId: DEV(81) }, null, '10.77.0.1', UA_ANDROID);
+    let rs = await one(`select id, veto_until, req_device, req_own from pin_resets where user_id = $1 and status = 'pending'`, [bina.id]);
+    ok('fix 1: the request is kept with the phone that asked, and always with a ten-minute wait', !!rs && !!rs.req_device && rs.req_own === false && new Date(rs.veto_until) > new Date(), JSON.stringify(rs));
+    let a = await callAt(auth, { action: 'reset_approve', resetId: rs.id, sayCode: r.sayCode, token: kamal.token, deviceId: DEV(81) }, kamal.token, '10.77.0.2', UA_IPHONE);
+    ok('fix 1: the phone that asked cannot say yes, whoever is signed in on it', a.http === 403 && a.sameDevice === true, JSON.stringify(a));
+    a = await callAt(auth, { action: 'reset_approve', resetId: rs.id, sayCode: r.sayCode, token: kamal.token }, kamal.token, '10.77.0.3', UA_IPHONE);
+    ok('fix 1: not even without saying which phone it is: the session knows', a.http === 403 && a.sameDevice === true, JSON.stringify(a));
+    ok('fix 1: and the request is still only pending', (await one('select status from pin_resets where id = $1', [rs.id])).status === 'pending');
+    // From a phone Parwah has never seen, but the same address and browser.
+    r = await callAt(auth, { action: 'reset_request', phone: bina.phone, cc: '+91', deviceId: DEV(990) }, null, '10.77.0.9', UA_ANDROID);
+    rs = await one(`select id from pin_resets where user_id = $1 and status = 'pending'`, [bina.id]);
+    a = await callAt(auth, { action: 'reset_approve', resetId: rs.id, sayCode: r.sayCode, token: dev.token, deviceId: DEV(83) }, dev.token, '10.77.0.9', UA_ANDROID);
+    ok('fix 1: a yes from the same address and the same browser as the ask is refused', a.http === 403 && a.sameDevice === true, JSON.stringify(a));
+    a = await callAt(auth, { action: 'reset_deny', resetId: rs.id, token: dev.token }, dev.token, '10.77.0.9', UA_ANDROID);
+    ok('fix 1: saying no is always allowed', a.ok && a.status === 'denied');
+    // The honest case: Bina asks from a new phone, Dev says yes from his.
+    await forgetLimits();
+    await A(bina.token, { action: 'signout_all', token: bina.token });
+    r = await callAt(auth, { action: 'reset_request', phone: bina.phone, cc: '+91', deviceId: DEV(991) }, null, '10.77.1.1', UA_IPHONE);
+    rs = await one(`select id from pin_resets where user_id = $1 and status = 'pending'`, [bina.id]);
+    a = await callAt(auth, { action: 'reset_approve', resetId: rs.id, sayCode: r.sayCode, token: dev.token, deviceId: DEV(83) }, dev.token, '10.77.1.2', UA_ANDROID);
+    ok('fix 1: another adult, on their own phone, says yes', a.ok && a.status === 'approved' && a.readyInSeconds > 500, JSON.stringify(a));
+    let inn = await callAt(auth, { action: 'enter', phone: bina.phone, cc: '+91', resetSecret: r.resetSecret, newPin: '9038', deviceId: DEV(991) }, null, '10.77.1.1', UA_IPHONE);
+    ok('fix 1: the new PIN waits ten minutes even though Bina has no phone signed in', !inn.token && inn.reset === 'holding' && inn.readyInSeconds > 500, JSON.stringify(inn).slice(0, 200));
+    await admin.query(`update pin_resets set veto_until = now() - interval '1 second' where id = $1`, [rs.id]);
+    inn = await callAt(auth, { action: 'enter', phone: bina.phone, cc: '+91', resetSecret: r.resetSecret, newPin: '9038', deviceId: DEV(82) }, null, '10.77.1.1', UA_IPHONE);
+    ok('fix 1: then she is in', inn.ok && !!inn.token);
+    bina.token = inn.token; bina.pin = '9038';
+    // A son who once set up his mother's phone can still let her back in
+    // from his own. Only being signed in on the asking phone NOW counts.
+    await forgetLimits(); await admin.query('delete from pin_locks');
+    const onHers = await enter(dev.phone, { pin: dev.pin, deviceId: DEV(82) });
+    await A(bina.token, { action: 'signout_all', token: bina.token });
+    r = await callAt(auth, { action: 'reset_request', phone: bina.phone, cc: '+91', deviceId: DEV(82) }, null, '10.77.2.1', UA_IPHONE);
+    rs = await one(`select id from pin_resets where user_id = $1 and status = 'pending'`, [bina.id]);
+    a = await callAt(auth, { action: 'reset_approve', resetId: rs.id, sayCode: r.sayCode, token: dev.token, deviceId: DEV(83) }, dev.token, '10.77.2.2', UA_ANDROID);
+    ok('fix 1: while Dev is signed in on the asking phone, his yes is refused even from his own', a.http === 403 && a.sameDevice === true, JSON.stringify(a));
+    await A(onHers.token, { action: 'signout', token: onHers.token });
+    a = await callAt(auth, { action: 'reset_approve', resetId: rs.id, sayCode: r.sayCode, token: dev.token, deviceId: DEV(83) }, dev.token, '10.77.2.2', UA_ANDROID);
+    ok('fix 1: once he is signed out of it, he can let her back in from his own phone', a.ok && a.status === 'approved', JSON.stringify(a));
+    await admin.query(`update pin_resets set veto_until = now() - interval '1 second' where id = $1`, [rs.id]);
+    inn = await callAt(auth, { action: 'enter', phone: bina.phone, cc: '+91', resetSecret: r.resetSecret, newPin: '9038', deviceId: DEV(82) }, null, '10.77.2.1', UA_IPHONE);
+    ok('fix 1: and she is in again', inn.ok && !!inn.token);
+    bina.token = inn.token;
+    await admin.query('delete from account_alerts where user_id = any($1::uuid[])', [[bina.id, dev.id]]);
+  }
+
+  // ---------------- 17. a stranger cannot push the owner's own request aside, or use up her tries
+  {
+    await forgetLimits();
+    const mine = await callAt(auth, { action: 'reset_request', phone: bina.phone, cc: '+91', deviceId: DEV(82) }, null, '10.78.0.1', UA_IPHONE);
+    const row0 = await one(`select id, secret_hash, req_own from pin_resets where user_id = $1 and status = 'pending'`, [bina.id]);
+    ok('fix 17: an ask from a phone Bina already uses is marked as her own', row0.req_own === true);
+    const theirs = await callAt(auth, { action: 'reset_request', phone: bina.phone, cc: '+91', deviceId: DEV(992) }, null, '10.78.0.2', UA_ANDROID);
+    const row1 = await one(`select id, secret_hash from pin_resets where user_id = $1 and status = 'pending'`, [bina.id]);
+    ok('fix 17: a stranger asking for her number is told what everyone is told', theirs.ok && theirs.asked === true && keysOf(theirs) === keysOf(mine));
+    ok('fix 17: and her own request, with her own secret, is still the one waiting', row1.id === row0.id && row1.secret_hash === row0.secret_hash);
+    const st = await A(null, { action: 'reset_status', phone: bina.phone, cc: '+91', resetSecret: mine.resetSecret });
+    ok('fix 17: her phone still sees it waiting', st.reset === 'pending', JSON.stringify(st));
+    // The stranger uses up THEIR tries, not hers.
+    let last = null;
+    for (let i = 0; i < 4; i++) last = await callAt(auth, { action: 'reset_request', phone: bina.phone, cc: '+91', deviceId: DEV(992) }, null, '10.78.0.2', UA_ANDROID);
+    ok('fix 17: the stranger\'s phone is held after three asks', last.http === 429);
+    const again = await callAt(auth, { action: 'reset_request', phone: bina.phone, cc: '+91', deviceId: DEV(82) }, null, '10.78.0.1', UA_IPHONE);
+    ok('fix 17: Bina\'s own phone is not held back by them', again.ok && again.asked === true, JSON.stringify(again));
+    await A(bina.token, { action: 'reset_veto', resetId: row0.id });
+  }
+
+  // ---------------- 5. after "Not me", only a phone known before may choose the new PIN
+  {
+    await forgetLimits(); await admin.query('delete from pin_locks');
+    await admin.query(`update user_devices set first_seen = now() - interval '2 days' where user_id = $1 and device_hash is not null`, [bina.id]);
+    // Someone who knows her PIN signs in on a phone of their own.
+    const thief = await enter(bina.phone, { pin: bina.pin, deviceId: DEV(993) });
+    ok('fix 5: a sign-in on a new phone raises the alert on the old one', !!thief.token);
+    const al = (await A(bina.token, { action: 'account_state' })).alerts[0];
+    let r = await A(bina.token, { action: 'alert_notme', alertId: al.id });
+    ok('fix 5: Bina says "Not me"', r.ok && r.changeSecret === true);
+    // The intruder is first to the door, with the old PIN and a new one.
+    r = await enter(bina.phone, { pin: bina.pin, newPin: '1470', deviceId: DEV(993) });
+    ok('fix 5: the phone she said "Not me" to cannot choose the new PIN', !r.token && r.askFamily === true && !r.changeSecret, JSON.stringify(r));
+    r = await enter(bina.phone, { pin: bina.pin, newPin: '1470', deviceId: DEV(994) });
+    ok('fix 5: nor can any other phone that was not hers before', !r.token && r.askFamily === true);
+    r = await enter(bina.phone, { pin: bina.pin, newPin: '1470' });
+    ok('fix 5: nor a phone that says nothing about itself', !r.token && r.askFamily === true);
+    ok('fix 5: her PIN is unchanged by all that', (await enter(bina.phone, { pin: '1470', deviceId: DEV(994) })).http === 401);
+    await admin.query('delete from pin_locks');
+    r = await enter(bina.phone, { pin: bina.pin, deviceId: DEV(82) });
+    ok('fix 5: her own older phone is asked for the new PIN', r.changeSecret === true && r.mustChange === true && !r.token, JSON.stringify(r));
+    r = await enter(bina.phone, { pin: bina.pin, newPin: '2581', deviceId: DEV(82) });
+    ok('fix 5: and chooses it', r.ok && !!r.token, JSON.stringify(r).slice(0, 200));
+    bina.token = r.token; bina.pin = '2581';
+  }
+
+  // ---------------- 5b. a phone signed in before phones had ids of their own
+  {
+    await forgetLimits(); await admin.query('delete from pin_locks');
+    // Dev's session is from before: no device id on it, no known device.
+    await admin.query('update sessions set device_hash = null where user_id = $1', [dev.id]);
+    await admin.query('delete from user_devices where user_id = $1', [dev.id]);
+    await admin.query(`update sessions set created_at = now() - interval '3 days' where user_id = $1`, [dev.id]);
+    const thief = await enter(dev.phone, { pin: dev.pin, deviceId: DEV(981) });
+    const al = (await A(dev.token, { action: 'account_state' })).alerts[0];
+    ok('fix 5: (a new sign-in is flagged on Dev\'s older phone)', !!thief.token && !!al);
+    // The intruder cannot use "Not me" to become the trusted phone.
+    let r = await A(thief.token, { action: 'alert_notme', alertId: al.id, deviceId: DEV(981) });
+    ok('fix 5: the newer phone cannot say "Not me"', r.http === 403);
+    r = await A(dev.token, { action: 'alert_notme', alertId: al.id, deviceId: DEV(83) });
+    ok('fix 5: the older phone says "Not me", and says which phone it is', r.ok && r.changeSecret === true);
+    r = await enter(dev.phone, { pin: dev.pin, newPin: '7410', deviceId: DEV(981) });
+    ok('fix 5: the intruder still cannot choose the new PIN', !r.token && r.askFamily === true);
+    r = await enter(dev.phone, { pin: dev.pin, newPin: '7410', deviceId: DEV(83) });
+    ok('fix 5: the phone that said "Not me" chooses it, though it had no id on file before', r.ok && !!r.token, JSON.stringify(r).slice(0, 200));
+    dev.token = r.token; dev.pin = '7410';
+  }
+
+  // ---------------- 6. signing out stops the pushes
+  {
+    await forgetLimits(); await admin.query('delete from pin_locks');
+    await admin.query('delete from push_subs where user_id = $1', [bina.id]);
+    const second = await enter(bina.phone, { pin: bina.pin, deviceId: DEV(86) });
+    await subFor(bina, 'a', DEV(82)); await subFor(bina, 'b', DEV(86)); await subFor(bina, 'old', null);
+    await A(second.token, { action: 'signout', token: second.token });
+    ok('fix 6: signing out forgets that phone\'s subscription, and only that one', (await subsOf(bina)).join() === 'a,old', (await subsOf(bina)).join());
+    const third = await enter(bina.phone, { pin: bina.pin, deviceId: DEV(86) });
+    await subFor(bina, 'b', DEV(86));
+    const devs = (await A(bina.token, { action: 'account_state' })).devices;
+    await A(bina.token, { action: 'device_signout', sid: devs.find(d => !d.current).sid });
+    ok('fix 6: signing a phone out from the Devices list does the same', (await subsOf(bina)).join() === 'a,old', (await subsOf(bina)).join());
+    ok('fix 6: and that phone\'s token is dead', (await A(third.token, { action: 'account_state' })).http === 401);
+    // A subscription from before phones had ids: the phone names its own address.
+    await A(bina.token, { action: 'signout', token: bina.token, endpoint: EP('old') });
+    ok('fix 6: the last phone signs out: nothing is left to push to', (await subsOf(bina)).length === 0, (await subsOf(bina)).join());
+    let r = await enter(bina.phone, { pin: bina.pin, deviceId: DEV(82) });
+    bina.token = r.token;
+    await subFor(bina, 'a', DEV(82)); await subFor(bina, 'b', DEV(86));
+    await A(bina.token, { action: 'signout_all', token: bina.token });
+    ok('fix 6: "sign out everywhere" forgets every subscription', (await subsOf(bina)).length === 0);
+    r = await enter(bina.phone, { pin: bina.pin, deviceId: DEV(82) });
+    bina.token = r.token;
+    // "Not me": the phone that was put out stops getting pushes too.
+    await admin.query(`update user_devices set first_seen = now() - interval '2 days' where user_id = $1`, [bina.id]);
+    const intr = await enter(bina.phone, { pin: bina.pin, deviceId: DEV(995) });
+    await subFor(bina, 'a', DEV(82)); await subFor(bina, 'x', DEV(995));
+    const al = (await A(bina.token, { action: 'account_state' })).alerts[0];
+    await A(bina.token, { action: 'alert_notme', alertId: al.id });
+    ok('fix 6: after "Not me" the other phone is not pushed any more', (await subsOf(bina)).join() === 'a' && (await A(intr.token, { action: 'account_state' })).http === 401, (await subsOf(bina)).join());
+    r = await enter(bina.phone, { pin: bina.pin, newPin: '3692', deviceId: DEV(82) });
+    bina.token = r.token; bina.pin = '3692';
+  }
+
+  // ---------------- 16. an account alert is one push per phone, not one per family
+  {
+    await admin.query('delete from push_subs where user_id = $1', [bina.id]);
+    const g = await C(bina.token, { action: 'create', kind: 'group', memberName: 'Bina', circleName: 'Walkers' });
+    ok('fix 16: Bina is in two circles', !!g.code && (await rows('select id from members where user_id = $1', [bina.id])).length === 2);
+    await subFor(bina, 'one', DEV(82));
+    sent.length = 0;
+    await pushUser(sql, bina.id, { kind: 'safety', title: '🔒 Wrong PIN tries on your number', body: 'x' });
+    ok('fix 16: her one phone is pushed once', sent.filter(x => x.endpoint === EP('one')).length === 1, String(sent.length));
+  }
+
+  // ---------------- 2. the urgent account alerts are not held by quiet hours or by a switch
+  {
+    await admin.query(`insert into push_prefs (user_id, quiet, quiet_from, quiet_to, kinds, tz) values ($1, true, 0, 1439, '{"care": false, "chat": false}'::jsonb, 'Asia/Kolkata')
+                       on conflict (user_id) do update set quiet = true, quiet_from = 0, quiet_to = 1439, kinds = excluded.kinds, tz = excluded.tz`, [bina.id]);
+    sent.length = 0;
+    await pushUser(sql, bina.id, { title: 'A code change', body: 'x' });
+    ok('fix 2: (it really is her night: an ordinary push waits)', sent.length === 0);
+    // A new sign-in, with Care alerts off and in the middle of her night.
+    await admin.query(`update user_devices set first_seen = now() - interval '2 days' where user_id = $1`, [bina.id]);
+    const other = await enter(bina.phone, { pin: bina.pin, deviceId: DEV(996) });
+    ok('fix 2: "New sign-in on another phone" reaches her at night with Care alerts off', sent.some(x => /New sign-in on another phone/.test(x.title)), JSON.stringify(sent.map(x => x.title)));
+    await A(other.token, { action: 'signout', token: other.token });
+    await admin.query('delete from account_alerts where user_id = $1', [bina.id]);
+    sent.length = 0;
+    await forgetLimits();
+    const rq = await callAt(auth, { action: 'reset_request', phone: bina.phone, cc: '+91', deviceId: DEV(997) }, null, '10.79.0.1', UA_ANDROID);
+    ok('fix 2: "Someone asked to reset your PIN" reaches her at night', rq.ok && sent.some(x => x.endpoint === EP('one') && /Someone asked to reset your PIN/.test(x.title)), JSON.stringify(sent.map(x => x.title)));
+    await admin.query(`update pin_resets set status = 'denied' where user_id = $1 and status = 'pending'`, [bina.id]);
+    // Five wrong tries from a stranger's phone.
+    sent.length = 0; await admin.query('delete from pin_locks');
+    for (let i = 0; i < 5; i++) await enter(bina.phone, { pin: '0000', deviceId: DEV(998) });
+    ok('fix 2: "Wrong PIN tries" reaches her at night', sent.some(x => /Wrong PIN tries on your number/.test(x.title)), JSON.stringify(sent.map(x => x.title)));
+    await admin.query('delete from pin_locks'); await admin.query('delete from push_prefs where user_id = $1', [bina.id]);
+    // "Papa cannot get in": the adults who can say yes hear at night too.
+    await admin.query('delete from push_subs'); await subFor(dev, 'dev', DEV(83));
+    await admin.query(`insert into push_prefs (user_id, quiet, quiet_from, quiet_to, kinds, tz) values ($1, true, 0, 1439, '{"care": false}'::jsonb, 'Asia/Kolkata')
+                       on conflict (user_id) do update set quiet = true, quiet_from = 0, quiet_to = 1439, kinds = excluded.kinds, tz = excluded.tz`, [dev.id]);
+    sent.length = 0; await forgetLimits();
+    await callAt(auth, { action: 'reset_request', phone: bina.phone, cc: '+91', deviceId: DEV(997) }, null, '10.79.0.1', UA_ANDROID);
+    ok('fix 2: "Bina cannot get in" reaches an adult at night', sent.some(x => x.endpoint === EP('dev') && /Bina cannot get in/.test(x.title)), JSON.stringify(sent.map(x => x.title)));
+    await admin.query(`update pin_resets set status = 'denied' where user_id = $1 and status = 'pending'`, [bina.id]);
+    await admin.query('delete from push_prefs'); await admin.query('delete from push_subs');
+  }
+
+  // ---------------- 3. ONE adult rule: the same answer in JavaScript and in SQL, for every combination
+  {
+    const lab = await one(`insert into circles (code, name, kind) values ('MATRIX99', 'Matrix', 'family') returning id`);
+    const today = new Date(Date.now() + 19800000).toISOString().slice(0, 10);
+    let n = 0, wrong = [];
+    for (const dob of ['2012-05-01', '1980-05-01', null]) for (const child of [true, false]) for (const conf of [true, false, null]) {
+      n++;
+      const u = await one(`insert into users (phone, phone_cc, phone_local, name) values ($1, '+91', $2, $3) returning id`, ['+9198600000' + String(n).padStart(2, '0'), '98600000' + String(n).padStart(2, '0'), 'M' + n]);
+      const m = await one(`insert into members (circle_id, name, role, user_id, dob, is_child, adult_confirmed) values ($1, $2, 'family', $3, $4, $5, $6)
+                           returning id, user_id, role, relation, spouse_id, remembered, to_char(dob, 'YYYY-MM-DD') as dob, is_child, adult_confirmed`, [lab.id, 'M' + n, u.id, dob, child, conf]);
+      const want = dob === '2012-05-01' ? 'minor' : dob ? 'adult' : (child || conf === false) ? 'minor' : conf === true ? 'adult' : 'unsure';
+      const js = standingOf({ ...m, has_child: false }, today);
+      const sqlMinor = await minorOf(sql, lab.id, m.id);
+      const told = (await audienceFor(sql, lab.id, 'costs', { only: m.id })).length === 1;
+      const warm = (await audienceFor(sql, lab.id, 'ashirwad', { only: m.id })).length === 1;
+      const strict = surelyAdult({ ...m, has_child: false }, today);
+      if (js !== want || sqlMinor !== (want === 'minor') || isMinor(m, today) !== sqlMinor || told !== (want !== 'minor') || !warm
+          || isAdultMember({ ...m, has_child: false }, today) !== (want !== 'minor') || (strict && want !== 'adult')) {
+        wrong.push([dob, child, conf, js, sqlMinor, told, strict].join('/'));
+      }
+    }
+    ok('fix 3: date of birth x is_child x adult_confirmed, 18 combinations: JavaScript and SQL give the same answer', n === 18 && wrong.length === 0, wrong.join(' | '));
+    // The after-loss rule may be stricter, never looser: a grown-up role does
+    // not outweigh a mark the family made.
+    ok('fix 3: the strict rule is never looser than the one rule',
+       !surelyAdult({ user_id: 'u', dob: null, role: 'parent', is_child: true }, today) && !surelyAdult({ user_id: 'u', dob: null, relation: 'mother', adult_confirmed: false }, today)
+       && surelyAdult({ user_id: 'u', dob: null, role: 'parent' }, today) && surelyAdult({ user_id: 'u', dob: '1980-01-01', is_child: true }, today));
+    await admin.query('delete from circles where id = $1', [lab.id]);
+  }
+
+  // ---------------- 3 and 4. a child marked by the family holds none of the adults' doors
+  {
+    await forgetLimits();
+    // Kamal marks Esha (on Parwah, no date of birth) as a child, the way
+    // the person card does. It is not his word alone.
+    let r = await childSet(sql, kc, { id: kamal.m, name: 'Kamal' }, { targetId: esha.m, child: true });
+    ok('fix 4: marking someone on Parwah as a child waits for a second voice', r.status === 202 && r.json.pending === true && (await one('select is_child from members where id = $1', [esha.m])).is_child === false, JSON.stringify(r.json));
+    ok('fix 4: until then Esha is not a child for any gate', !(await minorOf(sql, kap.id, esha.m)) && (await state(esha, kap.code, esha.m)).me.may === true);
+    const askId = r.json.askId;
+    r = await C(chintu.token, { action: 'ask_vote', code: kap.code, memberId: chintu.m, askId, yes: true });
+    ok('fix 4: a child is not the second voice', r.http === 403);
+    r = await C(dev.token, { action: 'ask_vote', code: kap.code, memberId: dev.m, askId, yes: true });
+    ok('fix 4: Dev agrees, and Esha is marked', r.ok && r.status === 'done' && (await one('select is_child from members where id = $1', [esha.m])).is_child === true, JSON.stringify(r));
+    // Now every door the adults hold is closed to her (finding 3).
+    ok('fix 3: marked as a child, she is a child in SQL too', await minorOf(sql, kap.id, esha.m));
+    ok('fix 3: her standing says so', (await state(esha, kap.code, esha.m)).me.may === false && (await state(esha, kap.code, esha.m)).me.standing === 'minor');
+    const walkin = await signUp('9850000087', 'Walkin', '4826');
+    const j = await C(walkin.token, { action: 'join', code: kap.code, memberName: 'Walkin', role: 'family' });
+    r = await C(esha.token, { action: 'approve_join', code: kap.code, memberId: esha.m, requestId: j.requestId });
+    ok('fix 3: she cannot let someone into the family', r.http === 403, JSON.stringify(r));
+    r = await C(kamal.token, { action: 'remove_ask', code: kap.code, memberId: kamal.m, targetId: bina.m });
+    ok('fix 3: (Kamal asks to remove Bina: a second adult is needed)', r.http === 202);
+    r = await C(esha.token, { action: 'ask_vote', code: kap.code, memberId: esha.m, askId: r.askId, yes: true });
+    ok('fix 3: she cannot give the second yes on a removal', r.http === 403 && !!(await one('select 1 as x from members where id = $1', [bina.m])));
+    r = await C(esha.token, { action: 'remove_ask', code: kap.code, memberId: esha.m, targetId: bina.m });
+    ok('fix 3: nor ask for one', r.http === 403);
+    r = await C(esha.token, { action: 'family_delete_ask', code: kap.code, memberId: esha.m });
+    ok('fix 3: nor vote to delete the family', r.http === 403);
+    await C(kamal.token, { action: 'ask_cancel', code: kap.code, memberId: kamal.m, askId: (await one(`select id from standing_asks where circle_id = $1 and kind = 'remove_member' and status = 'pending'`, [kap.id])).id });
+    ok('fix 3: an adult-only alert does not reach her, a warm one does',
+       !(await audienceFor(sql, kap.id, 'costs')).includes(esha.m) && (await audienceFor(sql, kap.id, 'ashirwad')).includes(esha.m));
+    // 18. The number of someone asking to join goes to the adults only.
+    const seenBy = async u => ((await feedOf(u, kap.code, u.m)).joinRequests || []).find(x => x.id === j.requestId);
+    ok('fix 18: an adult sees the phone of someone asking to join', (await seenBy(kamal)).phone === '+919850000087', JSON.stringify(await seenBy(kamal)));
+    ok('fix 18: a child sees the name and no phone', (await seenBy(chintu)).name === 'Walkin' && (await seenBy(chintu)).phone === null);
+    ok('fix 18: nor does someone marked as a child', (await seenBy(esha)).phone === null);
+    await C(kamal.token, { action: 'decline_join', code: kap.code, memberId: kamal.m, requestId: j.requestId });
+    // Taking the mark off is one adult's to do, and both marks go.
+    r = await childSet(sql, kc, { id: dev.m, name: 'Dev' }, { targetId: esha.m, child: false });
+    const off = await one('select is_child, adult_confirmed from members where id = $1', [esha.m]);
+    ok('fix 4: the mark comes off, and she acts again', r.status === 200 && off.is_child === false && off.adult_confirmed === null && (await state(esha, kap.code, esha.m)).me.may === true, JSON.stringify(off));
+    // Her own yes is enough too.
+    r = await C(kamal.token, { action: 'child_mark', code: kap.code, memberId: kamal.m, targetId: esha.m });
+    r = await C(esha.token, { action: 'ask_vote', code: kap.code, memberId: esha.m, askId: r.askId, yes: true });
+    ok('fix 4: the person\'s own yes is the second voice', r.status === 'done' && (await one('select is_child from members where id = $1', [esha.m])).is_child === true);
+    await childSet(sql, kc, { id: dev.m, name: 'Dev' }, { targetId: esha.m, child: false });
+    // And her "no" ends it.
+    r = await C(kamal.token, { action: 'child_mark', code: kap.code, memberId: kamal.m, targetId: esha.m });
+    r = await C(esha.token, { action: 'ask_vote', code: kap.code, memberId: esha.m, askId: r.askId, yes: false });
+    ok('fix 4: the person\'s own no ends it', r.status === 'declined' && (await one('select is_child from members where id = $1', [esha.m])).is_child === false);
+    // Someone who is only a name in the tree: one adult's word, as before.
+    const nani = await C(kamal.token, { action: 'add_person', code: kap.code, memberId: kamal.m, personName: 'Guddu', gender: 'm', place: 'child', ofId: kamal.m });
+    r = await childSet(sql, kc, { id: kamal.m, name: 'Kamal' }, { targetId: nani.memberId, child: true });
+    ok('fix 4: a name in the tree (nobody signs in as them) is marked by one adult', r.status === 200 && r.json.child === true && (await one('select is_child from members where id = $1', [nani.memberId])).is_child === true, JSON.stringify(r.json));
+  }
+
+  // ---------------- 4. two adults: one cannot say "not an adult" and then remove the other alone
+  {
+    await forgetLimits();
+    const lata = await signUp('9850000088', 'Lata', '4826'), mohan = await signUp('9850000089', 'Mohan', '4826');
+    const lal = await makeFamily(lata, 'Lal');
+    lata.m = lal.founderM;
+    mohan.m = await joinIn(lal, lata, mohan);
+    let r = await C(lata.token, { action: 'adult_confirm', code: lal.code, memberId: lata.m, targetId: mohan.m, adult: false });
+    ok('fix 4: with two adults, "not an adult" about the other is only a request', r.http === 202 && r.pending === true && (await one('select adult_confirmed from members where id = $1', [mohan.m])).adult_confirmed === null, JSON.stringify(r));
+    r = await C(lata.token, { action: 'remove_ask', code: lal.code, memberId: lata.m, targetId: mohan.m });
+    ok('fix 4: and she cannot remove him alone', r.http === 409 && !!(await one('select 1 as x from members where id = $1', [mohan.m])), JSON.stringify(r));
+    // Even if a mark were on him, a mark is not a date of birth.
+    await admin.query('update members set is_child = true, adult_confirmed = false where id = $1', [mohan.m]);
+    r = await C(lata.token, { action: 'remove_ask', code: lal.code, memberId: lata.m, targetId: mohan.m });
+    ok('fix 4: a marked member with no date of birth is not removed by one adult alone', r.http === 409 && /date of birth/.test(r.error) && !!(await one('select 1 as x from members where id = $1', [mohan.m])), JSON.stringify(r));
+    // A child by date of birth, with only one adult: hers to decide, as before.
+    await admin.query(`update members set is_child = false, adult_confirmed = null, dob = '2014-01-01' where id = $1`, [mohan.m]);
+    r = await C(lata.token, { action: 'remove_ask', code: lal.code, memberId: lata.m, targetId: mohan.m });
+    ok('fix 4: the only adult may still remove a child by date of birth', r.ok && r.removed === mohan.m, JSON.stringify(r));
+  }
+
+  // ---------------- 11. a child cannot change their date of birth from another circle either
+  {
+    await forgetLimits();
+    const g = await C(chintu.token, { action: 'create', kind: 'group', memberName: 'Chintu', circleName: 'Cricket' });
+    await admin.query('update members set dob = null where id = $1', [g.memberId]);
+    const r = await C(chintu.token, { action: 'update_member', code: g.code, memberId: g.memberId, dob: '1995-03-03' });
+    const both = await rows(`select to_char(dob, 'YYYY-MM-DD') as d from members where user_id = $1 order by created_at`, [chintu.id]);
+    ok('fix 11: a child in one family cannot become an adult by changing the date in a group of their own', r.ok && r.dobPending === false && /Kapoor/.test(r.message || '')
+       && both[0].d === '2015-03-03' && both[1].d === null, JSON.stringify([r.message, both]));
+    ok('fix 11: and is still a child for the family\'s gates', (await state(chintu, kap.code, chintu.m)).me.may === false);
+  }
+
+  // ---------------- 19. saving the profile keeps the sizes and likes
+  {
+    await C(dev.token, { action: 'update_member', code: kap.code, memberId: dev.m, giftInfo: { clothes: 'L', likes: 'old songs' } });
+    const r = await C(dev.token, { action: 'update_member', code: kap.code, memberId: dev.m, place: 'Indore' });
+    const g = (await one('select gift_info, place from members where id = $1', [dev.m]));
+    ok('fix 19: a save that does not send the sizes does not wipe them', r.ok && g.place === 'Indore' && g.gift_info && g.gift_info.clothes === 'L' && g.gift_info.likes === 'old songs', JSON.stringify(g));
+    ok('fix 19: and the reply carries them', r.gift_info && r.gift_info.clothes === 'L');
+  }
+
+  // ---------------- 8. "Download my data" gives only what I can open in the app today
+  {
+    await forgetLimits();
+    await ensureVaultSchema(sql);
+    await call(book, null, dev.token, { method: 'GET', query: { circle: kap.code, member: dev.m } });
+    // A paper about Bina that Dev added, and Bina then took his access back.
+    await admin.query(`insert into vault_docs (circle_id, about_member, kind, label, last4, notes, file_name, by_member, uploader_access)
+                       values ($1, $2, 'other', 'TAKENBACK-PAPER', '4321', 'SECRET-NOTE-ONE', 'takenback.pdf', $3, false)`, [kap.id, bina.m, dev.m]);
+    // One he only checked; one he added and may still open.
+    await admin.query(`insert into vault_docs (circle_id, about_member, kind, label, last4, notes, verified_by, by_member)
+                       values ($1, $2, 'other', 'CHECKED-PAPER', '8765', 'SECRET-NOTE-TWO', $3, $4)`, [kap.id, bina.m, dev.m, kamal.m]);
+    await admin.query(`insert into vault_docs (circle_id, about_member, kind, label, notes, by_member, uploader_access)
+                       values ($1, $2, 'other', 'STILL-MINE-PAPER', 'fine', $3, true)`, [kap.id, bina.m, dev.m]);
+    // A Family book entry Bina wrote, Dev once edited, and Bina then made private.
+    await admin.query(`insert into family_book (circle_id, kind, name, forwhat, notes, about_member, by_member, updated_by, visibility)
+                       values ($1, 'med', 'PRIVATE-MEDICINE', 'for her', 'SECRET-NOTE-THREE', $2, $2, $3, 'private')`, [kap.id, bina.m, dev.m]);
+    await admin.query(`insert into family_book (circle_id, kind, name, forwhat, about_member, by_member, visibility)
+                       values ($1, 'contact', 'DEV-WROTE-THIS', 'plumber', null, $2, 'circle')`, [kap.id, dev.m]);
+    let ex = await A(dev.token, { action: 'export_me' });
+    const all = JSON.stringify(ex.json) + ex.html;
+    ok('fix 8: the download works', ex.ok && !!ex.json && typeof ex.html === 'string');
+    ok('fix 8: a vault paper whose owner took my access back is not in it', !all.includes('TAKENBACK-PAPER') && !all.includes('SECRET-NOTE-ONE') && !all.includes('takenback.pdf'));
+    ok('fix 8: nor one I only checked', !all.includes('CHECKED-PAPER') && !all.includes('SECRET-NOTE-TWO'));
+    ok('fix 8: nor a Family book entry made private after I edited it', !all.includes('PRIVATE-MEDICINE') && !all.includes('SECRET-NOTE-THREE'));
+    ok('fix 8: what I added and can still open is in it', all.includes('STILL-MINE-PAPER') && all.includes('DEV-WROTE-THIS'));
+    ok('fix 8: no table is exported by a column that is not on the list', Object.keys(ex.json.tables).every(k => !/\((verified_by|updated_by|granted_by|decided_by|for_member2|claim_member)\)$/.test(k)), Object.keys(ex.json.tables).join());
+    ex = await A(bina.token, { action: 'export_me' });
+    const hers = JSON.stringify(ex.json);
+    ok('fix 8: the person they are about gets all of them', ['TAKENBACK-PAPER', 'CHECKED-PAPER', 'STILL-MINE-PAPER', 'PRIVATE-MEDICINE'].every(w => hers.includes(w)));
+    // A message in a group chat I am no longer in.
+    const chat = await one(`insert into chats (circle_id, kind, name) values ($1, 'group', 'Old group') returning id`, [kap.id]);
+    await admin.query(`insert into messages (chat_id, member_id, text) values ($1, $2, 'LEFT-GROUP-WORDS')`, [chat.id, dev.m]);
+    const fam = await one(`select id from chats where circle_id = $1 and kind = 'circle'`, [kap.id])
+      || await one(`insert into chats (circle_id, kind, name) values ($1, 'circle', 'Everyone') returning id`, [kap.id]);
+    await admin.query(`insert into messages (chat_id, member_id, text) values ($1, $2, 'FAMILY-CHAT-WORDS')`, [fam.id, dev.m]);
+    await forgetLimits();
+    ex = await A(dev.token, { action: 'export_me' });
+    const msgs = JSON.stringify(ex.json);
+    ok('fix 8: my words in a chat I can still open are in it; in one I am no longer in, they are not', msgs.includes('FAMILY-CHAT-WORDS') && !msgs.includes('LEFT-GROUP-WORDS'));
+  }
+  pushSeams.send = null;
 }
 
 await admin.end();

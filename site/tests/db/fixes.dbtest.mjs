@@ -138,8 +138,17 @@ ok('setup: three in the Sharma family, one in the Guptas', U.papa.id && U.rohan.
   ok('the person who asked is told, privately, to ask on her own screen', /her own screen/.test(asked.ektaNote || ''), JSON.stringify(asked));
   ok('and an old "chest pain" does not make a routine question an emergency', asked.ektaEmergency === false, JSON.stringify(asked));
   // The same question on her own screen is answered from the records, about Papa.
+  // Papa is on Parwah and has not chosen who may open his emergency card:
+  // what the card shows is not read out by Ekta either, and she says so
+  // plainly instead of "nothing is recorded" (the card's lock is on the
+  // server, not only on the screen).
+  const locked = await call(ekta, { token: U.meera.token, body: { code, memberId: U.meera.id, text: "what is Papa's blood group?" } });
+  ok("on her own screen, before Papa chose her: the blood group is not read out, and she is told why", locked.ok && !/B\+/.test(locked.reply) && /emergency card/.test(locked.reply) && !/Nothing is recorded/.test(locked.reply), JSON.stringify(locked).slice(0, 300));
+  // Papa ticks Meera on his own card.
+  await rows(`insert into ecard_prefs (circle_id, member_id, viewers) select circle_id, id, array[$2]::uuid[] from members where id = $1
+              on conflict (circle_id, member_id) do update set viewers = excluded.viewers`, [U.papa.id, U.meera.id]);
   const own = await call(ekta, { token: U.meera.token, body: { code, memberId: U.meera.id, text: "what is Papa's blood group?" } });
-  ok("on her own screen: Papa's blood group, B+", own.ok && /B\+/.test(own.reply), JSON.stringify(own).slice(0, 300));
+  ok("on her own screen, once Papa chose her: Papa's blood group, B+", own.ok && /B\+/.test(own.reply), JSON.stringify(own).slice(0, 300));
   ok('not Rohan\'s', !/O-/.test(own.reply) && !/Rohan's/.test(own.reply), own.reply);
   const sos = await send(U.meera, '@Ekta Papa gir gaye hain, uth nahi rahe');
   const last2 = (await rows(`select text from messages where chat_id = $1 and member_id is null order by created_at desc limit 1`, [chatId]))[0];

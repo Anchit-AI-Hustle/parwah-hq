@@ -15,7 +15,7 @@
 import { schemaOnce } from './_db.mjs';
 import { dialStatus } from './_sosdial.mjs';
 import { timerLine } from './_safetyrules.mjs';
-import { isAdult } from './_rememberrules.mjs';
+import { minorOf } from './_audience.mjs';
 import { doseTellState } from './_doses.mjs';
 import { rememberAsksFor } from './_remember.mjs';
 
@@ -43,7 +43,7 @@ export async function tickMark(sql, nowMs = Date.now()) {
 // a family opening Parwah after a long gap is told about the gap.
 export async function safetyState(sql, circle, me, tickBefore, nowMs = Date.now()) {
   const quiet = async f => { try { return await f(); } catch (e) { return null; } };
-  const adult = isAdult(me.dob, new Date(nowMs).toISOString().slice(0, 10));
+  const adult = !(await minorOf(sql, circle.id, me.id));
   return {
     calls: dialStatus(),
     timer: adult ? { at: tickBefore ? new Date(tickBefore).toISOString() : null, ...timerLine(tickBefore, nowMs) } : null,

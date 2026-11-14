@@ -2135,7 +2135,12 @@ check("script: no two app functions share a name (a later one replaces the first
 # in findme.dbtest (rules) and findme.e2e (three real phones).
 _findsrc = (REPO / "api/_findme.mjs").read_text(encoding="utf-8")
 check("find my: ring a phone and Lost mode, held by the owner's PIN with the sign-in lockout",
-      "RING_SECONDS = 120" in _findsrc and "MAX_TRIES" in _findsrc and "lost_session === tokenHash(token)" in _findsrc
+      "RING_SECONDS = 120" in _findsrc and "lost_session === tokenHash(token)" in _findsrc
+      # Lost mode's PIN is the sign-in's own escalating lock, never a counter of its own.
+      and "const g = await pinGate(sql, lockKey(u.phone, dev), () => verifyPin(String(body.pin), u.pin_salt, u.pin_hash));" in _findsrc
+      and "pin_tries = pin_tries + 1" not in _findsrc and "LOCK_MINUTES" not in _findsrc
+      and "rateLimit(sql, 'findring', me.id + ':' + t.id, 1, 60, { failClosed: true })" in _findsrc
+      and "rateLimit(sql, 'findringday', me.id, 20, 86400, { failClosed: true })" in _findsrc
       and 'id="ringscreen"' in _appt and 'id="lostscreen"' in _appt and "findSync(j.findme)" in _appt
       and "ring ? 'parwah-ring'" in (REPO / "site/public/sw.js").read_text(encoding="utf-8")
       and (REPO / "site/tests/db/findme.dbtest.mjs").exists() and (REPO / "site/tests/db/findme.e2e.dbtest.mjs").exists())
@@ -3524,12 +3529,12 @@ check("facts: every text passes the notes rule (no card number, CVV, OTP or bank
       "import { noteRisk } from './_notesapi.mjs';" in _wf_fact and _wf_fact.count("const risk = noteRisk(text);") == 2
       and "const risk = noteRisk(line);" in _wf_rem)
 check("remembrance: only an adult marks or undoes (the marked person may undo their own mark, never set it), with the year at least",
-      "if (!selfUndo && !selfCancel && !isAdult(me.dob, today)) return bad('An adult in the family does this.', 403);" in _wf_rem
+      "if (!selfUndo && !selfCancel && await minorOf(sql, circle.id, me.id)) return bad('An adult in the family does this.', 403);" in _wf_rem
       and "const selfUndo = a === 'remember_undo' && body.targetId === me.id;" in _wf_rem
       and "if (t.id === me.id && !selfUndo && !selfCancel) return bad('This is for someone else in the family.');" in _wf_rem
       and "const selfUndo = !body.on && t.id === me.id;" in _mb_api
       and "if (t.id === me.id && !selfUndo) return bad(400," in _mb_api
-      and _wf_rem.index("if (!selfUndo && !selfCancel && !isAdult(me.dob, today))") < _wf_rem.index("if (a === 'remember_mark')") < _wf_rem.index("if (a === 'remember_undo')")
+      and _wf_rem.index("if (!selfUndo && !selfCancel && await minorOf(sql, circle.id, me.id))") < _wf_rem.index("if (a === 'remember_mark')") < _wf_rem.index("if (a === 'remember_undo')")
       and "if (year === null) return { error: 'Write the year." in _wf_rules and not re.search(r"(?m)^import ", _wf_rules))
 check("remembrance: marking destroys nothing undo cannot restore: the check-in time is never cleared",
       not re.search(r"set\s+checkin_by\s*=\s*null", _wf_rem) and "checkin_ask = null" not in _wf_rem
@@ -3865,8 +3870,13 @@ check("notify: a phone the push service says is gone is removed; adults only see
       and "This check is for the adults in the family." in _nt_api and "nobody\\'s phone will ring." in _app_src)
 check("timer: closed on the live site without its key, open on a laptop; starts where the last run stopped; says when it last ran; a failed sweep leaves a line with no names",
       "if (!secret) return process.env.VERCEL_ENV !== 'production';" in _nt_ev and "return rotateFrom([...ids], await tickCursor(sql));" in _nt_ev
-      and "await one(() => afterTick(sql, circles, done));" in _nt_ev and "tickNote(e, 'sweep')" in _nt_ev
-      and "'last_tick_at'" in _nt_push and "probe === 'status'" in _diag and "console.error('[parwah tick '" in _nt_off)
+      and "await one(() => afterTick(sql, circles, done, Math.max(t0 + budgetMs, Date.now() + 1500)));" in _nt_ev and "tickNote(e, 'sweep')" in _nt_ev
+      # ONE record of when the timer last ran: kv 'tick_at', written by
+      # tickMark and read by both lastTickAt and tickSeen. No second row.
+      and "'last_tick_at'" not in _nt_push and "select v from kv where k = 'tick_at'" in _nt_push
+      and "if (deadlineMs && Date.now() > deadlineMs) break;" in _nt_push
+      and "await one(() => tickMark(sql));" in _nt_ev
+      and "probe === 'status'" in _diag and "console.error('[parwah tick '" in _nt_off)
 check("offline: a tap sent late counts once, only a check-in, a medicine tick or a pulse answer, only within a day, and never an SOS",
       "OFFLINE_KINDS = ['checkin', 'pill', 'pulse']" in _nt_rules and "OFFLINE_MAX_AGE_MS = 24 * 3600000" in _nt_rules
       and "on conflict (member_id, client_id) do nothing" in _nt_off
@@ -3973,7 +3983,8 @@ check("ekta: the saved chat is private in the query, 30 turns, and can be cleare
 check("ekta: every confirmed action is audited without its words; the member's switch and the family's switch are enforced on the server",
       "insert into ekta_audit (circle_id, member_id, kind, label, outcome)" in _ek2a and "auditLabel(row.kind, row.payload)" in _ek2a
       and "if (sw.noActions) return { status: 403" in _ek2a and "if (sw.paused) return { status: 403" in _ek2a
-      and "if (switches.paused) return answer(" in _ek2 and "if (!(await isAdult(sql, me))) return res.status(403)" in _ek2a
+      and "if (switches.paused) return answer(" in _ek2 and "if (!(await isAdult(sql, circle, me))) return res.status(403)" in _ek2a
+      and "return !(await minorOf(sql, circle.id, me.id));" in _ek2a
       and _ek2.index("asked === 'emergency' || asked === 'crisis'") < _ek2.index("if (switches.paused) return answer("))
 check("ekta: she reads no register, no vault contents, no health numbers and nobody else's notes",
       not re.search(r"from\s+(notes|legacy_asset_\w+|biomarker_records|pay_\w+|care_expenses|vault_files|register_\w+)\b", _ek2a + _ek2d)
@@ -4099,7 +4110,9 @@ check("safety: a task past its time tells its owner first and alone; the family 
       and "has it)" not in _tasksrc and "who.name + ' has" not in _tasksrc and "TASK_FAMILY_AFTER_MIN = 60" in _sf_rules)
 check("safety: no after-loss list about someone who used Parwah in the last 30 days, at start, confirm and reopen; no date of birth and no adult role is not an adult",
       _sf_alapi.count("if (await recentStop(sql, res,") == 3 and "await rememberRecent(sql, person)" in _sf_alapi
-      and "return surelyAdult(m, today);" in _sf_al and "return age === null ? adultByRole(m) : age >= 18;" in _sf_rules
+      and "return surelyAdult(m, today);" in _sf_al and "if (age !== null) return age >= 18;" in _sf_rules
+      # Stricter than the one rule, never looser: a mark the family made is a no.
+      and "if (m.is_child === true || m.adult_confirmed === false) return false;\n  return adultByRole(m);" in _sf_rules
       and "if (!m.dob) return true;" not in _sf_al)
 check("safety: someone on Parwah is never marked as no longer with us by one adult: a second adult confirms, and they can still undo it",
       "if (!t.remembered && t.user_id) {" in _wf_rem and "create table if not exists remember_asks" in _wf_rem
@@ -4222,9 +4235,13 @@ _cn = {f: (API_DIR / f).read_text(encoding="utf-8") for f in
        ("_consentrules.mjs", "_audience.mjs", "_ashirwad.mjs", "_ecard.mjs", "_rotaconsent.mjs",
         "_locationapi.mjs", "_expenses.mjs", "_staff.mjs", "_familycare.mjs", "_careprep.mjs",
         "events.mjs", "chats.mjs", "book.mjs")}
-_cn_minor = "(m.is_child or (m.dob is not null and m.dob > current_date - interval '18 years'))"
-check("consent: the rules module imports only the remembrance rules, so the gate can test it before npm install",
-      re.findall(r"^import .* from '([^']+)'", _cn["_consentrules.mjs"], re.M) == ["./_rememberrules.mjs"]
+# THE ONE ADULT RULE, IN SQL: the same three columns standingOf reads in
+# api/_standingrules.mjs. A date of birth decides; with none, the two marks.
+_cn_minor = "(case when m.dob is not null then m.dob > current_date - interval '18 years' else (m.is_child or m.adult_confirmed is false) end)"
+_cn_minor_v = _cn_minor.replace("m.", "v.")
+check("consent: the rules module imports only the standing rules (which import nothing), so the gate can test it before npm install",
+      re.findall(r"^import .* from '([^']+)'", _cn["_consentrules.mjs"], re.M) == ["./_standingrules.mjs"]
+      and not re.search(r"^import ", (API_DIR / "_standingrules.mjs").read_text(encoding="utf-8"), re.M)
       and "node site/tests/consenttest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
 check("consent: no new serverless function - Ashirwad rides /api/chats and the card's rule rides /api/book",
       "=== 'ashirwad') return ashirwadApi(req, res)" in _cn["chats.mjs"] and "area === 'ecard'" in _cn["book.mjs"]
@@ -4240,7 +4257,8 @@ check("consent: a child cannot be marked by a child, nobody marks themself, and 
       "if (await minorOf(sql, circle.id, me.id)) return bad('An adult in the family does this.', 403)" in _cn["_audience.mjs"]
       and "if (body.targetId === me.id)" in _cn["_audience.mjs"] and "if (child && t.grown)" in _cn["_audience.mjs"])
 check("consent: the safe word and 'only in an emergency' entries are not sent to a child",
-      "coalesce((to_jsonb(v)->>'is_child')::boolean, false) or (v.dob is not null and v.dob > current_date - interval '18 years')" in _cn["_familycare.mjs"]
+      "(case when v.dob is not null then v.dob > current_date - interval '18 years'" in _cn["_familycare.mjs"]
+      and "else (coalesce((to_jsonb(v)->>'is_child')::boolean, false) or (to_jsonb(v)->>'adult_confirmed') = 'false') end)" in _cn["_familycare.mjs"]
       and "const emergency = (row) => !cnMinor && " in _cn["_careprep.mjs"])
 _cn_news = _cn["_locationapi.mjs"][_cn["_locationapi.mjs"].index("async function placeNews("):]
 check("location: an arrival is announced only for a person who said yes, and only they can say it",
@@ -4271,7 +4289,7 @@ check("call rota: the person who is called is told, chooses the time, and alone 
       and "No daily call, thank you" in _app_src and "data-cnrotasave" in _app_src)
 _cn_exget = _cn["_expenses.mjs"][_cn["_expenses.mjs"].index("if (req.method === 'GET')"):]
 check("costs: who reads the ledger is decided in the query - payers, the person's own switch, never a child - and no amount goes in the feed",
-      "and not (v.is_child or (v.dob is not null and v.dob > current_date - interval '18 years'))" in _cn_exget
+      ("and not " + _cn_minor_v) in _cn_exget
       and "coalesce(cp.show, false) or e.paid_by = v.id or e.created_by = v.id" in _cn_exget
       and "(v.role <> 'parent' and e.for_member is distinct from v.id)" in _cn_exget
       and "values (${circle.id}, ${me.id}, ${b.on}, now())" in _cn["_expenses.mjs"]
@@ -4312,7 +4330,12 @@ check("reached safely: a remembered person is never told, chosen or asked about;
 check("emergency card: the person, the adults they chose, the adults during an SOS; never a child, never a remembered person",
       "where p.circle_id = ${circleId} and not p.remembered" in _cn["_ecard.mjs"]
       and "v.id = any(coalesce(e.viewers, '{}'))" in _cn["_ecard.mjs"] and "p.id = any(${sos}::uuid[])" in _cn["_ecard.mjs"]
-      and "not (v.is_child or (v.dob is not null and v.dob > current_date - interval '18 years'))" in _cn["_ecard.mjs"]
+      and ("not " + _cn_minor_v) in _cn["_ecard.mjs"]
+      # The lock is in the Family book's own read too, not only on the screen.
+      and ("(not " + _cn_minor_v) in _cn["book.mjs"]
+      and "(am.user_id is null or v.id = any(coalesce(ep.viewers, '{}')) or b.about_member = any(${sosNow}::uuid[]))" in _cn["book.mjs"]
+      and "b.kind in ('med', 'insurance') or (b.kind = 'fact' and b.category in ('blood', 'allergy'))" in _cn["book.mjs"]
+      and "bookLocked = j.cardLocked || []" in _app_src
       and "await audienceFor(sql, circle.id, 'emergency_items', { only: wantV })" in _cn["_ecard.mjs"]
       and "id = any(${wantC}::uuid[]) and not remembered" in _cn["_ecard.mjs"]
       and "export const ECARD_CONTACTS_MAX = 2;" in _cn["_consentrules.mjs"])
@@ -4370,14 +4393,82 @@ check("standing: a PIN reset needs the two numbers on the asking phone, ends aft
       and "export const RESET_VETO_MINUTES = 10;" in _st_rules and "if (r.status === 'approved' && r.veto_until && new Date(r.veto_until) > new Date()) return 'holding';" in _st_auth
       and "if (a === 'reset_veto') {" in _st_acct and 'data-resetcode="' in _st_app and 'id="ac-rs-code"' in _st_app)
 check("standing: a reset, a sign-in and a wrong PIN say nothing about whether a number is registered",
-      "noFamily" not in _st_auth and "if (!ur[0] || !who.length) { await padTo(t0, 500); return res.status(200).json(same); }" in _st_auth
+      "noFamily" not in _st_auth and "if (!ur[0] || !who.length || crowded) { await padTo(t0, 500); return res.status(200).json(same); }" in _st_auth
       and "That number and PIN do not match." in _st_acct and "already registered" not in _st_auth.split("if (body.action !== 'enter')")[1])
 check("standing: an account with no PIN, in a family, cannot be taken by typing its number first",
       "const vouched = pinless ? (await resetApprovers(sql, user.id)).length > 0 : false;" in _st_auth and "if (pinless && !vouched) {" in _st_auth)
 check("standing: a sign-in on a new phone is told to the older phones and never blocked; 'Not me' signs it out and asks for a new PIN",
       "if (!quiet && !known && others[0].n > 0) {" in _st_acct and "New sign-in on another phone" in _st_acct
-      and "await sql`update users set must_change_pin = true where id = ${uid}`;" in _st_acct
+      and "await sql`update users set must_change_pin = true, must_change_at = ${flagged ? flagged.created_at : new Date()} where id = ${uid}`;" in _st_acct
       and "Only a phone that was signed in before can say this." in _st_acct and "data-acnotme=" in _st_app)
+# ---- what the independent review of the combined build found (fix pass) ----
+check("standing: the one who says yes to a PIN reset is never the phone that asked, and the new PIN always waits ten minutes",
+      "if (await sameAsAsker(sql, r[0], approver.user_id," in _st_auth and "sameDevice: true" in _st_auth
+      and "req_device = ${askDevice}, req_from = ${askFrom}, req_own = ${own}" in _st_auth
+      and "const hold = status === 'approved' ? vetoUntil() : r[0].veto_until;" in _st_auth
+      and "vetoUntilFor" not in _st_auth and "vetoUntilFor" not in _st_acct
+      and "live[0].n > 0 ? new Date(Date.now() + RESET_VETO_MINUTES" not in _st_acct
+      and "and (${own} or not req_own or expires_at <= now()) returning id" in _st_auth
+      and "post(API.auth, { action: 'reset_request', phone: phone, cc: cc, deviceId: acDeviceId() })" in _st_app)
+check("standing: after 'Not me' the new PIN is chosen only on a phone known before that sign-in; any other phone is sent to the family",
+      "and first_seen < coalesce(${user.must_change_at || null}::timestamptz, now())" in _st_auth and "askFamily: true" in _st_auth
+      and _st_auth.index("askFamily: true") < _st_auth.index("const h = hashPin(body.newPin);\n      await sql`update users set pin_hash = ${h.hash}, pin_salt = ${h.salt}, pin_set_at = now(),\n                pin_tries = 0, locked_until = null, secret_v = ${SECRET_V}, must_change_pin = false where id = ${user.id}`;\n      // After")
+      and "if (j.exists && j.askFamily) {" in _st_app)
+check("standing: signing out stops the pushes, on the server and on the phone",
+      "export async function dropPush(sql, userId," in _st_acct
+      and _st_auth.count("await dropPush(sql,") >= 4 and _st_acct.count("await dropPush(sql, uid,") >= 2
+      and "return s.unsubscribe().then(function(){ return ep; }, function(){ return ep; });" in _st_app
+      and "action: 'signout', token: t, deviceId: acDeviceId(), endpoint: ep || undefined" in _st_app)
+check("standing: 'under 18' about someone on Parwah is never one person's word, and one adult alone removes only a child by date of birth",
+      "if (body.adult !== true) return childMark(sql, circle, s.me.id, t.id);" in _st_mod
+      and "const second = yes.find(id => id !== ask.asked_by);\n    if (!second || !target) return { status: 'pending' };\n    if (!(await close('done'))) return { status: 'done' };\n    await applyChildMark(" in _st_mod
+      and "if (child) { const { childMark } = await import('./_standing.mjs'); return childMark(sql, circle, me.id, t.id); }" in _cn["_audience.mjs"]
+      and "if (minorByBirth(target, today)) return { needs: false, others: [] };" in _st_rules
+      and "child_mark: function(a){" in _st_app)
+check("standing: a child cannot make themself an adult by changing or removing their own date of birth",
+      "export async function dobChangeGate(sql, circle, memberId, newDob) {" in _st_mod
+      and "dobHeld = await dobChangeGate(sql, circle, cur.id, newDob);\n        if (dobHeld) newDob = cur.dob;" in _st_circle
+      and "if (key === 'dob') { if (minorByBirth({ dob }, s.today)) hidden.add('dob'); else dob = null; }" in _st_mod
+      and "dob_change: function(a){" in _st_app)
+check("standing: the adult rule is ONE function reading date of birth, is_child and adult_confirmed, and nobody keeps a second",
+      "if (m.is_child === true || m.isChild === true || m.adult_confirmed === false) return 'minor';" in _st_rules
+      and "export function isMinor(m, today) { return !!m && standingOf(m, today) === 'minor'; }" in _st_rules
+      and all("isAdult(m.dob" not in (API_DIR / f).read_text(encoding="utf-8") and "isAdult(me.dob" not in (API_DIR / f).read_text(encoding="utf-8")
+              and "isAdult(mine.dob" not in (API_DIR / f).read_text(encoding="utf-8")
+              for f in ("_bond.mjs", "_pushapi.mjs", "_sos.mjs", "_safety.mjs", "_remember.mjs", "_memorybond.mjs", "_consentrules.mjs", "_ektaagent.mjs"))
+      and not any("is_child or (" in (API_DIR / f).read_text(encoding="utf-8") for f in ("_audience.mjs", "_ashirwad.mjs", "_ecard.mjs", "_expenses.mjs", "_familycare.mjs"))
+      and _cn_minor in _cn["_ashirwad.mjs"] and _cn["_audience.mjs"].count(_cn_minor) == 2)
+check("standing: 'Download my data' is a list of tables with each module's read rule, never any row that names me",
+      "const EXPORT_TABLES = {" in _st_acct and "const rule = EXPORT_TABLES[r.tbl];\n      if (!rule || !rule.cols.includes(r.col)) continue;" in _st_acct
+      and "vault_docs: { cols: ['about_member', 'by_member'], keep: (r, x) => mineIs(x.ids, r.about_member) || (mineIs(x.ids, r.by_member) && r.uploader_access !== false) }" in _st_acct
+      and "family_book: { cols: ['about_member', 'by_member'] }" in _st_acct and "verified_by" not in _st_acct.split("const EXPORT_TABLES = {")[1].split("\n};\n")[0]
+      and "updated_by" not in _st_acct.split("const EXPORT_TABLES = {")[1].split("\n};\n")[0] and "ABOUT_COL" not in _st_acct)
+check("standing: one push per phone for an account alert, a join request's number goes to adults only, and a profile save keeps the sizes",
+      "order by created_at desc limit 1`;\n    if (ms[0]) await pushCircle(sql, ms[0].circle_id, payload, { only: ms[0].id });" in _st_acct
+      and "case when ${jrMinor}::boolean then null else phone end as phone" in _st_ev
+      and "select id, name, role, phone, place, country, relation, dob, user_id, gift_info\n" in (API_DIR / "_owned.mjs").read_text(encoding="utf-8"))
+_fx_push = (API_DIR / "_pushrules.mjs").read_text(encoding="utf-8")
+_fx_safety = _fx_push.split("const SAFETY = [")[1].split("];")[0]
+check("push: a named kind is believed before the words, every safety pattern starts at the first character, and the urgent callers name theirs",
+      "if (PUSH_KINDS.includes(p.kind) || p.kind === 'other') return { kind: p.kind, through: false, timed };\n  if (SAFETY.some(re => re.test(title)))" in _fx_push
+      and all(pat.strip().startswith("/^") for pat in re.split(r",\s*(?=/)", _fx_safety.strip()) if pat.strip())
+      and "kind: 'safety'\n    }, { only: t.tell, except: t.member_id });" in _cn["_ashirwad.mjs"]
+      and all(t in _st_auth for t in ("{ kind: 'safety', title: '🔑 ' + ur[0].name + ' cannot get in'", "{ kind: 'safety', title: '🔑 Someone asked to reset your PIN'"))
+      and all(t in _st_acct for t in ("{ kind: 'safety', title: '🔒 Wrong PIN tries on your number'", "{ kind: 'safety', title: '📱 New sign-in on another phone'"))
+      and all("{ kind: 'chat', title: " in line for line in _cn["chats.mjs"].splitlines() if "title: '💬 " in line or "title: '📊 " in line or "title: '➕ " in line or "title: '👥 " in line))
+check("chat: a secret ballot keeps its counts until it closes, someone remembered is never added or mentioned, and a ring or an ask is capped",
+      "const held = !!p.secret && !p.closed;\n      if (held) opts.forEach(o => { o.count = null; });" in (API_DIR / "_chatbond.mjs").read_text(encoding="utf-8")
+      and "the counts stay hidden until the poll closes" in _app_src
+      and "is remembered here, so cannot be added to a chat." in _cn["chats.mjs"]
+      and _cn["chats.mjs"].count("not coalesce((to_jsonb(m)->>'remembered')::boolean, false)") >= 5
+      and "rateLimit(sql, 'tripextend', me.id, 4, 3600, { failClosed: true })" in _cn["_ashirwad.mjs"]
+      and "rateLimit(sql, 'locask', me.id + ':' + t[0].id, 1, 600, { failClosed: true })" in _cn["_locationapi.mjs"])
+check("privacy: Ekta, a trip, and the card's contacts send a phone only as the member card would, and Ekta reads health details by the card's rule",
+      "await memberCards(sql, circle, me, rows);" in (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
+      and (API_DIR / "ekta.mjs").read_text(encoding="utf-8").count("(am.user_id is null or v.id = any(coalesce(ep.viewers, '{}')) or b.about_member = any(${sosNow}::uuid[]))") == 2
+      and "await memberCards(ctx.sql, ctx.circle, ctx.me, raw.map(" in (API_DIR / "_ektaagent.mjs").read_text(encoding="utf-8")
+      and "await memberCards(sql, circle, me, trips.map(" in _cn["_ashirwad.mjs"]
+      and "await memberCards(sql, circle, me, contacts.map(" in _cn["_ecard.mjs"])
 check("standing: family codes come from the secure random source, 8 long, and a new custom code needs 8 with a number",
       "randomInt(all.length)" in _st_db and "Math.random" not in _st_db.split("export function makeCode()")[1].split("\n}\n")[0] and "export const CODE_LEN = 8;" in _st_db
       and "export const CODE_MIN = 8, CODE_MAX = 12;" in _st_rules and "const cerr = codeProblem(newCode);" in _st_circle

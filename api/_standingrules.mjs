@@ -32,25 +32,36 @@ export function ageOn(dob, today) {
 
 // A role or a relation that only a grown-up holds.
 const ADULT_RELATIONS = new Set(['father', 'mother', 'grandfather', 'grandmother', 'daughter-in-law', 'son-in-law']);
-// A relation that says child when nothing else is known.
-const CHILD_RELATIONS = new Set(['grandson', 'granddaughter']);
 
-// 'adult'  : 18 or more by date of birth, or a family role only a grown-up
-//            holds, or an adult in the family said so;
-// 'minor'  : under 18 by date of birth, or the relation says child, or an
-//            adult in the family said so;
-// 'unsure' : no date of birth and nothing else to go on. An adult is asked
-//            once ("Is Aarav an adult?") and the answer is kept.
-// m: { dob, role, relation, adult_confirmed, spouse_id, has_child }
+// THE ONE RULE. It reads three things about a member, in this order:
+//   1. the date of birth, when there is one: it decides, whatever else says;
+//   2. with no date of birth, what the family said: marked as a child
+//      (is_child), or "not an adult" (adult_confirmed false), is a minor;
+//   3. "is an adult" (adult_confirmed true), or a family role only a
+//      grown-up holds, is an adult.
+// 'adult' | 'minor' | 'unsure'. 'unsure' is no date of birth and nothing
+// else to go on: such a member may act for everyday things, and is refused
+// at the strict gates (letting someone back in, the gravest choices).
+// The same rule in SQL, for a query that must not reach a child:
+//   (case when m.dob is not null then m.dob > current_date - interval '18 years'
+//         else (m.is_child or m.adult_confirmed is false) end)
+// m: { dob, is_child, adult_confirmed, role, relation, spouse_id, has_child }
 export function standingOf(m, today) {
   if (!m) return 'minor';
   const age = ageOn(m.dob, today);
   if (age !== null) return age >= ADULT_AGE ? 'adult' : 'minor';
+  if (m.is_child === true || m.isChild === true || m.adult_confirmed === false) return 'minor';
   if (m.adult_confirmed === true) return 'adult';
-  if (m.adult_confirmed === false) return 'minor';
   if (m.role === 'parent' || ADULT_RELATIONS.has(String(m.relation || '')) || m.spouse_id || m.has_child) return 'adult';
-  if (CHILD_RELATIONS.has(String(m.relation || ''))) return 'minor';
   return 'unsure';
+}
+// A child or a teenager, by the one rule. Nobody at all is not a child.
+export function isMinor(m, today) { return !!m && standingOf(m, today) === 'minor'; }
+// Under 18 by DATE OF BIRTH, and nothing less: the only "child" that lets
+// one adult act alone about a person who is on Parwah.
+export function minorByBirth(m, today) {
+  const age = m ? ageOn(m.dob, today) : null;
+  return age !== null && age < ADULT_AGE;
 }
 
 // THE SINGLE ADULT RULE. strict is for letting someone back in after a
@@ -160,12 +171,14 @@ export function removalRule({ me, target, members, today }) {
   const adults = actingAdults(members, today);
   const others = adults.filter(m => m.id !== me.id && m.id !== target.id);
   if (others.length) return { needs: true, others };
-  // No third adult. If the person is an adult too, the two of them stand
-  // equal: neither can put the other out.
+  // No third adult. One person alone decides only about a child BY DATE OF
+  // BIRTH. A mark someone made ("is a child", "not an adult") is not
+  // enough: the one who made it could be the one asking.
+  if (minorByBirth(target, today)) return { needs: false, others: [] };
   if (adults.some(m => m.id === target.id)) {
     return { error: 'With two adults in the family, one cannot remove the other. Either of you can leave from your own profile.', status: 409 };
   }
-  return { needs: false, others: [] };
+  return { error: 'Parwah has no date of birth for ' + target.name + ', so one person alone cannot remove them. They can leave from their own profile.', status: 409 };
 }
 
 // Letting anyone with the code walk in needs a second adult's yes when the

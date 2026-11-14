@@ -8575,6 +8575,11 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         // first. Both ask here rather than letting the number alone in.
         // An old 6-digit PIN that has just proved who this is: before going
         // in, they choose a 4-number PIN.
+        if (j.exists && j.askFamily) {
+          secretBox('enter'); $('au-forgot').hidden = false; $('ac-older').hidden = true;
+          authErr(j.error, 'au-pin');
+          return;
+        }
         if (j.exists && j.changeSecret) {
           if (secretMode === 'enter' || secretMode === 'older') oldSecret = secret;
           secretBox('change', j.mustChange
@@ -8665,7 +8670,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     // This action reads the session token from the body, not the header.
     var said = '';
     document.querySelectorAll('[data-resetcode="' + id + '"]').forEach(function(i){ if (i.value.trim()) said = i.value.trim(); });
-    post(API.auth, { action: yes ? 'reset_approve' : 'reset_deny', resetId: id, sayCode: said, token: authToken() })
+    post(API.auth, { action: yes ? 'reset_approve' : 'reset_deny', resetId: id, sayCode: said, token: authToken(), deviceId: acDeviceId() })
       .then(function(j){
         // Already decided by someone else counts as done: the card goes.
         if (!j.ok && j._status !== 404) {
@@ -8677,7 +8682,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         }
         pendingResets = pendingResets.filter(function(x){ return x.id !== id; });
         renderResets();
-        toast(!j.ok ? (j.error || 'Already decided') : yes ? name + ' can choose a new PIN now 🧡' : 'Not now. ' + name + ' can ask again.');
+        toast(!j.ok ? (j.error || 'Already decided') : yes ? name + ' can choose a new PIN in ten minutes. The short wait keeps their account safe 🧡' : 'Not now. ' + name + ' can ask again.');
       })
       .catch(function(){
         document.querySelectorAll('[data-resetcard="' + id + '"] button').forEach(function(b){ b.disabled = false; });
@@ -8705,7 +8710,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       .then(function(y){ if (y) askReset(phone, cc); });
   });
   function askReset(phone, cc){
-    post(API.auth, { action: 'reset_request', phone: phone, cc: cc })
+    post(API.auth, { action: 'reset_request', phone: phone, cc: cc, deviceId: acDeviceId() })
       .then(function(j){
         // A second try that fails must not leave the first one's "Asked"
         // on screen, as if this one had worked too.
@@ -8850,8 +8855,21 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       try { localStorage.removeItem('parwah-circles'); } catch (e) {}
       location.hash = ''; location.reload();
     };
-    if (!t) { done(); return; }
-    post(API.auth, { action: 'signout', token: t }).then(done).catch(done);
+    // SIGNING OUT STOPS THE ALERTS ON THIS PHONE. The browser's own
+    // subscription is ended here, and the server is told its address so it
+    // forgets it too: a signed-out phone must not go on showing the
+    // family's alerts to whoever holds it. Never waits long for either.
+    var ended = ('serviceWorker' in navigator && navigator.serviceWorker.getRegistration)
+      ? Promise.race([navigator.serviceWorker.getRegistration().then(function(reg){ return reg && reg.pushManager ? reg.pushManager.getSubscription() : null; }).then(function(s){
+          if (!s) return '';
+          var ep = s.endpoint;
+          return s.unsubscribe().then(function(){ return ep; }, function(){ return ep; });
+        }), new Promise(function(r){ setTimeout(function(){ r(''); }, 2500); })]).catch(function(){ return ''; })
+      : Promise.resolve('');
+    ended.then(function(ep){
+      if (!t) { done(); return; }
+      post(API.auth, { action: 'signout', token: t, deviceId: acDeviceId(), endpoint: ep || undefined }).then(done).catch(done);
+    });
   }
   $('signout').addEventListener('click', doSignOut);
   $('ap-big').addEventListener('change', function(){
@@ -9103,6 +9121,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
 
   // ---- on Today: a new sign-in, a reset asked for my number, a delete that is waiting
   var acSecurity = { alerts: [], myResets: [], deleteAt: null }, acHidden = {};
+  function acDobSay(d){ try { return new Date(String(d).slice(0, 10) + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { return String(d); } }
   function acDay(iso){ try { return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'long' }); } catch (e) { return ''; } }
   function acTakeSecurity(j){
     if (!j || !j.security) return;
@@ -9166,7 +9185,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     id = b.getAttribute('data-acnotme');
     askSheet('Sign that phone out?', 'It is signed out at once. Then you choose a new PIN, so whoever it was cannot come back.', 'Not me, sign it out', 'Go back', true).then(function(y){
       if (!y) return;
-      acAuth({ action: 'alert_notme', alertId: id }).then(function(j){
+      acAuth({ action: 'alert_notme', alertId: id, deviceId: acDeviceId() }).then(function(j){
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
         acSecurity.alerts = (acSecurity.alerts || []).filter(function(x){ return x.id !== id; }); acRenderSec();
         if (j.changeSecret) askNewSecret(true);
@@ -9309,7 +9328,15 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   var AC_ASK = {
     open_join: function(a){ return (a.mine ? 'You asked' : esc(a.askedByName || 'An adult') + ' asks') + ' to let the code be enough to join. Anyone with the code would come in with no questions asked.'; },
     remove_member: function(a){ return (a.mine ? 'You asked' : esc(a.askedByName || 'An adult') + ' asks') + ' to remove ' + esc(a.targetName || 'someone') + ' from this family. Two adults decide this together.'; },
-    delete_family: function(a){ return (a.mine ? 'You asked' : esc(a.askedByName || 'An adult') + ' asks') + ' to delete this family from Parwah. Every adult has to say yes.' + (a.waitingFor && a.waitingFor.length ? ' Still to answer: ' + esc(a.waitingFor.join(', ')) + '.' : ''); }
+    delete_family: function(a){ return (a.mine ? 'You asked' : esc(a.askedByName || 'An adult') + ' asks') + ' to delete this family from Parwah. Every adult has to say yes.' + (a.waitingFor && a.waitingFor.length ? ' Still to answer: ' + esc(a.waitingFor.join(', ')) + '.' : ''); },
+    // "Under 18" takes a say away, so it is never one person's word: the
+    // person themself says yes, or a second adult does.
+    child_mark: function(a){
+      if (a.aboutMe) return esc(a.askedByName || 'An adult') + ' says you are under 18. Is that right? If yes, the adults decide who joins and who is let back in. Your date of birth in your profile decides it if you add it.';
+      return (a.mine ? 'You said ' : esc(a.askedByName || 'An adult') + ' says ') + esc(a.targetName || 'someone') + ' is under 18. ' + (a.mine ? 'They, or another adult, have to agree first.' : 'Is that right?');
+    },
+    // A child cannot make themself an adult: one adult says yes.
+    dob_change: function(a){ return esc(a.targetName || 'Someone') + ' wants to ' + (a.newDob ? 'change their date of birth to ' + esc(acDobSay(a.newDob)) : 'take their date of birth off') + '. That would make them an adult in this family. Is it right?'; }
   };
   function acRenderFam(){
     var j = acFam; if (!j || !$('ac-famlist')) return;
@@ -9322,7 +9349,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       var say = AC_ASK[a.kind]; if (!say) return;
       h += '<div class="ev"><b>' + say(a) + '</b>' +
         '<div class="prow2" style="margin-top:var(--space-8)">' +
-        (a.voted === 'yes' || a.mine ? '<span class="hint">You said yes. Waiting for ' + (a.kind === 'delete_family' ? 'the others' : 'another adult') + '.</span>'
+        (a.voted === 'yes' || a.mine ? '<span class="hint">You said yes. Waiting for ' + (a.kind === 'delete_family' ? 'the others' : a.kind === 'child_mark' ? 'them or another adult' : 'another adult') + '.</span>'
           : '<button type="button" class="cbtn" data-acyes="' + esc(a.id) + '">Yes</button>') +
         (a.mine ? '<button type="button" class="cbtn ghost" data-accancel="' + esc(a.id) + '">Take it back</button>'
           : '<button type="button" class="cbtn no" data-acno="' + esc(a.id) + '">No</button>') + '</div></div>';
@@ -10870,7 +10897,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   // ---------- Family book: contacts, addresses, meds-map ----------
   // Shortcuts that open more than one section at once.
   var BK_GROUPS = { health: ['med', 'fact'], people: ['contact', 'address'] };
-  var bookLoaded = false, bookCache = [], prepCache = [], bookAccess = [], bookConsent = [], bkFilter = 'all', bkAbout = '', bEditId = null, bKind = 'contact', bookStaleDays = 180;
+  var bookLoaded = false, bookCache = [], bookLocked = [], prepCache = [], bookAccess = [], bookConsent = [], bkFilter = 'all', bkAbout = '', bEditId = null, bKind = 'contact', bookStaleDays = 180;
   var BK_ICON = { contact: '☎️', address: '📍', med: '💊', fact: '🩸', insurance: '🛡' };
   var BK_LABEL = { contact: 'Contact', address: 'Address', med: 'Meds', fact: 'Health fact', insurance: 'Insurance' };
   var FRESH_KINDS = { med: 1, fact: 1, insurance: 1 };
@@ -10925,7 +10952,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   function refreshBook(){
     if (!state) return;
     apiGet(API.book + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId))
-      .then(function(j){ if (j.ok) { bookLoaded = true; bookCache = j.entries || []; prepCache = j.prep || []; bookAccess = j.access || []; bookConsent = j.consent || [];
+      .then(function(j){ if (j.ok) { bookLoaded = true; bookCache = j.entries || []; bookLocked = j.cardLocked || []; prepCache = j.prep || []; bookAccess = j.access || []; bookConsent = j.consent || [];
           recordsCache = j.records || []; renderReady(j.family);
           if (personId && curTab === 'person') openPerson(personId); bookStaleDays = j.staleDays || 180; rebuildAboutSelects(); renderBook(); renderPrep(); ecSave();
           renderFirstRun();
@@ -10956,7 +10983,17 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       h += '<div class="ev" data-bopen="' + e.id + '" role="button" tabindex="0" style="cursor:pointer">' +
            BK_ICON[e.kind] + ' <b>' + esc(e.name) + '</b>' + staleTag + '<small>' + sub + '</small></div>';
     });
-    $('blist').innerHTML = h || '<div class="ev">' + (qy || bkFilter !== 'all' ? 'Nothing matches - try All or clear the search.' : 'Nothing saved yet - add the family\'s first entry below 📒') + '</div>';
+    // Health details kept behind someone's emergency card: said plainly,
+    // one line a person, so an empty list is never read as "nothing saved".
+    var lockLine = '';
+    if (!qy && (bkFilter === 'all' || bkFilter === 'health' || bkFilter === 'med' || bkFilter === 'fact' || bkFilter === 'insurance')) {
+      (bookLocked || []).forEach(function(p){
+        if (bkAbout === 'fam' || (bkAbout && bkAbout !== p.id)) return;
+        var f = esc(String(p.name || 'They').split(' ')[0]);
+        lockLine += '<div class="ev bk-locked">🔒 <b>' + f + '\'s health details are on their emergency card</b><small>Blood group, allergies, medicines and insurance. ' + f + ' chooses who can open the card, from their own card.</small></div>';
+      });
+    }
+    $('blist').innerHTML = (h + lockLine) || '<div class="ev">' + (qy || bkFilter !== 'all' ? 'Nothing matches - try All or clear the search.' : 'Nothing saved yet - add the family\'s first entry below 📒') + '</div>';
     var nC = bookCache.filter(function(e){ return e.kind === 'contact'; }).length;
     var nA = bookCache.filter(function(e){ return e.kind === 'address'; }).length;
     var nM = bookCache.filter(function(e){ return e.kind === 'med'; }).length;
@@ -12931,13 +12968,16 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   function bondPollHtml(m){
     var p = m.poll;
     if (!p) return '<b>📊 ' + esc(m.text) + '</b>';
-    var meta = (p.multi ? 'Pick one or more' : 'Pick one') + ' · ' + p.voters + (p.voters === 1 ? ' person voted' : ' people voted') +
+    // A secret ballot that is still open shows how many have voted, and no
+    // count for any choice: the counts come when it closes.
+    var held = !!p.held;
+    var meta = (p.multi ? 'Pick one or more' : 'Pick one') + ' · ' + (held ? p.voters + ' of ' + (p.of || p.voters) + ' have voted' : p.voters + (p.voters === 1 ? ' person voted' : ' people voted')) +
       (p.closed ? ' · Closed' : p.closeAt ? ' · Closes ' + whenSaid(p.closeAt) : '') + hdPollMeta(p);
     var h = '<div class="pl" role="group" aria-label="' + esc('Poll: ' + p.question) + '"><b class="pl-q">📊 ' + esc(p.question) + '</b><small class="pl-meta">' + esc(meta) + '</small>';
     p.options.forEach(function(o, i){
-      var mine = p.mine.indexOf(i) >= 0, pct = p.voters ? Math.round(o.count / p.voters * 100) : 0;
+      var mine = p.mine.indexOf(i) >= 0, pct = !held && p.voters ? Math.round(o.count / p.voters * 100) : 0;
       var inner = '<span class="pl-fill" style="width:' + pct + '%"></span><span class="pl-txt">' + (mine ? '✓ ' : '') + esc(o.text) +
-                  '</span><span class="pl-n" aria-label="' + o.count + (o.count === 1 ? ' vote' : ' votes') + '">' + o.count + '</span>';
+                  '</span>' + (held ? '' : '<span class="pl-n" aria-label="' + o.count + (o.count === 1 ? ' vote' : ' votes') + '">' + o.count + '</span>');
       h += p.closed ? '<div class="pl-opt' + (mine ? ' mine' : '') + '">' + inner + '</div>'
         : '<button type="button" class="pl-opt' + (mine ? ' mine' : '') + '" data-plvote="' + esc(m.id) + '" data-i="' + i + '" aria-pressed="' + mine + '">' + inner + '</button>';
     });
@@ -13939,7 +13979,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   function hdPollMeta(p){ return p.secret ? ' · 🔒 Secret ballot' : ''; }
   function hdPollExtra(m){
     var p = m.poll, h = '';
-    if (p.secret) h += '<small class="pl-meta">🔒 Secret ballot: only the counts are shown, to everyone. Nobody sees who picked what.</small>';
+    if (p.secret && p.held) h += '<small class="pl-meta">🔒 Secret ballot: the counts stay hidden until the poll closes, so nobody can work out a vote. Nobody sees who picked what.</small>';
+    else if (p.secret) h += '<small class="pl-meta">🔒 Secret ballot: only the counts are shown, to everyone. Nobody sees who picked what.</small>';
     if (p.waiting) h += '<small class="pl-meta">' + esc(p.waiting) + (p.reminded ? ' · Reminder sent' : '') + '</small>';
     (p.mineFor || []).forEach(function(f){ h += '<small class="pl-meta">You voted ' + esc(f.label) + '</small>'; });
     var acts = '';
@@ -19086,7 +19127,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var go = function(){
       cnPost({ action: 'standing_set', targetId: id, child: on }).then(function(j){
         if (!j.ok) { toast(humanFail(j.error, 'That did not save. Try again.')); return; }
-        $('msheet').hidden = true; toast(on ? f + ' is marked as a child' : 'The mark is off'); cnLoad(true);
+        $('msheet').hidden = true; toast(j.pending ? (j.message || f + ' or another adult has to agree first.') : on ? f + ' is marked as a child' : 'The mark is off'); cnLoad(true);
       }).catch(function(){ toast('No connection. Try again.'); });
     };
     if (!on) { go(); return; }
@@ -19142,7 +19183,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (card.contacts && card.contacts.length) {
       var d = document.createElement('div'); d.className = 'ec-sec cn-ec-contacts';
       d.innerHTML = '<h4>Call first</h4>' + card.contacts.map(function(c){
-        return '<div class="ec-row"><b>' + esc(c.name) + '</b><span>' + (c.phone ? '<a href="tel:' + encodeURIComponent(c.phone) + '">' + esc(c.phone) + '</a>' : 'no number saved yet') + '</span></div>';
+        return '<div class="ec-row"><b>' + esc(c.name) + '</b><span>' + (c.phone ? '<a href="tel:' + encodeURIComponent(c.phone) + '">' + esc(c.phone) + '</a>' : c.phoneKept ? 'keeps their number to themself. Ask ' + esc(cnFirst(card.name)) + ' for it.' : 'no number saved yet') + '</span></div>';
       }).join('');
       $('ec-body').insertBefore(d, $('ec-body').querySelector('.ec-sec'));
     }
@@ -19850,7 +19891,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           $('p-role').textContent = j.relation ? j.relation.charAt(0).toUpperCase() + j.relation.slice(1) : 'Family';
           $('p-phone').textContent = fmtPhone((authUser && authUser.phone) || j.phone) || '-';
           $('p-city').textContent = placeLine({ place: j.place, country: j.country }) || '-';
-          $('editform').hidden = true; toast('Profile updated 🧡'); refresh();
+          $('editform').hidden = true; toast(j.message || 'Profile updated 🧡'); refresh();
         })
         .catch(function(){ toast('No connection - try again'); });
     }

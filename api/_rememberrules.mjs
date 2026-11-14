@@ -111,9 +111,10 @@ export function yearsLine(name, years) {
   return years === 1 ? 'One year without ' + first + '. We remember.' : years + ' years without ' + first + '. We remember.';
 }
 
-// Marking someone as no longer with us is for the grown-ups of a family: a
-// member who is on Parwah, and not known to be under 18. With no date of
-// birth on file a member is taken to be an adult, as joining already does.
+// 18 or more by a date of birth; no date reads as "not known to be under
+// 18". This is only the arithmetic. WHO IS AN ADULT is decided by the one
+// rule, standingOf in api/_standingrules.mjs (date of birth, then the two
+// marks the family can make), and every gate asks that, not this.
 export function isAdult(dob, today) {
   const d = dob instanceof Date
     ? (isNaN(dob) ? '' : dob.getFullYear() + '-' + z2(dob.getMonth() + 1) + '-' + z2(dob.getDate()))

@@ -507,6 +507,15 @@ let msgCard;
   await rows(`update members set dob = current_date - interval '12 years' where id = $1`, [priya.id]);
   ok('a child does not see the family switch and cannot turn it', (await act(priya, 'ekta_state')).canPause === false && (await act(priya, 'ekta_pause', { on: true })).status === 403);
   await rows(`update members set dob = null where id = $1`, [priya.id]);
+  // The ONE adult rule (review finding 3): with no date of birth, a mark the
+  // family made says child, by either door, and the switch is not hers.
+  await rows(`update members set is_child = true where id = $1`, [priya.id]);
+  ok('someone marked as a child cannot pause Ekta for the family', (await act(priya, 'ekta_state')).canPause === false && (await act(priya, 'ekta_pause', { on: true })).status === 403
+     && (await act(rohan, 'ekta_state')).switches.paused === false);
+  await rows(`update members set is_child = false, adult_confirmed = false where id = $1`, [priya.id]);
+  ok('nor someone an adult answered "not an adult" about', (await act(priya, 'ekta_state')).canPause === false && (await act(priya, 'ekta_pause', { on: true })).status === 403);
+  await rows(`update members set is_child = false, adult_confirmed = null where id = $1`, [priya.id]);
+  ok('with neither mark she may again', (await act(priya, 'ekta_state')).canPause === true);
   const p = await act(sunita, 'ekta_pause', { on: true });
   ok('an adult can pause Ekta for the family', p.ok && p.switches.paused === true && (await act(rohan, 'ekta_state')).switches.paused === true && (await act(rohan, 'ekta_state')).canPause === true);
   reset();
@@ -628,6 +637,26 @@ let msgCard;
   const none = await ask(rohan, 'tell Shanti I will call tonight');
   ok('no number saved: she says so and prepares nothing', none.ok && !none.proposals.length && !none.handoffs.length && /no phone number is saved/.test(none.reply), none);
   ok('someone who is remembered is not offered a WhatsApp either', (await tool(rohan, 'prepare_whatsapp', { to_name: 'Dadaji', text: 'hi' })).ok === false);
+  // A number its owner keeps to themself is not Ekta's to use (finding 9):
+  // the same choice as on the member card, asked for the person asking.
+  {
+    const had = (await rows(`select phone, see_phone from members where id = $1`, [sunita.id]))[0];
+    await rows(`update members set phone = '+919811177777', see_phone = 'family' where id = $1`, [sunita.id]);
+    await rows(`update members set see_phone = 'me' where id = $1`, [sunita.id]);
+    // What Ekta is told about the family when she reads the records.
+    const famObj = { id: fam, name: 'Sharma Family', kind: 'family', code: 'EKTA02' };
+    const memOf = (who) => E.readTool(sql, famObj, { id: who.id, name: who.name, role: 'family' }, 'get_family_memory', {});
+    let mem = await memOf(rohan);
+    ok('get_family_memory sends no number its owner keeps private', mem.ok === true && !JSON.stringify(mem).includes('9811177777') && mem.people.find(x => x.name === 'Sunita').phone === null, mem.people);
+    ok('and the owner herself is still read her own', (await memOf(sunita)).people.find(x => x.name === 'Sunita').phone === '+919811177777');
+    ok('no member id is handed to the model with it', mem.people.every(x => x.id === undefined));
+    await rows(`update members set see_phone = 'family' where id = $1`, [sunita.id]);
+    mem = await memOf(rohan);
+    ok('a number shared with the family is sent', mem.people.find(x => x.name === 'Sunita').phone === '+919811177777');
+    // In a shared chat everyone reads the reply: no number at all is read out.
+    await rows(`update members set phone = $2, see_phone = $3 where id = $1`, [sunita.id, had.phone, had.see_phone]);
+    reset();
+  }
   for (const c of await cardsOf(raj)) await act(raj, 'ekta_cancel', { id: c.id });
   await act(raj, 'ekta_prefs', { noActions: true });
   const sw = await ask(raj, 'tell Rohan I reached');

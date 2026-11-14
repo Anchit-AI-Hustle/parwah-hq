@@ -145,7 +145,7 @@ export async function baatAction(sql, circle, me, body) {
                           returning from_member`;
     if (!got[0]) return bad('That is not yours to answer', 404);
     const r = BAAT_REPLIES[c.kind];
-    await pushCircle(sql, circle.id, { title: r.e + ' ' + first(me.name) + ': ' + r.title + (c.at ? ' ' + c.at : ''),
+    await pushCircle(sql, circle.id, { kind: 'chat', title: r.e + ' ' + first(me.name) + ': ' + r.title + (c.at ? ' ' + c.at : ''),
       body: 'Only you can see this.', url: '/#home' }, { only: got[0].from_member });
     return good({});
   }
@@ -186,7 +186,7 @@ export async function baatSweep(sql, nowMs = Date.now()) {
     returning b.id, b.circle_id, b.to_member, b.kind, f.name as from_name`;
   for (const b of due) {
     const k = BAAT_KINDS[b.kind] || BAAT_KINDS.talk;
-    await pushCircle(sql, b.circle_id, { title: k.e + ' ' + first(b.from_name) + ' is waiting to hear from you',
+    await pushCircle(sql, b.circle_id, { kind: 'chat', title: k.e + ' ' + first(b.from_name) + ' is waiting to hear from you',
       body: 'A gentle reminder, just this once. Only you can see this.', url: '/#home' }, { only: b.to_member });
   }
   return due.length;

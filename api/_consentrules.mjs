@@ -1,11 +1,11 @@
 // CONSENT, CONTROL AND CARE BOTH WAYS - the rules, and nothing else.
-// Imports only _rememberrules.mjs (which imports nothing), so the deploy
+// Imports only _standingrules.mjs (which imports nothing), so the deploy
 // gate tests this before npm install (site/tests/consenttest.mjs).
 //
 // The person who is cared for is an equal here: they say yes before the
 // family is told where they are, they can say "not now", they see who
 // looked, they choose their own call time, and care goes back from them too.
-import { isAdult } from './_rememberrules.mjs';
+import { isMinor as standingMinor } from './_standingrules.mjs';
 
 // ---- where someone is -------------------------------------------------
 // A position this old is not "now". The screen says "Last seen" with the
@@ -48,12 +48,8 @@ export const WARM_KINDS = ['plan', 'card', 'game', 'album', 'story', 'ashirwad',
 // A kind nobody has listed is treated as adult only: a new alert must be
 // put on the warm list on purpose before a child is sent it.
 export function adultOnly(kind) { return WARM_KINDS.indexOf(kind) < 0; }
-// Under 18 by date of birth, or marked as a child by an adult.
-export function isMinor(m, today) {
-  if (!m) return false;
-  if (m.is_child === true || m.isChild === true) return true;
-  return !isAdult(m.dob, today);
-}
+// A child or a teenager, by the ONE rule (standingOf in _standingrules.mjs).
+export function isMinor(m, today) { return standingMinor(m, today); }
 // May this member be sent this kind of thing?
 export function mayBeTold(m, kind, today) {
   if (!m || m.remembered) return false;

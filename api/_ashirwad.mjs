@@ -40,6 +40,7 @@ import { tokenOf } from './_token.mjs';
 import { reqTz, validTz } from './_recur.mjs';
 import { checkVoice, ensureChatBond } from './_chatbond.mjs';
 import { ensureAudienceSchema, audienceFor, pushAudience, minorOf, standingAction } from './_audience.mjs';
+import { memberCards } from './_standing.mjs';
 import { BLESS_LINES, DAY_ANSWERS, DAY_ASK, PRANAM, blessLine, dayAnswer, firstName,
          tripClean, tripLine, tripAskLine, tripPhase, TRIP_GRACE_MIN, TRIP_TELL_MAX, TRIP_MODE_WORDS } from './_consentrules.mjs';
 
@@ -112,7 +113,9 @@ export async function sweepTripsAll(sql, nowMs = Date.now()) {
     if (!who || who.remembered) continue;
     const sent = await pushAudience(sql, t.circle_id, 'trip', {
       title: '🧡 ' + tripAskLine(who.name),
-      body: 'They were expected in ' + t.dest + ' a little while ago. A gentle call to check is enough.', url: '/#home'
+      body: 'They were expected in ' + t.dest + ' a little while ago. A gentle call to check is enough.', url: '/#home',
+      // Someone did not reach: this is not held for the morning.
+      kind: 'safety'
     }, { only: t.tell, except: t.member_id });
     if (sent) n++;
   }
@@ -184,10 +187,11 @@ export default async function ashirwadApi(req, res) {
           and (t.member_id = ${me.id} or ${me.id} = any(t.tell))
           and (t.status = 'open' or (t.status = 'reached' and t.reached_at > now() - interval '3 hours'))
         order by t.expect_at`;
+      const seenPhone = new Map((await memberCards(sql, circle, me, trips.map(t => ({ id: t.member_id, phone: t.phone })))).map(c => [c.id, c.phone]));
       // The people who can be sent to, chosen or told: on Parwah, with us.
       const people = await audienceFor(sql, circle.id, 'ashirwad', { except: me.id });
       const kids = await sql`select m.id, m.is_child from members m where m.circle_id = ${circle.id} and not m.remembered
-                             and (m.is_child or (m.dob is not null and m.dob > current_date - interval '18 years'))`;
+                             and (case when m.dob is not null then m.dob > current_date - interval '18 years' else (m.is_child or m.adult_confirmed is false) end)`;
       return res.status(200).json({ ok: true,
         lines: BLESS_LINES, dayAnswers: DAY_ANSWERS, dayAsk: DAY_ASK, pranam: PRANAM, graceMin: TRIP_GRACE_MIN,
         me: { minor: await minorOf(sql, circle.id, me.id),
@@ -198,7 +202,9 @@ export default async function ashirwadApi(req, res) {
         sent: sent.map(r => ({ ...cardOut(r, me.id),
           replies: replies.filter(x => x.ashirwad_id === r.id).map(x => ({ memberId: x.member_id, name: x.name, kind: x.kind, line: x.line, hasVoice: !!x.has_audio, secs: x.audio_secs || null, at: x.at })) })),
         trips: { mine: trips.filter(t => t.member_id === me.id && t.status === 'open').map(t => tripOut(t, now))[0] || null,
-                 watching: trips.filter(t => t.member_id !== me.id).map(t => tripOut(t, now)) } });
+                 // The traveller's number only if they let this person see it
+                 // (the same choice as on their member card).
+                 watching: trips.filter(t => t.member_id !== me.id).map(t => tripOut({ ...t, phone: seenPhone.get(t.member_id) || null }, now)) } });
     }
     if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return no(405, 'GET or POST only'); }
 
@@ -238,8 +244,8 @@ export default async function ashirwadApi(req, res) {
                           values (${circle.id}, ${me.id}, ${to}, ${action}, ${line}, ${voice ? voice.uri : null}, ${voice ? voice.secs : null})
                           returning id`;
       const payload = action === 'howday'
-        ? { title: '🧡 ' + firstName(me.name) + ' asks: how is your day?', body: 'One tap to answer, or say it in your own voice.', url: '/#home' }
-        : { title: '🙏 Ashirwad from ' + firstName(me.name), body: voice ? 'A voice note for you. Tap to listen.' : line, url: '/#home' };
+        ? { kind: 'chat', title: '🧡 ' + firstName(me.name) + ' asks: how is your day?', body: 'One tap to answer, or say it in your own voice.', url: '/#home' }
+        : { kind: 'chat', title: '🙏 Ashirwad from ' + firstName(me.name), body: voice ? 'A voice note for you. Tap to listen.' : line, url: '/#home' };
       await pushAudience(sql, circle.id, action === 'bless' ? 'ashirwad' : 'howday', payload, toAll ? { except: me.id } : { only: to });
       return res.status(201).json({ ok: true, id: r[0].id });
     }
@@ -269,7 +275,7 @@ export default async function ashirwadApi(req, res) {
                               on conflict (ashirwad_id, member_id) do nothing returning ashirwad_id`;
       if (!first[0]) return res.status(200).json({ ok: true, already: true });
       await pushAudience(sql, circle.id, 'ashirwad', {
-        title: (kind === 'pranam' ? '🙏 ' : '🧡 ') + firstName(me.name) + (kind === 'voice' ? ' sent a voice reply' : ': ' + line.replace('🙏 ', '')),
+        kind: 'chat', title: (kind === 'pranam' ? '🙏 ' : '🧡 ') + firstName(me.name) + (kind === 'voice' ? ' sent a voice reply' : ': ' + line.replace('🙏 ', '')),
         body: a.kind === 'howday' ? 'Their answer to "How is your day?"' : 'For your Ashirwad.', url: '/#home' }, { only: a.from_member });
       return res.status(201).json({ ok: true, kind });
     }
@@ -291,7 +297,7 @@ export default async function ashirwadApi(req, res) {
                           on conflict do nothing returning id`;
       if (!r[0]) return no(409, 'You already have a trip on. Tap Reached safely, or cancel it first.');
       await pushAudience(sql, circle.id, 'trip', { title: '🧳 ' + tripLine(me.name, v.to, v.by),
-        body: 'Expected by ' + clockIn(v.expectAt, reqTz(req)) + '. You will hear when they reach.', url: '/#home' }, { only: tell });
+        body: 'Expected by ' + clockIn(v.expectAt, reqTz(req)) + '. You will hear when they reach.', url: '/#home', kind: 'care' }, { only: tell });
       return res.status(201).json({ ok: true, id: r[0].id, tell });
     }
     if (action === 'trip_reached' || action === 'trip_cancel' || action === 'trip_extend') {
@@ -303,9 +309,11 @@ export default async function ashirwadApi(req, res) {
       if (action === 'trip_extend') {
         const c = tripClean({ to: t.dest, by: 'other', expectAt: b.expectAt });
         if (c.error) return no(400, c.error, { field: 'expectAt' });
+        // Each change tells up to eight people: a few an hour is plenty.
+        if (!(await rateLimit(sql, 'tripextend', me.id, 4, 3600, { failClosed: true }))) return no(429, 'You have changed the time a few times. Try again in a little while.');
         await sql`update trips set expect_at = ${c.value.expectAt}, asked_at = null where id = ${t.id} and status = 'open'`;
         await pushAudience(sql, circle.id, 'trip', { title: '🧳 ' + firstName(me.name) + ' is running a little late',
-          body: 'Now expected in ' + t.dest + ' by ' + clockIn(c.value.expectAt, reqTz(req)) + '.', url: '/#home' }, { only: t.tell });
+          body: 'Now expected in ' + t.dest + ' by ' + clockIn(c.value.expectAt, reqTz(req)) + '.', url: '/#home', kind: 'care' }, { only: t.tell });
         return res.status(200).json({ ok: true, expectAt: c.value.expectAt });
       }
       const status = action === 'trip_reached' ? 'reached' : 'cancelled';
@@ -313,8 +321,8 @@ export default async function ashirwadApi(req, res) {
                              where id = ${t.id} and status = 'open' returning id`;
       if (!done[0]) return res.status(200).json({ ok: true, already: true });
       await pushAudience(sql, circle.id, 'trip', action === 'trip_reached'
-        ? { title: '✅ ' + firstName(me.name) + ' reached ' + t.dest + ' safely', body: 'They tapped Reached safely just now.', url: '/#home' }
-        : { title: '🧳 ' + firstName(me.name) + ' is not travelling to ' + t.dest + ' after all', body: 'The trip was taken off.', url: '/#home' },
+        ? { title: '✅ ' + firstName(me.name) + ' reached ' + t.dest + ' safely', body: 'They tapped Reached safely just now.', url: '/#home', kind: 'safety' }
+        : { title: '🧳 ' + firstName(me.name) + ' is not travelling to ' + t.dest + ' after all', body: 'The trip was taken off.', url: '/#home', kind: 'care' },
         { only: t.tell });
       return res.status(200).json({ ok: true, status });
     }

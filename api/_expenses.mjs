@@ -182,7 +182,7 @@ export async function expensesApi(req, res) {
       const month = monthOf(q.month, reqTz(req));
       // The viewer's standing, read once: a child, the person cared for, and
       // whether they asked to see the costs.
-      const v = (await sql`select (m.is_child or (m.dob is not null and m.dob > current_date - interval '18 years')) as minor,
+      const v = (await sql`select (case when m.dob is not null then m.dob > current_date - interval '18 years' else (m.is_child or m.adult_confirmed is false) end) as minor,
                                   m.role = 'parent' as cared, coalesce(cp.show, false) as show
                            from members m left join care_cost_prefs cp on cp.circle_id = m.circle_id and cp.member_id = m.id
                            where m.id = ${g.me.id}`)[0] || { minor: false, cared: false, show: false };
@@ -197,7 +197,7 @@ export async function expensesApi(req, res) {
         left join members f on f.id = e.for_member
         left join members p on p.id = e.paid_by
         where e.circle_id = ${g.circle.id} and e.spent_on between ${month + '-01'} and ${monthEnd(month)}
-          and not (v.is_child or (v.dob is not null and v.dob > current_date - interval '18 years'))
+          and not (case when v.dob is not null then v.dob > current_date - interval '18 years' else (v.is_child or v.adult_confirmed is false) end)
           and (coalesce(cp.show, false) or e.paid_by = v.id or e.created_by = v.id
                or (v.role <> 'parent' and e.for_member is distinct from v.id))
         order by e.spent_on desc, e.created_at desc`;

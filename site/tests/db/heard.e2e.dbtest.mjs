@@ -355,9 +355,12 @@ const pollId = (await q1('select id, secret from chat_polls order by created_at 
 await api(meena, 'chats', { action: 'poll_vote', chatId: famChat, pollId, choices: [1] });
 await api(kabir, 'chats', { action: 'poll_vote', chatId: famChat, pollId, choices: [1] });
 await R.click('#cmsgs .pl [data-plvote][data-i="0"]');
-ok('5. a secret ballot: the counts, "Waiting for Papa", and no "Who voted"', await sees(R, '#cmsgs .pl', /Secret ballot: only the counts are shown/) && await sees(R, '#cmsgs .pl', /Waiting for Papa/)
-  && await sees(R, '#cmsgs .pl', /3 people voted/) && !(await R.$('#cmsgs .pl [data-plwho]')) && !/Meena|Kabir/.test(await R.textContent('#cmsgs .pl')));
-ok('5. Kabir is 13: Goa has two votes, his and his mother\'s', await R.$eval('#cmsgs .pl [data-i="1"] .pl-n', e => e.textContent.trim()) === '2');
+// While a secret ballot is open no count is shown at all (a count that moves
+// beside "Waiting for Papa" gives a vote away): how many have voted, who is
+// still to vote, and the words that say why.
+ok('5. a secret ballot, while open: "3 of N have voted", "Waiting for Papa", no counts and no "Who voted"', await sees(R, '#cmsgs .pl', /counts stay hidden until the poll closes/) && await sees(R, '#cmsgs .pl', /Waiting for Papa/)
+  && await sees(R, '#cmsgs .pl', /3 of \d+ have voted/) && !(await R.$('#cmsgs .pl [data-plwho]')) && !(await R.$('#cmsgs .pl .pl-n')) && !/Meena|Kabir/.test(await R.textContent('#cmsgs .pl')));
+ok('5. no bar is drawn for a choice while it is open', (await R.$$eval('#cmsgs .pl .pl-fill', els => els.map(e => e.style.width))).every(w => w === '0%'));
 await R.click('#cmsgs .pl [data-hdplfor]'); await shown(R, '#hd-pf-who');
 ok('5. a vote for someone not on Parwah: Dadi is offered, never Dadaji', (await R.$$eval('#hd-pf-who option', os => os.map(o => o.textContent))).join() === 'Dadi');
 await R.click('#hd-pf-opts [data-hdpfo="0"]'); await R.click('#hd-pf-save');
@@ -365,6 +368,13 @@ ok('5. it is kept as "for Dadi, by Rohan"', await sees(R, '#cmsgs .pl', /You vot
 await R.click('#cmsgs .pl [data-hdplremind]');
 ok('5. "Remind them once": sent, and the button is gone', await sees(R, '#cmsgs .pl', /Reminder sent/) && !(await R.$('#cmsgs .pl [data-hdplremind]')) && !!(await q1('select reminded_at from chat_polls where id = $1', [pollId])).reminded_at);
 await design(R, '#cmsgs .pl', 'a secret ballot in the chat');
+// Rohan closes it: now the counts are shown, still with no names.
+await R.click('#cmsgs .pl [data-plclose]');
+if (await shown(R, '#as-yes')) await R.click('#as-yes');
+ok('5. when it closes the counts are shown: Kabir is 13, and Goa has two votes, his and his mother\'s', await sees(R, '#cmsgs .pl', /Secret ballot: only the counts are shown/)
+  && await R.waitForSelector('#cmsgs .pl [data-i="1"] .pl-n, #cmsgs .pl .pl-opt:nth-of-type(2) .pl-n', T).then(() => true, () => false)
+  && (await R.$$eval('#cmsgs .pl .pl-n', els => els.map(e => e.textContent.trim()))).join() === '2,2'
+  && !/Meena|Kabir/.test(await R.textContent('#cmsgs .pl')));
 // From a 1:1 chat: "Maaf karna" and "Can we talk?".
 await R.click('#chatback'); await R.waitForSelector('#chatlist [data-open="' + dm.chatId + '"]', T);
 await R.click('#chatlist [data-open="' + dm.chatId + '"]');

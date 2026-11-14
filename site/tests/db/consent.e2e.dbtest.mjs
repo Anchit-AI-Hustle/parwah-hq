@@ -375,6 +375,22 @@ await design(PR, '#msheet .mp', 'a person\'s sheet with the child button');
 await PR.click('#cn-child');
 ok('it says plainly what a child is and is not sent', await sees(PR, '#as-sub', /plans, cards, games.*not sent SOS details.*the costs/s));
 await PR.click('#as-yes');
+// Chintu is on Parwah, so it is not one person's word: he, or a second
+// adult, has to agree. Rohan is told so, and nothing changes until then.
+ok('Rohan is told that Chintu or another adult has to agree first', await toastSays(PR, /another adult has to agree first/)
+  && (await one(`select is_child from members where id = $1`, [chintu.memberId])).is_child === false);
+const cnAsk = await one(`select id from standing_asks where kind = 'child_mark' and status = 'pending' and target_member = $1`, [chintu.memberId]);
+ok('the request is waiting for a second voice', !!cnAsk);
+// Meera, another adult, is asked in the Family tab and says yes there.
+{
+  const PM2 = await home(meera);
+  await PM2.evaluate(() => { location.hash = '#people'; });
+  await PM2.waitForSelector('#ac-famlist [data-acyes="' + cnAsk.id + '"]', T);
+  ok('a second adult is asked in the Family tab, in plain words', await sees(PM2, '#ac-famlist', /Rohan says Chintu is under 18\. Is that right\?/));
+  await design(PM2, '#ac-famcard', 'the family card asking a second adult about a child mark');
+  await PM2.click('#ac-famlist [data-acyes="' + cnAsk.id + '"]');
+  await PM2.close();
+}
 ok('Chintu is marked', await until(async () => (await one(`select is_child from members where id = $1`, [chintu.memberId])).is_child === true));
 const PC = await home(chintu);
 ok('Chintu still gets the warm things: Ashirwad and Reached safely are on his Today', await shown(PC, '#cn-bless-open') && await shown(PC, '#cn-trip-open'));

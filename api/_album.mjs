@@ -491,7 +491,7 @@ export default async function albumApi(req, res) {
         // At most ONE "new photos" push a day for the whole family, whoever
         // adds and however many: the day's count is kept on the server.
         if (await rateLimit(sql, 'album_push', circle.id, ALBUM_PUSH_PER_DAY, 86400, { failClosed: true })) {
-          await pushCircle(sql, circle.id, { title: '📷 New photos in ' + album.name, body: me.name + ' added to the family album. Have a look when you like.', url: '/#memory' }, { except: me.id });
+          await pushCircle(sql, circle.id, { kind: 'album', title: '📷 New photos in ' + album.name, body: me.name + ' added to the family album. Have a look when you like.', url: '/#memory' }, { except: me.id });
         }
       }
       const count = before + ids.length;

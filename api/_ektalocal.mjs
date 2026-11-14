@@ -262,6 +262,14 @@ export function renderField(field, payload, who) {
   if (!f) return null;
   const rows = ((payload && payload.entries) || []).filter(f[3]).filter(e => !who || !e.about || e.about === who);
   const label = f[2].toLowerCase();
+  // Kept behind someone's emergency card for this asker: said as it is,
+  // never as "nothing is recorded".
+  const kept = ((payload && payload.keptOnCard) || []).filter(n => !who || n === who);
+  if (!rows.length && kept.length && field !== 'doctor') {
+    const n = kept.length === 1 ? kept[0] : 'They';
+    return (kept.length === 1 ? n + ' keeps' : 'Some of the family keep') + ' health details on ' + (kept.length === 1 ? 'their' : 'their own') + ' emergency card, so I cannot read ' + label + ' out to you. '
+      + (kept.length === 1 ? n + ' chooses' : 'Each person chooses') + ' who can open the card, from their own card.';
+  }
   if (!rows.length) {
     return 'Nothing is recorded under ' + label + (who ? ' for ' + who : '') + ' yet. Open Health & contacts to add it, and it will be here next time.';
   }

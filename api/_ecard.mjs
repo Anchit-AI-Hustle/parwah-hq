@@ -29,6 +29,7 @@ import { db, ensureSchema, requireMember, isUuid, schemaOnce } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { ensureAudienceSchema, audienceFor } from './_audience.mjs';
+import { memberCards } from './_standing.mjs';
 import { ECARD_LEGAL, ECARD_CONTACTS_MAX, ECARD_VIEWERS_MAX, firstName } from './_consentrules.mjs';
 
 let ready = false;
@@ -48,20 +49,24 @@ export async function ensureEcardSchema(sql) {
   ready = true;
 }
 
-// Whose cards this member may open, decided in one query.
+// People with an SOS open now. A family that never raised one has no table.
+export async function openSos(sql, circleId) {
+  try { return (await sql`select distinct member_id from sos where circle_id = ${circleId} and status <> 'resolved'`).map(r => r.member_id); }
+  catch (e) { return []; }
+}
+// Whose cards this member may open, decided in one query. The Family book
+// applies the same rule, in its own query, to the health entries a card
+// shows (api/book.mjs), so the lock is not only on the screen.
 export async function mayOpen(sql, circleId, meId) {
   await ensureEcardSchema(sql);
-  // People with an SOS open now. A family that never raised one has no table.
-  let sos = [];
-  try { sos = (await sql`select distinct member_id from sos where circle_id = ${circleId} and status <> 'resolved'`).map(r => r.member_id); }
-  catch (e) { sos = []; }
+  const sos = await openSos(sql, circleId);
   const rows = await sql`
     select p.id from members p
     join members v on v.id = ${meId} and v.circle_id = p.circle_id
     left join ecard_prefs e on e.circle_id = p.circle_id and e.member_id = p.id
     where p.circle_id = ${circleId} and not p.remembered
       and (p.id = v.id
-           or (not (v.is_child or (v.dob is not null and v.dob > current_date - interval '18 years'))
+           or (not (case when v.dob is not null then v.dob > current_date - interval '18 years' else (v.is_child or v.adult_confirmed is false) end)
                and (p.user_id is null or v.id = any(coalesce(e.viewers, '{}')) or p.id = any(${sos}::uuid[]))))`;
   return rows.map(r => r.id);
 }
@@ -93,7 +98,12 @@ export default async function ecardApi(req, res) {
         select m.id, m.name, m.phone, m.relation from members m
         where m.circle_id = ${circle.id} and m.id = any(${prefs.contacts}::uuid[]) and not m.remembered
         order by array_position(${prefs.contacts}::uuid[], m.id)` : [];
-      const card = { personId: p.id, name: p.name, mine, contacts: contacts.map(c => ({ id: c.id, name: c.name, phone: c.phone || null, relation: c.relation || null })) };
+      // Each number as its owner lets this viewer see it on a member card.
+      // The person put them on the card to be called, so the viewer is told
+      // when a number is kept back and can ask the person for it.
+      const shown = new Map((await memberCards(sql, circle, me, contacts.map(c => ({ id: c.id, phone: c.phone })))).map(c => [c.id, c.phone]));
+      const card = { personId: p.id, name: p.name, mine, contacts: contacts.map(c => ({ id: c.id, name: c.name, phone: shown.get(c.id) || null,
+        phoneKept: !!c.phone && !shown.get(c.id), relation: c.relation || null })) };
       if (mine) {
         // Only the person sees and changes who they chose.
         const adults = await audienceFor(sql, circle.id, 'emergency_items', { except: me.id });

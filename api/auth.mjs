@@ -13,7 +13,7 @@ import { pushCircle } from './_push.mjs';
 import { pinError, hashPin, verifyPin, newToken, tokenHash, looksLikeToken, SECRET_V } from './_auth.mjs';
 import { ensureStandingSchema, ACCOUNT_ACTIONS, accountAction, securityFor, deviceHashOf, uaOf, padTo, sayCode,
          lockKey, pinGate, lockReply, wrongReply, isKnownDevice, lockNotice, startSession, resetApprovers,
-         vetoUntilFor, pushUser, logEvent, finalizeAccount } from './_account.mjs';
+         vetoUntil, fromHash, sameAsAsker, dropPush, pushUser, logEvent, finalizeAccount } from './_account.mjs';
 import { tokenOf } from './_token.mjs';
 import { joinError, joinRow, joinedMessage, isBot, proofCounts } from './_waitlist.mjs';
 import { cleanName, nameError } from './_valid.mjs';
@@ -243,8 +243,14 @@ export default async function handler(req, res) {
     }
 
     // Sign out: the token stops working immediately, on this device only.
+    // The pushes stop with it: this phone's subscription goes too.
     if (body.action === 'signout') {
-      if (body.token) { try { await sql`delete from sessions where token_hash = ${tokenHash(body.token)}`; } catch (e) {} }
+      if (body.token) {
+        try {
+          const gone = await sql`delete from sessions where token_hash = ${tokenHash(body.token)} returning user_id, device_hash`;
+          if (gone[0]) await dropPush(sql, gone[0].user_id, { deviceHash: gone[0].device_hash || deviceHashOf(body.deviceId), endpoint: body.endpoint || null });
+        } catch (e) {}
+      }
       return res.status(200).json({ ok: true });
     }
     // Sign out everywhere, for a lost phone.
@@ -252,6 +258,7 @@ export default async function handler(req, res) {
       const u = await sessionUser(sql, body.token || tokenOf(req));
       if (!u) return res.status(401).json({ ok: false, error: 'Please sign in again' });
       await sql`delete from sessions where user_id = ${u.user_id}`;
+      await dropPush(sql, u.user_id, { all: true });
       await logEvent(sql, u.user_id, 'device', 'You signed out of every phone.');
       return res.status(200).json({ ok: true });
     }
@@ -268,7 +275,15 @@ export default async function handler(req, res) {
     if (body.action === 'reset_request') {
       const npr = normPhone(body.phone, body.cc);
       if (!npr) return res.status(400).json({ ok: false, error: phoneError(body.cc) });
-      if (!(await rateLimit(sql, 'pinreset', npr.e164, 3, 3600))) {
+      // COUNTED BY THE PHONE THAT ASKS, not by the number alone: a stranger
+      // asking for someone else's number must not use up the owner's own
+      // tries. A looser count by number stays, and a phone the owner
+      // already uses is never held back by it.
+      const askDevice = deviceHashOf(body.deviceId), askFrom = fromHash(clientIp(req), uaOf(req));
+      if (!(await rateLimit(sql, 'pinreset', npr.e164 + '|' + (askDevice || askFrom), 3, 3600, { failClosed: true }))) {
+        return res.status(429).json({ ok: false, error: 'A request is already waiting. Ask your family to open Parwah and approve it.' });
+      }
+      if (!(await rateLimit(sql, 'pinresetip', clientIp(req), 20, 3600, { failClosed: true }))) {
         return res.status(429).json({ ok: false, error: 'A request is already waiting. Ask your family to open Parwah and approve it.' });
       }
       // The secret and the two-number code go back to this device only.
@@ -279,35 +294,47 @@ export default async function handler(req, res) {
       const same = { ok: true, asked: true, resetSecret: secret, sayCode: code2, expiresInMinutes: RESET_MINUTES };
       const ur = await sql`select id, name from users where phone = ${npr.e164}`;
       const who = ur[0] ? await resetApprovers(sql, ur[0].id) : [];
-      if (!ur[0] || !who.length) { await padTo(t0, 500); return res.status(200).json(same); }
+      const own = ur[0] ? await isKnownDevice(sql, ur[0].id, askDevice) : false;
+      // A phone the owner does not use: 5 asks an hour for one number, from
+      // everywhere together. The reply is the same either way.
+      const crowded = !own && !(await rateLimit(sql, 'pinresetnum', npr.e164, 5, 3600, { failClosed: true }));
+      if (!ur[0] || !who.length || crowded) { await padTo(t0, 500); return res.status(200).json(same); }
       const until = new Date(Date.now() + RESET_MINUTES * 60000).toISOString();
-      // The owner's own signed-in phones get ten minutes to say "not me".
-      const veto = await vetoUntilFor(sql, ur[0].id);
+      // The new PIN always waits ten minutes, so the owner can say "not me".
+      const veto = vetoUntil();
       const home = who.find(w => w.circle_id) || {};
       // One open request per person. Asking again replaces the secret and
-      // the code, so only the device that asked last can use the yes.
+      // the code, so only the device that asked last can use the yes. But an
+      // ask from a phone the owner already uses is never replaced by one
+      // from a phone they do not: a stranger cannot push the owner's own
+      // request aside. The stranger is told what everyone is told.
       const again = await sql`update pin_resets set secret_hash = ${tokenHash(secret)}, say_code = ${code2}, code_tries = 0,
-                                expires_at = ${until}, veto_until = ${veto}, circle_id = ${home.circle_id || null}, created_at = now()
-                              where user_id = ${ur[0].id} and status = 'pending' returning id`;
+                                expires_at = ${until}, veto_until = ${veto}, circle_id = ${home.circle_id || null}, created_at = now(),
+                                req_device = ${askDevice}, req_from = ${askFrom}, req_own = ${own}
+                              where user_id = ${ur[0].id} and status = 'pending'
+                                and (${own} or not req_own or expires_at <= now()) returning id`;
       if (!again[0]) {
+        const held = await sql`select id from pin_resets where user_id = ${ur[0].id} and status = 'pending' and req_own and expires_at > now()`;
+        if (held[0]) { await padTo(t0, 500); return res.status(200).json(same); }
         try {
-          await sql`insert into pin_resets (user_id, circle_id, secret_hash, say_code, expires_at, veto_until)
-                    values (${ur[0].id}, ${home.circle_id || null}, ${tokenHash(secret)}, ${code2}, ${until}, ${veto})`;
+          await sql`insert into pin_resets (user_id, circle_id, secret_hash, say_code, expires_at, veto_until, req_device, req_from, req_own)
+                    values (${ur[0].id}, ${home.circle_id || null}, ${tokenHash(secret)}, ${code2}, ${until}, ${veto}, ${askDevice}, ${askFrom}, ${own})`;
         } catch (e) {
           // Two taps at once: the other one made the row, so update it.
-          await sql`update pin_resets set secret_hash = ${tokenHash(secret)}, say_code = ${code2}, code_tries = 0, expires_at = ${until}, veto_until = ${veto}
-                    where user_id = ${ur[0].id} and status = 'pending'`;
+          await sql`update pin_resets set secret_hash = ${tokenHash(secret)}, say_code = ${code2}, code_tries = 0, expires_at = ${until}, veto_until = ${veto},
+                      req_device = ${askDevice}, req_from = ${askFrom}, req_own = ${own}
+                    where user_id = ${ur[0].id} and status = 'pending' and (${own} or not req_own)`;
         }
       }
       // Only the people who can say yes are told, never a whole group.
       for (const w of who) {
         if (!w.circle_id || !w.member_id) continue;
         await pushCircle(sql, w.circle_id,
-          { title: '🔑 ' + ur[0].name + ' cannot get in', body: 'They have asked to be let back in. Call them, ask for the two numbers on their screen, then open Parwah.' },
+          { kind: 'safety', title: '🔑 ' + ur[0].name + ' cannot get in', body: 'They have asked to be let back in. Call them, ask for the two numbers on their screen, then open Parwah.' },
           { only: w.member_id });
       }
       await logEvent(sql, ur[0].id, 'reset', 'Someone asked the family to reset your PIN.');
-      await pushUser(sql, ur[0].id, { title: '🔑 Someone asked to reset your PIN', body: 'Was this you? If not, open Parwah and tap "Not me" to stop it.', url: '/#home' });
+      await pushUser(sql, ur[0].id, { kind: 'safety', title: '🔑 Someone asked to reset your PIN', body: 'Was this you? If not, open Parwah and tap "Not me" to stop it.', url: '/#home' });
       await padTo(t0, 500);
       return res.status(200).json(same);
     }
@@ -328,7 +355,7 @@ export default async function handler(req, res) {
       const approver = await sessionUser(sql, body.token || tokenOf(req));
       if (!approver) return res.status(401).json({ ok: false, error: 'Please sign in again' });
       if (!isUuid(body.resetId)) return res.status(400).json({ ok: false, error: 'Bad request' });
-      const r = await sql`select id, user_id, circle_id, status, expires_at, say_code, code_tries, veto_until from pin_resets where id = ${body.resetId}`;
+      const r = await sql`select id, user_id, circle_id, status, expires_at, say_code, code_tries, veto_until, req_device, req_from from pin_resets where id = ${body.resetId}`;
       if (!r[0] || r[0].status !== 'pending') return res.status(404).json({ ok: false, error: 'That request is already decided' });
       if (r[0].expires_at && new Date(r[0].expires_at) <= new Date()) {
         return res.status(404).json({ ok: false, error: 'That request has run out. They can ask again.' });
@@ -337,6 +364,18 @@ export default async function handler(req, res) {
       const who = (await resetApprovers(sql, r[0].user_id)).find(w => w.user_id === approver.user_id);
       if (!who) return res.status(403).json({ ok: false, error: 'Only a grown-up in their family, or the person they chose, can decide this' });
       const status = body.action === 'reset_approve' ? 'approved' : 'denied';
+      // THE ONE WHO SAYS YES IS NEVER THE ONE WHO ASKED. The two numbers
+      // are on the asking phone, so whoever holds that phone could read
+      // them to themself. A yes from the phone that asked (by its own id,
+      // or from the same address and browser) is refused, whoever is
+      // signed in on it. Saying no is always allowed.
+      if (status === 'approved') {
+        const ses = (await sql`select device_hash from sessions where token_hash = ${tokenHash(body.token || tokenOf(req) || '')}`)[0] || {};
+        if (await sameAsAsker(sql, r[0], approver.user_id, { sessionDevice: ses.device_hash || null, sentDevice: deviceHashOf(body.deviceId), from: fromHash(clientIp(req), uaOf(req)) })) {
+          return res.status(403).json({ ok: false, sameDevice: true,
+            error: 'This is the phone that asked, so it cannot also say yes. Someone else in the family has to say yes, from their own phone.' });
+        }
+      }
       // Not knowing someone's age is a no for this one door. It is theirs
       // to fix in a minute, so the person waiting is not left stuck.
       if (status === 'approved' && !who.sure) {
@@ -355,25 +394,27 @@ export default async function handler(req, res) {
           return res.status(400).json({ ok: false, wrongCode: true, error: 'Those are not the two numbers on their screen. Call them and ask.' });
         }
       }
-      // The yes opens a fresh window: the device that asked has that long
-      // to choose its new PIN, counted from when the ten minutes end.
-      const from = Math.max(Date.now(), r[0].veto_until ? new Date(r[0].veto_until).getTime() : 0);
+      // The yes starts the ten minutes again, always: the owner is told who
+      // said yes and can still stop it. Then a fresh window opens, and the
+      // device that asked has that long to choose its new PIN.
+      const hold = status === 'approved' ? vetoUntil() : r[0].veto_until;
+      const from = Math.max(Date.now(), hold ? new Date(hold).getTime() : 0);
       const until = new Date(from + RESET_MINUTES * 60000).toISOString();
-      const done = await sql`update pin_resets set status = ${status}, decided_by = ${who.member_id}, decided_at = now(), expires_at = ${until}
+      const done = await sql`update pin_resets set status = ${status}, decided_by = ${who.member_id}, decided_at = now(), expires_at = ${until}, veto_until = ${hold}
                              where id = ${r[0].id} and status = 'pending' returning id`;
       if (!done[0]) return res.status(404).json({ ok: false, error: 'That request is already decided' });
       if (status === 'approved') {
         await logEvent(sql, r[0].user_id, 'reset', approver.name + ' said yes to resetting your PIN.');
-        await pushUser(sql, r[0].user_id, { title: '🔑 ' + approver.name + ' said yes to a new PIN for you', body: 'Was this you? If not, open Parwah and tap "Not me" to stop it.', url: '/#home' });
+        await pushUser(sql, r[0].user_id, { kind: 'safety', title: '🔑 ' + approver.name + ' said yes to a new PIN for you', body: 'Was this you? If not, open Parwah and tap "Not me" to stop it.', url: '/#home' });
       }
-      return res.status(200).json({ ok: true, status });
+      return res.status(200).json({ ok: true, status, readyInSeconds: status === 'approved' ? holdSeconds({ veto_until: hold }) : undefined });
     }
 
     if (body.action !== 'enter') return res.status(400).json({ ok: false, error: 'Unknown action' });
     const np = normPhone(body.phone, body.cc);
     if (!np) return res.status(400).json({ ok: false, error: phoneError(body.cc) });
     const phone = np.e164;
-    const COLS = sql`select id, name, phone, toured_at, pin_hash, pin_salt, secret_v, must_change_pin, delete_at from users where phone = ${phone}`;
+    const COLS = sql`select id, name, phone, toured_at, pin_hash, pin_salt, secret_v, must_change_pin, must_change_at, delete_at from users where phone = ${phone}`;
     let rows = await COLS;
     // An account whose 7 days have passed is gone before anyone signs in.
     if (rows[0] && rows[0].delete_at && new Date(rows[0].delete_at) <= new Date()) {
@@ -439,6 +480,7 @@ export default async function handler(req, res) {
                 pin_tries = 0, locked_until = null, secret_v = ${SECRET_V}, must_change_pin = false where id = ${user.id}`;
       // A lost phone stays signed in no longer, and no old lock is kept.
       await sql`delete from sessions where user_id = ${user.id}`;
+      await dropPush(sql, user.id, { all: true });
       await sql`delete from pin_locks where k = ${lockKey(phone, null)}`;
       await logEvent(sql, user.id, 'reset', 'Your PIN was reset with a yes from your family. Every phone was signed out.');
       return signedIn({}, { quiet: true });
@@ -517,6 +559,20 @@ export default async function handler(req, res) {
     // they choose a 4-number PIN; the old secret has to come with it, so
     // this cannot be skipped.
     if (user.secret_v !== SECRET_V || user.must_change_pin) {
+      // AFTER "NOT ME", THE OLD PIN IS NOT ENOUGH. Whoever signed in on the
+      // new phone knows it too, and could choose the new PIN first. Only a
+      // phone that was already this person's BEFORE that sign-in may choose
+      // it; any other phone is sent to the family, like a forgotten PIN.
+      if (user.must_change_pin) {
+        const before = deviceHash
+          ? await sql`select 1 as x from user_devices where user_id = ${user.id} and device_hash = ${deviceHash}
+                        and first_seen < coalesce(${user.must_change_at || null}::timestamptz, now())`
+          : [];
+        if (!before[0]) {
+          return res.status(200).json({ ok: true, exists: true, askFamily: true,
+            error: 'For your safety, choose the new PIN on a phone you already use. No such phone? Tap "Forgotten your PIN" below, and your family can let you back in.' });
+        }
+      }
       if (body.newPin == null || body.newPin === '') {
         return res.status(200).json({ ok: true, exists: true, changeSecret: true, mustChange: !!user.must_change_pin, name: user.name });
       }
@@ -527,7 +583,7 @@ export default async function handler(req, res) {
       await sql`update users set pin_hash = ${h.hash}, pin_salt = ${h.salt}, pin_set_at = now(),
                 pin_tries = 0, locked_until = null, secret_v = ${SECRET_V}, must_change_pin = false where id = ${user.id}`;
       // After "Not me", whoever else was signed in is signed out.
-      if (user.must_change_pin) await sql`delete from sessions where user_id = ${user.id}`;
+      if (user.must_change_pin) { await sql`delete from sessions where user_id = ${user.id}`; await dropPush(sql, user.id, { all: true }); }
       await logEvent(sql, user.id, 'pin', 'You chose a new PIN.');
       return signedIn({}, { quiet: !!user.must_change_pin });
     }
