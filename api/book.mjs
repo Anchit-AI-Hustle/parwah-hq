@@ -36,6 +36,7 @@ import afterlossApi from './_afterlossapi.mjs';
 import bondApi from './_memorybond.mjs';
 // Yaadon ki album: the family's own photos (api/_album.mjs).
 import albumApi from './_album.mjs';
+import ecardApi, { ensureEcardSchema, openSos } from './_ecard.mjs';
 
 const KINDS = ['contact', 'address', 'med', 'fact', 'insurance'];
 const CATS = ['housework', 'doctor', 'vet', 'driver', 'shops', 'repairs', 'emergency', 'local', 'other'];
@@ -53,6 +54,8 @@ export default async function handler(req, res) {
   if (area === 'notes') return notesApi(req, res);
   if (area === 'bond') return bondApi(req, res);
   if (area === 'album') return albumApi(req, res);
+  // The emergency card: who may open whose, and the two contacts (api/_ecard.mjs).
+  if (area === 'ecard' || (req.body && typeof req.body.action === 'string' && /^ecard_/.test(req.body.action))) return ecardApi(req, res);
   if (area === 'biomarkers' || (req.body && typeof req.body.action === 'string' && /^biomarker_/.test(req.body.action))) return biomarkersApi(req, res);
   if (area === 'preauth') return preauthApi(req, res);
   if (area === 'locator' || (req.body && typeof req.body.action === 'string' && /^locator_/.test(req.body.action))) return locatorApi(req, res);
@@ -85,22 +88,42 @@ export default async function handler(req, res) {
       // may actually read it. Private rows are stripped below rather than
       // filtered out of the count, so preparedness stays truthful without
       // leaking what is inside.
+      // WHAT A CHILD IS NOT SENT. What an emergency card shows about a
+      // person (blood group, allergies, medicines, insurance) used to reach
+      // every member, children included, through this read. A "whole family"
+      // entry of those kinds about someone else is now sent to the adults of
+      // the family only, never to a child or teenager. For adults nothing
+      // changes: the person already chooses, entry by entry, between the
+      // whole family and the people they name. Who may open the CARD itself
+      // (the printable summary and its two contacts) is api/_ecard.mjs.
+      await ensureEcardSchema(sql);
+      const sosNow = await openSos(sql, circle.id);
       const all = await sql`
         select b.id, b.kind, b.name, b.category, b.phone, b.address, b.forwhat, b.notes,
                b.about_member, b.by_member, b.visibility, b.last_verified_at, b.created_at, b.updated_at,
                m.name as by_name, am.name as about_name, um.name as updated_by_name,
-               (b.visibility = 'circle' or b.about_member = ${memberId} or b.by_member = ${memberId}
-                or ba.member_id is not null) as can_see
+               (b.about_member = ${memberId} or b.by_member = ${memberId} or ba.member_id is not null
+                or (b.visibility = 'circle'
+                    and (b.about_member is null
+                         or not (b.kind in ('med', 'insurance') or (b.kind = 'fact' and b.category in ('blood', 'allergy')))
+                         or (not (case when v.dob is not null then v.dob > current_date - interval '18 years' else (v.is_child or v.adult_confirmed is false) end))))) as can_see,
+               (b.visibility = 'circle') as on_card
         from family_book b
+        join members v on v.id = ${memberId}
         left join members m on m.id = b.by_member
         left join members am on am.id = b.about_member
         left join members um on um.id = b.updated_by
         left join book_access ba on ba.entry_id = b.id and ba.member_id = ${memberId}
+        left join ecard_prefs ep on ep.circle_id = b.circle_id and ep.member_id = b.about_member
         where b.circle_id = ${circle.id}
         order by b.kind, lower(b.name) limit 500`;
       const entries = all.filter(e => e.can_see).map(e => {
-        const { can_see, ...rest } = e; return rest;
+        const { can_see, on_card, ...rest } = e; return rest;
       });
+      // Whose health details are kept behind their card for this viewer: a
+      // name, so the screen can say so kindly. Never what the details are.
+      const cardLocked = [...new Map(all.filter(e => !e.can_see && e.on_card && e.about_member)
+        .map(e => [e.about_member, { id: e.about_member, name: e.about_name }])).values()];
       // Who the caller has shared their own entries with, and the ledger of
       // every consent change on anything recorded about them.
       const mineIds = all.filter(e => e.about_member === memberId).map(e => e.id);
@@ -185,7 +208,7 @@ export default async function handler(req, res) {
       gaps.sort((a, b) => (a.state === 'missing' ? 0 : 1) - (b.state === 'missing' ? 0 : 1));
       const family = { pct: total ? Math.round(ok / total * 100) : 0,
                        ready: ok, total, gaps: gaps.slice(0, 12), gapCount: gaps.length };
-      return res.status(200).json({ ok: true, entries, prep, family, records, access, consent, staleDays: STALE_DAYS });
+      return res.status(200).json({ ok: true, entries, prep, family, records, access, consent, cardLocked, staleDays: STALE_DAYS });
     }
     if (req.method !== 'POST') {
       res.setHeader('Allow', 'GET, POST');

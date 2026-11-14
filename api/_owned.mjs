@@ -11,7 +11,7 @@
 import { sessionUser, AUTH_REQUIRED } from './_db.mjs';
 
 export async function ownedMember(sql, circleId, memberId, token, cols) {
-  const rows = await sql`select id, name, role, phone, place, country, relation, dob, user_id
+  const rows = await sql`select id, name, role, phone, place, country, relation, dob, user_id, gift_info
                          from members where id = ${memberId} and circle_id = ${circleId}`;
   if (!rows[0]) return [];
   if (AUTH_REQUIRED) {

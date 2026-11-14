@@ -18,8 +18,8 @@ const PAPA = '11111111-1111-4111-8111-111111111111', ROHAN = '22222222-2222-4222
       MEERA = '33333333-3333-4333-8333-333333333333', PRIYA = '44444444-4444-4444-8444-444444444444',
       KABIR = '55555555-5555-4555-8555-555555555555';
 const members = [
-  { id: PAPA, name: 'Papa', user_id: 'u1' }, { id: ROHAN, name: 'Rohan', user_id: 'u2' },
-  { id: MEERA, name: 'Meera', user_id: 'u3' }, { id: PRIYA, name: 'Priya', user_id: 'u4' }
+  { id: PAPA, name: 'Papa', user_id: 'u1', role: 'parent' }, { id: ROHAN, name: 'Rohan', user_id: 'u2', dob: '1984-02-02' },
+  { id: MEERA, name: 'Meera', user_id: 'u3', dob: '1986-02-02' }, { id: PRIYA, name: 'Priya', user_id: 'u4', relation: 'daughter-in-law' }
 ];
 const src = readFileSync(new URL('../../api/_afterloss.mjs', import.meta.url), 'utf8');
 
@@ -27,7 +27,11 @@ const src = readFileSync(new URL('../../api/_afterloss.mjs', import.meta.url), '
 ok('it is called What needs doing', AFTERLOSS_NAME === 'What needs doing');
 ok('it says sorry, plainly', AFTERLOSS_SORRY === 'We are sorry. This list is here so nothing is forgotten.');
 ok('it says once that it is not legal advice', AFTERLOSS_LEGAL === 'This is a list to help you remember, not legal advice. Rules differ by bank and state.');
-ok('the rules import nothing', !/^\s*import\s/m.test(src) && !/\brequire\(/.test(src));
+// One import now: the shared "who is an adult" rule (api/_safetyrules.mjs),
+// which itself imports nothing, so the gate still runs before npm install.
+const safetySrc = readFileSync(new URL('../../api/_safetyrules.mjs', import.meta.url), 'utf8');
+ok('the rules import nothing but the safety rules, which import nothing', (src.match(/^\s*import\s.*$/gm) || []).map(x => x.trim()).join() === "import { surelyAdult, ADULT_HOW } from './_safetyrules.mjs';"
+   && !/\brequire\(/.test(src) && !/^\s*import\s/m.test(safetySrc) && !/\brequire\(/.test(safetySrc));
 ok('no long dashes in any word it writes', !new RegExp('[' + String.fromCharCode(0x2013, 0x2014) + ']').test(src));
 
 // ---- first things: the fixed list
@@ -94,7 +98,12 @@ ok('no promise and no order in any wording', !/\b(must|guarantee|within \d|will 
 
 // ---- who is an adult, and the second adult
 const today = new Date('2026-11-12T00:00:00Z');
-ok('someone on Parwah with no date of birth is an adult', afterlossIsAdult({ user_id: 'u' }, today));
+// With no date of birth, only a place in the family that says "adult" counts
+// (stream A, A10): a teenager who never wrote a birthday is not one.
+ok('someone on Parwah with no date of birth and no adult role is NOT taken to be an adult', !afterlossIsAdult({ user_id: 'u' }, today) && !afterlossIsAdult({ user_id: 'u', role: 'family', relation: 'son' }, today));
+ok('with no date of birth, the parent role, a grown-up relation, a spouse or a child says adult', afterlossIsAdult({ user_id: 'u', role: 'parent' }, today)
+   && afterlossIsAdult({ user_id: 'u', relation: 'mother' }, today) && afterlossIsAdult({ user_id: 'u', spouse_id: 's' }, today) && afterlossIsAdult({ user_id: 'u', has_child: true }, today));
+ok('someone unsure is told how to fix it', /date of birth/.test(afterlossStartRule({ me: { id: 'x', user_id: 'u' }, personId: PAPA, members, askId: MEERA, today }).error));
 ok('someone added by name is never one', !afterlossIsAdult({ user_id: null }, today) && !afterlossIsAdult(null, today));
 ok('17 is not an adult, 18 today is', !afterlossIsAdult({ user_id: 'u', dob: '2008-11-13' }, today) && afterlossIsAdult({ user_id: 'u', dob: '2008-11-12' }, today));
 let rule = afterlossStartRule({ me: members[1], personId: PAPA, members, askId: null, today });

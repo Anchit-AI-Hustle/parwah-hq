@@ -2,7 +2,9 @@
 // POST /api/events {code, memberId, type, text} - record a check-in, SOS, pill or message
 import { timingSafeEqual } from 'node:crypto';
 import { db, ensureSchema, circleByCode, requireMember, isUuid, ensureCircleChat, rateLimit } from './_db.mjs';
-import { ensureSosSchema, sosText, parsePos, sosContacts, mapLink, SOS_AUDIO_MAX, SOS_AUDIO_TYPES } from './_sos.mjs';
+import { ensureSosSchema, sosText, parsePos, sosContacts, sosOtherFamilies, rememberedPhones, mapLink, SOS_AUDIO_MAX, SOS_AUDIO_TYPES } from './_sos.mjs';
+import { pushTopic, phoneTail } from './_safetyrules.mjs';
+import { tickSeen, tickMark, safetyState } from './_safety.mjs';
 import { lockForSos, unlockSos, ensureLocationSchema } from './_locationapi.mjs';
 import { findState } from './_findme.mjs';
 import { dialOut, dialConfig } from './_sosdial.mjs';
@@ -13,6 +15,10 @@ import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
 import { pushCircle } from './_push.mjs';
+import { afterTick, tickCursor } from './_push.mjs';
+import { minorOf } from './_audience.mjs';
+import { rotateFrom } from './_pushrules.mjs';
+import { tickNote, lateTap, lateArrived } from './_offline.mjs';
 import { ensureTaskSchema, sweepOverdue, sweepReminders } from './_tasks.mjs';
 import { sweepPlanReminders } from './_plansweep.mjs';
 import { sweepDoses } from './_doses.mjs';
@@ -20,12 +26,16 @@ import { sweepVisitAsk } from './_visits.mjs';
 import { sweepBond, ensureBondSchema } from './_bond.mjs';
 import { storySweep, ensureBondSchema as ensureMemoryBondSchema } from './_memorybond.mjs';
 import { award, today } from './_coins.mjs';
-import { reqTz } from './_recur.mjs';
+import { reqTz, dayIn } from './_recur.mjs';
 import { sweepRemember, ensureRememberSchema, rememberToday } from './_remember.mjs';
 import { digestSweep } from './_digest.mjs';
+import { ektaNudgeSweep } from './_ektaday.mjs';
+import { heardSweepAll } from './_heard.mjs';
+import { sweepTripsAll } from './_ashirwad.mjs';
+import { memberCards, standingSweepAll } from './_standing.mjs';
 
 import { index as kinIndex, kinLabel, generations, kinEveryone, kinChainWords } from './_kin.mjs';
-import { pulseToday, ensurePulseSchema, optionOf, styleFor, today as pulseDay } from './_pulse.mjs';
+import { pulseToday, pulseSave } from './_pulse.mjs';
 import { FC_EVENT_TYPES, familyCarePost, familyCareState, quietSweep, quietSweepAll, rotaSweep, pulseCallNudge } from './_familycare.mjs';
 
 const SOS_ESCALATE_MIN = 5;   // nobody answered in this long → shout louder
@@ -33,12 +43,13 @@ const SOS_ESCALATE_MIN = 5;   // nobody answered in this long → shout louder
 const TYPES = ['checkin', 'sos', 'pill', 'message'];
 
 // THE TIMER'S KEY. With CRON_SECRET set on the server, ?tick needs it, in
-// x-cron-secret or "Authorization: Bearer"; without one it stays open, as
-// before, so nothing stops before the owner sets it. Compared in constant
-// time.
+// x-cron-secret or "Authorization: Bearer". Compared in constant time.
+// With none set, the live site says no: an open timer there is work anyone
+// on the internet can start. A laptop, a preview and the tests stay open,
+// and the live site's alerts still ring from every signed-in poll.
 function tickAllowed(req) {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
+  if (!secret) return process.env.VERCEL_ENV !== 'production';
   const h = (req && req.headers) || {};
   const auth = String(h.authorization || h.Authorization || '');
   const given = String(h['x-cron-secret'] || (auth.startsWith('Bearer ') ? auth.slice(7) : ''));
@@ -74,7 +85,11 @@ async function dueCircles(sql) {
   await q(() => sql`select distinct circle_id from members where remembered and passed_month is not null and passed_day is not null limit 500`);
   // "Aaj kya hua": members who asked to be told each evening.
   await q(() => sql`select distinct circle_id from digest_prefs where evening limit 500`);
-  return [...ids];
+  await q(() => sql`select distinct circle_id from ekta_prefs where nudge_talk or nudge_bday or nudge_renewal limit 500`);
+  // One fixed order, begun where the last run stopped: a run that spends
+  // its time budget on the first families must not spend it on the same
+  // ones every time.
+  return rotateFrom([...ids], await tickCursor(sql));
 }
 export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
   const t0 = Date.now();
@@ -82,10 +97,13 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
   const circles = await dueCircles(sql);
   let reminded = 0, late = 0, events = 0, done = 0;
   // Missed check-ins first: the alert families most need on time.
-  try { events += await quietSweepAll(sql); } catch (e) { /* never stops the timer */ }
+  try { events += await quietSweepAll(sql); } catch (e) { tickNote(e, 'quiet'); /* never stops the timer */ }
+  try { events += await heardSweepAll(sql); } catch (e) { tickNote(e, 'heard'); /* a private word that has waited a day: one reminder */ }
   // Each sweep on its own: a family that never opened one feature (no table
   // yet, or a bad row) must not stop the other alerts for that family.
-  const one = async f => { try { return (await f()) || 0; } catch (e) { return 0; } };
+  const one = async f => { try { return (await f()) || 0; } catch (e) { tickNote(e, 'sweep'); return 0; } };
+  await one(() => sweepTripsAll(sql));   // "Reached safely" not tapped by the expected time + 30 minutes
+  await one(() => standingSweepAll(sql));   // account and family deletes whose 7 days are up, tree links whose 48 hours are up
   for (const id of circles) {
     if (Date.now() - t0 > budgetMs) break;
     await one(() => escalateStaleSos(sql, id));
@@ -103,9 +121,46 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
     events += await one(() => sweepRemember(sql, id));
     // The 8pm "Aaj kya hua" notification: plain words, never a model call.
     await one(() => digestSweep(sql, id));
+    await one(() => ektaNudgeSweep(sql, id));   // Ekta's private nudges: off until a member turns one on (api/_ektaday.mjs)
     done++;
   }
+  // The morning line is bounded too: a little past the budget at most, so
+  // a member's poll that ran the timer is never kept waiting on it.
+  await one(() => afterTick(sql, circles, done, Math.max(t0 + budgetMs, Date.now() + 1500)));
+  // The run is written down, so the family can be told honestly when the
+  // timer last ran (api/_safety.mjs).
+  await one(() => tickMark(sql));
   return { circles: done, reminded, late, events };
+}
+
+// "STILL NOBODY HAS ANSWERED": an SOS open for SOS_ESCALATE_MIN minutes with
+// nobody on it shouts once, louder. The `escalated` flag makes it exactly
+// once, however many phones are polling and however often the timer runs.
+// AT MODULE SCOPE, because the timer (runTick) calls it: declared inside
+// the handler, the timer could not reach it and the error was swallowed.
+export async function escalateStaleSos(sql, circleId) {
+  let n = 0;
+  try {
+    const stale = await sql`
+      select s.id, s.member_id, m.name, m.phone
+      from sos s join members m on m.id = s.member_id
+      where s.circle_id = ${circleId} and s.status = 'open' and s.escalated = false
+        and s.created_at < now() - make_interval(mins => ${SOS_ESCALATE_MIN})`;
+    for (const s of stale) {
+      const claimed = await sql`update sos set escalated = true
+                                where id = ${s.id} and escalated = false returning id`;
+      if (!claimed[0]) continue;   // another instance got there first
+      n++;
+      await sql`insert into events (circle_id, member_id, type, text)
+                values (${circleId}, ${s.member_id}, 'care', ${'🆘 Nobody has answered ' + s.name + "'s SOS yet - please call them now"})`;
+      await pushCircle(sql, circleId, {
+        title: '🆘 STILL NOBODY - ' + s.name + ' needs help',
+        body: 'No one has picked this up in ' + SOS_ESCALATE_MIN + ' minutes. Call ' + (s.phone || 'them') + ' now.',
+        url: '/#home', urgent: true, topic: pushTopic('sosesc', s.id)
+      }, {});
+    }
+  } catch (e) { /* escalation must never break a read */ }
+  return n;
 }
 
 export default async function handler(req, res) {
@@ -137,32 +192,6 @@ export default async function handler(req, res) {
     await sql`create index if not exists sos_circle_open on sos (circle_id, status, created_at desc)`;
     await ensureSosSchema(sql);
   } catch (e) { return failDb(res, e); }
-
-// There is no scheduler on this platform, so escalation rides on the polling
-// the family is already doing: any read of the circle checks for an SOS that
-// nobody has answered and shouts once, louder. The `escalated` flag makes it
-// exactly once, however many devices are polling.
-async function escalateStaleSos(sql, circleId) {
-  try {
-    const stale = await sql`
-      select s.id, s.member_id, m.name, m.phone
-      from sos s join members m on m.id = s.member_id
-      where s.circle_id = ${circleId} and s.status = 'open' and s.escalated = false
-        and s.created_at < now() - make_interval(mins => ${SOS_ESCALATE_MIN})`;
-    for (const s of stale) {
-      const claimed = await sql`update sos set escalated = true
-                                where id = ${s.id} and escalated = false returning id`;
-      if (!claimed[0]) continue;   // another instance got there first
-      await sql`insert into events (circle_id, member_id, type, text)
-                values (${circleId}, ${s.member_id}, 'care', ${'🆘 Nobody has answered ' + s.name + "'s SOS yet - please call them now"})`;
-      await pushCircle(sql, circleId, {
-        title: '🆘 STILL NOBODY - ' + s.name + ' needs help',
-        body: 'No one has picked this up in ' + SOS_ESCALATE_MIN + ' minutes. Call ' + (s.phone || 'them') + ' now.',
-        url: '/#home', urgent: true
-      }, {});
-    }
-  } catch (e) { /* escalation must never break a read */ }
-}
 
   try {
     // THE TIMER. Reminders and every other timed alert are also checked by
@@ -230,9 +259,12 @@ async function escalateStaleSos(sql, circleId) {
         from calls c left join members m on m.id = c.by_member
         where c.circle_id = ${circle.id} and c.started_at > now() - interval '3 hours'
         order by c.started_at desc limit 3`;
-      // Requests waiting on the family - any member can decide.
+      // Requests waiting on the family. An adult answers the door, so the
+      // number of someone who is not in the family yet is sent to the
+      // adults only: a child or a teenager sees the name and nothing more.
+      const jrMinor = await minorOf(sql, circle.id, g.me.id).catch(() => true);
       const joinReqs = await sql`
-        select id, name, phone, relation, created_at from join_requests
+        select id, name, case when ${jrMinor}::boolean then null else phone end as phone, relation, created_at from join_requests
         where circle_id = ${circle.id} and status = 'pending'
         order by created_at limit 20`;
       const pol = await sql`select join_policy from circles where id = ${circle.id}`;
@@ -240,6 +272,8 @@ async function escalateStaleSos(sql, circleId) {
       // hours late on a free account, so whichever signed-in phone polls
       // first each minute (any family) runs the whole timer, under a time
       // budget so this read stays quick. Claimed per alert, never doubled.
+      // Read first: when the timer last ran BEFORE this phone woke it.
+      const tickBefore = await tickSeen(sql).catch(() => null);
       try {
         if (await rateLimit(sql, 'tick', 'all', 1, 50, { failClosed: true })) await runTick(sql, PIGGYBACK_BUDGET_MS);
       } catch (e) { /* the timer never breaks a read */ }
@@ -260,7 +294,7 @@ async function escalateStaleSos(sql, circleId) {
       try { await quietSweep(sql, circle.id); await rotaSweep(sql, circle.id); } catch (e) { /* never break a read */ }
       // A day of remembrance tomorrow or today, told once a year.
       try { await sweepRemember(sql, circle.id); } catch (e) { /* never break a read */ }
-      const pulse = await pulseToday(sql, circle.id, reqTz(req));
+      const pulse = await pulseToday(sql, circle.id, reqTz(req), g.me.id);
       const sosOpen = await sql`
         select s.id, s.member_id, s.status, s.escalated, s.created_at, s.acked_at, s.safe_at,
                s.lat, s.lng, s.accuracy,
@@ -284,7 +318,9 @@ async function escalateStaleSos(sql, circleId) {
       const docsN = await sql`select count(*)::int as n from vault_docs where circle_id = ${circle.id}`.catch(() => null);
       return res.status(200).json({ ok: true, circleName: circle.name, code: circle.code,
         counts: docsN && docsN[0] ? { docs: docsN[0].n } : undefined,
-        kind: ck[0] ? ck[0].kind : 'family', familyType: ck[0] ? ck[0].family_type : null, members, events, seenAt, calls,
+        kind: ck[0] ? ck[0].kind : 'family', familyType: ck[0] ? ck[0].family_type : null,
+        // Each member chooses who sees their phone and birth year (api/_standing.mjs).
+        members: await memberCards(sql, circle, g.me, members), events, seenAt, calls,
         joinRequests: joinReqs, joinPolicy: (pol[0] && pol[0].join_policy) || 'approve',
         sos: await Promise.all(sosOpen.map(async x => ({ ...x, map: mapLink(x.lat === null ? null : { lat: x.lat, lng: x.lng }),
           // The nearby people who said yes, with Call buttons on the family's
@@ -293,7 +329,9 @@ async function escalateStaleSos(sql, circleId) {
           ladderCalls: (() => { const c = dialConfig(); return !!(c.on && c.voice); })() }))),
         sosEscalateMin: SOS_ESCALATE_MIN, pulse, remembrance: rememberToday(members),
         findme: await findState(sql, circle, g.me, tokenOf(req)).catch(() => null),
-        familyCare: await familyCareState(sql, circle.id, g.me.id).catch(() => null) });
+        familyCare: await familyCareState(sql, circle.id, g.me.id).catch(() => null),
+        // Said honestly: are calls set up, when did the timer last run.
+        safety: await safetyState(sql, circle, g.me, tickBefore).catch(() => null) });
     }
 
     if (req.method === 'POST') {
@@ -317,24 +355,22 @@ async function escalateStaleSos(sql, circleId) {
         if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
         const pm = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
         if (!pm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
-        await ensurePulseSchema(sql);
-        const day = pulseDay(reqTz(req)), styleKey = styleFor(day);
-        const opt = optionOf(styleKey, String(req.body.value || ''));
-        if (!opt) return res.status(400).json({ ok: false, error: 'Pick how you are today' });
-        const note = String(req.body.note || '').trim().slice(0, 120) || null;
-        await sql`insert into pulse (circle_id, member_id, day, style, value, note)
-                  values (${circle.id}, ${pm[0].id}, ${day}, ${styleKey}, ${opt.k}, ${note})
-                  on conflict (circle_id, member_id, day)
-                  do update set style = excluded.style, value = excluded.value, note = excluded.note, at = now()`;
-        await sql`insert into events (circle_id, member_id, type, text)
-                  values (${circle.id}, ${pm[0].id}, 'checkin', ${pm[0].name + ' is ' + opt.e + ' ' + opt.t})`;
+        // A tap made with no network arrives once (api/_push.mjs lateTap).
+        const tap = await lateTap(sql, req.body, pm[0].id, 'pulse');
+        if (tap.dup) return res.status(200).json({ ok: true, dup: true });
+        if (tap.error) return res.status(tap.status).json({ ok: false, error: tap.error, stale: tap.status === 422 });
+        // Private by default (api/_pulse.mjs): the member chooses to keep it
+        // to themself, tell one person, or tell the family. Nothing goes on
+        // the feed, and nobody is pushed, unless they chose that.
         // No coins for saying how you are: an adult's check-in is not a game.
+        const saved = await pulseSave(sql, circle, pm[0], req.body, reqTz(req));
         // "A call would be nice" is the reason this feature exists - it lets
-        // someone say they are not fine without having to say it.
-        // Someone who could do with a call: whoever is on the call rota for
-        // them today hears first, by name (api/_familycare.mjs).
-        if (opt.call) await pulseCallNudge(sql, circle.id, pm[0], opt.e + ' ' + opt.t + (note ? ' - ' + note : ''));
-        return res.status(201).json({ ok: true });
+        // someone say they are not fine without having to say it. Someone
+        // who could do with a call, and told the family: whoever is on the
+        // call rota for them today hears first, by name (api/_familycare.mjs).
+        if (saved.call) await pulseCallNudge(sql, circle.id, pm[0], saved.call);
+        if (saved.one) await pushCircle(sql, circle.id, { kind: 'care', title: '🧡 ' + pm[0].name + ' told only you how today is', body: saved.one.line + (saved.one.low ? '. A call would be nice.' : ''), url: '/#home' }, { only: saved.one.id });
+        return res.status(saved.status).json(saved.json);
       }
 
       // Somebody is on it - everyone else stops worrying, and the person who
@@ -354,7 +390,7 @@ async function escalateStaleSos(sql, circleId) {
                     where id = ${row[0].id} and status = 'open'`;
           await sql`insert into events (circle_id, member_id, type, text)
                     values (${circle.id}, ${memberId}, 'care', ${am[0].name + ' is on their way to ' + row[0].name + ' 🧡'})`;
-          await pushCircle(sql, circle.id, { title: '🧡 ' + am[0].name + ' is on it',
+          await pushCircle(sql, circle.id, { kind: 'safety', title: '🧡 ' + am[0].name + ' is on it',
             body: 'They are helping ' + row[0].name + ' - you do not need to call as well' }, { except: memberId });
           return res.status(200).json({ ok: true });
         }
@@ -368,10 +404,10 @@ async function escalateStaleSos(sql, circleId) {
         await sql`insert into events (circle_id, member_id, type, text)
                   values (${circle.id}, ${memberId}, 'care', ${am[0].name + ' marked ' + row[0].name + "'s SOS as sorted ✅"})`;
         if (row[0].member_id !== memberId) {
-          await pushCircle(sql, circle.id, { title: '✅ ' + am[0].name + ' marked you safe',
+          await pushCircle(sql, circle.id, { kind: 'safety', title: '✅ ' + am[0].name + ' marked you safe',
             body: 'Your location sharing is yours again - stop it whenever you like', url: '/#people' }, { only: row[0].member_id });
         }
-        await pushCircle(sql, circle.id, { title: '✅ ' + row[0].name + ' is alright',
+        await pushCircle(sql, circle.id, { kind: 'safety', title: '✅ ' + row[0].name + ' is alright',
           body: am[0].name + ' marked the SOS as sorted' }, { except: memberId });
         return res.status(200).json({ ok: true });
       }
@@ -389,9 +425,11 @@ async function escalateStaleSos(sql, circleId) {
         if (type === 'sos_safe') {
           await sql`update sos set status = 'resolved', resolved_at = now(), resolved_by = ${memberId}, safe_at = now() where id = ${r[0].id}`;
           await unlockSos(sql, circle.id, memberId);
+          // "I am safe" is true in every family that heard this SOS.
+          await sosSafeElsewhere(sql, circle.id, sm[0]);
           await sql`insert into events (circle_id, member_id, type, text)
                     values (${circle.id}, ${memberId}, 'care', ${sm[0].name + ' is safe now - the SOS is closed ✅'})`;
-          await pushCircle(sql, circle.id, { title: '✅ ' + sm[0].name + ' is safe',
+          await pushCircle(sql, circle.id, { kind: 'safety', title: '✅ ' + sm[0].name + ' is safe',
             body: 'They closed their SOS themselves. A call to check in never hurts.', url: '/#home' }, { except: memberId });
           return res.status(200).json({ ok: true, resolved: true });
         }
@@ -407,7 +445,7 @@ async function escalateStaleSos(sql, circleId) {
         const ins = await sql`insert into sos_media (sos_id, member_id, mime, data, seconds)
                               values (${r[0].id}, ${memberId}, ${mime}, ${data}, ${secs}) returning id`;
         await pushCircle(sql, circle.id, { title: '🎙 A recording from ' + sm[0].name + "'s SOS",
-          body: 'Open Parwah to listen', url: '/#home', urgent: true }, { except: memberId });
+          body: 'Open Parwah to listen', url: '/#home', urgent: true, topic: pushTopic('sosrec', r[0].id) }, { except: memberId });
         return res.status(201).json({ ok: true, audioId: ins[0].id });
       }
 
@@ -420,7 +458,7 @@ async function escalateStaleSos(sql, circleId) {
           if (room.indexOf('https://meet.jit.si/') !== 0 || room.length > 300) return res.status(400).json({ ok: false, error: 'Bad room' });
           const label = String(req.body.label || '').trim().slice(0, 60) || null;
           const r = await sql`insert into calls (circle_id, room, label, by_member) values (${circle.id}, ${room}, ${label}, ${memberId}) returning id`;
-          await pushCircle(sql, circle.id, { title: (label || '📞 Family call') + ' on now', body: cm[0].name + ' started it - tap to join everyone' }, { except: memberId });
+          await pushCircle(sql, circle.id, { kind: 'plans', title: (label || '📞 Family call') + ' on now', body: cm[0].name + ' started it - tap to join everyone' }, { except: memberId });
           return res.status(201).json({ ok: true, callId: r[0].id });
         }
         // anyone in the circle can end it - every member is an equal admin
@@ -435,8 +473,14 @@ async function escalateStaleSos(sql, circleId) {
       const t = String(text || '').trim().slice(0, type === 'message' ? 300 : 120);
       if (type === 'message' && !t) return res.status(400).json({ ok: false, error: 'Empty message' });
       if (type === 'sos') return raiseSos(sql, res, circle, member[0], t, req.body);
-      await sql`insert into events (circle_id, member_id, type, text)
-                values (${circle.id}, ${memberId}, ${type}, ${t || null})`;
+      // Pressed with no network and sent now (api/_offline.mjs): once only,
+      // and with the time it was pressed.
+      const tap = await lateTap(sql, req.body, memberId, type);
+      if (tap.dup) return res.status(200).json({ ok: true, dup: true });
+      if (tap.error) return res.status(tap.status).json({ ok: false, error: tap.error, stale: tap.status === 422 });
+      await sql`insert into events (circle_id, member_id, type, text, created_at)
+                values (${circle.id}, ${memberId}, ${type}, ${t || null}, coalesce(${tap.at}::timestamptz, now()))`;
+      if (tap.late && type === 'checkin') await lateArrived(sql, circle, member[0], tap.at);
       // An adult's medicines and check-ins are not a game: no coins for them.
       return res.status(201).json({ ok: true });
     }
@@ -449,11 +493,11 @@ async function escalateStaleSos(sql, circleId) {
 }
 
 // ONE PRESS OF SOS (see api/_sos.mjs for what it does and why).
-async function raiseSos(sql, res, circle, me, said, body) {
-  const pos = parsePos(body);
+// Opens the SOS in one family, or refreshes the one already open there.
+async function sosOpenIn(sql, circleId, memberId, said, pos) {
   // Already open: a second press is a fresh position and a fresh alert, not
   // a second emergency.
-  const open = await sql`select id from sos where circle_id = ${circle.id} and member_id = ${me.id} and status <> 'resolved'
+  const open = await sql`select id from sos where circle_id = ${circleId} and member_id = ${memberId} and status <> 'resolved'
                          order by created_at desc limit 1`;
   let sosId, again = false;
   if (open[0]) {
@@ -461,14 +505,37 @@ async function raiseSos(sql, res, circle, me, said, body) {
     if (pos) await sql`update sos set lat = ${pos.lat}, lng = ${pos.lng}, accuracy = ${pos.accuracy} where id = ${sosId}`;
   } else {
     const r = await sql`insert into sos (circle_id, member_id, lat, lng, accuracy)
-                        values (${circle.id}, ${me.id}, ${pos ? pos.lat : null}, ${pos ? pos.lng : null}, ${pos ? pos.accuracy : null})
+                        values (${circleId}, ${memberId}, ${pos ? pos.lat : null}, ${pos ? pos.lng : null}, ${pos ? pos.accuracy : null})
                         returning id, created_at`;
     sosId = r[0].id;
-    await sql`insert into events (circle_id, member_id, type, text) values (${circle.id}, ${me.id}, 'sos', ${said || null})`;
+    await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'sos', ${said || null})`;
   }
   // Location on, exact, held on until the family marks them safe.
+  await lockForSos(sql, circleId, memberId, sosId, pos);
+  return { sosId, again };
+}
+
+// "I am safe" closes the SOS in every other family that heard it too.
+async function sosSafeElsewhere(sql, circleId, me) {
+  try {
+    for (const o of await sosOtherFamilies(sql, circleId, me.user_id)) {
+      const done = await sql`update sos set status = 'resolved', resolved_at = now(), resolved_by = ${o.member_id}, safe_at = now()
+                             where circle_id = ${o.id} and member_id = ${o.member_id} and status <> 'resolved' returning id`;
+      if (!done[0]) continue;
+      await unlockSos(sql, o.id, o.member_id);
+      await sql`insert into events (circle_id, member_id, type, text)
+                values (${o.id}, ${o.member_id}, 'care', ${o.member_name + ' is safe now - the SOS is closed ✅'})`;
+      await pushCircle(sql, o.id, { kind: 'safety', title: '✅ ' + o.member_name + ' is safe',
+        body: 'They closed their SOS themselves. A call to check in never hurts.', url: '/#home' }, { except: o.member_id });
+    }
+  } catch (e) { /* this family's SOS is closed; the others can close theirs */ }
+}
+
+async function raiseSos(sql, res, circle, me, said, body) {
+  const pos = parsePos(body);
   await ensureLocationSchema(sql);
-  await lockForSos(sql, circle.id, me.id, sosId, pos);
+  const first = await sosOpenIn(sql, circle.id, me.id, said, pos);
+  const sosId = first.sosId, again = first.again;
   // Pressing again keeps the position fresh, always. What is limited is
   // the ALERTS: three per person in ten minutes, ten per family in an
   // hour. Past that the family has already been told, many times, and an
@@ -482,21 +549,53 @@ async function raiseSos(sql, res, circle, me, said, body) {
     return res.status(201).json({ ok: true, sosId, again, located: !!pos, map: mapLink(pos), throttled: true,
       message: 'Your family has already been sent this SOS. Call 112 if you need help now.' });
   }
-  const text = sosText(me.name, pos, Date.now(), body && body.tz) + (said ? ' "' + said + '"' : '');
-  // In the family chat, where everyone looks, with the map link.
-  try {
-    const chatId = await ensureCircleChat(sql, circle.id);
-    await sql`insert into messages (chat_id, member_id, text) values (${chatId}, ${me.id}, ${text})`;
-  } catch (e) { /* the alert below still goes */ }
-  await pushCircle(sql, circle.id, {
-    title: '🆘 SOS from ' + me.name + (again ? ' (again)' : ''),
-    body: (pos ? 'Tap to see where they are and call them now' : 'Call them right now'),
-    url: '/#home', urgent: true
-  }, { except: me.id });
-  const contacts = await sosContacts(sql, circle.id, me.id);
+  // EVERY FAMILY THE PERSON BELONGS TO, not only the one open on the phone
+  // (a daughter-in-law has two; a parent may be in each child's). A group of
+  // friends hears only when it is the one that is open. Each family has its
+  // own SOS, its own count, and closes its own; a failure in one never
+  // stops the next.
+  const places = [{ circleId: circle.id, memberId: me.id, name: me.name, sosId, again }];
+  let others = [];
+  try { others = await sosOtherFamilies(sql, circle.id, me.user_id); } catch (e) { /* this family still hears */ }
+  for (const o of others) {
+    try {
+      if (!(await rateLimit(sql, 'sosfam', o.id, 10, 3600))) continue;
+      const s = await sosOpenIn(sql, o.id, o.member_id, said, pos);
+      places.push({ circleId: o.id, memberId: o.member_id, name: o.member_name, sosId: s.sosId, again: s.again });
+    } catch (e) { /* the next family still hears */ }
+  }
+  const words = name => sosText(name, pos, Date.now(), body && body.tz) + (said ? ' "' + said + '"' : '');
+  const text = words(me.name);
+  const lists = [], gone = new Set();
+  for (const p of places) {
+    try {
+      // In the family chat, where everyone looks, with the map link.
+      try {
+        const chatId = await ensureCircleChat(sql, p.circleId);
+        await sql`insert into messages (chat_id, member_id, text) values (${chatId}, ${p.memberId}, ${words(p.name)})`;
+      } catch (e) { /* the alert below still goes */ }
+      await pushCircle(sql, p.circleId, {
+        title: '🆘 SOS from ' + p.name + (p.again ? ' (again)' : ''),
+        body: (pos ? 'Tap to see where they are and call them now' : 'Call them right now'),
+        url: '/#home', urgent: true, topic: pushTopic('sos', p.sosId)
+      }, { except: p.memberId });
+      lists.push(await sosContacts(sql, p.circleId, p.memberId));
+      for (const g of await rememberedPhones(sql, p.circleId)) gone.add(phoneTail(g.phone));
+    } catch (e) { /* the next family still hears */ }
+  }
+  // One list for the phone and for Parwah's own texts and calls: this
+  // family's first, then the others', nobody twice, and never the number of
+  // someone who has passed away in any of these families.
+  const contacts = [], seen = new Set();
+  for (const c of lists.flat()) {
+    const t = phoneTail(c.phone);
+    if (!t || seen.has(t) || gone.has(t)) continue;
+    seen.add(t); contacts.push(c);
+  }
+  contacts.splice(8);
   // Texts, WhatsApp and calls sent by Parwah itself, once a Twilio account
-  // is added (api/_sosdial.mjs). Without one, this sends nothing.
+  // is added (api/_sosdial.mjs). Without one, this sends nothing, and says so.
   const meCc = me.phone_cc || ((await sql`select phone_cc from members where id = ${me.id}`)[0] || {}).phone_cc || null;
   const dialed = await dialOut(sql, sosId, contacts, { name: me.name, text, map: mapLink(pos), cc: meCc });
-  return res.status(201).json({ ok: true, sosId, again, text, map: mapLink(pos), located: !!pos, contacts, dialed });
+  return res.status(201).json({ ok: true, sosId, again, text, map: mapLink(pos), located: !!pos, contacts, dialed, families: places.length });
 }

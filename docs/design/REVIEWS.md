@@ -662,3 +662,151 @@ Checked at 320 and 390, light and dark, on the real app with a family of four an
 | 201 | 4 Consistency | The time under the note follows the phone's own format ("7:23 PM") while the note says "7:23 pm" | 1 | Open: cosmetic, left as the phone shows times everywhere else |
 
 New patterns: none. The sheet is the app's one bond sheet; the row is a `bondtoday` row; the note is `bondtext`; the thumbs are a `pkind` pair. No new CSS. Ids start with `dg-`.
+
+### Review 21: Notifications, can be reached, the self-check and the waiting row
+
+Screens: the Notifications card and "Is Parwah working?" in Profile; the "Will send when the network is back" row and the "nobody's phone will ring" card on Today; the "Updated. Tap to refresh" bar. Measured in `notifyfair.e2e.dbtest.mjs` at 320 and 390, light and dark: nothing sideways, 44px targets (a tick box is measured by its label), 12px floor, AA contrast.
+
+| # | Heuristic | Finding | Severity | Outcome |
+|---|---|---|---|---|
+| F1 | 3 User control | Every push rang at any hour; the only choice was all or nothing | 4 | Fixed: quiet hours (10pm to 7am unless changed) and six switches, saved as each is changed, one choice for every family the person is in |
+| F2 | 5 Error prevention | Quiet hours could have silenced an emergency | 4 | Fixed: an SOS, a missed check-in, a hospital stay and the person's own medicine times are never held, and the card says so in its first lines |
+| F3 | 1 Visibility of status | Nobody could tell whether a parent's SOS would ring anyone | 4 | Fixed: a dot and words per person for adults; one gentle card on Today when nobody would be reached, with the one button that fixes it |
+| F4 | 1 Visibility of status | "All is well" with no network showed "No connection - try again" and was lost | 4 | Fixed: kept on the phone, shown as waiting with what and when, sent by itself; the button says "Saved on this phone", never "reached the family" |
+| F5 | 2 Real-world match | A status shown by colour alone | 2 | Fixed: every line carries a mark (✓ or !) and a word (on, off, resting, not set up), in the status colours, never the vibe colours |
+| F6 | 9 Error recovery | A self-check that only said "off" | 3 | Fixed: each line that is off says what to do next in one sentence |
+| F7 | 10 Help | The reach card could read as blame | 2 | Fixed: it states the fact and the fix; no "you must", no count of days |
+| F8 | 4 Consistency | The update bar has two wordings ("A newer Parwah is ready" and "Updated. Tap to refresh") | 1 | Open: the second is used only when the new copy is already on the phone; left as two |
+| F9 | 7 Flexibility | No way to mute one chat from the screen | 2 | Open: the server honours a `chat_mutes` table when another stream adds one |
+
+New patterns: `nt-line` (a mark, a bold fact, a small "what to do"), `nt-reach` (a dot, a name, words), `nt-times` (two time fields in a row that wraps). All from tokens; ids start with `nt-`.
+### Review 22, Ekta: the confirm card, "Ekta and me", and "Aaj ka din" (2026-11-13)
+
+Checked at 320 and 390, light and dark, and at 1280 for sideways scroll and small text, on the real app with a family of three and a relative who is not on Parwah (`site/tests/db/ektaagent.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on Ekta's screen with a card waiting in senior mode, after a yes, with a WhatsApp hand-off, on the "Ekta and me" sheet, on the morning row on Today and on the "Aaj ka din" sheet).
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| C1 | 3 User control | An assistant that can send a message or make a plan could do it on a misheard word | 4 | Fixed: she never acts. Every such thing is a card, "Ekta wants to: send "I reached" to Rohan", with "Yes, do it" and "No". The server runs it once on the yes, as that member, through the same handler as the screen. A second tap does nothing; a card is good for 30 minutes |
+| C2 | 1 Visibility | "Done!" from an assistant when nothing was done | 4 | Fixed: under her words the server writes what really happened: "Waiting for your yes", "Not done" with the reason, and that time or steps ran out. The old "Ho gaya!" on an unfinished turn is gone |
+| C3 | 10 Privacy | She could read out what one person kept from another, or post it into the family chat | 4 | Fixed: each read uses the owning feature's own rule for this member. In a shared chat she is given only what the whole family sees and can prepare nothing. A reply that is only her records fallback is never posted there |
+| C4 | 2 Real-world match | "Ekta" is also the word for unity: she answered a family talking about its ekta | 3 | Fixed: she answers to "@Ekta" or her name as the first word. The chat screen says so |
+| C5 | 7 Flexibility | A parent who does not type could not send word | 3 | Fixed: "Ekta, tell Rohan I reached" by voice makes the card with no AI key and no coins. In senior mode the two buttons are 56px tall and the answer is read aloud |
+| C6 | 2 Real-world match | "Papa", "Dadi" and "kal" guessed by a model | 3 | Fixed: worked out by rule in the member's own family and time zone before any model. Two grandmothers: she asks which one. A guess ("kal" as tomorrow, "at 7" as the morning) is marked for her to check |
+| C7 | 3 User control | Memory that fills up by itself | 4 | Fixed: she asks "Shall I remember this?" and saves on a yes only. "What Ekta remembers about me" lists each thing with Forget, and "Forget everything" asks first. Passwords, PINs, OTPs, card numbers and health readings are refused |
+| C8 | 3 User control | No way to stop her | 3 | Fixed: "Ekta may do things for me" (off: she only reads out), and for adults "Pause Ekta for this family". Emergency words and SOS work either way. "What Ekta did for me" lists each confirmed action by kind and time, never its words |
+| C9 | 8 Minimalist | Nudges can nag or shame | 3 | Fixed: three, each off until ticked, only for me, never 9pm to 8am, two a day at most, plain facts ("You have not spoken with Maa in 9 days"). The person it is about is never told |
+| C10 | 2 Real-world match | Someone the family has lost could be messaged, reminded or wished | 4 | Fixed: never found by name or family word, an old card for them is refused at the yes, and they are in no morning note and no nudge |
+| C11 | 7 Flexibility | The senior note had words only | 2 | Fixed: one big "Sunao" button reads the morning and the evening note aloud in the member's language, with the two thumbs. The evening setting stays out of senior mode |
+| C12 | 5 Error prevention | A message to someone not on Parwah silently went nowhere | 3 | Fixed: she says they are not on Parwah and offers a button that opens WhatsApp with the words filled in, for the member to send. "You send it yourself. Parwah does not send anything on WhatsApp." |
+| C13 | 4 Consistency | The Hindi lines she speaks are in Devanagari, and the app page holds none by the owner's rule | 2 | Open: the page itself has none (its last-resort Hindi lines are in Roman letters); the Devanagari lines come from the server only for a member who chose Hindi. The owner to confirm |
+| C14 | 9 Error recovery | A voice not heard, or no connection, left a silent screen | 2 | Fixed: she says so in the member's language, on screen and aloud |
+
+New patterns: the confirm card (`.ek2card` with `.ek2row`), the bar under her chat (`.ek2bar`), a plain list with one action per row (`.ek2list`), a sheet heading (`.ek2h`) and the read-aloud button (`.ek2sunao`). All from existing tokens; no new token. The sheets are the app's one bond sheet; the morning row is a `bondtoday` row. Ids start with `ek2-`.
+### Review 23, safety and alerts said honestly (2026-11-13)
+
+Checked at 320 and 390 in light and dark, and at 1280 for sideways scroll, on the real app with a family of three (`site/tests/db/safety.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the Safety card, the two questions on Today, the sheet that asks for a second adult, a person's card with a mark that is waiting, the confirmation sheet and the SOS screen).
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| A1 | 1 Visibility | A family could believe a phone would ring in an SOS when no calls are set up | 4 | Fixed: "Calls and texts are not set up. Family is told inside Parwah." in Profile and on the SOS screen, next to the Call buttons |
+| A2 | 1 Visibility | Timed alerts can be late and nobody could tell | 3 | Fixed: one quiet line for adults, "Reminders last ran: 2 minutes ago", and a plain warning past 15 minutes. The time shown is from before this phone woke the timer, so a gap is not hidden by opening the app |
+| A3 | 3 User control | A person's check-in could be paused for 90 days by someone else, with a notice afterwards | 4 | Fixed: it is a question on their own phone, "Nothing changes until you say yes". The asker sees it waiting |
+| A4 | 3 User control | A medicine with no tick told the whole family, whatever the person wanted | 4 | Fixed: asked once on their own phone, off until they answer, changeable under Profile. For someone not on Parwah only the one carer who marks is told |
+| A5 | 2 Real-world match | "medicines are not marked" and "Running late (Rohan has it)" read as blame | 3 | Fixed: "have no tick yet ... may have had them and not tapped", and a late task tells only its owner first; the family line a window later names nobody |
+| A6 | 5 Error prevention | One adult could mark a living, quiet person as no longer with us | 4 | Fixed: for someone on Parwah a second adult is named and must confirm; their card shows it waiting; the person can stop it, and can still undo it afterwards |
+| A7 | 2 Real-world match | Dignity: someone who has passed away could still be listed on the SOS screen or rung | 4 | Fixed on the server, everywhere a person is chosen to call or alert |
+| A8 | 9 Error recovery | A grown-up with no date of birth is refused when starting "What needs doing" | 2 | Fixed in words: "Add your date of birth in Edit profile first." Open: the after-loss screen could offer that step itself |
+| A9 | 2 Real-world match | A family that has just lost someone who used Parwah is told "used Parwah recently" for 30 days | 3 | Open, for the owner: the guard protects a living person; a kinder path (two adults and a waiting day, with the person told) may be wanted |
+
+New patterns: `.sf-line` (one quiet line in a card, `.sf-warn` when it is a warning) and `.sf-mp` (a waiting note with its buttons on a person's card). Both are built from existing tokens; no new token. The questions on Today are the existing `crow fcrow` rows. Ids start with `sf-`.
+### Review 24, Being heard and answered: the mood card, a private word, shukriya, the weekly question, equal votes (2026-11-13)
+
+Checked at 320 and 390, light and dark, and Today at 1280, on the real app with a family of six: two adults, a parent in senior mode, a child of 13, someone not on Parwah and someone who is remembered (`site/tests/db/heard.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the Today cards, each sheet, the chat header and its "More" sheet, a secret ballot in the chat and as a date poll, the lock question with its tally, the festivals, a card with "Say thank you", the card laid out to print, the stories list, a photo's actions and the Pasand note).
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| N.1 | 10 Privacy | Saying "I am low" put it on the family feed for everyone, so the honest answer was the one nobody gave | 4 | Fixed: an answer is saved private first. Three plain choices follow, with "Keep to myself" already chosen: "Tell only...", "Tell the family". The feed and every other phone get it only by that choice, and the rule is in the query |
+| N.2 | 2 Real-world match | Five faces with no words asked people to read an emoji | 3 | Fixed: each choice is a word in the family's tongue with the English under it, next to its emoji ("Mann udaas hai", "A bit low"). The same for reactions on a photo ("Pranam", "Shabash") and for every button here |
+| N.3 | 3 User control | The quiet member had no way to say "I need to talk" without the whole family reading it | 4 | Fixed: a private word to one chosen person, with "When it suits you" as the default. The card on both phones starts "Only you and Meena can see this". Either can put it away |
+| N.4 | 1 Visibility | A private word could sit unanswered with no way to answer in one tap | 3 | Fixed: three answers on the card, in words: "I will call you at...", "Aao, baat karte hain (Come, let us talk)", "Answer by voice". One reminder after a day, then nothing; the sender is never shown "not answered" |
+| N.5 | 8 Minimalist | Thanks could turn into a scoreboard | 3 | Fixed: no count and no list of who thanks most anywhere. One quiet thought a week, one person, "Not this week" beside it |
+| N.6 | 4 Consistency | A weekly question where the first answer sets the tone for the rest | 2 | Fixed: answers show only after your own. Before that the card says so in one line |
+| N.7 | 5 Error prevention | The host could lock a date without seeing how people had answered | 3 | Fixed: the lock question lists every date with its yes, maybe and no, marks the one most can make and the one being locked, and says who is still to answer |
+| N.8 | 10 Privacy | "Who voted" showed names on every poll | 3 | Fixed: a secret ballot has no "Who voted" button at all, and says "only the counts are shown, to everyone". The server sends no names, so there is nothing to hide on the screen |
+| N.9 | 6 Recognition | A vote or an answer for someone not on Parwah could pass as the typist's own | 3 | Fixed: always both names, in the same words everywhere: "for Dadi, by Rohan", "told by Dadi, recorded by Rohan", "noted by Meena" |
+| N.10 | 5 Error prevention | Saving the festival list replaced what another member had picked | 3 | Fixed: one tap adds or takes off one festival, saved at once, and the feed says who changed what. The "Save our festivals" button is gone |
+| N.11 | 2 Real-world match | Dignity: a birthday card with nothing in it was announced to the person | 4 | Fixed: an empty card is never handed over or shown to them. The evening before, the other adults are told it is still empty, and the message says the person is not told |
+| N.12 | 7 Flexibility | Senior mode | 2 | Fixed: the same cards, with 64px mood choices at 18px and full-width answers. Voice is offered beside typing on every sheet |
+| N.13 | 4 Consistency | The chat header gained a fifth control at 320px | 2 | Fixed: one short "More" button (mute, and a private word in a 1:1 chat). It reads "Muted" when the chat is muted. Measured at 320 |
+| N.14 | 9 Error recovery | Deleting a message by mistake | 2 | Fixed: only my own message offers it, in words, and it asks first in the app's own sheet |
+| N.15 | 1 Visibility | Open: the mood card sits on Today every day, answered or not | 1 | Open: left on so the answer can be changed as the day turns. To review with real families |
+| N.16 | 10 Help | Open: voice notes on these sheets are recorded with the stories recorder (up to 3 minutes), longer than a thank-you needs | 1 | Open: one recorder for now; a shorter cap can be set per sheet later |
+
+New patterns: the mood choices (`.hdmoods`, `.hdmood`) and three small text helpers (`.hdline`, `.hdtold`, `.hdfull`). Everything else is an existing part: `mbcard` for the Today cards, the family memory sheet, `pkind` for choices, `bondline` for entries, the family book's print layout for a card. No new token. Ids start with `hd-`.
+### Review 25, consent, control and care both ways (2026-11-13)
+
+Checked at 320 and 390, light and dark, and at 1280, on the real app with a family of four (`site/tests/db/consent.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the Ashirwad sheet, the Reached safely sheet, every card on Today, the location card, Costs for the person cared for, Home staff for a child, the choices on the emergency card and a person's sheet).
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| B1 | 3 User control | Saving a place announced everyone's arrivals, with no say for the person | 4 | Fixed: "Announce my arrivals" is each person's own switch, off until they say yes. Saving a place asks each person once, on their own phone |
+| B2 | 3 User control | "Ask to share" could repeat every ten minutes with no way to decline | 3 | Fixed: the person sees who asked, with "Share my location" and "Not now". Not now stops that person asking for 7 days, and nobody is told off |
+| B3 | 1 Visibility | Nobody knew who had looked at where they were | 3 | Fixed: "Seen by Rohan, 10 min ago" on the person's own screen. A position is sent to someone else only when they open Family, and that look is written down |
+| B4 | 1 Visibility | An old position looked the same as a live one | 3 | Fixed: older than 5 minutes says "Last seen 12 min ago" on its own bold line, and the word "updated" is not used |
+| B5 | 3 User control | A daily call rota was arranged about a parent, without them | 3 | Fixed: they are told, choose "The time that suits me", or say "No daily call, thank you" (asked once, in the app's own sheet). After a no, only they can ask for one again |
+| B6 | 10 Privacy | The person cared for, and children, could read what their care costs | 4 | Fixed: the ledger is for the people who pay. "Show me the costs" is the person's own switch. The feed says only that a cost was noted |
+| B7 | 8 Minimalist | A late home-staff alert went to the whole family and the feed | 2 | Fixed: one named owner is told, with "Sunita came" and "On leave today" as one-tap answers. A day off marked ahead is skipped |
+| B8 | 10 Privacy | A child could read salaries, advances and the safe word | 4 | Fixed: an adult-only read, decided on the server. An adult can mark someone with no date of birth as a child; the sheet says plainly what a child is and is not sent |
+| B9 | 2 Real-world match | Care only flowed one way: children checked on a parent | 3 | Fixed: Ashirwad, on the parent's own big button, with a few one-tap lines or a voice note, answered with "🙏 Pranam" or a voice reply; and "How is your day?" asked of a child |
+| B10 | 5 Error prevention | "Reached safely" could worry people if forgotten, or ask the wrong people | 3 | Fixed: only the people the traveller chose are told. The ask to call comes once, 30 minutes after the time, in gentle words, with "30 minutes more" on the traveller's own card |
+| B11 | 10 Privacy | Anyone in the family could open anyone's emergency card | 3 | Fixed: the person and the adults they chose; all adults while that person's SOS is open. The card says who to call first, carries the line "a record your family keeps, not medical advice", prints without the private choices, and opens with no signal once opened |
+| B12 | 7 Flexibility | Open: the card cannot be saved as a picture | 1 | Open: Print (and the phone's Save as PDF) only, for now |
+| B13 | 4 Consistency | Open: the SOS alarm and the missed-dose push still go to children | 3 | Open: those pushes belong to another stream; `audienceFor` is exported for them to adopt at merge |
+
+New patterns: the care card (`.cn-card`, with `.late` and `.ok`), its row of answers (`.cn-acts`), the person chips (`.cn-who`), the one-tap lines (`.cn-lines`), a switch row (`.cn-switch`), the "Last seen" line (`.cn-last`) and the "Seen by" line (`.cn-seen`). All built from existing tokens; no new token. Ids start with `cn-`.
+### Review 26, accounts, joining and equal standing (2026-11-13)
+
+Checked at 320 and 390, light and dark, and at 1280 for sideways scroll, on the real app with a family of five, a profile made by name and three extra phones (`site/tests/db/standing.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the sign-in card in both modes, the waiting screens, the card that lets someone back in, the card for what the family decides, a request that says "this is me", the member page with "Remove from this family", "What your family wrote about you", the five new Profile cards, the delete sheet and the account notices on Today). Three people were kept in mind throughout, and each has a section of the database test: the parent with one cheap phone, the person in two families, and the family with a single adult.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| E1 | 10 Privacy | Typing any number told you whether its owner uses Parwah ("this number is new", "older PIN", "not in a family yet") | 4 | Fixed: the card asks first, "I have a profile" or "I am new here". Every number is asked for a PIN in the same words, a wrong PIN says "That number and PIN do not match", and asking the family reads the same for a number nobody has |
+| E2 | 5 Error prevention | A stranger typing wrong PINs locked a parent out of their own phone | 4 | Fixed: a phone that has signed in before keeps its own count. The lock itself now grows (15 minutes, 1 hour, 24 hours), and the owner is told in plain words that their own phones still work |
+| E3 | 3 User control | A sign-in on another phone happened silently | 3 | Fixed: the older phones show "New sign-in on another phone. Was this you?" with "Yes, it was me" and "Not me". Nothing waits for an answer, so a parent with one phone is never blocked |
+| E4 | 5 Error prevention | "Let them in" after a forgotten PIN was one tap, with no proof of a call | 4 | Fixed: the asking phone shows two numbers; the adult types them. The button will not send without them, and the words say to call first |
+| E5 | 9 Error recovery | Someone whose age nobody wrote down was shown a reset they could not approve, with no way forward | 3 | Fixed: the refusal says to add their date of birth and takes them to that field |
+| E6 | 1 Visibility | A yes to a reset while the owner is signed in elsewhere waits ten minutes; the waiting phone would look stuck | 3 | Fixed: "Your family said yes. To keep you safe, the new PIN can be chosen in a few minutes. This screen checks by itself." |
+| E7 | 2 Real-world match | "Approval", "admin", "revoke", "session" are not family words | 2 | Fixed: "An adult in the family has to say yes", "Sign out", "Was this you?", "Keep my account". No role is named anywhere: there is no owner, only grown-ups |
+| E8 | 8 Minimalist | Five kinds of decision could become five cards on the Family tab | 2 | Fixed: one card, "For the family to decide", shown only when something is waiting, with one row per question and Yes or No on each |
+| E9 | 3 User control | A child saw buttons that would only be refused | 2 | Fixed: a child or a teen is not shown "Let the code be enough", "Set your own code", "Delete this family" or the card of decisions. The server refuses them as well |
+| E10 | 5 Error prevention | Deleting an account or a family is final, and a tap is easy | 4 | Fixed: the account asks for the PIN again; the family needs every adult. Both wait 7 days, say the date on Today and in Profile, and "Keep my account" or "Stop the delete" is one tap |
+| E11 | 10 Privacy | Joining under a name the family had written said "someone is already called Chacha" to a stranger | 3 | Fixed: it becomes a request an adult answers, with "This is" and the profiles made by name. The person waiting is told only that the request has gone, never the family's name |
+| E12 | 3 User control | A person had no say over what the family wrote about them before they joined | 3 | Fixed: on their first visit, "What your family wrote about you", with keep, hide or delete for each thing |
+| E13 | 2 Real-world match | Dignity: removing a person could read as a punishment | 3 | Fixed: plain and neutral words ("is no longer in the family", "decided this together"), no reason asked for or shown, the person is told once, and it is never one adult's act against another adult |
+| E14 | 6 Recognition | "My activity" and "Devices" could be a wall of technical rows | 2 | Fixed: one sentence per row ("Rohan opened your hospital papers", "Chrome on Android phone, this one"), newest first |
+| E15 | 4 Consistency | The delete button is red only once the sheet opens (the class is added in code so the gradient rule keeps status colours) | 1 | Open: cosmetic, same pattern as the app's own confirm sheet |
+| E16 | 9 Error recovery | A message from someone who has left showed under Ekta's name | 3 | Fixed for text messages: "A former member". Open: a photo, a voice note or a poll from someone who has left still shows under Ekta's name, and the chat list preview does too |
+
+New patterns: none. The two-button choice on the sign-in card is the app's `seg`; every notice is a `resetcard`; every row of the decisions card is an `ev` with a `prow2`; the two sheets are the app's `msheet`. No new CSS and no new token. Ids start with `ac-`, functions with `ac`.
+
+### Review N (fix pass), what the review of the combined build found (2026-11-14)
+
+Checked at 320 and 390, light and dark, on the real app (`standing.e2e`, `consent.e2e` and `heard.e2e` measure the changed screens). No new screen and no new pattern: every change is words, or a row in a card that already exists.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| F1 | 5 Error prevention | One adult could ask for another member's PIN reset from their own phone and say yes to it themself | 4 | Fixed: the phone that asked cannot say yes ("Someone else in the family has to say yes, from their own phone"). The new PIN always waits ten minutes, and the adult who said yes is told so |
+| F2 | 1 Visibility | "Has not tapped Reached safely", "cannot get in", "asked to reset your PIN", wrong PIN tries and a new sign-in waited for the morning | 4 | Fixed: they get through quiet hours and no switch turns them off. A chat called "Mum is safe" no longer does |
+| F3 | 4 Consistency | Five rules said who is an adult, and disagreed | 4 | Fixed: one rule, on the server and in every query |
+| F4 | 3 User control | One adult could answer "not an adult" about another and then remove them alone | 4 | Fixed: the person is asked in the decisions card ("Rohan says you are under 18. Is that right?"), or a second adult is. A row of the existing card, Yes and No |
+| F5 | 5 Error prevention | After "Not me" the intruder could choose the new PIN first | 4 | Fixed: only a phone that was already theirs. Any other phone is told to use "Forgotten your PIN", in plain words |
+| F6 | 10 Privacy | A signed-out phone went on getting the family's alerts | 3 | Fixed on the server and on the phone |
+| F7 | 10 Privacy | The emergency card's lock was on the screen only: the Family book sent the same details to every member | 4 | Fixed in the query. Where details are kept back the book says "Papa's health details are on their emergency card", one line a person, so an empty list is not read as nothing saved. Ekta says the same instead of "nothing is recorded" |
+| F8 | 10 Privacy | "Download my data" could hold a paper the owner had taken back | 3 | Fixed: only what the person can open today |
+| F9 | 10 Privacy | A phone its owner kept to themself still went out through Ekta, a trip and a card's contacts | 3 | Fixed: the card says "keeps their number to themself. Ask Papa for it." |
+| F10 | 2 Real-world match | A secret ballot showed live counts beside "Waiting for" | 3 | Fixed: "3 of 5 have voted" and "the counts stay hidden until the poll closes", then the counts |
+| F11 | 9 Error recovery | A child who types a date of birth that makes them 18 | 3 | Fixed: the rest of the profile saves, and the toast says an adult has to say yes; the adult sees the new date and Yes or No |
+| F12 | 1 Visibility | Open: a secret DATE poll still shows live counts (the host needs the tally to lock a date) | 2 | Open: said in the coverage notes |
+| F13 | 3 User control | Open: an adult who is not chosen on Papa's card no longer sees Papa's medicines in the Family book unless they wrote the entry, Papa shared it by name, or an SOS is open | 2 | Open by design: it is the card's own rule. Worth a second look with real families |
+
+New patterns: none.

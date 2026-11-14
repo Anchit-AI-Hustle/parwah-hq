@@ -138,10 +138,41 @@ const PUNE = { lat: 18.520430, lng: 73.856743, accuracy: 12 };
   for (let i = 0; i < 5; i++) last = await loc(papaPhone2, { action: 'lost_off', pin: '1111' });
   ok('the fifth wrong PIN locks it', last.status === 429 && last.locked === true, JSON.stringify(last));
   ok('then even the right PIN waits', (await loc(papaPhone2, { action: 'lost_off', pin: '4819' })).status === 429 && !!(await find(papaPhone2)).lost);
-  const u = (await admin.query('select locked_until from users where id = $1', [papa.userId])).rows[0];
-  ok('the lock is the sign-in lock, so a finder cannot try PINs there instead', u.locked_until && new Date(u.locked_until) > new Date());
-  await admin.query('update users set locked_until = null, pin_tries = 0 where id = $1', [papa.userId]);
+  // THE SAME LOCK AS SIGNING IN (pin_locks, api/_account.mjs), not a flat
+  // counter of its own: 15 minutes, then an hour, then a day.
+  const lockRow = async () => (await admin.query('select k, level, locked_until from pin_locks where locked_until > now()')).rows;
+  let lk = await lockRow();
+  ok('the lock is the sign-in lock, so a finder cannot try PINs there instead', lk.length === 1 && lk[0].level === 1
+     && Math.abs((new Date(lk[0].locked_until) - Date.now()) / 60000 - 15) < 1, JSON.stringify(lk));
+  ok('no counter of its own is kept on the account', (await admin.query('select pin_tries, locked_until from users where id = $1', [papa.userId])).rows[0].pin_tries === 0);
+  // The wait passes; five more wrong PINs lock for an HOUR, not 15 minutes again.
+  await admin.query(`update pin_locks set locked_until = now() - interval '1 second'`);
+  for (let i = 0; i < 5; i++) last = await loc(papaPhone2, { action: 'lost_off', pin: '2222' });
+  lk = await lockRow();
+  ok('the second lock is an hour: the lock grows, so the PIN cannot be walked', last.status === 429 && lk.length === 1 && lk[0].level === 2
+     && Math.abs((new Date(lk[0].locked_until) - Date.now()) / 60000 - 60) < 1, JSON.stringify(lk));
+  await admin.query(`update pin_locks set locked_until = now() - interval '1 second'`);
+  for (let i = 0; i < 5; i++) last = await loc(papaPhone2, { action: 'lost_off', pin: '3333' });
+  lk = await lockRow();
+  ok('the third is a day', lk.length === 1 && lk[0].level === 3 && Math.abs((new Date(lk[0].locked_until) - Date.now()) / 3600000 - 24) < 0.1, JSON.stringify(lk));
+  await admin.query(`update pin_locks set locked_until = now() - interval '1 second'`);
   ok('after the wait, his PIN works', (await loc(papaPhone2, { action: 'lost_off', pin: '4819' })).status === 200);
+}
+
+// ---- a ring is capped: once a minute for one phone, 20 a day from one person
+{
+  await admin.query(`delete from rate_limit where bucket in ('findring', 'findringday')`);
+  let r = await loc(rohan, { action: 'ring', targetId: papa.id });
+  ok('a ring goes', r.status === 200, JSON.stringify(r));
+  r = await loc(rohan, { action: 'ring', targetId: papa.id });
+  ok('a second within the minute waits', r.status === 429);
+  for (let i = 0; i < 19; i++) { await admin.query(`delete from rate_limit where bucket = 'findring'`); r = await loc(rohan, { action: 'ring', targetId: papa.id }); }
+  ok('twenty in a day are let through', r.status === 200, JSON.stringify(r));
+  await admin.query(`delete from rate_limit where bucket = 'findring'`);
+  r = await loc(rohan, { action: 'ring', targetId: papa.id });
+  ok('the twenty-first is not, and says so kindly', r.status === 429 && /tomorrow/.test(r.error), JSON.stringify(r));
+  await admin.query(`delete from rate_limit where bucket = 'findring'`);
+  ok('someone else can still ring that phone', (await loc(meera, { action: 'ring', targetId: papa.id })).status === 200);
 }
 
 for (const p of globalThis.__parwahPools || []) await p.end();

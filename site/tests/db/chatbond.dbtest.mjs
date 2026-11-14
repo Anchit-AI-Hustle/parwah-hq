@@ -93,7 +93,7 @@ const voice = (who, chatId, text, secs) => call(who, { body: { action: 'send', c
   ok('it is kept as audio, with its length', m && m.kind === 'audio' && m.audio_secs === 3 && m.text.startsWith('data:audio/webm;base64,'));
   const last = (await list(meera)).find(c => c.id === famChat).last;
   ok('the chat list says "🎙 Voice note (0:03)"', last && last.text === '🎙 Voice note (0:03)', last && last.text);
-  ok('the family hears about it once each, as a voice note', pushed.length === 2 && pushed.every(p => p.body.body === '🎙 Voice note (0:03)'), JSON.stringify(pushed.map(p => p.body)));
+  ok('the family hears about it once each, as a voice note', pushed.length === 2 && pushed.every(p => p.body.body.replace(/ · Sharma Family$/, '') === '🎙 Voice note (0:03)'), JSON.stringify(pushed.map(p => p.body)));
   r = await voice(nani, famChat, fakeAudio(4000, [0x4F, 0x67, 0x67, 0x53, 0, 0, 0, 0], 'audio/ogg'), 1);
   ok('an ogg recording is taken too', r.status === 201, JSON.stringify(r));
   r = await voice(nani, famChat, fakeAudio(9000, [0, 0, 0, 0x20, 0x66, 0x74, 0x79, 0x70, 0x4D, 0x34, 0x41, 0x20], 'audio/mp4'), 2);
@@ -189,7 +189,7 @@ const voice = (who, chatId, text, secs) => call(who, { body: { action: 'send', c
   let r = await ask(rohan, famChat, { question: 'Sunday lunch at whose house?', options: ['Nani\'s', 'Meera\'s', 'Order in'] });
   ok('Rohan asks the family', r.status === 201 && !!r.pollId, JSON.stringify(r));
   const poll = r.pollId;
-  ok('one push to each of the others, saying what he asked', pushed.length === 2 && pushed.every(p => p.body.body === 'Sunday lunch at whose house?' && /Rohan asked/.test(p.body.title)), JSON.stringify(pushed.map(p => p.body)));
+  ok('one push to each of the others, saying what he asked', pushed.length === 2 && pushed.every(p => p.body.body.replace(/ · Sharma Family$/, '') === 'Sunday lunch at whose house?' && /Rohan asked/.test(p.body.title)), JSON.stringify(pushed.map(p => p.body)));
   ok('the chat list says "📊 Poll: ..."', (await list(meera)).find(c => c.id === famChat).last.text === '📊 Poll: Sunday lunch at whose house?');
 
   pushed.length = 0;

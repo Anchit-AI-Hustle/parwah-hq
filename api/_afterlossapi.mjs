@@ -25,6 +25,7 @@ import { pushCircle } from './_push.mjs';
 import { registerRowFor, registerLogsView, registerSecretRisk } from './_register.mjs';
 import { ensureCarePrepSchema, registerRows, registerSos, registerLogView, recordAuditEvent } from './_careprep.mjs';
 import { noteRisk } from './_notesapi.mjs';
+import { rememberRecent, rememberRecentWhy } from './_remember.mjs';
 import {
   AFTERLOSS_NAME, AFTERLOSS_SORRY, AFTERLOSS_LEGAL,
   afterlossKey, afterlossIsAdult, afterlossStartRule, afterlossOpens, afterlossInForce, afterlossSteps, afterlossNote, afterlossPush
@@ -147,7 +148,22 @@ export async function afterlossActiveFor(sql, circleId, personId) {
   } catch (e) { return false; }
 }
 
-const circleMembers = (sql, circleId) => sql`select id, name, user_id, remembered, to_char(dob, 'YYYY-MM-DD') as dob from members where circle_id = ${circleId} order by created_at`;
+// role, relation, spouse and children are what say "adult" when no date of
+// birth was written (afterlossIsAdult).
+const circleMembers = (sql, circleId) => sql`select m.id, m.name, m.user_id, m.remembered, to_char(m.dob, 'YYYY-MM-DD') as dob,
+                                                    m.role, m.relation, m.spouse_id,
+                                                    coalesce((to_jsonb(m)->>'is_child')::boolean, false) as is_child, (to_jsonb(m)->>'adult_confirmed')::boolean as adult_confirmed,
+                                                    exists (select 1 from members c where c.parent_id = m.id) as has_child
+                                             from members m where m.circle_id = ${circleId} order by m.created_at`;
+
+// SOMEONE WHO USED PARWAH IN THE LAST 30 DAYS is very likely alive: no list
+// about them is started, confirmed or opened again. The same guard as the
+// "no longer with us" mark (rememberRecent in api/_remember.mjs).
+async function recentStop(sql, res, person) {
+  if (!person || !(await rememberRecent(sql, person))) return false;
+  res.status(409).json({ ok: false, error: rememberRecentWhy(person.name), recent: true });
+  return true;
+}
 
 function listOut(l, me, members) {
   const name = (id) => { const m = members.find(x => x.id === id); return m ? m.name : null; };
@@ -251,6 +267,7 @@ export default async function afterlossApi(req, res) {
         if (!person) return res.status(403).json({ ok: false, error: 'Choose someone in this family' });
         const rule = afterlossStartRule({ me: meRow, personId: person.id, members, askId: isUuid(body.askId) ? body.askId : null });
         if (rule.error) return res.status(rule.status).json({ ok: false, error: rule.error, field: rule.field });
+        if (await recentStop(sql, res, person)) return;
         // Two phones starting at once: the family gets one list, not two.
         const made = rule.needs
           ? await sql`insert into afterloss_lists (circle_id, person_id, status, started_by, ask_member)
@@ -278,13 +295,22 @@ export default async function afterlossApi(req, res) {
       if (action === 'afterloss_confirm') {
         if (list.status !== 'pending') return res.status(409).json({ ok: false, error: 'This has already been answered.' });
         if (!can.can_confirm) return res.status(403).json({ ok: false, error: 'Only ' + (can.ask_name || 'the person who was asked') + ' can confirm this.' });
+        // Asked again at the moment it would come into force: they may have
+        // opened Parwah since the first adult started this.
+        if (await recentStop(sql, res, members.find(m => m.id === list.person_id))) return;
         const r = await sql`update afterloss_lists set status = 'active', confirmed_by = ${g.me.id}, confirmed_at = now()
                             where id = ${list.id} and status = 'pending' and ask_member = ${g.me.id} returning id`;
         if (!r[0]) return res.status(409).json({ ok: false, error: 'This has already been answered.' });
         await audit('afterloss_confirm', list.id);
         await markRemembered(sql, g.circle.id, list);
         // The one push to the family, each time the list comes into force.
-        await pushCircle(sql, g.circle.id, afterlossPush(can.reopening ? 'reopened' : 'started', { starter: can.started_by_name || 'Someone in the family', person: can.person_name, confirmer: g.me.name }), { except: g.me.id });
+        const told = afterlossPush(can.reopening ? 'reopened' : 'started', { starter: can.started_by_name || 'Someone in the family', person: can.person_name, confirmer: g.me.name });
+        await pushCircle(sql, g.circle.id, told, { except: g.me.id });
+        // The person it is about is now marked as remembered, and a
+        // remembered person is never pushed. This is the one exception, at
+        // this one moment: if they are alive and reading, this is how they
+        // find out and close it.
+        await pushCircle(sql, g.circle.id, told, { only: list.person_id, evenRemembered: true });
         return res.status(200).json({ ok: true, state: 'active' });
       }
       if (action === 'afterloss_cancel') {
@@ -322,6 +348,7 @@ export default async function afterlossApi(req, res) {
         const person = members.find(m => m.id === list.person_id);
         const rule = afterlossStartRule({ me: meRow, personId: list.person_id, members, askId: isUuid(body.askId) ? body.askId : null });
         if (rule.error) return res.status(rule.status).json({ ok: false, error: rule.error, field: rule.field });
+        if (await recentStop(sql, res, person)) return;
         const state = rule.needs ? 'pending' : 'active';
         const r = await sql`update afterloss_lists set status = ${state}, started_by = ${g.me.id}, ask_member = ${rule.needs ? rule.askId : null},
                               confirmed_by = null, confirmed_at = ${rule.needs ? null : new Date().toISOString()}::timestamptz, solo = ${!rule.needs},

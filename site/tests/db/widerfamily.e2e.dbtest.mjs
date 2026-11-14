@@ -230,7 +230,14 @@ await design(PK, '#fl-sheet', 'a request waiting for an answer');
 if (process.env.WF_SHOT_DIR) await PK.screenshot({ path: process.env.WF_SHOT_DIR + '/wider-request-320-dark.png' });
 await PK.check('#fl-list [data-flshare]');
 await PK.click('#fl-list [data-flyes]');
-ok('Kishan says yes: the link shows as on, with a way to end it', await shown(PK, '#fl-list [data-flend]') && await sees(PK, '#fl-list', /Linked now: 1 of 6/));
+// His yes starts a 48-hour wait in which any adult of either family can
+// object (site/tests/db/standing.dbtest.mjs proves the wait and the timer).
+ok('Kishan says yes: the sheet says when the trees will be linked, and that an adult can object', await shown(PK, '#fl-list [data-flwait]') && await sees(PK, '#fl-list', /Starting soon/) && await sees(PK, '#fl-list', /unless an adult in either family objects/) && await shown(PK, '#fl-list [data-aclno]'));
+await design(PK, '#fl-sheet', 'a link that starts in 48 hours');
+// The 48 hours pass with no objection.
+await admin.query(`update family_links set effective_at = now() - interval '1 minute' where agreed_at is not null and status = 'pending'`);
+await PK.click('#fl-x'); await PK.click('#fl-open');
+ok('after the 48 hours the link shows as on, with a way to end it', await shown(PK, '#fl-list [data-flend]') && await sees(PK, '#fl-list', /Linked now: 1 of 6/));
 await design(PK, '#fl-sheet', 'one linked family');
 await PK.click('#fl-x');
 ok('his tree card gains "Linked family: Sharma Family"', await sees(PK, '#fl-trees', /Linked family: Sharma Family/) && await gone(PK, '#fl-sheet'));

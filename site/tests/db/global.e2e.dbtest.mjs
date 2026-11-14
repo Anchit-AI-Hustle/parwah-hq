@@ -9,6 +9,12 @@
 import http from 'http';
 import { readFile } from 'fs/promises';
 import path from 'path';
+// No fixed waits: a screen is ready when its requests have come back and it
+// has been painted. (This test used to sleep, and failed about one run in four.)
+async function settle(page) {
+  await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
+  await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+}
 
 const url = process.env.PARWAH_TEST_DATABASE_URL;
 if (!url) { console.log('global.e2e: PARWAH_TEST_DATABASE_URL is not set - skipped.'); process.exit(process.env.CI ? 1 : 0); }
@@ -89,7 +95,7 @@ async function phone(who, tz, hash = '#home') {
   }, [who]);
   const page = await ctx.newPage();
   page.on('pageerror', e => errors.push(who.name + ': ' + e.message));
-  await page.goto(BASE + '/' + hash); await page.waitForTimeout(1500);
+  await page.goto(BASE + '/' + hash); await settle(page);
   return page;
 }
 const P = await phone(priya, 'Europe/London');
@@ -98,44 +104,48 @@ const P = await phone(priya, 'Europe/London');
 ok('the SOS sheet calls 999 for a member in the UK', /tel:999/.test(await P.$eval('#ss-calls', e => e.innerHTML)), await P.$eval('#ss-calls', e => e.innerHTML));
 
 // ---- a household bill, in pounds, with no UPI
-await P.evaluate(() => { location.hash = '#care'; }); await P.waitForTimeout(600);
-await P.click('#care-seg [data-sec="bills"]'); await P.waitForTimeout(900);
+await P.evaluate(() => { location.hash = '#care'; }); await settle(P);
+await P.click('#care-seg [data-sec="bills"]'); await settle(P);
+// The currency comes with the member's country, which arrives by request.
+await P.waitForFunction(() => { const l = document.querySelector('label:has(#bill-amount)'); return !!l && l.textContent.includes('£'); }, null, { timeout: 20000 }).catch(() => {});
 ok('the amount box says pounds', (await P.textContent('label:has(#bill-amount)')).includes('£'), await P.textContent('label:has(#bill-amount)'));
 ok('UPI is not offered in the UK', !(await P.isVisible('#bill-upi')));
 await P.fill('#bill-name', 'Severn Trent'); await P.fill('#bill-amount', '38');
-await P.click('#btn-add-bill'); await P.waitForTimeout(1500);
+await P.click('#btn-add-bill'); await settle(P);
+await P.waitForFunction(() => /£38/.test((document.querySelector('#bill-feed') || {}).textContent || ''), null, { timeout: 20000 }).catch(() => {});
 const bill = (await admin.query(`select * from care_bills where biller_name = 'Severn Trent'`)).rows[0];
 ok('the bill is really saved', bill && Number(bill.amount_due) === 38 && bill.created_by === priya.id, JSON.stringify(bill));
 const feed = await P.textContent('#bill-feed');
 ok('and shown in pounds, with no Pay via UPI', /£38/.test(feed) && !/Rs |₹|UPI/.test(feed), feed);
-await P.click('[data-settlebill]'); await P.waitForTimeout(1500);
+await P.click('[data-settlebill]'); await settle(P);
+await P.waitForFunction(() => /Settled by Priya/.test((document.querySelector('#bill-feed') || {}).textContent || ''), null, { timeout: 20000 }).catch(() => {});
 ok('Mark as Paid settles it', (await admin.query(`select payment_status from care_bills where id = $1`, [bill && bill.id])).rows[0].payment_status === 'SETTLED');
 ok('and says who settled it', /Settled by Priya/.test(await P.textContent('#bill-feed')), await P.textContent('#bill-feed'));
 
 // ---- an address in the UK has a postcode, not a PIN code
-await P.evaluate(() => { location.hash = '#memory'; }); await P.waitForTimeout(700);
+await P.evaluate(() => { location.hash = '#memory'; }); await settle(P);
 await P.evaluate(() => { const b = document.querySelector('#b-kind [data-k="address"]'); if (b) b.click(); });
-await P.waitForTimeout(400);
+await settle(P);
 ok('the address form starts on the member\'s own country', (await P.inputValue('#b-actry')) === 'GB', await P.inputValue('#b-actry'));
 ok('and asks for a postcode, with no India Post check', (await P.textContent('#b-pin-l')) === 'Postcode / ZIP' && !(await P.isVisible('#b-pinlook')));
 await P.fill('#b-address', '12 London Road'); await P.fill('#b-pin', 'le1 7rh');
 await P.fill('#b-city', 'Leicester'); await P.fill('#b-state', 'Leicestershire');
-await P.waitForTimeout(200);
+await settle(P);
 ok('the line it will save is a UK address', (await P.textContent('#b-addrfull')) === 'Saved as: 12 London Road, Leicester - Leicestershire LE1 7RH - United Kingdom', await P.textContent('#b-addrfull'));
-await P.selectOption('#b-actry', 'IN'); await P.waitForTimeout(200);
+await P.selectOption('#b-actry', 'IN'); await settle(P);
 ok('switching to India brings back the PIN code check', (await P.textContent('#b-pin-l')) === 'PIN code' && await P.isVisible('#b-pinlook'));
 
 // ---- a card's cap is in pounds
-await P.evaluate(() => { location.hash = '#vault'; }); await P.waitForTimeout(800);
+await P.evaluate(() => { location.hash = '#vault'; }); await settle(P);
 await P.evaluate(() => { const b = document.querySelector('#vault-seg [data-sec="pay"]'); if (b) b.click(); });
-await P.waitForTimeout(900);
+await settle(P);
 ok('the payment cap is in pounds', /£/.test(await P.textContent('label[for="vp-cap"]')), await P.textContent('label[for="vp-cap"]'));
 
 // ---- Papa in Pune still sees India
 const Q = await phone(papa, 'Asia/Kolkata');
 ok('Papa\'s SOS sheet still calls 112', /tel:112/.test(await Q.$eval('#ss-calls', e => e.innerHTML)));
-await Q.evaluate(() => { location.hash = '#care'; }); await Q.waitForTimeout(600);
-await Q.click('#care-seg [data-sec="bills"]'); await Q.waitForTimeout(900);
+await Q.evaluate(() => { location.hash = '#care'; }); await settle(Q);
+await Q.click('#care-seg [data-sec="bills"]'); await settle(Q);
 ok('and the bill amount in rupees, with UPI offered', (await Q.textContent('label:has(#bill-amount)')).includes('₹') && await Q.isVisible('#bill-upi'));
 
 ok('no script errors', errors.length === 0, errors.join(' | '));

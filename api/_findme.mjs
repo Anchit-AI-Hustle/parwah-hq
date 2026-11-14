@@ -21,7 +21,8 @@
 //                         instead.
 // While Lost mode is on, location sharing cannot be stopped, blurred or given
 // an end time, the same way an open SOS holds it.
-import { tokenHash, verifyPin, MAX_TRIES, LOCK_MINUTES, lockMessage } from './_auth.mjs';
+import { tokenHash, verifyPin } from './_auth.mjs';
+import { ensureStandingSchema, pinGate, lockKey, lockReply, isKnownDevice } from './_account.mjs';
 import { rateLimit, schemaOnce } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 
@@ -79,8 +80,13 @@ export async function findState(sql, circle, me, token) {
       const here = !!token && u.lost_session === tokenHash(token);
       if (here) lostHere = true;
       else {
-        const call = u.lost_call
-          ? (await sql`select name, phone from members where id = ${u.lost_call} and phone is not null`)[0] : null;
+        // The person chosen then, unless they have since passed away: then
+        // the next living person with a number, so a finder still reaches one.
+        const call = (u.lost_call
+          ? (await sql`select m.name, m.phone from members m where m.id = ${u.lost_call} and m.phone is not null and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`)[0] : null)
+          || (u.lost_call ? (await sql`select m.name, m.phone from members m where m.circle_id = ${circle.id} and m.id <> ${me.id} and m.phone is not null
+                                        and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)
+                                      order by (m.user_id is not null) desc, m.created_at limit 1`)[0] : null);
         lost = { since: u.lost_at, message: u.lost_msg, call: call ? { name: call.name, phone: call.phone } : null };
       }
     }
@@ -103,12 +109,20 @@ export async function findAction(sql, circle, me, body, token) {
   const fam = circle.kind === 'group' ? 'group' : 'family';
 
   if (action === 'ring') {
-    const t = (await sql`select id, name, user_id from members where id = ${String(body.targetId || '')}::uuid and circle_id = ${circle.id}`
+    const t = (await sql`select m.id, m.name, m.user_id, coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered from members m
+                         where m.id = ${String(body.targetId || '')}::uuid and m.circle_id = ${circle.id}`
       .catch(() => []))[0];
     if (!t) return { status: 404, json: { ok: false, error: 'That person is not in this ' + fam } };
+    if (t.remembered) return { status: 400, json: { ok: false, error: t.name + ' is remembered here, so no phone is rung.' } };
     if (!t.user_id) return { status: 400, json: { ok: false, error: t.name + ' is not on Parwah, so their phone cannot ring from here. A call might help.' } };
-    if (!(await rateLimit(sql, 'findring', me.id + ':' + t.id, 1, 60))) {
+    // Once a minute for one phone, and 20 rings a day from one person in
+    // all: a ring is loud, and must not become a way to pester someone. If
+    // the count cannot be kept, the phone is not rung.
+    if (!(await rateLimit(sql, 'findring', me.id + ':' + t.id, 1, 60, { failClosed: true }))) {
       return { status: 429, json: { ok: false, error: 'It is already ringing - give it a minute before ringing again' } };
+    }
+    if (!(await rateLimit(sql, 'findringday', me.id, 20, 86400, { failClosed: true }))) {
+      return { status: 429, json: { ok: false, error: 'That is a lot of rings for one day. A call might help now. You can ring again tomorrow.' } };
     }
     await sql`insert into find_ring (member_id, circle_id, by_member, rang_at) values (${t.id}, ${circle.id}, ${me.id}, now())
               on conflict (member_id) do update set by_member = ${me.id}, rang_at = now(), circle_id = ${circle.id}`;
@@ -133,47 +147,42 @@ export async function findAction(sql, circle, me, body, token) {
     if (m.error) return { status: 400, json: { ok: false, error: m.error, field: 'message' } };
     let call = null;
     if (body.callId) {
-      call = (await sql`select id from members where id = ${String(body.callId)}::uuid and circle_id = ${circle.id}
-                          and id <> ${me.id} and phone is not null`.catch(() => []))[0];
+      call = (await sql`select m.id from members m where m.id = ${String(body.callId)}::uuid and m.circle_id = ${circle.id}
+                          and m.id <> ${me.id} and m.phone is not null and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`.catch(() => []))[0];
       if (!call) return { status: 400, json: { ok: false, error: 'Pick someone in the ' + fam + ' who has a phone number', field: 'call' } };
     } else {
-      call = (await sql`select id from members where circle_id = ${circle.id} and id <> ${me.id} and phone is not null
-                        order by (user_id is not null) desc, created_at limit 1`)[0] || null;
+      // Never someone who has passed away: a finder must reach a person.
+      call = (await sql`select m.id from members m where m.circle_id = ${circle.id} and m.id <> ${me.id} and m.phone is not null and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)
+                        order by (m.user_id is not null) desc, m.created_at limit 1`)[0] || null;
     }
     await sql`update users set lost_at = now(), lost_msg = ${m.text}, lost_session = ${token ? tokenHash(token) : null},
               lost_circle = ${circle.id}, lost_call = ${call ? call.id : null} where id = ${me.user_id}`;
     await feed(sql, circle.id, me.id, `📵 ${me.name} marked their phone as lost. If it is found, it shows how to reach the ${fam}.`);
-    await pushCircle(sql, circle.id, { title: '📵 ' + me.name + ' has lost their phone',
+    await pushCircle(sql, circle.id, { kind: 'safety', title: '📵 ' + me.name + ' has lost their phone',
       body: 'Its location shows in Parwah once it is back online', url: '/#people' }, { except: me.id });
     return { status: 200, json: { ok: true, lost: true } };
   }
 
-  // lost_off: the same lockout as signing in, claimed before it is checked.
-  const u = (await sql`select lost_at, pin_hash, pin_salt, locked_until from users where id = ${me.user_id}`)[0];
+  // lost_off: THE SAME LOCK AS SIGNING IN, not a counter of its own. The
+  // old one locked for a flat 15 minutes for ever (about 480 guesses a
+  // day, so every PIN in three weeks). This is pinGate: 15 minutes, then an
+  // hour, then a day, counted for THIS phone when it is one the owner has
+  // used, so a finder's guesses on the lost phone never lock the owner out
+  // of turning Lost mode off from another phone.
+  await ensureStandingSchema(sql);
+  const u = (await sql`select lost_at, phone, pin_hash, pin_salt from users where id = ${me.user_id}`)[0];
   if (!u || !u.lost_at) return { status: 200, json: { ok: true, lost: false } };
   if (!/^\d{4}$/.test(String(body.pin || ''))) return { status: 400, json: { ok: false, error: 'Type your 4-number PIN', field: 'pin' } };
-  const claim = await sql`update users set pin_tries = pin_tries + 1
-                          where id = ${me.user_id} and (locked_until is null or locked_until <= now()) returning pin_tries`;
-  const lock = async () => {
-    const until = new Date(Date.now() + LOCK_MINUTES * 60000).toISOString();
-    await sql`update users set pin_tries = 0, locked_until = ${until} where id = ${me.user_id} and (locked_until is null or locked_until <= now())`;
-    const l = (await sql`select locked_until from users where id = ${me.user_id}`)[0];
-    return { status: 429, json: { ok: false, locked: true, error: lockMessage((l && l.locked_until) || until) } };
-  };
-  if (!claim[0]) {
-    const l = (await sql`select locked_until from users where id = ${me.user_id}`)[0];
-    return { status: 429, json: { ok: false, locked: true, error: lockMessage(l && l.locked_until) } };
-  }
-  const tries = claim[0].pin_tries;
-  if (tries > MAX_TRIES) return lock();
-  if (!verifyPin(String(body.pin), u.pin_salt, u.pin_hash)) {
-    if (tries >= MAX_TRIES) return lock();
-    const left = MAX_TRIES - tries;
-    return { status: 401, json: { ok: false, wrongPin: true, left, field: 'pin',
-      error: 'That PIN is not right. ' + left + ' ' + (left === 1 ? 'try' : 'tries') + ' left.' } };
+  const ses = token ? (await sql`select device_hash from sessions where token_hash = ${tokenHash(token)}`.catch(() => []))[0] : null;
+  const dev = ses && ses.device_hash && await isKnownDevice(sql, me.user_id, ses.device_hash) ? ses.device_hash : null;
+  const g = await pinGate(sql, lockKey(u.phone, dev), () => verifyPin(String(body.pin), u.pin_salt, u.pin_hash));
+  if (g.locked) { const out = lockReply(g.until); return { status: out.status, json: { ...out.json, field: 'pin' } }; }
+  if (g.wrong) {
+    return { status: 401, json: { ok: false, wrongPin: true, left: g.left, field: 'pin',
+      error: 'That PIN is not right. ' + g.left + ' ' + (g.left === 1 ? 'try' : 'tries') + ' left.' } };
   }
   await sql`update users set lost_at = null, lost_msg = null, lost_session = null, lost_circle = null, lost_call = null,
-            pin_tries = 0 where id = ${me.user_id}`;
+            pin_tries = 0, locked_until = null where id = ${me.user_id}`;
   await feed(sql, circle.id, me.id, `📱 ${me.name} found their phone - Lost mode is off`);
   return { status: 200, json: { ok: true, lost: false } };
 }

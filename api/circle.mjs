@@ -1,6 +1,6 @@
 // POST /api/circle - create a care circle or join one with its code.
 import { isCountry } from './_countries.mjs';
-import { db, ensureSchema, makeCode, circleByCode, spaceWord, isUuid, normPhone, phoneError, rateLimit, clientIp, sessionUser, sessionIs } from './_db.mjs';
+import { db, ensureSchema, makeCode, circleByCode, spaceWord, isUuid, normPhone, phoneError, rateLimit, clientIp, sessionUser, sessionIs, AUTH_REQUIRED } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { cleanName, nameError, dobError } from './_valid.mjs';
 import { tokenOf } from './_token.mjs';
@@ -12,6 +12,9 @@ import { index as kinIndex, placement, PLACES, GENDERS, FAMILY_TYPES, genderFrom
 import { famlinkAction } from './_famlink.mjs';
 import { famfactsAction } from './_famfacts.mjs';
 import { rememberAction } from './_remember.mjs';
+import { STANDING_ACTIONS, standingAction, standingOfCaller, joinPolicyChange, recordTreeEdit, dobChangeGate, ADULT_ONLY } from './_standing.mjs';
+import { ensureStandingSchema } from './_account.mjs';
+import { codeProblem, cleanCode, isAdultMember, JOIN_PENDING_MAX } from './_standingrules.mjs';
 
 export default async function handler(req, res) {
   // A nearby person's own consent page for the SOS ladder: the link is the
@@ -22,7 +25,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, error: 'POST only' });
   }
   let sql;
-  try { sql = db(); await ensureSchema(sql); }
+  try { sql = db(); await ensureSchema(sql); await ensureStandingSchema(sql); }
   catch (e) { return failDb(res, e); }
 
   req.body = req.body || {};
@@ -45,11 +48,21 @@ export default async function handler(req, res) {
       if (v) giftInfo[k] = v;
     });
   }
-  const uid = isUuid(userId) ? userId : null;
-  // A family is created or joined only as the person who is signed in. See
-  // sessionIs: the userId in the body was trusted on its own.
-  if (uid && (action === 'create' || action === 'join') && !(await sessionIs(sql, tokenOf(req), uid))) {
-    return res.status(401).json({ ok: false, signin: true, error: 'Please sign in again' });
+  let uid = isUuid(userId) ? userId : null;
+  // A family is created or joined only as the person who is signed in:
+  // ALWAYS, whether or not a userId was sent. Leaving the userId out used to
+  // skip the check altogether, and made a member nobody was signed in as.
+  // The session says who this is; a userId in the body must agree with it.
+  if (action === 'create' || action === 'join') {
+    if (AUTH_REQUIRED) {
+      const su = await sessionUser(sql, tokenOf(req));
+      if (!su || (uid && String(su.user_id) !== String(uid))) {
+        return res.status(401).json({ ok: false, signin: true, error: 'Please sign in again' });
+      }
+      uid = su.user_id;
+    } else if (uid && !(await sessionIs(sql, tokenOf(req), uid))) {
+      return res.status(401).json({ ok: false, signin: true, error: 'Please sign in again' });
+    }
   }
   const name = cleanName(memberName).slice(0, 60);
   // A name that is only symbols, a phone number or an email in the wrong box
@@ -76,11 +89,11 @@ export default async function handler(req, res) {
 
   // The wider family (linked families, family facts, days of remembrance):
   // each lives in its own module and is handed its actions below.
-  const WIDER = { link_: ['link_state', 'link_request', 'link_approve', 'link_decline', 'link_end', 'link_phones'],
+  const WIDER = { link_: ['link_state', 'link_request', 'link_approve', 'link_decline', 'link_yes', 'link_object', 'link_end', 'link_phones'],
                   fact_: ['fact_list', 'fact_add', 'fact_edit', 'fact_remove'],
-                  remember_: ['remember_mark', 'remember_undo'] };
+                  remember_: ['remember_mark', 'remember_undo', 'remember_confirm', 'remember_cancel'] };
   const NAMELESS = ['join_status', 'update_member', 'leave', 'set_code', 'approve_join', 'decline_join', 'set_join_policy', 'place', 'unplace', 'add_person', 'remove_person',
-                    ...WIDER.link_, ...WIDER.fact_, ...WIDER.remember_];
+                    ...WIDER.link_, ...WIDER.fact_, ...WIDER.remember_, ...STANDING_ACTIONS];
   if (!name && !NAMELESS.includes(action)) return res.status(400).json({ ok: false, error: 'Please tell us your name' });
 
   try {
@@ -119,6 +132,42 @@ export default async function handler(req, res) {
     if (action === 'join') {
       const circle = await circleByCode(sql, code);
       if (!circle) return res.status(404).json({ ok: false, error: 'No family found with that code' });
+      // Joining is as the signed-in person, with the number they signed in
+      // with. A number typed into the request is not used: it let anyone ask
+      // "is this number in that family?" one number at a time.
+      const joinPhone = user ? user.phone : memberPhone;
+      const jp = joinPhone ? normPhone(joinPhone) : null;
+      const joinCc = jp ? jp.cc : null, joinLocal = jp ? jp.local : null;
+      // THE FAMILY'S NAME IS NOT SAID BEFORE THE FAMILY SAYS YES. A code is
+      // pasted into WhatsApp groups; whoever holds one learns only that their
+      // request has gone, never whose door it was.
+      const waiting = (requestId) => res.status(202).json({ ok: true, pending: true, code: circle.code, requestId,
+        message: 'Your request has gone to the family. An adult there can let you in.' });
+      const FULL = 'Many people are waiting to join this ' + spaceWord(circle) + ' already. Ask someone in it to answer them, then try again.';
+      // One request: counted, capped, and told to the grown-ups only.
+      const ask = async (askName, askRole, claimId, wantsClaim) => {
+        const already = user
+          ? await sql`select id from join_requests where circle_id = ${circle.id} and user_id = ${user.id} and status = 'pending'`
+          : await sql`select id from join_requests where circle_id = ${circle.id} and status = 'pending' and lower(name) = lower(${askName})`;
+        if (already[0]) return waiting(already[0].id);
+        const n = await sql`select count(*)::int as n from join_requests where circle_id = ${circle.id} and status = 'pending'`;
+        if (n[0].n >= JOIN_PENDING_MAX) return res.status(429).json({ ok: false, error: FULL });
+        // At most 30 new requests a day reach one family, from anyone.
+        if (!(await rateLimit(sql, 'joinask', circle.id, 30, 86400, { failClosed: true }))) return res.status(429).json({ ok: false, error: FULL });
+        const made = await sql`insert into join_requests (circle_id, user_id, name, phone, phone_cc, phone_local, relation, role, claim_member, wants_claim)
+                  values (${circle.id}, ${user ? user.id : null}, ${askName}, ${joinPhone}, ${joinCc}, ${joinLocal}, ${relation}, ${askRole}, ${claimId || null}, ${!!wantsClaim}) returning id`;
+        await sql`insert into events (circle_id, member_id, type, text)
+                  values (${circle.id}, null, 'care', ${askName + ' has asked to join. An adult in the ' + spaceWord(circle) + ' can let them in.'})`;
+        const s = await standingOfCaller(sql, circle, null);
+        for (const a of s.rows.filter(x => x.user_id && !x.remembered)) {
+          if (!isAdultMember(a, s.today)) continue;
+          await pushCircle(sql, circle.id, {
+            kind: 'care', title: '🙋 ' + askName + ' wants to join ' + circle.name,
+            body: claimId ? 'Open Parwah to let them in, or say no if it is not really them' : 'Open Parwah to let them in, or say no if you do not know them'
+          }, { only: a.id });
+        }
+        return waiting(made[0].id);
+      };
       if (user) {
         // Already a member of this circle? Sign back into that membership.
         const ex = await sql`select id, role from members where circle_id = ${circle.id} and user_id = ${user.id}`;
@@ -131,58 +180,35 @@ export default async function handler(req, res) {
         // yes from the family links it. The match is the full number with
         // its country code: +1 9876543210 is not +91 9876543210.
         const legacy = await sql`select id, name, role from members
-                                 where circle_id = ${circle.id} and user_id is null and phone = ${user.phone} limit 1`;
-        if (legacy[0]) {
-          const already = await sql`select id from join_requests where circle_id = ${circle.id} and user_id = ${user.id} and status = 'pending'`;
-          let requestId = already[0] ? already[0].id : null;
-          if (!requestId) {
-            const made = await sql`insert into join_requests (circle_id, user_id, name, phone, phone_cc, phone_local, relation, role, claim_member)
-                      values (${circle.id}, ${user.id}, ${legacy[0].name}, ${user.phone}, ${memberCc}, ${memberLocal}, ${relation}, ${legacy[0].role}, ${legacy[0].id}) returning id`;
-            requestId = made[0].id;
-            await sql`insert into events (circle_id, member_id, type, text)
-                      values (${circle.id}, null, 'care', ${legacy[0].name + ' has asked to join - any member can let them in'})`;
-            await pushCircle(sql, circle.id, {
-              title: '🙋 ' + legacy[0].name + ' wants to join ' + circle.name,
-              body: 'Open Parwah to let them in - or say no if it is not really them'
-            }, {});
-          }
-          return res.status(202).json({ ok: true, pending: true, circleName: circle.name, code: circle.code, requestId,
-            message: 'Your request has gone to ' + circle.name + '. Anyone in the family can let you in.' });
-        }
+                                 where circle_id = ${circle.id} and user_id is null and not remembered and phone = ${user.phone} limit 1`;
+        if (legacy[0]) return ask(legacy[0].name, legacy[0].role, legacy[0].id, true);
       }
-      // One person, one seat: a name can appear only once in a circle, and a
-      // mobile number can hold only one membership in it.
-      const dupName = await sql`select id from members where circle_id = ${circle.id} and lower(name) = lower(${name})`;
-      if (dupName[0]) return res.status(409).json({ ok: false, error: 'Someone in this ' + spaceWord(circle) + ' is already called ' + name + ' - add a surname or initial' });
-      if (memberPhone) {
-        const dupPhone = await sql`select id from members where circle_id = ${circle.id} and phone = ${memberPhone}`;
-        if (dupPhone[0]) return res.status(409).json({ ok: false, error: 'This mobile number is already in the ' + spaceWord(circle) + ' - sign in with it instead' });
+      // "THIS IS ME". The family may have added this person by name before
+      // they had Parwah. Joining under that name asks to become that
+      // profile, with everything kept about them, instead of a second one.
+      // It is only ever a request: an adult says yes.
+      const sameName = await sql`select id, name, role, user_id, remembered from members where circle_id = ${circle.id} and lower(name) = lower(${name})`;
+      if (user && sameName[0] && !sameName[0].user_id && !sameName[0].remembered) {
+        return ask(sameName[0].name, sameName[0].role, sameName[0].id, true);
       }
 
-      // The code opens the door; the family decides who comes in. Anyone
-      // already inside can say yes - no owner, no hierarchy.
+      // The code opens the door; the family decides who comes in. Any adult
+      // already inside can say yes: no owner, no hierarchy.
       const pol = await sql`select join_policy from circles where id = ${circle.id}`;
       if (pol[0] && pol[0].join_policy === 'approve') {
-        const already = user
-          ? await sql`select id from join_requests where circle_id = ${circle.id} and user_id = ${user.id} and status = 'pending'`
-          : await sql`select id from join_requests where circle_id = ${circle.id} and status = 'pending' and lower(name) = lower(${name})`;
-        let requestId = already[0] ? already[0].id : null;
-        if (!already[0]) {
-          const made = await sql`insert into join_requests (circle_id, user_id, name, phone, phone_cc, phone_local, relation, role)
-                    values (${circle.id}, ${user ? user.id : null}, ${name}, ${memberPhone}, ${memberCc}, ${memberLocal}, ${relation}, ${r}) returning id`;
-          requestId = made[0].id;
-          await sql`insert into events (circle_id, member_id, type, text)
-                    values (${circle.id}, null, 'care', ${name + ' has asked to join - any member can let them in'})`;
-          await pushCircle(sql, circle.id, {
-            title: '🙋 ' + name + ' wants to join ' + circle.name,
-            body: 'Open Parwah to let them in - or say no if you do not know them'
-          }, {});
-        }
-        return res.status(202).json({ ok: true, pending: true, circleName: circle.name, code: circle.code, requestId,
-          message: 'Your request has gone to ' + circle.name + '. Anyone in the family can let you in.' });
+        // A name someone here already has is found when an adult answers,
+        // not now: saying so here would name a member to a stranger.
+        return ask(name, r, null, req.body.claim === true);
       }
 
-      const m = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation, gender) values (${circle.id}, ${name}, ${r}, ${memberPhone}, ${memberCc}, ${memberLocal}, ${user ? user.id : null}, ${relation}, ${gender}) returning id`;
+      // One person, one seat: a name can appear only once in a circle, and a
+      // mobile number can hold only one membership in it.
+      if (sameName[0]) return res.status(409).json({ ok: false, error: 'Someone in this ' + spaceWord(circle) + ' is already called ' + name + ' - add a surname or initial' });
+      if (joinPhone) {
+        const dupPhone = await sql`select id from members where circle_id = ${circle.id} and phone = ${joinPhone}`;
+        if (dupPhone[0]) return res.status(409).json({ ok: false, error: 'This mobile number is already in the ' + spaceWord(circle) + ' - sign in with it instead' });
+      }
+      const m = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation, gender) values (${circle.id}, ${name}, ${r}, ${joinPhone}, ${joinCc}, ${joinLocal}, ${user ? user.id : null}, ${relation}, ${gender}) returning id`;
       await sql`insert into events (circle_id, member_id, type, text)
                 values (${circle.id}, ${m[0].id}, 'join', ${name + ' joined the ' + spaceWord(circle)})`;
       await pushCircle(sql, circle.id, { title: '🧡 ' + name + ' joined ' + circle.name, body: 'Say hello in the family chat' }, { except: m[0].id });
@@ -213,9 +239,12 @@ export default async function handler(req, res) {
       }
       if (!circleId) return res.status(200).json({ ok: true, status: 'none' });
       const cur = await sql`select code, name from circles where id = ${circleId}`;
-      const now = cur[0] ? { code: cur[0].code, circleName: cur[0].name } : {};
+      // The family's name, and its code if that has changed, are said only
+      // once they are in: a family may have changed its code to keep someone
+      // out, and that someone may be the one still waiting.
+      const now = {};
       const m = await sql`select id, role from members where circle_id = ${circleId} and user_id = ${su.user_id}`;
-      if (m[0]) return res.status(200).json({ ok: true, status: 'in', ...now, memberId: m[0].id, role: m[0].role });
+      if (m[0]) return res.status(200).json({ ok: true, status: 'in', code: cur[0] ? cur[0].code : undefined, circleName: cur[0] ? cur[0].name : undefined, memberId: m[0].id, role: m[0].role });
       const q = reqRow ? [reqRow] : await sql`select status from join_requests where circle_id = ${circleId} and user_id = ${su.user_id}
                           order by created_at desc limit 1`;
       return res.status(200).json({ ok: true, status: q[0] ? q[0].status : 'none', ...now });
@@ -228,10 +257,22 @@ export default async function handler(req, res) {
       if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
       const mRow = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
       if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
+      // Who comes into the family is for its grown-ups to say: a child or a
+      // teen sees that someone is waiting, and asks an adult.
+      if (!(await standingOfCaller(sql, circle, mRow[0].id)).may) return res.status(403).json({ ok: false, error: ADULT_ONLY });
       if (!isUuid(req.body.requestId)) return res.status(400).json({ ok: false, error: 'Bad request' });
       const rq = await sql`select * from join_requests where id = ${req.body.requestId} and circle_id = ${circle.id} and status = 'pending'`;
       if (!rq[0]) return res.status(404).json({ ok: false, error: 'That request has already been dealt with' });
       const q = rq[0];
+      // "This is the Dadi we added": the adult may say which by-name profile
+      // this person is, when the names are not the same.
+      if (action === 'approve_join' && isUuid(req.body.claimMember) && q.user_id) {
+        const cm = await sql`select id from members where id = ${req.body.claimMember} and circle_id = ${circle.id} and user_id is null and not remembered`;
+        if (!cm[0]) return res.status(404).json({ ok: false, error: 'Choose someone the family added by name' });
+        q.claim_member = cm[0].id;
+      } else if (action === 'approve_join' && req.body.claimMember === null) {
+        q.claim_member = null;   // "a different person": let in as someone new
+      }
 
       if (action === 'decline_join') {
         await sql`update join_requests set status = 'declined', decided_by = ${mRow[0].id}, decided_at = now() where id = ${q.id}`;
@@ -244,7 +285,9 @@ export default async function handler(req, res) {
       // the tree, the records and the chats stay that one person's. Only
       // while the row is still unclaimed.
       if (q.claim_member && q.user_id) {
-        const linked = await sql`update members set user_id = ${q.user_id}, phone = ${q.phone}, phone_cc = ${q.phone_cc}, phone_local = ${q.phone_local}
+        // claim_review: on their first visit they are shown what the family
+        // wrote about them, to keep, hide or delete item by item.
+        const linked = await sql`update members set user_id = ${q.user_id}, phone = ${q.phone}, phone_cc = ${q.phone_cc}, phone_local = ${q.phone_local}, claim_review = true
                                  where id = ${q.claim_member} and circle_id = ${circle.id} and user_id is null
                                    and not exists (select 1 from members x where x.circle_id = ${circle.id} and x.user_id = ${q.user_id})
                                  returning id`;
@@ -260,8 +303,9 @@ export default async function handler(req, res) {
       }
       const dupName2 = await sql`select id from members where circle_id = ${circle.id} and lower(name) = lower(${q.name})`;
       if (dupName2[0]) {
-        await sql`update join_requests set status = 'declined', decided_by = ${mRow[0].id}, decided_at = now() where id = ${q.id}`;
-        return res.status(409).json({ ok: false, error: 'Someone in this ' + spaceWord(circle) + ' is already called ' + q.name });
+        // The request stays, so the adult can sort it out with them: it is
+        // the family that is told about the name, not the person waiting.
+        return res.status(409).json({ ok: false, dupName: true, error: 'Someone in this ' + spaceWord(circle) + ' is already called ' + q.name + '. If this is the same person, choose them under "This is". If not, say no and ask them to join again with a surname or initial.' });
       }
       const nm = await sql`insert into members (circle_id, name, role, phone, phone_cc, phone_local, user_id, relation, gender)
                            values (${circle.id}, ${q.name}, ${q.role}, ${q.phone}, ${q.phone_cc}, ${q.phone_local}, ${q.user_id}, ${q.relation}, ${genderFromRelation(q.relation)})
@@ -282,17 +326,10 @@ export default async function handler(req, res) {
       if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
       const mRow = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
       if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
-      const policy = req.body.policy === 'open' ? 'open' : 'approve';
-      await sql`update circles set join_policy = ${policy} where id = ${circle.id}`;
-      await sql`insert into events (circle_id, member_id, type, text)
-                values (${circle.id}, ${mRow[0].id}, 'care', ${mRow[0].name + (policy === 'open'
-                  ? ' let anyone with the code join straight away'
-                  : ' made joining need a family member to say yes')})`;
-      await pushCircle(sql, circle.id, {
-        title: policy === 'open' ? '🔓 Anyone with the code can now join' : '🔒 Joining now needs approval',
-        body: mRow[0].name + ' changed how people join ' + circle.name
-      }, { except: mRow[0].id });
-      return res.status(200).json({ ok: true, joinPolicy: policy });
+      // An adult decides how people join; letting the code be enough needs a
+      // second adult's yes when the family has one (api/_standing.mjs).
+      const out = await joinPolicyChange(sql, circle, mRow[0].id, req.body.policy === 'open' ? 'open' : 'approve');
+      return res.status(out.status).json(out.json);
     }
 
     if (action === 'set_code') {
@@ -302,11 +339,13 @@ export default async function handler(req, res) {
       if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
       const mRow = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
       if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
-      const newCode = String(req.body.newCode || '').toUpperCase().replace(/\s+/g, '');
-      if (!/^[A-Z0-9]{4,12}$/.test(newCode)) {
-        return res.status(400).json({ ok: false, error: 'Codes are 4-12 letters and numbers, e.g. SHARMAS' });
-      }
+      if (!(await standingOfCaller(sql, circle, mRow[0].id)).may) return res.status(403).json({ ok: false, error: ADULT_ONLY });
+      const newCode = cleanCode(req.body.newCode);
       if (newCode === circle.code) return res.status(200).json({ ok: true, code: newCode });
+      // A code a family chooses now has 8 to 12 letters and numbers with at
+      // least one number. Codes set before this keep working as they are.
+      const cerr = codeProblem(newCode);
+      if (cerr) return res.status(400).json({ ok: false, error: cerr });
       try {
         await sql`update circles set code = ${newCode} where id = ${circle.id}`;
       } catch (e) {
@@ -370,9 +409,24 @@ export default async function handler(req, res) {
       return res.status(out.status).json(out.json);
     }
 
-    // THE FAMILY TREE. Anyone in the family may place anyone - every member
-    // is an equal admin - and the arithmetic in _kin.mjs refuses only what
-    // cannot be true (two husbands, someone their own grandfather).
+    // EQUAL STANDING: what the grown-ups decide, what two of them decide
+    // together, and each member's own choices (api/_standing.mjs).
+    if (STANDING_ACTIONS.includes(action)) {
+      const circle = await circleByCode(sql, code);
+      if (!circle) return res.status(404).json({ ok: false, error: 'No family found with that code' });
+      const memberId = req.body.memberId;
+      if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
+      const mRow = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
+      if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
+      const out = await standingAction(sql, circle, mRow[0], req.body);
+      return res.status(out.status).json(out.json);
+    }
+
+    // THE FAMILY TREE. Any adult in the family may place anyone, and the
+    // arithmetic in _kin.mjs refuses only what cannot be true (two husbands,
+    // someone their own grandfather). A child or a teen may place only
+    // themselves. Whoever is on Parwah and has their place changed by someone
+    // else is told, and can undo it in one tap.
     if (['place', 'unplace', 'add_person', 'remove_person'].includes(action)) {
       const circle = await circleByCode(sql, code);
       if (!circle) return res.status(404).json({ ok: false, error: 'No family found with that code' });
@@ -381,6 +435,13 @@ export default async function handler(req, res) {
       const mRow = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
       if (!mRow[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
       const told = (text) => sql`insert into events (circle_id, member_id, type, text) values (${circle.id}, ${mRow[0].id}, 'care', ${text})`;
+      // A child or a teen may say whose child or brother or sister they are,
+      // and take that back. Everyone else's links are for a grown-up.
+      const own = (req.body.targetId || memberId) === memberId
+        && ((action === 'place' && ['child', 'sibling'].includes(req.body.place)) || (action === 'unplace' && req.body.link === 'parent'));
+      if (!own && !(await standingOfCaller(sql, circle, mRow[0].id)).may) {
+        return res.status(403).json({ ok: false, error: 'You can set whose child, brother or sister you are. For anything else in the tree, ask a grown-up in the family.' });
+      }
       // Dadi without a phone, a grandfather who has passed away, a child of
       // six: a family tree needs people who will never sign in. They are
       // added by name, belong to the family, and can be placed like anyone.
@@ -419,6 +480,7 @@ export default async function handler(req, res) {
           const sp = all.find(x => x.id === target.spouse_id);
           await sql`update members set spouse_id = null where circle_id = ${circle.id} and (id = ${targetId} or spouse_id = ${targetId})`;
           await told(mRow[0].name + ' removed the link between ' + target.name + ' and ' + (sp ? sp.name : 'their husband or wife') + ' in the family tree');
+          await recordTreeEdit(sql, circle, mRow[0], all, 'removed the link between ' + target.name + ' and ' + (sp ? sp.name : 'their husband or wife'));
           return res.status(200).json({ ok: true });
         }
         if (link === 'parent') {
@@ -426,6 +488,7 @@ export default async function handler(req, res) {
           const pa = all.find(x => x.id === target.parent_id);
           await sql`update members set parent_id = null where id = ${targetId}`;
           await told(mRow[0].name + ' removed ' + target.name + ' as a child of ' + (pa ? pa.name : 'their parent') + ' in the family tree');
+          await recordTreeEdit(sql, circle, mRow[0], all, 'removed ' + target.name + ' as a child of ' + (pa ? pa.name : 'their parent'));
           return res.status(200).json({ ok: true });
         }
         if (link) return res.status(400).json({ ok: false, error: 'Choose which link to remove' });
@@ -434,6 +497,7 @@ export default async function handler(req, res) {
         await sql`update members set parent_id = ${other ? other.id : null} where circle_id = ${circle.id} and parent_id = ${targetId}`;
         await sql`update members set parent_id = null, spouse_id = null where id = ${targetId}`;
         await told(mRow[0].name + ' took ' + target.name + ' out of the family tree');
+        await recordTreeEdit(sql, circle, mRow[0], all, 'took ' + target.name + ' out of the family tree');
         return res.status(200).json({ ok: true });
       }
       // Someone added by name can be removed again - but only while nothing
@@ -507,6 +571,7 @@ export default async function handler(req, res) {
           insert into events (circle_id, member_id, type, text)
           select ${circle.id}, ${mRow[0].id}, 'care', ${note} from a`;
       }
+      await recordTreeEdit(sql, circle, mRow[0], all, 'added ' + target.name + ' as ' + word + ' ' + of.name);
       return res.status(200).json({ ok: true, memberId: targetId });
     }
 
@@ -543,6 +608,15 @@ export default async function handler(req, res) {
         if (derr) return res.status(400).json({ ok: false, error: derr });
         newDob = d || null;
       }
+      // A child cannot make themself an adult by typing a new date of
+      // birth, or by taking it away: that waits for an adult's yes, and
+      // the rest of the profile is saved now.
+      let dobHeld = null;
+      const sameDay = v => (v instanceof Date ? v.getFullYear() + '-' + String(v.getMonth() + 1).padStart(2, '0') + '-' + String(v.getDate()).padStart(2, '0') : String(v || '').slice(0, 10));
+      if (req.body.dob !== undefined && sameDay(newDob) !== sameDay(cur.dob)) {
+        dobHeld = await dobChangeGate(sql, circle, cur.id, newDob);
+        if (dobHeld) newDob = cur.dob;
+      }
       // A new number that is someone else's sign-in is refused HERE, before
       // anything is written. The app saves this first and the profile second,
       // and the profile refused it: the family saw one number, the sign-in
@@ -561,7 +635,7 @@ export default async function handler(req, res) {
         if (req.body.place !== undefined || req.body.country !== undefined) {
           await sql`update members set place = ${newPlace}, country = ${newCountry} where user_id = ${cur.user_id} and id <> ${cur.id}`;
         }
-        if (req.body.dob !== undefined) {
+        if (req.body.dob !== undefined && !dobHeld) {
           await sql`update members set dob = ${newDob} where user_id = ${cur.user_id} and id <> ${cur.id}`;
         }
         if (giftInfo !== undefined) {
@@ -576,7 +650,8 @@ export default async function handler(req, res) {
         await sql`insert into events (circle_id, member_id, type, text)
                   values (${circle.id}, ${cur.id}, 'care', ${cur.name + ' updated their profile' + (newName !== cur.name ? ' - now ' + newName : '')})`;
       }
-      return res.status(200).json({ ok: true, name: newName, role: newRole, relation: newRelation, phone: newPhone, place: newPlace, country: newCountry, gift_info: newGift });
+      return res.status(200).json({ ok: true, name: newName, role: newRole, relation: newRelation, phone: newPhone, place: newPlace, country: newCountry, gift_info: newGift,
+        dobPending: dobHeld ? !!dobHeld.pending : undefined, message: dobHeld ? dobHeld.message : undefined });
     }
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });

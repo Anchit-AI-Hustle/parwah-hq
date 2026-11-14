@@ -91,10 +91,14 @@ for (const k of ['rohan', 'meera', 'priya', 'kabir']) {
 }
 // Kabir is eleven. Dadi was added by name and is not on Parwah.
 await rows(`update members set dob = '2015-06-01' where id = $1`, [U.kabir.id]);
+// The grown-ups have their dates of birth written: a "son" or "daughter"
+// with none is not taken to be an adult for this list (stream A, A10).
+await rows(`update members set dob = '1984-02-02' where id = any($1::uuid[])`, [[U.rohan.id, U.meera.id, U.priya.id]]);
 const dadi = (await rows(`insert into members (circle_id, name, role) select circle_id, 'Dadi', 'parent' from members where id = $1 returning id`, [U.papa.id]))[0].id;
 const other = await signUp('9861000009', 'Kamla', '5937');
 r = await call(circle, { token: other.token, body: { action: 'create', kind: 'family', memberName: 'Kamla', circleName: 'Gupta', userId: other.userId, role: 'family' } });
 other.id = r.memberId; other.code = r.code;
+await rows(`update members set dob = '1970-03-03' where id = $1`, [other.id]);
 const bauji = (await rows(`insert into members (circle_id, name, role) select circle_id, 'Bauji', 'parent' from members where id = $1 returning id`, [other.id]))[0].id;
 ok('setup: five on Parwah in the Sharma family and Dadi by name; Kamla alone in the Guptas', U.papa.id && U.rohan.id && U.meera.id && U.priya.id && U.kabir.id && dadi && other.id && bauji);
 await ensurePushSchema(db());
@@ -105,7 +109,19 @@ for (const id of [U.papa.id, U.rohan.id, U.meera.id, U.priya.id, U.kabir.id, oth
 const whoGot = (from) => pushed.slice(from).map(p => Object.keys(U).find(k => endpoint(U[k].id) === p.endpoint) || 'other').sort().join();
 
 const add = (u, body) => call(book, { token: u.token, body: { code, memberId: u.id, action: 'locator_add', ...body } });
-const act = (u, action, body, c = code) => call(book, { token: u.token, body: { code: c, memberId: u.id, action, ...body } });
+// A list is never put in force about someone who used Parwah in the last 30
+// days (stream A, A10; proved in safety.dbtest.mjs). This file is about the
+// list itself, and its people act as themselves all through it, so before a
+// start, a confirm or a reopen everyone is made "quiet for 40 days".
+const QUIET_FIRST = ['afterloss_start', 'afterloss_confirm', 'afterloss_reopen'];
+async function longQuiet() {
+  await rows(`update sessions set last_used_at = now() - interval '40 days'`);
+  await rows(`update events set created_at = created_at - interval '40 days' where created_at > now() - interval '31 days'`);
+}
+const act = async (u, action, body, c = code) => {
+  if (QUIET_FIRST.includes(action)) await longQuiet();
+  return call(book, { token: u.token, body: { code: c, memberId: u.id, action, ...body } });
+};
 const lists = (u, c = code) => call(book, { method: 'GET', token: u.token, query: { area: 'afterloss', circle: c, member: u.id } });
 const see = (u, person = U.papa.id, c = code) => call(book, { method: 'GET', token: u.token, query: { area: 'afterloss', circle: c, member: u.id, person } });
 const regList = (u) => call(book, { method: 'GET', token: u.token, query: { area: 'locator', circle: code, member: u.id, brief: '1' } });
@@ -424,6 +440,7 @@ let baujiList = null;
   const vimla = await signUp('9861000010', 'Vimla', '4417');
   await call(circle, { token: other.token, body: { action: 'set_join_policy', code: other.code, memberId: other.id, policy: 'open' } });
   vimla.id = (await call(circle, { token: vimla.token, body: { action: 'join', code: other.code, memberName: 'Vimla', userId: vimla.userId, role: 'family', relation: 'sister' } })).memberId;
+  await rows(`update members set dob = '1972-04-04' where id = $1`, [vimla.id]);
   const p3 = pushed.length;
   const solo = await act(other, 'afterloss_start', { personId: vimla.id }, other.code);
   ok('one adult alone is refused for someone who is on Parwah', !!vimla.id && solo.status === 400 && solo.error === 'This needs a second adult on Parwah to confirm.' && !solo.id

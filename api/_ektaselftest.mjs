@@ -1,13 +1,17 @@
 // GET /api/ekta-selftest?run=ekta - full live round-trip test of Ekta.
 // Creates a throwaway circle + member, holds a real two-turn conversation
 // through the actual model cascade (a circle question, then a reminder ask),
-// verifies the reminder landed in the database, then deletes the circle
+// verifies that the ask made a CONFIRM CARD and nothing else, says yes to the
+// card the way the member would, verifies the reminder then landed in the
+// database and that a second yes does not make a second one, then deletes the circle
 // (cascade removes everything). Self-cleaning; safe to run any time.
 // The ?run=ekta gate keeps crawlers from burning model tokens.
 import Anthropic from '@anthropic-ai/sdk';
 import { db, ensureSchema, makeCode, rateLimit } from './_db.mjs';
 import { ektaTurn } from './ekta.mjs';
 import { LOCAL_MODEL } from './_ektalocal.mjs';
+import { EKTA_MODELS } from './_ektarules.mjs';
+import { confirmAction } from './_ektaagent.mjs';
 
 // One-token probe: does this key work with a given anthropic-workspace-id
 // header value? Returns 'ok' or the API's error message.
@@ -17,7 +21,9 @@ async function probeWorkspace(headerValue) {
       ? { defaultHeaders: { 'anthropic-workspace-id': headerValue } }
       : {});
     await client.messages.create({
-      model: process.env.ANTHROPIC_FALLBACK_MODEL || 'claude-3-5-haiku-20241022', max_tokens: 1,
+      // The light model thinks by default; a few tokens are enough to prove
+      // the key and the header, and a reply cut short is still a 200.
+      model: process.env.ANTHROPIC_FALLBACK_MODEL || EKTA_MODELS.light, max_tokens: 16,
       messages: [{ role: 'user', content: 'hi' }]
     });
     return 'ok';
@@ -108,15 +114,26 @@ export default async function handler(req, res) {
       steps.reminder_action = null;   // no model, so no action: not a failure
       steps.reminder_in_db = null;
     } else {
-      // Turn 2: an action - a self reminder via the create_reminder tool.
+      // Turn 2: an action. She may only PREPARE it: a confirm card, and no
+      // reminder yet.
       const t2 = await ektaTurn(sql, circle, me, [
         { role: 'user', content: 'Please set a daily reminder for me to take my BP pills at 9 am.' }
       ]);
-      steps.reminder_action = t2.actions.indexOf('create_reminder') >= 0;
+      const card = (t2.proposals || []).find(p => p.kind === 'reminder');
+      steps.reminder_action = !!card;
       steps.model_2 = t2.model;
       steps.reply_2 = String(t2.reply).slice(0, 220);
+      steps.nothing_done_before_yes = (await sql`select id from reminders where circle_id = ${circleId}`).length === 0;
+      // The member's yes, then a second tap: it runs exactly once.
+      if (card) {
+        const req = { headers: {}, body: { code, memberId: me.id } };
+        const yes = await confirmAction(sql, circle, me, req, card.id);
+        const again = await confirmAction(sql, circle, me, req, card.id);
+        steps.confirm_ran = !!(yes.json && yes.json.done);
+        steps.second_yes_is_a_no_op = !!(again.json && again.json.already);
+      }
       const rows = await sql`select status, recurrence from reminders where circle_id = ${circleId}`;
-      steps.reminder_in_db = rows.length > 0;
+      steps.reminder_in_db = rows.length === 1;
       steps.reminder_status = rows[0] ? rows[0].status : null;
     }
 
@@ -130,7 +147,8 @@ export default async function handler(req, res) {
     const ok = offline
       ? !!(steps.setup && steps.replied && steps.cleanup_cascade
            && steps.offline_answers_from_records && steps.offline_says_why && steps.offline_never_diagnoses)
-      : !!(steps.setup && steps.replied && steps.reminder_action && steps.reminder_in_db && steps.cleanup_cascade);
+      : !!(steps.setup && steps.replied && steps.reminder_action && steps.nothing_done_before_yes && steps.confirm_ran
+           && steps.second_yes_is_a_no_op && steps.reminder_in_db && steps.cleanup_cascade);
     const note = offline
       ? 'Ekta is answering from family records only. Reason: ' + steps.brain
         + '. Add credit or another provider key to restore full conversation and actions.'

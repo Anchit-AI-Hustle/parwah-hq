@@ -126,8 +126,11 @@ code = (await q1('select c.code from circles c join members m on m.circle_id = c
 
 // ---- HIGH 4: a PIN reset lets in the device that asked, once, for a while
 {
+  // Letting someone back in is for a known grown-up, so Asha has a date of
+  // birth here; the yes needs the two numbers Ravi's phone shows.
+  await admin.query(`update members set dob = '1985-01-01' where id = $1`, [ashaM]);
   r = await call(auth, { action: 'reset_request', phone: '9830000002', cc: '+91' });
-  const secret = r.resetSecret;
+  const secret = r.resetSecret, say = r.sayCode;
   ok('asking returns a one-time secret to this device', r.ok && typeof secret === 'string' && secret.length >= 40, JSON.stringify(r));
   const stored = await q1(`select secret_hash, expires_at from pin_resets where user_id = $1 and status = 'pending'`, [ravi.id]);
   ok('only its hash is stored, and it runs out', stored && stored.secret_hash && stored.secret_hash !== secret && stored.expires_at, JSON.stringify(stored));
@@ -135,8 +138,11 @@ code = (await q1('select c.code from circles c join members m on m.circle_id = c
   ok('an unknown number gets the same kind of reply', r.ok && r.asked && typeof r.resetSecret === 'string', JSON.stringify(r));
 
   const pend = await q1(`select id from pin_resets where user_id = $1 and status = 'pending'`, [ravi.id]);
-  r = await call(auth, { action: 'reset_approve', resetId: pend && pend.id, token: asha.token }, asha.token);
+  r = await call(auth, { action: 'reset_approve', resetId: pend && pend.id, sayCode: say, token: asha.token }, asha.token);
   ok('Asha says yes', r.ok && r.status === 'approved', JSON.stringify(r));
+  // Ravi is signed in on a phone, so his own phones get ten minutes to say
+  // "not me" first. Here those ten minutes have passed.
+  await admin.query(`update pin_resets set veto_until = now() - interval '1 second' where id = $1`, [pend && pend.id]);
 
   // Someone else who knows the number tries to use the yes.
   r = await call(auth, { action: 'enter', phone: '9830000002', cc: '+91', pin: '2468' });

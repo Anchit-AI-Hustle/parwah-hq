@@ -222,7 +222,9 @@ ok('and only then is the invite used up', await J.evaluate(() => sessionStorage.
   await admin.query(`update circles set code = 'IYERNW' where code = $1`, [fams[1].code]);
   await call('circle', { action: 'approve_join', code: 'IYERNW', memberId: fams[1].memberId, requestId: fams[1].requestId }, {}, 'POST', U.Meera.token);
   const a1 = await call('circle', { action: 'join_status', code: fams[0].oldCode, requestId: fams[0].requestId }, {}, 'POST', U.Anchit.token);
-  ok('both codes changed and the Iyers said yes: the Rao screen still says Rao, still waiting', a1.status === 'pending' && a1.circleName === 'Rao Family' && a1.code === 'RAONEW', JSON.stringify(a1));
+  // While still waiting, neither the family's name nor its new code is
+  // said: a family may have changed its code to keep this very person out.
+  ok('both codes changed and the Iyers said yes: the Rao request is still waiting, and is told neither the name nor the new code', a1.status === 'pending' && !('circleName' in a1) && !('code' in a1), JSON.stringify(a1));
   const a2 = await call('circle', { action: 'join_status', code: fams[1].oldCode, requestId: fams[1].requestId }, {}, 'POST', U.Anchit.token);
   ok('and the Iyer screen takes them into the Iyers', a2.status === 'in' && a2.circleName === 'Iyer Family', JSON.stringify(a2));
   const a3 = await call('circle', { action: 'join_status', code: fams[0].oldCode }, {}, 'POST', U.Anchit.token);
@@ -236,7 +238,7 @@ await O.goto(BASE + '/?join=' + code); await O.waitForTimeout(800);
 ok('signed out, the entry says you have been invited, with the code', await O.isVisible('#ob-invite') && (await O.textContent('#ob-invite-sub')).includes(code));
 await O.reload(); await O.waitForTimeout(800);
 ok('a reload before joining keeps the invite', await O.isVisible('#ob-invite') && (await O.textContent('#ob-invite-sub')).includes(code));
-ok('the pitch is the five things, and the hint is true', /papers, health, things to do and an emergency card/i.test(await O.textContent('#onboard > .lede')) && /your number and your 4-number PIN\. New here\? You will choose one next/.test(await O.textContent('#auth-step')));
+ok('the pitch is the five things, and the hint is true', /papers, health, things to do and an emergency card/i.test(await O.textContent('#onboard > .lede')) && /your number and your 4-number PIN\. New here\? Tap "I am new here" and choose one/.test(await O.textContent('#auth-step')));
 await O.fill('#au-phone', U.Papa.phone.slice(3)); await O.click('#au-go'); await O.waitForTimeout(900);
 ok('a known number is asked for its PIN without saying whose it is', await O.isVisible('#au-pinwrap') && !/Papa/.test(await O.textContent('#auth-step')), await O.textContent('#au-pinnote'));
 

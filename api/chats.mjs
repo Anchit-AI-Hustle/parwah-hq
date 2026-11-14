@@ -1,7 +1,7 @@
 // The chat system: one default "Everyone" chat per circle, unlimited named
 // group chats, and personal (1:1) chats - all private to the circle.
-// Ekta is an automatic participant: mention "Ekta" in any chat and she
-// replies into the chat itself (as a message with member_id null).
+// Ekta joins when she is asked: write "@Ekta", or start the message with her
+// name, and she replies into the chat itself (a message with member_id null).
 //
 // GET  /api/chats?circle=CODE&member=UUID           → chat list (+ previews)
 // GET  /api/chats?circle=CODE&member=UUID&chat=UUID → messages of one chat
@@ -14,14 +14,35 @@
 //   poll_create  {chatId, question, options[], multi, closeAt}
 //   poll_vote    {chatId, pollId, choices[]}          [] takes the vote back
 //   poll_close   {chatId, pollId}                     the person who asked only
-import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat , requireMember, spaceWord} from './_db.mjs';
+//   poll_create  {..., secret}                        a secret ballot: no names, to anyone
+//   poll_vote    {..., forId}                         for someone not on the app, in the family chat
+//   poll_remind  {chatId, pollId}                     ONE reminder to those who have not voted
+//   delete_message {chatId, messageId}                my own message only
+//   mute         {chatId, on}                         quiet this chat, for me only
+// GET ...&chat=UUID&before=MESSAGE_ID                 the 50 messages before that one
+// /api/chats?area=heard                               being heard and answered (api/_heard.mjs)
+import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat , requireMember, spaceWord, rateLimit } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { safeImageUri } from './_sec.mjs';
 import { pushCircle } from './_push.mjs';
-import { ektaTurn, isoOf } from './ekta.mjs';
+import { ektaTurn, isoOf, ektaSeams } from './ekta.mjs';
+import { ektaMentioned, stripMention, EKTA } from './_ektarules.mjs';
+import { ektaSwitches } from './_ektaagent.mjs';
+import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
+import { spend } from './_coins.mjs';
+import { reqTz } from './_recur.mjs';
 import { classify, mentionsUrgent, urgentToo, renderEmergency, renderCrisis, LOCAL_MODEL } from './_ektalocal.mjs';
-import { ensureChatBond, checkVoice, voiceLabel, attachBond, react, createPoll, votePoll, closePoll } from './_chatbond.mjs';
+import { ensureChatBond, checkVoice, voiceLabel, attachBond, react, createPoll, votePoll, closePoll, remindPoll } from './_chatbond.mjs';
+import heardApi from './_heard.mjs';
+import ashirwadApi from './_ashirwad.mjs';
+
+export const CHAT_PAGE = 50;
+// Many pushes at once, never one awaited after another: a family of twelve
+// used to wait for twelve sends in a row before the message came back.
+async function pushMany(sql, circleId, ids, payload) {
+  await Promise.allSettled([...new Set(ids)].map(id => pushCircle(sql, circleId, payload, { only: id })));
+}
 
 async function chatForMember(sql, circle, chatId, memberId) {
   if (!isUuid(chatId)) return null;
@@ -42,7 +63,8 @@ async function listChats(sql, circle, me) {
         where cm.chat_id = c.id and mm.id <> ${me.id}) as others,
       (select mm2.phone from chat_members cm3 join members mm2 on mm2.id = cm3.member_id
         where cm3.chat_id = c.id and mm2.id <> ${me.id} and mm2.phone is not null limit 1) as other_phone,
-      (select count(*)::int from chat_members cm2 where cm2.chat_id = c.id) as member_count
+      (select count(*)::int from chat_members cm2 where cm2.chat_id = c.id) as member_count,
+      exists (select 1 from chat_mutes mu where mu.chat_id = c.id and mu.member_id = ${me.id}) as muted
     from chats c
     where c.circle_id = ${circle.id}
       and (c.kind = 'circle'
@@ -69,7 +91,7 @@ async function listChats(sql, circle, me) {
     id: c.id, kind: c.kind,
     name: c.kind === 'dm' ? (c.others || 'Personal chat') : (c.name || 'Group'),
     others: c.others, otherPhone: c.kind === 'dm' ? c.other_phone : null,
-    memberCount: c.member_count,
+    memberCount: c.member_count, muted: !!c.muted,
     last: pmap[c.id] || null
   }));
 }
@@ -83,7 +105,7 @@ async function listChats(sql, circle, me) {
 // it), and a "chest pain" from last week sent an emergency reply to a
 // routine question. Photos are "[photo]": a picture's bytes are never sent.
 export function ektaChatTurns(chatName, spaceName, recent, text) {
-  const question = String(text || '').replace(/@?\s*(ekta|एकता)\b[\s,:;.!?-]*/gi, ' ').replace(/\s+/g, ' ').trim() || String(text || '').trim();
+  const question = stripMention(text) || String(text || '').trim();
   // A voice note is "[voice note]": its sound never leaves the family.
   const before = (recent || []).slice(0, -1).map(r => r.name + ': ' + (r.kind === 'image' ? '[photo]'
     : r.kind === 'audio' ? '[voice note]' : r.kind === 'poll' ? '[poll] ' + String(r.text || '').slice(0, 200) : String(r.text || '').slice(0, 500)));
@@ -97,9 +119,20 @@ export function ektaChatTurns(chatName, spaceName, recent, text) {
   return turns;
 }
 
-async function maybeEktaReply(sql, circle, me, chat, text) {
-  if (!/\bekta\b|एकता/i.test(text)) return null;
-  // any configured provider (env or vault) is enough for her to reply
+// WHEN SHE ANSWERS IN A CHAT. Only when the message is really for her:
+// "@Ekta", or her name as its first word (ektaMentioned in
+// api/_ektarules.mjs). "Ekta" is also the word for unity, and a family
+// writing about its ekta used to get a bot in the room.
+//
+// What she posts is read by everyone in the chat, so: she reads only what
+// the whole family sees and prepares nothing there (ektaTurn, open: true);
+// a reply that is only her records fallback, or "I could not answer", is
+// never posted; the asker pays the same coins as on her own screen; and one
+// member can ask for only so many replies in a few minutes. Emergency words
+// come first, free and unlimited, exactly as before.
+// Returns { replied, emergency } or { note } (a line for the asker alone).
+async function maybeEktaReply(sql, circle, me, chat, text, req) {
+  if (!ektaMentioned(text)) return null;
   try {
     const recent = await sql`
       select coalesce(mem.name, 'Ekta') as name, m.text, m.kind
@@ -107,27 +140,54 @@ async function maybeEktaReply(sql, circle, me, chat, text) {
       where m.chat_id = ${chat.id} order by m.created_at desc limit 10`;
     const history = ektaChatTurns(chat.name, spaceWord(circle), recent.reverse(), text);
     const question = history[history.length - 1].content;
+    const post = (reply) => sql`insert into messages (chat_id, member_id, text) values (${chat.id}, null, ${String(reply).slice(0, 2000)})`;
     // Someone may be in danger: the same fixed words as on Ekta's own
     // screen, at once, with no model in between. Read from the question
     // only, never from what was said before it.
     const asked = classify(question);
-    let out;
     if (asked === 'emergency' || asked === 'crisis') {
-      out = { reply: asked === 'crisis' ? renderCrisis(isoOf(me)) : renderEmergency(isoOf(me)), emergency: true, model: LOCAL_MODEL, actions: [] };
-    } else {
-      out = await ektaTurn(sql, circle, me, history);
-      // Told as the past but it names an emergency: the way to 112 comes too.
-      if (out && out.reply && mentionsUrgent(question)) { out.reply += '\n\n' + urgentToo(isoOf(me)); out.emergency = true; }
+      await post(asked === 'crisis' ? renderCrisis(isoOf(me)) : renderEmergency(isoOf(me)));
+      return { replied: true, model: LOCAL_MODEL, actions: [], emergency: true };
     }
-    if (out && out.reply) {
-      await sql`insert into messages (chat_id, member_id, text) values (${chat.id}, null, ${String(out.reply).slice(0, 2000)})`;
-      return { replied: true, model: out.model, actions: out.actions, emergency: !!out.emergency };
+    if ((await ektaSwitches(sql, circle, me)).paused) return { note: 'Ekta is paused for this ' + spaceWord(circle) + ' right now.' };
+    if (!(await rateLimit(sql, 'ektamention', me.id, EKTA.mentionRate.n, EKTA.mentionRate.sec, { failClosed: true }))) {
+      return { note: 'Ekta has answered you a lot here in the last few minutes. She will be ready again shortly.' };
     }
+    // With no AI key she can only read records back, and that never goes into a chat.
+    let brain = !!ektaSeams.client;
+    try { const { keys } = await providerKeys(sql, circle.id); brain = brain || MODEL_PROVIDERS.some(k => keys[k]); } catch (e) { /* no key read: no reply */ }
+    if (!brain) return { note: 'Ekta cannot answer inside a chat right now. Ask her on her own screen.' };
+    // The same coin rule as her own screen.
+    const paid = await spend(sql, circle.id, me.id, 'ekta');
+    if (!paid.ok) return { note: 'The ' + spaceWord(circle) + ' is out of coins for Ekta (a question uses ' + paid.cost + '). Her own screen still reads your records for free.' };
+    const refund = async () => {
+      if (!paid.cost) return;
+      try { await sql`insert into coins (circle_id, member_id, delta, reason) values (${circle.id}, ${me.id}, ${paid.cost}, 'refund')`; } catch (_) {}
+    };
+    let out = null;
+    try { out = await ektaTurn(sql, circle, me, history, { open: true, tz: reqTz(req) }); } catch (e) { out = null; }
+    // Her records fallback and "I could not answer" are for one person, on
+    // her own screen. They are never put in front of the family.
+    if (!out || !out.reply || out.offline || out.unanswered || out.unfinished) {
+      await refund();
+      return { note: 'Ekta could not answer that in the chat. Ask her on her own screen.' };
+    }
+    // Told as the past but it names an emergency: the way to 112 comes too.
+    const urgent = mentionsUrgent(question);
+    await post(urgent ? out.reply + '\n\n' + urgentToo(isoOf(me)) : out.reply);
+    return { replied: true, model: out.model, actions: [], emergency: urgent };
   } catch (e) { /* Ekta being unreachable must never block the human message */ }
   return null;
 }
 
 export default async function handler(req, res) {
+  // Being heard and answered: the mood card, a private word, shukriya, the
+  // weekly question and the memory card live behind this route.
+  const area = String((req.query && req.query.area) || (req.body && req.body.area) || '');
+  if (area === 'heard') return heardApi(req, res);
+  // Ashirwad, "How is your day?" and "Reached safely" ride along here: they
+  // are messages between two people, and share the voice-note rules.
+  if (area === 'ashirwad') return ashirwadApi(req, res);
   let sql;
   try { sql = db(); await ensureSchema(sql); await ensureChatBond(sql); }
   catch (e) { return failDb(res, e); }
@@ -151,14 +211,23 @@ export default async function handler(req, res) {
       if (q.chat) {
         const chat = await chatForMember(sql, circle, q.chat, me.id);
         if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
-        const msgs = await sql`
+        // PAGING. The newest CHAT_PAGE messages, or with before=MESSAGE_ID
+        // the CHAT_PAGE just before that one. The cursor is compared inside
+        // the database, on (time, id), so no message is skipped or repeated.
+        const before = q.before ? String(q.before) : null;
+        if (before && !isUuid(before)) return res.status(400).json({ ok: false, error: 'Bad cursor' });
+        const page = await sql`
           select m.id, m.text, m.kind, m.created_at, m.member_id, m.audio_secs,
                  coalesce(mem.name, 'Ekta') as name
           from messages m left join members mem on mem.id = m.member_id
           where m.chat_id = ${chat.id}
-          order by m.created_at desc limit 50`;
+            and (${before}::uuid is null or (m.created_at, m.id) < (select b.created_at, b.id from messages b where b.id = ${before}::uuid and b.chat_id = ${chat.id}))
+          order by m.created_at desc, m.id desc limit ${CHAT_PAGE + 1}`;
+        const more = page.length > CHAT_PAGE;
+        const msgs = page.slice(0, CHAT_PAGE);
         // Viewing the chat marks it read - receipts are always on, by design.
-        await sql`insert into chat_reads (chat_id, member_id, read_at) values (${chat.id}, ${me.id}, now())
+        // Looking back at older messages does not move the mark.
+        if (!before) await sql`insert into chat_reads (chat_id, member_id, read_at) values (${chat.id}, ${me.id}, now())
                   on conflict (chat_id, member_id) do update set read_at = now()`;
         const reads = await sql`
           select r.member_id, r.read_at, m.name
@@ -168,7 +237,9 @@ export default async function handler(req, res) {
           ? await sql`select id, name from members where circle_id = ${circle.id} order by created_at`
           : await sql`select m.id, m.name from chat_members cm join members m on m.id = cm.member_id where cm.chat_id = ${chat.id} order by m.created_at`;
         const withBond = await attachBond(sql, msgs.reverse(), me.id);
-        return res.status(200).json({ ok: true, chat: { id: chat.id, kind: chat.kind, name: chat.name }, messages: withBond, reads, members: participants });
+        const muted = await sql`select 1 as x from chat_mutes where chat_id = ${chat.id} and member_id = ${me.id}`;
+        return res.status(200).json({ ok: true, chat: { id: chat.id, kind: chat.kind, name: chat.name, muted: !!muted[0] }, messages: withBond, reads, members: participants,
+          more, before: more && withBond[0] ? withBond[0].id : null });
       }
       const chats = await listChats(sql, circle, me);
       return res.status(200).json({ ok: true, chats });
@@ -208,56 +279,86 @@ export default async function handler(req, res) {
       try {
         const label = chat.kind === 'dm' ? me.name : (chat.name || 'family chat');
         const preview = kind === 'image' ? '📷 Photo' : kind === 'audio' ? voiceLabel(secs) : text.slice(0, 90);
+        // A chat someone muted stays quiet for them. A message that names
+        // them with @ still reaches them: that is someone asking for them.
         if (chat.kind === 'dm') {
-          const others = await sql`select member_id from chat_members where chat_id = ${chat.id} and member_id <> ${me.id}`;
-          if (others[0]) await pushCircle(sql, circle.id, { title: '💬 ' + me.name, body: preview }, { only: others[0].member_id });
+          const others = await sql`select cm.member_id from chat_members cm where cm.chat_id = ${chat.id} and cm.member_id <> ${me.id}
+                                   and not exists (select 1 from chat_mutes mu where mu.chat_id = cm.chat_id and mu.member_id = cm.member_id)`;
+          if (others[0]) await pushCircle(sql, circle.id, { kind: 'chat', title: '💬 ' + me.name, body: preview }, { only: others[0].member_id });
         } else {
           // everyone in this conversation hears about it - the people named
-          // with @ get the louder "mentioned you" version, once each.
+          // with @ get the louder "mentioned you" version, once each. All of
+          // them are sent together, not one after another.
           const audience = chat.kind === 'circle'
-            ? await sql`select id, name from members where circle_id = ${circle.id} and id <> ${me.id}`
-            : await sql`select m.id, m.name from chat_members cm join members m on m.id = cm.member_id
-                        where cm.chat_id = ${chat.id} and m.id <> ${me.id}`;
-          const pinged = {};
-          if (kind === 'text' && text.indexOf('@') >= 0) {
-            for (const p of audience) {
-              if (new RegExp('@' + p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(text)) {
-                pinged[p.id] = true;
-                await pushCircle(sql, circle.id, { title: '💬 ' + me.name + ' mentioned you in ' + label, body: preview }, { only: p.id });
-              }
-            }
-          }
-          for (const p of audience) {
-            if (pinged[p.id]) continue;
-            await pushCircle(sql, circle.id, { title: '💬 ' + me.name + ' in ' + label, body: preview }, { only: p.id });
-          }
+            ? await sql`select m.id, m.name, exists (select 1 from chat_mutes mu where mu.chat_id = ${chat.id} and mu.member_id = m.id) as muted
+                        from members m where m.circle_id = ${circle.id} and m.id <> ${me.id} and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`
+            : await sql`select m.id, m.name, exists (select 1 from chat_mutes mu where mu.chat_id = ${chat.id} and mu.member_id = m.id) as muted
+                        from chat_members cm join members m on m.id = cm.member_id
+                        where cm.chat_id = ${chat.id} and m.id <> ${me.id} and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`;
+          // Someone the family remembers is never in the audience: an @ with
+          // their name is a line of love, not a mention of someone to ping.
+          const named = kind === 'text' && text.indexOf('@') >= 0
+            ? audience.filter(p => new RegExp('@' + p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(text)).map(p => p.id) : [];
+          const rest = audience.filter(p => !p.muted && named.indexOf(p.id) < 0).map(p => p.id);
+          await Promise.allSettled([
+            pushMany(sql, circle.id, named, { kind: 'chat', title: '💬 ' + me.name + ' mentioned you in ' + label, body: preview }),
+            pushMany(sql, circle.id, rest, { kind: 'chat', title: '💬 ' + me.name + ' in ' + label, body: preview })
+          ]);
         }
       } catch (e) { /* alerts never block the message */ }
-      const ekta = kind === 'text' ? await maybeEktaReply(sql, circle, me, chat, text) : null;
+      // fromEkta: the member said yes to a card she prepared (api/_ektaagent.mjs).
+      // The words are theirs, so she does not answer her own message.
+      const ekta = kind === 'text' && !body.fromEkta ? await maybeEktaReply(sql, circle, me, chat, text, req) : null;
       // ektaEmergency: her reply says to call for help, so the chat shows
       // the Call and SOS buttons under it, as Ekta's own screen does.
-      return res.status(201).json({ ok: true, ekta: ekta ? true : false, ektaEmergency: !!(ekta && ekta.emergency) });
+      // ektaNote: why she did not answer, for the person who asked only.
+      return res.status(201).json({ ok: true, ekta: !!(ekta && ekta.replied), ektaEmergency: !!(ekta && ekta.emergency),
+        ektaNote: (ekta && ekta.note) || undefined });
     }
 
     // Reactions and polls (api/_chatbond.mjs): only people in that chat.
-    if (action === 'react' || action === 'poll_create' || action === 'poll_vote' || action === 'poll_close') {
+    // My own message, taken back. Never someone else's, never Ekta's.
+    if (action === 'delete_message') {
+      const chat = await chatForMember(sql, circle, body.chatId, me.id);
+      if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
+      if (!isUuid(body.messageId)) return res.status(400).json({ ok: false, error: 'Bad message' });
+      const got = await sql`delete from messages where id = ${body.messageId} and chat_id = ${chat.id} and member_id = ${me.id} returning id`;
+      if (!got[0]) return res.status(403).json({ ok: false, error: 'You can delete only a message you sent' });
+      return res.status(200).json({ ok: true });
+    }
+    // Quiet this chat, for me only. Nobody else is told.
+    if (action === 'mute') {
+      const chat = await chatForMember(sql, circle, body.chatId, me.id);
+      if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
+      if (body.on) await sql`insert into chat_mutes (chat_id, member_id) values (${chat.id}, ${me.id}) on conflict do nothing`;
+      else await sql`delete from chat_mutes where chat_id = ${chat.id} and member_id = ${me.id}`;
+      return res.status(200).json({ ok: true, muted: !!body.on });
+    }
+
+    if (action === 'react' || action === 'poll_create' || action === 'poll_vote' || action === 'poll_close' || action === 'poll_remind') {
       const chat = await chatForMember(sql, circle, body.chatId, me.id);
       if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
       // A reaction never pushes and never becomes a message.
       if (action === 'react') { const r = await react(sql, chat, me, body); return res.status(r.status).json(r.json); }
       if (action === 'poll_vote') { const r = await votePoll(sql, chat, me, body); return res.status(r.status).json(r.json); }
       if (action === 'poll_close') { const r = await closePoll(sql, chat, me, body); return res.status(r.status).json(r.json); }
+      if (action === 'poll_remind') {
+        const r = await remindPoll(sql, chat, me, body);
+        if (r.status === 200) {
+          try { await pushMany(sql, circle.id, r.ids, { kind: 'chat', title: '📊 ' + me.name + ' is waiting for your vote', body: String(r.question || '').slice(0, 90) }); }
+          catch (e) { /* alerts never block the poll */ }
+        }
+        return res.status(r.status).json(r.json);
+      }
       const r = await createPoll(sql, chat, me, body);
       if (r.status === 201) {
         // One push per person for a new poll; none per vote.
         try {
           const label = chat.kind === 'dm' ? me.name : (chat.name || spaceWord(circle) + ' chat');
           const audience = chat.kind === 'circle'
-            ? await sql`select id from members where circle_id = ${circle.id} and id <> ${me.id} and user_id is not null`
-            : await sql`select m.id from chat_members cm join members m on m.id = cm.member_id where cm.chat_id = ${chat.id} and m.id <> ${me.id}`;
-          for (const p of audience) {
-            await pushCircle(sql, circle.id, { title: '📊 ' + me.name + ' asked in ' + label, body: r.poll.question.slice(0, 90) }, { only: p.id });
-          }
+            ? await sql`select m.id from members m where m.circle_id = ${circle.id} and m.id <> ${me.id} and m.user_id is not null and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`
+            : await sql`select m.id from chat_members cm join members m on m.id = cm.member_id where cm.chat_id = ${chat.id} and m.id <> ${me.id} and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`;
+          await pushMany(sql, circle.id, audience.map(p => p.id), { kind: 'chat', title: '📊 ' + me.name + ' asked in ' + label, body: r.poll.question.slice(0, 90) });
         } catch (e) { /* alerts never block the poll */ }
       }
       return res.status(r.status).json(r.json);
@@ -268,14 +369,15 @@ export default async function handler(req, res) {
       if (!name) return res.status(400).json({ ok: false, error: 'The group needs a name' });
       const wanted = Array.isArray(body.memberIds) ? body.memberIds.filter(isUuid) : [];
       // Someone added to the tree by name never signs in: never in a chat.
-      const valid = await sql`select id from members where circle_id = ${circle.id} and id = any(${wanted}) and user_id is not null`;
+      // Someone the family remembers is never added to one either.
+      const valid = await sql`select m.id from members m where m.circle_id = ${circle.id} and m.id = any(${wanted}) and m.user_id is not null and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`;
       const ids = valid.map(v => v.id);
       if (ids.indexOf(me.id) < 0) ids.push(me.id);
       const c = await sql`insert into chats (circle_id, kind, name) values (${circle.id}, 'group', ${name}) returning id`;
       for (const id of ids) {
         await sql`insert into chat_members (chat_id, member_id) values (${c[0].id}, ${id}) on conflict do nothing`;
         if (id !== me.id) {
-          await pushCircle(sql, circle.id, { title: '👥 ' + me.name + ' started "' + name + '"', body: 'You have been added to the group' }, { only: id });
+          await pushCircle(sql, circle.id, { kind: 'chat', title: '👥 ' + me.name + ' started "' + name + '"', body: 'You have been added to the group' }, { only: id });
         }
       }
       return res.status(201).json({ ok: true, chatId: c[0].id });
@@ -284,8 +386,9 @@ export default async function handler(req, res) {
     if (action === 'open_dm') {
       const other = body.otherId;
       if (!isUuid(other) || other === me.id) return res.status(400).json({ ok: false, error: 'Pick a person to message' });
-      const oRow = await sql`select id, name, user_id from members where id = ${other} and circle_id = ${circle.id}`;
+      const oRow = await sql`select m.id, m.name, m.user_id, coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered from members m where m.id = ${other} and m.circle_id = ${circle.id}`;
       if (!oRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this family' });
+      if (oRow[0].remembered) return res.status(400).json({ ok: false, error: oRow[0].name + ' is remembered here, so there is no chat to open.' });
       if (!oRow[0].user_id) return res.status(400).json({ ok: false, error: oRow[0].name + ' is not on Parwah, so cannot be messaged here' });
       const existing = await sql`
         select c.id from chats c
@@ -305,17 +408,19 @@ export default async function handler(req, res) {
       if (chat.kind !== 'group') return res.status(400).json({ ok: false, error: chat.kind === 'circle' ? 'Everyone is already in the ' + spaceWord(circle) + ' chat' : 'Personal chats stay 1:1 - make a group instead' });
       const addId = body.addId;
       if (!isUuid(addId)) return res.status(400).json({ ok: false, error: 'Pick a person to add' });
-      const aRow = await sql`select id, name, user_id from members where id = ${addId} and circle_id = ${circle.id}`;
+      const aRow = await sql`select m.id, m.name, m.user_id, coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered from members m where m.id = ${addId} and m.circle_id = ${circle.id}`;
       if (!aRow[0]) return res.status(404).json({ ok: false, error: 'That person is not in this family' });
+      // Refused here, on the server, whatever the screen offered.
+      if (aRow[0].remembered) return res.status(400).json({ ok: false, error: aRow[0].name + ' is remembered here, so cannot be added to a chat.' });
       if (!aRow[0].user_id) return res.status(400).json({ ok: false, error: aRow[0].name + ' is not on Parwah, so cannot be in a chat' });
       await sql`insert into chat_members (chat_id, member_id) values (${chat.id}, ${addId}) on conflict do nothing`;
       await sql`insert into messages (chat_id, member_id, text) values (${chat.id}, ${me.id}, ${'➕ Added ' + aRow[0].name + ' to the group'})`;
       // the person added is told; so is everyone already in the group
-      await pushCircle(sql, circle.id, { title: '➕ ' + me.name + ' added you to ' + (chat.name || 'a group'), body: 'Open Parwah to say hello' }, { only: addId });
+      await pushCircle(sql, circle.id, { kind: 'chat', title: '➕ ' + me.name + ' added you to ' + (chat.name || 'a group'), body: 'Open Parwah to say hello' }, { only: addId });
       const inGroup = await sql`select m.id from chat_members cm join members m on m.id = cm.member_id
                                 where cm.chat_id = ${chat.id} and m.id <> ${me.id} and m.id <> ${addId}`;
       for (const p of inGroup) {
-        await pushCircle(sql, circle.id, { title: '➕ ' + aRow[0].name + ' joined ' + (chat.name || 'the group'), body: 'Added by ' + me.name }, { only: p.id });
+        await pushCircle(sql, circle.id, { kind: 'chat', title: '➕ ' + aRow[0].name + ' joined ' + (chat.name || 'the group'), body: 'Added by ' + me.name }, { only: p.id });
       }
       return res.status(200).json({ ok: true });
     }

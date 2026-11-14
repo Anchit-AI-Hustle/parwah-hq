@@ -327,6 +327,11 @@ await R.context().setGeolocation(PUNE);
   await R.click('#lp-save'); await R.waitForTimeout(1500);
   const pl = (await admin.query(`select * from location_places where name = 'Home'`)).rows[0];
   ok('Home is saved where Rohan is, 150 m across', pl && Math.abs(pl.lat - PUNE.latitude) < 1e-4 && pl.radius === 150, JSON.stringify(pl));
+  // Arrivals and departures are told only for someone who said yes, on
+  // their own phone, to "Announce my arrivals".
+  await R.check('#cn-ann');
+  await R.waitForFunction(() => /told when you arrive/.test(document.getElementById('toast').textContent), null, { timeout: 15000 });
+  ok('Rohan turns on "Announce my arrivals" himself', (await admin.query(`select announce from location_consent`)).rows.some(x => x.announce === true));
   await R.click('#loc-prec [data-prec="exact"]');
   await R.click('#loc-share'); await R.waitForTimeout(1500);
   await M.reload(); await M.waitForTimeout(1500);

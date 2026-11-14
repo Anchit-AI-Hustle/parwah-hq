@@ -216,19 +216,24 @@ ok('an unknown bond action is refused', (await act(rohan, 'bond_nope')).status =
 
 // ---------------------------------------------------------------- 3. festivals
 {
-  ok('the dates are all inside Nov 2026 to Dec 2027', T.FESTIVALS.every(f => f.dates.every(d => d >= '2026-11-01' && d <= '2027-12-31')) && T.FESTIVALS.length === 16);
+  ok('the dates are all inside Nov 2026 to Dec 2030', T.FESTIVALS.every(f => f.dates.every(d => d >= '2026-11-01' && d <= '2030-12-31')) && T.FESTIVALS.length === 21);
   const sql = db(); const circle = { id: fam, kind: 'family' };
   // Off until the family picks: nothing is assumed.
   let s = await state(rohan);
-  ok('off until the family picks', s.festivals.chosen.length === 0 && s.festivals.due.length === 0 && s.festivals.list.length === 16);
+  ok('off until the family picks', s.festivals.chosen.length === 0 && s.festivals.due.length === 0 && s.festivals.list.length === 21);
   // A festival 10 days away, made up for the test so the clock does not matter.
   T.FESTIVALS.push({ key: 'testfest', name: 'Test Festival', icon: '🎉', dates: [dayPlus(10)] });
   T.FESTIVALS.push({ key: 'farfest', name: 'Far Festival', icon: '🎉', dates: [dayPlus(30)] });
   await B.sweepBond(sql, circle);
   ok('nothing is announced for a festival nobody picked', (await admin.query(`select count(*)::int as n from festival_kits`)).rows[0].n === 0);
-  ok('an outsider cannot choose', (await act(intruder, 'bond_fest_set', { keys: ['testfest'] })).status === 403);
-  const set = await act(maa, 'bond_fest_set', { keys: ['testfest', 'farfest', 'diwali', 'not-a-festival'] });
-  ok('the family picks its festivals (unknown ones dropped)', set.status === 200 && set.chosen.join() === 'testfest,farfest,diwali', JSON.stringify(set));
+  ok('an outsider cannot choose', (await act(intruder, 'bond_fest_add', { key: 'testfest' })).status === 403);
+  // Festivals are added and taken off ONE AT A TIME (Nov 2026): nobody can
+  // replace the whole family's list any more.
+  ok('the old "replace the whole list" action is gone', (await act(maa, 'bond_fest_set', { keys: ['testfest'] })).status === 400);
+  ok('an unknown festival is refused', (await act(maa, 'bond_fest_add', { key: 'not-a-festival' })).status === 400);
+  let set = null;
+  for (const k of ['testfest', 'farfest', 'diwali']) set = await act(maa, 'bond_fest_add', { key: k });
+  ok('the family picks its festivals, one at a time', set.status === 200 && set.chosen.slice().sort().join() === 'diwali,farfest,testfest', JSON.stringify(set));
   const made = await Promise.all([1, 2, 3].map(() => B.sweepBond(sql, circle)));
   const kits = (await admin.query(`select fkey from festival_kits where circle_id = $1`, [fam])).rows.map(r => r.fkey);
   ok('14 days before: one card, once, however many phones poll', kits.filter(k => k === 'testfest').length === 1 && !kits.includes('farfest'), kits.join());
@@ -248,7 +253,7 @@ ok('an unknown bond action is refused', (await act(rohan, 'bond_nope')).status =
   ok('the card now says it is started, with the plan', s.festivals.due.find(f => f.key === 'testfest').planId === fp[0].id);
   ok('a festival not picked cannot be kitted', (await act(rohan, 'bond_fest_kit', { key: 'holi', date: '2027-03-22' })).status === 400);
   ok('nor one too far away', (await act(rohan, 'bond_fest_kit', { key: 'farfest', date: dayPlus(30) })).status === 400);
-  ok('a group can pick too', (await act(asha, 'bond_fest_set', { keys: ['christmas'] })).chosen.join() === 'christmas');
+  ok('a group can pick too', (await act(asha, 'bond_fest_add', { key: 'christmas' })).chosen.join() === 'christmas');
 }
 
 // ---------------------------------------------------------------- 5. I'm in town

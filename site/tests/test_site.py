@@ -620,8 +620,10 @@ check("games: in Get Away each player is sent only their own hand",
       "bhabhiView(game.state, memberId)" in _gm and "v.hands = st.hands.map((h, i) => (i === me ? h : []))" in _bg)
 _bare = [l.strip() for l in appsrc.splitlines()
          if "fetch(" in l and "authHeaders" not in l and "function apiGet" not in l
-         and "fetch(API.push)" not in l and "fetch('/', { method: 'HEAD'" not in l and not l.strip().startswith("//")]
-check("auth: every API call carries the sign-in token (apiGet/post; only the public push key, and the page's own version, are fetched bare)",
+         and "fetch(API.push)" not in l and "fetch('/', { method: 'HEAD'" not in l and not l.strip().startswith("//")
+         # The error report is sent bare ON PURPOSE: it must name nobody.
+         and "fetch(NT_REPORT, {" not in l]
+check("auth: every API call carries the sign-in token (apiGet/post; only the public push key, the page's own version and the nameless error report are fetched bare)",
       not _bare, "; ".join(_bare[:3]))
 check("todo: reminders and tasks are one list, in three parts: Needs attention, Today, Coming up",
       all(k in appsrc for k in ("'g-need', 'Needs attention'", "'g-today', 'Today'", "'g-soon', 'Coming up'"))
@@ -863,15 +865,16 @@ CIRCLE_WIDE_OK = {
     ("events.mjs", "on now"):             "a live call is open to all",
     ("events.mjs", "could do with a call"): "the point of the pulse",
     ("care.mjs",   "needs a hand"):       "a job anyone can pick up",
-    ("_tasks.mjs", "payload, {})"):       "late, and nobody has it - or the family chose to tell everyone",
+    ("_tasks.mjs", "taskFamilyText(t.title, false)"): "past its time and nobody has it: anyone may take it (a task someone has tells only them first)",
     ("_tasks.mjs", "Nobody has it yet - first to tap"): "its time has come and nobody has it: anyone may take it",
     ("plans.mjs",  ""):                   "a plan invites the whole circle",
     ("games.mjs",  "lobby is open"):      "an open lobby invites everyone",
     ("_ladder.mjs", "Calling "):          "nobody answered an SOS: everyone sees who is being called next",
-    ("_staff.mjs", "not marked in yet"):  "anyone in the family may be the one who can check at home",
     ("_renewals.mjs", "payload, {})"):    "a household date nobody looks after yet: anyone may take it",
     ("_bond.mjs", "Plan it together on Parwah"): "a festival the circle itself chose, once, 14 days ahead",
     ("_famlink.mjs", "asks to link family trees"): "another family asks to link trees: any adult of this one may be the one who answers",
+    ("_standing.mjs", "Anyone with the code can now join"): "two adults opened the door: it changes who can walk in, for everyone",
+    ("_standing.mjs", "will be deleted in"): "the whole family is about to be deleted: every member must hear, with the way to stop it",
     ("_remember.mjs", "A quiet day to remember"): "a day of remembrance is the whole family's, once a year",
 }
 def _push_calls(src):
@@ -1042,8 +1045,11 @@ check("flow: an empty name is refused out loud",
       "Please type your name so your family knows who joined." in _appf)
 check("flow: and a sign-in error is scrolled to, on a screen taller than a phone",
       "function authErr(" in _appf and "scrollIntoView({ block: 'center'" in _appf)
-check("flow: a number nobody has seen before is told it is new",
-      'id="au-newnote"' in _appf and "This number is new to Parwah" in _appf)
+# The server used to say "this number is new", which told anyone who typed a
+# number whether its owner uses Parwah. The person says it themselves now.
+check("flow: the sign-in card asks 'new here or signing in?', so the server never has to say which numbers have a profile",
+      'id="au-newnote"' in _appf and 'id="ac-mode"' in _appf and 'data-acmode="new"' in _appf and "I am new here" in _appf
+      and "This number is new to Parwah" not in _appf)
 check("flow: signing up, signing in and navigating are walked in a browser",
       (REPO / "site/tests/browser/flow.browser.mjs").exists()
       and "flow.browser.mjs" in (REPO / "package.json").read_text(encoding="utf-8"))
@@ -1258,8 +1264,22 @@ check("signin: PINs are compared in constant time",
       "timingSafeEqual" in _au)
 check("signin: the PINs a thief tries first are refused",
       "'1234'" in _au and "'0000'" in _au)
+_acct = (API_DIR / "_account.mjs").read_text(encoding="utf-8")
+_strules = (API_DIR / "_standingrules.mjs").read_text(encoding="utf-8")
 check("signin: wrong PINs lock the account rather than allowing a million tries",
-      "MAX_TRIES" in _au and "locked_until" in _authmjs and "lockMessage" in _authmjs)
+      "MAX_TRIES" in _au and "locked_until" in _acct and "pinGate(sql, key" in _authmjs and "lockReply(g.until)" in _authmjs)
+check("signin: the lock grows (15 minutes, 1 hour, 24 hours) and forgets after 7 clean days",
+      "export const LOCK_STEPS_MIN = [15, 60, 1440];" in _strules and "export const LOCK_DECAY_DAYS = 7;" in _strules
+      and "lockPlan(level, lastEnd" in _acct)
+check("signin: a phone that has signed in before keeps its own count, so a stranger cannot lock a parent out",
+      "const key = lockKey(phone, trusted ? deviceHash : null);" in _authmjs and "isKnownDevice(sql, user.id, deviceHash)" in _authmjs
+      and "deviceId: acDeviceId()" in _appa)
+check("signin: a number nobody has is counted and locked the same way, with the same slow hash",
+      "if (!user || !user.pin_hash) { hashPin(String(body.pin || ''), '00'); return false; }" in _authmjs
+      and "return res.status(200).json({ ok: true, exists: true, needPin: true, older: false });" in _authmjs
+      and "exists: false })" not in _authmjs)
+check("signin: no SMS anywhere in sign-in (owner's decision)",
+      not re.search(r"twilio|sendSms|sms_otp|\botp\b|_sosdial", _authmjs + _acct, re.I))
 # One secret for everyone: a PIN of exactly 4 numbers (owner, 2026-10-04).
 # An older PIN or a password signs in once, then a 4-number PIN is chosen
 # before any session is issued.
@@ -1268,12 +1288,12 @@ check("signin: a PIN of exactly 4 numbers, and no password option",
       and "SECRET_V = 3" in _au)
 check("signin: an older PIN or password is marked, and replaced before a session is issued",
       "add column if not exists secret_v" in _dbs and "changeSecret: true" in _authmjs
-      and 0 < _authmjs.find("if (user.secret_v !== SECRET_V) {") < _authmjs.find("const token = newToken()"))
+      and 0 < _authmjs.find("if (user.secret_v !== SECRET_V || user.must_change_pin) {") < _authmjs.rfind("return signedIn();"))
 # The try is claimed in the database, while unlocked, BEFORE the PIN is
 # checked. Read-check-then-write let a burst of guesses all be checked.
-_claim = re.search(r"pin_tries = pin_tries \+ 1\s+where id = \$\{user\.id\} and \(locked_until is null or locked_until <= now\(\)\)", _authmjs)
+_claim = re.search(r"on conflict \(k\) do update set tries = pin_locks\.tries \+ 1, updated_at = now\(\)\s+where pin_locks\.locked_until is null or pin_locks\.locked_until <= now\(\)", _acct)
 check("signin: each try is claimed before it is checked, so a burst cannot beat the lock",
-      _claim is not None and _claim.start() < _authmjs.find("verifyPin(body.pin, user.pin_salt, user.pin_hash)"))
+      _claim is not None and _claim.start() < _acct.find("if (!check()) {"))
 check("signin: a background refresh proves itself with the session, not a PIN",
       "sessionUser(sql, tokenOf(req))" in _authmjs and "su.user_id === user.id" in _authmjs)
 _pinbox = _appa.split('id="au-pin"')[1][:200]
@@ -1290,7 +1310,7 @@ check("signin: the lock and the old-PIN path are tested against a real database"
       and "test:db" in (REPO / "package.json").read_text(encoding="utf-8")
       and "npm run test:db" in (REPO / ".github/workflows/pr.yml").read_text(encoding="utf-8"))
 check("signin: a session token is issued, and only its hash is stored",
-      "newToken()" in _authmjs and "tokenHash(token)" in _authmjs and "createHash('sha256')" in _au)
+      "const token = newToken();" in _acct and "values (${tokenHash(token)}, ${user.id}" in _acct and "createHash('sha256')" in _au)
 check("signin: sessions expire", "SESSION_DAYS" in _au and "expires_at" in _dbs)
 check("signin: signing out revokes the session on the server",
       "action === 'signout'" in _authmjs and "delete from sessions" in _authmjs)
@@ -1811,8 +1831,12 @@ check("today: five things and no more - four tiles and the emergency card (the f
       len(_wnames) == 4 and _above_more.count('class="widget"') == 4 and 'id="btn-ecard"' in _above_more)
 check("today: everything else is kept, one tap away under More",
       all(x in _home[_home.index('id="more"'):] for x in ('data-goto="chat"', 'data-sec="plans"', 'data-goto="ekta"', 'data-sec="muhurat"', 'data-sec="pay"', 'data-sec="games"', 'id="coincard"')))
-check("today: no daily food or mood question (families already chat about that on WhatsApp)",
-      'id="pulsecard"' not in _appt and "renderPulse" not in _appt and 'id="pu-pick"' not in _appt)
+# Changed Nov 2026 (being heard): the mood question is back, but as one
+# quiet card that is PRIVATE by default. The old public version (everyone's
+# answer on the feed, a rotating food or weather question) stays gone.
+check("today: no public food or mood question; the mood card is one private card below the alerts, not a sixth tile",
+      'id="pulsecard"' not in _appt and "renderPulse" not in _appt and 'id="pu-pick"' not in _appt
+      and _appt.count('id="hd-today"') == 1 and _appt.index('id="hd-today"') < _appt.index('id="widgets"'))
 _circ = (API_DIR / "circle.mjs").read_text(encoding="utf-8")
 _rels = re.findall(r"'([a-z-]+)'", re.search(r"const RELATIONS = \[([^\]]*)\]", _circ).group(1))
 for _pick in ("c-role", "j-role", "e-role"):
@@ -1924,8 +1948,8 @@ check("ekta: anyone in danger is answered first, in fixed words, free - before c
 # Ekta: when a turn fails after something was already done (a reminder
 # saved), the answer refreshes the screen rather than hiding it.
 _ek = (REPO / "api/ekta.mjs").read_text(encoding="utf-8")
-check("ekta: a failed turn that names an emergency still refreshes what was already done",
-      "if (isUrgent) return answer({" in _ek and "actions: [{ tool: 'refresh' }]" in _ek and "please check before asking again" in _ek)
+check("ekta: a failed turn that names an emergency is still answered, and says truthfully that nothing was done (she only ever prepares a card)",
+      "if (isUrgent) return answer({" in _ek and "Nothing has been done for you." in _ek and "actions: [{ tool: 'refresh' }]" not in _ek)
 check("ekta: the scam check, records and medicine questions are never charged; a family word finds the one person saved with it",
       "if (['scam', 'memory', 'summary', 'health'].includes(asked)) {" in _ekt and "localTurn(sql, circle, me, history, 'records')" in _ekt
       and _ekt.find("localTurn(sql, circle, me, history, 'records')") < _ekt.find("await spend(sql, circle.id, me.id, 'ekta')")
@@ -2111,7 +2135,12 @@ check("script: no two app functions share a name (a later one replaces the first
 # in findme.dbtest (rules) and findme.e2e (three real phones).
 _findsrc = (REPO / "api/_findme.mjs").read_text(encoding="utf-8")
 check("find my: ring a phone and Lost mode, held by the owner's PIN with the sign-in lockout",
-      "RING_SECONDS = 120" in _findsrc and "MAX_TRIES" in _findsrc and "lost_session === tokenHash(token)" in _findsrc
+      "RING_SECONDS = 120" in _findsrc and "lost_session === tokenHash(token)" in _findsrc
+      # Lost mode's PIN is the sign-in's own escalating lock, never a counter of its own.
+      and "const g = await pinGate(sql, lockKey(u.phone, dev), () => verifyPin(String(body.pin), u.pin_salt, u.pin_hash));" in _findsrc
+      and "pin_tries = pin_tries + 1" not in _findsrc and "LOCK_MINUTES" not in _findsrc
+      and "rateLimit(sql, 'findring', me.id + ':' + t.id, 1, 60, { failClosed: true })" in _findsrc
+      and "rateLimit(sql, 'findringday', me.id, 20, 86400, { failClosed: true })" in _findsrc
       and 'id="ringscreen"' in _appt and 'id="lostscreen"' in _appt and "findSync(j.findme)" in _appt
       and "ring ? 'parwah-ring'" in (REPO / "site/public/sw.js").read_text(encoding="utf-8")
       and (REPO / "site/tests/db/findme.dbtest.mjs").exists() and (REPO / "site/tests/db/findme.e2e.dbtest.mjs").exists())
@@ -2246,9 +2275,12 @@ check("waitlist: it costs no serverless slot, it rides the front door",
 # real database in site/tests/db/authz.dbtest.mjs; this pins the wiring.
 check("auth: profile update and the tour flag act only as the signed-in person",
       _auth_src.count("await sessionIs(sql, tokenOf(req), body.userId)") == 2)
-check("auth: a family is created or joined only as the signed-in person",
-      "(action === 'create' || action === 'join') && !(await sessionIs(sql, tokenOf(req), uid))"
-      in (API_DIR / "circle.mjs").read_text(encoding="utf-8"))
+# Leaving the userId out used to skip the check altogether. Now the session
+# is asked for on every create and join, and says who it is.
+check("auth: a family is created or joined only as the signed-in person, whether or not a userId is sent",
+      "if (!su || (uid && String(su.user_id) !== String(uid))) {" in (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+      and "uid = su.user_id;" in (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+      and "if (uid && (action === 'create' || action === 'join')" not in (API_DIR / "circle.mjs").read_text(encoding="utf-8"))
 check("auth: and the database suite proves it", "authz.dbtest.mjs" in (REPO / "package.json").read_text(encoding="utf-8"))
 check("waitlist: the table is created by the schema, not by hand in a console",
       "create table if not exists waitlist" in _dbsrc)
@@ -2501,14 +2533,15 @@ check("sos: a countdown with Cancel stands in for the question, and every SOS bu
       "SOS_COUNT = 5" in _app_src and "$('btn-sos').addEventListener('click', function(){ sosStart(''); });" in _app_src
       and "sosStart(said)" in _app_src)
 check("sos: sent as an emergency push (high urgency, stays on screen, long buzz)",
-      "urgency: 'high'" in (API_DIR / "_push.mjs").read_text(encoding="utf-8")
+      "urgency: 'high'" in (API_DIR / "_safetyrules.mjs").read_text(encoding="utf-8")
+      and "const how = pushOptions(payload);" in (API_DIR / "_push.mjs").read_text(encoding="utf-8")
       and "requireInteraction: urgent" in (REPO / "site/public/sw.js").read_text(encoding="utf-8"))
 check("sos: the message goes in the family chat with a map link",
-      "ensureCircleChat(sql, circle.id)" in _evt and "maps.google.com/?q=" in _sosmod)
+      "ensureCircleChat(sql, p.circleId)" in _evt and "maps.google.com/?q=" in _sosmod)
 # Owner (2026-10-10): anyone in the family or group ends an SOS, the person
 # who sent it included; until then the location stays held on (sos.e2e).
 check("sos: location is held on until the SOS is closed, by the sender or anyone in the family",
-      "lockForSos(sql, circle.id, me.id, sosId, pos)" in _evt and "unlockSos(sql, circle.id, row[0].member_id)" in _evt
+      "lockForSos(sql, circleId, memberId, sosId, pos)" in _evt and "unlockSos(sql, circle.id, row[0].member_id)" in _evt
       and "unlockSos(sql, circle.id, memberId)" in _evt
       and "status(423)" in _locapi and "s.sos_lock is null" in _locapi
       and "othersOnApp(sql, circle.id, memberId)) > 0" not in _evt)
@@ -2977,8 +3010,10 @@ check("rasoi: recipes are for food: the form says so, nothing invites a home rem
       and not re.search(r"nuskh|remed|ilaaj|upchar|gharelu|kadha", (_mb_js + _mb_html + " ".join(_mb_rc)), re.I)
       and "NOT_FOOD.test(" in _mb_api)
 check("stories: the storyteller decides who hears each answer (the whole family, some people, only me)",
-      "if (r.about_member !== me.id) return { s: 403, e: 'Only the storyteller can do that' };" in _mb_api
-      and "(s.visibility = 'circle' or s.about_member = ${me.id} or (s.visibility = 'some' and ${me.id} = any(s.share_with)))" in _mb_api
+      # Nov 2026: a relative who recorded a story for someone not on the app
+      # stands in for the storyteller on that one story.
+      "if (r.about_member !== me.id && r.recorded_by !== me.id) return { s: 403, e: 'Only the storyteller can do that' };" in _mb_api
+      and "(s.visibility = 'circle' or s.about_member = ${me.id} or s.recorded_by = ${me.id} or (s.visibility = 'some' and ${me.id} = any(s.share_with)))" in _mb_api
       and "data-mbvis" in _mb_js)
 check("voice: our own recorder, 3 minutes at most, an allow-listed type, a byte cap on the server, never auto-played",
       "MB_MAX_SECS = 180" in _mb_js and "audioBitsPerSecond: 24000" in _mb_js
@@ -3145,7 +3180,11 @@ check("register: only the person it is about, or whoever wrote it, can edit, re-
       and "Only the person it is about, or whoever wrote it, can change this." in _fr_api)
 check("register: once the person it is about makes it theirs alone, only they can widen it; the audit list keeps quiet about it",
       "if (row.unlock_policy === 'ONLY_ME' && row.person_id !== g.me.id) {" in _fr_api
-      and _fr_api.count("l.unlock_policy = 'ONLY_ME'") == 2
+      # The audit list shows a member only rows they did or that are about
+      # them, in both of its reads, so an entry that is someone's alone is
+      # never in anyone else's list.
+      and _fr_api.count("where l.id = ae.resource_id and l.person_id = ${g.me.id})))") == 2
+      and _fr_api.count("and (ae.actor_id = ${g.me.id}") == 2
       and "is not on Parwah yet, so an emergency could never open this" in _fr_api)
 check("register: the people lists are refilled when the family arrives, not only when the screen opens",
       "if (frSig !== frPeopleSig) { frPeopleSig = frSig; try { frFillPeople(); } catch (e) {} }" in _app_src)
@@ -3313,7 +3352,9 @@ _al_css = "\n".join(l for l in _al_app.splitlines() if l.startswith((".al", ".ca
 _al_legal = "This is a list to help you remember, not legal advice. Rules differ by bank and state."
 _al_sorry = "We are sorry. This list is here so nothing is forgotten."
 check("afterloss: its rules import nothing, and take the register's viewing rule as an argument",
-      not re.search(r"^\s*import\s", _al, re.M) and "rowFor(row, viewerId" in _al
+      re.findall(r"(?m)^import .*$", _al) == ["import { surelyAdult, ADULT_HOW } from './_safetyrules.mjs';"]
+      and not re.search(r"(?m)^\s*import\s", (API_DIR / "_safetyrules.mjs").read_text(encoding="utf-8"))
+      and "rowFor(row, viewerId" in _al
       and "if (typeof rowFor !== 'function') throw" in _al)
 check("afterloss: the single viewing rule is reused: registerRowFor, never a second rule",
       "import { registerRowFor, registerLogsView, registerSecretRisk } from './_register.mjs';" in _al_api
@@ -3351,7 +3392,8 @@ check("afterloss: a tick, an assignment and a note are one statement each, so no
 check("afterloss: a note is checked for a card number, CVV, OTP, PIN or password",
       "afterlossNote(body.note, [noteRisk, registerSecretRisk])" in _al_api)
 check("afterloss: its pushes are the ask (one place, at most three an hour per person about one person), the family once when it comes into force, and the two starters when the person closes it; nothing timed",
-      _al_api.count("await pushCircle(") == 4 and "afterlossPush('ask', { starter: me.name, person: person.name }), { only: askId }" in _al_api
+      _al_api.count("await pushCircle(") == 5 and "afterlossPush('ask', { starter: me.name, person: person.name }), { only: askId }" in _al_api
+      and "await pushCircle(sql, g.circle.id, told, { only: list.person_id, evenRemembered: true });" in _al_api
       and _al_api.count("afterlossPush('ask'") == 1 and _al_api.count("await pushAsk(sql, g.circle.id, g.me,") == 2
       and "rateLimit(sql, 'afterloss_ask', me.id + ':' + person.id, 3, 3600, { failClosed: true })" in _al_api
       and "afterlossPush(can.reopening ? 'reopened' : 'started'," in _al_api and _al_api.count("afterlossPush('void'") == 1
@@ -3455,10 +3497,10 @@ check("links: one read of the other family, and it names only what may cross",
       and "case when ${!!withPhones}::boolean then phone else null end as phone" in _wf_people
       and not re.search(r"\b(dob|relation|gift_info|country|role|user_id|remembered|passed_|remember_line|created_at)\b", _wf_people.replace("to_char(dob, 'YYYY') as born", "").replace("order by created_at, id", "")))
 check("links: nothing else of a family is ever read by the link module",
-      set(re.findall(r"(?:from|join|into|update)\s+([a-z_]+)\b", _wf_code(_wf_link))) <= {"family_links", "circles", "members", "events"}
+      set(re.findall(r"(?:from|join|into|update)\s+([a-z_]+)\b", _wf_code(_wf_link))) <= {"family_links", "family_link_votes", "circles", "members", "events"}
       and not re.search(r"family_links|famlink", _wf_code(_wf_fact)))
 check("links: a yes from an adult of the other family, either side ends it, six at most, one per pair",
-      "if (iAmA || l.status !== 'pending') return bad('That request has already been dealt with', 404);" in _wf_link
+      "if (iAmA || l.status !== 'pending' || l.agreed_at) return bad('That request has already been dealt with', 404);" in _wf_link
       and "if (!adult()) return bad('An adult in the family answers this.', 403);" in _wf_link
       and "export const LINKS_MAX = 6;" in _wf_link and _wf_link.count("activeCount(sql, ") >= 3
       and "least(a_circle, b_circle), greatest(a_circle, b_circle)" in _wf_link and "where status in ('pending', 'active')" in _wf_link
@@ -3487,12 +3529,12 @@ check("facts: every text passes the notes rule (no card number, CVV, OTP or bank
       "import { noteRisk } from './_notesapi.mjs';" in _wf_fact and _wf_fact.count("const risk = noteRisk(text);") == 2
       and "const risk = noteRisk(line);" in _wf_rem)
 check("remembrance: only an adult marks or undoes (the marked person may undo their own mark, never set it), with the year at least",
-      "if (!selfUndo && !isAdult(me.dob, today)) return bad('An adult in the family does this.', 403);" in _wf_rem
+      "if (!selfUndo && !selfCancel && await minorOf(sql, circle.id, me.id)) return bad('An adult in the family does this.', 403);" in _wf_rem
       and "const selfUndo = a === 'remember_undo' && body.targetId === me.id;" in _wf_rem
-      and "if (t.id === me.id && !selfUndo) return bad('This is for someone else in the family.');" in _wf_rem
+      and "if (t.id === me.id && !selfUndo && !selfCancel) return bad('This is for someone else in the family.');" in _wf_rem
       and "const selfUndo = !body.on && t.id === me.id;" in _mb_api
       and "if (t.id === me.id && !selfUndo) return bad(400," in _mb_api
-      and _wf_rem.index("if (!selfUndo && !isAdult(me.dob, today))") < _wf_rem.index("if (a === 'remember_mark')") < _wf_rem.index("if (a === 'remember_undo')")
+      and _wf_rem.index("if (!selfUndo && !selfCancel && await minorOf(sql, circle.id, me.id))") < _wf_rem.index("if (a === 'remember_mark')") < _wf_rem.index("if (a === 'remember_undo')")
       and "if (year === null) return { error: 'Write the year." in _wf_rules and not re.search(r"(?m)^import ", _wf_rules))
 check("remembrance: marking destroys nothing undo cannot restore: the check-in time is never cleared",
       not re.search(r"set\s+checkin_by\s*=\s*null", _wf_rem) and "checkin_ask = null" not in _wf_rem
@@ -3504,13 +3546,14 @@ check("remembrance: someone who used Parwah in the last 30 days is not marked by
       and "if (await rememberRecent(sql, full)) return bad(409, rememberRecentWhy(t.name));" in _mb_api
       and "' marked you as no longer with us. If this is a mistake, open Parwah to undo it.'" in _wf_rem
       and "rateLimit(sql, 'remember_tell', me.id + ':' + target.id, 3, 3600, { failClosed: true })" in _wf_rem
-      and _wf_rem.count("await rememberTell(sql, circle.id, me, t);") == 1 and "await rememberTell(sql, circle.id, me, full);" in _mb_api)
+      and _wf_rem.count("await rememberTell(sql, circle.id, by, t);") == 1 and "await rememberTell(sql, circle.id, me, full);" in _mb_api)
 check("remembrance: every sweep that would chase or name a remembered person skips them (check-ins, doses, tasks, the call rota, cards)",
       _fc_api.count("and not m.remembered") >= 2
       and _dz.count("and not exists (select 1 from members m where m.id = d.person_id and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 2
-      and _tasksrc.count("and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 2
+      and _tasksrc.count("and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 3
       and _fc_api.count("and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 1
-      and "if (!who || who.remembered || (who2 && who2.remembered) || dstr(c.date) > todayFor(who)) continue;" in (API_DIR / "_bond.mjs").read_text(encoding="utf-8"))
+      and "if (!who || who.remembered || (who2 && who2.remembered) || dstr(c.date) > todayFor(who, nowMs)) continue;" in (API_DIR / "_bond.mjs").read_text(encoding="utf-8")
+      and "if (!who || who.remembered || (who2 && who2.remembered)) continue;" in (API_DIR / "_bond.mjs").read_text(encoding="utf-8"))
 check("remembrance: my own sheet offers to take a mistaken mark off, and never to set one",
       "$('rm-mp-open').hidden = (self && !gone) || !fam;" in _app_src and "This is a mistake. Take the mark off" in _app_src
       and "if (state && id === state.memberId) { rmUndoAsk(" in _app_src)
@@ -3642,8 +3685,12 @@ check("album: tables through schemaOnce, every call through requireMember, ids t
       "schemaOnce(() => albumTables(sql))" in _ab and "requireMember(sql, code, memberId, tokenOf(req))" in _ab
       and _ab.count("isUuid(") >= 4 and "return fail(res, e);" in _ab and "return failDb(res, e);" in _ab
       and "noteRisk(caption.value)" in _ab and "noteRisk(name.value)" in _ab)
-check("album: Today shows one older photo a week and never pushes; a person's page and Family Memory draw it too",
-      "pushCircle" not in _ab and "weeklyPick(me.id, today, cands.map(c => c.id))" in _ab
+# Nov 2026: new photos in a family album push the family at most once a
+# day (the count is kept on the server). The weekly photo still never pushes.
+check("album: Today shows one older photo a week and never pushes (new photos push once a day at most); a person's page and Family Memory draw it too",
+      _ab.count("pushCircle(") == 1 and "rateLimit(sql, 'album_push', circle.id, ALBUM_PUSH_PER_DAY, 86400, { failClosed: true })" in _ab
+      and "pushCircle" not in _ab.split("async function todayView(")[1].split("export default async function albumApi")[0]
+      and "weeklyPick(me.id, today, cands.map(c => c.id))" in _ab
       and "primary key (member_id, week)" in _ab_tables
       and "\n    albumTodayLoad();\n" in _app_src and "\n    albumPersonRender(id);\n" in _app_src
       and 'id="ab-today"' in _app_src and 'data-mbv="album"' in _app_src and "if (album) { albumLoad(); return; }" in _app_src
@@ -3682,6 +3729,9 @@ _dg_sweep = _dg_fn(_dg, "export async function digestSweep(")
 _dg_gather = _dg_fn(_dg, "export async function digestGather(")
 _dg_ask = _dg_fn(_dg, "async function digestAskModel(")
 _dg_by = _dg_fn(_dg, "async function digestByModel(")
+# The claim, the cap and the names rule moved into one function that the
+# evening note and the morning note ("Aaj ka din") both go through.
+_dg_once = _dg_fn(_dg, "export async function digestModelOnce(")
 _dg_open = _dg_fn(_dg, "export async function digestOpen(")
 check("digest: it rides /api/ekta in underscore modules, after requireMember, never a new serverless function",
       not (API_DIR / "digest.mjs").exists() and "/^digest(_|$)/.test(req.body.action)" in _dg_ekta
@@ -3693,7 +3743,7 @@ check("digest: the rules module imports nothing, so the gate can test it before 
       and "node site/tests/digesttest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
 check("digest: ONLY THE LIST IS SENT - the prompt is built from the facts' sentences and nothing else",
       "list.map((f, i) => (i + 1) + '. ' + f.text).join('\\n')" in _dgr
-      and "const sent = facts.slice(0, 8), prompt = digestPrompt(sent);" in _dg_ask
+      and "const sent = facts.slice(0, 8), prompt = promptOf(sent);" in _dg_ask and "promptOf = digestPrompt" in _dg_ask
       and "({ system: prompt.system, user: prompt.user, maxTokens: DG.maxTokens, timeoutMs: ms })" in _dg_ask
       and not re.search(r"\b(raw|row|sql|me\.|circle\.|phone|email)\b", _dg_ask.split("try {", 1)[1].split("} catch", 1)[0]))
 check("digest: what is gathered is only what the viewer may open - each feature's own rule is in the SQL, and notes, the vault, the register and health numbers are never read",
@@ -3709,9 +3759,10 @@ check("digest: ONE CALL PER MEMBER PER DAY - the row is claimed final once, and 
       and _dg.count("digestAskModel(") == 2 and "set model_tried = true" in _dg_by)
 check("digest: THE CAP - 12 model calls a circle a day, taken in one statement, counted where the owner can read it",
       "capPerCircle: 12" in _dgr and "create table if not exists digest_usage" in _dg
-      and "do update set calls = digest_usage.calls + 1" in _dg_by and "where digest_usage.calls < ${DG.capPerCircle}" in _dg_by
-      and "if (!slot[0]) return null;" in _dg_by and _dg_by.index("if (!slot[0]) return null;") < _dg_by.index("digestAskModel(facts")
-      and "set written = written + 1" in _dg_by)
+      and "do update set calls = digest_usage.calls + 1" in _dg_once and "where digest_usage.calls < ${DG.capPerCircle}" in _dg_once
+      and "if (!slot[0]) return null;" in _dg_once and _dg_once.index("if (!slot[0]) return null;") < _dg_once.index("digestAskModel(facts")
+      and "set written = written + 1" in _dg_once and "await digestModelOnce(sql, circle, me, facts, nowMs" in _dg_by
+      and _dg.count("insert into digest_usage") == 1)
 check("digest: only with the server's own key, only in the evening, never for a quiet day, and no coins are charged",
       "if (!facts.length || !process.env.ANTHROPIC_API_KEY) return null;" in _dg_by and "eveningHour: 18" in _dgr
       and "spend(" not in _dg and "from './_coins.mjs'" not in _dg and "NO COINS ARE CHARGED" in _dg)
@@ -3723,16 +3774,16 @@ check("digest: NO TIMER-DRIVEN MODEL CALL - the 8pm notification is the plain fi
       and "evening boolean not null default false" in _dg and "pushHour: 20" in _dgr
       and not re.search(r"digestOpen|digestHandle|digestByModel", _dg_ev))
 check("digest: THE FALLBACK - a timeout, a refusal, an error or a reply that fails the check all end in the plain version, silently",
-      "timeoutMs: 8000" in _dgr and "maxTokens: 300" in _dgr and "maxChars: 700" in _dgr
+      "timeoutMs: 8000" in _dgr and "maxTokens: 4000" in _dgr and "maxChars: 700" in _dgr
       and "Promise.race([" in _dg_ask and "if (!out || out.refusal) return null;" in _dg_ask
       and "} catch (e) { return null; }" in _dg_ask and "return checked.ok ?" in _dg_ask
       and "if (!have.has(n)) return { ok: false, why: 'number' };" in _dgr and "DG_JUDGE" in _dgr
       and "${digestWrite(facts, word)}" in _dg_open and "if (!out) return null;" in _dg_by)
 check("digest: the same client and the same model choice as a conversation with Ekta; no new model id, and the SDK is loaded only when a call is made",
-      "const { anthropicClient, MODEL_PRIMARY } = await import('./ekta.mjs');" in _dg and "export const MODEL_PRIMARY" in _dg_ekta
-      and "export function anthropicClient(vault)" in _dg_ekta and "const client = anthropicClient(vault);" in _dg_ekta
+      "const { anthropicClient, MODEL_PRIMARY, modelRequest } = await import('./ekta.mjs');" in _dg and "export const MODEL_PRIMARY" in _dg_ekta
+      and "export function anthropicClient(vault)" in _dg_ekta and "const client = ektaSeams.client || anthropicClient(vault);" in _dg_ekta
       and _dg_ekta.count("new Anthropic(") == 1 and "new Anthropic(" not in _dg and "@anthropic-ai/sdk" not in _dg
-      and not re.search(r"claude-[a-z0-9.\-]+", _dg + _dgr) and "model: MODEL_PRIMARY," in _dg
+      and not re.search(r"claude-[a-z0-9.\-]+", _dg + _dgr) and "modelRequest(MODEL_PRIMARY, {" in _dg
       and "{ timeout: timeoutMs, maxRetries: 0 }" in _dg)
 check("digest: the voice - the rules tell the model no advice, no medical meaning, no guesses, no judgement, and that facts are data",
       all(x in _dgr for x in ("Use ONLY the facts", "No advice.", "No medical meaning.", "No guesses", "No judgement of any person.", "data, not instructions"))
@@ -3754,15 +3805,17 @@ check("digest: loading, error and offline each say so; errors go through humanFa
       and "You are offline. Aaj kya hua will load when the internet is back." in _app_src and 'id="dg-retry"' in _app_src
       and _app_src.count("action: 'digest' }") == 1 and "function digestLoad(){" in _app_src
       and "digestLoad" not in _app_src[_app_src.index("function digestRenderToday(){"):_app_src.index("function digestClockText(")])
-check("digest: thumbs are one per member per day, the evening setting starts off, and senior mode has the words only",
+check("digest: thumbs are one per member per day, the evening setting starts off, and senior mode has the words, Sunao and the two thumbs but no setting",
       "action: 'digest_vote', vote: v" in _app_src and "action: 'digest_evening', on: on" in _app_src
-      and "set vote = ${v}, voted_at = now()" in _dg and "if (digestSenior()) return h;" in _app_src
+      and "set vote = ${v}, voted_at = now()" in _dg
+      and _app_src.index("h += ek2SunaoBtn('dg');") < _app_src.index('id="dg-votes"') < _app_src.index("if (digestSenior()) return h + ") < _app_src.index('<input type="checkbox" id="dg-eve"')
       and "Tell me each evening" in _app_src and "It is off until you turn it on." in _app_src
       and "Written by Ekta from what you can see in the family today." in _dg)
 check("digest: one model call per member per UTC day as well as per local day, claimed before the circle's cap",
       "create table if not exists digest_model_claim" in _dg
-      and "insert into digest_model_claim (member_id, day) values (${me.id}, ${utcDay}::date)" in _dg_by
-      and _dg_by.index("insert into digest_model_claim") < _dg_by.index("insert into digest_usage"))
+      and "insert into digest_model_claim (member_id, day) values (${me.id}, ${utcDay}::date)" in _dg_once
+      and _dg_once.index("insert into digest_model_claim") < _dg_once.index("insert into digest_usage")
+      and _dg.count("insert into digest_model_claim") == 1)
 check("digest: if who is remembered cannot be read, nobody but the viewer may be named and no day of remembrance is announced",
       "catch (e) { unsure = true; }" in _dg_gather
       and "remembered: unsure ? p.id !== mid : remembered.has(p.id)" in _dg_gather
@@ -3786,6 +3839,691 @@ check("digest: the rules test runs in the gate, and the db and browser tests run
               and "waitForTimeout" not in (REPO / "site/tests/db" / f).read_text(encoding="utf-8")
               for f in ("digest.dbtest.mjs", "digest.e2e.dbtest.mjs"))
       and "getHours()" not in (REPO / "site/tests/db/digest.dbtest.mjs").read_text(encoding="utf-8"))
+
+# ---------- Fair notifications and a poor network (stream F) ----------
+# The rules that must never regress. Proved in pushrulestest (pure rules, three
+# clocks at one moment), notifyfair.dbtest (real handlers), notifyfair.e2e
+# (the screens) and offline.browser (a slow, silent and absent network).
+_nt_push = (API_DIR / "_push.mjs").read_text(encoding="utf-8")
+_nt_api = (API_DIR / "_pushapi.mjs").read_text(encoding="utf-8")
+_nt_rules = (API_DIR / "_pushrules.mjs").read_text(encoding="utf-8")
+_nt_off = (API_DIR / "_offline.mjs").read_text(encoding="utf-8")
+_nt_ev = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_nt_sw = (REPO / "site/public/sw.js").read_text(encoding="utf-8")
+_nt_pc = _nt_push[_nt_push.index("export async function pushCircle"):_nt_push.index("export async function pushMorning")]
+check("notify: a phone belongs to the person, so it rings for every family they are in; old rows are carried over and survive leaving one family",
+      "s.user_id = m.user_id) or s.member_id = m.id" in _nt_pc and "limit 60" not in _nt_push
+      and "add column if not exists user_id uuid references users(id) on delete cascade" in _nt_push
+      and "update push_subs s set user_id = m.user_id from members m" in _nt_push and "on delete set null" in _nt_push)
+check("notify: quiet hours, the kind switches and a muted chat are applied inside pushCircle, the one place a push is sent",
+      "decide(info," in _nt_pc and "pushKind(payload)" in _nt_pc and "mutedIn(sql, payload.chatId" in _nt_pc
+      and "insert into push_held" in _nt_pc and "sendNotification" not in "".join(
+          f.read_text(encoding="utf-8") for f in API_DIR.glob("*.mjs") if f.name != "_push.mjs"))
+check("notify: an SOS and the other urgent kinds are never held, dropped or capped; the rest keep a cap that leaves no member out",
+      "if (k.through) return 'send';" in _nt_rules and "if (!info.through) subs = capOrder(subs, PUSH_CAP);" in _nt_pc
+      and "if (p.urgent) return { kind: 'urgent', through: true" in _nt_rules and "/^🆘/" in _nt_rules and "has not checked in today" in _nt_rules)
+check("notify: someone whose time zone is not known is never held (a night is never guessed), and the morning line is counts only, claimed once",
+      "zone ? pref : { ...(pref || {}), quiet: false }" in _nt_pc and "delete from push_held where user_id = ${w.user_id} returning kind, circle_id" in _nt_push
+      and "title: '🌅 While you slept'" in _nt_rules and "text" not in _nt_push[_nt_push.index("create table if not exists push_held"):_nt_push.index("create index if not exists push_held_user")].replace("kind text", ""))
+check("notify: a phone the push service says is gone is removed; adults only see who can be reached, decided on the server",
+      "sc === 404 || sc === 410" in _nt_push and "if (!adult) return res.status(200).json({ ok: true, adult: false, members: [], uncovered: [] });" in _nt_api
+      and "This check is for the adults in the family." in _nt_api and "nobody\\'s phone will ring." in _app_src)
+check("timer: closed on the live site without its key, open on a laptop; starts where the last run stopped; says when it last ran; a failed sweep leaves a line with no names",
+      "if (!secret) return process.env.VERCEL_ENV !== 'production';" in _nt_ev and "return rotateFrom([...ids], await tickCursor(sql));" in _nt_ev
+      and "await one(() => afterTick(sql, circles, done, Math.max(t0 + budgetMs, Date.now() + 1500)));" in _nt_ev and "tickNote(e, 'sweep')" in _nt_ev
+      # ONE record of when the timer last ran: kv 'tick_at', written by
+      # tickMark and read by both lastTickAt and tickSeen. No second row.
+      and "'last_tick_at'" not in _nt_push and "select v from kv where k = 'tick_at'" in _nt_push
+      and "if (deadlineMs && Date.now() > deadlineMs) break;" in _nt_push
+      and "await one(() => tickMark(sql));" in _nt_ev
+      and "probe === 'status'" in _diag and "console.error('[parwah tick '" in _nt_off)
+check("offline: a tap sent late counts once, only a check-in, a medicine tick or a pulse answer, only within a day, and never an SOS",
+      "OFFLINE_KINDS = ['checkin', 'pill', 'pulse']" in _nt_rules and "OFFLINE_MAX_AGE_MS = 24 * 3600000" in _nt_rules
+      and "on conflict (member_id, client_id) do nothing" in _nt_off
+      and _nt_ev.index("if (type === 'sos') return raiseSos(") < _nt_ev.index("const tap = await lateTap(sql, req.body, memberId, type);")
+      and "coalesce(${tap.at}::timestamptz, now())" in _nt_ev and "NT_QTYPES = { checkin: 'All is well', pill: 'Medicines taken' }" in _app_src
+      and "Will send when the network is back" in _app_src)
+check("offline: the saved app is shown when the network has not answered in 3 seconds, the API is never served from a saved copy, and a new copy says so",
+      "var SLOW_MS = 3000;" in _nt_sw and "Promise.race([net, slow])" in _nt_sw and "url.pathname.indexOf('/api/') === 0) return;" in _nt_sw
+      and "tellWindows({ parwah: 'updated' })" in _nt_sw and "'Updated. Tap to refresh'" in _app_src and "function ntSosReady()" in _app_src)
+check("errors: a broken page is reported as what and where only, with no sign-in token, limited per device, trimmed after 14 days, shown as counts",
+      "fetch(NT_REPORT, {" in _app_src and "REPORT_KEEP_DAYS = 14" in _nt_rules and "rateLimit(sql, 'cerr', limitKey(req), 5, 600, { failClosed: true })" in _nt_api
+      and "export function limitKey(req)" in (API_DIR / "_db.mjs").read_text(encoding="utf-8")
+      and not re.search(r"authHeaders|authToken\(\)|state\.", _app_src[_app_src.index("function ntReport("):_app_src.index("window.addEventListener('error'")]))
+_nt_static = [i for i in _static_ids if i.startswith("nt-")]
+check(f"notify: its ids all start with nt- ({len(_nt_static)}), none twice in the page, and its functions start with nt",
+      len(_nt_static) >= 14 and len(_nt_static) == len(set(_nt_static)) and len(re.findall(r"function nt[A-Za-z]+\(", _app_src)) >= 20)
+_nt_pkg = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]
+check("notify: the rules test runs in the gate; the db, screen and poor-network tests run in CI with a fixed clock and no fixed pauses",
+      "node site/tests/pushrulestest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all(("site/tests/db/" + f) in _nt_pkg["test:db"] for f in ("notifyfair.dbtest.mjs", "notifyfair.e2e.dbtest.mjs"))
+      and "site/tests/browser/offline.browser.mjs" in _nt_pkg["test:browser"]
+      and all("waitForTimeout" not in (REPO / p).read_text(encoding="utf-8")
+              for p in ("site/tests/db/notifyfair.dbtest.mjs", "site/tests/db/notifyfair.e2e.dbtest.mjs", "site/tests/browser/offline.browser.mjs"))
+      and "pushSeams.now = () =>" in (REPO / "site/tests/db/notifyfair.dbtest.mjs").read_text(encoding="utf-8")
+      and all(z in (REPO / "site/tests/pushrulestest.mjs").read_text(encoding="utf-8") for z in ("Asia/Kolkata", "Europe/London", "America/Los_Angeles")))
+
+# ---------- 10zz. Ekta, the family assistant (stream C) ----------
+# She reads only what the member may open, she never acts without a yes, and
+# she never runs on a model that has been retired.
+_ek2 = (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
+_ek2r = (API_DIR / "_ektarules.mjs").read_text(encoding="utf-8")
+_ek2a = (API_DIR / "_ektaagent.mjs").read_text(encoding="utf-8")
+_ek2d = (API_DIR / "_ektaday.mjs").read_text(encoding="utf-8")
+_ek2c = (API_DIR / "chats.mjs").read_text(encoding="utf-8")
+_ek2ev = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+# Model ids Anthropic has retired. A default on this list is a family with no assistant.
+RETIRED_MODELS = [
+    "claude-3-5-sonnet-20241022", "claude-3-5-sonnet-20240620", "claude-3-opus-20240229", "claude-3-5-haiku-20241022",
+    "claude-3-haiku-20240307", "claude-3-sonnet-20240229", "claude-3-7-sonnet-20250219", "claude-2.1", "claude-2.0",
+    "claude-instant-1.2", "claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-opus-4-1-20250805",
+]
+_api_all = {f.name: f.read_text(encoding="utf-8") for f in sorted(API_DIR.glob("*.mjs"))}
+_retired_hits = [n + ": " + m for n, t in _api_all.items() for m in RETIRED_MODELS if m in t]
+_claude_ids = sorted({m for t in _api_all.values() for m in re.findall(r"'(claude-[a-z0-9.\-]+)'", t)})
+check("ekta: no model id anywhere in api/ is on the retired list", not _retired_hits, "; ".join(_retired_hits[:4]))
+check("ekta: the defaults are the current ids, with no date suffix, and the env overrides stay",
+      "main: 'claude-sonnet-5-5', deep: 'claude-opus-5-5', light: 'claude-haiku-5-5'" in _ek2r
+      and "process.env.ANTHROPIC_MODEL || EKTA_MODELS.main" in _ek2 and "process.env.ANTHROPIC_DEEP_MODEL || EKTA_MODELS.deep" in _ek2
+      and "process.env.ANTHROPIC_FALLBACK_MODEL || EKTA_MODELS.light" in _ek2
+      and not [m for m in _claude_ids if re.search(r"-\d{8}$", m)], ", ".join(_claude_ids))
+check("ekta: the request leaves room for thinking, sets depth with effort, and never sends a thinking budget or a temperature",
+      "maxTokens: 16000" in _ek2r and "req.thinking = { type: 'adaptive' };" in _ek2 and "req.output_config = { effort:" in _ek2
+      and "budget_tokens" not in _ek2 and "temperature" not in _ek2 and "max_tokens: 1024" not in _ek2
+      and "if (response.stop_reason === 'max_tokens' && !text) return { reply: '', model: served, escalate: true };" in _ek2)
+check("ekta: the system prompt is cached and never carries the clock; the date travels in the member's own turn",
+      "cache_control: { type: 'ephemeral' }" in _ek2 and "export const SYSTEM = `" in _ek2
+      and "whereWhen(" not in _ek2 and "new Date()" not in _ek2[_ek2.index("export const SYSTEM = `"):_ek2.index("async function turnContext(")]
+      and "resolveWhen(text, zone" in _ek2 and "context + '\\n\\n' + text" in _ek2)
+check("ekta: history and memory come from the server, never from the phone",
+      "const past = await threadLoad(sql, me, EKTA.threadSend - 1);" in _ek2 and "memory = await memoryList(sql, me);" in _ek2
+      and "req.body.memory" not in _ek2 and "body.memory" not in _ek2a and ".slice(-12)" not in _ek2
+      and "post(API.ekta, { code: state.code, memberId: state.memberId, text: v, iso: guessIso() })" in _app_src and "ektaMsgs" not in _app_src)
+check("ekta: in a chat she answers only to @Ekta or her name as the first word",
+      "if (!ektaMentioned(text)) return null;" in _ek2c and "/\\bekta\\b|एकता/i.test(text)" not in _ek2c
+      and "export function ektaMentioned(text)" in _ek2r)
+check("ekta: a records-only or unanswered reply is never posted into a chat; the coin rule and a fail-closed limit apply there and on her own screen",
+      "if (!out || !out.reply || out.offline || out.unanswered || out.unfinished) {" in _ek2c
+      and _ek2c.index("out.offline || out.unanswered") < _ek2c.index("await post(urgent ?")
+      and "await spend(sql, circle.id, me.id, 'ekta');" in _ek2c
+      and "rateLimit(sql, 'ektamention', me.id, EKTA.mentionRate.n, EKTA.mentionRate.sec, { failClosed: true })" in _ek2c
+      and "rateLimit(sql, 'ekta', me.id, EKTA.rate.n, EKTA.rate.sec, { failClosed: true })" in _ek2
+      and _ek2.index("asked === 'emergency' || asked === 'crisis'") < _ek2.index("rateLimit(sql, 'ekta', me.id"))
+check("ekta: in a shared chat she is given only what the whole family sees, and nothing that changes anything",
+      "ektaTurn(sql, circle, me, history, { open: true," in _ek2c and "const tools = ctx.open ? TOOLS_OPEN : TOOLS;" in _ek2
+      and "if (ctx.open && !tool.open) return no(" in _ek2a and "not ${open} and (b.about_member = ${me.id}" in _ek2)
+check("ekta: a tool's arguments are checked before it runs, results say ok true or false, and the turn has 45 seconds",
+      "const checked = validateArgs(tool.input_schema, input || {});" in _ek2a and "if (!checked.ok) return no(checked.error, { invalid: true });" in _ek2a
+      and "const checked = validateArgs(own.input_schema, input || {});" in _ek2 and "deadlineMs: 45000" in _ek2r
+      and "{ timeout: left, maxRetries: 0 }" in _ek2 and "is_error: true" in _ek2 and "Ho gaya!" not in _ek2
+      and "completionReport(ledger)" in _ek2)
+_ek2_write = _ek2a[_ek2a.index("async function writeTool("):_ek2a.index("// ---------------------------------------------------------------- running one card")]
+check("ekta: a write tool only ever makes a proposal - nothing in it inserts, updates, sends or pushes",
+      not re.search(r"insert into (?!ekta_actions)|update (?!ekta_actions)\w+ set|delete from|pushCircle|createReminder\(|createRequest\(|viaRoute\(", _ek2_write)
+      and _ek2_write.count("return propose(ctx, ") >= 8
+      and "create_reminder" not in _ek2[_ek2.index("async function runTool("):_ek2.index("async function runLoop(")])
+check("ekta: a card runs once, as that member, through the real handler, and is good for 30 minutes",
+      "and status = 'proposed' and claimed_at is null and created_at >= ${cutoff(nowMs)}" in _ek2a
+      and "where id = ${id} and member_id = ${me.id} and circle_id = ${circle.id}" in _ek2a
+      and "body: Object.assign({}, body, { code: b.code, memberId: b.memberId })" in _ek2a and "headers: req.headers || {}" in _ek2a
+      and "proposalMinutes: 30" in _ek2r and "status in ('proposed', 'done', 'cancelled', 'expired')" in _ek2a
+      and all(x in _ek2a for x in ("import('./chats.mjs')", "import('./plans.mjs')", "import('./book.mjs')", "import('./care.mjs')")))
+check("ekta: someone who is remembered is never found by name or family word, and an old card for them is refused at the yes",
+      "filter(m => m && m.id !== meId && !m.remembered)" in _ek2r and "filter(m => m && !m.remembered &&" in _ek2r
+      and _ek2a.count("if (!t || t.remembered) return { ok: false") == 3)
+check("ekta: memory is private in the query, saved only from a confirmed card, and never a password, a PIN or a reading",
+      _ek2a.count("insert into ekta_memory") == 1 and "from ekta_memory where member_id = ${me.id}" in _ek2a
+      and "delete from ekta_memory where id = ${body.id} and member_id = ${me.id}" in _ek2a
+      and "memoryRisk(key, value) || noteRisk(key) || noteRisk(value) || credRisk(key) || credRisk(value)" in _ek2a
+      and "export function memoryRisk(" in _ek2r and "MEMORY_REFUSE_HEALTH" in _ek2r
+      and _ek2a.index("const risk = memoryRefusal(p.key, p.value);") < _ek2a.index("insert into ekta_memory"))
+check("ekta: the saved chat is private in the query, 30 turns, and can be cleared",
+      "from ekta_thread where member_id = ${me.id} order by id desc limit ${n}" in _ek2a and "threadKeep: 30" in _ek2r
+      and "delete from ekta_thread where member_id = ${me.id}`" in _ek2a and 'id="ek2-clear"' in _app_src)
+check("ekta: every confirmed action is audited without its words; the member's switch and the family's switch are enforced on the server",
+      "insert into ekta_audit (circle_id, member_id, kind, label, outcome)" in _ek2a and "auditLabel(row.kind, row.payload)" in _ek2a
+      and "if (sw.noActions) return { status: 403" in _ek2a and "if (sw.paused) return { status: 403" in _ek2a
+      and "if (switches.paused) return answer(" in _ek2 and "if (!(await isAdult(sql, circle, me))) return res.status(403)" in _ek2a
+      and "return !(await minorOf(sql, circle.id, me.id));" in _ek2a
+      and _ek2.index("asked === 'emergency' || asked === 'crisis'") < _ek2.index("if (switches.paused) return answer("))
+check("ekta: she reads no register, no vault contents, no health numbers and nobody else's notes",
+      not re.search(r"from\s+(notes|legacy_asset_\w+|biomarker_records|pay_\w+|care_expenses|vault_files|register_\w+)\b", _ek2a + _ek2d)
+      and "d.label" in _ek2a and "answer_text" in _ek2a and "from notes" not in _ek2)
+check("ekta: the morning note is plain by default, shares the evening note's one model call a day, and never names someone remembered",
+      "morningWrite(facts, word)" in _ek2d and "EKTA_MORNING_MODEL" in _ek2d and "digestModelOnce(sql, circle, me, facts, nowMs, { promptOf: morningPrompt })" in _ek2d
+      and "remembered: unsure ? p.id !== mid : remembered.has(p.id)" in _ek2d and "b.name" not in _ek2d[_ek2d.index("export async function morningGather("):_ek2d.index("const morningModelOn")]
+      and 'id="ek2-today"' in _app_src and "function ek2IsMorning(){ var h = new Date().getHours(); return h >= 5 && h < 12; }" in _app_src)
+check("ekta: nudges are off until turned on, private, model-free, quiet from 9pm to 8am, two a day, and one line in the timer",
+      _ek2a.count("boolean not null default false") >= 4 and "quietFrom: 21, quietTo: 8" in _ek2r and "nudgeCap: 2" in _ek2r
+      and "if (quietHour(hour)) continue;" in _ek2d and "{ only: p.member_id }" in _ek2d
+      and not re.search(r"anthropic|callModel|ektaTurn|digestModelOnce", _ek2d[_ek2d.index("export async function ektaNudgeSweep("):], flags=re.I)
+      and _ek2ev.count("ektaNudgeSweep(") == 1 and "await one(() => ektaNudgeSweep(sql, id));" in _ek2ev
+      and re.search(r"^export async function ektaNudgeSweep\(", _ek2d, flags=re.M) is not None)
+check("ekta: reading a photo is off unless EKTA_PHOTO_DRAFT=on, is limited in size and rate, and refuses anything medical in the app's own words",
+      "String(process.env.EKTA_PHOTO_DRAFT || '').toLowerCase() === 'on'" in _ek2a and "if (!photoOn()) return { status: 200, json: { ok: true, off: true" in _ek2a
+      and "photoMaxChars: 3500000" in _ek2r and "rateLimit(sql, 'ektaphoto'" in _ek2a
+      and "Parwah and Ekta never read or explain a prescription or a report." in _ek2r
+      and "Parwah and Ekta never read or explain a prescription or a report." in _app_src and "c.toDataURL('image/jpeg', 0.72)" in _app_src)
+check("ekta: WhatsApp is a button the member presses; the server never calls WhatsApp",
+      "export function waLink(" in _ek2r and "https://wa.me/" in _ek2r and "fetch(" not in _ek2a and "fetch(" not in _ek2d
+      and 'target="_blank" rel="noopener" href="\' + esc(h.url)' in _app_src and "You send it yourself. Parwah does not send anything on WhatsApp." in _app_src)
+check("ekta: her spoken lines exist in English and Hindi on the server, and the member's language is a per-member field",
+      "alter table members add column if not exists lang text not null default 'en'" in _ek2a and "speechLang: 'hi-IN'" in _ek2r and "speechLang: 'en-IN'" in _ek2r
+      and "if (typeof ek2Voice === 'string' && ek2Voice) return ek2Voice;" in _app_src and "rec.lang = speechLang();" in _app_src)
+check("ekta: what was deliberately not built is written down",
+      all(x in _ek2r for x in ("no wake word", "no device\n// control", "no WhatsApp sent by itself", "no payments", "no saving of every\n// exchange", "no automatic retry")))
+check("ekta: it all rides /api/ekta in underscore modules, after requireMember",
+      "/^ekta_/.test(req.body.action)" in _ek2 and _ek2.index("requireMember(sql, code, memberId, tokenOf(req))") < _ek2.index("return ektaAgentHandle(sql, circle, me, req, res);")
+      and not (API_DIR / "ektaagent.mjs").exists() and not (API_DIR / "ektaday.mjs").exists())
+_ek2_static = [i for i in _static_ids if i.startswith("ek2-")]
+check(f"ekta: its new ids all start with ek2- ({len(_ek2_static)} in the page), none twice, and its functions start with ek2",
+      len(_ek2_static) == len(set(_ek2_static)) >= 7 and len(re.findall(r"function ek2\w+\(", _app_src)) >= 20)
+_ek2_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("ekta: the rules test runs in the gate, and the db and browser tests run in test:db with no key, no network and no fixed waits",
+      "node site/tests/ektarulestest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all(("site/tests/db/" + f) in _ek2_testdb and (REPO / "site/tests/db" / f).exists() for f in ("ektaagent.dbtest.mjs", "ektaagent.e2e.dbtest.mjs"))
+      and all("globalThis.fetch = async" in (REPO / "site/tests/db" / f).read_text(encoding="utf-8")
+              and "ektaSeams.client" in (REPO / "site/tests/db" / f).read_text(encoding="utf-8")
+              and "waitForTimeout" not in (REPO / "site/tests/db" / f).read_text(encoding="utf-8")
+              for f in ("ektaagent.dbtest.mjs", "ektaagent.e2e.dbtest.mjs")))
+check("ekta: the coverage map says what is live and what was left out, and the review is written down",
+      "Ekta asks before she acts" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
+      and "Ekta: the confirm card" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
+
+# ---------- Safety and alert correctness (stream A) ----------
+# The rules that must never regress. Proved in site/tests/safetytest.mjs,
+# site/tests/db/safety.dbtest.mjs and safety.e2e.dbtest.mjs; held here.
+_sf_rules = (API_DIR / "_safetyrules.mjs").read_text(encoding="utf-8")
+_sf_push = (API_DIR / "_push.mjs").read_text(encoding="utf-8")
+_sf_dial = (API_DIR / "_sosdial.mjs").read_text(encoding="utf-8")
+_sf_find = (API_DIR / "_findme.mjs").read_text(encoding="utf-8")
+_sf_al = (API_DIR / "_afterloss.mjs").read_text(encoding="utf-8")
+_sf_alapi = (API_DIR / "_afterlossapi.mjs").read_text(encoding="utf-8")
+_sf_api = {f.name: f.read_text(encoding="utf-8") for f in sorted(API_DIR.glob("*.mjs"))}
+_sf_gone = "coalesce((to_jsonb(m)->>'remembered')::boolean, false)"
+# The timer can only call what exists where it lives: a function declared
+# inside the request handler is invisible to it, and the error was swallowed.
+_sf_tick = _evt[_evt.index("async function dueCircles(sql)"):_evt.index("export default async function handler")]
+_sf_tick = _sf_tick[:_sf_tick.index("export async function escalateStaleSos")] if "export async function escalateStaleSos" in _sf_tick else _sf_tick
+_sf_called = set(re.findall(r"\b([A-Za-z_]\w*)\(sql\b", _sf_tick)) - {"dueCircles", "runTick"}
+_sf_known = set()
+for _m in re.finditer(r"(?m)^import\s*\{([^}]*)\}\s*from", _evt):
+    for _n in _m.group(1).split(","):
+        _n = _n.strip()
+        if _n: _sf_known.add(_n.split(" as ")[-1].strip())
+_sf_known |= set(re.findall(r"(?m)^(?:export\s+)?(?:async\s+)?function\s+(\w+)", _evt))
+_sf_handler = _evt[_evt.index("export default async function handler"):_evt.index("// ONE PRESS OF SOS")]
+check("safety: every function the timer calls is at module scope or imported, and none is declared inside the handler",
+      len(_sf_called) >= 12 and not (_sf_called - _sf_known) and "escalateStaleSos" in _sf_called
+      and not re.search(r"(?m)^\s*(?:async\s+)?function\s+\w+\s*\(", _sf_handler),
+      ", ".join(sorted(_sf_called - _sf_known)))
+_sf_urgent = [(n, l.strip()) for n, s in _sf_api.items() for l in s.splitlines()
+              if "urgent: true" in l and not l.strip().startswith("//") and n not in ("_safetyrules.mjs",)]
+check("safety: every emergency push has a topic of its own, so nothing replaces an SOS that has not arrived",
+      len(_sf_urgent) >= 7 and all("topic: pushTopic(" in l for _, l in _sf_urgent)
+      and "'parwah-sos'" not in _sf_push and "const how = pushOptions(payload);" in _sf_push
+      and "topic: pushTopic('sos', p.sosId)" in _evt and "TOPIC_OK = /^[A-Za-z0-9_-]{1,32}$/" in _sf_rules
+      and "d.tag.length <= 32 && d.tag" in (REPO / "site/public/sw.js").read_text(encoding="utf-8"),
+      "; ".join(n for n, l in _sf_urgent if "topic: pushTopic(" not in l))
+check("safety: a medicine nudge, a task reminder and a plan reminder are never sent as an emergency",
+      all("urgent: true" not in _sf_api[n] for n in ("_doses.mjs", "_tasks.mjs", "_plansweep.mjs"))
+      and "url: '/#home', soon: true }" in _dz and "url: '/#care', soon: true }" in _tasksrc)
+# THE OWNER'S RULE: someone who has passed away is never called, texted,
+# pushed or listed. Each of these is the server, not the screen.
+check("safety: someone who has passed away is never in the SOS contacts, never texted or rung, never the Lost-mode call person",
+      "return orderContacts({ chosen, own:" in _sosmod and _sf_gone + " as remembered" in _sosmod
+      and "seen.has(t) || gone.has(t)" in _sf_rules and "const alive = family.filter(m => m && !m.remembered);" in _sf_rules
+      and "if (to && !gone.has(to) && !people.some(p => p.to === to))" in _sf_dial and "await rememberedPhones(sql, sc[0].circle_id)" in _sf_dial
+      and "seen.has(t) || gone.has(t)) continue;" in _evt
+      and _sf_find.count("and not " + _sf_gone) >= 4 and "so no phone is rung." in _sf_find)
+check("safety: someone who has passed away is never pushed, by any module; the one exception is the note that lets a mistake be undone",
+      "and (${!!evenRemembered} or not " + _sf_gone + ")" in _sf_push
+      and "evenRemembered = false } = {}) {" in _sf_push
+      and sorted(n for n, s in _sf_api.items() if "evenRemembered: true" in s) == ["_afterlossapi.mjs", "_remember.mjs"]
+      and sum(s.count("evenRemembered: true") for s in _sf_api.values()) == 2)
+check("safety: an SOS reaches every family the sender belongs to, and a group only when it is the one open",
+      "others = await sosOtherFamilies(sql, circle.id, me.user_id);" in _evt
+      and "and c.id <> ${circleId} and coalesce(c.kind, 'family') = 'family'" in _sosmod
+      and "await sosSafeElsewhere(sql, circle.id, sm[0]);" in _evt)
+check("safety: calls and texts not set up is said in words, in Profile and on the SOS screen",
+      "CALLS_OFF_LINE = 'Calls and texts are not set up. Family is told inside Parwah.'" in _sf_rules
+      and "if (!cfg.on) out.line = CALLS_OFF_LINE;" in _sf_dial and 'id="sf-calls"' in _app_src
+      and "if (j.dialed && j.dialed.line && !j.throttled) $('ss-status').textContent += " in _app_src)
+check("safety: any sign of life that day counts as checked in (the tap, a pulse, a medicine tick, a chat message), never an SOS message",
+      all(x in _fc_api for x in ("from events where member_id = ${memberId} and type = 'checkin'", "from pulse where member_id = ${memberId} and day = ${today}",
+                                 "from medicine_doses where marked_by = ${memberId} and taken_at >= ${from}",
+                                 "from messages where member_id = ${memberId} and created_at >= ${from} and text not like '🆘%'")))
+check("safety: pausing someone else's check-in is a question on their own phone, never a notice afterwards",
+      "if (t.id !== me.id && t.on_app) {" in _fc_api and "set away_ask = ${until || 'back'}, away_ask_by = ${me.id}" in _fc_api
+      and "'quiet_away_answer'" in _fc_api and "paused your daily check-in" not in _fc_api
+      and "data-sfawy" in _app_src and "data-sfawn" in _app_src)
+check("safety: a medicine with no tick tells the family only after the person's own yes; for someone not on Parwah only the carer; Ran out is a task",
+      "const who = doseTellWho({ onApp: p.on_app, tell: p.dose_tell, carerId: carers[0] });" in _dz
+      and "const to = await doseAlertTo(sql, circleId, rows[0].person_id," in _dz
+      and "update members set dose_tell = ${body.on} where id = ${me.id} and circle_id = ${circle.id}" in _dz
+      and "if (onApp) return tell === true ? 'family' : 'nobody';" in _sf_rules
+      and "else if (reason === RAN_OUT) ranOut.push(d);" in _dz and "data-sftell" in _app_src and 'id="sf-tellbtn"' in _app_src
+      and "are not marked" not in _dz)
+check("safety: a task past its time tells its owner first and alone; the family a window later, in words that name nobody",
+      "await pushCircle(sql, circleId, { ...taskOwnerText(t.title, t.status), url: '/#care' }, { only: t.claimed_by });" in _tasksrc
+      and "and overdue_alerted_at < now() - make_interval(mins => ${TASK_FAMILY_AFTER_MIN})" in _tasksrc
+      and "has it)" not in _tasksrc and "who.name + ' has" not in _tasksrc and "TASK_FAMILY_AFTER_MIN = 60" in _sf_rules)
+check("safety: no after-loss list about someone who used Parwah in the last 30 days, at start, confirm and reopen; no date of birth and no adult role is not an adult",
+      _sf_alapi.count("if (await recentStop(sql, res,") == 3 and "await rememberRecent(sql, person)" in _sf_alapi
+      and "return surelyAdult(m, today);" in _sf_al and "if (age !== null) return age >= 18;" in _sf_rules
+      # Stricter than the one rule, never looser: a mark the family made is a no.
+      and "if (m.is_child === true || m.adult_confirmed === false) return false;\n  return adultByRole(m);" in _sf_rules
+      and "if (!m.dob) return true;" not in _sf_al)
+check("safety: someone on Parwah is never marked as no longer with us by one adult: a second adult confirms, and they can still undo it",
+      "if (!t.remembered && t.user_id) {" in _wf_rem and "create table if not exists remember_asks" in _wf_rem
+      and "if (ask.ask_member !== me.id) return bad('Only the person who was asked can confirm this.', 403);" in _wf_rem
+      and _wf_rem.count("await rememberRecent(sql, t)") == 2
+      and "'remember_confirm', 'remember_cancel'" in _sf_api["circle.mjs"]
+      and "if (full.user_id) return bad(409, 'This needs a second adult to confirm." in _mb_api
+      and 'id="sf-rm-ask"' in _app_src and 'id="sf-mp-ask"' in _app_src and "data-sfrmyes" in _app_src)
+check("safety: the timer writes down each run, the family reads the time from before this phone woke it, and no scheduler is made",
+      "await one(() => tickMark(sql));" in _evt
+      and _evt.index("const tickBefore = await tickSeen(sql)") < _evt.index("await runTick(sql, PIGGYBACK_BUDGET_MS)")
+      and "safety: await safetyState(sql, circle, g.me, tickBefore)" in _evt and "TIMER_LATE_MIN = 15" in _sf_rules
+      and 'id="sf-timer"' in _app_src and "setInterval" not in _sf_api["_safety.mjs"] and "cron" not in _sf_api["_safety.mjs"].lower())
+check("safety: its tests are in the gate and in npm run test:db, and its browser test never waits a fixed time",
+      "node site/tests/safetytest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all("site/tests/db/" + f in (REPO / "package.json").read_text(encoding="utf-8") for f in ("safety.dbtest.mjs", "safety.e2e.dbtest.mjs"))
+      and "waitForTimeout" not in (REPO / "site/tests/db/safety.e2e.dbtest.mjs").read_text(encoding="utf-8"))
+
+# ---------- 10z. BEING HEARD, AND ANSWERED (stream D, Nov 2026) ----------
+# The rules that must never regress: who may read what is in the SQL; the
+# private word is read by nobody else; a secret ballot sends no name; an
+# empty card is never handed over; festivals change one at a time.
+_hd = {n: (API_DIR / n).read_text(encoding="utf-8") for n in
+       ("_heard.mjs", "_baat.mjs", "_heardrules.mjs", "_pulse.mjs", "_chatbond.mjs", "_bond.mjs", "_memorybond.mjs",
+        "_album.mjs", "_pasand.mjs", "_coins.mjs", "_tyohaar.mjs", "_remember.mjs", "chats.mjs", "events.mjs")}
+_hd_reads = re.findall(r"(?:from|update|into)\s+baat\b[^`]*`", _hd["_baat.mjs"])
+check("heard: every query on a private word carries 'only the two of them' (or is the insert, or the timer's one reminder)",
+      len(_hd_reads) >= 6 and all(("from_member = ${me.id}" in q or "to_member = ${me.id}" in q or q.lstrip().startswith("into baat")
+                                   or "reminded_at is null" in q) for q in _hd_reads),
+      str([q[:70] for q in _hd_reads if not ("from_member = ${me.id}" in q or "to_member = ${me.id}" in q or q.lstrip().startswith("into baat") or "reminded_at is null" in q)]))
+_hd_others = [f.name for f in sorted(API_DIR.glob("*.mjs")) if f.name not in ("_baat.mjs", "_heard.mjs")
+              and re.search(r"\b(from|join|into|update)\s+baat\b", f.read_text(encoding="utf-8"))]
+check("heard: no other module reads a private word: not Ekta, not the digest, not the feed, not an admin screen",
+      _hd_others == [] and "insert into events" not in _hd["_baat.mjs"] and "pushCircle(sql, circle.id, { ...baatPush" in _hd["_baat.mjs"]
+      and all("baat" not in (API_DIR / n).read_text(encoding="utf-8") for n in ("ekta.mjs", "_ektalocal.mjs", "_digest.mjs", "_digestrules.mjs", "_famfacts.mjs")),
+      str(_hd_others))
+check("heard: the mood is private by default, and who may see an answer is in the query",
+      "default 'self'" in _hd["_pulse.mjs"] and "p.tell = 'family' or p.member_id = ${viewerId}::uuid or (p.tell = 'one' and p.to_member = ${viewerId}::uuid)" in _hd["_pulse.mjs"]
+      and "if (moodOnFeed(tell))" in _hd["_pulse.mjs"] and "export const moodOnFeed = (tell) => tell === 'family';" in _hd["_heardrules.mjs"]
+      and "pulseToday(sql, circle.id, reqTz(req), g.me.id)" in _hd["events.mjs"] and "insert into events" not in _hd["events.mjs"].split("if (type === 'pulse')")[1].split("if (type === 'sos_ack'")[0])
+check("heard: five moods, each a word with its emoji, and the same five on the screen",
+      len(re.findall(r"\{ k: '\w+',\s+e: '[^']+', t: '[^']+',\s+en: '[^']+'", _hd["_heardrules.mjs"])) == 5
+      and "data-hdmood" in _app_src and "<span><b>' + esc(x.t) + '</b><small>' + esc(x.en) + '</small></span>" in _app_src
+      and "'🔒 Keep to myself'" in _app_src and "'👤 Tell only...'" in _app_src and "'👪 Tell the family'" in _app_src)
+check("heard: a shukriya is read by the two, or the family when the writer chose; the weekly prompt is the fair pure rule and sends no count",
+      "(s.from_member = ${me.id} or s.to_member = ${me.id} or s.audience = 'family')" in _hd["_heard.mjs"]
+      and "shukriyaPick({ viewerId: me.id, members, thanked, suggested: counts, week })" in _hd["_heard.mjs"]
+      and "return t ? { toId: t.id, name: t.name, onApp: t.on_app } : null;" in _hd["_heard.mjs"]
+      and "!m.remembered" in _hd["_heardrules.mjs"].split("export function shukriyaPick")[1].split("export function shukriyaClean")[0])
+check("heard: the weekly question shows answers only to someone who has answered, in the query; at least 40 questions",
+      _hd["_heard.mjs"].count("exists (select 1 from sawaal_answers x where x.circle_id = a.circle_id and x.week = a.week and x.member_id = ${me.id})") == 2
+      and len(re.findall(r"^  '[^\n]+[?.]',?$", _hd["_heardrules.mjs"].split("export const FAMILY_QUESTIONS = [")[1].split("];")[0], re.M)) >= 40)
+check("heard: a secret ballot sends no name (chat polls and date polls), and one reminder is claimed by one UPDATE",
+      "if (!p.secret) o.names.push(" in _hd["_chatbond.mjs"]
+      and "yes: p.secret ? [] : pick('yes'), maybe: p.secret ? [] : pick('maybe'), no: p.secret ? [] : pick('no')," in _hd["_bond.mjs"]
+      and "yesNames: p.secret ? [] :" in _hd["_bond.mjs"]
+      and "update chat_polls set reminded_at = now() where id = ${p.id} and reminded_at is null returning id" in _hd["_chatbond.mjs"]
+      and "update plan_polls set reminded_at = now() where id = ${p.id} and reminded_at is null returning id" in _hd["_bond.mjs"]
+      and "update plan_polls set decided = ${JSON.stringify(decided)}::jsonb" in _hd["_bond.mjs"]
+      and "...(p.secret ? [] : yes)" in _hd["_bond.mjs"])
+check("heard: a vote for someone not on the app is kept with who cast it, and no vote is weighed by age or role",
+      "by_member" in _hd["_chatbond.mjs"] and "proxyLabel(v.name, v.by_name)" in _hd["_chatbond.mjs"] and "proxyLabel(x.n, x.bn)" in _hd["_bond.mjs"]
+      and not re.search(r"\b(dob|role|isAdult|weight)\b", _hd["_chatbond.mjs"])
+      and not re.search(r"\b(dob|role|isAdult|weight)\b", _hd["_bond.mjs"].split("if (a === 'bond_poll_create')")[1].split("if (a === 'bond_poll_cancel')")[0]))
+check("heard: an empty card is never marked as delivered, and the evening-before reminder never goes to the person",
+      "if (!c.n) continue;                    // empty: not delivered" in _hd["_bond.mjs"]
+      and _hd["_bond.mjs"].index("if (!c.n) continue;") < _hd["_bond.mjs"].index("const got = await sql`update cards set delivered_at = now()")
+      and "m.id !== c.for_member && m.id !== c.for_member2" in _hd["_bond.mjs"] and "update cards set eve_at = now() where id = ${c.id} and eve_at is null returning id" in _hd["_bond.mjs"])
+check("heard: festivals change one at a time with a feed line; nobody can replace the whole list",
+      "bond_fest_set" not in _hd["_bond.mjs"] and "bond_fest_set" not in _app_src and "delete from circle_festivals where circle_id = ${circle.id}`" not in _hd["_bond.mjs"]
+      and "if (got[0]) await feed(sql, circle.id, me.id, festChangeLine(me.name, f.name, f.icon, add));" in _hd["_bond.mjs"]
+      and all(("key: '" + k + "'") in _hd["_tyohaar.mjs"] for k in ("janmashtami", "dussehra", "chhath", "baisakhi", "ugadi", "onam", "pongal", "eidfitr", "christmas", "gurunanak")))
+check("heard: chat pages by a cursor compared in the database, deletes only my own message, mutes for me, and sends pushes together",
+      "(m.created_at, m.id) < (select b.created_at, b.id from messages b where b.id = ${before}::uuid and b.chat_id = ${chat.id})" in _hd["chats.mjs"]
+      and "delete from messages where id = ${body.messageId} and chat_id = ${chat.id} and member_id = ${me.id} returning id" in _hd["chats.mjs"]
+      and "insert into chat_mutes (chat_id, member_id) values (${chat.id}, ${me.id})" in _hd["chats.mjs"]
+      and "Promise.allSettled([...new Set(ids)].map(id => pushCircle(sql, circleId, payload, { only: id })))" in _hd["chats.mjs"]
+      and not re.search(r"for \(const p of audience\) \{\s*(if \(pinged\[p\.id\]\) continue;\s*)?await pushCircle", _hd["chats.mjs"]))
+check("heard: coins for being heard are small, once a day each, and capped; none for a mood or a private word",
+      all(k in _hd["_coins.mjs"] for k in ("story_told: { n: 2", "card_line:  { n: 2", "sawaal:     { n: 2", "shukriya:   { n: 1"))
+      and "if (coinsLeftToday(got[0].n) < rule.n) return 0;" in _hd["_coins.mjs"] and "export const HEARD_COIN_CAP = 6;" in _hd["_heardrules.mjs"]
+      and "award" not in _hd["_baat.mjs"] and "award" not in _hd["_pulse.mjs"])
+check("heard: a like noted for someone not on the app carries who wrote it, and their own first like replaces the notes",
+      "by_member" in _hd["_pasand.mjs"] and "delete from pasand_likes where member_id = ${me.id} and circle_id = ${circle.id} and by_member is not null and by_member <> ${me.id}" in _hd["_pasand.mjs"]
+      and "if (who.user_id) return bad(who.name + ' is on Parwah and writes their own likes.');" in _hd["_pasand.mjs"])
+check("heard: a story is heard and answered, and one told for someone carries both names",
+      "action === 'story_heard'" in _hd["_memorybond.mjs"] and "action === 'story_for'" in _hd["_memorybond.mjs"]
+      and "export const toldByLine = (teller, recorder) => 'told by ' + first(teller) + ', recorded by ' + first(recorder);" in _hd["_heardrules.mjs"]
+      and "if (t.remembered) return bad(400, t.name + ' is remembered here." in _hd["_memorybond.mjs"])
+check("heard: photos take a reaction and a voice caption under the album's own audience rule, and one push a day",
+      _hd["_album.mjs"].count("(a.audience = 'family' or a.by_member = ${me.id} or (a.audience = 'chosen' and ${me.id}::uuid = any(a.chosen)))") >= 7
+      and "rateLimit(sql, 'album_push', circle.id, ALBUM_PUSH_PER_DAY, 86400, { failClosed: true })" in _hd["_album.mjs"]
+      and "export const ALBUM_PUSH_PER_DAY = 1;" in _hd["_heardrules.mjs"] and "navigator.share({ files: [file]" in _app_src)
+check("heard: a day of remembrance opens one memory card a year, and the timer has one line for the private word's reminder",
+      "rememberCardOpen(sql, circleId, m.id, due.year, due.date)" in _hd["_remember.mjs"] and "unique (member_id, year)" in _hd["_heard.mjs"]
+      and _hd["events.mjs"].count("await heardSweepAll(sql)") == 1 and "export async function heardSweepAll(sql, nowMs = Date.now())" in _hd["_heard.mjs"])
+check("heard: someone remembered is never suggested, asked, pushed or voted for",
+      _hd["_heard.mjs"].count("not coalesce((to_jsonb(m)->>'remembered')::boolean, false)") >= 4
+      and "if (t.remembered) return bad(first(t.name) + ' is remembered here.', 400);" in _hd["_baat.mjs"]
+      and _hd["_chatbond.mjs"].count("not coalesce((to_jsonb(m)->>'remembered')::boolean, false)") >= 5)
+_hd_static = [i for i in _static_ids if i.startswith("hd-")]
+check(f"heard: its static ids all start with hd- ({len(_hd_static)}), none twice in the page, and its functions start with hd",
+      sorted(_hd_static) == ["hd-bf-how", "hd-cv-more", "hd-person", "hd-pl-secret", "hd-today"]
+      and len(re.findall(r"function hd[A-Z]\w*\(", _app_src)) >= 40, str(sorted(_hd_static)))
+_hd_block = _app_src.split("// ---------- BEING HEARD, AND ANSWERED (api/_heard.mjs, api/_baat.mjs) ----------")[1].split("// ---------- family memory: stories, yaadein, recipes, nudges")[0]
+check("heard: the screen's own words carry no long dash and no banned word, and no button is an emoji alone",
+      not re.search("[" + chr(8211) + chr(8212) + "]", _hd_block + _hd["_heardrules.mjs"] + _hd["_heard.mjs"] + _hd["_baat.mjs"])
+      and not re.search(r"\b(elderly|burden|cure|treat|heal|therapy|remedy|medicinal|prevents|reverses|clinically proven|doctor recommended|pain relief|guaranteed|arthritis|diabetes)\b", _hd_block + _hd["_heardrules.mjs"], re.I)
+      and not re.search(r"<button[^>]*>(?:' \+ [a-z.\[\]0-9]+ \+ ')?[^A-Za-z<']{1,4}</button>", _hd_block))
+_testdb_hd = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("heard: the rules test runs in the gate, and the db and browser tests run in test:db and never wait a fixed time",
+      "node site/tests/heardtest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all(("site/tests/db/" + f) in _testdb_hd and (REPO / "site/tests/db" / f).exists()
+              and "waitForTimeout" not in (REPO / "site/tests/db" / f).read_text(encoding="utf-8") for f in ("heard.dbtest.mjs", "heard.e2e.dbtest.mjs")))
+
+# ---------- Consent, control and care both ways ----------
+# The person who is cared for is an equal: these are the rules that must not
+# quietly come undone. Each reads the code itself, not a neighbouring line.
+_cn = {f: (API_DIR / f).read_text(encoding="utf-8") for f in
+       ("_consentrules.mjs", "_audience.mjs", "_ashirwad.mjs", "_ecard.mjs", "_rotaconsent.mjs",
+        "_locationapi.mjs", "_expenses.mjs", "_staff.mjs", "_familycare.mjs", "_careprep.mjs",
+        "events.mjs", "chats.mjs", "book.mjs")}
+# THE ONE ADULT RULE, IN SQL: the same three columns standingOf reads in
+# api/_standingrules.mjs. A date of birth decides; with none, the two marks.
+_cn_minor = "(case when m.dob is not null then m.dob > current_date - interval '18 years' else (m.is_child or m.adult_confirmed is false) end)"
+_cn_minor_v = _cn_minor.replace("m.", "v.")
+check("consent: the rules module imports only the standing rules (which import nothing), so the gate can test it before npm install",
+      re.findall(r"^import .* from '([^']+)'", _cn["_consentrules.mjs"], re.M) == ["./_standingrules.mjs"]
+      and not re.search(r"^import ", (API_DIR / "_standingrules.mjs").read_text(encoding="utf-8"), re.M)
+      and "node site/tests/consenttest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
+check("consent: no new serverless function - Ashirwad rides /api/chats and the card's rule rides /api/book",
+      "=== 'ashirwad') return ashirwadApi(req, res)" in _cn["chats.mjs"] and "area === 'ecard'" in _cn["book.mjs"]
+      and not (API_DIR / "ashirwad.mjs").exists() and not (API_DIR / "ecard.mjs").exists())
+check("consent: audienceFor is the one filter - on Parwah, never remembered, and a child only for the warm kinds",
+      "export async function audienceFor(sql, circleId, kind" in _cn["_audience.mjs"]
+      and "m.user_id is not null and not m.remembered" in _cn["_audience.mjs"] and _cn_minor in _cn["_audience.mjs"]
+      and "export async function pushAudience(" in _cn["_audience.mjs"]
+      and "export function adultOnly(kind) { return WARM_KINDS.indexOf(kind) < 0; }" in _cn["_consentrules.mjs"]
+      and all(k in _cn["_consentrules.mjs"].split("export const ADULT_ONLY_KINDS")[1].split("]")[0]
+              for k in ("sos_details", "missed_dose", "staff_money", "safe_word", "emergency_items", "costs")))
+check("consent: a child cannot be marked by a child, nobody marks themself, and an adult by date of birth cannot be marked",
+      "if (await minorOf(sql, circle.id, me.id)) return bad('An adult in the family does this.', 403)" in _cn["_audience.mjs"]
+      and "if (body.targetId === me.id)" in _cn["_audience.mjs"] and "if (child && t.grown)" in _cn["_audience.mjs"])
+check("consent: the safe word and 'only in an emergency' entries are not sent to a child",
+      "(case when v.dob is not null then v.dob > current_date - interval '18 years'" in _cn["_familycare.mjs"]
+      and "else (coalesce((to_jsonb(v)->>'is_child')::boolean, false) or (to_jsonb(v)->>'adult_confirmed') = 'false') end)" in _cn["_familycare.mjs"]
+      and "const emergency = (row) => !cnMinor && " in _cn["_careprep.mjs"])
+_cn_news = _cn["_locationapi.mjs"][_cn["_locationapi.mjs"].index("async function placeNews("):]
+check("location: an arrival is announced only for a person who said yes, and only they can say it",
+      "from location_consent where circle_id = ${circle.id} and member_id = ${me.id} and announce" in _cn_news
+      and _cn_news.index("and announce`") < _cn_news.index("arrived at")
+      and "announce boolean not null default false" in _cn["_locationapi.mjs"]
+      and "values (${circle.id}, ${me.id}, ${body.on}, now())" in _cn["_locationapi.mjs"]
+      and "set announce = true" not in _cn["_locationapi.mjs"] and _cn["_locationapi.mjs"].count("announce = ${body.on}") == 1)
+check("location: 'Not now' mutes that asker for 7 days, and a muted ask is refused before it is sent",
+      "export const ASK_MUTE_DAYS = 7;" in _cn["_consentrules.mjs"]
+      and "status = 'declined', muted_until = ${until}" in _cn["_locationapi.mjs"]
+      and "target_id = ${me.id} and asker_id = " in _cn["_locationapi.mjs"]
+      and _cn["_locationapi.mjs"].index("and muted_until > now()") < _cn["_locationapi.mjs"].index("would like to know where you are"))
+check("location: other people's positions are sent only on a look, the look is written down, and the person is shown who looked",
+      "const look = q.look === '1';" in _cn["_locationapi.mjs"] and "insert into location_looks" in _cn["_locationapi.mjs"]
+      and "lat: open ? r.lat : null, lng: open ? r.lng : null" in _cn["_locationapi.mjs"]
+      and "seenBy: seen.map(" in _cn["_locationapi.mjs"]
+      and "locUrl() + (cnLooked ? '&look=1' : '')" in _app_src and "if (!cnLooked && curTab === 'people') { refreshLoc(); return; }" in _app_src and "'Seen by ' + cnFirst(s.name)" in _app_src)
+check("location: older than five minutes is 'Last seen', on its own line, never 'updated'",
+      "export const LIVE_MINUTES = 5;" in _cn["_consentrules.mjs"] and "live: isLive(r.updated_at)" in _cn["_locationapi.mjs"]
+      and "var cnOld = x.live === false || x.stale;" in _app_src and "if (!cnOld) bits.push('updated ' + locAgo(x.updatedAt));" in _app_src
+      and 'class="cn-last"' in _app_src)
+check("call rota: the person who is called is told, chooses the time, and alone can say no; nobody restarts it for them",
+      "if (t.about_member !== me.id) return bad(403" in _cn["_rotaconsent.mjs"]
+      and "await rotaTellPerson(sql, circle.id, me, about, time)" in _cn["_familycare.mjs"]
+      and "about.id !== me.id && await rotaRefused(sql, circle.id, about.id)" in _cn["_familycare.mjs"]
+      and all(a in _cn["_rotaconsent.mjs"] for a in ("'rota_time'", "'rota_decline'", "'rota_welcome'"))
+      and "No daily call, thank you" in _app_src and "data-cnrotasave" in _app_src)
+_cn_exget = _cn["_expenses.mjs"][_cn["_expenses.mjs"].index("if (req.method === 'GET')"):]
+check("costs: who reads the ledger is decided in the query - payers, the person's own switch, never a child - and no amount goes in the feed",
+      ("and not " + _cn_minor_v) in _cn_exget
+      and "coalesce(cp.show, false) or e.paid_by = v.id or e.created_by = v.id" in _cn_exget
+      and "(v.role <> 'parent' and e.for_member is distinct from v.id)" in _cn_exget
+      and "values (${circle.id}, ${me.id}, ${b.on}, now())" in _cn["_expenses.mjs"]
+      and "me.name + ' noted a care cost'" in _cn["_expenses.mjs"] and "' noted ' + money(" not in _cn["_expenses.mjs"]
+      and 'id="cn-costs"' in _app_src and "Show me the costs" in _app_src)
+_cn_late = _cn["_staff.mjs"][_cn["_staff.mjs"].index("export async function sweepStaffLate("):]
+check("home staff: the late alert goes to one named owner, never the whole family and never the feed; a marked day is skipped",
+      "{ only: to[0] }" in _cn_late and "insert into events" not in _cn_late and "}, {})" not in _cn_late
+      and "where not exists (select 1 from staff_attendance" in _cn_late
+      and "export const OFF_MARK = 'off';" in _cn["_staff.mjs"] and "owner_id uuid references members(id)" in _cn["_staff.mjs"]
+      and "data-cnstaff" in _app_src and "On leave today" in _app_src)
+check("home staff: salary, advances and what is due are read only for an adult, and the money actions refuse a child",
+      "case when ${adult}::boolean then s.salary end as salary" in _cn["_staff.mjs"]
+      and _cn["_staff.mjs"].count("and ${adult}::boolean") >= 2 and "pay: adult ? payFor(s, month, mk, av) : null" in _cn["_staff.mjs"]
+      and "MONEY_ACTIONS.includes(b.action) && await minorOf(sql, circle.id, me.id)" in _cn["_staff.mjs"]
+      and "noted an advance of" not in _cn["_staff.mjs"])
+check("ashirwad: a card is read by the person it is for and the sender; sending is rate limited, failing closed; voice is checked like a chat voice note",
+      "(a.to_member = ${me.id} or a.to_member is null)" in _cn["_ashirwad.mjs"]
+      and "(from_member = ${me.id} or to_member = ${me.id} or to_member is null)" in _cn["_ashirwad.mjs"]
+      and "(a.from_member = ${me.id} or r.member_id = ${me.id})" in _cn["_ashirwad.mjs"]
+      and _cn["_ashirwad.mjs"].count("{ failClosed: true }") >= 4 and "checkVoice(b.voice, b.secs)" in _cn["_ashirwad.mjs"]
+      and "requireMember(sql," in _cn["_ashirwad.mjs"] and "schemaOnce(" in _cn["_ashirwad.mjs"])
+check("ashirwad: the parent's way in is a big button on the senior Today, and anyone has one too",
+      _app_src.index('id="seniorui"') < _app_src.index('id="cn-bless-big"') < _app_src.index('class="homehero"')
+      and 'id="cn-bless-open"' in _app_src and "data-cnpranam" in _app_src and "data-cnanswer" in _app_src)
+_cn_sweep = _cn["_ashirwad.mjs"][_cn["_ashirwad.mjs"].index("export async function sweepTripsAll("):].split("\n}\n", 1)[0]
+check("reached safely: the ask to call is one claiming UPDATE, 30 minutes after the expected time, on an injected clock, from the timer",
+      "export const TRIP_GRACE_MIN = 30;" in _cn["_consentrules.mjs"]
+      and "export async function sweepTripsAll(sql, nowMs = Date.now())" in _cn["_ashirwad.mjs"]
+      and "update trips set asked_at" in _cn_sweep and "asked_at is null and expect_at <= ${lateBy}" in _cn_sweep and "Date.now()" not in _cn_sweep.split("{", 1)[1]
+      and "await one(() => sweepTripsAll(sql));" in _cn["events.mjs"]
+      and _cn["events.mjs"].index("await one(() => sweepTripsAll(sql));") > _cn["events.mjs"].index("export async function runTick("))
+check("reached safely: a remembered person is never told, chosen or asked about; only the traveller says they reached",
+      "if (!who || who.remembered) continue;" in _cn_sweep and "pushAudience(sql, t.circle_id, 'trip'" in _cn_sweep
+      and "const tell = await audienceFor(sql, circle.id, 'trip', { only: want });" in _cn["_ashirwad.mjs"]
+      and "and circle_id = ${circle.id} and member_id = ${me.id}`)[0];" in _cn["_ashirwad.mjs"]
+      and "(t.member_id = ${me.id} or ${me.id} = any(t.tell))" in _cn["_ashirwad.mjs"])
+check("emergency card: the person, the adults they chose, the adults during an SOS; never a child, never a remembered person",
+      "where p.circle_id = ${circleId} and not p.remembered" in _cn["_ecard.mjs"]
+      and "v.id = any(coalesce(e.viewers, '{}'))" in _cn["_ecard.mjs"] and "p.id = any(${sos}::uuid[])" in _cn["_ecard.mjs"]
+      and ("not " + _cn_minor_v) in _cn["_ecard.mjs"]
+      # A child is not sent these through the Family book's own read either.
+      # Adults of the family keep them: each entry is already "whole family"
+      # or shared by name, and that choice is the person's.
+      and ("(not " + _cn_minor_v) in _cn["book.mjs"]
+      and "ep.viewers" not in _cn["book.mjs"]
+      and "b.kind in ('med', 'insurance') or (b.kind = 'fact' and b.category in ('blood', 'allergy'))" in _cn["book.mjs"]
+      and "bookLocked = j.cardLocked || []" in _app_src
+      and "await audienceFor(sql, circle.id, 'emergency_items', { only: wantV })" in _cn["_ecard.mjs"]
+      and "id = any(${wantC}::uuid[]) and not remembered" in _cn["_ecard.mjs"]
+      and "export const ECARD_CONTACTS_MAX = 2;" in _cn["_consentrules.mjs"])
+check("emergency card: the app asks before it opens someone else's, keeps the answer for offline, prints the legal line and not the choices",
+      "if (!cnEcMay(memberId)) { cnEcAsk(memberId); return; }" in _app_src and "localStorage.setItem(cnEc.key" in _app_src
+      and "It is not medical advice" in _cn["_consentrules.mjs"] and 'id="cn-ec-legal"' in _app_src
+      and "@media print{#cn-ec-mine{display:none!important} #ecard .cn-legal{display:block!important}}" in _app_src)
+_cn_ids = re.findall(r'id="(cn-[a-z0-9-]+)"', _app_src)
+check(f"consent: its ids all start with cn- ({len(set(_cn_ids))}), none twice in the page, and its functions start with cn",
+      len(_cn_ids) == len(set(_cn_ids)) and len(set(_cn_ids)) >= 30
+      and len(re.findall(r"function cn[A-Z]\w*\(", _app_src)) >= 30)
+_cn_copy = " ".join(re.findall(r"'([^'\n]{12,})'", _app_src[_app_src.index("// ---------- consent, control and care both ways ----------"):_app_src.index("// ---------- location sharing (consent first) ----------")]))
+check("consent: its screens pass the banned-words scan, with no long dashes",
+      not re.search(r"\b(elderly|burden|cure|treat|heal|therapy|remedy|medicinal|prevents|reverses|guaranteed|arthritis|diabetes)\b", _cn_copy, re.I)
+      and "\u2014" not in _cn_copy and "\u2013" not in _cn_copy and len(_cn_copy) > 2000)
+_cn_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("consent: the db and browser tests run in test:db, and the browser test waits for state, never for a clock",
+      all(("site/tests/db/" + f) in _cn_testdb and (REPO / "site/tests/db" / f).exists() for f in ("consent.dbtest.mjs", "consent.e2e.dbtest.mjs"))
+      and "waitForTimeout" not in (REPO / "site/tests/db/consent.e2e.dbtest.mjs").read_text(encoding="utf-8"))
+_cn_cov = (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
+check("consent: the coverage map says what is live, and the leader review is written down",
+      all(w in _cn_cov for w in ("Ashirwad", "Reached safely", "Announce my arrivals", "Show me the costs", "audienceFor"))
+      and "consent, control and care both ways" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
+
+# ---------- 10za. Accounts, joining and equal standing ----------
+# The doors of the app. Each check is a rule that must not quietly go back:
+# site/tests/db/standing.dbtest.mjs walks every one against a real database.
+_st_rules = (API_DIR / "_standingrules.mjs").read_text(encoding="utf-8")
+_st_acct = (API_DIR / "_account.mjs").read_text(encoding="utf-8")
+_st_mod = (API_DIR / "_standing.mjs").read_text(encoding="utf-8")
+_st_auth = (API_DIR / "auth.mjs").read_text(encoding="utf-8")
+_st_circle = (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+_st_db = (API_DIR / "_db.mjs").read_text(encoding="utf-8")
+_st_link = (API_DIR / "_famlink.mjs").read_text(encoding="utf-8")
+_st_ev = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_st_app = (REPO / "site/public/index.html").read_text(encoding="utf-8")
+_st_priv = (REPO / "site/public/privacy/index.html").read_text(encoding="utf-8")
+check("standing: ONE adult rule, and every gate asks it",
+      _st_rules.count("export function isAdultMember(") == 1 and not re.search(r"^import ", _st_rules, re.M)
+      and "return { rows, me, today, may: isAdultMember(me, today) };" in _st_mod
+      and _st_circle.count("standingOfCaller(sql, circle, mRow[0].id)).may") >= 3
+      and "const adult = () => standing.may;" in _st_link and "_rememberrules" not in _st_link
+      and "if (!s.may) return bad(ADULT_ONLY, 403);" in _st_mod)
+check("standing: a child or a teen cannot let people in, change the door, move others in the tree, link households, remove anyone or delete the family",
+      "if (!(await standingOfCaller(sql, circle, mRow[0].id)).may) return res.status(403).json({ ok: false, error: ADULT_ONLY });" in _st_circle
+      and "if (!own && !(await standingOfCaller(sql, circle, mRow[0].id)).may) {" in _st_circle
+      and "if (!adult()) return bad('An adult in the family asks for this.', 403);" in _st_link
+      and _st_mod.index("if (!s.may) return bad(ADULT_ONLY, 403);") < _st_mod.index("if (a === 'remove_ask') {") < _st_mod.index("if (a === 'family_delete_ask') {"))
+check("standing: letting someone back in needs a KNOWN grown-up of a FAMILY (never a group of friends), or the recovery contact they chose",
+      "c.kind = 'family'" in _st_acct and "isAdultMember(r, today, { strict: true })" in _st_acct
+      and "if (status === 'approved' && !who.sure) {" in _st_auth and "needDob: true" in _st_auth
+      and "recovery: true" in _st_acct)
+check("standing: a PIN reset needs the two numbers on the asking phone, ends after a few wrong ones, and the owner's phones can stop it for ten minutes",
+      "String(body.sayCode || '').trim() !== String(r[0].say_code || '')" in _st_auth and "const CODE_TRIES = 5;" in _st_auth
+      and "export const RESET_VETO_MINUTES = 10;" in _st_rules and "if (r.status === 'approved' && r.veto_until && new Date(r.veto_until) > new Date()) return 'holding';" in _st_auth
+      and "if (a === 'reset_veto') {" in _st_acct and 'data-resetcode="' in _st_app and 'id="ac-rs-code"' in _st_app)
+check("standing: a reset, a sign-in and a wrong PIN say nothing about whether a number is registered",
+      "noFamily" not in _st_auth and "if (!ur[0] || !who.length || crowded) { await padTo(t0, 500); return res.status(200).json(same); }" in _st_auth
+      and "That number and PIN do not match." in _st_acct and "already registered" not in _st_auth.split("if (body.action !== 'enter')")[1])
+check("standing: an account with no PIN, in a family, cannot be taken by typing its number first",
+      "const vouched = pinless ? (await resetApprovers(sql, user.id)).length > 0 : false;" in _st_auth and "if (pinless && !vouched) {" in _st_auth)
+check("standing: a sign-in on a new phone is told to the older phones and never blocked; 'Not me' signs it out and asks for a new PIN",
+      "if (!quiet && !known && others[0].n > 0) {" in _st_acct and "New sign-in on another phone" in _st_acct
+      and "await sql`update users set must_change_pin = true, must_change_at = ${flagged ? flagged.created_at : new Date()} where id = ${uid}`;" in _st_acct
+      and "Only a phone that was signed in before can say this." in _st_acct and "data-acnotme=" in _st_app)
+# ---- what the independent review of the combined build found (fix pass) ----
+check("standing: the one who says yes to a PIN reset is never the phone that asked, and the new PIN always waits ten minutes",
+      "if (await sameAsAsker(sql, r[0], approver.user_id," in _st_auth and "sameDevice: true" in _st_auth
+      and "req_device = ${askDevice}, req_from = ${askFrom}, req_own = ${own}" in _st_auth
+      and "const hold = status === 'approved' ? vetoUntil() : r[0].veto_until;" in _st_auth
+      and "vetoUntilFor" not in _st_auth and "vetoUntilFor" not in _st_acct
+      and "live[0].n > 0 ? new Date(Date.now() + RESET_VETO_MINUTES" not in _st_acct
+      and "and (${own} or not req_own or expires_at <= now()) returning id" in _st_auth
+      and "post(API.auth, { action: 'reset_request', phone: phone, cc: cc, deviceId: acDeviceId() })" in _st_app)
+check("standing: after 'Not me' the new PIN is chosen only on a phone known before that sign-in; any other phone is sent to the family",
+      "and first_seen < coalesce(${user.must_change_at || null}::timestamptz, now())" in _st_auth and "askFamily: true" in _st_auth
+      and _st_auth.index("askFamily: true") < _st_auth.index("const h = hashPin(body.newPin);\n      await sql`update users set pin_hash = ${h.hash}, pin_salt = ${h.salt}, pin_set_at = now(),\n                pin_tries = 0, locked_until = null, secret_v = ${SECRET_V}, must_change_pin = false where id = ${user.id}`;\n      // After")
+      and "if (j.exists && j.askFamily) {" in _st_app)
+check("standing: signing out stops the pushes, on the server and on the phone",
+      "export async function dropPush(sql, userId," in _st_acct
+      and _st_auth.count("await dropPush(sql,") >= 4 and _st_acct.count("await dropPush(sql, uid,") >= 2
+      and "return s.unsubscribe().then(function(){ return ep; }, function(){ return ep; });" in _st_app
+      and "action: 'signout', token: t, deviceId: acDeviceId(), endpoint: ep || undefined" in _st_app)
+check("standing: 'under 18' about someone on Parwah is never one person's word, and one adult alone removes only a child by date of birth",
+      "if (body.adult !== true) return childMark(sql, circle, s.me.id, t.id);" in _st_mod
+      and "const second = yes.find(id => id !== ask.asked_by);\n    if (!second || !target) return { status: 'pending' };\n    if (!(await close('done'))) return { status: 'done' };\n    await applyChildMark(" in _st_mod
+      and "if (child) { const { childMark } = await import('./_standing.mjs'); return childMark(sql, circle, me.id, t.id); }" in _cn["_audience.mjs"]
+      and "if (minorByBirth(target, today)) return { needs: false, others: [] };" in _st_rules
+      and "child_mark: function(a){" in _st_app)
+check("standing: a child cannot make themself an adult by changing or removing their own date of birth",
+      "export async function dobChangeGate(sql, circle, memberId, newDob) {" in _st_mod
+      and "dobHeld = await dobChangeGate(sql, circle, cur.id, newDob);\n        if (dobHeld) newDob = cur.dob;" in _st_circle
+      and "if (key === 'dob') { if (minorByBirth({ dob }, s.today)) hidden.add('dob'); else dob = null; }" in _st_mod
+      and "dob_change: function(a){" in _st_app)
+check("standing: the adult rule is ONE function reading date of birth, is_child and adult_confirmed, and nobody keeps a second",
+      "if (m.is_child === true || m.isChild === true || m.adult_confirmed === false) return 'minor';" in _st_rules
+      and "export function isMinor(m, today) { return !!m && standingOf(m, today) === 'minor'; }" in _st_rules
+      and all("isAdult(m.dob" not in (API_DIR / f).read_text(encoding="utf-8") and "isAdult(me.dob" not in (API_DIR / f).read_text(encoding="utf-8")
+              and "isAdult(mine.dob" not in (API_DIR / f).read_text(encoding="utf-8")
+              for f in ("_bond.mjs", "_pushapi.mjs", "_sos.mjs", "_safety.mjs", "_remember.mjs", "_memorybond.mjs", "_consentrules.mjs", "_ektaagent.mjs"))
+      and not any("is_child or (" in (API_DIR / f).read_text(encoding="utf-8") for f in ("_audience.mjs", "_ashirwad.mjs", "_ecard.mjs", "_expenses.mjs", "_familycare.mjs"))
+      and _cn_minor in _cn["_ashirwad.mjs"] and _cn["_audience.mjs"].count(_cn_minor) == 2)
+check("standing: 'Download my data' is a list of tables with each module's read rule, never any row that names me",
+      "const EXPORT_TABLES = {" in _st_acct and "const rule = EXPORT_TABLES[r.tbl];\n      if (!rule || !rule.cols.includes(r.col)) continue;" in _st_acct
+      and "vault_docs: { cols: ['about_member', 'by_member'], keep: (r, x) => mineIs(x.ids, r.about_member) || (mineIs(x.ids, r.by_member) && r.uploader_access !== false) }" in _st_acct
+      and "family_book: { cols: ['about_member', 'by_member'] }" in _st_acct and "verified_by" not in _st_acct.split("const EXPORT_TABLES = {")[1].split("\n};\n")[0]
+      and "updated_by" not in _st_acct.split("const EXPORT_TABLES = {")[1].split("\n};\n")[0] and "ABOUT_COL" not in _st_acct)
+check("standing: one push per phone for an account alert, a join request's number goes to adults only, and a profile save keeps the sizes",
+      "order by created_at desc limit 1`;\n    if (ms[0]) await pushCircle(sql, ms[0].circle_id, payload, { only: ms[0].id });" in _st_acct
+      and "case when ${jrMinor}::boolean then null else phone end as phone" in _st_ev
+      and "select id, name, role, phone, place, country, relation, dob, user_id, gift_info\n" in (API_DIR / "_owned.mjs").read_text(encoding="utf-8"))
+_fx_push = (API_DIR / "_pushrules.mjs").read_text(encoding="utf-8")
+_fx_safety = _fx_push.split("const SAFETY = [")[1].split("];")[0]
+check("push: a named kind is believed before the words, every safety pattern starts at the first character, and the urgent callers name theirs",
+      "if (PUSH_KINDS.includes(p.kind) || p.kind === 'other') return { kind: p.kind, through: false, timed };\n  if (SAFETY.some(re => re.test(title)))" in _fx_push
+      and all(pat.strip().startswith("/^") for pat in re.split(r",\s*(?=/)", _fx_safety.strip()) if pat.strip())
+      and "kind: 'safety'\n    }, { only: t.tell, except: t.member_id });" in _cn["_ashirwad.mjs"]
+      and all(t in _st_auth for t in ("{ kind: 'safety', title: '🔑 ' + ur[0].name + ' cannot get in'", "{ kind: 'safety', title: '🔑 Someone asked to reset your PIN'"))
+      and all(t in _st_acct for t in ("{ kind: 'safety', title: '🔒 Wrong PIN tries on your number'", "{ kind: 'safety', title: '📱 New sign-in on another phone'"))
+      and all("{ kind: 'chat', title: " in line for line in _cn["chats.mjs"].splitlines() if "title: '💬 " in line or "title: '📊 " in line or "title: '➕ " in line or "title: '👥 " in line))
+check("chat: a secret ballot keeps its counts until it closes, someone remembered is never added or mentioned, and a ring or an ask is capped",
+      "const held = !!p.secret && !p.closed;\n      if (held) opts.forEach(o => { o.count = null; });" in (API_DIR / "_chatbond.mjs").read_text(encoding="utf-8")
+      and "the counts stay hidden until the poll closes" in _app_src
+      and "is remembered here, so cannot be added to a chat." in _cn["chats.mjs"]
+      and _cn["chats.mjs"].count("not coalesce((to_jsonb(m)->>'remembered')::boolean, false)") >= 5
+      and "rateLimit(sql, 'tripextend', me.id, 4, 3600, { failClosed: true })" in _cn["_ashirwad.mjs"]
+      and "rateLimit(sql, 'locask', me.id + ':' + t[0].id, 1, 600, { failClosed: true })" in _cn["_locationapi.mjs"])
+check("privacy: Ekta, a trip, and the card's contacts send a phone only as the member card would, and Ekta reads health details by the card's rule",
+      "await memberCards(sql, circle, me, rows);" in (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
+      and (API_DIR / "ekta.mjs").read_text(encoding="utf-8").count("b.kind in ('med', 'insurance') or (b.kind = 'fact' and b.category in ('blood', 'allergy'))") >= 2
+      and "await memberCards(ctx.sql, ctx.circle, ctx.me, raw.map(" in (API_DIR / "_ektaagent.mjs").read_text(encoding="utf-8")
+      and "await memberCards(sql, circle, me, trips.map(" in _cn["_ashirwad.mjs"]
+      and "await memberCards(sql, circle, me, contacts.map(" in _cn["_ecard.mjs"])
+check("standing: family codes come from the secure random source, 8 long, and a new custom code needs 8 with a number",
+      "randomInt(all.length)" in _st_db and "Math.random" not in _st_db.split("export function makeCode()")[1].split("\n}\n")[0] and "export const CODE_LEN = 8;" in _st_db
+      and "export const CODE_MIN = 8, CODE_MAX = 12;" in _st_rules and "const cerr = codeProblem(newCode);" in _st_circle
+      and "Make your family code stronger" in _st_app)
+check("standing: a request to join never names the family, at most 10 wait at one door, and requests are counted",
+      "message: 'Your request has gone to the family. An adult there can let you in.' });" in _st_circle
+      and "circleName" not in _st_circle.split("const waiting = (requestId) =>")[1].split("const FULL")[0]
+      and "export const JOIN_PENDING_MAX = 10;" in _st_rules and "if (n[0].n >= JOIN_PENDING_MAX)" in _st_circle
+      and "rateLimit(sql, 'joinask', circle.id, 30, 86400, { failClosed: true })" in _st_circle)
+check("standing: opening the door, removing a member and deleting the family are decided together, with the rules in one place",
+      all(f"export function {fn}(" in _st_rules for fn in ("removalRule", "openJoinRule", "deleteFamilyRule"))
+      and "const rule = removalRule({ me: s.me, target, members: s.rows, today: s.today });" in _st_mod
+      and "const second = yes.find(id => id !== ask.asked_by && id !== ask.target_member);" in _st_mod
+      and "if (!adults.length || !adults.every(a => yes.includes(a.id))) return { status: 'pending' };" in _st_mod
+      and "export const UNDO_DAYS = 7;" in _st_rules)
+check("standing: 'This is me' is only ever a request, and the person then chooses what stays of what the family wrote",
+      "return ask(sameName[0].name, sameName[0].role, sameName[0].id, true);" in _st_circle and "claim_review = true" in _st_circle
+      and "if (a === 'claim_review') {" in _st_mod and 'id="ac-jclaim"' in _st_app and 'id="ac-claimsheet"' in _st_app)
+check("standing: who is sent a phone and a birth year is ONE call in events.mjs, and a failed read sends neither",
+      _st_ev.count("memberCards(") == 1 and "members: await memberCards(sql, circle, g.me, members)" in _st_ev
+      and "export function cardFor(member, viewer, kind) {" in _st_rules
+      and "return (members || []).map(m => (m.id === me.id ? m : { ...m, phone: null, dob: null }));" in _st_mod
+      and "export function defaultSee(kind) { return kind === 'group' ? 'me' : 'family'; }" in _st_rules)
+check("standing: the timer's share is ONE line in runTick, at module scope",
+      _st_ev.count("standingSweepAll(") == 1 and "await one(() => standingSweepAll(sql));" in _st_ev
+      and "\nexport async function standingSweepAll(sql) {" in _st_mod)
+check("standing: a change to someone's place in the tree can be undone by them; linking two households waits 48 hours",
+      _st_circle.count("await recordTreeEdit(sql, circle, mRow[0], all,") == 4 and "if (a === 'tree_undo') {" in _st_mod
+      and "export const LINK_HOLD_HOURS = 48;" in _st_rules and "agreed_at = now(), effective_at = ${starts}" in _st_link
+      and "if (a === 'link_yes' || a === 'link_object') {" in _st_link and "status = 'active', b_member" not in _st_link)
+check("standing: download my data reads no secret, builds no SQL from text, and is rate limited; a delete waits 7 days",
+      "const SECRET_KEY = /hash|salt|secret|token|p256dh|^auth$|endpoint|bytes|^data$|ip_fingerprint/i;" in _st_acct
+      and "select parwah_rows_for(${r.tbl}, ${r.col}, ${ids}::uuid[], 2000) as j" in _st_acct
+      and "rateLimit(sql, 'export', uid, 3, 86400, { failClosed: true })" in _st_acct
+      and "const at = new Date(Date.now() + UNDO_DAYS * 86400000).toISOString();" in _st_acct
+      and "delete_at is not null and delete_at <= now()" in _st_acct)
+check("standing: the privacy page says what the app does: download, delete my account, delete the family, 7 days, no text message",
+      all(x in _st_priv for x in ("Download my data", "Delete my account", "Delete this family", "after 7 days", "We never send a text message to sign you in",
+                                  "15 minutes, then 1 hour, then 24 hours", "only when two adults agree", "Sign out everywhere"))
+      and all(x in _st_app for x in ('id="ac-export"', 'id="ac-del"', 'id="ac-famdel"', 'id="ac-outall"', 'id="ac-mp-remove"')))
+_st_static = set(re.findall(r'\bid="(ac-[a-z0-9-]+)"', _st_app))
+check("standing: its screens keep to their own names (ids ac-, functions ac...)",
+      len(_st_static) >= 30 and len(re.findall(r"\n  function ac[A-Z]\w*\(", _st_app)) >= 15)
+_st_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("standing: the rules test runs in the gate; the db and browser tests run in test:db, and the browser test never waits a fixed time",
+      "node site/tests/standingtest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all(("site/tests/db/" + f) in _st_testdb and (REPO / "site/tests/db" / f).exists() for f in ("standing.dbtest.mjs", "standing.e2e.dbtest.mjs"))
+      and "waitForTimeout" not in (REPO / "site/tests/db/standing.e2e.dbtest.mjs").read_text(encoding="utf-8")
+      and all(x in (REPO / "site/tests/db/standing.dbtest.mjs").read_text(encoding="utf-8")
+              for x in ("THE PARENT WITH ONE CHEAP PHONE", "THE PERSON IN TWO FAMILIES", "THE FAMILY WITH A SINGLE ADULT")))
+check("standing: the coverage map says what is live, and the review is written down",
+      "| Equal standing: who decides what |" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
+      and "accounts, joining and equal standing" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

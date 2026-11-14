@@ -55,6 +55,7 @@ const { default: care } = await import('../../../api/care.mjs');
 const { default: book } = await import('../../../api/book.mjs');
 const { default: settings } = await import('../../../api/settings.mjs');
 const { default: chats } = await import('../../../api/chats.mjs');
+const { default: ekta } = await import('../../../api/ekta.mjs');
 const { default: events } = await import('../../../api/events.mjs');
 const { default: plans } = await import('../../../api/plans.mjs');
 const { default: games } = await import('../../../api/games.mjs');
@@ -129,10 +130,26 @@ ok('setup: three in the Sharma family, one in the Guptas', U.papa.id && U.rohan.
   const asked = await send(U.meera, "@Ekta what is Papa's blood group?");
   const last = (await rows(`select text from messages where chat_id = $1 and member_id is null order by created_at desc limit 1`, [chatId]))[0];
   const said = last ? last.text : '';
-  ok('Ekta answers in the chat', asked.status === 201 && asked.ekta === true && !!said, JSON.stringify(asked));
-  ok("about Papa's blood group: B+", /B\+/.test(said), said);
-  ok('not Rohan\'s, though Rohan is the longest name in the chat', !/O-/.test(said) && !/Rohan's/.test(said), said);
-  ok('and an old "chest pain" does not make a routine question an emergency', asked.ektaEmergency === false && !/sounds urgent/i.test(said), said);
+  // With no AI key all she can do is read the records back, and a records
+  // read-out is for the person who asked, on her own screen: it is never
+  // posted in front of the whole family (owner, 2026-11-13). The asker alone
+  // is told where to ask.
+  ok('with no AI key Ekta does not post a records read-out into the family chat', asked.status === 201 && asked.ekta === false && !said, JSON.stringify(asked) + ' ' + said);
+  ok('the person who asked is told, privately, to ask on her own screen', /her own screen/.test(asked.ektaNote || ''), JSON.stringify(asked));
+  ok('and an old "chest pain" does not make a routine question an emergency', asked.ektaEmergency === false, JSON.stringify(asked));
+  // The same question on her own screen is answered from the records, about Papa.
+  // Papa is on Parwah and has not chosen who may open his emergency card:
+  // what the card shows is not read out by Ekta either, and she says so
+  // plainly instead of "nothing is recorded" (the card's lock is on the
+  // server, not only on the screen).
+  const locked = await call(ekta, { token: U.meera.token, body: { code, memberId: U.meera.id, text: "what is Papa's blood group?" } });
+  ok("on her own screen, an adult of the family: Papa's blood group, B+", locked.ok && /B\+/.test(locked.reply), JSON.stringify(locked).slice(0, 300));
+  // Papa ticks Meera on his own card.
+  await rows(`insert into ecard_prefs (circle_id, member_id, viewers) select circle_id, id, array[$2]::uuid[] from members where id = $1
+              on conflict (circle_id, member_id) do update set viewers = excluded.viewers`, [U.papa.id, U.meera.id]);
+  const own = await call(ekta, { token: U.meera.token, body: { code, memberId: U.meera.id, text: "what is Papa's blood group?" } });
+  ok("on her own screen, once Papa chose her: Papa's blood group, B+", own.ok && /B\+/.test(own.reply), JSON.stringify(own).slice(0, 300));
+  ok('not Rohan\'s', !/O-/.test(own.reply) && !/Rohan's/.test(own.reply), own.reply);
   const sos = await send(U.meera, '@Ekta Papa gir gaye hain, uth nahi rahe');
   const last2 = (await rows(`select text from messages where chat_id = $1 and member_id is null order by created_at desc limit 1`, [chatId]))[0];
   ok('a fall said in Hinglish now is an emergency, with the flag for the Call and SOS buttons', sos.ektaEmergency === true && /112/.test(last2 && last2.text), JSON.stringify(sos) + ' ' + (last2 && last2.text));

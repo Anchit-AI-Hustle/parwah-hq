@@ -39,12 +39,14 @@
 import { randomUUID } from 'node:crypto';
 import { isUuid, rateLimit, schemaOnce, ensureCircleChat, requireMember } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
+import { pushTopic } from './_safetyrules.mjs';
 import { validTz, fromWall, dayIn, nextDue, localDate } from './_recur.mjs';
 import { ensureTaskSchema, taskAction } from './_tasks.mjs';
 import { safeImageUri } from './_sec.mjs';
 import { tokenOf } from './_token.mjs';
 import { ladderFor, ensureLadderSchema } from './_ladder.mjs';
 import { dialQuietLadder } from './_sosdial.mjs';
+import { ROTA_CONSENT_ACTIONS, rotaConsentAction, rotaRefused, rotaTellPerson } from './_rotaconsent.mjs';
 import { validHHMM, validDay, addDays, quietPhase, quietFamilyText, QUIET_NUDGE, QUIET_GRACE_MIN, AWAY_MAX_DAYS,
          QUIET_LADDER_MIN, quietCallHour, quietLadderText,
          lifecertWindow, ackNoCheck, rotaNext, safeWordCheck, JEEVAN_SITE } from './_carerules.mjs';
@@ -68,6 +70,10 @@ export async function ensureFamilyCareSchema(sql) {
     await sql`alter table members add column if not exists quiet_alerted_at timestamptz`;
     await sql`alter table members add column if not exists quiet_ack_for date`;
     await sql`alter table members add column if not exists quiet_ack_by uuid references members(id) on delete set null`;
+    // Someone else asked to pause this person's check-in (or to turn it
+    // back on): it waits here for the person's own yes. 'back' or a day.
+    await sql`alter table members add column if not exists away_ask text`;
+    await sql`alter table members add column if not exists away_ask_by uuid references members(id) on delete set null`;
     // Someone who is no longer with us (api/_remember.mjs) is never asked
     // to check in. Made here too, so the sweep needs no other screen opened.
     await sql`alter table members add column if not exists remembered boolean not null default false`;
@@ -126,7 +132,8 @@ async function chatSay(sql, circleId, memberId, text, kind = 'text') {
 }
 // One push to each of these people, nobody twice, never the skipped ones.
 async function pushEach(sql, circleId, payload, skip) {
-  const ms = await sql`select id from members where circle_id = ${circleId} and user_id is not null`;
+  const ms = await sql`select m.id from members m where m.circle_id = ${circleId} and m.user_id is not null
+                         and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`;
   const no = new Set((skip || []).filter(Boolean));
   for (const m of ms) if (!no.has(m.id)) await pushCircle(sql, circleId, payload, { only: m.id });
 }
@@ -147,15 +154,24 @@ function deadlineOf(today, hhmm, tz) {
 }
 function dayStart(today, tz) { const [y, m, d] = today.split('-').map(Number); return new Date(fromWall({ y, m, d, h: 0, mi: 0, s: 0 }, tz)); }
 
-// When they said they were okay today: an "All is well" check-in, or a
-// pulse answer. null when not yet.
-async function okToday(sql, memberId, today, tz) {
-  const r = await sql`select max(created_at) as at from events where member_id = ${memberId} and type = 'checkin' and created_at >= ${dayStart(today, tz)}`;
-  if (r[0] && r[0].at) return r[0].at;
-  try {
-    const p = await sql`select at from pulse where member_id = ${memberId} and day = ${today} limit 1`;
-    if (p[0]) return p[0].at;
-  } catch (e) { /* no pulse table yet */ }
+// When they were last seen to be alright today. The warm way is the tap:
+// "All is well", or a pulse answer. But ANY sign of life that local day
+// counts: a medicine they ticked, a message they sent in a chat. A parent
+// who chatted with the family at nine is not reported as missing at eleven.
+// (The SOS message does not count: that is the opposite of alright.)
+// null when there is no sign yet. A feature the family never opened has no
+// table, and that is simply no sign from it.
+export async function okToday(sql, memberId, today, tz) {
+  const from = dayStart(today, tz);
+  const signs = [
+    () => sql`select max(created_at) as at from events where member_id = ${memberId} and type = 'checkin' and created_at >= ${from}`,
+    () => sql`select at from pulse where member_id = ${memberId} and day = ${today} limit 1`,
+    () => sql`select max(taken_at) as at from medicine_doses where marked_by = ${memberId} and taken_at >= ${from}`,
+    () => sql`select max(created_at) as at from messages where member_id = ${memberId} and created_at >= ${from} and text not like '🆘%'`
+  ];
+  for (const sign of signs) {
+    try { const r = await sign(); if (r[0] && r[0].at) return r[0].at; } catch (e) { /* that feature has no table yet */ }
+  }
   return null;
 }
 
@@ -296,13 +312,14 @@ export async function pulseCallNudge(sql, circleId, who, line) {
 export async function familyCareState(sql, circleId, meId, nowMs = Date.now()) {
   await ensureFamilyCareSchema(sql);
   const ms = await sql`select m.id, m.name, m.role, m.phone, m.gender, m.checkin_by, m.tz, m.checkin_ask,
-                              a.name as ask_by_name, m.checkin_ask_by,
+                              a.name as ask_by_name, m.checkin_ask_by, m.away_ask, m.away_ask_by, w.name as away_by_name,
                               to_char(m.away_until, 'YYYY-MM-DD') as away_until,
                               to_char(m.quiet_alerted_for, 'YYYY-MM-DD') as alerted,
                               to_char(m.quiet_ack_for, 'YYYY-MM-DD') as acked, k.name as ack_by_name, m.quiet_ack_by
                        from members m left join members a on a.id = m.checkin_ask_by left join members k on k.id = m.quiet_ack_by
+                         left join members w on w.id = m.away_ask_by
                        where m.circle_id = ${circleId} and m.user_id is not null and not m.remembered
-                         and (m.checkin_by is not null or m.checkin_ask is not null or m.role = 'parent' or m.id = ${meId})
+                         and (m.checkin_by is not null or m.checkin_ask is not null or m.away_ask is not null or m.role = 'parent' or m.id = ${meId})
                        order by m.created_at`;
   const quiet = [];
   for (const m of ms) {
@@ -312,6 +329,8 @@ export async function familyCareState(sql, circleId, meId, nowMs = Date.now()) {
     quiet.push({ memberId: m.id, name: m.name, role: m.role, phone: m.phone, gender: m.gender,
       checkinBy: by, tz, awayUntil: m.away_until && m.away_until >= today ? m.away_until : null,
       ask: m.checkin_ask, askBy: m.checkin_ask_by, askByName: m.ask_by_name,
+      // A pause someone else asked for, waiting for this person's own yes.
+      awayAsk: m.away_ask || null, awayAskBy: m.away_ask ? m.away_ask_by : null, awayAskByName: m.away_ask ? m.away_by_name : null,
       okAt, phase, alerted: m.alerted === today && !okAt, today,
       ackBy: m.acked === today ? m.quiet_ack_by : null, ackByName: m.acked === today ? m.ack_by_name : null,
       ladder: m.alerted === today && !okAt ? await quietLadderShown(sql, m.id, today) : null });
@@ -326,7 +345,12 @@ export async function familyCareState(sql, circleId, meId, nowMs = Date.now()) {
                           from help_asks h join members m on m.id = h.member_id left join members c on c.id = h.claimed_by
                           where h.circle_id = ${circleId} and h.status <> 'done' and h.created_at > now() - interval '3 days'
                           order by h.created_at desc limit 5`;
-  const fs = await sql`select safe_word from family_settings where circle_id = ${circleId}`;
+  // The safe word is for the adults: a child or a teenager is not sent it
+  // (the same under-18 rule as api/_audience.mjs, in the query itself).
+  const fs = await sql`select safe_word from family_settings where circle_id = ${circleId}
+                       and not exists (select 1 from members v where v.id = ${meId}
+                         and (case when v.dob is not null then v.dob > current_date - interval '18 years'
+                                  else (coalesce((to_jsonb(v)->>'is_child')::boolean, false) or (to_jsonb(v)->>'adult_confirmed') = 'false') end))`;
   return { quiet, askfirst, helps, safeWord: fs[0] ? fs[0].safe_word : null };
 }
 
@@ -339,7 +363,7 @@ async function quietLadderShown(sql, personId, today) {
 }
 
 // ---------------- writes from /api/events ----------------
-export const FC_EVENT_TYPES = ['quiet_set', 'quiet_off', 'quiet_ask', 'quiet_answer', 'quiet_away', 'quiet_ack',
+export const FC_EVENT_TYPES = ['quiet_set', 'quiet_off', 'quiet_ask', 'quiet_answer', 'quiet_away', 'quiet_away_answer', 'quiet_ack',
   'askfirst', 'askfirst_ack', 'askfirst_close', 'safeword_set', 'help_ask', 'help_claim', 'help_done'];
 
 const send = (res, status, json) => res.status(status).json(json);
@@ -416,11 +440,38 @@ export async function familyCarePost(sql, req, res, reqTzValue) {
       if (!until || until < today) return no(res, 400, 'Pick today or a day after it');
       if (until > addDays(today, AWAY_MAX_DAYS)) return no(res, 400, 'Pick a day within the next three months');
     }
-    await sql`update members set away_until = ${until} where id = ${t.id}`;
+    // SOMEONE ELSE'S CHECK-IN IS THEIRS. A pause set for another person who
+    // is on Parwah is a question on their own phone, never a notice
+    // afterwards: nothing changes until they say yes. (Their own pause, and
+    // a person who is not on Parwah and so has no check-in, are set at once.)
+    if (t.id !== me.id && t.on_app) {
+      if (t.remembered) return no(res, 400, t.name + ' is remembered here, so is not asked');
+      if (!(await rateLimit(sql, 'awayask', t.id, 3, 86400, { failClosed: true }))) return no(res, 429, t.name + ' has been asked already today');
+      await sql`update members set away_ask = ${until || 'back'}, away_ask_by = ${me.id} where id = ${t.id}`;
+      await pushCircle(sql, circle.id, { kind: 'care', title: until ? '🧳 ' + me.name + ' asks: pause your daily check-in until ' + until + '?' : '🏠 ' + me.name + ' asks: turn your daily check-in back on?',
+        body: 'Nothing changes until you say yes on your phone.', url: '/#home' }, { only: t.id });
+      return send(res, 200, { ok: true, asked: true, awayUntil: null });
+    }
+    await sql`update members set away_until = ${until}, away_ask = null, away_ask_by = null where id = ${t.id}`;
     const whose = t.id === me.id ? me.name : me.name + ' for ' + t.name;
     await feed(sql, circle.id, me.id, until ? '🧳 Away until ' + until + ' (' + whose + '): the daily check-in is paused' : '🏠 ' + t.name + ' is back: the daily check-in is on again');
-    if (t.id !== me.id) await pushCircle(sql, circle.id, { title: until ? '🧳 ' + me.name + ' paused your daily check-in' : '🏠 Your daily check-in is on again',
-      body: until ? 'Until ' + until + '. Change it any time on Today.' : 'Turned back on by ' + me.name, url: '/#home' }, { only: t.id });
+    return send(res, 200, { ok: true, awayUntil: until });
+  }
+  // The person's own answer to a pause someone else asked for.
+  if (type === 'quiet_away_answer') {
+    const r = (await sql`select away_ask, away_ask_by from members where id = ${me.id}`)[0];
+    if (!r || !r.away_ask) return no(res, 404, 'Nothing is waiting for your answer');
+    await sql`update members set away_ask = null, away_ask_by = null where id = ${me.id}`;
+    if (b.yes !== true) {
+      if (r.away_ask_by) await pushCircle(sql, circle.id, { kind: 'care', title: me.name + ' said not now', body: 'The daily check-in stays as it was.', url: '/#home' }, { only: r.away_ask_by });
+      return send(res, 200, { ok: true, declined: true });
+    }
+    const until = r.away_ask === 'back' ? null : validDay(r.away_ask);
+    if (r.away_ask !== 'back' && (!until || until < today)) return no(res, 409, 'That day has already passed. Nothing was changed.');
+    await sql`update members set away_until = ${until} where id = ${me.id}`;
+    await feed(sql, circle.id, me.id, until ? '🧳 Away until ' + until + ' (' + me.name + ' said yes): the daily check-in is paused' : '🏠 ' + me.name + ' is back: the daily check-in is on again');
+    if (r.away_ask_by) await pushCircle(sql, circle.id, { kind: 'care', title: until ? '🧳 ' + me.name + ' said yes to the pause' : '🏠 ' + me.name + ' said yes: the check-in is on again',
+      body: until ? 'Paused until ' + until + '.' : 'Back on from today.', url: '/#home' }, { only: r.away_ask_by });
     return send(res, 200, { ok: true, awayUntil: until });
   }
 
@@ -460,7 +511,7 @@ export async function familyCarePost(sql, req, res, reqTzValue) {
     }
     if (loud) {
       await pushCircle(sql, circle.id, { title: '🛡 ' + me.name + ' is asking the family first',
-        body: 'Someone wants money or an OTP. Please call ' + me.name + ' before anything is paid.', url: '/#home', urgent: true }, { except: me.id });
+        body: 'Someone wants money or an OTP. Please call ' + me.name + ' before anything is paid.', url: '/#home', urgent: true, topic: pushTopic('ask', id) }, { except: me.id });
     }
     return send(res, 201, { ok: true, id, again: !!open[0] });
   }
@@ -483,7 +534,7 @@ export async function familyCarePost(sql, req, res, reqTzValue) {
     }
     await feed(sql, circle.id, me.id, '🧡 ' + me.name + ' has seen ' + r.name + "'s money question and is calling");
     await pushCircle(sql, circle.id, { title: "🧡 " + me.name + " has seen it, calling you now",
-      body: 'Do not pay or share any code until you talk.', url: '/#home', urgent: true }, { only: r.member_id });
+      body: 'Do not pay or share any code until you talk.', url: '/#home', urgent: true, topic: pushTopic('askack', r.id) }, { only: r.member_id });
     await pushEach(sql, circle.id, { title: '🧡 ' + me.name + ' is calling ' + r.name, body: 'About the money question. You do not need to call as well.', url: '/#home' }, [me.id, r.member_id]);
     return send(res, 200, { ok: true });
   }
@@ -538,7 +589,9 @@ export async function familyCarePost(sql, req, res, reqTzValue) {
 }
 
 // ---------------- writes from /api/care: ready-made tasks ----------------
-export const FC_CARE_ACTIONS = ['lifecert_create', 'lifecert_update', 'rota_create', 'rota_done', 'rota_skip'];
+// rota_time / rota_decline / rota_welcome belong to the person who is called
+// (api/_rotaconsent.mjs).
+export const FC_CARE_ACTIONS = ['lifecert_create', 'lifecert_update', 'rota_create', 'rota_done', 'rota_skip', ...ROTA_CONSENT_ACTIONS];
 const ok = (status, json) => ({ status, json: { ok: true, ...json } });
 const bad = (status, error) => ({ status, json: { ok: false, error } });
 
@@ -618,6 +671,10 @@ export async function familyTaskAction(sql, circle, me, body, reqTzValue) {
     const about = await memberIn(sql, circle.id, body.aboutMemberId);
     if (!about) return bad(404, 'Pick who the calls are for');
     if (about.remembered) return bad(400, about.name + ' is remembered here, so has no call rota');
+    // They said "No daily call, thank you". Only they can ask for one again.
+    if (about.id !== me.id && await rotaRefused(sql, circle.id, about.id)) {
+      return bad(409, first(about.name) + ' said no daily call, thank you. Ask them first: they can turn it back on from their own phone.');
+    }
     const time = validHHMM(body.time) || '19:00';
     const want = Array.isArray(body.memberIds) ? body.memberIds.filter(isUuid) : [];
     const rota = [];
@@ -656,7 +713,9 @@ export async function familyTaskAction(sql, circle, me, body, reqTzValue) {
       await pushCircle(sql, circle.id, { title: '📞 You are on the call rota for ' + about.name,
         body: (id === owner ? 'Your turn is first, at ' + time + '.' : 'Turns go round one day each.') + ' Skip passes your day on.', url: '/#care' }, { only: id });
     }
-    return ok(201, { id: t.id, rota, first: owner });
+    // The person who is called hears of it, with their two choices.
+    const told = await rotaTellPerson(sql, circle.id, me, about, time);
+    return ok(201, { id: t.id, rota, first: owner, toldPerson: told });
   }
 
   if (action === 'rota_done' || action === 'rota_skip') {
@@ -703,6 +762,8 @@ export async function familyTaskAction(sql, circle, me, body, reqTzValue) {
     }
     return ok(200, { status: 'done', next, nextBy: rota[idx] || null });
   }
+  // The person who is called: their time, or "No daily call, thank you".
+  if (ROTA_CONSENT_ACTIONS.includes(action)) return rotaConsentAction(sql, circle, me, body, tz, { deadlineOf, loadTask, log, feed });
   return bad(400, 'Unknown action');
 }
 export { JEEVAN_SITE };

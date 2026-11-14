@@ -11,7 +11,10 @@
 //     session token;
 //   - 5 wrong tries lock that mobile number for 15 minutes, a right answer
 //     does not get through the lock, another number is not affected, and
-//     guesses sent all at once cannot slip past the count;
+//     guesses sent all at once cannot slip past the count (the count and
+//     the lock live in pin_locks, keyed by a hash of the number);
+//   - the number alone is always asked for its PIN in the same words,
+//     whatever kind of secret it has: the reply no longer says "older";
 //   - nothing is ever stored as typed.
 //
 // Run with a database that is safe to wipe; its name must end in _test:
@@ -36,6 +39,9 @@ await admin.query('drop schema public cascade; create schema public;');
 
 const { default: auth } = await import('../../../api/auth.mjs');
 const { hashPin, SECRET_V, LOCK_MINUTES } = await import('../../../api/_auth.mjs');
+const { lockKey } = await import('../../../api/_account.mjs');
+// The count and the lock for one mobile number, as the server keeps them.
+const lockRow = async phone => (await admin.query('select * from pin_locks where k = $1', [lockKey('+91' + phone, null)])).rows[0] || {};
 
 let pass = 0; const fails = [];
 const ok = (name, cond, detail) => { if (cond) pass++; else fails.push(name + (detail ? ' -> ' + detail : '')); };
@@ -84,7 +90,10 @@ const row = async phone => (await admin.query('select * from users where phone =
   await admin.query(`insert into users (phone, phone_cc, phone_local, name, pin_hash, pin_salt, pin_set_at, secret_v)
                      values ('+919810000012', '+91', '9810000012', 'Vikram', $1, $2, now(), 2)`, [h.hash, h.salt]);
   let r = await enter('9810000012');
-  ok('the app is told the box must take the older secret once', r.needPin && r.older === true && !r.token, JSON.stringify(r));
+  // It used to say older:true here, which told anyone who typed a number
+  // that it had an account. Now every number gets the same words, and the
+  // sign-in screen has its own link for a PIN or password from before.
+  ok('the number alone is asked for its PIN like any other, with nothing about what kind', r.needPin && r.older === false && !r.token, JSON.stringify(r));
   r = await enter('9810000012', { pin: 'ghar@Sukh7' });
   ok('a password is exact: one wrong letter is a wrong try', r.status === 401 && r.wrongPin);
   r = await enter('9810000012', { pin: 'Ghar@Sukh7' });
@@ -166,17 +175,17 @@ const row = async phone => (await admin.query('select * from users where phone =
   let r = await enter('9810000005', { pin: '0000' });
   ok('the 5th wrong try locks the number', r.status === 429 && r.locked);
   ok('and says how long, and the way out', /Try again in 15 minutes/.test(r.error || '') && /family/.test(r.error || ''), r.error);
-  const u = (await row('9810000005')) || {};
+  const u = await lockRow('9810000005');
   const mins = (new Date(u.locked_until || 0) - Date.now()) / 60000;
   ok('for 15 minutes', LOCK_MINUTES === 15 && mins > 14 && mins <= 15.1, mins.toFixed(2));
   r = await enter('9810000005', { pin: '7391' });
   ok('while locked, even the right PIN does not get in', r.status === 429 && !r.token);
   r = await enter('9810000001', { pin: '4813' });
   ok('another mobile number is not affected', r.ok && !!r.token);
-  await admin.query(`update users set locked_until = now() - interval '1 second' where phone = '+919810000005'`);
+  await admin.query(`update pin_locks set locked_until = now() - interval '1 second' where k = $1`, [lockKey('+919810000005', null)]);
   r = await enter('9810000005', { pin: '7391' });
   ok('after the 15 minutes, the right PIN gets in', r.ok && !!r.token);
-  ok('and the count starts again', ((await row('9810000005')) || {}).pin_tries === 0);
+  ok('and the count starts again', (await lockRow('9810000005')).tries === 0);
 }
 
 // ---- guesses sent all at once are all counted
@@ -188,7 +197,7 @@ const row = async phone => (await admin.query('select * from users where phone =
   const locked = burst.filter(r => r.status === 429).length;
   ok('8 guesses at once: none gets in', got === 0);
   ok('no more than 4 are answered as ordinary wrong tries', wrong <= 4, `${wrong} wrong, ${locked} locked`);
-  const u = (await row('9810000006')) || {};
+  const u = await lockRow('9810000006');
   ok('and the number ends up locked', !!u.locked_until && new Date(u.locked_until) > new Date());
 }
 

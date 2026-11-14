@@ -23,6 +23,8 @@
 // and the messaging, one tap each, with everything already filled in.
 import { validPosition } from './_geo.mjs';
 import { schemaOnce } from './_db.mjs';
+import { orderContacts } from './_safetyrules.mjs';
+import { isMinor } from './_standingrules.mjs';
 
 export const SOS_AUDIO_MAX = 1600000;       // base64 characters, about 1.2 MB
 export const SOS_AUDIO_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/aac'];
@@ -78,33 +80,58 @@ export function parsePos(body) {
 // Who to call and message, in order: the people the family wrote down as
 // emergency contacts for this person, then everyone else in the family who
 // has a phone number. Never the person themselves; never twice.
+//
+// SOMEONE WHO HAS PASSED AWAY IS NEVER ON THIS LIST (owner's rule). Not as a
+// member, and not as an emergency contact written down with their number:
+// the order and the filter are orderContacts in api/_safetyrules.mjs. The
+// person's own chosen emergency contacts come first, then adults in the
+// family who are on Parwah, then everyone else with a number.
 export async function sosContacts(sql, circleId, memberId) {
-  const out = [], seen = new Set();
-  const add = (name, phone, why) => {
-    const p = String(phone || '').replace(/[^\d+]/g, '');
-    if (!p || seen.has(p)) return;
-    seen.add(p); out.push({ name, phone: p, why });
-  };
+  let chosen = [];
   try {
-    const ec = await sql`select name, phone from family_book
-                         where circle_id = ${circleId} and kind = 'contact' and category = 'emergency' and phone is not null
-                           and (about_member = ${memberId} or about_member is null) and visibility = 'circle'
-                         order by (about_member = ${memberId}) desc nulls last, created_at limit 5`;
-    ec.forEach(c => add(c.name, c.phone, 'Emergency contact'));
+    chosen = await sql`select name, phone from family_book
+                       where circle_id = ${circleId} and kind = 'contact' and category = 'emergency' and phone is not null
+                         and (about_member = ${memberId} or about_member is null) and visibility = 'circle'
+                       order by (about_member = ${memberId}) desc nulls last, created_at limit 5`;
   } catch (e) { /* no family memory yet */ }
   const me = await sql`select phone from members where id = ${memberId}`;
-  const mine = me[0] && me[0].phone ? String(me[0].phone).replace(/[^\d+]/g, '') : null;
-  if (mine) seen.add(mine);
-  const fam = await sql`select name, phone, relation from members
-                        where circle_id = ${circleId} and id <> ${memberId} and phone is not null
-                        order by created_at limit 12`;
-  fam.forEach(m => add(m.name, m.phone, 'Family'));
-  return out.slice(0, 8);
+  // remembered is read through the row: it works before any module made it.
+  const fam = await sql`select m.name, m.phone, m.user_id is not null as on_app, to_char(m.dob, 'YYYY-MM-DD') as dob,
+                               coalesce((to_jsonb(m)->>'is_child')::boolean, false) as is_child, (to_jsonb(m)->>'adult_confirmed')::boolean as adult_confirmed,
+                               coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered
+                        from members m
+                        where m.circle_id = ${circleId} and m.id <> ${memberId} and m.phone is not null
+                        order by m.created_at limit 40`;
+  const today = new Date().toISOString().slice(0, 10);
+  return orderContacts({ chosen, own: me[0] && me[0].phone,
+    family: fam.map(m => ({ ...m, adult: !isMinor(m, today) })) });
+}
+
+// The numbers of everyone in this family who has passed away, as dialable
+// numbers: the last check before Parwah itself texts or rings anyone.
+export async function rememberedPhones(sql, circleId) {
+  const r = await sql`select m.phone, m.phone_cc from members m
+                      where m.circle_id = ${circleId} and m.phone is not null
+                        and coalesce((to_jsonb(m)->>'remembered')::boolean, false)`;
+  return r;
 }
 
 // Others in the family who are on Parwah: the people who can mark someone
 // safe. Alone, the person may do it themselves.
 export async function othersOnApp(sql, circleId, memberId) {
-  const r = await sql`select count(*)::int as n from members where circle_id = ${circleId} and id <> ${memberId} and user_id is not null`;
+  const r = await sql`select count(*)::int as n from members m where m.circle_id = ${circleId} and m.id <> ${memberId} and m.user_id is not null
+                        and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`;
   return r[0] ? r[0].n : 0;
+}
+
+// EVERY FAMILY THE PERSON BELONGS TO HEARS AN SOS, not only the one that is
+// open on their phone. A group of friends hears only when it is the one
+// open. Returns the other family circles, with the person's membership there.
+export async function sosOtherFamilies(sql, circleId, userId) {
+  if (!userId) return [];
+  return sql`select c.id, c.code, c.name, c.kind, m.id as member_id, m.name as member_name, m.phone_cc
+             from members m join circles c on c.id = m.circle_id
+             where m.user_id = ${userId} and c.id <> ${circleId} and coalesce(c.kind, 'family') = 'family'
+               and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)
+             order by m.created_at limit 6`;
 }

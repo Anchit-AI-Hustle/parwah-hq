@@ -6,6 +6,8 @@
 // registerRowFor in _register.mjs, handed in here as `rowFor`, so there is
 // one viewing rule and this file cannot grow a second.
 
+import { surelyAdult, ADULT_HOW } from './_safetyrules.mjs';
+
 export const AFTERLOSS_NAME = 'What needs doing';
 export const AFTERLOSS_SORRY = 'We are sorry. This list is here so nothing is forgotten.';
 export const AFTERLOSS_LEGAL = 'This is a list to help you remember, not legal advice. Rules differ by bank and state.';
@@ -112,16 +114,14 @@ export function afterlossEntryStep(entry) {
 // ---------------------------------------------------------------------------
 // WHO MAY START IT, AND WHAT IT OPENS
 // ---------------------------------------------------------------------------
-// An adult: someone who signs in to Parwah, and is 18 or more if the family
-// wrote a date of birth. A name added to the tree is never one.
+// An adult: someone who signs in to Parwah, and is 18 or more by their date
+// of birth. With NO date of birth, only when their place in the family says
+// so (the parent role, a relation only a grown-up holds, a spouse or a
+// child in the tree): a teenager who never wrote a birthday must not be
+// able to start, or confirm, a list about a death. A name added to the tree
+// is never one. The rule itself is surelyAdult in api/_safetyrules.mjs.
 export function afterlossIsAdult(m, today = new Date()) {
-  if (!m || !(m.user_id || m.on_app)) return false;
-  if (!m.dob) return true;
-  const d = new Date(m.dob);
-  if (isNaN(d)) return true;
-  let age = today.getUTCFullYear() - d.getUTCFullYear();
-  if (today.getUTCMonth() < d.getUTCMonth() || (today.getUTCMonth() === d.getUTCMonth() && today.getUTCDate() < d.getUTCDate())) age--;
-  return age >= 18;
+  return surelyAdult(m, today);
 }
 
 // The second adult. Starting a list and opening a closed one again both go
@@ -131,7 +131,10 @@ export function afterlossIsAdult(m, today = new Date()) {
 //   { error } | { needs: false, others } | { needs: true, askId, others }
 export const AFTERLOSS_NEEDS_SECOND = 'This needs a second adult on Parwah to confirm.';
 export function afterlossStartRule({ me, personId, members, askId, today }) {
-  if (!me || !afterlossIsAdult(me, today)) return { error: 'Only an adult in the family who is on Parwah can start this.', status: 403 };
+  if (!me || !afterlossIsAdult(me, today)) {
+    const unsure = me && (me.user_id || me.on_app) && !me.dob;
+    return { error: unsure ? ADULT_HOW : 'Only an adult in the family who is on Parwah can start this.', status: 403 };
+  }
   if (me.id === personId) return { error: 'This list is started by the family, for someone else.', status: 400 };
   const others = (members || []).filter(m => m.id !== me.id && m.id !== personId && afterlossIsAdult(m, today));
   if (!others.length) {
@@ -223,8 +226,8 @@ export function afterlossNote(v, risks = []) {
 // to the family when it starts (or is opened again), and the one to the two
 // who started it when the person it is about closes it themself.
 export function afterlossPush(kind, { starter, person, confirmer }) {
-  if (kind === 'ask') return { title: starter + ' asks you to confirm', body: starter + " wants to start '" + AFTERLOSS_NAME + "' for " + person + '. It starts only if you agree.', url: '/#vault' };
-  if (kind === 'void') return { title: "'" + AFTERLOSS_NAME + "' was closed", body: person + ' closed the list that was started for them.', url: '/#vault' };
-  if (kind === 'reopened') return { title: starter + " opened '" + AFTERLOSS_NAME + "' for " + person + ' again', body: (confirmer ? confirmer + ' confirmed. ' : '') + 'The list is in the Family register.', url: '/#vault' };
-  return { title: starter + " started '" + AFTERLOSS_NAME + "' for " + person, body: (confirmer ? confirmer + ' confirmed. ' : '') + 'The list is in the Family register.', url: '/#vault' };
+  if (kind === 'ask') return { kind: 'other', title: starter + ' asks you to confirm', body: starter + " wants to start '" + AFTERLOSS_NAME + "' for " + person + '. It starts only if you agree.', url: '/#vault' };
+  if (kind === 'void') return { kind: 'other', title: "'" + AFTERLOSS_NAME + "' was closed", body: person + ' closed the list that was started for them.', url: '/#vault' };
+  if (kind === 'reopened') return { kind: 'other', title: starter + " opened '" + AFTERLOSS_NAME + "' for " + person + ' again', body: (confirmer ? confirmer + ' confirmed. ' : '') + 'The list is in the Family register.', url: '/#vault' };
+  return { kind: 'other', title: starter + " started '" + AFTERLOSS_NAME + "' for " + person, body: (confirmer ? confirmer + ' confirmed. ' : '') + 'The list is in the Family register.', url: '/#vault' };
 }

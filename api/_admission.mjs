@@ -18,6 +18,7 @@ import { db, ensureSchema, requireMember, isUuid, schemaOnce } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
+import { pushTopic } from './_safetyrules.mjs';
 import { ensureBookSchema } from './_bookschema.mjs';
 import { ensureCarePrepSchema, recordAuditEvent } from './_careprep.mjs';
 
@@ -172,7 +173,7 @@ export async function admissionAction(sql, circle, me, body) {
     await pushCircle(sql, circle.id, {
       title: '🏥 ' + p.name + ' is in hospital',
       body: me.name + ' opened the hospital screen' + (clip(body.hospital, 120) ? ' - ' + clip(body.hospital, 120) : '') + '. Open Parwah to see where and who is with ' + p.name + '.',
-      url: '/#people', urgent: true
+      url: '/#people', urgent: true, topic: pushTopic('hosp', r[0].id)
     }, { except: me.id });
     return yes({ id: r[0].id }, 201);
   }

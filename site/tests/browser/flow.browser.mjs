@@ -144,11 +144,14 @@ async function fresh(opts){
 {
   const pg = await fresh({ viewport:{ width:390, height:844 } });
   await pg.locator('#au-phone').fill('98111 22333');
-  await pg.locator('#au-go').click();
-  await pg.waitForTimeout(500);
-  ok(await pg.locator('#au-namewrap').isVisible(), 'a new number is asked for a name');
-  ok(await pg.locator('#au-newnote').isVisible(), 'and is TOLD the number is new, so a typo is catchable');
-  ok(/new to Parwah/i.test(await pg.locator('#au-newnote').textContent()), 'in words, not just a field appearing');
+  // The server no longer says whether a number has a profile (that told
+  // anyone who typed a number whether its owner uses Parwah). The person
+  // says it themselves: "I am new here".
+  ok(await pg.locator('#ac-mode [data-acmode="in"]').getAttribute('aria-pressed') === 'true', 'the sign-in card starts on "I have a profile"');
+  await pg.locator('#ac-mode [data-acmode="new"]').click();
+  ok(await pg.locator('#au-namewrap').isVisible(), 'someone new is asked for a name');
+  ok(await pg.locator('#au-newnote').isVisible(), 'and is told what to do if they already have a profile, so a typo is catchable');
+  ok(/I have a profile/i.test(await pg.locator('#au-newnote').textContent()), 'in words, not just a field appearing');
 
   // The dead stop: submitting the name empty used to repaint the same screen.
   await pg.locator('#au-go').click();

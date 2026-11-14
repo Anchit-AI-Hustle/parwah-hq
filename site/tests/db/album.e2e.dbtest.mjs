@@ -422,7 +422,10 @@ ok('a swipe past the last photo stays on it', (await R.textContent('#ab-v-pos'))
 ok('SAVE TO MY PHONE is the picture this phone already holds, as a file', await R.$eval('#ab-v-save', a => !a.hidden && a.href.startsWith('blob:') && a.hasAttribute('download')));
 const [dl] = await Promise.all([R.waitForEvent('download', T), R.click('#ab-v-save')]);
 ok('it saves one photo, named for its caption and year', dl.suggestedFilename() === 'parwah-diwali-at-nani-s-house-1987.jpg', dl.suggestedFilename());
-ok('there is no public link, no sharing outside and no "download all" anywhere in the album', !/share|public link|download all|whatsapp/i.test(await R.textContent('#ab-viewer')) && !/share|public link|download all/i.test(await R.textContent('#ab-root'))
+// Nov 2026: one photo can be passed on through the phone's own share sheet
+// (the member's own act). There is still no public link and no "download all".
+ok('there is no public link and no "download all" anywhere in the album; the only sharing is "Share this photo", one at a time', !/public link|download all|whatsapp/i.test(await R.textContent('#ab-viewer'))
+   && (await R.textContent('#ab-viewer')).match(/share/gi).length === 1 && /Share this photo/.test(await R.textContent('#ab-v-acts [data-hdabshare]')) && !/share|public link|download all/i.test(await R.textContent('#ab-root'))
    && (await R.$$('#ab-viewer a[href^="http"], #ab-root a[href^="http"]')).length === 0);
 await R.click('#ab-v-acts [data-abuntag]');
 await R.waitForFunction(() => document.getElementById('ab-v-people').textContent === 'With Nani', null, T);
@@ -623,7 +626,10 @@ await gridOf(P, 3);
 await design(P, '#ab-root', 'the album, senior mode');
 await P.click('#ab-grid .abtile >> nth=2');
 await viewerAt(P, 'Photo 3 of 3');
-ok('Papa, who added nothing, can look and save, and is offered nothing else', await P.isVisible('#ab-v-save') && (await P.$$('#ab-v-acts button')).length === 0);
+// Nov 2026: anyone who may see a photo can react to it and share that one photo.
+ok('Papa, who added nothing, can look, save, react and share this one photo, and is offered nothing that changes it', await P.isVisible('#ab-v-save')
+   && (await P.$$('#ab-v-acts [data-hdabrx]')).length === 5 && (await P.$$('#ab-v-acts [data-hdabshare]')).length === 1
+   && (await P.$$('#ab-v-acts button')).length === 6 && (await P.$$('#ab-v-acts [data-abedit], #ab-v-acts [data-abdel], #ab-v-acts [data-hdabvoice]')).length === 0);
 await design(P, '#ab-viewer', 'one photo, senior mode');
 await P.keyboard.press('Escape');
 await P.waitForSelector('#ab-viewer', { state: 'hidden', ...T });

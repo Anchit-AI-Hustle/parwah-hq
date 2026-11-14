@@ -9,12 +9,24 @@
 // currency, never converted.
 //
 //   GET  /api/care?area=expenses&circle=CODE&member=ID&month=YYYY-MM
-//   POST /api/care {action: expense_add | expense_remove | expense_from_bill | split_set}
+//   POST /api/care {action: expense_add | expense_remove | expense_from_bill | split_set | expense_show}
+//
+// WHO SEES THE LEDGER (decided in the SQL of the read, not on the screen):
+//   - the people who pay see it: every adult who is not the person being
+//     cared for. A cost noted for one of them is left out of their own list
+//     unless they paid or wrote it;
+//   - the person being cared for (role 'parent') sees only what they paid
+//     or wrote themself, unless they turn on "Show me the costs" on their
+//     own phone (expense_show). Nobody can turn it on for them;
+//   - a child or a teenager sees none of it and cannot add to it.
+// What a parent's care costs is never put in the family feed: the feed line
+// says a cost was noted, without the amount or who it was for.
 import { db, requireMember, isUuid, schemaOnce } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { money, currencyOf } from './_money.mjs';
 import { reqTz } from './_recur.mjs';
+import { ensureAudienceSchema, minorOf } from './_audience.mjs';
 
 export const EXPENSE_CATS = ['medicines', 'doctor', 'tests', 'staff', 'bills', 'groceries', 'travel', 'other'];
 export const EXPENSE_CURS = ['INR', 'USD', 'AED', 'GBP', 'CAD'];
@@ -54,7 +66,16 @@ export async function ensureExpenseSchema(sql) {
       updated_by uuid references members(id) on delete set null,
       updated_at timestamptz not null default now()
     )`;
+    // "Show me the costs": the person's own switch, off until they turn it on.
+    await sql`create table if not exists care_cost_prefs (
+      circle_id uuid not null references circles(id) on delete cascade,
+      member_id uuid not null references members(id) on delete cascade,
+      show boolean not null default false,
+      updated_at timestamptz not null default now(),
+      primary key (circle_id, member_id)
+    )`;
   });
+  await ensureAudienceSchema(sql);
   ready = true;
 }
 
@@ -104,8 +125,10 @@ export async function addExpense(sql, circle, me, b) {
                               ${receipt}, ${isUuid(b.billId) ? b.billId : null}, ${isUuid(b.staffId) ? b.staffId : null}, ${me.id})
                       on conflict (bill_id) do nothing returning id`;
   if (!r[0]) return { status: 200, json: { ok: true, already: true } };
+  // The feed is read by everyone, the cared-for person and the children
+  // included, so it says only that a cost was noted.
   await sql`insert into events (circle_id, member_id, type, text)
-            values (${circle.id}, ${me.id}, 'care', ${me.name + ' noted ' + money(amount, cur) + ' for ' + cat + (forM ? ' for ' + forM.name : '') + (payer.id !== me.id ? ', paid by ' + payer.name : '')})`;
+            values (${circle.id}, ${me.id}, 'care', ${me.name + ' noted a care cost'})`;
   return { status: 201, json: { ok: true, id: r[0].id } };
 }
 
@@ -157,14 +180,32 @@ export async function expensesApi(req, res) {
       const g = await requireMember(sql, q.circle, q.member, tokenOf(req));
       if (g.err) return res.status(g.status).json({ ok: false, error: g.err, signin: g.signin });
       const month = monthOf(q.month, reqTz(req));
+      // The viewer's standing, read once: a child, the person cared for, and
+      // whether they asked to see the costs.
+      const v = (await sql`select (case when m.dob is not null then m.dob > current_date - interval '18 years' else (m.is_child or m.adult_confirmed is false) end) as minor,
+                                  m.role = 'parent' as cared, coalesce(cp.show, false) as show
+                           from members m left join care_cost_prefs cp on cp.circle_id = m.circle_id and cp.member_id = m.id
+                           where m.id = ${g.me.id}`)[0] || { minor: false, cared: false, show: false };
+      const ledger = v.minor ? 'none' : v.show ? 'full' : v.cared ? 'own' : 'payers';
+      // Each row is let through by the same rule, in the query itself.
       const rows = await sql`
         select e.id, e.amount, e.currency, e.category, e.for_member, f.name as for_name, e.paid_by, p.name as paid_name,
                e.spent_on::text as spent_on, e.note, e.receipt_doc_id, e.bill_id, e.staff_id, e.created_by, e.created_at
         from care_expenses e
+        join members v on v.id = ${g.me.id}
+        left join care_cost_prefs cp on cp.circle_id = e.circle_id and cp.member_id = v.id
         left join members f on f.id = e.for_member
         left join members p on p.id = e.paid_by
         where e.circle_id = ${g.circle.id} and e.spent_on between ${month + '-01'} and ${monthEnd(month)}
+          and not (case when v.dob is not null then v.dob > current_date - interval '18 years' else (v.is_child or v.adult_confirmed is false) end)
+          and (coalesce(cp.show, false) or e.paid_by = v.id or e.created_by = v.id
+               or (v.role <> 'parent' and e.for_member is distinct from v.id))
         order by e.spent_on desc, e.created_at desc`;
+      if (ledger === 'none' || ledger === 'own') {
+        // No totals, no split and no bills for someone who has not asked.
+        return res.status(200).json({ ok: true, month, ledger, showCosts: false, mayAsk: ledger === 'own', expenses: rows,
+          split: { mode: 'none', shares: {} }, summary: [], settledBills: [], categories: EXPENSE_CATS, currencies: EXPENSE_CURS });
+      }
       const sp = await sql`select mode, shares from care_split where circle_id = ${g.circle.id}`;
       const split = sp[0] ? { mode: sp[0].mode, shares: sp[0].shares || {} } : { mode: 'none', shares: {} };
       const mem = await sql`select id, name from members where circle_id = ${g.circle.id}`;
@@ -176,7 +217,7 @@ export async function expensesApi(req, res) {
         where b.circle_id = ${g.circle.id} and b.payment_status = 'SETTLED'
           and not exists (select 1 from care_expenses x where x.bill_id = b.id)
         order by b.settled_at desc nulls last limit 10`;
-      return res.status(200).json({ ok: true, month, expenses: rows, split, summary: monthSummary(rows, split, names),
+      return res.status(200).json({ ok: true, month, ledger, showCosts: !!v.show, mayAsk: true, expenses: rows, split, summary: monthSummary(rows, split, names),
         settledBills: bills.map(b => ({ id: b.id, biller_name: b.biller_name, amount: Number(b.amount_due), currency: currencyOf(b.country) || 'INR',
           category: BILL_CAT[b.bill_category] || 'bills', settled_at: b.settled_at, settled_name: b.settled_name })),
         categories: EXPENSE_CATS, currencies: EXPENSE_CURS });
@@ -186,6 +227,17 @@ export async function expensesApi(req, res) {
     const g = await requireMember(sql, b.code, b.memberId, tokenOf(req));
     if (g.err) return res.status(g.status).json({ ok: false, error: g.err, signin: g.signin });
     const circle = g.circle, me = g.me;
+
+    // "Show me the costs": only the person themself, and never a child.
+    if (b.action === 'expense_show') {
+      if (typeof b.on !== 'boolean') return res.status(400).json({ ok: false, error: 'Choose on or off' });
+      if (await minorOf(sql, circle.id, me.id)) return res.status(403).json({ ok: false, error: 'The costs are kept by the adults in the family.' });
+      await sql`insert into care_cost_prefs (circle_id, member_id, show, updated_at) values (${circle.id}, ${me.id}, ${b.on}, now())
+                on conflict (circle_id, member_id) do update set show = ${b.on}, updated_at = now()`;
+      return res.status(200).json({ ok: true, showCosts: b.on });
+    }
+    // The ledger is written by the adults.
+    if (await minorOf(sql, circle.id, me.id)) return res.status(403).json({ ok: false, error: 'The costs are kept by the adults in the family.' });
 
     if (b.action === 'expense_add') {
       const out = await addExpense(sql, circle, me, { ...b, billId: null, staffId: null, tz: reqTz(req) });

@@ -1239,7 +1239,11 @@ export async function locatorApi(req, res) {
       // entries, for the two who started and confirmed it.
       const { afterlossOpener } = await import('./_afterlossapi.mjs');
       const alOpens = await afterlossOpener(sql, g.circle.id);
-      const emergency = (row) => !!row && (inSos.has(row.person_id) || alOpens(row, g.me.id));
+      // An emergency opens "only in an emergency" entries for the adults.
+      // A child or a teenager is never handed them (api/_audience.mjs).
+      const { minorOf } = await import('./_audience.mjs');
+      const cnMinor = await minorOf(sql, g.circle.id, g.me.id);
+      const emergency = (row) => !cnMinor && !!row && (inSos.has(row.person_id) || alOpens(row, g.me.id));
 
       // One entry, opened.
       if (q.id !== undefined) {
@@ -1407,15 +1411,20 @@ export async function auditApi(req, res) {
     const resource = q.resource || null;
     const resourceId = isUuid(q.resourceId) ? q.resourceId : null;
 
+    // WHO READS THE TRAIL. A member reads a row only where they did the
+    // thing, or the thing is about them: who opened MY papers, what I
+    // opened. Never who opened someone else's. (That also keeps an entry
+    // that is one person's alone out of everyone else's list.)
     const events = (resource && resourceId)
       ? await sql`
           select ae.*, m.name as actor_name
           from audit_events ae
           left join members m on m.id = ae.actor_id
           where ae.circle_id = ${g.circle.id} and ae.resource = ${resource} and ae.resource_id = ${resourceId}
-            and not (ae.resource = 'legacy_asset_locator' and ae.actor_id is distinct from ${g.me.id}
-                     and exists (select 1 from legacy_asset_locators l where l.id = ae.resource_id and l.unlock_policy = 'ONLY_ME'
-                                 and l.person_id <> ${g.me.id} and l.created_by is distinct from ${g.me.id}))
+            and (ae.actor_id = ${g.me.id}
+              or (ae.resource in ('insurance_preauth_packet', 'biomarker_records') and ae.resource_id = ${g.me.id})
+              or (ae.resource = 'legacy_asset_locator' and exists (select 1 from legacy_asset_locators l
+                    where l.id = ae.resource_id and l.person_id = ${g.me.id})))
           order by ae.timestamp desc limit 30
         `
       : await sql`
@@ -1423,9 +1432,10 @@ export async function auditApi(req, res) {
           from audit_events ae
           left join members m on m.id = ae.actor_id
           where ae.circle_id = ${g.circle.id}
-            and not (ae.resource = 'legacy_asset_locator' and ae.actor_id is distinct from ${g.me.id}
-                     and exists (select 1 from legacy_asset_locators l where l.id = ae.resource_id and l.unlock_policy = 'ONLY_ME'
-                                 and l.person_id <> ${g.me.id} and l.created_by is distinct from ${g.me.id}))
+            and (ae.actor_id = ${g.me.id}
+              or (ae.resource in ('insurance_preauth_packet', 'biomarker_records') and ae.resource_id = ${g.me.id})
+              or (ae.resource = 'legacy_asset_locator' and exists (select 1 from legacy_asset_locators l
+                    where l.id = ae.resource_id and l.person_id = ${g.me.id})))
           order by ae.timestamp desc limit 50
         `;
 

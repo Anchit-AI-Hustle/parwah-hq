@@ -28,7 +28,7 @@ export async function sweepPlanReminders(sql, circleId) {
   for (const p of due) {
     const mins = Math.max(1, Math.round((new Date(p.at) - Date.now()) / 60000));
     const payload = { title: (PLAN_ICON[p.kind] || '🗓') + ' In ' + mins + ' minutes: ' + p.title,
-                      body: p.room ? 'Tap to open Parwah and join' : 'Open Parwah for the details', url: '/#fun', urgent: true };
+                      body: p.room ? 'Tap to open Parwah and join' : 'Open Parwah for the details', url: '/#fun', soon: true };
     for (const id of p.going || []) await pushCircle(sql, circleId, payload, { only: id });
   }
   return due.length;

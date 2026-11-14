@@ -28,7 +28,7 @@ export const DG = {
   pushHour: 20,         // "Tell me each evening" sends at 8pm, the viewer's time
   pushUntilHour: 22,    // and never later than this, so nobody is woken
   capPerCircle: 12,     // model-written digests a circle may have in one day
-  maxTokens: 300,
+  maxTokens: 4000,      // the model thinks by default and that counts here: room for it plus six sentences
   timeoutMs: 8000,
   maxChars: 700,
   minSentences: 3,
