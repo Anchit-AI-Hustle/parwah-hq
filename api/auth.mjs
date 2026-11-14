@@ -295,9 +295,9 @@ export default async function handler(req, res) {
       const ur = await sql`select id, name from users where phone = ${npr.e164}`;
       const who = ur[0] ? await resetApprovers(sql, ur[0].id) : [];
       const own = ur[0] ? await isKnownDevice(sql, ur[0].id, askDevice) : false;
-      // A phone the owner does not use: 8 asks an hour for one number, from
+      // A phone the owner does not use: 5 asks an hour for one number, from
       // everywhere together. The reply is the same either way.
-      const crowded = !own && !(await rateLimit(sql, 'pinresetnum', npr.e164, 8, 3600, { failClosed: true }));
+      const crowded = !own && !(await rateLimit(sql, 'pinresetnum', npr.e164, 5, 3600, { failClosed: true }));
       if (!ur[0] || !who.length || crowded) { await padTo(t0, 500); return res.status(200).json(same); }
       const until = new Date(Date.now() + RESET_MINUTES * 60000).toISOString();
       // The new PIN always waits ten minutes, so the owner can say "not me".
@@ -570,7 +570,7 @@ export default async function handler(req, res) {
           : [];
         if (!before[0]) {
           return res.status(200).json({ ok: true, exists: true, askFamily: true,
-            error: 'For your safety, choose the new PIN on a phone you already use. No such phone? Tap "Forgot PIN" and your family can let you back in.' });
+            error: 'For your safety, choose the new PIN on a phone you already use. No such phone? Tap "Forgotten your PIN" below, and your family can let you back in.' });
         }
       }
       if (body.newPin == null || body.newPin === '') {
