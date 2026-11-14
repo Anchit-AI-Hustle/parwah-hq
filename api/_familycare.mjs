@@ -46,6 +46,7 @@ import { safeImageUri } from './_sec.mjs';
 import { tokenOf } from './_token.mjs';
 import { ladderFor, ensureLadderSchema } from './_ladder.mjs';
 import { dialQuietLadder } from './_sosdial.mjs';
+import { ROTA_CONSENT_ACTIONS, rotaConsentAction, rotaRefused, rotaTellPerson } from './_rotaconsent.mjs';
 import { validHHMM, validDay, addDays, quietPhase, quietFamilyText, QUIET_NUDGE, QUIET_GRACE_MIN, AWAY_MAX_DAYS,
          QUIET_LADDER_MIN, quietCallHour, quietLadderText,
          lifecertWindow, ackNoCheck, rotaNext, safeWordCheck, JEEVAN_SITE } from './_carerules.mjs';
@@ -344,7 +345,11 @@ export async function familyCareState(sql, circleId, meId, nowMs = Date.now()) {
                           from help_asks h join members m on m.id = h.member_id left join members c on c.id = h.claimed_by
                           where h.circle_id = ${circleId} and h.status <> 'done' and h.created_at > now() - interval '3 days'
                           order by h.created_at desc limit 5`;
-  const fs = await sql`select safe_word from family_settings where circle_id = ${circleId}`;
+  // The safe word is for the adults: a child or a teenager is not sent it
+  // (the same under-18 rule as api/_audience.mjs, in the query itself).
+  const fs = await sql`select safe_word from family_settings where circle_id = ${circleId}
+                       and not exists (select 1 from members v where v.id = ${meId}
+                         and (coalesce((to_jsonb(v)->>'is_child')::boolean, false) or (v.dob is not null and v.dob > current_date - interval '18 years')))`;
   return { quiet, askfirst, helps, safeWord: fs[0] ? fs[0].safe_word : null };
 }
 
@@ -583,7 +588,9 @@ export async function familyCarePost(sql, req, res, reqTzValue) {
 }
 
 // ---------------- writes from /api/care: ready-made tasks ----------------
-export const FC_CARE_ACTIONS = ['lifecert_create', 'lifecert_update', 'rota_create', 'rota_done', 'rota_skip'];
+// rota_time / rota_decline / rota_welcome belong to the person who is called
+// (api/_rotaconsent.mjs).
+export const FC_CARE_ACTIONS = ['lifecert_create', 'lifecert_update', 'rota_create', 'rota_done', 'rota_skip', ...ROTA_CONSENT_ACTIONS];
 const ok = (status, json) => ({ status, json: { ok: true, ...json } });
 const bad = (status, error) => ({ status, json: { ok: false, error } });
 
@@ -663,6 +670,10 @@ export async function familyTaskAction(sql, circle, me, body, reqTzValue) {
     const about = await memberIn(sql, circle.id, body.aboutMemberId);
     if (!about) return bad(404, 'Pick who the calls are for');
     if (about.remembered) return bad(400, about.name + ' is remembered here, so has no call rota');
+    // They said "No daily call, thank you". Only they can ask for one again.
+    if (about.id !== me.id && await rotaRefused(sql, circle.id, about.id)) {
+      return bad(409, first(about.name) + ' said no daily call, thank you. Ask them first: they can turn it back on from their own phone.');
+    }
     const time = validHHMM(body.time) || '19:00';
     const want = Array.isArray(body.memberIds) ? body.memberIds.filter(isUuid) : [];
     const rota = [];
@@ -701,7 +712,9 @@ export async function familyTaskAction(sql, circle, me, body, reqTzValue) {
       await pushCircle(sql, circle.id, { title: '📞 You are on the call rota for ' + about.name,
         body: (id === owner ? 'Your turn is first, at ' + time + '.' : 'Turns go round one day each.') + ' Skip passes your day on.', url: '/#care' }, { only: id });
     }
-    return ok(201, { id: t.id, rota, first: owner });
+    // The person who is called hears of it, with their two choices.
+    const told = await rotaTellPerson(sql, circle.id, me, about, time);
+    return ok(201, { id: t.id, rota, first: owner, toldPerson: told });
   }
 
   if (action === 'rota_done' || action === 'rota_skip') {
@@ -748,6 +761,8 @@ export async function familyTaskAction(sql, circle, me, body, reqTzValue) {
     }
     return ok(200, { status: 'done', next, nextBy: rota[idx] || null });
   }
+  // The person who is called: their time, or "No daily call, thank you".
+  if (ROTA_CONSENT_ACTIONS.includes(action)) return rotaConsentAction(sql, circle, me, body, tz, { deadlineOf, loadTask, log, feed });
   return bad(400, 'Unknown action');
 }
 export { JEEVAN_SITE };

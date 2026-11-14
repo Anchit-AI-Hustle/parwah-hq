@@ -1239,7 +1239,11 @@ export async function locatorApi(req, res) {
       // entries, for the two who started and confirmed it.
       const { afterlossOpener } = await import('./_afterlossapi.mjs');
       const alOpens = await afterlossOpener(sql, g.circle.id);
-      const emergency = (row) => !!row && (inSos.has(row.person_id) || alOpens(row, g.me.id));
+      // An emergency opens "only in an emergency" entries for the adults.
+      // A child or a teenager is never handed them (api/_audience.mjs).
+      const { minorOf } = await import('./_audience.mjs');
+      const cnMinor = await minorOf(sql, g.circle.id, g.me.id);
+      const emergency = (row) => !cnMinor && !!row && (inSos.has(row.person_id) || alOpens(row, g.me.id));
 
       // One entry, opened.
       if (q.id !== undefined) {

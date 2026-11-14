@@ -30,6 +30,7 @@ import { sweepRemember, ensureRememberSchema, rememberToday } from './_remember.
 import { digestSweep } from './_digest.mjs';
 import { ektaNudgeSweep } from './_ektaday.mjs';
 import { heardSweepAll } from './_heard.mjs';
+import { sweepTripsAll } from './_ashirwad.mjs';
 
 import { index as kinIndex, kinLabel, generations, kinEveryone, kinChainWords } from './_kin.mjs';
 import { pulseToday, pulseSave } from './_pulse.mjs';
@@ -99,6 +100,7 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
   // Each sweep on its own: a family that never opened one feature (no table
   // yet, or a bad row) must not stop the other alerts for that family.
   const one = async f => { try { return (await f()) || 0; } catch (e) { tickNote(e, 'sweep'); return 0; } };
+  await one(() => sweepTripsAll(sql));   // "Reached safely" not tapped by the expected time + 30 minutes
   for (const id of circles) {
     if (Date.now() - t0 > budgetMs) break;
     await one(() => escalateStaleSos(sql, id));

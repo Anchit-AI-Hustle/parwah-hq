@@ -1065,6 +1065,38 @@ button.pl-opt{cursor:pointer}
 
 /* member profile sheet */
 #nc-list{display:flex;flex-direction:column;gap:var(--space-8);margin-top:var(--space-8);max-height:44vh;overflow-y:auto}
+/* CONSENT AND CARE BOTH WAYS (api/_ashirwad.mjs, _audience.mjs, _ecard.mjs,
+   _locationapi.mjs): Ashirwad, How is your day, Reached safely, the answers
+   a person gives about their own location, calls and costs. Tokens only. */
+.cn-card{background:var(--surface);color:var(--ink);border:1px solid var(--bone-2);border-left:3px solid var(--rani);border-radius:var(--radius-12);padding:var(--space-16);margin-bottom:var(--space-12);box-shadow:var(--sh-1)}
+.cn-card.late{border-left-color:var(--alert)}
+.cn-card.ok{border-left-color:var(--ok)}
+.cn-card h3{margin:0 0 var(--space-4);font-family:var(--disp);font-size:var(--fs-18);line-height:1.25}
+.cn-card p{margin:0 0 var(--space-8);font-size:var(--fs-14);line-height:1.45}
+.cn-card .cn-say{font-family:var(--disp);font-weight:700;font-size:var(--fs-20);line-height:1.3;margin:var(--space-4) 0 var(--space-8)}
+.cn-acts{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-8)}
+.cn-acts .cbtn,.cn-acts a.cbtn{min-height:var(--tap-min);flex:1 1 130px;display:inline-flex;align-items:center;justify-content:center;text-align:center;text-decoration:none}
+.cn-ways{display:flex;flex-wrap:wrap;gap:var(--space-8);margin:0 0 var(--space-16)}
+.cn-ways .cbtn{min-height:var(--tap-min);flex:1 1 140px}
+.cn-lines{display:grid;gap:var(--space-8)}
+.cn-lines .cbtn,.cn-wide{min-height:var(--tap-min);width:100%;text-align:left;font-size:var(--fs-16)}
+.cn-wide{text-align:center}
+.cn-who{display:flex;flex-wrap:wrap;gap:var(--space-8)}
+.cn-who button{min-height:var(--tap-min);min-width:var(--tap-min);border:1.5px solid var(--bone-2);background:var(--surface);color:var(--ink);border-radius:var(--radius-pill);padding:var(--space-8) var(--space-16);font-family:var(--body);font-weight:700;font-size:var(--fs-14);cursor:pointer}
+.cn-who button.sel{background:var(--ink);color:var(--day);border-color:var(--ink)}
+.cn-switch{min-height:var(--tap-min);cursor:pointer;margin-top:var(--space-8)}
+.cn-switch input{width:20px;height:20px;accent-color:var(--rani);flex:none}
+.cn-last{display:block;font-weight:800;font-size:var(--fs-14);color:var(--ink)}
+.cn-seen{font-size:var(--fs-14);font-weight:600;color:var(--ink);background:var(--bone);border-radius:var(--radius-12);padding:var(--space-8) var(--space-12);margin:0 0 var(--space-12)}
+.cn-err{color:var(--alert);font-size:var(--fs-14);font-weight:600}
+.cn-legal{font-size:var(--fs-12);color:var(--ink-soft);margin:var(--space-12) 0 0;line-height:1.45}
+.cn-tell{display:flex;flex-wrap:wrap;gap:var(--space-8)}
+.cn-tell .gchk{min-height:var(--tap-min);cursor:pointer}
+.cn-time{min-height:var(--tap-min);font-size:var(--fs-16);border:1.5px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-8) var(--space-12);background:var(--surface);color:var(--ink);font-family:var(--body);width:100%;max-width:200px}
+.senior .cn-card p{font-size:var(--fs-16)}
+.senior .cn-card .cn-say{font-size:var(--fs-24)}
+.senior .cn-acts .cbtn,.senior .cn-lines .cbtn{font-size:var(--fs-18);min-height:56px}
+@media print{#cn-ec-mine{display:none!important} #ecard .cn-legal{display:block!important}}
 .msheet{position:fixed;inset:0;background:rgba(24,38,34,.55);z-index:var(--z-sheet);display:flex;align-items:flex-start;justify-content:center;padding:var(--space-20);overflow-y:auto;overscroll-behavior:contain}
 .msheet .mp{background:var(--day);border-radius:var(--radius-20);max-width:380px;width:100%;padding:var(--space-24);position:relative;box-shadow:0 20px 60px rgba(0,0,0,.35);margin:auto}
 @media (max-width:420px){.msheet{padding:var(--space-8)} .msheet .mp{padding:var(--space-20) var(--space-16)}}
@@ -1963,6 +1995,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button class="big sos" id="btn-sos">🆘 SOS - need help now<span class="sub">Everyone in the family is told at once</span></button>
       <button class="big askfirst" id="btn-askfirst">🛡 Someone is asking for money or an OTP<span class="sub">Ask the family first, in one tap</span></button>
       <button class="big pill" id="btn-phonehelp">📱 Help me with my phone<span class="sub">Send the family a picture of the screen</span></button>
+      <!-- CARE FLOWS BACK (api/_ashirwad.mjs): the parent blesses, and asks
+           how a child's day is, the way the children ask after them. -->
+      <button class="big pill" id="cn-bless-big">🙏 Send Ashirwad<span class="sub">A blessing, or ask how their day is</span></button>
     </div>
     <!-- Home staff, one tap each a day (api/_staff.mjs). -->
     <div class="card" id="staff-today" hidden></div>
@@ -1994,6 +2029,14 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     <!-- AAJ KYA HUA (api/_digest.mjs): what happened in the family today,
          from Ekta. One row, from 6pm, that opens the day's note. -->
     <div id="dg-today"></div>
+    <!-- CARE BOTH WAYS (api/_ashirwad.mjs): an Ashirwad or "How is your day?"
+         to answer, a trip on its way, and the questions only I can answer
+         about my own calls and the people who help at home. -->
+    <div id="cn-today" aria-live="polite"></div>
+    <div class="cn-ways" id="cn-ways" role="group" aria-label="Care both ways">
+      <button type="button" class="cbtn ghost" id="cn-bless-open">🙏 Send Ashirwad</button>
+      <button type="button" class="cbtn ghost" id="cn-trip-open">🧳 I am leaving</button>
+    </div>
     <!-- The daily check-in: off until the person it is about says yes. -->
     <div class="card fccard" id="fcquiet" hidden>
       <h3>🕚 Daily check-in</h3>
@@ -2254,10 +2297,12 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         <b id="ex-month" aria-live="polite">This month</b>
         <button type="button" class="cbtn ghost" id="ex-next" aria-label="Next month">›</button>
       </div>
+      <label class="gchk cn-switch" id="cn-costs-row" hidden><input type="checkbox" id="cn-costs"> Show me the costs</label>
+      <p class="hint" id="cn-costs-hint" hidden style="margin:var(--space-4) 0 var(--space-12)"></p>
       <div id="ex-sum"><div class="ev">Loading…</div></div>
       <div id="ex-bills"></div>
       <div class="feed" id="ex-list"></div>
-      <div class="card" style="margin-top:var(--space-16)">
+      <div class="card" id="cn-ex-addcard" style="margin-top:var(--space-16)">
         <h3>Note a cost</h3>
         <div class="pickrow">
           <label class="pick"><span>Amount</span><input type="number" id="ex-amt" min="1" step="1" inputmode="decimal" placeholder="1800"></label>
@@ -2327,7 +2372,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
             <label class="pick"><span>ID, last 4 digits only</span><input type="text" id="st-last4" maxlength="4" inputmode="numeric" placeholder="4321" autocomplete="off"></label>
           </div>
         </details>
-        <p class="hint">If nobody marks them by an hour after their time on a working day, the family gets one alert.</p>
+        <label class="pick" style="display:block;margin-top:var(--space-12)"><span>Who is told if they are not in yet</span><select id="cn-st-owner"></select></label>
+        <p class="hint">If nobody marks them by an hour after their time on a working day, that one person gets one alert, with a one-tap answer. A day marked as a day off is skipped.</p>
         <button type="button" class="go" id="st-add" style="margin-top:var(--space-12)">Add to the register</button>
       </details>
     </div>
@@ -2389,6 +2435,12 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <h3>📍 Where everyone is</h3>
       <p class="hint" id="loc-why" style="margin:var(--space-4) 0 var(--space-12)"></p>
       <p id="loc-status" class="locstatus" aria-live="polite"></p>
+      <!-- The person stays in charge (api/_locationapi.mjs): asks they can
+           answer "Not now", their own "Announce my arrivals", who looked. -->
+      <div id="cn-loc-asks" aria-live="polite"></div>
+      <p class="cn-seen" id="cn-seen" hidden></p>
+      <label class="gchk cn-switch" id="cn-ann-row"><input type="checkbox" id="cn-ann"> Announce my arrivals</label>
+      <p class="hint" id="cn-ann-hint" style="margin:var(--space-4) 0 var(--space-12)">Off until you say yes. When it is on, the family is told when you arrive at and leave saved places.</p>
       <div class="pick"><span>How precise</span>
         <div class="seg" id="loc-prec" role="group" aria-label="How precise">
           <button type="button" data-prec="exact" class="sel">📍 Exact</button>
@@ -2418,7 +2470,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <p class="pickhead" id="loc-ask-head" hidden>Not sharing</p>
       <div class="feed" id="loc-ask"></div>
       <p class="pickhead">Places</p>
-      <p class="hint" style="margin:0 0 var(--space-8)">Name a place - Home, School, Office - and the family is told when someone sharing their exact location arrives or leaves.</p>
+      <p class="hint" style="margin:0 0 var(--space-8)">Name a place, like Home, School or Office. The family is told when someone arrives or leaves only if that person turned on Announce my arrivals.</p>
       <div class="feed" id="loc-places"></div>
       <details class="more" id="loc-padd">
         <summary>Add a place</summary>
@@ -4008,6 +4060,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button class="cbtn ghost" id="mp-dm">💬 Message privately</button>
       <button class="cbtn ghost" id="mp-gift">🎁 Send a gift</button>
       <button type="button" class="cbtn ghost" id="rm-mp-open" hidden>🪔 No longer with us?</button>
+      <button type="button" class="cbtn ghost" id="cn-child" hidden>🧒 Mark as a child (under 18)</button>
     </div>
     <div id="giftbox" hidden>
       <p class="hint" id="gift-sizes" hidden style="margin-top:var(--space-12);background:var(--tint-warm);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-8) var(--space-12)"></p>
@@ -4353,6 +4406,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <div class="ec-who" id="ec-who" role="group" aria-label="Whose card"></div>
     </div>
     <div id="ec-body"></div>
+    <div id="cn-ec-mine" hidden></div>
+    <p class="cn-legal" id="cn-ec-legal">This card is a record your family keeps. It is not medical advice. In an emergency, call the ambulance first.</p>
     <p class="hint" id="ec-off" hidden style="margin-top:var(--space-12)">📵 Showing the last saved copy - this card works without internet.</p>
     <div class="prow2" style="margin-top:var(--space-16)">
       <button class="cbtn" id="ec-share">📤 Send to someone</button>
@@ -4682,6 +4737,50 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     <button type="button" class="cbtn ghost" id="rm-undo" hidden style="width:100%;margin-top:var(--space-8)">Take this mark off</button>
   </div>
 </div>
+<!-- ============ CARE BOTH WAYS (api/_ashirwad.mjs) ============ -->
+<div class="msheet" id="cn-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="cn-title">
+  <div class="mp" style="max-width:460px">
+    <button class="x" id="cn-x" aria-label="Close">✕</button>
+    <h3 id="cn-title" style="margin:0 var(--space-32) var(--space-4) 0">🙏 Ashirwad</h3>
+    <p class="hint" id="cn-sub" style="margin:0 0 var(--space-12)">A blessing for one person or for everyone. They can answer with one tap.</p>
+    <div id="cn-compose">
+      <p class="pickhead">For</p>
+      <div class="cn-who" id="cn-who" role="group" aria-label="Who it is for"></div>
+      <p class="pickhead">One tap</p>
+      <div class="cn-lines" id="cn-lines"></div>
+      <p class="pickhead">Or say it yourself</p>
+    </div>
+    <button type="button" class="cbtn ghost cn-wide" id="cn-rec-go">🎙 Record a voice note</button>
+    <p class="hint" id="cn-rec-clock" hidden aria-live="polite"></p>
+    <div id="cn-rec-prev"></div>
+    <div class="cn-acts" id="cn-rec-acts" hidden>
+      <button type="button" class="cbtn" id="cn-rec-send">Send it</button>
+      <button type="button" class="cbtn ghost" id="cn-rec-del">Delete</button>
+    </div>
+    <div id="cn-howday-box">
+      <p class="pickhead">Or ask</p>
+      <button type="button" class="cbtn ghost cn-wide" id="cn-howday">🧡 How is your day?</button>
+    </div>
+    <p class="cn-err" id="cn-err" role="alert" hidden></p>
+  </div>
+</div>
+<div class="msheet" id="cn-tripsheet" hidden role="dialog" aria-modal="true" aria-labelledby="cn-trip-title">
+  <div class="mp" style="max-width:460px">
+    <button class="x" id="cn-trip-x" aria-label="Close">✕</button>
+    <h3 id="cn-trip-title" style="margin:0 var(--space-32) var(--space-4) 0">🧳 Reached safely</h3>
+    <p class="hint" style="margin:0 0 var(--space-12)">Say where you are going and when you expect to reach. One tap tells them you reached. If it is not tapped 30 minutes after that time, they are asked to call you.</p>
+    <label class="pick" style="display:block"><span>Where to</span><input type="text" id="cn-trip-to" maxlength="60" autocomplete="off" placeholder="e.g. Delhi"></label>
+    <div class="pickrow">
+      <label class="pick"><span>How</span><select id="cn-trip-by"><option value="train">By train</option><option value="car">By car</option><option value="bus">By bus</option><option value="flight">By flight</option><option value="cab">By cab</option><option value="walk">On foot</option><option value="other">Another way</option></select></label>
+      <label class="pick"><span>I expect to reach by</span><input type="time" id="cn-trip-at"></label>
+    </div>
+    <p class="pickhead">Tell</p>
+    <div class="cn-tell" id="cn-trip-tell"></div>
+    <p class="cn-err" id="cn-trip-err" role="alert" hidden></p>
+    <button type="button" class="go" id="cn-trip-go">Start the trip</button>
+  </div>
+</div>
+
 <div class="msheet" id="asksheet" hidden role="dialog" aria-modal="true" aria-labelledby="as-q">
   <div class="mp">
     <h3 id="as-q" style="margin-top:0"></h3>
@@ -5247,6 +5346,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     else { hs.removeAttribute('role'); hs.removeAttribute('tabindex'); hs.removeAttribute('data-go'); hs.removeAttribute('aria-label'); }
 
     staffTodayMaybe();
+    cnLoad(); cnEcLoad();
     notifsCache = data.events;
     renderNotifs();
     pillFromFeed(data.events);
@@ -5875,6 +5975,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   }
   function renderExpenses(){
     var j = exData, name = ftMonthName(j.month);
+    cnCostsRender(j);
     var sum = (j.summary || []).map(function(t){
       return '<div class="card" style="margin-bottom:var(--space-12)">' +
         '<p class="hint" style="margin:0">Total for ' + esc(name) + (j.summary.length > 1 ? ', in ' + esc(t.currency) : '') + '</p>' +
@@ -5884,7 +5985,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         (t.balance && t.balance.length ? '<p class="eyebrow" style="margin:var(--space-12) 0 0">Balance this month</p>' + t.balance.map(function(b){ return '<p class="ftbal">' + esc(b.line) + '</p>'; }).join('') : '') +
         '</div>';
     }).join('');
-    $('ex-sum').innerHTML = sum || '<div class="ev">Nothing noted for ' + esc(name) + ' yet. Add the first cost below, or turn a paid bill into one.</div>';
+    $('ex-sum').innerHTML = sum || (j.ledger === 'none' ? '' : j.ledger === 'own' ? '<div class="ev">Only what you paid yourself is listed here. Turn on Show me the costs to see everything.</div>'
+      : '<div class="ev">Nothing noted for ' + esc(name) + ' yet. Add the first cost below, or turn a paid bill into one.</div>');
     var bills = j.settledBills || [];
     $('ex-bills').innerHTML = bills.length ? '<p class="eyebrow">Paid bills not in Costs yet</p><div class="feed">' + bills.map(function(b){
       return '<div class="crow"><span class="txt"><b>🧾 ' + esc(b.biller_name) + ' · ' + esc(moneyFmt(b.amount, b.currency)) + '</b><small>Paid by ' + esc(b.settled_name || 'the family') + '</small></span>' +
@@ -5975,19 +6077,20 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (!stData) $('st-list').innerHTML = '<div class="ev">Loading…</div>';
     ftGet('staff', '&month=' + stMonth).then(function(j){
       if (!j.ok) { ftFail('st-list', j, 'the register'); return; }
-      stData = j; renderStaff(); renderStaffToday();
+      stData = j; renderStaff(); renderStaffToday(); cnRender();
     }).catch(function(){ ftOffline('st-list', 'The register'); });
+    cnOwnerFill();
   }
   function renderStaff(){
     var j = stData, cur = j.month === ftThisMonth();
     $('st-addcard').open = !j.staff.length || $('st-addcard').open;
     $('st-list').innerHTML = j.staff.length ? j.staff.map(function(s){
       var p = s.pay, m = ftMonthName(j.month);
-      return '<div class="card" style="margin-bottom:var(--space-12)">' +
+      return '<div class="card" style="margin-bottom:var(--space-12)">' + cnStaffLate(s) +
         '<h3 style="margin:0">' + esc(s.name) + ' <span class="ftchip">' + esc(FT_ROLE[s.role] || s.role) + '</span></h3>' +
-        '<p class="hint" style="margin:var(--space-4) 0 0">' + esc((s.arrive_time ? 'Comes at ' + s.arrive_time + ' · ' : '') + String(s.work_days).split('').map(function(d){ return FT_DAYS[+d]; }).join(', ') + (s.id_last4 ? ' · ID ending ' + s.id_last4 : '')) + '</p>' +
+        '<p class="hint" style="margin:var(--space-4) 0 0">' + esc((s.arrive_time ? 'Comes at ' + s.arrive_time + ' · ' : '') + String(s.work_days).split('').map(function(d){ return FT_DAYS[+d]; }).join(', ') + (s.id_last4 ? ' · ID ending ' + s.id_last4 : '') + (s.owner_name ? ' · ' + (s.mineToAnswer ? 'You are' : s.owner_name + ' is') + ' told if not in' : '')) + '</p>' +
         (cur ? '<p style="margin:var(--space-12) 0 0;font-weight:700">Today: ' + (s.todayStatus ? esc(FT_MARK[s.todayStatus]) + ' ✓' : s.workingToday ? 'not marked yet' : 'a day off') + '</p>' + stMarks(s) : '') +
-        '<div class="ftsum"><b>' + esc(m) + '</b>' +
+        (!p ? '' : '<div class="ftsum"><b>' + esc(m) + '</b>' +
           '<div class="ftline"><span>Came</span><b>' + p.came + ' day' + (p.came === 1 ? '' : 's') + '</b></div>' +
           '<div class="ftline"><span>Half days</span><b>' + p.half + '</b></div>' +
           '<div class="ftline"><span>Leave</span><b>' + p.leave + '</b></div>' +
@@ -5995,14 +6098,15 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           '<div class="ftline"><span>Due</span><b>' + esc(moneyFmt(p.payable, s.currency)) + '</b></div>' +
           '<p style="margin:var(--space-8) 0 0">' + esc(p.formula) + '</p><p class="hint" style="margin:var(--space-4) 0 0">' + esc(p.note) + '</p>' +
           s.advanceList.map(function(a){ return '<div class="ftline"><span>Advance ' + esc(vDate(a.on_date)) + (a.note ? ' · ' + esc(a.note) : '') + '</span><button type="button" class="linkbtn" data-stadvdel="' + esc(a.id) + '">Remove</button></div>'; }).join('') +
-        '</div>' +
+        '</div>') +
         (s.paid ? '<p class="ftbal">✅ Paid ' + esc(moneyFmt(s.paid.amount, s.currency)) + ' by ' + esc(s.paid.paid_name || 'the family') + '</p>' : '') +
         '<div class="ftacts">' +
-          (s.paid ? '<button type="button" class="cbtn ghost" data-stunpay="' + esc(s.id) + '">Undo paid</button>'
+          (!p ? '' : (s.paid ? '<button type="button" class="cbtn ghost" data-stunpay="' + esc(s.id) + '">Undo paid</button>'
                   : '<button type="button" class="cbtn" data-stpay="' + esc(s.id) + '">Mark paid</button>') +
-          '<button type="button" class="cbtn ghost" data-stadv="' + esc(s.id) + '">Note an advance</button>' +
+          '<button type="button" class="cbtn ghost" data-stadv="' + esc(s.id) + '">Note an advance</button>') +
           (s.phone ? '<a class="cbtn ghost" href="tel:' + esc(s.phone) + '">📞 Call</a>' : '') +
-          '<button type="button" class="cbtn ghost" data-stdel="' + esc(s.id) + '">Remove</button>' +
+          (cur ? '<button type="button" class="cbtn ghost" data-cnoff="' + esc(s.id) + '">Day off tomorrow</button>' : '') +
+          (!p ? '' : '<button type="button" class="cbtn ghost" data-stdel="' + esc(s.id) + '">Remove</button>') +
         '</div></div>';
     }).join('') : '<div class="ev">Nobody in the register yet. Add the people who help at home below: a tap a day keeps the month-end sum right.</div>';
   }
@@ -6016,9 +6120,11 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       list.map(function(s){ return '<p style="margin:var(--space-12) 0 0;font-weight:700">' + esc(s.name) + ' <small class="hint">' + esc(FT_ROLE[s.role] || '') + '</small></p>' + stMarks(s); }).join('');
   }
   function staffTodayMaybe(){
-    if (!state || state.role !== 'parent' || Date.now() - stTodayAt < 300000) return;
+    // The owner of a staff record answers "not in yet" from Today as well,
+    // so anyone on Parwah looks, not only an elder.
+    if (!state || Date.now() - stTodayAt < 300000) return;
     stTodayAt = Date.now();
-    ftGet('staff').then(function(j){ if (j.ok) { if (!stMonth || stMonth === j.month) stData = j; renderStaffToday(); } }).catch(function(){});
+    ftGet('staff').then(function(j){ if (j.ok) { if (!stMonth || stMonth === j.month) stData = j; renderStaffToday(); cnRender(); } }).catch(function(){});
   }
   document.addEventListener('click', function(e){
     var b = e.target.closest('[data-stmark]'); if (!b) return;
@@ -6069,7 +6175,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (l4 && !/^[A-Za-z0-9]{4}$/.test(l4)) { fieldErr('st-last4', 'Only the last 4 digits of an ID, nothing more'); return; }
     var days = []; $('st-days').querySelectorAll('[data-stday]').forEach(function(x){ if (x.checked) days.push(+x.getAttribute('data-stday')); });
     ftPost('staff_add', { name: name, role: $('st-role').value, salary: $('st-salary').value, payDay: $('st-payday').value, arriveTime: $('st-time').value,
-      phone: $('st-phone').value.trim(), workDays: days, paidLeave: $('st-leave').value, idLast4: l4 }).then(function(j){
+      phone: $('st-phone').value.trim(), workDays: days, paidLeave: $('st-leave').value, idLast4: l4, ownerId: $('cn-st-owner').value || 'me' }).then(function(j){
       if (!j.ok) { toast(j.error || 'Could not add them'); return; }
       toast(name + ' is in the register');
       ['st-name', 'st-salary', 'st-payday', 'st-time', 'st-phone', 'st-leave', 'st-last4'].forEach(function(x){ $(x).value = ''; });
@@ -7682,6 +7788,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     });
     window._lastCareData = data;
     taskCache = data.requests || [];
+    cnRender();   // a call rota set up for me is mine to answer, on Today
     taskCache.forEach(function(q){
       if (taskFilter === 'me' && q.claimed_by !== me) return;
       if (taskFilter === 'urgent' && !taskLate(q) && !q.urgent && !/refill|doctor|bill|hospital/i.test(q.title)) return;
@@ -10563,6 +10670,10 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       (stale ? ' <i class="stale">· last checked ' + stale + '</i>' : '') + '</span></div>';
   }
   function openEcard(memberId){
+    // A card opens for the person themself and the adults they chose
+    // (api/_ecard.mjs). The answer is kept on the phone, so a card opened
+    // once still opens with no signal.
+    if (!cnEcMay(memberId)) { cnEcAsk(memberId); return; }
     var d = ecData();
     var m = null; d.members.forEach(function(x){ if (x.id === memberId) m = x; });
     if (!m) { toast('No saved details for that person yet'); return; }
@@ -10642,14 +10753,15 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     $('ec-off').hidden = !d.offline;
     if (d.offline && d.at) $('ec-off').textContent = '📵 No connection - showing the copy saved ' + agoLine(new Date(d.at).toISOString()) + '.';
     // Whose card: the people a family most often needs one for, one tap apart.
-    var whoList = d.members.filter(function(x){ return x.role === 'parent' || x.id === m.id || x.id === (state && state.memberId); });
-    if (whoList.length < 2) whoList = d.members.slice(0, 6);
+    var whoList = d.members.filter(function(x){ return (x.role === 'parent' || x.id === m.id || x.id === (state && state.memberId)) && cnEcMay(x.id) && !rmGone(x); });
+    if (whoList.length < 2) whoList = d.members.filter(function(x){ return cnEcMay(x.id) && !rmGone(x); }).slice(0, 6);
     $('ec-who').innerHTML = whoList.length > 1 ? whoList.map(function(x){
       return '<button type="button" data-ecwho="' + x.id + '" aria-pressed="' + (x.id === m.id) + '"' + (x.id === m.id ? ' class="sel"' : '') + '>' + esc(x.id === (state && state.memberId) ? 'Me' : String(x.name).split(' ')[0]) + '</button>';
     }).join('') : '';
     $('ecard').dataset.mid = m.id;
     $('ecard').hidden = false;
     $('ecard').scrollTop = 0;
+    cnEcAfter(m);
   }
   $('ec-who').addEventListener('click', function(e){ var b = e.target.closest('[data-ecwho]'); if (b) openEcard(b.getAttribute('data-ecwho')); });
   function ecardText(){
@@ -10674,15 +10786,16 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   });
   $('mp-docs').addEventListener('click', function(){ openVaultFor($('msheet').dataset.mid); });
   $('mp-page').addEventListener('click', function(){ var mid = $('msheet').dataset.mid; $('msheet').hidden = true; openPerson(mid); });
-  $('btn-ecard').addEventListener('click', function(){
+  $('btn-ecard').addEventListener('click', function(){ cnEcReady(ecOpenFirst); });
+  function ecOpenFirst(){
     // A parent in senior mode opens their own card; anyone else, a parent's
     // (the others are one tap away inside the card), else their own.
     var d = ecData(), pick = null;
     if (state && state.role === 'parent') d.members.forEach(function(m){ if (m.id === state.memberId) pick = m; });
-    if (!pick) d.members.forEach(function(m){ if (!pick && m.role === 'parent' && m.id !== state.memberId) pick = m; });
+    if (!pick) d.members.forEach(function(m){ if (!pick && m.role === 'parent' && m.id !== state.memberId && cnEcMay(m.id) && !rmGone(m)) pick = m; });
     if (!pick) d.members.forEach(function(m){ if (!pick && m.id === state.memberId) pick = m; });
     if (pick) openEcard(pick.id); else toast(navigator.onLine === false ? 'No saved copy on this phone yet - open Parwah once with internet' : 'Loading the family - try again in a moment');
-  });
+  }
   $('ec-x').addEventListener('click', function(){ $('ecard').hidden = true; });
   $('ecard').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });
   $('ec-copy').addEventListener('click', function(){
@@ -12782,6 +12895,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       var h2 = '<div class="card fccard"><p class="eyebrow" style="margin:0 0 var(--space-8)">Who calls ' + esc(name) + '</p><div class="fcrota">' +
         rota.map(function(id){ var now = id === q.claimed_by && open; return '<span' + (now ? ' class="now"' : '') + '>' + (now ? 'Today: ' : '') + esc(nm(id)) + '</span>'; }).join('') + '</div>' +
         '<p class="hint" style="margin:0">One person a day, in this order. Skip passes today to the next person.</p>';
+      if (open && q.about_member === me) h2 += cnRotaMine(q);
       if (open) h2 += '<div class="fcstack"><button type="button" class="go" data-fcrdone="' + q.id + '">Called ' + esc(name) + ' ✔</button>' +
         ((q.claimed_by === me || q.by_member === me) && rota.length > 1 ? '<button type="button" class="cbtn ghost" data-fcrskip="' + q.id + '">Skip today: pass to ' + esc(nm(nextId)) + '</button>' : '') + '</div>';
       box.innerHTML = h2 + '</div>';
@@ -17874,6 +17988,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     // Nobody marks themself. Someone who was marked and is here can take
     // the mark off: it was a mistake.
     $('rm-mp-open').hidden = (self && !gone) || !fam;
+    cnChildBtn(m, self, gone, fam);
     $('rm-mp-open').textContent = self ? 'This is a mistake. Take the mark off' : gone ? '🪔 Day of remembrance' : '🪔 No longer with us?';
     // Nothing is asked of someone who is remembered.
     if (gone) { $('mp-remind').hidden = true; $('mp-call').hidden = true; }
@@ -17953,6 +18068,564 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     else if (!$('ff-sheet').hidden) ffClose();
   });
 
+  // ---------- consent, control and care both ways ----------
+  // Care is not only done TO a parent. Here the parent blesses, asks how a
+  // child's day is, and answers for themself about their location, their
+  // daily call and the costs. Anyone tells the family they reached safely.
+  // The rules are on the server (api/_ashirwad.mjs, _audience.mjs,
+  // _ecard.mjs, _locationapi.mjs, _rotaconsent.mjs); this draws them.
+  var CN_API = '/api/chats?area=ashirwad', CN_EC = '/api/book?area=ecard';
+  var CN_LINES = [{ k: 'khush', t: 'Khush raho' }, { k: 'exam', t: 'All the best for the exam' }, { k: 'reach', t: 'Reach safely' }, { k: 'proud', t: 'So proud of you' }];
+  var cnState = null, cnFor = '', cnAt = 0, cnBusy = false, cnMode = 'bless', cnTo = 'all', cnReplyTo = null, cnRec = null;
+  function cnQs(){ return '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId); }
+  function cnPost(body){ body.area = 'ashirwad'; body.code = state.code; body.memberId = state.memberId; return post(CN_API, body); }
+  function cnFirst(n){ return String(n || '').split(' ')[0] || 'Someone'; }
+  function cnName(id){
+    var m = (membersCache || []).filter(function(x){ return x.id === id; })[0];
+    // The names come with the cards too, so a sheet opened before the family list has loaded still names people.
+    return m ? m.name : (cnState && cnState.names && cnState.names[id]) || 'Someone';
+  }
+  function cnPeople(){
+    if (cnState && cnState.people) return cnState.people;
+    return (membersCache || []).filter(function(m){ return m.id !== state.memberId && onApp(m); }).map(function(m){ return m.id; });
+  }
+  function cnLoad(force){
+    if (!state) return;
+    var key = state.code + ':' + state.memberId;
+    if (cnFor !== key) { cnFor = key; cnState = null; cnAt = 0; }   // another family or group: start clean
+    if (cnBusy) return;
+    if (!force && Date.now() - cnAt < 15000) { cnRender(); return; }
+    cnBusy = true; cnAt = Date.now();
+    apiGet(CN_API + cnQs()).then(function(j){ cnBusy = false; if (j.ok && cnFor === key) { cnState = j; $('cn-today').setAttribute('data-ready', '1'); cnRender(); cnSheetsFill(); } })
+      .catch(function(){ cnBusy = false; });
+  }
+  function cnBtn(attr, id, label, ghost){ return '<button type="button" class="cbtn' + (ghost ? ' ghost' : '') + '" data-' + attr + '="' + esc(id) + '">' + label + '</button>'; }
+  // A voice note is fetched the first time someone taps Listen, never with the list.
+  function cnVoice(key, secs, src){
+    if (vnSrc[key]) return vnPlayerHtml(key, secs);
+    return '<button type="button" class="cbtn ghost" data-cnplay="' + esc(key) + '" data-src="' + esc(src) + '" data-secs="' + (secs || 0) + '">▶ Listen, ' + vnFmt(secs) + '</button>';
+  }
+  function cnTellNames(ids){
+    var n = (ids || []).map(function(id){ return cnFirst(cnName(id)); });
+    return n.length > 2 ? n.slice(0, 2).join(', ') + ' and ' + (n.length - 2) + ' more' : n.join(' and ') || 'them';
+  }
+  function cnHHMM(iso){ var d = new Date(iso); if (isNaN(d)) return '19:00'; return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+  // The call rota, for the person who is called: their time, or no thank you.
+  function cnRotaMine(q, card){
+    var when = q.due_at ? locClock(q.due_at) : '';
+    return (card ? '<h3>📞 Your family calls you each day' + (when ? ' at ' + esc(when) : '') + '</h3><p>It is your call. Choose the time that suits you, or say no thank you.</p>'
+                 : '<p class="eyebrow" style="margin:var(--space-16) 0 var(--space-8)">This call is for you</p>') +
+      '<label class="pick" style="display:block"><span>The time that suits me</span><input type="time" class="cn-time" data-cnrotatime="' + esc(q.id) + '" value="' + esc(cnHHMM(q.due_at)) + '"></label>' +
+      '<div class="cn-acts"><button type="button" class="cbtn" data-cnrotasave="' + esc(q.id) + '">Save my time</button>' +
+      '<button type="button" class="cbtn ghost" data-cnrotano="' + esc(q.id) + '">No daily call, thank you</button></div>';
+  }
+  // "Not in yet", for the one named owner, with the two one-tap answers.
+  function cnStaffLate(s){
+    if (!s || !s.lateToday || !s.mineToAnswer) return '';
+    var f = esc(cnFirst(s.name));
+    return '<div class="cn-card late" data-cnlate="' + esc(s.id) + '"><h3>🕘 ' + f + ' is not marked in yet</h3>' +
+      '<p>Expected at ' + esc(s.arrive_time || 'their time') + '. Only you are asked.</p>' +
+      '<div class="cn-acts"><button type="button" class="cbtn" data-cnstaff="' + esc(s.id) + '" data-st="came">' + f + ' came</button>' +
+      '<button type="button" class="cbtn ghost" data-cnstaff="' + esc(s.id) + '" data-st="leave">On leave today</button></div></div>';
+  }
+  function cnRender(){
+    var box = $('cn-today'); if (!box || !state) return;
+    var j = cnState, h = '', me = state.memberId;
+    $('cn-bless-open').hidden = state.role === 'parent';   // an elder has the big button
+    if (j) {
+      var t = j.trips && j.trips.mine;
+      if (t) h += '<div class="cn-card' + (t.phase === 'late' ? ' late' : '') + '" data-cntrip="' + esc(t.id) + '"><h3>🧳 On your way to ' + esc(t.to) + '</h3>' +
+        '<p>' + (t.phase === 'late' ? 'It is past ' + esc(locClock(t.expectAt)) + '. Tap when you reach, so nobody worries.'
+                                   : 'Expected by ' + esc(locClock(t.expectAt)) + '. One tap tells ' + esc(cnTellNames(t.tell)) + ' you reached.') + '</p>' +
+        '<div class="cn-acts">' + cnBtn('cnreached', t.id, '✅ Reached safely') + cnBtn('cnlate', t.id, '30 minutes more', true) + cnBtn('cncancel', t.id, 'Not going', true) + '</div></div>';
+      ((j.trips && j.trips.watching) || []).forEach(function(w){
+        var f = esc(cnFirst(w.name));
+        if (w.phase === 'reached') h += '<div class="cn-card ok"><h3>✅ ' + f + ' reached ' + esc(w.to) + ' safely</h3><p>' + f + ' tapped Reached safely ' + esc(locAgo(w.reachedAt)) + '.</p></div>';
+        else if (w.phase === 'late') h += '<div class="cn-card late"><h3>🧡 ' + f + ' has not tapped Reached safely yet</h3><p>' + f + ' was expected in ' + esc(w.to) + ' by ' + esc(locClock(w.expectAt)) + '. A call may help.</p>' +
+          (w.phone ? '<div class="cn-acts"><a class="cbtn" href="tel:' + encodeURIComponent(w.phone) + '">📞 Call ' + f + '</a></div>' : '') + '</div>';
+        else h += '<div class="cn-card"><h3>🧳 ' + f + ' is on the way to ' + esc(w.to) + (w.byWords ? ', ' + esc(w.byWords) : '') + '</h3><p>Expected by ' + esc(locClock(w.expectAt)) + '. You will hear when ' + f + ' reaches.</p></div>';
+      });
+      (j.inbox || []).forEach(function(c){
+        var f = esc(cnFirst(c.fromName));
+        if (c.kind === 'howday') {
+          h += '<div class="cn-card" data-cncard="' + esc(c.id) + '"><h3>🧡 ' + f + ' asks</h3><p class="cn-say">How is your day?</p><div class="cn-acts">' +
+            (j.dayAnswers || []).map(function(a){ return '<button type="button" class="cbtn ghost" data-cnanswer="' + esc(c.id) + '" data-k="' + esc(a.k) + '">' + esc(a.t) + '</button>'; }).join('') +
+            cnBtn('cnvoice', c.id, '🎙 Say it', true) + '</div></div>';
+        } else {
+          h += '<div class="cn-card" data-cncard="' + esc(c.id) + '"><h3>🙏 Ashirwad from ' + f + (c.toAll ? ', for everyone' : '') + '</h3>' +
+            (c.hasVoice ? '<div class="cn-acts">' + cnVoice('cn-a-' + c.id, c.secs, '&audio=' + c.id) + '</div>' : '<p class="cn-say">' + esc(c.line) + '</p>') +
+            '<div class="cn-acts">' + cnBtn('cnpranam', c.id, '🙏 Pranam') + cnBtn('cnvoice', c.id, '🎙 Voice reply', true) + '</div></div>';
+        }
+      });
+      // What came back for what I sent, for a day.
+      var ans = [];
+      (j.sent || []).forEach(function(s){ (s.replies || []).forEach(function(r){ if (Date.now() - Date.parse(r.at) < 86400000) ans.push({ s: s, r: r }); }); });
+      if (ans.length) h += '<div class="cn-card ok" data-cnanswers="1"><h3>🧡 Answers for you</h3>' + ans.slice(0, 6).map(function(x){
+        return '<p><b>' + esc(cnFirst(x.r.name)) + '</b>' + (x.r.hasVoice ? ' sent a voice reply' : ': ' + esc(x.r.line)) + '</p>' +
+          (x.r.hasVoice ? '<div class="cn-acts">' + cnVoice('cn-r-' + x.s.id + '-' + x.r.memberId, x.r.secs, '&reply=' + x.s.id + '&by=' + x.r.memberId) + '</div>' : '');
+      }).join('') + '</div>';
+      if (j.me && j.me.rotaNo) h += '<div class="cn-card" data-cnrotaoff="1"><h3>📞 No daily call, as you asked</h3><p>The family does not set one up unless you say so.</p>' +
+        '<div class="cn-acts">' + cnBtn('cnrotayes', '1', 'I would like a daily call again', true) + '</div></div>';
+    }
+    (taskCache || []).forEach(function(q){
+      if (q.template === 'callrota' && q.about_member === me && taskOpen(q)) h += '<div class="cn-card" data-cnrota="' + esc(q.id) + '">' + cnRotaMine(q, true) + '</div>';
+    });
+    if (stData && stData.staff) stData.staff.forEach(function(s){ h += cnStaffLate(s); });
+    // Drawn again only when something changed, so a time being typed or a
+    // voice note being played is never wiped by the next poll.
+    if (h === box.getAttribute('data-sig')) return;
+    box.setAttribute('data-sig', h);
+    box.innerHTML = h;
+    vnPaint();
+  }
+
+  // ---- the Ashirwad sheet: a line, a voice note, or "How is your day?"
+  function cnErr(id, msg){ var e = $(id); e.textContent = msg || ''; e.hidden = !msg; }
+  function cnWho(){
+    var ids = cnPeople();
+    if (cnTo !== 'all' && ids.indexOf(cnTo) < 0) cnTo = 'all';
+    $('cn-who').innerHTML = '<button type="button" data-cnto="all"' + (cnTo === 'all' ? ' class="sel"' : '') + ' aria-pressed="' + (cnTo === 'all') + '">Everyone</button>' +
+      ids.map(function(id){ return '<button type="button" data-cnto="' + esc(id) + '"' + (cnTo === id ? ' class="sel"' : '') + ' aria-pressed="' + (cnTo === id) + '">' + esc(cnFirst(cnName(id))) + '</button>'; }).join('');
+    $('cn-howday').disabled = cnTo === 'all';
+    $('cn-howday').textContent = cnTo === 'all' ? '🧡 How is your day? Choose one person first' : '🧡 Ask ' + cnFirst(cnName(cnTo)) + ': how is your day?';
+  }
+  function cnOpen(mode, replyTo){
+    if (!state) return;
+    cnMode = mode; cnReplyTo = replyTo || null; cnRecDrop();
+    var reply = mode === 'reply';
+    $('cn-compose').hidden = reply; $('cn-howday-box').hidden = reply;
+    $('cn-title').textContent = reply ? '🎙 Voice reply' : '🙏 Ashirwad';
+    $('cn-sub').textContent = reply ? 'Say it in your own voice. Up to one minute.' : 'A blessing for one person or for everyone. They can answer with one tap.';
+    cnErr('cn-err', '');
+    if (!reply) {
+      cnWho();
+      $('cn-lines').innerHTML = ((cnState && cnState.lines) || CN_LINES).map(function(l){ return '<button type="button" class="cbtn ghost" data-cnline="' + esc(l.k) + '">' + esc(l.t) + '</button>'; }).join('');
+    }
+    $('cn-sheet').hidden = false;
+    cnLoad();
+    try { $('cn-x').focus(); } catch (e) {}
+  }
+  function cnClose(){ cnRecDrop(); $('cn-sheet').hidden = true; }
+  function cnSent(j, words){
+    if (!j.ok) { cnErr('cn-err', humanFail(j.error, 'That did not go. Try again.')); return; }
+    cnClose(); toast(words); cnLoad(true);
+  }
+  $('cn-who').addEventListener('click', function(e){ var b = e.target.closest('[data-cnto]'); if (!b) return; cnTo = b.getAttribute('data-cnto'); cnWho(); });
+  $('cn-lines').addEventListener('click', function(e){
+    var b = e.target.closest('[data-cnline]'); if (!b) return;
+    b.disabled = true;
+    cnPost({ action: 'bless', to: cnTo, line: b.getAttribute('data-cnline') })
+      .then(function(j){ b.disabled = false; cnSent(j, 'Ashirwad sent 🙏'); })
+      .catch(function(){ b.disabled = false; cnErr('cn-err', 'No connection. Try again.'); });
+  });
+  $('cn-howday').addEventListener('click', function(){
+    if (cnTo === 'all') return;
+    var b = this; b.disabled = true;
+    cnPost({ action: 'howday', to: cnTo })
+      .then(function(j){ b.disabled = false; cnSent(j, 'Asked ' + cnFirst(cnName(cnTo)) + ' 🧡'); })
+      .catch(function(){ b.disabled = false; cnErr('cn-err', 'No connection. Try again.'); });
+  });
+  // The recorder: the same limits and the same kind of file as a voice note
+  // in a chat (one minute, 24 kbps), so the server takes it by the same rule.
+  function cnRecUi(){
+    var r = cnRec, live = !!(r && !r.done), done = !!(r && r.done);
+    $('cn-rec-go').textContent = live ? '■ Stop' : '🎙 Record a voice note';
+    $('cn-rec-go').hidden = done || !vnSupported();
+    $('cn-rec-clock').hidden = !live;
+    if (live) $('cn-rec-clock').textContent = r.pending ? 'Starting the microphone…' : 'Recording ' + vnFmt(Math.min(VN_MAX, Math.floor((Date.now() - r.started) / 1000))) + ' of 1:00';
+    $('cn-rec-acts').hidden = !done;
+    if (done && !$('cn-rec-prev').firstChild) { $('cn-rec-prev').innerHTML = vnPlayerHtml('cn-preview', r.secs); vnPaint(); }
+    if (!done) $('cn-rec-prev').innerHTML = '';
+  }
+  function cnRecDrop(){
+    var r = cnRec; cnRec = null;
+    if (r) {
+      r.cancelled = true;
+      if (r.timer) clearInterval(r.timer);
+      try { if (r.rec && r.rec.state !== 'inactive') r.rec.stop(); } catch (e) {}
+      if (r.stream) r.stream.getTracks().forEach(function(t){ t.stop(); });
+    }
+    if (vnNow && vnNow.id === 'cn-preview') vnHalt();
+    delete vnSrc['cn-preview'];
+    cnRecUi();
+  }
+  function cnRecStop(){
+    var r = cnRec; if (!r || r.done) return;
+    if (r.pending) { cnRecDrop(); return; }
+    if (!r.rec || r.rec.state === 'inactive') return;
+    r.elapsed = Math.min(VN_MAX, (Date.now() - r.started) / 1000);
+    clearInterval(r.timer);
+    r.rec.stop();
+  }
+  function cnRecStart(){
+    if (cnRec) { cnRecStop(); return; }
+    if (!vnSupported()) { cnErr('cn-err', 'This phone cannot record here. A one-tap line works everywhere.'); return; }
+    vnHalt(); cnErr('cn-err', '');
+    var r = cnRec = { pending: true, parts: [] };
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+      if (cnRec !== r || r.cancelled) { stream.getTracks().forEach(function(t){ t.stop(); }); return; }
+      var types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
+      var mt = types.filter(function(t){ return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t); })[0] || '';
+      var rec;
+      try { rec = mt ? new MediaRecorder(stream, { mimeType: mt, audioBitsPerSecond: 24000 }) : new MediaRecorder(stream); }
+      catch (e) { stream.getTracks().forEach(function(t){ t.stop(); }); cnRec = null; cnRecUi(); cnErr('cn-err', 'This phone cannot record here. A one-tap line works everywhere.'); return; }
+      r.stream = stream; r.rec = rec; r.pending = false; r.started = Date.now();
+      rec.ondataavailable = function(e){ if (e.data && e.data.size) r.parts.push(e.data); };
+      rec.onstop = function(){
+        stream.getTracks().forEach(function(t){ t.stop(); });
+        if (r.cancelled) return;
+        if ((r.elapsed || 0) < 0.8) { if (cnRec === r) cnRec = null; cnRecUi(); cnErr('cn-err', 'That was too short. Tap record, say it, then tap Stop.'); return; }
+        var type = String(rec.mimeType || 'audio/webm').split(';')[0], fr = new FileReader();
+        fr.onload = function(){
+          if (r.cancelled) return;
+          r.uri = 'data:' + type + ';base64,' + (String(fr.result).split(',')[1] || '');
+          r.secs = Math.max(1, Math.min(VN_MAX, Math.round(r.elapsed))); r.done = true;
+          vnSrc['cn-preview'] = r.uri; vnSecs['cn-preview'] = r.secs;
+          cnRecUi();
+        };
+        fr.readAsDataURL(new Blob(r.parts, { type: type }));
+      };
+      rec.start(250);
+      r.timer = setInterval(function(){ if ((Date.now() - r.started) / 1000 >= VN_MAX) cnRecStop(); else cnRecUi(); }, 250);
+      cnRecUi();
+    }).catch(function(err){
+      if (cnRec === r) cnRec = null;
+      cnRecUi();
+      var denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+      cnErr('cn-err', denied ? 'The microphone is off for Parwah. Allow it in your phone settings, or send a one-tap line.' : 'The microphone could not start. Try again, or send a one-tap line.');
+    });
+    cnRecUi();
+  }
+  $('cn-rec-go').addEventListener('click', cnRecStart);
+  $('cn-rec-del').addEventListener('click', cnRecDrop);
+  $('cn-rec-send').addEventListener('click', function(){
+    var r = cnRec; if (!r || !r.done) return;
+    var b = this; b.disabled = true;
+    var body = cnMode === 'reply' ? { action: 'reply', id: cnReplyTo, voice: r.uri, secs: r.secs } : { action: 'bless', to: cnTo, voice: r.uri, secs: r.secs };
+    cnPost(body).then(function(j){ b.disabled = false; cnSent(j, cnMode === 'reply' ? 'Your voice reply is sent 🙏' : 'Ashirwad sent 🙏'); })
+      .catch(function(){ b.disabled = false; cnErr('cn-err', 'No connection. Try again.'); });
+  });
+  $('cn-x').addEventListener('click', cnClose);
+  $('cn-sheet').addEventListener('click', function(e){
+    if (e.target === this) { cnClose(); return; }
+    var b = e.target.closest('[data-vnplay]'); if (b) { vnToggle(b.getAttribute('data-vnplay')); return; }
+    if (e.target.closest('[data-vnspeed]')) vnSpeed();
+  });
+  $('cn-bless-big').addEventListener('click', function(){ cnOpen('bless'); });
+  $('cn-bless-open').addEventListener('click', function(){ cnOpen('bless'); });
+
+  // ---- Reached safely
+  function cnTripOpen(){
+    if (!state) return;
+    if (cnState && cnState.trips && cnState.trips.mine) { toast('You already have a trip on. Tap Reached safely on Today first.'); return; }
+    cnTripTell(); cnLoad();
+    $('cn-trip-at').value = cnHHMM(new Date(Date.now() + 2 * 3600000).toISOString());
+    $('cn-trip-to').value = ''; cnErr('cn-trip-err', '');
+    $('cn-tripsheet').hidden = false;
+    try { $('cn-trip-to').focus(); } catch (e) {}
+  }
+  function cnTripClose(){ $('cn-tripsheet').hidden = true; }
+  // A sheet opened before the family had loaded fills in when it arrives,
+  // unless someone has already started choosing.
+  function cnSheetsFill(){
+    if (!$('cn-sheet').hidden && cnMode !== 'reply') cnWho();
+    if (!$('cn-tripsheet').hidden && !$('cn-trip-tell').querySelector('input:checked')) cnTripTell();
+  }
+  function cnTripTell(){
+    var ids = cnPeople();
+    $('cn-trip-tell').innerHTML = ids.length ? ids.map(function(id){ return '<label class="gchk"><input type="checkbox" value="' + esc(id) + '"> ' + esc(cnName(id)) + '</label>'; }).join('')
+      : '<span class="hint">Nobody else here is on Parwah yet, so there is nobody to tell.</span>';
+  }
+  // A time of day: today if it is still ahead, otherwise tomorrow.
+  function cnTripWhen(hhmm){
+    var p = /^(\d{2}):(\d{2})$/.exec(hhmm || ''); if (!p) return null;
+    var d = new Date(); d.setHours(+p[1], +p[2], 0, 0);
+    if (d.getTime() < Date.now() + 5 * 60000) d.setDate(d.getDate() + 1);
+    return d.toISOString();
+  }
+  $('cn-trip-open').addEventListener('click', cnTripOpen);
+  $('cn-trip-x').addEventListener('click', cnTripClose);
+  $('cn-tripsheet').addEventListener('click', function(e){ if (e.target === this) cnTripClose(); });
+  $('cn-trip-go').addEventListener('click', function(){
+    var to = $('cn-trip-to').value.trim(), at = cnTripWhen($('cn-trip-at').value), tell = [], b = this;
+    $('cn-trip-tell').querySelectorAll('input:checked').forEach(function(i){ tell.push(i.value); });
+    if (!to) { cnErr('cn-trip-err', 'Write where you are going, like Delhi.'); try { $('cn-trip-to').focus(); } catch (e) {} return; }
+    if (!at) { cnErr('cn-trip-err', 'Choose when you expect to reach.'); return; }
+    if (!tell.length) { cnErr('cn-trip-err', 'Choose at least one person to tell.'); return; }
+    b.disabled = true;
+    cnPost({ action: 'trip_start', to: to, by: $('cn-trip-by').value, expectAt: at, tell: tell }).then(function(j){
+      b.disabled = false;
+      if (!j.ok) { cnErr('cn-trip-err', humanFail(j.error, 'That did not go. Try again.')); return; }
+      cnTripClose(); toast('Safe journey 🧳 ' + cnTellNames(tell) + ' will hear when you reach'); cnLoad(true);
+    }).catch(function(){ b.disabled = false; cnErr('cn-trip-err', 'No connection. Try again.'); });
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    if (!$('cn-sheet').hidden) cnClose(); else if (!$('cn-tripsheet').hidden) cnTripClose();
+  });
+
+  // ---- every one-tap answer, wherever its card is drawn
+  document.addEventListener('click', function(e){
+    if (!state) return;
+    var b = e.target.closest('[data-cnreached],[data-cnlate],[data-cncancel],[data-cnpranam],[data-cnanswer],[data-cnvoice],[data-cnplay],[data-cnrotasave],[data-cnrotano],[data-cnrotayes],[data-cnstaff],[data-cnoff],[data-cnasknot],[data-cnaskyes],[data-cnann],[data-cnecsave]');
+    if (!b) return;
+    var done = function(words){ return function(j){ b.disabled = false; if (!j.ok) { toast(humanFail(j.error, 'That did not go. Try again.')); return; } toast(words); cnLoad(true); }; };
+    var fail = function(){ b.disabled = false; toast('No connection. Try again.'); };
+    var a = function(n){ return b.getAttribute('data-' + n); };
+    if (b.hasAttribute('data-cnreached')) { b.disabled = true; cnPost({ action: 'trip_reached', id: a('cnreached') }).then(done('They have been told you reached ✅')).catch(fail); return; }
+    if (b.hasAttribute('data-cnlate')) {
+      var t = cnState && cnState.trips && cnState.trips.mine; if (!t) return;
+      var when = new Date(Math.max(Date.now(), Date.parse(t.expectAt)) + 30 * 60000).toISOString();
+      b.disabled = true; cnPost({ action: 'trip_extend', id: t.id, expectAt: when }).then(done('They know you are running a little late')).catch(fail); return;
+    }
+    if (b.hasAttribute('data-cncancel')) {
+      askSheet('Not going after all?', 'The people you told will know the trip is off.', 'Yes, take it off', 'Keep the trip').then(function(y){
+        if (y) cnPost({ action: 'trip_cancel', id: a('cncancel') }).then(done('The trip is off')).catch(fail);
+      }); return;
+    }
+    if (b.hasAttribute('data-cnpranam')) { b.disabled = true; cnPost({ action: 'reply', id: a('cnpranam'), pranam: true }).then(done('Pranam sent 🙏')).catch(fail); return; }
+    if (b.hasAttribute('data-cnanswer')) { b.disabled = true; cnPost({ action: 'reply', id: a('cnanswer'), answer: a('k') }).then(done('Your answer is sent 🧡')).catch(fail); return; }
+    if (b.hasAttribute('data-cnvoice')) { cnOpen('reply', a('cnvoice')); return; }
+    if (b.hasAttribute('data-cnplay')) {
+      var key = a('cnplay'); b.disabled = true;
+      apiGet(CN_API + cnQs() + a('src')).then(function(j){
+        b.disabled = false;
+        var uri = j.ok ? safeAudioUri(j.audio) : null;
+        if (!uri) { toast('That voice note could not be played'); return; }
+        vnSrc[key] = uri; vnSecs[key] = j.secs || +a('secs') || 0;
+        $('cn-today').removeAttribute('data-sig'); cnRender(); vnToggle(key);
+      }).catch(fail); return;
+    }
+    if (b.hasAttribute('data-cnrotasave')) {
+      var inp = b.parentNode.parentNode.querySelector('[data-cnrotatime]'), tm = inp ? inp.value : '';
+      if (!/^\d{2}:\d{2}$/.test(tm)) { toast('Choose a time first'); return; }
+      b.disabled = true;
+      post(API.care, { code: state.code, memberId: state.memberId, action: 'rota_time', taskId: a('cnrotasave'), time: tm, tz: homeTz() || undefined })
+        .then(function(j){ b.disabled = false; if (!j.ok) { toast(humanFail(j.error, 'That did not save. Try again.')); return; } toast('Your time is saved. The family follows it from now 📞'); refresh(); })
+        .catch(fail); return;
+    }
+    if (b.hasAttribute('data-cnrotano')) {
+      askSheet('No daily call?', 'The call rota stops. Nobody can start one for you again unless you ask. A call when they feel like it is still welcome.', 'No daily call, thank you', 'Keep the calls').then(function(y){
+        if (!y) return;
+        post(API.care, { code: state.code, memberId: state.memberId, action: 'rota_decline', taskId: a('cnrotano') })
+          .then(function(j){ if (!j.ok) { toast(humanFail(j.error, 'That did not save. Try again.')); return; } toast('Done. The daily call has stopped, as you asked.'); try { $('tsheet').hidden = true; } catch (e2) {} cnAt = 0; refresh(); })
+          .catch(fail);
+      }); return;
+    }
+    if (b.hasAttribute('data-cnrotayes')) {
+      b.disabled = true;
+      post(API.care, { code: state.code, memberId: state.memberId, action: 'rota_welcome' })
+        .then(function(j){ b.disabled = false; if (!j.ok) { toast(humanFail(j.error, 'That did not save. Try again.')); return; } toast('The family can set up a daily call for you again'); cnLoad(true); })
+        .catch(fail); return;
+    }
+    if (b.hasAttribute('data-cnstaff')) {
+      var st = a('st'); b.disabled = true;
+      ftPost('staff_mark', { staffId: a('cnstaff'), status: st }).then(function(j){
+        b.disabled = false;
+        if (!j.ok) { toast(humanFail(j.error, 'That did not save. Try again.')); return; }
+        toast(st === 'came' ? 'Marked: came ✓' : 'Marked: on leave today'); stTodayAt = 0; loadStaff();
+      }).catch(fail); return;
+    }
+    if (b.hasAttribute('data-cnoff')) {
+      var d = new Date(Date.now() + 86400000), day = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+      b.disabled = true;
+      ftPost('staff_mark', { staffId: a('cnoff'), status: 'off', day: day }).then(function(j){
+        b.disabled = false;
+        toast(j.ok ? 'Tomorrow is a day off. Nobody is alerted that morning.' : humanFail(j.error, 'That did not save. Try again.'));
+      }).catch(fail); return;
+    }
+    if (b.hasAttribute('data-cnaskyes')) { try { $('loc-share').click(); } catch (e3) {} return; }
+    if (b.hasAttribute('data-cnasknot')) {
+      b.disabled = true;
+      post(locUrl(), { code: state.code, memberId: state.memberId, action: 'ask_answer', askerId: a('cnasknot'), answer: 'notnow' })
+        .then(function(j){ b.disabled = false; toast(j.ok ? 'Not now. They will not ask again for 7 days.' : humanFail(j.error, 'That did not save. Try again.')); refreshLoc(); })
+        .catch(fail); return;
+    }
+    if (b.hasAttribute('data-cnann')) { cnAnnounce(a('cnann') === 'yes'); return; }
+    if (b.hasAttribute('data-cnecsave')) { cnEcSaveMine(b); return; }
+  });
+  $('cn-today').addEventListener('click', function(e){
+    var b = e.target.closest('[data-vnplay]'); if (b) { vnToggle(b.getAttribute('data-vnplay')); return; }
+    if (e.target.closest('[data-vnspeed]')) vnSpeed();
+  });
+
+  // ---- my location is mine: asks I can answer, my switch, who looked
+  function cnAnnounce(on){
+    post(locUrl(), { code: state.code, memberId: state.memberId, action: 'announce_set', on: on })
+      .then(function(j){
+        toast(j.ok ? (on ? 'Yes. The family is told when you arrive at and leave saved places.' : 'Off. Your arrivals are told to nobody.') : humanFail(j.error, 'That did not save. Try again.'));
+        refreshLoc();
+      }).catch(function(){ toast('No connection. Try again.'); refreshLoc(); });
+  }
+  function cnLocRender(){
+    if (!state || !$('cn-ann')) return;
+    var me = locMe || {}, h = '';
+    (me.asks || []).forEach(function(x){
+      var f = esc(cnFirst(x.name));
+      h += '<div class="cn-card" data-cnask="' + esc(x.askerId) + '"><h3>📍 ' + f + ' would like to know where you are</h3><p>It is your choice. Not now stops ' + f + ' asking for 7 days.</p>' +
+        '<div class="cn-acts"><button type="button" class="cbtn" data-cnaskyes="1">Share my location</button>' +
+        '<button type="button" class="cbtn ghost" data-cnasknot="' + esc(x.askerId) + '">Not now</button></div></div>';
+    });
+    if (me.announceAsk) h += '<div class="cn-card" data-cnannask="1"><h3>📍 Announce your arrivals?</h3><p>' + esc(cnFirst(me.announceAsk.by)) + ' saved a place. The family would be told when you arrive at and leave saved places. Only if you say yes.</p>' +
+      '<div class="cn-acts"><button type="button" class="cbtn" data-cnann="yes">Yes, announce</button><button type="button" class="cbtn ghost" data-cnann="no">No, thank you</button></div></div>';
+    if (h !== $('cn-loc-asks').getAttribute('data-sig')) { $('cn-loc-asks').setAttribute('data-sig', h); $('cn-loc-asks').innerHTML = h; }
+    $('cn-ann').checked = !!me.announce;
+    var seen = me.seenBy || [];
+    $('cn-seen').hidden = !seen.length;
+    $('cn-seen').textContent = seen.length ? '👁 ' + seen.slice(0, 3).map(function(s){ return 'Seen by ' + cnFirst(s.name) + ', ' + locAgo(s.at); }).join(' · ') : '';
+  }
+  $('cn-ann').addEventListener('change', function(){ cnAnnounce(this.checked); });
+
+  // ---- the costs: shown to the people who pay; mine to ask for
+  function cnCostsRender(j){
+    var row = $('cn-costs-row'), hint = $('cn-costs-hint'), none = j.ledger === 'none';
+    row.hidden = !j.mayAsk;
+    $('cn-costs').checked = !!j.showCosts;
+    hint.hidden = false;
+    hint.textContent = none ? 'The costs are kept by the adults in the family.'
+      : j.showCosts ? 'On: you see every cost the family noted.'
+      : j.ledger === 'own' ? 'Off: you see only what you paid yourself. Turn it on if you would like to see everything.'
+      : 'Costs noted for you are left out, unless you turn this on.';
+    $('cn-ex-addcard').hidden = none;
+    $('ex-bills').hidden = none;
+    try { $('ex-split-seg').closest('.card').hidden = none || j.ledger === 'own'; } catch (e) {}
+  }
+  $('cn-costs').addEventListener('change', function(){
+    var on = this.checked;
+    ftPost('expense_show', { on: on }).then(function(j){
+      if (!j.ok) toast(humanFail(j.error, 'That did not save. Try again.'));
+      exData = null; loadExpenses();
+    }).catch(function(){ toast('No connection. Try again.'); });
+  });
+  // Who hears about a staff member: an adult of the family who is on Parwah.
+  function cnOwnerFill(){
+    var sel = $('cn-st-owner'); if (!sel) return;
+    var minors = (cnState && cnState.minors) || [], keep = sel.value;
+    sel.innerHTML = '<option value="me">Me</option>' + (membersCache || []).filter(function(m){ return m.id !== state.memberId && onApp(m) && minors.indexOf(m.id) < 0; })
+      .map(function(m){ return '<option value="' + esc(m.id) + '">' + esc(m.name) + '</option>'; }).join('');
+    if (keep && sel.querySelector('option[value="' + keep + '"]')) sel.value = keep;
+  }
+
+  // ---- a child's standing, set by an adult for someone with no date of birth
+  function cnAge(dob){
+    var d = new Date(dob); if (isNaN(d)) return null;
+    var n = new Date(), a = n.getFullYear() - d.getFullYear();
+    if (n.getMonth() < d.getMonth() || (n.getMonth() === d.getMonth() && n.getDate() < d.getDate())) a--;
+    return a;
+  }
+  function cnChildBtn(m, self, gone, fam){
+    var b = $('cn-child'); if (!b) return;
+    var s = cnState, marked = !!(s && (s.marked || []).indexOf(m.id) >= 0), age = m.dob ? cnAge(m.dob) : null;
+    // Only an adult sees it, and only where the date of birth does not already say.
+    b.hidden = self || gone || !fam || !s || !!(s.me && s.me.minor) || (age !== null && !marked);
+    b.textContent = marked ? '🧒 Not a child: take the mark off' : '🧒 Mark as a child (under 18)';
+    b.setAttribute('data-id', m.id); b.setAttribute('data-on', marked ? '0' : '1'); b.setAttribute('data-name', m.name);
+  }
+  $('cn-child').addEventListener('click', function(){
+    var id = this.getAttribute('data-id'), on = this.getAttribute('data-on') === '1', f = cnFirst(this.getAttribute('data-name'));
+    var go = function(){
+      cnPost({ action: 'standing_set', targetId: id, child: on }).then(function(j){
+        if (!j.ok) { toast(humanFail(j.error, 'That did not save. Try again.')); return; }
+        $('msheet').hidden = true; toast(on ? f + ' is marked as a child' : 'The mark is off'); cnLoad(true);
+      }).catch(function(){ toast('No connection. Try again.'); });
+    };
+    if (!on) { go(); return; }
+    askSheet('Mark ' + f + ' as a child?', f + ' still gets plans, cards, games, the album and stories. ' + f + ' is not sent SOS details, missed medicines, salaries, the safe word or the costs.', 'Yes, mark as a child', 'Not now').then(function(y){ if (y) go(); });
+  });
+
+  // ---- the emergency card: who may open whose, and my own choices
+  var cnEc = { key: '', may: null, cards: {} }, cnEcAt = 0;
+  function cnEcRead(){
+    var key = 'parwah-cn-ec:' + state.code + ':' + state.memberId;
+    if (cnEc.key === key) return;
+    cnEc = { key: key, may: null, cards: {} }; cnEcAt = 0;
+    try { var c = JSON.parse(localStorage.getItem(key) || 'null'); if (c) { cnEc.may = c.may || null; cnEc.cards = c.cards || {}; } } catch (e) {}
+  }
+  function cnEcKeep(){ try { localStorage.setItem(cnEc.key, JSON.stringify({ may: cnEc.may || [], cards: cnEc.cards })); } catch (e) {} }
+  // My own card always; someone else's only when the server has said so.
+  // The answer is kept on this phone, so it still holds with no signal.
+  function cnEcMay(id){
+    if (!state) return false;
+    if (id === state.memberId) return true;
+    cnEcRead();
+    return !!(cnEc.may && cnEc.may.indexOf(id) >= 0);
+  }
+  function cnEcLoad(){
+    if (!state) return;
+    cnEcRead();
+    if (Date.now() - cnEcAt < 60000) return;
+    cnEcAt = Date.now();
+    apiGet(CN_EC + cnQs()).then(function(j){ if (j.ok) { cnEc.may = j.mayOpen || []; cnEcKeep(); } }).catch(function(){});
+  }
+  // A tap that comes before this phone has ever heard whose cards it may
+  // open waits for that answer (or for the network to fail), then goes on.
+  function cnEcReady(then){
+    if (!state) return;
+    cnEcRead();
+    if (cnEc.may) { then(); return; }
+    cnEcAt = Date.now();
+    apiGet(CN_EC + cnQs()).then(function(j){ if (j.ok) { cnEc.may = j.mayOpen || []; cnEcKeep(); } then(); }).catch(function(){ then(); });
+  }
+  // Not known to be allowed: ask once, then open it or say why not.
+  function cnEcAsk(id){
+    var f = cnFirst(cnName(id));
+    apiGet(CN_EC + cnQs() + '&person=' + encodeURIComponent(id)).then(function(j){
+      cnEcRead();
+      if (j.mayOpen) { cnEc.may = j.mayOpen; cnEcKeep(); }
+      if (j.ok && j.card) { cnEc.cards[id] = j.card; cnEcKeep(); openEcard(id); return; }
+      toast(j.locked ? humanFail(j.error, f + ' has not chosen you to see this card.') : f + '\'s card cannot be opened just now.');
+    }).catch(function(){ toast('No connection. A card opens here without internet once you have opened it with internet.'); });
+  }
+  function cnEcDraw(m, card){
+    if ($('ecard').hidden || $('ecard').dataset.mid !== m.id || !card) return;
+    var old = $('ec-body').querySelector('.cn-ec-contacts'); if (old) old.parentNode.removeChild(old);
+    if (card.contacts && card.contacts.length) {
+      var d = document.createElement('div'); d.className = 'ec-sec cn-ec-contacts';
+      d.innerHTML = '<h4>Call first</h4>' + card.contacts.map(function(c){
+        return '<div class="ec-row"><b>' + esc(c.name) + '</b><span>' + (c.phone ? '<a href="tel:' + encodeURIComponent(c.phone) + '">' + esc(c.phone) + '</a>' : 'no number saved yet') + '</span></div>';
+      }).join('');
+      $('ec-body').insertBefore(d, $('ec-body').querySelector('.ec-sec'));
+    }
+    var box = $('cn-ec-mine');
+    if (!card.mine || !card.candidates) { box.hidden = true; box.innerHTML = ''; return; }
+    var v = card.viewers || [], cs = (card.contacts || []).map(function(c){ return c.id; });
+    var grown = card.candidates.filter(function(c){ return c.adultOnApp; });
+    var tick = function(attr, list, on){
+      return '<div class="cn-tell" ' + attr + '>' + (list.length ? list.map(function(c){ return '<label class="gchk"><input type="checkbox" value="' + esc(c.id) + '"' + (on.indexOf(c.id) >= 0 ? ' checked' : '') + '> ' + esc(c.name) + '</label>'; }).join('')
+        : '<span class="hint">Nobody to choose yet.</span>') + '</div>';
+    };
+    box.innerHTML = '<div class="ec-sec"><h4>Who can open my card</h4><p class="hint" style="margin:0 0 var(--space-8)">Only you, and the adults you tick. While your SOS is open, the adults in the family can open it too.</p>' +
+      tick('data-cnecv="1"', grown, v) + '<h4 style="margin-top:var(--space-16)">Who to call first (up to two)</h4>' + tick('data-cnecc="1"', card.candidates, cs) +
+      '<div class="cn-acts"><button type="button" class="cbtn" data-cnecsave="1">Save my choices</button></div></div>';
+    box.hidden = false;
+  }
+  function cnEcAfter(m){
+    cnEcRead();
+    $('cn-ec-mine').hidden = true; $('cn-ec-mine').innerHTML = '';
+    cnEcDraw(m, cnEc.cards[m.id]);
+    apiGet(CN_EC + cnQs() + '&person=' + encodeURIComponent(m.id)).then(function(j){
+      if (j.mayOpen) cnEc.may = j.mayOpen;
+      if (j.legal) $('cn-ec-legal').textContent = j.legal;
+      if (j.ok && j.card) { cnEc.cards[m.id] = j.card; cnEcKeep(); cnEcDraw(m, j.card); return; }
+      // They took me off since I last opened it: close it, and say so.
+      if (j.locked && m.id !== state.memberId) { delete cnEc.cards[m.id]; cnEcKeep(); $('ecard').hidden = true; toast(humanFail(j.error, 'This card is not shared with you.')); }
+    }).catch(function(){ /* offline: the saved copy stays */ });
+  }
+  function cnEcSaveMine(b){
+    var box = $('cn-ec-mine'), viewers = [], contacts = [];
+    box.querySelectorAll('[data-cnecv] input:checked').forEach(function(i){ viewers.push(i.value); });
+    box.querySelectorAll('[data-cnecc] input:checked').forEach(function(i){ contacts.push(i.value); });
+    if (contacts.length > 2) { toast('Choose up to two people to call first'); return; }
+    b.disabled = true;
+    post(CN_EC, { code: state.code, memberId: state.memberId, action: 'ecard_set', viewers: viewers, contacts: contacts }).then(function(j){
+      b.disabled = false;
+      if (!j.ok) { toast(humanFail(j.error, 'That did not save. Try again.')); return; }
+      toast('Saved. Your card opens for you and the people you chose.');
+      var m = (membersCache || []).filter(function(x){ return x.id === state.memberId; })[0];
+      if (m) cnEcAfter(m);
+    }).catch(function(){ b.disabled = false; toast('No connection. Try again.'); });
+  }
+
   // ---------- location sharing (consent first) ----------
   // Only you turn it on, per family or group; everyone in it sees who is
   // sharing; stopping deletes the position on the server (api/_locationapi.mjs).
@@ -18020,8 +18693,14 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   function refreshLoc(){
     if (!state) return;
     var gen = locGen;
-    apiGet(locUrl()).then(function(j){
+    // Other people's positions are sent only on a look, which the server
+    // writes down for them to see. Away from this tab, nobody is looked at.
+    var cnLooked = curTab === 'people';
+    apiGet(locUrl() + (cnLooked ? '&look=1' : '')).then(function(j){
       if (gen !== locGen || locStopping) return;   // read before or during a Stop: out of date
+      // Asked before the Family tab opened, answered after: it carries no
+      // positions, so it must not be drawn over a look. Ask again, as a look.
+      if (!cnLooked && curTab === 'people') { refreshLoc(); return; }
       if (!j.ok) { $('loc-list').innerHTML = '<div class="ev">Could not load locations - try again in a moment.</div>'; return; }
       locMe = j.me; locShares = j.shares || []; locPrec = locMe.precision || 'exact'; locPlaces = j.places || [];
       renderLoc();
@@ -18067,13 +18746,18 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       if (!x.mine) bits.push(relLabel(xm || { relation: x.relation }));
       bits.push(x.precision === 'area' ? 'area only' : (x.accuracy ? 'within ' + (x.accuracy < 1000 ? x.accuracy + ' m' : (Math.round(x.accuracy / 100) / 10) + ' km') : 'exact'));
       if (x.at && x.at.length) bits.push('at ' + x.at.join(', '));
-      bits.push((x.stale ? 'last seen ' : 'updated ') + locAgo(x.updatedAt));
+      // Older than five minutes is not "now": it is said as Last seen, on
+      // its own line, and never drawn as if it were live.
+      var cnOld = x.live === false || x.stale;
+      if (!cnOld) bits.push('updated ' + locAgo(x.updatedAt));
       if (x.battery !== null && x.battery !== undefined) bits.push((x.charging ? '⚡ charging, ' : (x.battery <= 15 ? '🪫 ' : '🔋 ')) + x.battery + '%');
       if (x.until) bits.push('until ' + locClock(x.until));
-      if (from && !x.mine) bits.push(locDistText(locDist(from, x)));
+      if (from && !x.mine && x.lat !== null) bits.push(locDistText(locDist(from, x)));
       if (findMe && (findMe.lostMembers || []).indexOf(x.memberId) >= 0) bits.unshift('📵 Lost mode on');
       var who = x.mine ? 'your' : x.name + "'s";
-      return '<div class="crow' + (x.stale ? ' late' : '') + '"><span class="txt"><b>' + esc(x.mine ? 'You' : x.name) + '</b><small>' + esc(bits.join(' · ')) + '</small></span>' +
+      return '<div class="crow' + (cnOld ? ' late' : '') + '"><span class="txt"><b>' + esc(x.mine ? 'You' : x.name) + '</b>' +
+             (cnOld ? '<span class="cn-last" data-cnlast="' + esc(x.memberId) + '">Last seen ' + esc(locAgo(x.updatedAt)) + '</span>' : '') +
+             '<small>' + esc(bits.join(' · ')) + '</small></span>' +
              '<span class="locacts"><button type="button" class="cbtn ghost" data-locmap="' + esc(x.memberId) + '" aria-label="Show ' + esc(who) + ' location on a map">🗺 Map</button>' +
              (x.mine ? '' : '<a class="cbtn ghost" href="' + esc(locRoute(x)) + '" target="_blank" rel="noopener" aria-label="Directions to ' + esc(x.name) + '">🧭 Directions</a>') +
              (x.mine ? '' : '<button type="button" class="cbtn ghost" data-locring="' + esc(x.memberId) + '" data-name="' + esc(x.name) + '" aria-label="Ring ' + esc(x.name) + '\'s phone">🔔 Ring</button>') +
@@ -18101,6 +18785,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var wh = '<option value="me">Where I am now</option>';
     locShares.forEach(function(x){ if (!x.mine && x.precision === 'exact') wh += '<option value="' + esc(x.memberId) + '">Where ' + esc(x.name) + ' is now</option>'; });
     var keep = $('lp-where').value; $('lp-where').innerHTML = wh; if (keep && $('lp-where').querySelector('option[value="' + keep + '"]')) $('lp-where').value = keep;
+    cnLocRender();
   }
   var locPlaces = [];
   $('loc-ask').addEventListener('click', function(e){
@@ -18129,7 +18814,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           btn.disabled = false;
           if (!j.ok) { fieldErr('lp-name', j.error || 'Could not save the place'); return; }
           $('lp-name').value = ''; $('loc-padd').open = false;
-          toast('Saved ' + name + ' 📍 The family will be told about arriving and leaving');
+          toast('Saved ' + name + ' 📍 Each person chooses if their arrivals are announced');
           refreshLoc();
         }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
     };
@@ -18241,7 +18926,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if ($('loc-map-frame').getAttribute('src') !== src) $('loc-map-frame').setAttribute('src', src);
     $('loc-map-open').href = locMaps(x.lat, x.lng);
     $('loc-map-cap').textContent = who + (x.precision === 'area' ? ' · area only, shown zoomed out' : '') +
-      ' · updated ' + locAgo(x.updatedAt) + '. Map by Google: opening it sends this point to Google.';
+      ' · ' + (x.live === false || x.stale ? 'last seen ' : 'updated ') + locAgo(x.updatedAt) + '. Map by Google: opening it sends this point to Google.';
     $('loc-map').hidden = false;
   }
   function locHideMap(){ locMapFor = null; $('loc-map').hidden = true; $('loc-map-frame').removeAttribute('src'); }

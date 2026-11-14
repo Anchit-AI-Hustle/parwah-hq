@@ -123,6 +123,12 @@ node site/tests/safetytest.mjs
 # weekly questions. _heardrules.mjs imports only _rememberrules.mjs, which
 # imports nothing, so this runs before npm install too.
 node site/tests/heardtest.mjs
+# Consent, control and care both ways: a position older than five minutes is
+# "Last seen", who is a child and what a child is never sent, the one-tap
+# blessings, when a trip is late, and who may open an emergency card.
+# _consentrules.mjs imports only _rememberrules.mjs, which imports nothing,
+# so this runs before npm install too.
+node site/tests/consenttest.mjs
 # The native apps' copy of the server's rules (PINs, for now) is written by
 # the server itself. If a rule changes in api/ and the contract is not
 # regenerated, the phones would accept what the server then refuses. Vercel's

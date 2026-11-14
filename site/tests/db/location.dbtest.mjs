@@ -48,7 +48,9 @@ const rohanG = await seat(grp, 'COUSIN', U.rohan), vikramG = await seat(grp, 'CO
 
 async function call(who, { method = 'POST', body = {}, token } = {}) {
   const req = { method, headers: { 'x-parwah-token': token || who.token },
-                query: { area: 'location', circle: who.code, member: who.id },
+                // look=1: other people's positions are sent only on a look,
+                // and the look is written down (see consent.dbtest.mjs).
+                query: { area: 'location', circle: who.code, member: who.id, look: '1' },
                 body: { code: who.code, memberId: who.id, ...body } };
   let status = 200, json = null;
   const res = { status(s) { status = s; return this; }, json(j) { json = j; return this; }, setHeader() {} };
@@ -216,6 +218,8 @@ const PUNE = { lat: 18.520430, lng: 73.856743, accuracy: 12 };
   ok('and is told it was saved', (await admin.query(`select count(*)::int as n from events where text = 'Meera saved a place: Home'`)).rows[0].n === 1);
   const said = async () => (await admin.query(`select text from events where type = 'location' and text like '📍 Rohan%' order by created_at`)).rows.map(x => x.text);
 
+  // Arrivals are announced only for someone who said yes on their own phone.
+  ok('Rohan says yes to "Announce my arrivals"', (await call(rohan, { body: { action: 'announce_set', on: true } })).announce === true);
   // Starting to share while already at home is not news.
   await call(rohan, { body: { action: 'share', lat: HOME.lat, lng: HOME.lng, accuracy: 15, battery: 64, charging: false } });
   ok('starting to share at home announces nothing', (await said()).length === 0, (await said()).join());

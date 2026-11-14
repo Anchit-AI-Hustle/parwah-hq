@@ -35,6 +35,7 @@ import { reqTz } from './_recur.mjs';
 import { classify, mentionsUrgent, urgentToo, renderEmergency, renderCrisis, LOCAL_MODEL } from './_ektalocal.mjs';
 import { ensureChatBond, checkVoice, voiceLabel, attachBond, react, createPoll, votePoll, closePoll, remindPoll } from './_chatbond.mjs';
 import heardApi from './_heard.mjs';
+import ashirwadApi from './_ashirwad.mjs';
 
 export const CHAT_PAGE = 50;
 // Many pushes at once, never one awaited after another: a family of twelve
@@ -184,6 +185,9 @@ export default async function handler(req, res) {
   // weekly question and the memory card live behind this route.
   const area = String((req.query && req.query.area) || (req.body && req.body.area) || '');
   if (area === 'heard') return heardApi(req, res);
+  // Ashirwad, "How is your day?" and "Reached safely" ride along here: they
+  // are messages between two people, and share the voice-note rules.
+  if (area === 'ashirwad') return ashirwadApi(req, res);
   let sql;
   try { sql = db(); await ensureSchema(sql); await ensureChatBond(sql); }
   catch (e) { return failDb(res, e); }

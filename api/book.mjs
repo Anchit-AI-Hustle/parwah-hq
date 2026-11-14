@@ -36,6 +36,7 @@ import afterlossApi from './_afterlossapi.mjs';
 import bondApi from './_memorybond.mjs';
 // Yaadon ki album: the family's own photos (api/_album.mjs).
 import albumApi from './_album.mjs';
+import ecardApi from './_ecard.mjs';
 
 const KINDS = ['contact', 'address', 'med', 'fact', 'insurance'];
 const CATS = ['housework', 'doctor', 'vet', 'driver', 'shops', 'repairs', 'emergency', 'local', 'other'];
@@ -53,6 +54,8 @@ export default async function handler(req, res) {
   if (area === 'notes') return notesApi(req, res);
   if (area === 'bond') return bondApi(req, res);
   if (area === 'album') return albumApi(req, res);
+  // The emergency card: who may open whose, and the two contacts (api/_ecard.mjs).
+  if (area === 'ecard' || (req.body && typeof req.body.action === 'string' && /^ecard_/.test(req.body.action))) return ecardApi(req, res);
   if (area === 'biomarkers' || (req.body && typeof req.body.action === 'string' && /^biomarker_/.test(req.body.action))) return biomarkersApi(req, res);
   if (area === 'preauth') return preauthApi(req, res);
   if (area === 'locator' || (req.body && typeof req.body.action === 'string' && /^locator_/.test(req.body.action))) return locatorApi(req, res);

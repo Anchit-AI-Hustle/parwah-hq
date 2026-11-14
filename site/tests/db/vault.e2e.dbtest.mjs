@@ -120,6 +120,9 @@ await call('book', { area: 'vault', action: 'grant', code, memberId: U.Rahul.mem
 
 // ---- the emergency card fits a small phone: the name, the close button and
 // the vital facts are on screen, and the rest scrolls
+// A card opens for the person and the adults they chose (api/_ecard.mjs):
+// Papa chooses Anchit, on his own account, before Anchit opens it.
+await call('book', { action: 'ecard_set', code, memberId: U.Papa.memberId, viewers: [U.Anchit.memberId], contacts: [] }, { area: 'ecard' }, 'POST', U.Papa.token);
 const S = await phone(as('Anchit'), { width: 320 });
 await S.setViewportSize({ width: 320, height: 568 });
 await S.click('#btn-ecard'); await S.waitForTimeout(400);
