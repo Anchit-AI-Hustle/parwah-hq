@@ -160,6 +160,8 @@ async function design(page, sel, label, widths = [320, 390]) {
     await page.setViewportSize({ width: wd, height: 800 }); await page.emulateMedia({ colorScheme: sc });
     await page.waitForFunction(([w, dark]) => innerWidth === w && matchMedia('(prefers-color-scheme: dark)').matches === dark, [wd, sc === 'dark'], T);
     await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+    // The card is drawn from a request: measure it once it is on screen.
+    await page.waitForFunction(q => { const e = document.querySelector(q); return !!e && e.children.length > 0; }, sel, T).catch(() => {});
     const m = await page.evaluate(measureIn, sel);
     seen += m.seen;
     if (m.overflow > 0) bad.push(wd + ' sideways ' + m.overflow + 'px');

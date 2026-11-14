@@ -11957,7 +11957,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   var ntReachData = null;
   function ntReachLoad(){
     if (!state) return;
-    ntPost('reach').then(function(j){ ntReachData = j && j.ok ? j : null; ntReachDraw(); }).catch(function(){});
+    // A refresh that fails keeps what is on screen: the card must not blink
+    // away because one request was slow or refused.
+    ntPost('reach').then(function(j){ if (j && j.ok) { ntReachData = j; ntReachDraw(); } }).catch(function(){});
   }
   function ntReachDraw(){
     var d = ntReachData, card = $('nt-reach'), box = $('nt-reachbox');
