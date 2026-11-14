@@ -372,10 +372,10 @@ export async function activityFor(sql, userId) {
     // Who looked at where I am. The table is made by the location work;
     // when it is not there yet, there is nothing to show.
     const lv = await quiet(() => sql`
-      select v.created_at, m.name as actor from location_views v left join members m on m.id = v.viewer_member
-      where v.subject_member = any(${mine}::uuid[]) and not (v.viewer_member = any(${mine}::uuid[]))
-      order by v.created_at desc limit 40`);
-    lv.forEach(a => add(a.created_at, (a.actor || 'Someone in the family') + ' looked at where you are', 'location'));
+      select v.at, m.name as actor from location_looks v left join members m on m.id = v.viewer_id
+      where v.member_id = any(${mine}::uuid[]) and not (v.viewer_id = any(${mine}::uuid[]))
+      order by v.at desc limit 40`);
+    lv.forEach(a => add(a.at, (a.actor || 'Someone in the family') + ' looked at where you are', 'location'));
   }
   out.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
   return out.slice(0, 120);

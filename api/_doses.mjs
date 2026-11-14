@@ -35,6 +35,7 @@ import { db, ensureSchema, requireMember, isUuid, schemaOnce } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
+import { minorOf } from './_audience.mjs';
 import { validTz, reqTz, dayIn, fromWall } from './_recur.mjs';
 import { ensureBookSchema } from './_bookschema.mjs';
 import { ensureCarePrepSchema } from './_careprep.mjs';
@@ -245,6 +246,8 @@ export async function sweepDoses(sql, circleId) {
     const who = (await sql`select name from members where id = ${rows[0].person_id}`)[0];
     const to = await doseAlertTo(sql, circleId, rows[0].person_id, rows.map(r => r.medicine_id));
     for (const t of to) {
+      // A child or teenager is not sent an adult's missed-medicine alert.
+      if (await minorOf(sql, circleId, t.id)) continue;
       await pushCircle(sql, circleId, { ...doseFamilyText(who && who.name, slot12(rows[0].slot)), url: '/#people' }, { only: t.id });
     }
   }

@@ -7,7 +7,7 @@
 // PIN, told the number and PIN do not match, locked after five tries. Nothing
 // here says whether a number is registered. The rest of the account (devices,
 // "Not me", recovery contact, download, delete) is in api/_account.mjs.
-import { db, ensureSchema, isUuid, normPhone, phoneError, rateLimit, clientIp, sessionUser, sessionIs } from './_db.mjs';
+import { db, ensureSchema, isUuid, normPhone, phoneError, rateLimit, limitKey, clientIp, sessionUser, sessionIs } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { pushCircle } from './_push.mjs';
 import { pinError, hashPin, verifyPin, newToken, tokenHash, looksLikeToken, SECRET_V } from './_auth.mjs';
@@ -199,7 +199,10 @@ export default async function handler(req, res) {
         const allowed = await rateLimit(sql, 'authrefresh', key, 60, 600);
         if (!allowed) return res.status(429).json({ ok: false, error: 'Refreshing too often - please wait a moment' });
       } else {
-        const allowed = await rateLimit(sql, 'auth', clientIp(req), 25, 600);
+        // By phone and address together, so one shared mobile address does
+        // not lock out a neighbourhood; a looser cap by address alone stays,
+        // because the phone's own id is whatever the caller says it is.
+        const allowed = (await rateLimit(sql, 'auth', limitKey(req), 25, 600)) && (await rateLimit(sql, 'authip', clientIp(req), 120, 600));
         if (!allowed) return res.status(429).json({ ok: false, error: 'Too many sign-in attempts from this device - please wait a few minutes' });
       }
     }

@@ -663,7 +663,7 @@ Checked at 320 and 390, light and dark, on the real app with a family of four an
 
 New patterns: none. The sheet is the app's one bond sheet; the row is a `bondtoday` row; the note is `bondtext`; the thumbs are a `pkind` pair. No new CSS. Ids start with `dg-`.
 
-## Review N (stream F): Notifications, can be reached, the self-check and the waiting row
+### Review 21: Notifications, can be reached, the self-check and the waiting row
 
 Screens: the Notifications card and "Is Parwah working?" in Profile; the "Will send when the network is back" row and the "nobody's phone will ring" card on Today; the "Updated. Tap to refresh" bar. Measured in `notifyfair.e2e.dbtest.mjs` at 320 and 390, light and dark: nothing sideways, 44px targets (a tick box is measured by its label), 12px floor, AA contrast.
 
@@ -680,7 +680,7 @@ Screens: the Notifications card and "Is Parwah working?" in Profile; the "Will s
 | F9 | 7 Flexibility | No way to mute one chat from the screen | 2 | Open: the server honours a `chat_mutes` table when another stream adds one |
 
 New patterns: `nt-line` (a mark, a bold fact, a small "what to do"), `nt-reach` (a dot, a name, words), `nt-times` (two time fields in a row that wraps). All from tokens; ids start with `nt-`.
-### Review N (stream C), Ekta: the confirm card, "Ekta and me", and "Aaj ka din" (2026-11-13)
+### Review 22, Ekta: the confirm card, "Ekta and me", and "Aaj ka din" (2026-11-13)
 
 Checked at 320 and 390, light and dark, and at 1280 for sideways scroll and small text, on the real app with a family of three and a relative who is not on Parwah (`site/tests/db/ektaagent.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on Ekta's screen with a card waiting in senior mode, after a yes, with a WhatsApp hand-off, on the "Ekta and me" sheet, on the morning row on Today and on the "Aaj ka din" sheet).
 
@@ -702,7 +702,7 @@ Checked at 320 and 390, light and dark, and at 1280 for sideways scroll and smal
 | C14 | 9 Error recovery | A voice not heard, or no connection, left a silent screen | 2 | Fixed: she says so in the member's language, on screen and aloud |
 
 New patterns: the confirm card (`.ek2card` with `.ek2row`), the bar under her chat (`.ek2bar`), a plain list with one action per row (`.ek2list`), a sheet heading (`.ek2h`) and the read-aloud button (`.ek2sunao`). All from existing tokens; no new token. The sheets are the app's one bond sheet; the morning row is a `bondtoday` row. Ids start with `ek2-`.
-### Review N (stream A), safety and alerts said honestly (2026-11-13)
+### Review 23, safety and alerts said honestly (2026-11-13)
 
 Checked at 320 and 390 in light and dark, and at 1280 for sideways scroll, on the real app with a family of three (`site/tests/db/safety.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the Safety card, the two questions on Today, the sheet that asks for a second adult, a person's card with a mark that is waiting, the confirmation sheet and the SOS screen).
 
@@ -719,7 +719,7 @@ Checked at 320 and 390 in light and dark, and at 1280 for sideways scroll, on th
 | A9 | 2 Real-world match | A family that has just lost someone who used Parwah is told "used Parwah recently" for 30 days | 3 | Open, for the owner: the guard protects a living person; a kinder path (two adults and a waiting day, with the person told) may be wanted |
 
 New patterns: `.sf-line` (one quiet line in a card, `.sf-warn` when it is a warning) and `.sf-mp` (a waiting note with its buttons on a person's card). Both are built from existing tokens; no new token. The questions on Today are the existing `crow fcrow` rows. Ids start with `sf-`.
-### Review N (stream D), Being heard and answered: the mood card, a private word, shukriya, the weekly question, equal votes (2026-11-13)
+### Review 24, Being heard and answered: the mood card, a private word, shukriya, the weekly question, equal votes (2026-11-13)
 
 Checked at 320 and 390, light and dark, and Today at 1280, on the real app with a family of six: two adults, a parent in senior mode, a child of 13, someone not on Parwah and someone who is remembered (`site/tests/db/heard.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the Today cards, each sheet, the chat header and its "More" sheet, a secret ballot in the chat and as a date poll, the lock question with its tally, the festivals, a card with "Say thank you", the card laid out to print, the stories list, a photo's actions and the Pasand note).
 
@@ -743,7 +743,7 @@ Checked at 320 and 390, light and dark, and Today at 1280, on the real app with 
 | N.16 | 10 Help | Open: voice notes on these sheets are recorded with the stories recorder (up to 3 minutes), longer than a thank-you needs | 1 | Open: one recorder for now; a shorter cap can be set per sheet later |
 
 New patterns: the mood choices (`.hdmoods`, `.hdmood`) and three small text helpers (`.hdline`, `.hdtold`, `.hdfull`). Everything else is an existing part: `mbcard` for the Today cards, the family memory sheet, `pkind` for choices, `bondline` for entries, the family book's print layout for a card. No new token. Ids start with `hd-`.
-### Review N (stream B), consent, control and care both ways (2026-11-13)
+### Review 25, consent, control and care both ways (2026-11-13)
 
 Checked at 320 and 390, light and dark, and at 1280, on the real app with a family of four (`site/tests/db/consent.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the Ashirwad sheet, the Reached safely sheet, every card on Today, the location card, Costs for the person cared for, Home staff for a child, the choices on the emergency card and a person's sheet).
 
@@ -764,7 +764,7 @@ Checked at 320 and 390, light and dark, and at 1280, on the real app with a fami
 | B13 | 4 Consistency | Open: the SOS alarm and the missed-dose push still go to children | 3 | Open: those pushes belong to another stream; `audienceFor` is exported for them to adopt at merge |
 
 New patterns: the care card (`.cn-card`, with `.late` and `.ok`), its row of answers (`.cn-acts`), the person chips (`.cn-who`), the one-tap lines (`.cn-lines`), a switch row (`.cn-switch`), the "Last seen" line (`.cn-last`) and the "Seen by" line (`.cn-seen`). All built from existing tokens; no new token. Ids start with `cn-`.
-### Review N (stream E), accounts, joining and equal standing (2026-11-13)
+### Review 26, accounts, joining and equal standing (2026-11-13)
 
 Checked at 320 and 390, light and dark, and at 1280 for sideways scroll, on the real app with a family of five, a profile made by name and three extra phones (`site/tests/db/standing.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the sign-in card in both modes, the waiting screens, the card that lets someone back in, the card for what the family decides, a request that says "this is me", the member page with "Remove from this family", "What your family wrote about you", the five new Profile cards, the delete sheet and the account notices on Today). Three people were kept in mind throughout, and each has a section of the database test: the parent with one cheap phone, the person in two families, and the family with a single adult.
 
