@@ -1786,6 +1786,12 @@ body.senior .abview-meta{font-size:var(--fs-16)}
 
   <div class="card" id="auth-step">
     <h3>Sign in with your mobile number</h3>
+    <!-- NEW HERE, OR SIGNING IN? Asked first, so the server never has to say
+         whether a number already has a profile. -->
+    <div class="seg" id="ac-mode" role="group" aria-label="New here, or signing in?" style="margin-bottom:var(--space-12)">
+      <button type="button" data-acmode="in" class="sel" aria-pressed="true">I have a profile</button>
+      <button type="button" data-acmode="new" aria-pressed="false">I am new here</button>
+    </div>
 <p class="hint" id="au-why" hidden style="margin:var(--space-4) 0 var(--space-12);font-weight:600;color:var(--marigold-d)">Parwah now signs in with a 4-number PIN, so your family's records open only for you. Sign in with your number once to set it. Your families are all still here.</p>
     <label for="au-phone">Mobile number</label>
     <div class="phrow">
@@ -1806,12 +1812,19 @@ body.senior .abview-meta{font-size:var(--fs-16)}
                inputmode="numeric" pattern="[0-9]*"
                placeholder="The same 4 numbers" style="letter-spacing:.2em;text-align:center;font-size:var(--fs-20)">
       </div>
-      <button class="linkbtn" id="au-forgot" hidden type="button">Forgotten your PIN?</button>
+      <button class="linkbtn" id="au-forgot" hidden type="button">Forgotten your PIN, or never set one?</button>
+      <button class="linkbtn" id="ac-older" hidden type="button">My PIN is from before: longer, or a password</button>
     </div>
     <!-- LET BACK IN BY THE FAMILY: this phone asked, and waits here for the
          answer. It checks on its own while the screen is open. -->
     <div id="au-reset" hidden style="margin-top:var(--space-12)">
       <p class="hint" id="au-rs-msg" role="status" aria-live="polite" style="font-weight:700;color:var(--ink);margin:0 0 var(--space-12)"></p>
+      <!-- The two numbers only this phone shows: the person who says yes
+           has to hear them from you, so a yes needs a real call. -->
+      <div id="ac-rs-codewrap" hidden style="margin:0 0 var(--space-12)">
+        <p class="hint" style="margin:0 0 var(--space-4)">Call someone in your family and read out these two numbers. They type them to let you in.</p>
+        <p id="ac-rs-code" aria-label="Your two numbers" style="font-size:var(--fs-24);font-weight:800;letter-spacing:.3em;margin:0;color:var(--ink)"></p>
+      </div>
       <div class="prow2">
         <button type="button" class="cbtn" id="au-rs-check">Check now</button>
         <button type="button" class="cbtn" id="au-rs-again" hidden>Ask again</button>
@@ -1824,7 +1837,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <input type="text" id="au-name" maxlength="60" placeholder="e.g. Rohan" autocomplete="name">
     </div>
     <button class="go" id="au-go">Continue</button>
-    <p class="hint">Sign in with your number and your 4-number PIN. New here? You will choose one next.</p>
+    <p class="hint">Sign in with your number and your 4-number PIN. New here? Tap "I am new here" and choose one.</p>
     <p class="hint" style="margin-top:var(--space-8)"><a href="welcome/">About Parwah</a></p>
   </div>
 
@@ -1924,7 +1937,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     <h3>Join with a code</h3>
     <label for="j-code">Family code</label>
     <input type="text" id="j-code" maxlength="12" placeholder="e.g. KJM4PW" style="text-transform:uppercase;letter-spacing:.2em" aria-describedby="j-code-hint">
-    <p class="hint" id="j-code-hint" style="margin:var(--space-4) 0 0">The code someone in the family sent you, e.g. KJM4PW or SHARMAS.</p>
+    <p class="hint" id="j-code-hint" style="margin:var(--space-4) 0 0">The code someone in the family sent you, e.g. KJM4PW7A or SHARMA24.</p>
     <label for="j-name">Your name</label>
     <input type="text" id="j-name" maxlength="60" placeholder="e.g. Papa">
     <label>Your role (everyone is an equal admin)</label>
@@ -1946,6 +1959,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     </div>
     <label class="seniorchk"><input type="checkbox" id="j-senior"> I am an elder the family looks after</label>
     <p class="hint" style="margin:0 0 var(--space-12)">Shows All is well, Medicines taken and SOS at the top, in big text. Grandparents start with it on.</p>
+    <label class="seniorchk"><input type="checkbox" id="ac-jclaim"> This is me: my family already added me by name</label>
+    <p class="hint" style="margin:0 0 var(--space-12)">An adult in the family then joins you to what they wrote, so you are not there twice. You will see what they wrote and can keep, hide or delete each thing.</p>
     <button class="go" id="j-go">Join the family</button>
     <button class="linkbtn" id="jc-back" style="margin-top:var(--space-12)">← Start a new family or group instead</button>
   </div>
@@ -2007,6 +2022,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     </div>
     <!-- Someone in the family forgot their PIN and asked to be let back in. -->
     <div id="pinresets"></div>
+    <!-- A new sign-in, a PIN reset asked for my number, an account set to be deleted. -->
+    <div id="ac-sec"></div>
     <div id="frslot"></div>
     <!-- CARE CYCLE: someone in hospital, a visit to note, my own medicine times. -->
     <div id="cc-today"></div>
@@ -2409,16 +2426,21 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <h3>🙋 Waiting to join</h3>
       <p class="hint" id="jr-count" style="margin:var(--space-2) 0 var(--space-12)"></p>
       <div class="feed" id="joinreqs"></div>
-      <p class="hint" style="margin-top:var(--space-12)">Anyone already in the family can decide - let in only people you recognise.</p>
+      <p class="hint" style="margin-top:var(--space-12)">Any adult in the family can decide. Let in only people you recognise.</p>
+    </div>
+    <!-- EQUAL STANDING: what the grown-ups decide together, and what is mine to undo. -->
+    <div class="card" id="ac-famcard" hidden>
+      <h3>🤝 For the family to decide</h3>
+      <div class="feed" id="ac-famlist"></div>
     </div>
     <div class="card" id="famcard">
       <h3>Your family</h3>
       <p style="margin-bottom:var(--space-12)">Code: <span class="codechip" id="p-code"></span>
         <button class="linkbtn" id="code-edit" style="margin-left:var(--space-12)">✏️ Set your own code</button></p>
       <div id="codeform" hidden style="margin-bottom:var(--space-12)">
-        <input type="text" id="cc-code" maxlength="12" placeholder="e.g. SHARMAS" style="text-transform:uppercase" aria-label="New invite code">
+        <input type="text" id="cc-code" maxlength="12" placeholder="e.g. SHARMA24" style="text-transform:uppercase" aria-label="New invite code">
         <button class="go" id="cc-save" style="margin-top:var(--space-8)">Save invite code</button>
-        <p class="hint" style="margin-top:var(--space-8)">4-12 letters and numbers, unique across Parwah. Your family joins with this code - old invite links stop working.</p>
+        <p class="hint" style="margin-top:var(--space-8)">8 to 12 letters and numbers, with at least one number, like SHARMA24. Your family joins with this code. Old invite links stop working.</p>
       </div>
       <div class="members" id="members"></div>
       <button class="go invitebtn" style="margin-top:var(--space-16)">🧡 Invite family</button>
@@ -3950,10 +3972,67 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button class="go" id="k-save">Save key</button>
       <p class="hint" style="margin-top:var(--space-8)">Anthropic: console.anthropic.com → API keys · Gemini: aistudio.google.com/apikey · OpenAI: platform.openai.com/api-keys. If Anthropic replies "workspace id is required", add the workspace ID here too.</p>
     </details>
+    <div class="card" id="ac-devcard">
+      <h3>📱 Devices</h3>
+      <p class="hint" style="margin:var(--space-2) 0 var(--space-12)">Phones and computers signed in to your Parwah. Sign out any you do not know.</p>
+      <div class="feed" id="ac-devs"><div class="ev">Loading…</div></div>
+      <button type="button" class="cbtn ghost" id="ac-outall" style="margin-top:var(--space-12)">Sign out everywhere</button>
+    </div>
+    <div class="card" id="ac-seecard">
+      <h3>🙈 Who sees my details</h3>
+      <p class="hint" id="ac-seehint" style="margin:var(--space-2) 0 var(--space-4)"></p>
+      <label for="ac-seephone">My phone number</label>
+      <select id="ac-seephone">
+        <option value="family">Everyone here</option>
+        <option value="adults">Only adults</option>
+        <option value="me">Only me</option>
+      </select>
+      <label for="ac-seebirth">My birth year</label>
+      <select id="ac-seebirth">
+        <option value="family">Everyone here</option>
+        <option value="adults">Only adults</option>
+        <option value="me">Only me</option>
+      </select>
+      <p class="hint" style="margin-top:var(--space-8)">In a family, your birthday still shows without the year, so everyone can wish you.</p>
+    </div>
+    <div class="card" id="ac-reccard">
+      <h3>🤝 Recovery contact</h3>
+      <p class="hint" style="margin:var(--space-2) 0 var(--space-8)">One person you trust. If you forget your PIN, they can let you back in. They should call you first.</p>
+      <p id="ac-recnow" style="margin:0 0 var(--space-8)"></p>
+      <label for="ac-recpick">Choose someone</label>
+      <select id="ac-recpick"></select>
+      <div class="prow2" style="margin-top:var(--space-12)">
+        <button type="button" class="cbtn" id="ac-recsave">Save</button>
+        <button type="button" class="cbtn ghost" id="ac-recclear" hidden>Remove</button>
+      </div>
+    </div>
+    <div class="card" id="ac-actcard">
+      <h3>🧾 My activity</h3>
+      <p class="hint" style="margin:var(--space-2) 0 var(--space-12)">What was seen or changed about you: papers opened, changes to your place in the tree, sign-ins and PIN resets.</p>
+      <button type="button" class="cbtn ghost" id="ac-actshow">Show my activity</button>
+      <div class="feed" id="ac-act" hidden style="margin-top:var(--space-12)"></div>
+    </div>
+    <div class="card" id="ac-datacard">
+      <h3>📦 My data</h3>
+      <p class="hint" style="margin:var(--space-2) 0 var(--space-12)">A copy of everything Parwah keeps about you and written by you.</p>
+      <button type="button" class="cbtn ghost" id="ac-export">Download my data</button>
+      <div class="prow2" id="ac-exlinks" hidden style="margin-top:var(--space-12)">
+        <a class="cbtn" id="ac-exhtml" download="my-parwah-data.html">Save the readable page</a>
+        <a class="cbtn ghost" id="ac-exjson" download="my-parwah-data.json">Save the data file</a>
+      </div>
+      <div id="ac-delwait" hidden style="margin-top:var(--space-16)">
+        <p id="ac-deltxt" style="margin:0 0 var(--space-8);font-weight:700"></p>
+        <button type="button" class="cbtn" id="ac-delundo">Keep my account</button>
+      </div>
+    </div>
     <div class="card">
       <h3>Account</h3>
       <button class="linkbtn" id="leave" style="color:var(--alert)">Leave this family</button>
       <button class="linkbtn" id="signout" style="color:var(--alert);margin-left:var(--space-16)">Sign out</button>
+      <p style="margin:var(--space-12) 0 0">
+        <button type="button" class="linkbtn" id="ac-del" style="color:var(--alert)">Delete my account</button>
+        <button type="button" class="linkbtn" id="ac-famdel" style="color:var(--alert);margin-left:var(--space-16)">Delete this family</button>
+      </p>
     </div>
     </div>
   </section>
@@ -4061,6 +4140,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button class="cbtn ghost" id="mp-gift">🎁 Send a gift</button>
       <button type="button" class="cbtn ghost" id="rm-mp-open" hidden>🪔 No longer with us?</button>
       <button type="button" class="cbtn ghost" id="cn-child" hidden>🧒 Mark as a child (under 18)</button>
+      <button type="button" class="cbtn ghost" id="ac-mp-remove" hidden>Remove from this family</button>
     </div>
     <div id="giftbox" hidden>
       <p class="hint" id="gift-sizes" hidden style="margin-top:var(--space-12);background:var(--tint-warm);border:1px solid var(--bone-2);border-radius:var(--radius-12);padding:var(--space-8) var(--space-12)"></p>
@@ -4781,6 +4861,28 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   </div>
 </div>
 
+<!-- DELETE MY ACCOUNT: the PIN again, and what happens to what I shared. -->
+<div class="msheet" id="ac-delsheet" hidden role="dialog" aria-modal="true" aria-labelledby="ac-del-q">
+  <div class="mp">
+    <h3 id="ac-del-q" style="margin-top:0">Delete your Parwah account?</h3>
+    <p class="hint" style="margin:var(--space-4) 0 var(--space-12)">Your account is deleted after 7 days. Until then you can sign in and tap "Keep my account". Your own private things are deleted. What you shared with a family stays, with no name on it, unless you tick the box.</p>
+    <label class="seniorchk"><input type="checkbox" id="ac-del-posts"> Also remove my messages and shared notes</label>
+    <label for="ac-del-pin">Your 4-number PIN</label>
+    <input type="password" id="ac-del-pin" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" placeholder="● ● ● ●">
+    <p class="err" id="ac-del-err" role="alert"></p>
+    <button class="go" id="ac-del-yes" type="button">Delete my account in 7 days</button>
+    <button class="cbtn ghost" id="ac-del-no" type="button" style="width:100%;margin-top:var(--space-8)">Keep my account</button>
+  </div>
+</div>
+<!-- WHAT YOUR FAMILY WROTE ABOUT YOU: shown once, after "This is me". -->
+<div class="msheet" id="ac-claimsheet" hidden role="dialog" aria-modal="true" aria-labelledby="ac-claim-q">
+  <div class="mp">
+    <h3 id="ac-claim-q" style="margin-top:0">What your family wrote about you</h3>
+    <p class="hint" style="margin:var(--space-4) 0 var(--space-12)">Before you had Parwah, your family wrote these down. For each one choose: keep it, hide it from others, or delete it.</p>
+    <div id="ac-claimlist"></div>
+    <button class="go" id="ac-claim-save" type="button" style="margin-top:var(--space-12)">Save my choices</button>
+  </div>
+</div>
 <div class="msheet" id="asksheet" hidden role="dialog" aria-modal="true" aria-labelledby="as-q">
   <div class="mp">
     <h3 id="as-q" style="margin-top:0"></h3>
@@ -5596,7 +5698,10 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           var day = fmtDue(localYmd(m.created_at));
           if (day && day !== lastDay) { h += '<div class="dsep">' + esc(day) + '</div>'; lastDay = day; }
           var mine = m.member_id === state.memberId;
-          var ekta = !m.member_id;
+          // What someone shared before they left stays, with no name on it.
+          var former = !m.member_id && m.kind === 'text' && String(m.text || '').charAt(0) === '\u2063';
+          if (former) { m.text = String(m.text).slice(1); m.name = 'A former member'; }
+          var ekta = !m.member_id && !former;
           var img = m.kind === 'image' ? safeImageUri(m.text) : null;
           var body = img
             ? '<img src="' + esc(img) + '" alt="Photo" style="max-width:100%;border-radius:var(--radius-12);display:block">'
@@ -7979,7 +8084,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           if (!j.ok || !j.exists || !j.user) return;
           authUser = j.user; saveAuth(authUser); saveGroups(j.circles || []);
           takeResets(j);
-          if (j.changeSecret) { askNewSecret(); return; }
+          if (j.changeSecret) { askNewSecret(j.mustChange); return; }
           // First time this person has ever reached a circle: point at the
           // interface once, then never again on any device.
           if (j.toured === false) coachDone();
@@ -8232,7 +8337,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   $('cs-newgrp').addEventListener('click', function(){ startCreate('group'); });
   // Signed in with an older PIN or a password (or none): the first time the
   // app is opened, they type it once and choose a 4-number PIN, as at sign-in.
-  function askNewSecret(){
+  function askNewSecret(must){
     $('main').hidden = true; $('tabs').hidden = true; $('onboard').hidden = false;
     // The floating buttons belong to the app, never on top of a sign-in form.
     $('chat-fab').hidden = true; $('sos-fab').hidden = true; $('ncsheet').hidden = true; $('tsheet').hidden = true;
@@ -8240,7 +8345,10 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var sp = splitE164(authUser && authUser.phone);
     if (sp) { setCc('au-cc', sp.cc); $('au-phone').value = sp.local; }
     showStep('auth');
-    secretBox('older', 'Parwah now signs in with a 4-number PIN. Type your current PIN or password once, then choose your new PIN. Your families are all still here.');
+    secretBox('older', must
+      ? 'You said a new sign-in was not you, so that phone was signed out. Type your current PIN once, then choose a new one. Your families are all still here.'
+      : 'Parwah now signs in with a 4-number PIN. Type your current PIN or password once, then choose your new PIN. Your families are all still here.');
+    $('ac-mode').hidden = true; $('ac-older').hidden = true; $('au-namewrap').hidden = true;
     $('au-go').textContent = 'Continue';
     try { $('au-pin').focus(); } catch (e) {}
   }
@@ -8442,18 +8550,23 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     }
     var secret = $('au-pin').value;
     var btn = this; btn.disabled = true; $('ob-err').textContent = '';
-    post(API.auth, { action: 'enter', phone: phone, cc: cc, name: $('au-name').value.trim(),
+    post(API.auth, { action: 'enter', phone: phone, cc: cc,
+                     // A name means "I am new here". Signing in sends none.
+                     name: acNew() ? $('au-name').value.trim() : '',
                      // Replacing an older PIN or password sends it once more, with the new one.
                      pin: secretMode === 'change' ? oldSecret : (secret || undefined),
                      newPin: secretMode === 'change' ? secret : undefined,
-                     device: (navigator.platform || 'device') })
+                     device: (navigator.platform || 'device'), deviceId: acDeviceId() })
       .then(function(j){
         btn.disabled = false;
         // A PIN that is wrong, or an account locked after five tries: both
         // keep the person on this screen with the reason and a way out.
         if (!j.ok && (j.wrongPin || j.locked)) {
+          // New here, and the number already has a profile: the same words
+          // as a wrong PIN, with the way across.
+          if (acNew()) { authErr(j.error + ' If you already have a profile, tap "I have a profile".', 'au-pin'); return; }
           secretBox(secretMode === 'older' ? 'older' : 'enter');
-          $('au-forgot').hidden = false;
+          $('au-forgot').hidden = false; $('ac-older').hidden = secretMode === 'older';
           authErr(j.error, 'au-pin');
           return;
         }
@@ -8464,8 +8577,10 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         // in, they choose a 4-number PIN.
         if (j.exists && j.changeSecret) {
           if (secretMode === 'enter' || secretMode === 'older') oldSecret = secret;
-          secretBox('change', 'Welcome back' + (j.name ? ', ' + j.name : '') + '. Parwah now signs in with a 4-number PIN. Choose yours to continue.');
-          $('au-forgot').hidden = true;
+          secretBox('change', j.mustChange
+            ? 'You said a new sign-in was not you. Choose a new 4-number PIN, different from the old one.'
+            : 'Welcome back' + (j.name ? ', ' + j.name : '') + '. Parwah now signs in with a 4-number PIN. Choose yours to continue.');
+          $('au-forgot').hidden = true; $('ac-older').hidden = true;
           $('au-go').textContent = 'Save and continue';
           if (j.error) authErr(j.error, 'au-pin'); else { $('ob-err').textContent = ''; try { $('au-pin').focus(); } catch (e) {} }
           return;
@@ -8479,6 +8594,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
             : j.older ? 'Type the PIN or password you set before, once. Then you will choose a 4-number PIN.'
             : '');
           $('au-forgot').hidden = !j.needPin;
+          // A PIN or password from before 4-number PINs is typed once, as it
+          // was. The server no longer says which numbers have one.
+          $('ac-older').hidden = !j.needPin || !!j.older;
           $('au-go').textContent = j.setPin ? 'Save and continue' : 'Sign in';
           if (j.error) authErr(j.error, 'au-pin'); else { $('ob-err').textContent = ''; try { $('au-pin').focus(); } catch (e) {} }
           return;
@@ -8488,15 +8606,16 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           // news; a field quietly appearing is not, and a mistyped digit
           // otherwise makes a second profile without anyone noticing.
           var first = $('au-namewrap').hidden;
+          if (first) acMode('new');
           $('au-namewrap').hidden = false;
           // A new person picks their PIN in the same breath as their name.
           // A later, skippable step is how an account ends up without one.
           if (first || j.error) secretBox('choose', 'You will type this when you sign in. Not your birth year or your phone number.');
-          if (j.error) authErr(j.error, 'au-pin');
+          if (j.error) authErr(j.error, j.badName ? 'au-name' : 'au-pin');
           $('au-go').textContent = 'Create my profile & continue';
           $('au-newnote').hidden = false;
-          if (first) $('au-newnote').textContent = 'This number is new to Parwah, so we will set you up. Already have an account? Check the number above.';
-          try { $('au-name').focus(); } catch (e) {}
+          if (first) $('au-newnote').textContent = 'New here? Write your name and choose a PIN. Already have a profile? Tap "I have a profile".';
+          if (!j.error) { try { $('au-name').focus(); } catch (e) {} }
           return;
         }
         secretMode = 'enter'; oldSecret = '';
@@ -8513,6 +8632,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   // forgot stayed locked out. Shown on Today and in Notifications, where a
   // family member will see it, with the two answers as buttons.
   function takeResets(j){
+    acTakeSecurity(j);
     if (!j || !Array.isArray(j.pinResets)) return;   // an older reply says nothing: keep what we have
     pendingResets = j.pinResets;
     renderResets();
@@ -8521,8 +8641,10 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var h = pendingResets.map(function(r){
       return '<div class="card resetcard" data-resetcard="' + esc(r.id) + '">' +
         '<h3>🔑 ' + esc(r.name) + ' cannot get in. Let them back in?</h3>' +
-        '<p class="hint" style="margin:0 0 var(--space-12)">They forgot their PIN and asked the family. Say yes only if you know it is really them: call them first if you are not sure. They then choose a new PIN.</p>' +
-        '<div class="prow2">' +
+        '<p class="hint" style="margin:0 0 var(--space-12)">They forgot their PIN and asked the family. Call them. Their screen shows two numbers: ask for them and type them here. They then choose a new PIN.</p>' +
+        '<label>The two numbers on their screen' +
+        '<input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" data-resetcode="' + esc(r.id) + '" placeholder="e.g. 47" style="margin-top:var(--space-4);letter-spacing:.3em;text-align:center;font-size:var(--fs-20)"></label>' +
+        '<div class="prow2" style="margin-top:var(--space-12)">' +
           '<button type="button" class="cbtn" data-resetok="' + esc(r.id) + '">🧡 Let them in</button>' +
           '<button type="button" class="cbtn ghost" data-resetno="' + esc(r.id) + '">Not now</button>' +
         '</div></div>';
@@ -8535,12 +8657,17 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var name = r ? r.name : 'They';
     document.querySelectorAll('[data-resetcard="' + id + '"] button').forEach(function(b){ b.disabled = true; });
     // This action reads the session token from the body, not the header.
-    post(API.auth, { action: yes ? 'reset_approve' : 'reset_deny', resetId: id, token: authToken() })
+    var said = '';
+    document.querySelectorAll('[data-resetcode="' + id + '"]').forEach(function(i){ if (i.value.trim()) said = i.value.trim(); });
+    post(API.auth, { action: yes ? 'reset_approve' : 'reset_deny', resetId: id, sayCode: said, token: authToken() })
       .then(function(j){
         // Already decided by someone else counts as done: the card goes.
         if (!j.ok && j._status !== 404) {
           document.querySelectorAll('[data-resetcard="' + id + '"] button').forEach(function(b){ b.disabled = false; });
-          toast(j.error || 'Could not do that'); return;
+          toast(j.error || 'Could not do that');
+          // Their yes needs a date of birth first: take them to where it is set.
+          if (j.needDob) { switchTab('profile'); try { if ($('editform').hidden) $('pedit').click(); $('e-dob').focus(); } catch (e) {} }
+          return;
         }
         pendingResets = pendingResets.filter(function(x){ return x.id !== id; });
         renderResets();
@@ -8556,7 +8683,10 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var ok = b.hasAttribute('data-resetok'), id = b.getAttribute(ok ? 'data-resetok' : 'data-resetno');
     var r = pendingResets.filter(function(x){ return x.id === id; })[0];
     if (!ok) { resetDecide(id, false, b); return; }
-    askSheet('Let ' + (r ? r.name : 'them') + ' back in?', 'Anyone who knows their number could have asked. If you are not sure it is them, call them first.', 'Yes, let them in', 'Go back')
+    var typed = '';
+    document.querySelectorAll('[data-resetcode="' + id + '"]').forEach(function(i){ if (i.value.trim()) typed = i.value.trim(); });
+    if (!/^[0-9]{2}$/.test(typed)) { toast('Call them and type the two numbers on their screen first'); return; }
+    askSheet('Let ' + (r ? r.name : 'them') + ' back in?', 'Anyone who knows their number could have asked. Say yes only if you heard the two numbers from them.', 'Yes, let them in', 'Go back')
       .then(function(y){ if (y) resetDecide(id, true, b); });
   });
   // NO SMS TO FALL BACK ON, so the family is the way back in. Someone
@@ -8565,7 +8695,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   $('au-forgot').addEventListener('click', function(){
     var phone = $('au-phone').value.trim(), cc = $('au-cc').value;
     if (phoneCheck(cc, phone)) { authErr('Type your number first, then tap this again.', 'au-phone'); return; }
-    askSheet('Ask your family to let you back in?', 'Someone already in your family gets a request. Once they say yes, you can choose a new PIN.', 'Ask my family', 'Not now')
+    askSheet('Ask your family to let you back in?', 'An adult already in your family gets a request. You read two numbers to them on a call. Once they say yes, you can choose a new PIN.', 'Ask my family', 'Not now')
       .then(function(y){ if (y) askReset(phone, cc); });
   });
   function askReset(phone, cc){
@@ -8575,13 +8705,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         // on screen, as if this one had worked too.
         if (!j.ok) { $('au-pinnote').hidden = true; authErr(j.error || 'Could not ask just now.'); return; }
         $('ob-err').textContent = '';
-        if (j.noFamily || !j.resetSecret) {
-          $('au-pinnote').hidden = false;
-          $('au-pinnote').textContent = 'You are not in a family yet, so there is nobody to approve this. Write to anchit.tandon@gmail.com and we will help.';
-          return;
-        }
-        // Asking again replaces the secret: only the newest one works.
-        rsSave({ phone: phone, cc: cc, secret: j.resetSecret, mins: j.expiresInMinutes || 15 });
+        if (!j.resetSecret) { authErr(j.error || 'Could not ask just now.'); return; }
+        // Asking again replaces the secret and the two numbers: only the newest work.
+        rsSave({ phone: phone, cc: cc, secret: j.resetSecret, say: j.sayCode || '', mins: j.expiresInMinutes || 15 });
         rsShow('pending');
       })
       .catch(function(){ $('au-pinnote').hidden = true; authErr('No connection - try again.'); });
@@ -8598,11 +8724,15 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   }
   var RS_SAY = {
     pending: 'Asked. Waiting for someone in your family to say yes. Ask them to open Parwah. This screen checks by itself.',
+    holding: 'Your family said yes. To keep you safe, the new PIN can be chosen in a few minutes. This screen checks by itself.',
     denied: 'Your family said no to this request. If that was a mistake, talk to them, then ask again.',
     expired: 'That request ran out before anyone said yes. Ask your family again.'
   };
   function rsShow(st, msg){
-    var waiting = st === 'pending';
+    var waiting = st === 'pending' || st === 'holding';
+    $('ac-mode').hidden = true; $('ac-older').hidden = true;
+    $('ac-rs-codewrap').hidden = st !== 'pending' || !(rsCur && rsCur.say);
+    $('ac-rs-code').textContent = rsCur && rsCur.say ? String(rsCur.say).split('').join(' ') : '';
     $('au-reset').hidden = st === 'approved';
     $('au-forgot').hidden = true;
     $('au-namewrap').hidden = true;
@@ -8618,8 +8748,10 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     $('au-rs-msg').textContent = msg || RS_SAY[st] || RS_SAY.expired;
     $('au-rs-check').hidden = !waiting;
     $('au-rs-again').hidden = waiting;
+    if (st === 'pending') {
+      $('au-rs-msg').textContent += ' The request lasts ' + ((rsCur && rsCur.mins) || 15) + ' minutes. If no adult in a family of yours can say yes, write to anchit.tandon@gmail.com.';
+    }
     if (waiting) {
-      $('au-rs-msg').textContent += ' The request lasts ' + ((rsCur && rsCur.mins) || 15) + ' minutes.';
       if (!rsTimer) rsTimer = setInterval(function(){ rsPoll(false); }, 10000);
     } else {
       // Refused or run out: this secret is finished with.
@@ -8636,6 +8768,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         if (!rsCur) return;
         if (!j.ok) { if (byHand) toast(j.error || 'Could not check just now'); return; }
         if (j.reset === 'pending') { if (byHand) toast('Not yet. Nobody has said yes.'); return; }
+        if (j.reset === 'holding' && byHand) toast('Your family said yes. A few more minutes.');
         rsShow(j.reset);
       })
       .catch(function(){ if (byHand) toast('No connection - try again'); });
@@ -8650,6 +8783,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     rsClear(); rsAgainFor = null;
     $('au-reset').hidden = true; $('au-go').hidden = false; $('au-go').textContent = 'Continue';
     $('au-pinwrap').hidden = true; secretMode = 'enter'; $('ob-err').textContent = '';
+    $('ac-mode').hidden = false; acMode('in');
   }
   $('au-rs-cancel').addEventListener('click', rsLeave);
   function rsFinish(btn){
@@ -8658,7 +8792,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (!rsCur) { rsLeave(); return; }
     btn.disabled = true; $('ob-err').textContent = '';
     post(API.auth, { action: 'enter', phone: rsCur.phone, cc: rsCur.cc, resetSecret: rsCur.secret,
-                     newPin: $('au-pin').value, device: (navigator.platform || 'device') })
+                     newPin: $('au-pin').value, device: (navigator.platform || 'device'), deviceId: acDeviceId() })
       .then(function(j){
         btn.disabled = false;
         if (!j.ok) { authErr(j.error || 'Could not save the PIN.'); return; }
@@ -8667,7 +8801,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         if (j.reset && j.reset !== 'approved') { rsShow(j.reset, j.error); return; }
         if (!j.token || !j.user) { authErr(j.error || 'Could not save the PIN.'); return; }
         rsClear(); rsAgainFor = null;
-        $('au-go').textContent = 'Continue';
+        $('au-go').textContent = 'Continue'; $('ac-mode').hidden = false;
         secretMode = 'enter'; oldSecret = '';
         authUser = j.user; saveAuth(authUser);
         saveToken(j.token);
@@ -8793,7 +8927,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (cerr) { authErr(''); fieldErr('j-code', cerr); return; }
     if (nameCheck(name)) { authErr(''); fieldErr('j-name', nameCheck(name)); return; }
     this.disabled = true; $('ob-err').textContent = '';
-    post(API.circle, { action:'join', memberName:name, code:code, userId: authUser && authUser.id, role: $('j-senior').checked ? 'parent' : 'family', relation: jRole() })
+    post(API.circle, { action:'join', memberName:name, code:code, userId: authUser && authUser.id, role: $('j-senior').checked ? 'parent' : 'family', relation: jRole(), claim: $('ac-jclaim').checked })
       .then(function(j){
         $('j-go').disabled = false;
         if (!j.ok) { authErr(j.error || 'Could not join.'); return; }
@@ -8803,7 +8937,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           pendingJoin = code;
           try { sessionStorage.setItem('parwah-join', code); sessionStorage.setItem('parwah-join-wait', code);
                 if (j.requestId) sessionStorage.setItem('parwah-join-req', j.requestId); } catch (e) {}
-          showWaiting(j.message || ('Your request has gone to ' + j.circleName + '.'));
+          showWaiting(j.message || 'Your request has gone to the family.');
           return;
         }
         inviteDone();
@@ -8866,6 +9000,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     joinReqs.forEach(function(q){
       h += '<div class="ev"><b>🙋 ' + esc(q.name) + '</b>' +
            '<small>' + (q.relation ? 'says they are: ' + esc(q.relation) + ' · ' : '') + (q.phone ? esc(q.phone) + ' · ' : '') + fmtTime(q.created_at) + '</small>' +
+           acClaimPick(q) +
            '<div class="prow2" style="margin-top:var(--space-8)">' +
            '<button class="cbtn" data-jok="' + q.id + '">🧡 Let them in</button>' +
            '<button class="cbtn no" data-jno="' + q.id + '">Say no</button></div></div>';
@@ -8875,14 +9010,15 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     $('jr-count').textContent = joinReqs.length === 1 ? '1 person is waiting' : joinReqs.length + ' people are waiting';
     $('jp-state').textContent = joinPolicy === 'open'
       ? 'Anyone with the code joins straight away.'
-      : 'Someone already in the family has to say yes.';
+      : 'An adult already in the family has to say yes.';
     $('jp-toggle').textContent = joinPolicy === 'open' ? '🔒 Require approval' : '🔓 Let the code be enough';
   }
   function joinAct(body, okMsg, then){
     post(API.circle, Object.assign({ code: state.code, memberId: state.memberId }, body))
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
-        toast(okMsg); refresh();
+        // Letting the code be enough waits for a second adult's yes.
+        toast(j.pending && j.message ? j.message : okMsg); refresh(); acLoadFam();
         if (then) then(j);
       }).catch(function(){ toast('No connection - try again'); });
   }
@@ -8891,7 +9027,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var id;
     if ((id = b.getAttribute('data-jok'))) {
       // In - now say where they are in the family.
-      joinAct({ action:'approve_join', requestId:id }, 'They are in 🧡 Now place them in the tree', function(j){
+      joinAct(Object.assign({ action:'approve_join', requestId:id }, acClaimChoice(id)), 'They are in 🧡 Now place them in the tree', function(j){
         if (!j.memberId || famKind === 'group') return;
         trWant = j.memberId;
         setTimeout(function(){ try { $('tree-more').open = true; $('tree-add').scrollIntoView({ block: 'center' }); } catch (x) {} }, 900);
@@ -8911,6 +9047,413 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       .then(function(y){ if (y) go(); });
   });
 
+
+  // ---------- accounts and equal standing (api/_account.mjs, api/_standing.mjs) ----------
+  // THIS PHONE'S OWN ID: random, made here, kept here. The server keeps only
+  // its hash. A phone that has signed in before is never locked out by a
+  // stranger's wrong tries, and a phone Parwah has not seen is told to the
+  // owner's other phones.
+  function acDeviceId(){
+    var id = '';
+    try { id = localStorage.getItem('parwah-device') || ''; } catch (e) {}
+    if (!/^[A-Za-z0-9_-]{20,90}$/.test(id)) {
+      var b = new Uint8Array(24);
+      try { crypto.getRandomValues(b); } catch (e) { for (var i = 0; i < b.length; i++) b[i] = Math.floor(Math.random() * 256); }
+      id = Array.prototype.map.call(b, function(x){ return ('0' + x.toString(16)).slice(-2); }).join('');
+      try { localStorage.setItem('parwah-device', id); } catch (e) {}
+    }
+    return id;
+  }
+  // NEW HERE, OR SIGNING IN? The person says which, so the server never has
+  // to say whether a number already has a profile.
+  var acModeNow = 'in';
+  function acNew(){ return acModeNow === 'new'; }
+  function acMode(m){
+    acModeNow = m === 'new' ? 'new' : 'in';
+    document.querySelectorAll('#ac-mode button').forEach(function(b){
+      var on = b.getAttribute('data-acmode') === acModeNow;
+      b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    $('ob-err').textContent = '';
+    $('au-forgot').hidden = true; $('ac-older').hidden = true;
+    if (acNew()) {
+      $('au-namewrap').hidden = false; $('au-newnote').hidden = false;
+      $('au-newnote').textContent = 'New here? Write your name and choose a PIN. Already have a profile? Tap "I have a profile".';
+      secretBox('choose', 'You will type this when you sign in. Not your birth year or your phone number.');
+      $('au-go').textContent = 'Create my profile & continue';
+    } else {
+      $('au-namewrap').hidden = true; $('au-pinwrap').hidden = true; secretMode = 'enter';
+      $('au-go').textContent = 'Continue';
+    }
+  }
+  $('ac-mode').addEventListener('click', function(e){
+    var b = e.target.closest('[data-acmode]'); if (b) acMode(b.getAttribute('data-acmode'));
+  });
+  $('ac-older').addEventListener('click', function(){
+    secretBox('older', 'Type the PIN or password you set before, once. Then you will choose a 4-number PIN.');
+    this.hidden = true;
+    try { $('au-pin').focus(); } catch (e) {}
+  });
+
+  // ---- on Today: a new sign-in, a reset asked for my number, a delete that is waiting
+  var acSecurity = { alerts: [], myResets: [], deleteAt: null }, acHidden = {};
+  function acDay(iso){ try { return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'long' }); } catch (e) { return ''; } }
+  function acTakeSecurity(j){
+    if (!j || !j.security) return;
+    acSecurity = j.security;
+    acRenderSec();
+  }
+  function acRenderSec(){
+    var h = '';
+    (acSecurity.alerts || []).forEach(function(a){
+      h += '<div class="card resetcard" data-acalert="' + esc(a.id) + '"><h3>📱 ' + esc(a.text) + '</h3>' +
+        '<p class="hint" style="margin:0 0 var(--space-12)">If it was not you, tap "Not me". That phone is signed out and you choose a new PIN.</p>' +
+        '<div class="prow2"><button type="button" class="cbtn" data-acok="' + esc(a.id) + '">Yes, it was me</button>' +
+        '<button type="button" class="cbtn no" data-acnotme="' + esc(a.id) + '">Not me</button></div></div>';
+    });
+    (acSecurity.myResets || []).forEach(function(r){
+      if (acHidden[r.id]) return;
+      h += '<div class="card resetcard" data-acreset="' + esc(r.id) + '"><h3>🔑 Someone asked to reset your PIN. Was this you?</h3>' +
+        '<p class="hint" style="margin:0 0 var(--space-12)">' + (r.status === 'approved' ? 'Someone in your family has said yes. ' : '') + 'If it was not you, stop it now.</p>' +
+        '<div class="prow2"><button type="button" class="cbtn" data-acmine="' + esc(r.id) + '">Yes, it was me</button>' +
+        '<button type="button" class="cbtn no" data-acveto="' + esc(r.id) + '">Not me, stop it</button></div></div>';
+    });
+    if (acSecurity.deleteAt) {
+      h += '<div class="card resetcard"><h3>Your account will be deleted on ' + esc(acDay(acSecurity.deleteAt)) + '</h3>' +
+        '<p class="hint" style="margin:0 0 var(--space-12)">Changed your mind? Nothing has been deleted yet.</p>' +
+        '<button type="button" class="cbtn" data-ackeep="1">Keep my account</button></div>';
+    }
+    if ($('ac-sec')) $('ac-sec').innerHTML = h;
+    if ($('ac-delwait')) {
+      $('ac-delwait').hidden = !acSecurity.deleteAt;
+      $('ac-deltxt').textContent = acSecurity.deleteAt ? 'Your account will be deleted on ' + acDay(acSecurity.deleteAt) + '.' : '';
+      $('ac-del').hidden = !!acSecurity.deleteAt;
+    }
+  }
+  function acAuth(body){ return post(API.auth, Object.assign({ token: authToken() }, body)); }
+  function acKeep(){
+    acAuth({ action: 'delete_me_undo' }).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not do that'); return; }
+      acSecurity.deleteAt = null; acRenderSec(); toast('Your account stays 🧡');
+    }).catch(function(){ toast('No connection - try again'); });
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-acok],[data-acnotme],[data-acmine],[data-acveto],[data-ackeep]'); if (!b) return;
+    var id;
+    if (b.hasAttribute('data-ackeep')) { acKeep(); return; }
+    if ((id = b.getAttribute('data-acmine'))) { acHidden[id] = true; acRenderSec(); return; }
+    if ((id = b.getAttribute('data-acveto'))) {
+      b.disabled = true;
+      acAuth({ action: 'reset_veto', resetId: id }).then(function(j){
+        if (!j.ok) { b.disabled = false; toast(j.error || 'Could not do that'); return; }
+        acSecurity.myResets = (acSecurity.myResets || []).filter(function(x){ return x.id !== id; }); acRenderSec();
+        toast('Stopped. Your PIN is unchanged.');
+      }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+      return;
+    }
+    if ((id = b.getAttribute('data-acok'))) {
+      acAuth({ action: 'alert_ok', alertId: id }).then(function(){
+        acSecurity.alerts = (acSecurity.alerts || []).filter(function(x){ return x.id !== id; }); acRenderSec();
+      }).catch(function(){ toast('No connection - try again'); });
+      return;
+    }
+    id = b.getAttribute('data-acnotme');
+    askSheet('Sign that phone out?', 'It is signed out at once. Then you choose a new PIN, so whoever it was cannot come back.', 'Not me, sign it out', 'Go back', true).then(function(y){
+      if (!y) return;
+      acAuth({ action: 'alert_notme', alertId: id }).then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not do that'); return; }
+        acSecurity.alerts = (acSecurity.alerts || []).filter(function(x){ return x.id !== id; }); acRenderSec();
+        if (j.changeSecret) askNewSecret(true);
+      }).catch(function(){ toast('No connection - try again'); });
+    });
+  });
+
+  // ---- Profile: devices, who sees my details, recovery contact, activity, my data
+  var acAccount = null, acFam = null;
+  function acLoadAccount(){
+    if (!authToken()) return;
+    acAuth({ action: 'account_state' }).then(function(j){
+      if (!j.ok) return;
+      acAccount = j;
+      acSecurity = { alerts: j.alerts || [], myResets: j.myResets || [], deleteAt: j.deleteAt || null };
+      acRenderSec(); acRenderAccount();
+    }).catch(function(){});
+    acLoadFam();
+  }
+  function acRenderAccount(){
+    var j = acAccount; if (!j) return;
+    $('ac-devs').innerHTML = (j.devices || []).map(function(d){
+      return '<div class="ev"><b>' + esc(d.name) + (d.current ? ' · this one' : '') + '</b>' +
+        '<small>First seen ' + esc(fmtTime(d.firstSeen)) + ' · last used ' + esc(fmtTime(d.lastUsed)) + '</small>' +
+        (d.current ? '' : '<div class="prow2" style="margin-top:var(--space-8)"><button type="button" class="cbtn ghost" data-acdev="' + esc(d.sid) + '">Sign out</button></div>') + '</div>';
+    }).join('') || '<div class="ev">Only this one.</div>';
+    $('ac-recnow').textContent = j.recovery ? j.recovery.name + ' can let you back in.' : 'Nobody chosen yet.';
+    $('ac-recclear').hidden = !j.recovery;
+    var opts = (j.recoveryChoices || []).map(function(c){
+      return '<option value="' + esc(c.userId) + '"' + (j.recovery && j.recovery.userId === c.userId ? ' selected' : '') + '>' + esc(c.name) + ' · ' + esc(c.family) + '</option>';
+    }).join('');
+    $('ac-recpick').innerHTML = opts || '<option value="">No adult in your families yet</option>';
+    $('ac-recsave').disabled = !opts;
+  }
+  $('ac-devs').addEventListener('click', function(e){
+    var b = e.target.closest('[data-acdev]'); if (!b) return;
+    b.disabled = true;
+    acAuth({ action: 'device_signout', sid: b.getAttribute('data-acdev') }).then(function(j){
+      if (!j.ok) { b.disabled = false; toast(j.error || 'Could not do that'); return; }
+      toast('Signed out of that one'); acLoadAccount();
+    }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  $('ac-outall').addEventListener('click', function(){
+    askSheet('Sign out everywhere?', 'Every phone and computer is signed out, this one too. Sign in again with your number and PIN.', 'Sign out everywhere', 'Go back', true).then(function(y){
+      if (!y) return;
+      var done = function(){
+        saveToken(''); clearAuth(); clearState();
+        try { localStorage.removeItem('parwah-circles'); } catch (e) {}
+        location.hash = ''; location.reload();
+      };
+      acAuth({ action: 'signout_all' }).then(done).catch(function(){ toast('No connection - try again'); });
+    });
+  });
+  $('ac-recsave').addEventListener('click', function(){
+    var v = $('ac-recpick').value; if (!v) return;
+    acAuth({ action: 'recovery_set', contactUserId: v }).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not save that'); return; }
+      toast(j.recovery.name + ' is your recovery contact 🧡'); acLoadAccount();
+    }).catch(function(){ toast('No connection - try again'); });
+  });
+  $('ac-recclear').addEventListener('click', function(){
+    acAuth({ action: 'recovery_clear' }).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not do that'); return; }
+      toast('Removed'); acLoadAccount();
+    }).catch(function(){ toast('No connection - try again'); });
+  });
+  $('ac-actshow').addEventListener('click', function(){
+    var box = $('ac-act');
+    box.hidden = false; box.innerHTML = '<div class="ev">Loading…</div>';
+    acAuth({ action: 'activity' }).then(function(j){
+      if (!j.ok) { box.innerHTML = '<div class="ev">Could not load this just now.</div>'; return; }
+      box.innerHTML = (j.activity || []).map(function(a){
+        return '<div class="ev">' + esc(a.text) + '<small>' + esc(fmtTime(a.at)) + '</small></div>';
+      }).join('') || '<div class="ev">Nothing yet.</div>';
+    }).catch(function(){ box.innerHTML = '<div class="ev">No connection - try again.</div>'; });
+  });
+  $('ac-export').addEventListener('click', function(){
+    var b = this; b.disabled = true; b.textContent = 'Getting your data ready…';
+    acAuth({ action: 'export_me' }).then(function(j){
+      b.disabled = false; b.textContent = 'Download my data';
+      if (!j.ok) { toast(j.error || 'Could not do that'); return; }
+      try {
+        $('ac-exhtml').href = URL.createObjectURL(new Blob([j.html], { type: 'text/html' }));
+        $('ac-exjson').href = URL.createObjectURL(new Blob([JSON.stringify(j.json, null, 2)], { type: 'application/json' }));
+        $('ac-exlinks').hidden = false;
+        toast('Ready. Save either file below.');
+      } catch (e) { toast('This phone could not save the file'); }
+    }).catch(function(){ b.disabled = false; b.textContent = 'Download my data'; toast('No connection - try again'); });
+  });
+  $('ac-del').addEventListener('click', function(){
+    $('ac-del-pin').value = ''; $('ac-del-err').textContent = ''; $('ac-del-posts').checked = false;
+    $('ac-del-yes').classList.add('danger');   // red, as every "this deletes" button is
+    $('ac-delsheet').hidden = false;
+    try { $('ac-del-pin').focus(); } catch (e) {}
+  });
+  $('ac-del-no').addEventListener('click', function(){ $('ac-delsheet').hidden = true; });
+  $('ac-del-pin').addEventListener('input', function(){ var d = this.value.replace(/[^0-9]/g, '').slice(0, 4); if (d !== this.value) this.value = d; });
+  $('ac-del-yes').addEventListener('click', function(){
+    var pin = $('ac-del-pin').value, b = this;
+    if (!/^[0-9]{4}$/.test(pin)) { $('ac-del-err').textContent = 'Type your 4-number PIN.'; return; }
+    b.disabled = true;
+    acAuth({ action: 'delete_me', pin: pin, removePosts: $('ac-del-posts').checked }).then(function(j){
+      b.disabled = false;
+      if (!j.ok) { $('ac-del-err').textContent = j.error || 'Could not do that.'; return; }
+      $('ac-delsheet').hidden = true;
+      acSecurity.deleteAt = j.deleteAt; acRenderSec();
+      toast('Your account will be deleted in 7 days. You can keep it until then.');
+    }).catch(function(){ b.disabled = false; $('ac-del-err').textContent = 'No connection - try again.'; });
+  });
+  $('ac-delundo').addEventListener('click', acKeep);
+  ['ac-seephone', 'ac-seebirth'].forEach(function(id){
+    $(id).addEventListener('change', function(){
+      if (!state) return;
+      acCircle({ action: 'privacy_set', seePhone: $('ac-seephone').value, seeBirth: $('ac-seebirth').value }).then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not save that'); return; }
+        toast('Saved'); refresh();
+      }).catch(function(){ toast('No connection - try again'); });
+    });
+  });
+
+  // ---- the family: what the grown-ups decide together, and what is mine to undo
+  function acCircle(body){ return post(API.circle, Object.assign({ code: state.code, memberId: state.memberId }, body)); }
+  var acLinks = [];
+  function acLoadFam(){
+    if (!state || !authToken()) return;
+    var forCode = state.code;
+    acCircle({ action: 'standing_state' }).then(function(j){
+      if (!j.ok || !state || state.code !== forCode) return;
+      acFam = j;
+      acRenderFam();
+      if (j.claimReview && j.claimReview.length) acClaimOpen(j.claimReview);
+    }).catch(function(){});
+    if (famKind !== 'group') {
+      acCircle({ action: 'link_state' }).then(function(j){
+        if (!j.ok || !state || state.code !== forCode) return;
+        acLinks = j.agreed || []; acRenderFam();
+      }).catch(function(){});
+    } else acLinks = [];
+  }
+  var AC_ASK = {
+    open_join: function(a){ return (a.mine ? 'You asked' : esc(a.askedByName || 'An adult') + ' asks') + ' to let the code be enough to join. Anyone with the code would come in with no questions asked.'; },
+    remove_member: function(a){ return (a.mine ? 'You asked' : esc(a.askedByName || 'An adult') + ' asks') + ' to remove ' + esc(a.targetName || 'someone') + ' from this family. Two adults decide this together.'; },
+    delete_family: function(a){ return (a.mine ? 'You asked' : esc(a.askedByName || 'An adult') + ' asks') + ' to delete this family from Parwah. Every adult has to say yes.' + (a.waitingFor && a.waitingFor.length ? ' Still to answer: ' + esc(a.waitingFor.join(', ')) + '.' : ''); }
+  };
+  function acRenderFam(){
+    var j = acFam; if (!j || !$('ac-famlist')) return;
+    var h = '';
+    if (j.deleteAt) {
+      h += '<div class="ev"><b>This family will be deleted on ' + esc(acDay(j.deleteAt)) + '</b><small>Every adult said yes. Nothing is deleted before then.</small>' +
+        (j.me.may ? '<div class="prow2" style="margin-top:var(--space-8)"><button type="button" class="cbtn" data-acfam="undodelete">Stop the delete</button></div>' : '') + '</div>';
+    }
+    (j.asks || []).forEach(function(a){
+      var say = AC_ASK[a.kind]; if (!say) return;
+      h += '<div class="ev"><b>' + say(a) + '</b>' +
+        '<div class="prow2" style="margin-top:var(--space-8)">' +
+        (a.voted === 'yes' || a.mine ? '<span class="hint">You said yes. Waiting for ' + (a.kind === 'delete_family' ? 'the others' : 'another adult') + '.</span>'
+          : '<button type="button" class="cbtn" data-acyes="' + esc(a.id) + '">Yes</button>') +
+        (a.mine ? '<button type="button" class="cbtn ghost" data-accancel="' + esc(a.id) + '">Take it back</button>'
+          : '<button type="button" class="cbtn no" data-acno="' + esc(a.id) + '">No</button>') + '</div></div>';
+    });
+    (j.unsure || []).forEach(function(u){
+      h += '<div class="ev"><b>Is ' + esc(u.name) + ' an adult?</b><small>Nobody has written their date of birth. Adults decide who joins and who is let back in.</small>' +
+        '<div class="prow2" style="margin-top:var(--space-8)"><button type="button" class="cbtn" data-acadult="' + esc(u.id) + '">Yes, 18 or over</button>' +
+        '<button type="button" class="cbtn ghost" data-acminor="' + esc(u.id) + '">No, under 18</button></div></div>';
+    });
+    (j.treeEdits || []).forEach(function(t){
+      h += '<div class="ev"><b>🌳 ' + esc(t.by) + ' changed your place in the family tree</b><small>' + esc(t.note || '') + ' · ' + esc(fmtTime(t.at)) + '</small>' +
+        '<div class="prow2" style="margin-top:var(--space-8)"><button type="button" class="cbtn" data-acundo="' + esc(t.id) + '">Undo it</button></div></div>';
+    });
+    (acLinks || []).forEach(function(l){
+      h += '<div class="ev"><b>🌳 Family trees will be linked with ' + esc(l.name) + ' on ' + esc(acDay(l.startsAt)) + '</b><small>It starts sooner if every adult says yes. Any adult can object.</small>' +
+        (j.me.may ? '<div class="prow2" style="margin-top:var(--space-8)">' + (l.iSaidYes ? '<span class="hint">You said yes.</span>' : '<button type="button" class="cbtn" data-aclyes="' + esc(l.id) + '">Yes, link them</button>') +
+        '<button type="button" class="cbtn no" data-aclno="' + esc(l.id) + '">I object</button></div>' : '') + '</div>';
+    });
+    if (j.codeWeak) {
+      h += '<div class="ev"><b>Make your family code stronger</b><small>The code is short, or letters only, so it is easier to guess. A code of 8 or more with a number is safer. The old one stops working when you change it.</small>' +
+        '<div class="prow2" style="margin-top:var(--space-8)"><button type="button" class="cbtn ghost" data-acfam="code">Set a new code</button></div></div>';
+    }
+    $('ac-famlist').innerHTML = h;
+    $('ac-famcard').hidden = !h;
+    // Changing the door is for the grown-ups.
+    $('jp-toggle').hidden = !j.me.may; $('code-edit').hidden = !j.me.may;
+    $('ac-famdel').hidden = !j.me.may || !!j.deleteAt;
+    $('ac-famdel').textContent = famKind === 'group' ? 'Delete this group' : 'Delete this family';
+    $('ac-seephone').value = j.privacy.phone; $('ac-seebirth').value = j.privacy.birth;
+    $('ac-seehint').textContent = 'In ' + (state.circleName || 'this ' + (famKind === 'group' ? 'group' : 'family')) + '. You choose again for each family or group you are in.';
+    renderJoinReqs();
+  }
+  function acFamAct(body, okMsg, btn){
+    if (btn) btn.disabled = true;
+    acCircle(body).then(function(j){
+      if (btn) btn.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not do that'); return; }
+      toast(j.message || okMsg); acLoadFam(); refresh();
+    }).catch(function(){ if (btn) btn.disabled = false; toast('No connection - try again'); });
+  }
+  $('ac-famlist').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    var id;
+    if ((id = b.getAttribute('data-acyes'))) { acFamAct({ action: 'ask_vote', askId: id, yes: true }, 'You said yes', b); return; }
+    if ((id = b.getAttribute('data-acno'))) { acFamAct({ action: 'ask_vote', askId: id, yes: false }, 'You said no. Nothing changes.', b); return; }
+    if ((id = b.getAttribute('data-accancel'))) { acFamAct({ action: 'ask_cancel', askId: id }, 'Taken back', b); return; }
+    if ((id = b.getAttribute('data-acadult'))) { acFamAct({ action: 'adult_confirm', targetId: id, adult: true }, 'Saved', b); return; }
+    if ((id = b.getAttribute('data-acminor'))) { acFamAct({ action: 'adult_confirm', targetId: id, adult: false }, 'Saved', b); return; }
+    if ((id = b.getAttribute('data-acundo'))) { acFamAct({ action: 'tree_undo', editId: id }, 'Your place is back as it was', b); return; }
+    if ((id = b.getAttribute('data-aclyes'))) { acFamAct({ action: 'link_yes', linkId: id }, 'You said yes', b); return; }
+    if ((id = b.getAttribute('data-aclno'))) {
+      askSheet('Object to linking the family trees?', 'The two families will not be linked. They can ask again later.', 'I object', 'Go back', true)
+        .then(function(y){ if (y) acFamAct({ action: 'link_object', linkId: id }, 'The trees will not be linked', b); });
+      return;
+    }
+    if (b.getAttribute('data-acfam') === 'undodelete') { acFamAct({ action: 'family_delete_undo' }, 'This family stays 🧡', b); return; }
+    if (b.getAttribute('data-acfam') === 'code') {
+      $('codeform').hidden = false; $('cc-code').value = '';
+      try { $('cc-code').scrollIntoView({ block: 'center' }); $('cc-code').focus(); } catch (x) {}
+    }
+  });
+  // The same two answers, on the linked-families sheet.
+  $('fl-list').addEventListener('click', function(e){
+    var b = e.target.closest('[data-aclyes],[data-aclno]'); if (!b) return;
+    var id = b.getAttribute('data-aclyes');
+    var after = function(){ try { flRefresh(true); } catch (x) {} };
+    if (id) { acCircle({ action: 'link_yes', linkId: id }).then(function(j){ toast(j.ok ? (j.active ? 'Your family trees are linked 🌳' : 'You said yes') : (j.error || 'Could not do that')); after(); acLoadFam(); }).catch(function(){ toast('No connection - try again'); }); return; }
+    id = b.getAttribute('data-aclno');
+    askSheet('Object to linking the family trees?', 'The two families will not be linked. They can ask again later.', 'I object', 'Go back', true).then(function(y){
+      if (!y) return;
+      acCircle({ action: 'link_object', linkId: id }).then(function(j){ toast(j.ok ? 'The trees will not be linked' : (j.error || 'Could not do that')); after(); acLoadFam(); }).catch(function(){ toast('No connection - try again'); });
+    });
+  });
+  $('ac-famdel').addEventListener('click', function(){
+    var many = acFam && acFam.adults > 1;
+    var w = famKind === 'group' ? 'group' : 'family';
+    askSheet('Delete this ' + w + ' from Parwah?', (many ? 'Every adult in the ' + w + ' has to say yes. ' : '') + 'Then it is deleted after 7 days, with everything in it: chats, papers and plans. Any adult can stop it before then.', 'Ask to delete it', 'Keep it', true)
+      .then(function(y){ if (y) acFamAct({ action: 'family_delete_ask' }, many ? 'The other adults have been asked' : 'It will be deleted in 7 days. You can stop it in the Family tab.'); });
+  });
+  // "This is": when someone joining says the family already added them by name.
+  function acClaimPick(q){
+    if (!acFam || !acFam.me || !acFam.me.may) return '';
+    var jn = (acFam.joins || []).filter(function(x){ return x.id === q.id; })[0];
+    if (!jn || (!jn.claimMember && !jn.wantsClaim) || !(acFam.byName || []).length) return '';
+    return '<label style="margin-top:var(--space-8)">They say the family already added them. This is' +
+      '<select data-acclaim="' + esc(q.id) + '" style="margin-top:var(--space-4)"><option value="">Someone new</option>' +
+      acFam.byName.map(function(p){ return '<option value="' + esc(p.id) + '"' + (jn.claimMember === p.id ? ' selected' : '') + '>' + esc(p.name) + ' (added by name)</option>'; }).join('') +
+      '</select></label>';
+  }
+  function acClaimChoice(id){
+    var sel = document.querySelector('[data-acclaim="' + id + '"]');
+    if (!sel) return {};
+    return { claimMember: sel.value || null };
+  }
+  // Remove someone who is on Parwah: one adult asks, another agrees.
+  $('ac-mp-remove').addEventListener('click', function(){
+    var mid = $('msheet').dataset.mid;
+    var m = (membersCache || []).filter(function(x){ return x.id === mid; })[0];
+    if (!m) return;
+    $('msheet').hidden = true;
+    askSheet('Remove ' + m.name + ' from this family?', 'Two adults decide this together: another adult has to agree. ' + m.name + ' is told when it happens, and what is kept about them here is deleted.', 'Ask to remove', 'Go back', true)
+      .then(function(y){ if (y) acFamAct({ action: 'remove_ask', targetId: mid }, m.name + ' is no longer in the family'); });
+  });
+  function acSheetLine(m){
+    $('ac-mp-remove').hidden = !(acFam && acFam.me && acFam.me.may) || m.id === state.memberId || !onApp(m) || !!m.remembered;
+  }
+  // "What your family wrote about you": once, after "This is me".
+  var acClaimOpenFor = null;
+  function acClaimOpen(items){
+    if (acClaimOpenFor === state.memberId) return;
+    acClaimOpenFor = state.memberId;
+    $('ac-claimlist').innerHTML = items.map(function(i){
+      return '<div class="kv" style="align-items:center"><b>' + esc(i.label) + '</b><span>' + esc(i.value) + '</span></div>' +
+        (i.fixed ? '<p class="hint" style="margin:0 0 var(--space-12)">You can change your name in your profile.</p>'
+          : '<select data-acitem="' + esc(i.key) + '" aria-label="' + esc(i.label) + ': keep, hide or delete" style="margin-bottom:var(--space-12)">' +
+            '<option value="keep">Keep it</option><option value="hide">Hide it from others</option><option value="delete">Delete it</option></select>');
+    }).join('');
+    $('ac-claimsheet').hidden = false;
+  }
+  $('ac-claim-save').addEventListener('click', function(){
+    var choices = {}, b = this;
+    document.querySelectorAll('#ac-claimlist [data-acitem]').forEach(function(s){ choices[s.getAttribute('data-acitem')] = s.value; });
+    b.disabled = true;
+    acCircle({ action: 'claim_review', choices: choices }).then(function(j){
+      b.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not save that'); return; }
+      $('ac-claimsheet').hidden = true; toast('Saved 🧡'); refresh(); acLoadFam();
+    }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  // Opening Family or Profile reads what is waiting there.
+  var acSwitchTab = switchTab;
+  switchTab = function(t){
+    acSwitchTab(t);
+    if (!state) return;
+    if (t === 'profile') acLoadAccount();
+    if (t === 'people' || t === 'home') acLoadFam();
+  };
 
   // ---------- Screen 1: the family, as people rather than features ----------
   var recordsCache = [];
@@ -17630,7 +18173,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (!force && Date.now() - flAt < 30000) return;
     flAt = Date.now();
     widerPost({ action: 'link_state' }).then(function(j){
-      if (j && j.ok) { flData = { max: j.max || 6, links: j.links || [], incoming: j.incoming || [], outgoing: j.outgoing || [] }; flState = 'ok'; }
+      if (j && j.ok) { flData = { max: j.max || 6, links: j.links || [], incoming: j.incoming || [], outgoing: j.outgoing || [], agreed: j.agreed || [] }; flState = 'ok'; }
       else flState = 'error:' + humanFail(j && j.error, 'Could not load linked families. Try again in a moment.');
       flRenderAll();
     }).catch(function(){ flState = 'offline'; flRenderAll(); });
@@ -17748,6 +18291,15 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           '<div class="fl-acts"><button type="button" class="cbtn" data-flyes="' + esc(r.id) + '">Yes, link our trees</button>' +
           '<button type="button" class="cbtn no" data-flno="' + esc(r.id) + '">No</button></div></div>';
       }).join('');
+      // A yes starts a 48-hour wait: every adult of both families is told,
+      // and any of them can say yes too, or object.
+      if ((d.agreed || []).length) h += '<p class="eyebrow">Starting soon</p>' + d.agreed.map(function(l){
+        var may = acFam && acFam.me && acFam.me.may;
+        return '<div class="plan fl-ask" data-flwait="' + esc(l.id) + '"><b>' + esc(l.name) + '</b>' +
+          '<p class="hint fl-say">The family trees will be linked on ' + esc(acDay(l.startsAt)) + ', unless an adult in either family objects. It starts sooner if every adult says yes.</p>' +
+          (may ? '<div class="fl-acts">' + (l.iSaidYes ? '<span class="hint">You said yes.</span>' : '<button type="button" class="cbtn" data-aclyes="' + esc(l.id) + '">Yes, link them</button>') +
+            '<button type="button" class="cbtn no" data-aclno="' + esc(l.id) + '">I object</button></div>' : '') + '</div>';
+      }).join('');
       if (d.links.length) h += '<p class="eyebrow">Linked now: ' + d.links.length + ' of ' + d.max + '</p>' + d.links.map(function(l){
         return '<div class="plan fl-ask" data-fllink="' + esc(l.id) + '"><b>' + esc(l.name) + '</b>' +
           '<p class="hint fl-say">' + esc('Linked through ' + (l.bridgeName || 'one person') + '. ' + (l.people || []).length + ' people in their tree. ' +
@@ -17760,7 +18312,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           '<button type="button" class="cbtn ghost" data-flback="' + esc(o.id) + '">Take it back</button></div>';
       }).join('');
       // Nothing yet: one first step, and the form open.
-      if (!d.links.length && !d.incoming.length && !d.outgoing.length) {
+      if (!d.links.length && !d.incoming.length && !d.outgoing.length && !(d.agreed || []).length) {
         msg += (msg ? '<br><br>' : '') + 'No linked family yet. Ask a related family for their family code. They can find it on their Profile. Then write it below.';
         first = true;
       }
@@ -19131,6 +19683,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     $('mp-gift').hidden = self || !onApp(m);
     $('mp-dm').hidden = self || !onApp(m);
     rmSheetLine(m);
+    acSheetLine(m);
     $('mp-docs').textContent = self ? '📄 My documents' : '📄 Their documents';
     $('mp-page').textContent = self ? '👤 My page' : '👤 Their page';
     $('giftbox').hidden = true;
@@ -19204,7 +19757,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   });
   $('cc-save').addEventListener('click', function(){
     var nc = $('cc-code').value.toUpperCase().replace(/\s+/g, '');
-    if (!/^[A-Z0-9]{4,12}$/.test(nc)) { toast('Codes are 4-12 letters and numbers'); return; }
+    if (!/^[A-Z0-9]{8,12}$/.test(nc) || !/[0-9]/.test(nc)) { toast('Use 8 to 12 letters and numbers, with at least one number, like SHARMA24'); return; }
     post(API.circle, { action: 'set_code', code: state.code, memberId: state.memberId, newCode: nc })
       .then(function(j){
         if (!j.ok) { toast(j.error || 'Could not change the code'); return; }

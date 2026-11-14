@@ -873,6 +873,8 @@ CIRCLE_WIDE_OK = {
     ("_renewals.mjs", "payload, {})"):    "a household date nobody looks after yet: anyone may take it",
     ("_bond.mjs", "Plan it together on Parwah"): "a festival the circle itself chose, once, 14 days ahead",
     ("_famlink.mjs", "asks to link family trees"): "another family asks to link trees: any adult of this one may be the one who answers",
+    ("_standing.mjs", "Anyone with the code can now join"): "two adults opened the door: it changes who can walk in, for everyone",
+    ("_standing.mjs", "will be deleted in"): "the whole family is about to be deleted: every member must hear, with the way to stop it",
     ("_remember.mjs", "A quiet day to remember"): "a day of remembrance is the whole family's, once a year",
 }
 def _push_calls(src):
@@ -1043,8 +1045,11 @@ check("flow: an empty name is refused out loud",
       "Please type your name so your family knows who joined." in _appf)
 check("flow: and a sign-in error is scrolled to, on a screen taller than a phone",
       "function authErr(" in _appf and "scrollIntoView({ block: 'center'" in _appf)
-check("flow: a number nobody has seen before is told it is new",
-      'id="au-newnote"' in _appf and "This number is new to Parwah" in _appf)
+# The server used to say "this number is new", which told anyone who typed a
+# number whether its owner uses Parwah. The person says it themselves now.
+check("flow: the sign-in card asks 'new here or signing in?', so the server never has to say which numbers have a profile",
+      'id="au-newnote"' in _appf and 'id="ac-mode"' in _appf and 'data-acmode="new"' in _appf and "I am new here" in _appf
+      and "This number is new to Parwah" not in _appf)
 check("flow: signing up, signing in and navigating are walked in a browser",
       (REPO / "site/tests/browser/flow.browser.mjs").exists()
       and "flow.browser.mjs" in (REPO / "package.json").read_text(encoding="utf-8"))
@@ -1259,8 +1264,22 @@ check("signin: PINs are compared in constant time",
       "timingSafeEqual" in _au)
 check("signin: the PINs a thief tries first are refused",
       "'1234'" in _au and "'0000'" in _au)
+_acct = (API_DIR / "_account.mjs").read_text(encoding="utf-8")
+_strules = (API_DIR / "_standingrules.mjs").read_text(encoding="utf-8")
 check("signin: wrong PINs lock the account rather than allowing a million tries",
-      "MAX_TRIES" in _au and "locked_until" in _authmjs and "lockMessage" in _authmjs)
+      "MAX_TRIES" in _au and "locked_until" in _acct and "pinGate(sql, key" in _authmjs and "lockReply(g.until)" in _authmjs)
+check("signin: the lock grows (15 minutes, 1 hour, 24 hours) and forgets after 7 clean days",
+      "export const LOCK_STEPS_MIN = [15, 60, 1440];" in _strules and "export const LOCK_DECAY_DAYS = 7;" in _strules
+      and "lockPlan(level, lastEnd" in _acct)
+check("signin: a phone that has signed in before keeps its own count, so a stranger cannot lock a parent out",
+      "const key = lockKey(phone, trusted ? deviceHash : null);" in _authmjs and "isKnownDevice(sql, user.id, deviceHash)" in _authmjs
+      and "deviceId: acDeviceId()" in _appa)
+check("signin: a number nobody has is counted and locked the same way, with the same slow hash",
+      "if (!user || !user.pin_hash) { hashPin(String(body.pin || ''), '00'); return false; }" in _authmjs
+      and "return res.status(200).json({ ok: true, exists: true, needPin: true, older: false });" in _authmjs
+      and "exists: false })" not in _authmjs)
+check("signin: no SMS anywhere in sign-in (owner's decision)",
+      not re.search(r"twilio|sendSms|sms_otp|\botp\b|_sosdial", _authmjs + _acct, re.I))
 # One secret for everyone: a PIN of exactly 4 numbers (owner, 2026-10-04).
 # An older PIN or a password signs in once, then a 4-number PIN is chosen
 # before any session is issued.
@@ -1269,12 +1288,12 @@ check("signin: a PIN of exactly 4 numbers, and no password option",
       and "SECRET_V = 3" in _au)
 check("signin: an older PIN or password is marked, and replaced before a session is issued",
       "add column if not exists secret_v" in _dbs and "changeSecret: true" in _authmjs
-      and 0 < _authmjs.find("if (user.secret_v !== SECRET_V) {") < _authmjs.find("const token = newToken()"))
+      and 0 < _authmjs.find("if (user.secret_v !== SECRET_V || user.must_change_pin) {") < _authmjs.rfind("return signedIn();"))
 # The try is claimed in the database, while unlocked, BEFORE the PIN is
 # checked. Read-check-then-write let a burst of guesses all be checked.
-_claim = re.search(r"pin_tries = pin_tries \+ 1\s+where id = \$\{user\.id\} and \(locked_until is null or locked_until <= now\(\)\)", _authmjs)
+_claim = re.search(r"on conflict \(k\) do update set tries = pin_locks\.tries \+ 1, updated_at = now\(\)\s+where pin_locks\.locked_until is null or pin_locks\.locked_until <= now\(\)", _acct)
 check("signin: each try is claimed before it is checked, so a burst cannot beat the lock",
-      _claim is not None and _claim.start() < _authmjs.find("verifyPin(body.pin, user.pin_salt, user.pin_hash)"))
+      _claim is not None and _claim.start() < _acct.find("if (!check()) {"))
 check("signin: a background refresh proves itself with the session, not a PIN",
       "sessionUser(sql, tokenOf(req))" in _authmjs and "su.user_id === user.id" in _authmjs)
 _pinbox = _appa.split('id="au-pin"')[1][:200]
@@ -1291,7 +1310,7 @@ check("signin: the lock and the old-PIN path are tested against a real database"
       and "test:db" in (REPO / "package.json").read_text(encoding="utf-8")
       and "npm run test:db" in (REPO / ".github/workflows/pr.yml").read_text(encoding="utf-8"))
 check("signin: a session token is issued, and only its hash is stored",
-      "newToken()" in _authmjs and "tokenHash(token)" in _authmjs and "createHash('sha256')" in _au)
+      "const token = newToken();" in _acct and "values (${tokenHash(token)}, ${user.id}" in _acct and "createHash('sha256')" in _au)
 check("signin: sessions expire", "SESSION_DAYS" in _au and "expires_at" in _dbs)
 check("signin: signing out revokes the session on the server",
       "action === 'signout'" in _authmjs and "delete from sessions" in _authmjs)
@@ -2251,9 +2270,12 @@ check("waitlist: it costs no serverless slot, it rides the front door",
 # real database in site/tests/db/authz.dbtest.mjs; this pins the wiring.
 check("auth: profile update and the tour flag act only as the signed-in person",
       _auth_src.count("await sessionIs(sql, tokenOf(req), body.userId)") == 2)
-check("auth: a family is created or joined only as the signed-in person",
-      "(action === 'create' || action === 'join') && !(await sessionIs(sql, tokenOf(req), uid))"
-      in (API_DIR / "circle.mjs").read_text(encoding="utf-8"))
+# Leaving the userId out used to skip the check altogether. Now the session
+# is asked for on every create and join, and says who it is.
+check("auth: a family is created or joined only as the signed-in person, whether or not a userId is sent",
+      "if (!su || (uid && String(su.user_id) !== String(uid))) {" in (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+      and "uid = su.user_id;" in (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+      and "if (uid && (action === 'create' || action === 'join')" not in (API_DIR / "circle.mjs").read_text(encoding="utf-8"))
 check("auth: and the database suite proves it", "authz.dbtest.mjs" in (REPO / "package.json").read_text(encoding="utf-8"))
 check("waitlist: the table is created by the schema, not by hand in a console",
       "create table if not exists waitlist" in _dbsrc)
@@ -3153,7 +3175,11 @@ check("register: only the person it is about, or whoever wrote it, can edit, re-
       and "Only the person it is about, or whoever wrote it, can change this." in _fr_api)
 check("register: once the person it is about makes it theirs alone, only they can widen it; the audit list keeps quiet about it",
       "if (row.unlock_policy === 'ONLY_ME' && row.person_id !== g.me.id) {" in _fr_api
-      and _fr_api.count("l.unlock_policy = 'ONLY_ME'") == 2
+      # The audit list shows a member only rows they did or that are about
+      # them, in both of its reads, so an entry that is someone's alone is
+      # never in anyone else's list.
+      and _fr_api.count("where l.id = ae.resource_id and l.person_id = ${g.me.id})))") == 2
+      and _fr_api.count("and (ae.actor_id = ${g.me.id}") == 2
       and "is not on Parwah yet, so an emergency could never open this" in _fr_api)
 check("register: the people lists are refilled when the family arrives, not only when the screen opens",
       "if (frSig !== frPeopleSig) { frPeopleSig = frSig; try { frFillPeople(); } catch (e) {} }" in _app_src)
@@ -3466,10 +3492,10 @@ check("links: one read of the other family, and it names only what may cross",
       and "case when ${!!withPhones}::boolean then phone else null end as phone" in _wf_people
       and not re.search(r"\b(dob|relation|gift_info|country|role|user_id|remembered|passed_|remember_line|created_at)\b", _wf_people.replace("to_char(dob, 'YYYY') as born", "").replace("order by created_at, id", "")))
 check("links: nothing else of a family is ever read by the link module",
-      set(re.findall(r"(?:from|join|into|update)\s+([a-z_]+)\b", _wf_code(_wf_link))) <= {"family_links", "circles", "members", "events"}
+      set(re.findall(r"(?:from|join|into|update)\s+([a-z_]+)\b", _wf_code(_wf_link))) <= {"family_links", "family_link_votes", "circles", "members", "events"}
       and not re.search(r"family_links|famlink", _wf_code(_wf_fact)))
 check("links: a yes from an adult of the other family, either side ends it, six at most, one per pair",
-      "if (iAmA || l.status !== 'pending') return bad('That request has already been dealt with', 404);" in _wf_link
+      "if (iAmA || l.status !== 'pending' || l.agreed_at) return bad('That request has already been dealt with', 404);" in _wf_link
       and "if (!adult()) return bad('An adult in the family answers this.', 403);" in _wf_link
       and "export const LINKS_MAX = 6;" in _wf_link and _wf_link.count("activeCount(sql, ") >= 3
       and "least(a_circle, b_circle), greatest(a_circle, b_circle)" in _wf_link and "where status in ('pending', 'active')" in _wf_link
@@ -4310,6 +4336,101 @@ _cn_cov = (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
 check("consent: the coverage map says what is live, and the leader review is written down",
       all(w in _cn_cov for w in ("Ashirwad", "Reached safely", "Announce my arrivals", "Show me the costs", "audienceFor"))
       and "stream B" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
+
+# ---------- 10za. Accounts, joining and equal standing ----------
+# The doors of the app. Each check is a rule that must not quietly go back:
+# site/tests/db/standing.dbtest.mjs walks every one against a real database.
+_st_rules = (API_DIR / "_standingrules.mjs").read_text(encoding="utf-8")
+_st_acct = (API_DIR / "_account.mjs").read_text(encoding="utf-8")
+_st_mod = (API_DIR / "_standing.mjs").read_text(encoding="utf-8")
+_st_auth = (API_DIR / "auth.mjs").read_text(encoding="utf-8")
+_st_circle = (API_DIR / "circle.mjs").read_text(encoding="utf-8")
+_st_db = (API_DIR / "_db.mjs").read_text(encoding="utf-8")
+_st_link = (API_DIR / "_famlink.mjs").read_text(encoding="utf-8")
+_st_ev = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_st_app = (REPO / "site/public/index.html").read_text(encoding="utf-8")
+_st_priv = (REPO / "site/public/privacy/index.html").read_text(encoding="utf-8")
+check("standing: ONE adult rule, and every gate asks it",
+      _st_rules.count("export function isAdultMember(") == 1 and not re.search(r"^import ", _st_rules, re.M)
+      and "return { rows, me, today, may: isAdultMember(me, today) };" in _st_mod
+      and _st_circle.count("standingOfCaller(sql, circle, mRow[0].id)).may") >= 3
+      and "const adult = () => standing.may;" in _st_link and "_rememberrules" not in _st_link
+      and "if (!s.may) return bad(ADULT_ONLY, 403);" in _st_mod)
+check("standing: a child or a teen cannot let people in, change the door, move others in the tree, link households, remove anyone or delete the family",
+      "if (!(await standingOfCaller(sql, circle, mRow[0].id)).may) return res.status(403).json({ ok: false, error: ADULT_ONLY });" in _st_circle
+      and "if (!own && !(await standingOfCaller(sql, circle, mRow[0].id)).may) {" in _st_circle
+      and "if (!adult()) return bad('An adult in the family asks for this.', 403);" in _st_link
+      and _st_mod.index("if (!s.may) return bad(ADULT_ONLY, 403);") < _st_mod.index("if (a === 'remove_ask') {") < _st_mod.index("if (a === 'family_delete_ask') {"))
+check("standing: letting someone back in needs a KNOWN grown-up of a FAMILY (never a group of friends), or the recovery contact they chose",
+      "c.kind = 'family'" in _st_acct and "isAdultMember(r, today, { strict: true })" in _st_acct
+      and "if (status === 'approved' && !who.sure) {" in _st_auth and "needDob: true" in _st_auth
+      and "recovery: true" in _st_acct)
+check("standing: a PIN reset needs the two numbers on the asking phone, ends after a few wrong ones, and the owner's phones can stop it for ten minutes",
+      "String(body.sayCode || '').trim() !== String(r[0].say_code || '')" in _st_auth and "const CODE_TRIES = 5;" in _st_auth
+      and "export const RESET_VETO_MINUTES = 10;" in _st_rules and "if (r.status === 'approved' && r.veto_until && new Date(r.veto_until) > new Date()) return 'holding';" in _st_auth
+      and "if (a === 'reset_veto') {" in _st_acct and 'data-resetcode="' in _st_app and 'id="ac-rs-code"' in _st_app)
+check("standing: a reset, a sign-in and a wrong PIN say nothing about whether a number is registered",
+      "noFamily" not in _st_auth and "if (!ur[0] || !who.length) { await padTo(t0, 500); return res.status(200).json(same); }" in _st_auth
+      and "That number and PIN do not match." in _st_acct and "already registered" not in _st_auth.split("if (body.action !== 'enter')")[1])
+check("standing: an account with no PIN, in a family, cannot be taken by typing its number first",
+      "const vouched = pinless ? (await resetApprovers(sql, user.id)).length > 0 : false;" in _st_auth and "if (pinless && !vouched) {" in _st_auth)
+check("standing: a sign-in on a new phone is told to the older phones and never blocked; 'Not me' signs it out and asks for a new PIN",
+      "if (!quiet && !known && others[0].n > 0) {" in _st_acct and "New sign-in on another phone" in _st_acct
+      and "await sql`update users set must_change_pin = true where id = ${uid}`;" in _st_acct
+      and "Only a phone that was signed in before can say this." in _st_acct and "data-acnotme=" in _st_app)
+check("standing: family codes come from the secure random source, 8 long, and a new custom code needs 8 with a number",
+      "randomInt(all.length)" in _st_db and "Math.random" not in _st_db.split("export function makeCode()")[1].split("\n}\n")[0] and "export const CODE_LEN = 8;" in _st_db
+      and "export const CODE_MIN = 8, CODE_MAX = 12;" in _st_rules and "const cerr = codeProblem(newCode);" in _st_circle
+      and "Make your family code stronger" in _st_app)
+check("standing: a request to join never names the family, at most 10 wait at one door, and requests are counted",
+      "message: 'Your request has gone to the family. An adult there can let you in.' });" in _st_circle
+      and "circleName" not in _st_circle.split("const waiting = (requestId) =>")[1].split("const FULL")[0]
+      and "export const JOIN_PENDING_MAX = 10;" in _st_rules and "if (n[0].n >= JOIN_PENDING_MAX)" in _st_circle
+      and "rateLimit(sql, 'joinask', circle.id, 30, 86400, { failClosed: true })" in _st_circle)
+check("standing: opening the door, removing a member and deleting the family are decided together, with the rules in one place",
+      all(f"export function {fn}(" in _st_rules for fn in ("removalRule", "openJoinRule", "deleteFamilyRule"))
+      and "const rule = removalRule({ me: s.me, target, members: s.rows, today: s.today });" in _st_mod
+      and "const second = yes.find(id => id !== ask.asked_by && id !== ask.target_member);" in _st_mod
+      and "if (!adults.length || !adults.every(a => yes.includes(a.id))) return { status: 'pending' };" in _st_mod
+      and "export const UNDO_DAYS = 7;" in _st_rules)
+check("standing: 'This is me' is only ever a request, and the person then chooses what stays of what the family wrote",
+      "return ask(sameName[0].name, sameName[0].role, sameName[0].id, true);" in _st_circle and "claim_review = true" in _st_circle
+      and "if (a === 'claim_review') {" in _st_mod and 'id="ac-jclaim"' in _st_app and 'id="ac-claimsheet"' in _st_app)
+check("standing: who is sent a phone and a birth year is ONE call in events.mjs, and a failed read sends neither",
+      _st_ev.count("memberCards(") == 1 and "members: await memberCards(sql, circle, g.me, members)" in _st_ev
+      and "export function cardFor(member, viewer, kind) {" in _st_rules
+      and "return (members || []).map(m => (m.id === me.id ? m : { ...m, phone: null, dob: null }));" in _st_mod
+      and "export function defaultSee(kind) { return kind === 'group' ? 'me' : 'family'; }" in _st_rules)
+check("standing: the timer's share is ONE line in runTick, at module scope",
+      _st_ev.count("standingSweepAll(") == 1 and "await one(() => standingSweepAll(sql));" in _st_ev
+      and "\nexport async function standingSweepAll(sql) {" in _st_mod)
+check("standing: a change to someone's place in the tree can be undone by them; linking two households waits 48 hours",
+      _st_circle.count("await recordTreeEdit(sql, circle, mRow[0], all,") == 4 and "if (a === 'tree_undo') {" in _st_mod
+      and "export const LINK_HOLD_HOURS = 48;" in _st_rules and "agreed_at = now(), effective_at = ${starts}" in _st_link
+      and "if (a === 'link_yes' || a === 'link_object') {" in _st_link and "status = 'active', b_member" not in _st_link)
+check("standing: download my data reads no secret, builds no SQL from text, and is rate limited; a delete waits 7 days",
+      "const SECRET_KEY = /hash|salt|secret|token|p256dh|^auth$|endpoint|bytes|^data$|ip_fingerprint/i;" in _st_acct
+      and "select parwah_rows_for(${r.tbl}, ${r.col}, ${ids}::uuid[], 2000) as j" in _st_acct
+      and "rateLimit(sql, 'export', uid, 3, 86400, { failClosed: true })" in _st_acct
+      and "const at = new Date(Date.now() + UNDO_DAYS * 86400000).toISOString();" in _st_acct
+      and "delete_at is not null and delete_at <= now()" in _st_acct)
+check("standing: the privacy page says what the app does: download, delete my account, delete the family, 7 days, no text message",
+      all(x in _st_priv for x in ("Download my data", "Delete my account", "Delete this family", "after 7 days", "We never send a text message to sign you in",
+                                  "15 minutes, then 1 hour, then 24 hours", "only when two adults agree", "Sign out everywhere"))
+      and all(x in _st_app for x in ('id="ac-export"', 'id="ac-del"', 'id="ac-famdel"', 'id="ac-outall"', 'id="ac-mp-remove"')))
+_st_static = set(re.findall(r'\bid="(ac-[a-z0-9-]+)"', _st_app))
+check("standing: its screens keep to their own names (ids ac-, functions ac...)",
+      len(_st_static) >= 30 and len(re.findall(r"\n  function ac[A-Z]\w*\(", _st_app)) >= 15)
+_st_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("standing: the rules test runs in the gate; the db and browser tests run in test:db, and the browser test never waits a fixed time",
+      "node site/tests/standingtest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all(("site/tests/db/" + f) in _st_testdb and (REPO / "site/tests/db" / f).exists() for f in ("standing.dbtest.mjs", "standing.e2e.dbtest.mjs"))
+      and "waitForTimeout" not in (REPO / "site/tests/db/standing.e2e.dbtest.mjs").read_text(encoding="utf-8")
+      and all(x in (REPO / "site/tests/db/standing.dbtest.mjs").read_text(encoding="utf-8")
+              for x in ("THE PARENT WITH ONE CHEAP PHONE", "THE PERSON IN TWO FAMILIES", "THE FAMILY WITH A SINGLE ADULT")))
+check("standing: the coverage map says what is live, and the review is written down",
+      "| Equal standing: who decides what |" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
+      and "accounts, joining and equal standing" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

@@ -10,7 +10,11 @@
 //   - a yes lets the person choose a new PIN from the device that asked;
 //   - asking again and again is still one request;
 //   - someone outside the family cannot approve it, and neither can the
-//     person asking.
+//     person asking;
+//   - the yes needs the two numbers the asking phone shows (a real call),
+//     and comes from a grown-up: Rohan has a date of birth here;
+//   - Papa is signed in on a phone, so his new PIN waits the ten minutes in
+//     which that phone could say "not me". The test moves the clock.
 //
 // Run with a database that is safe to wipe; its name must end in _test:
 //   PARWAH_TEST_DATABASE_URL=postgres://postgres@localhost:5432/parwah_test npm run test:db
@@ -61,13 +65,16 @@ const code = r.code;
 await call(circle, { action: 'set_join_policy', code, memberId: r.memberId, policy: 'open' }, papa.token);
 r = await call(circle, { action: 'join', code, memberName: 'Rohan', userId: rohan.id, role: 'family' }, rohan.token);
 ok('setup: Rohan is in Papa\'s family', !!r.memberId, JSON.stringify(r));
+// Letting someone back in is for a known grown-up: not knowing is a no.
+await admin.query(`update members set dob = '1990-05-05' where id = $1`, [r.memberId]);
 
 // ---- Papa forgets his PIN and asks the family
-let secret;
+let secret, sayCode;
 {
   r = await call(auth, { action: 'reset_request', phone: '9840000001', cc: '+91' });
   secret = r.resetSecret;
   ok('Papa\'s request is taken', r.ok && r.asked, JSON.stringify(r));
+  ok('and his phone is given two numbers to read out', /^[1-9][0-9]$/.test(r.sayCode || ''), JSON.stringify(r));
 
   // What Rohan's open app runs every minute, with no PIN, on his session.
   const refresh = await call(auth, { action: 'enter', phone: '9840000002', cc: '+91', refresh: true }, rohan.token);
@@ -86,6 +93,7 @@ let secret;
   await call(auth, { action: 'reset_request', phone: '9840000001', cc: '+91' });
   r = await call(auth, { action: 'reset_request', phone: '9840000001', cc: '+91' });
   secret = r.resetSecret || secret;
+  sayCode = r.sayCode;
   const pend = await rows(`select id from pin_resets where user_id = $1 and status = 'pending'`, [papa.id]);
   ok('three taps are one waiting request', pend.length === 1, String(pend.length));
   const refresh = await call(auth, { action: 'enter', phone: '9840000002', cc: '+91', refresh: true }, rohan.token);
@@ -106,9 +114,17 @@ const pend = (await rows(`select id from pin_resets where user_id = $1 and statu
 // ---- Rohan says yes, and Papa chooses a new PIN
 {
   r = await call(auth, { action: 'reset_approve', resetId: pend && pend.id, token: rohan.token }, rohan.token);
+  ok('a yes without the two numbers is not taken', r.status === 400 && r.wrongCode === true, JSON.stringify(r));
+  r = await call(auth, { action: 'reset_approve', resetId: pend && pend.id, sayCode, token: rohan.token }, rohan.token);
   // The reply's own status field ('approved') is spread over the HTTP one here.
-  ok('Rohan approves it', r.ok && r.status === 'approved', JSON.stringify(r));
-  const s = await call(auth, { action: 'reset_status', phone: '9840000001', cc: '+91', resetSecret: secret });
+  ok('Rohan approves it, with the two numbers Papa read out', r.ok && r.status === 'approved', JSON.stringify(r));
+  let s = await call(auth, { action: 'reset_status', phone: '9840000001', cc: '+91', resetSecret: secret });
+  ok("Papa is signed in on a phone, so the new PIN waits ten minutes", s.reset === 'holding' && s.readyInSeconds > 500 && s.readyInSeconds <= 600, JSON.stringify(s));
+  r = await call(auth, { action: 'enter', phone: '9840000001', cc: '+91', resetSecret: secret, newPin: '5927' });
+  ok('and no PIN can be chosen while it waits', !r.token && r.reset === 'holding', JSON.stringify(r));
+  // Ten minutes later.
+  await admin.query(`update pin_resets set veto_until = now() - interval '1 second' where id = $1`, [pend && pend.id]);
+  s = await call(auth, { action: 'reset_status', phone: '9840000001', cc: '+91', resetSecret: secret });
   ok("Papa's waiting screen is told", s.reset === 'approved', JSON.stringify(s));
   r = await call(auth, { action: 'enter', phone: '9840000001', cc: '+91', resetSecret: secret });
   ok('it asks him for the new PIN', r.ok && r.setPin === true && !r.token, JSON.stringify(r));
