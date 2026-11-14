@@ -74,7 +74,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | **The chain that connects any two people, in words** | **Building** | kin chain |
 | **A Rishtedaar list: near, close and far, with search** | **Building** | Rishtedaar screen |
 | Two households that are related (maika and sasural, two brothers' homes) seeing each other's tree, by consent of both | Live | linked families |
-| Birthdays, anniversaries and the shared card | Live | bond cards |
+| Birthdays, anniversaries and the shared card | Live | bond cards: reminded the evening before, never delivered empty, thanked by the person |
 | Gotra, native village, kuldevta, family customs written down | Live | family facts |
 | A family directory to print or share for a wedding | Later | |
 
@@ -91,6 +91,12 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | **Recommend a show, song, game, book or place to anyone, and hear back** | **Building** | Pasand recommendations |
 | Watch or listen together at a set time (a plan with a link) | Live | a `together` plan, made from a recommendation in one tap |
 | A shared family photo album | Live | Yaadon ki album: photos kept in the database like vault files, made small on the phone first; 400 a family. A move to paid storage later is one change |
+| **Saying how I feel, and choosing who is told** | Live | "Aaj kaisa lag raha hai?" on Today: five choices, each a word with its emoji. Private by default; the member chooses "Keep to myself", "Tell only..." one person, or "Tell the family". A low answer reaches the feed only if they chose the family |
+| **A safe, private word to one person** ("Mujhe baat karni hai", "Maaf karna", "Can we talk?") | Live | `api/_baat.mjs`: only the two of them ever read it; not the feed, not the digest, not Ekta. The receiver answers "I will call you at...", "Aao, baat karte hain" or by voice. One reminder after a day, then silence |
+| **Thanking each other, evenly** | Live | Shukriya: a line or a voice note to anyone, on Parwah or not (kept for the day they join), private to the two or shown to the family. A weekly quiet thought on Today suggests someone, chosen so everyone is suggested about equally often. No counts, no ranking |
+| **One question a week for the whole family** | Live | at least 40 warm questions; each member answers by voice or text and reads the others once they have answered; someone not on Parwah can be answered for ("told by Dadi, recorded by Rohan") |
+| **Being answered**: heard-by on a story, a thank-you for a card, a reaction on a photo | Live | stories ("Suna, bahut accha laga" or a voice reply, pushed to the teller); cards (reminded the evening before, never handed over empty, "Say thank you", a print and share view for someone not on Parwah); photos (reactions, a voice caption, share one photo, one "new photos" push a day) |
+| **Equal votes** | Live | chat polls and date polls: a secret ballot (no name is sent to any phone), "Waiting for...", one reminder, a vote "for Dadi, by Rohan", the host sees the tally before a lock and the lock records it. Every vote counts once, whoever cast it |
 | A daily "what happened today" digest | Live | Aaj kya hua, from Ekta: plain words for everyone; one model call per member per day at most, 12 a circle a day, only when the owner's key is set |
 | A morning note of the day ahead | Live | Aaj ka din, from Ekta (`api/_ektaday.mjs`): medicine times of people the reader may see, plans, birthdays and anniversaries today, renewals this week, who is away. Plain rules by default; a model line only with `EKTA_MORNING_MODEL=on`, on the same one call a day as the evening note. Senior mode has a big "Sunao" button on both notes, and the thumbs |
 | An assistant that reads the family's own things back, and does small things for me | Live | Ekta asks before she acts (`api/_ektaagent.mjs`): she reads plans, polls, occasions, likes, renewals, today's medicine times, stories and what is waiting on me, each with that feature's own rule; a message, plan, poll, private note, reminder, request or card line is a card first ("Ekta wants to: ...", "Yes, do it" / "No"), run once on the yes, as me, through the same handler as the screen |
@@ -129,9 +135,9 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 ### I. Faith, custom and big events
 | Need | Status | Where |
 |---|---|---|
-| Festivals the family keeps, planned together | Live | festival kits |
+| Festivals the family keeps, planned together | Live | festival kits: 21 festivals with dates to 2030, added and taken off one at a time, with a feed line saying who changed what |
 | A wedding or function: guests, tasks, who is arriving when | Next | an event kit on top of plans and Rishtedaar |
-| Days of remembrance kept gently (the calendar date; a tithi is not worked out yet) | Live | days of remembrance |
+| Days of remembrance kept gently (the calendar date; a tithi is not worked out yet) | Live | days of remembrance; the yearly reminder opens a memory card the family adds a line, a photo or a voice note to |
 
 ## 2. The architecture every feature follows
 
@@ -150,7 +156,8 @@ whose name starts with an underscore, reached through an existing route by an
 | `/api/circle` | family, members, **tree and kin**, linked families, family facts, days of remembrance |
 | `/api/settings` | keys, push, coins, plan, day, PIN, location |
 | `/api/ekta` | the assistant, **the daily digest** (`action: digest`) |
-| `/api/chats`, `/api/events`, `/api/auth`, `/api/diag` | as named |
+| `/api/chats` | chats, and **being heard** (`area=heard`): the mood card, a private word, shukriya, the weekly question, the memory card |
+| `/api/events`, `/api/auth`, `/api/diag` | as named |
 
 **Rules for a module**
 1. Tables are created by the module itself, through `schemaOnce`, so two
@@ -174,6 +181,9 @@ whose name starts with an underscore, reached through an existing route by an
 | Whole family | everyone in the circle | most things, by default |
 | Only in an emergency | the circle, while that person has an open SOS; and, while the family's "What needs doing" list for that person is open, the two adults who started it and the nominee the entry names | register |
 | Sealed until the day | everyone but the person it is for | shared cards |
+| Only the two of us | the sender and the one person chosen, and nobody else (no admin, no feed, no digest, no Ekta) | a private word, a shukriya (unless the writer shows the family), a mood told to one person |
+| After I answer | members who have answered themself | the family's weekly question |
+| No names | everyone gets the counts; nobody gets who chose what | a secret ballot |
 
 The person an entry is about, and whoever wrote it, can always read it back.
 Where it matters (vault, register, family book) the owner can see who looked.
@@ -276,6 +286,42 @@ Honest limits:
 - **An SOS in two families is closed in each.** "I am safe" from the person
   closes all of them; someone else marking it sorted closes it in their own
   family only, as before.
+**Being heard, and answered (stream D, 2026-11-13)**
+
+An audit found that most features let someone speak but nobody was asked or
+able to answer, the quiet member had no safe channel, and votes were not
+equal. What shipped:
+
+| Feature | Module | Route | Tables |
+|---|---|---|---|
+| The mood card, private by default | `api/_pulse.mjs`, `api/_heardrules.mjs` | `/api/chats?area=heard` (`mood_set`) | `pulse` + `tell`, `to_member`, `event_id` |
+| A private word, and sorry | `api/_baat.mjs` | `/api/chats?area=heard` (`baat_*`) | `baat` |
+| Shukriya and its fair weekly prompt | `api/_heard.mjs` | `/api/chats?area=heard` | `shukriya`, `shukriya_prompts` |
+| The family's weekly question | `api/_heard.mjs` | `/api/chats?area=heard` | `sawaal_weeks`, `sawaal_answers` |
+| The memory card of a day of remembrance | `api/_heard.mjs`, `api/_remember.mjs` | `/api/chats?area=heard` | `remember_cards`, `remember_entries` |
+| Stories: heard by, a reply, told for someone | `api/_memorybond.mjs` | `/api/book?area=bond` | `story_heard`; `stories.recorded_by` |
+| Cards: evening-before reminder, never empty, thank-you | `api/_bond.mjs` | `/api/plans?area=bond` | `card_thanks`; `cards.eve_at` |
+| Photos: reactions, a voice caption, one push a day | `api/_album.mjs` | `/api/book?area=album` | `album_reactions`, `album_voice` |
+| Equal votes | `api/_chatbond.mjs`, `api/_bond.mjs` | `/api/chats`, `/api/plans?area=bond` | `chat_polls.secret`, `.reminded_at`; `poll_votes.by_member`; `plan_polls.secret`, `.reminded_at`, `.decided`; `plan_votes.by_member` |
+| Chat basics: paging, delete my own, mute for me | `api/chats.mjs` | `/api/chats` | `chat_mutes` |
+| Festivals one at a time, dates to 2030 | `api/_bond.mjs`, `api/_tyohaar.mjs` | `/api/plans?area=bond` | none new |
+| Coins for being heard, capped a day | `api/_coins.mjs` | none new | none new |
+| Likes noted for someone not on Parwah | `api/_pasand.mjs` | `/api/games?area=pasand` | `pasand_likes.by_member` |
+
+Honest limits:
+- **A private word needs the other person to be on Parwah.** For someone who
+  is not, the app says so and suggests a call. A shukriya is kept for them.
+- **A secret ballot hides who chose what, not who has voted.** "Waiting for"
+  names the people who have not answered yet, in every poll. With very few
+  voters the counts alone can give a vote away; the screen says only what it
+  shows.
+- **A vote, an answer or a story given for someone not on Parwah is the
+  word of the relative who typed it.** It is always shown with both names.
+- **Festival dates for 2028 to 2030 come from one published calendar** (Drik
+  Panchang; 2028 also checked against a second). The first day of Navratri
+  for 2028 to 2030 could not be read and is left out until it can be checked.
+- **Sharing a photo is the member's own act**, one photo at a time through
+  their phone's share sheet. There is still no public link.
 
 ## 4. What comes next
 

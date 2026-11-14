@@ -263,10 +263,14 @@ await P.click('#bs-x');
 
 // ================================================================ 3. festivals
 await go(R, '#fun'); await R.waitForTimeout(400);
-ok('festivals: nothing chosen until the family picks', (await R.$$('#bf-chips .sel')).length === 0 && (await R.$$('#bf-chips [data-bfk]')).length === 17);
+ok('festivals: nothing chosen until the family picks', (await R.$$('#bf-chips .sel')).length === 0 && (await R.$$('#bf-chips [data-bfk]')).length === 22);
 ok('the region note is shown', /differ by a day by region/.test(await R.textContent('#bf-note')));
-await R.click('#bf-chips [data-bfk="testfest"]'); await R.click('#bf-chips [data-bfk="diwali"]');
-await R.click('#bf-save'); await R.waitForTimeout(1300);
+// One tap adds one festival, saved at once (Nov 2026): there is no "save the whole list" any more.
+for (const k of ['testfest', 'diwali']) {
+  await R.click('#bf-chips [data-bfk="' + k + '"]');
+  await R.waitForFunction((key) => { const b = document.querySelector('#bf-chips [data-bfk="' + key + '"]'); return !!b && b.classList.contains('sel'); }, k, { timeout: 8000 });
+  for (let i = 0; i < 40 && !(await admin.query('select 1 from circle_festivals where fkey = $1', [k])).rows.length; i++) await R.waitForFunction(() => true);
+}
 ok('the family keeps its pick', (await admin.query(`select fkey from circle_festivals order by fkey`)).rows.map(r => r.fkey).join() === 'diwali,testfest');
 await design(R, '#bond-cards', 'the cards list');
 await design(R, '#bond-fests', 'the festivals picker');

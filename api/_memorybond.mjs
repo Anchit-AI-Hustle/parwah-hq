@@ -15,6 +15,11 @@
 //        story_skip    {id}           not asked again for 8 weeks
 //        story_visibility {id, visibility, shareWith?}
 //        story_remove  {id}
+//        story_heard   {id, audio?, mime?, secs?}   "Suna, bahut accha laga", or a voice reply, pushed to the teller
+//        story_for     {targetId, question, text?, audio?, mime?, secs?}
+//                      a story told by someone not on the app, typed or recorded by a relative:
+//                      it is kept, and always shown, as "told by Dadi, recorded by Rohan"
+//   GET  ...&view=audio&kind=heard&id=STORY&by=MEMBER   -> a voice reply, for the teller
 //        question_suggest {text, forId?, kind?}
 //        throwback_answer {text}      a group's weekly question
 //        recipe_add / recipe_edit {id} / recipe_remove {id}
@@ -46,6 +51,9 @@ import { pushCircle } from './_push.mjs';
 import { safeImageUri } from './_sec.mjs';
 import { dayIn, reqTz, validTz } from './_recur.mjs';
 import { STORY_SEED, THROWBACK_SEED } from './_bondseed.mjs';
+import { toldByLine, HEARD_TAP } from './_heardrules.mjs';
+import { awardHeard } from './_coins.mjs';
+import { rateLimit } from './_db.mjs';
 
 export const BOND = {
   skipWeeks: 8,                    // a skipped question rests this long
@@ -132,6 +140,17 @@ export async function ensureBondSchema(sql) {
     await sql`create unique index if not exists stories_week_once on stories (about_member, ask_week) where kind = 'story'`;
     await sql`create unique index if not exists stories_throwback_once on stories (about_member, ask_week) where kind = 'throwback'`;
     await sql`create index if not exists stories_circle on stories (circle_id, answered_at desc)`;
+    // A story told by someone not on the app: who typed or recorded it.
+    await sql`alter table stories add column if not exists recorded_by uuid references members(id) on delete set null`;
+    // "Heard by": one row per listener per story, with a voice reply if they left one.
+    await sql`create table if not exists story_heard (
+      story_id uuid not null references stories(id) on delete cascade,
+      member_id uuid not null references members(id) on delete cascade,
+      audio text,
+      audio_secs int,
+      at timestamptz not null default now(),
+      primary key (story_id, member_id)
+    )`;
     await sql`create table if not exists throwback_weeks (
       circle_id uuid not null references circles(id) on delete cascade,
       week date not null,
@@ -413,11 +432,17 @@ export async function bondToday(sql, circle, me, nowMs = Date.now(), tz = HOME_T
 async function memoryView(sql, circle, me) {
   const stories = await sql`
     select s.id, s.kind, s.about_member, m.name as about_name, s.question, s.answer_text, (s.audio is not null) as has_audio,
-           s.audio_secs, s.visibility, s.share_with, s.answered_at, s.ask_week
-    from stories s join members m on m.id = s.about_member
+           s.audio_secs, s.visibility, s.share_with, s.answered_at, s.ask_week, s.recorded_by, r.name as recorded_name
+    from stories s join members m on m.id = s.about_member left join members r on r.id = s.recorded_by
     where s.circle_id = ${circle.id} and s.answered_at is not null
-      and (s.visibility = 'circle' or s.about_member = ${me.id} or (s.visibility = 'some' and ${me.id} = any(s.share_with)))
+      and (s.visibility = 'circle' or s.about_member = ${me.id} or s.recorded_by = ${me.id} or (s.visibility = 'some' and ${me.id} = any(s.share_with)))
     order by s.answered_at desc limit 400`;
+  // HEARD BY: the names of who listened, for everyone who may read the
+  // story. A voice reply is for the teller (or whoever recorded it for them).
+  const heard = stories.length ? await sql`
+    select h.story_id, h.member_id, m.name, (h.audio is not null) as has_audio, h.audio_secs
+    from story_heard h join members m on m.id = h.member_id
+    where h.story_id = any(${stories.map(s => s.id)}::uuid[]) order by h.at` : [];
   const tellers = await sql`select t.member_id, t.status, m.name, a.name as asked_name from story_tellers t
                             join members m on m.id = t.member_id left join members a on a.id = t.asked_by
                             where t.circle_id = ${circle.id} order by m.name`;
@@ -431,7 +456,13 @@ async function memoryView(sql, circle, me) {
   const prefs = await prefsOf(sql, me.id);
   return {
     ok: true, kind: circle.kind || 'family', me: me.id,
-    stories: stories.map(s => ({ ...s, mine: s.about_member === me.id, share_with: s.about_member === me.id ? s.share_with : [] })),
+    stories: stories.map(s => {
+      const own = s.about_member === me.id || s.recorded_by === me.id, hs = heard.filter(h => h.story_id === s.id);
+      return { ...s, mine: own, share_with: own ? s.share_with : [],
+        told: s.recorded_by && s.recorded_by !== s.about_member ? toldByLine(s.about_name, s.recorded_name) : null,
+        heardBy: hs.map(h => h.member_id === me.id ? 'You' : h.name), heardByMe: hs.some(h => h.member_id === me.id),
+        replies: own ? hs.filter(h => h.has_audio).map(h => ({ memberId: h.member_id, name: h.name, secs: h.audio_secs })) : [] };
+    }),
     tellers: tellers.map(t => ({ memberId: t.member_id, name: t.name, status: t.status, askedBy: t.asked_name })),
     members, questions,
     recipes: recipes.map(r => ({ ...r, mine: r.by_member === me.id })),
@@ -468,8 +499,18 @@ export default async function bondApi(req, res) {
           const { circle_id, ...rest } = r[0];
           return res.status(200).json({ ok: true, recipe: { ...rest, mine: r[0].by_member === me.id } });
         }
+        if (q.kind === 'heard') {
+          // A voice reply: for the teller, whoever recorded the story for
+          // them, and the person who left it.
+          if (!isUuid(q.by)) return res.status(400).json({ ok: false, error: 'Bad id' });
+          const h = await sql`select h.audio from story_heard h join stories s on s.id = h.story_id
+                              where h.story_id = ${q.id} and h.member_id = ${q.by} and s.circle_id = ${circle.id} and h.audio is not null
+                                and (s.about_member = ${me.id} or s.recorded_by = ${me.id} or h.member_id = ${me.id})`;
+          if (!h[0]) return res.status(403).json({ ok: false, error: 'That is not shared with you' });
+          return res.status(200).json({ ok: true, audio: h[0].audio });
+        }
         const s = await sql`select s.audio from stories s where s.id = ${q.id} and s.circle_id = ${circle.id}
-                            and (s.visibility = 'circle' or s.about_member = ${me.id} or (s.visibility = 'some' and ${me.id} = any(s.share_with)))`;
+                            and (s.visibility = 'circle' or s.about_member = ${me.id} or s.recorded_by = ${me.id} or (s.visibility = 'some' and ${me.id} = any(s.share_with)))`;
         if (!s[0]) return res.status(403).json({ ok: false, error: 'That is not shared with you' });
         return res.status(200).json({ ok: true, audio: s[0].audio });
       }
@@ -536,9 +577,10 @@ export default async function bondApi(req, res) {
     // ---- one story
     const ownStory = async (id) => {
       if (!isUuid(id)) return { s: 400, e: 'Bad story' };
-      const r = (await sql`select id, about_member, kind, question, answered_at, skipped_at, visibility from stories where id = ${id} and circle_id = ${circle.id}`)[0];
+      const r = (await sql`select id, about_member, recorded_by, kind, question, answered_at, skipped_at, visibility from stories where id = ${id} and circle_id = ${circle.id}`)[0];
       if (!r) return { s: 403, e: 'That is not in your ' + word };
-      if (r.about_member !== me.id) return { s: 403, e: 'Only the storyteller can do that' };
+      // The storyteller, or the relative who recorded it for someone not on the app.
+      if (r.about_member !== me.id && r.recorded_by !== me.id) return { s: 403, e: 'Only the storyteller can do that' };
       return { r };
     };
     if (action === 'story_answer') {
@@ -561,6 +603,7 @@ export default async function bondApi(req, res) {
                   visibility = ${vis}, share_with = ${share}::uuid[], answered_at = coalesce(answered_at, now()), skipped_at = null
                 where id = ${o.r.id}`;
       if (firstTime) {
+        await awardHeard(sql, circle.id, me.id, 'story_told', dayOf(nowMs, tz));
         if (vis === 'circle') {
           await sql`insert into events (circle_id, member_id, type, text) values (${circle.id}, ${me.id}, 'care', ${me.name + ' answered this week\'s question 📖'})`;
           await pushCircle(sql, circle.id, { title: '📖 ' + first(me.name) + ' told a story', body: o.r.question, url: '/#memory' }, { except: me.id });
@@ -569,6 +612,68 @@ export default async function bondApi(req, res) {
         }
       }
       return res.status(200).json({ ok: true });
+    }
+    // HEARD: one tap ("Suna, bahut accha laga") or a voice reply, pushed to
+    // the teller the first time. Only for a story this person may read, and
+    // never on their own story.
+    if (action === 'story_heard') {
+      if (!isUuid(body.id)) return bad(400, 'Bad story');
+      const st = (await sql`select s.id, s.about_member, s.recorded_by, s.question, m.user_id as teller_user, m.remembered as teller_remembered
+                            from stories s join members m on m.id = s.about_member
+                            where s.id = ${body.id} and s.circle_id = ${circle.id} and s.answered_at is not null
+                              and (s.visibility = 'circle' or (s.visibility = 'some' and ${me.id} = any(s.share_with)))`)[0];
+      if (!st) return bad(403, 'That is not shared with you');
+      if (st.about_member === me.id || st.recorded_by === me.id) return bad(400, 'This is your own story');
+      let audio = null, secs = null;
+      if (body.audio) {
+        const a = audioCheck(body.mime, body.audio, body.secs);
+        if (a.err) return bad(400, a.err);
+        audio = a.uri; secs = a.secs;
+      }
+      const ins = await sql`insert into story_heard (story_id, member_id, audio, audio_secs) values (${st.id}, ${me.id}, ${audio}, ${secs})
+                            on conflict (story_id, member_id) do nothing returning story_id`;
+      let voiceNew = false;
+      if (!ins[0] && audio) {
+        const up = await sql`update story_heard set audio = ${audio}, audio_secs = ${secs}, at = now()
+                             where story_id = ${st.id} and member_id = ${me.id} returning (select 1) as x`;
+        voiceNew = !!up[0];
+      }
+      // The teller hears of it once per listener, and again only for a voice
+      // reply. A story told for someone not on the app goes to whoever recorded it.
+      if (ins[0] || voiceNew) {
+        const to = st.teller_user && !st.teller_remembered ? st.about_member : st.recorded_by;
+        if (to && to !== me.id) await pushCircle(sql, circle.id, { title: '📖 ' + first(me.name) + ' heard your story',
+          body: audio ? first(me.name) + ' left a voice reply. Open Parwah to hear it.' : '"' + HEARD_TAP + '"', url: '/#memory' }, { only: to });
+      }
+      return res.status(200).json({ ok: true, first: !!ins[0] });
+    }
+    // A STORY TOLD BY SOMEONE NOT ON THE APP, typed or recorded by a
+    // relative. Both names are kept and both are always shown.
+    if (action === 'story_for') {
+      const t = await memberIn(body.targetId);
+      if (!t) return bad(403, 'That person is not in this ' + word);
+      if (t.remembered) return bad(400, t.name + ' is remembered here. Their days of remembrance keep a memory card.');
+      if (t.on_app) return bad(400, first(t.name) + ' is on Parwah and can tell it themself');
+      const question = clip(body.question, 160);
+      if (question.length < 8) return bad(400, 'Write the question in a few words, like "How did you meet?"');
+      if (MORBID.test(question)) return bad(400, 'Keep it to a happy question about life, like school, work or a festival.');
+      const text = clip(body.text, BOND.answerMax);
+      let audio = null, secs = null;
+      if (body.audio) {
+        const a = audioCheck(body.mime, body.audio, body.secs);
+        if (a.err) return bad(400, a.err);
+        audio = a.uri; secs = a.secs;
+      }
+      if (!text && !audio) return bad(400, 'Say it or type it first');
+      if (!(await rateLimit(sql, 'story_for', me.id, 12, 86400, { failClosed: true }))) return bad(429, 'That is a lot of stories for one day. More tomorrow.');
+      const r = await sql`insert into stories (circle_id, kind, about_member, recorded_by, question, answer_text, audio, audio_secs, visibility, ask_week, answered_at)
+                          values (${circle.id}, 'told', ${t.id}, ${me.id}, ${question}, ${text || null}, ${audio}, ${secs}, 'circle', ${weekOf(dayOf(nowMs, tz))}::date, now())
+                          returning id`;
+      const label = toldByLine(t.name, me.name);
+      await sql`insert into events (circle_id, member_id, type, text) values (${circle.id}, ${me.id}, 'care', ${'A story ' + label + ' 📖'})`;
+      await pushCircle(sql, circle.id, { title: '📖 A story from ' + first(t.name), body: question + ' (' + label + ')', url: '/#memory' }, { except: me.id });
+      await awardHeard(sql, circle.id, me.id, 'story_told', dayOf(nowMs, tz));
+      return res.status(201).json({ ok: true, id: r[0].id, told: label });
     }
     if (action === 'story_skip') {
       const o = await ownStory(body.id);

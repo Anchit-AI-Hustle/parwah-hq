@@ -14,6 +14,13 @@
 //   poll_create  {chatId, question, options[], multi, closeAt}
 //   poll_vote    {chatId, pollId, choices[]}          [] takes the vote back
 //   poll_close   {chatId, pollId}                     the person who asked only
+//   poll_create  {..., secret}                        a secret ballot: no names, to anyone
+//   poll_vote    {..., forId}                         for someone not on the app, in the family chat
+//   poll_remind  {chatId, pollId}                     ONE reminder to those who have not voted
+//   delete_message {chatId, messageId}                my own message only
+//   mute         {chatId, on}                         quiet this chat, for me only
+// GET ...&chat=UUID&before=MESSAGE_ID                 the 50 messages before that one
+// /api/chats?area=heard                               being heard and answered (api/_heard.mjs)
 import { db, ensureSchema, circleByCode, isUuid, ensureCircleChat , requireMember, spaceWord, rateLimit } from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
@@ -26,7 +33,15 @@ import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
 import { spend } from './_coins.mjs';
 import { reqTz } from './_recur.mjs';
 import { classify, mentionsUrgent, urgentToo, renderEmergency, renderCrisis, LOCAL_MODEL } from './_ektalocal.mjs';
-import { ensureChatBond, checkVoice, voiceLabel, attachBond, react, createPoll, votePoll, closePoll } from './_chatbond.mjs';
+import { ensureChatBond, checkVoice, voiceLabel, attachBond, react, createPoll, votePoll, closePoll, remindPoll } from './_chatbond.mjs';
+import heardApi from './_heard.mjs';
+
+export const CHAT_PAGE = 50;
+// Many pushes at once, never one awaited after another: a family of twelve
+// used to wait for twelve sends in a row before the message came back.
+async function pushMany(sql, circleId, ids, payload) {
+  await Promise.allSettled([...new Set(ids)].map(id => pushCircle(sql, circleId, payload, { only: id })));
+}
 
 async function chatForMember(sql, circle, chatId, memberId) {
   if (!isUuid(chatId)) return null;
@@ -47,7 +62,8 @@ async function listChats(sql, circle, me) {
         where cm.chat_id = c.id and mm.id <> ${me.id}) as others,
       (select mm2.phone from chat_members cm3 join members mm2 on mm2.id = cm3.member_id
         where cm3.chat_id = c.id and mm2.id <> ${me.id} and mm2.phone is not null limit 1) as other_phone,
-      (select count(*)::int from chat_members cm2 where cm2.chat_id = c.id) as member_count
+      (select count(*)::int from chat_members cm2 where cm2.chat_id = c.id) as member_count,
+      exists (select 1 from chat_mutes mu where mu.chat_id = c.id and mu.member_id = ${me.id}) as muted
     from chats c
     where c.circle_id = ${circle.id}
       and (c.kind = 'circle'
@@ -74,7 +90,7 @@ async function listChats(sql, circle, me) {
     id: c.id, kind: c.kind,
     name: c.kind === 'dm' ? (c.others || 'Personal chat') : (c.name || 'Group'),
     others: c.others, otherPhone: c.kind === 'dm' ? c.other_phone : null,
-    memberCount: c.member_count,
+    memberCount: c.member_count, muted: !!c.muted,
     last: pmap[c.id] || null
   }));
 }
@@ -164,6 +180,10 @@ async function maybeEktaReply(sql, circle, me, chat, text, req) {
 }
 
 export default async function handler(req, res) {
+  // Being heard and answered: the mood card, a private word, shukriya, the
+  // weekly question and the memory card live behind this route.
+  const area = String((req.query && req.query.area) || (req.body && req.body.area) || '');
+  if (area === 'heard') return heardApi(req, res);
   let sql;
   try { sql = db(); await ensureSchema(sql); await ensureChatBond(sql); }
   catch (e) { return failDb(res, e); }
@@ -187,14 +207,23 @@ export default async function handler(req, res) {
       if (q.chat) {
         const chat = await chatForMember(sql, circle, q.chat, me.id);
         if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
-        const msgs = await sql`
+        // PAGING. The newest CHAT_PAGE messages, or with before=MESSAGE_ID
+        // the CHAT_PAGE just before that one. The cursor is compared inside
+        // the database, on (time, id), so no message is skipped or repeated.
+        const before = q.before ? String(q.before) : null;
+        if (before && !isUuid(before)) return res.status(400).json({ ok: false, error: 'Bad cursor' });
+        const page = await sql`
           select m.id, m.text, m.kind, m.created_at, m.member_id, m.audio_secs,
                  coalesce(mem.name, 'Ekta') as name
           from messages m left join members mem on mem.id = m.member_id
           where m.chat_id = ${chat.id}
-          order by m.created_at desc limit 50`;
+            and (${before}::uuid is null or (m.created_at, m.id) < (select b.created_at, b.id from messages b where b.id = ${before}::uuid and b.chat_id = ${chat.id}))
+          order by m.created_at desc, m.id desc limit ${CHAT_PAGE + 1}`;
+        const more = page.length > CHAT_PAGE;
+        const msgs = page.slice(0, CHAT_PAGE);
         // Viewing the chat marks it read - receipts are always on, by design.
-        await sql`insert into chat_reads (chat_id, member_id, read_at) values (${chat.id}, ${me.id}, now())
+        // Looking back at older messages does not move the mark.
+        if (!before) await sql`insert into chat_reads (chat_id, member_id, read_at) values (${chat.id}, ${me.id}, now())
                   on conflict (chat_id, member_id) do update set read_at = now()`;
         const reads = await sql`
           select r.member_id, r.read_at, m.name
@@ -204,7 +233,9 @@ export default async function handler(req, res) {
           ? await sql`select id, name from members where circle_id = ${circle.id} order by created_at`
           : await sql`select m.id, m.name from chat_members cm join members m on m.id = cm.member_id where cm.chat_id = ${chat.id} order by m.created_at`;
         const withBond = await attachBond(sql, msgs.reverse(), me.id);
-        return res.status(200).json({ ok: true, chat: { id: chat.id, kind: chat.kind, name: chat.name }, messages: withBond, reads, members: participants });
+        const muted = await sql`select 1 as x from chat_mutes where chat_id = ${chat.id} and member_id = ${me.id}`;
+        return res.status(200).json({ ok: true, chat: { id: chat.id, kind: chat.kind, name: chat.name, muted: !!muted[0] }, messages: withBond, reads, members: participants,
+          more, before: more && withBond[0] ? withBond[0].id : null });
       }
       const chats = await listChats(sql, circle, me);
       return res.status(200).json({ ok: true, chats });
@@ -244,29 +275,29 @@ export default async function handler(req, res) {
       try {
         const label = chat.kind === 'dm' ? me.name : (chat.name || 'family chat');
         const preview = kind === 'image' ? '📷 Photo' : kind === 'audio' ? voiceLabel(secs) : text.slice(0, 90);
+        // A chat someone muted stays quiet for them. A message that names
+        // them with @ still reaches them: that is someone asking for them.
         if (chat.kind === 'dm') {
-          const others = await sql`select member_id from chat_members where chat_id = ${chat.id} and member_id <> ${me.id}`;
+          const others = await sql`select cm.member_id from chat_members cm where cm.chat_id = ${chat.id} and cm.member_id <> ${me.id}
+                                   and not exists (select 1 from chat_mutes mu where mu.chat_id = cm.chat_id and mu.member_id = cm.member_id)`;
           if (others[0]) await pushCircle(sql, circle.id, { title: '💬 ' + me.name, body: preview }, { only: others[0].member_id });
         } else {
           // everyone in this conversation hears about it - the people named
-          // with @ get the louder "mentioned you" version, once each.
+          // with @ get the louder "mentioned you" version, once each. All of
+          // them are sent together, not one after another.
           const audience = chat.kind === 'circle'
-            ? await sql`select id, name from members where circle_id = ${circle.id} and id <> ${me.id}`
-            : await sql`select m.id, m.name from chat_members cm join members m on m.id = cm.member_id
+            ? await sql`select m.id, m.name, exists (select 1 from chat_mutes mu where mu.chat_id = ${chat.id} and mu.member_id = m.id) as muted
+                        from members m where m.circle_id = ${circle.id} and m.id <> ${me.id}`
+            : await sql`select m.id, m.name, exists (select 1 from chat_mutes mu where mu.chat_id = ${chat.id} and mu.member_id = m.id) as muted
+                        from chat_members cm join members m on m.id = cm.member_id
                         where cm.chat_id = ${chat.id} and m.id <> ${me.id}`;
-          const pinged = {};
-          if (kind === 'text' && text.indexOf('@') >= 0) {
-            for (const p of audience) {
-              if (new RegExp('@' + p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(text)) {
-                pinged[p.id] = true;
-                await pushCircle(sql, circle.id, { title: '💬 ' + me.name + ' mentioned you in ' + label, body: preview }, { only: p.id });
-              }
-            }
-          }
-          for (const p of audience) {
-            if (pinged[p.id]) continue;
-            await pushCircle(sql, circle.id, { title: '💬 ' + me.name + ' in ' + label, body: preview }, { only: p.id });
-          }
+          const named = kind === 'text' && text.indexOf('@') >= 0
+            ? audience.filter(p => new RegExp('@' + p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(text)).map(p => p.id) : [];
+          const rest = audience.filter(p => !p.muted && named.indexOf(p.id) < 0).map(p => p.id);
+          await Promise.allSettled([
+            pushMany(sql, circle.id, named, { title: '💬 ' + me.name + ' mentioned you in ' + label, body: preview }),
+            pushMany(sql, circle.id, rest, { title: '💬 ' + me.name + ' in ' + label, body: preview })
+          ]);
         }
       } catch (e) { /* alerts never block the message */ }
       // fromEkta: the member said yes to a card she prepared (api/_ektaagent.mjs).
@@ -280,13 +311,39 @@ export default async function handler(req, res) {
     }
 
     // Reactions and polls (api/_chatbond.mjs): only people in that chat.
-    if (action === 'react' || action === 'poll_create' || action === 'poll_vote' || action === 'poll_close') {
+    // My own message, taken back. Never someone else's, never Ekta's.
+    if (action === 'delete_message') {
+      const chat = await chatForMember(sql, circle, body.chatId, me.id);
+      if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
+      if (!isUuid(body.messageId)) return res.status(400).json({ ok: false, error: 'Bad message' });
+      const got = await sql`delete from messages where id = ${body.messageId} and chat_id = ${chat.id} and member_id = ${me.id} returning id`;
+      if (!got[0]) return res.status(403).json({ ok: false, error: 'You can delete only a message you sent' });
+      return res.status(200).json({ ok: true });
+    }
+    // Quiet this chat, for me only. Nobody else is told.
+    if (action === 'mute') {
+      const chat = await chatForMember(sql, circle, body.chatId, me.id);
+      if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
+      if (body.on) await sql`insert into chat_mutes (chat_id, member_id) values (${chat.id}, ${me.id}) on conflict do nothing`;
+      else await sql`delete from chat_mutes where chat_id = ${chat.id} and member_id = ${me.id}`;
+      return res.status(200).json({ ok: true, muted: !!body.on });
+    }
+
+    if (action === 'react' || action === 'poll_create' || action === 'poll_vote' || action === 'poll_close' || action === 'poll_remind') {
       const chat = await chatForMember(sql, circle, body.chatId, me.id);
       if (!chat) return res.status(404).json({ ok: false, error: 'Chat not found' });
       // A reaction never pushes and never becomes a message.
       if (action === 'react') { const r = await react(sql, chat, me, body); return res.status(r.status).json(r.json); }
       if (action === 'poll_vote') { const r = await votePoll(sql, chat, me, body); return res.status(r.status).json(r.json); }
       if (action === 'poll_close') { const r = await closePoll(sql, chat, me, body); return res.status(r.status).json(r.json); }
+      if (action === 'poll_remind') {
+        const r = await remindPoll(sql, chat, me, body);
+        if (r.status === 200) {
+          try { await pushMany(sql, circle.id, r.ids, { title: '📊 ' + me.name + ' is waiting for your vote', body: String(r.question || '').slice(0, 90) }); }
+          catch (e) { /* alerts never block the poll */ }
+        }
+        return res.status(r.status).json(r.json);
+      }
       const r = await createPoll(sql, chat, me, body);
       if (r.status === 201) {
         // One push per person for a new poll; none per vote.
@@ -295,9 +352,7 @@ export default async function handler(req, res) {
           const audience = chat.kind === 'circle'
             ? await sql`select id from members where circle_id = ${circle.id} and id <> ${me.id} and user_id is not null`
             : await sql`select m.id from chat_members cm join members m on m.id = cm.member_id where cm.chat_id = ${chat.id} and m.id <> ${me.id}`;
-          for (const p of audience) {
-            await pushCircle(sql, circle.id, { title: '📊 ' + me.name + ' asked in ' + label, body: r.poll.question.slice(0, 90) }, { only: p.id });
-          }
+          await pushMany(sql, circle.id, audience.map(p => p.id), { title: '📊 ' + me.name + ' asked in ' + label, body: r.poll.question.slice(0, 90) });
         } catch (e) { /* alerts never block the poll */ }
       }
       return res.status(r.status).json(r.json);

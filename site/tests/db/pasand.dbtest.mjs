@@ -65,7 +65,8 @@ const count = async (q, p) => (await admin.query(q, p)).rows[0].n;
 {
   const r = await get(rohan);
   ok('GET answers with an empty start', r.status === 200 && r.ok && r.me.audience === 'family' && r.me.likes.length === 0 && r.me.platforms.length === 0
-     && r.people.length === 0 && r.forMe.length === 0 && r.fromMe.length === 0, JSON.stringify(r));
+     // Someone not on the app is always listed (Nov 2026), so the family can note what they like.
+     && r.people.every(p => !p.onApp && p.canNote && p.likes.length === 0 && p.platforms.length === 0) && r.forMe.length === 0 && r.fromMe.length === 0, JSON.stringify(r));
   ok('the games list still answers on the same route', await (async () => {
     let status = 200, json = null;
     const res = { status(s) { status = s; return this; }, json(j) { json = j; return this; }, setHeader() {} };

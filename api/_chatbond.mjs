@@ -16,7 +16,17 @@
 // Ekta read it) plus one chat_polls row. A vote is one row per person per
 // poll, holding every option they picked, so changing a vote is one upsert.
 // One push when a poll is made; none per vote.
+//
+// EQUAL VOTES (Nov 2026). Every ballot counts once, whoever cast it and
+// however old they are. A poll can be a SECRET BALLOT: then no name of who
+// picked what is ever put in a reply to any phone (attachBond leaves them
+// out, so there is nothing for a screen to hide). Every poll says who it is
+// still "Waiting for", and the person who asked can send ONE reminder to
+// those people (claimed by one UPDATE). In the family chat a member can
+// vote for someone who is not on the app: it is kept, and shown, as
+// "for Dadi, by Rohan".
 import { schemaOnce } from './_db.mjs';
+import { proxyLabel, waitingFor, waitingLine } from './_heardrules.mjs';
 import { SOS_AUDIO_TYPES } from './_sos.mjs';
 
 export const VOICE_MAX_SECS = 60;
@@ -62,6 +72,18 @@ async function bondTables(sql) {
     choices smallint[] not null,
     updated_at timestamptz not null default now(),
     primary key (poll_id, member_id)
+  )`;
+  await sql`alter table chat_polls add column if not exists secret boolean not null default false`;
+  await sql`alter table chat_polls add column if not exists reminded_at timestamptz`;
+  // A vote given for someone not on the app: member_id is that person,
+  // by_member is who cast it for them.
+  await sql`alter table poll_votes add column if not exists by_member uuid references members(id) on delete set null`;
+  // A chat a member muted, for themself only.
+  await sql`create table if not exists chat_mutes (
+    chat_id uuid not null references chats(id) on delete cascade,
+    member_id uuid not null references members(id) on delete cascade,
+    created_at timestamptz not null default now(),
+    primary key (chat_id, member_id)
   )`;
 }
 
@@ -115,25 +137,48 @@ export async function attachBond(sql, msgs, meId) {
   const polls = {};
   if (pollIds.length) {
     const ps = await sql`
-      select p.id, p.message_id, p.by_member, p.question, p.options, p.multi, p.close_at, p.closed_at,
+      select p.id, p.message_id, p.by_member, p.question, p.options, p.multi, p.close_at, p.closed_at, p.secret, p.reminded_at,
+             p.chat_id, c.kind as chat_kind, c.circle_id,
              (p.closed_at is not null or (p.close_at is not null and p.close_at <= now())) as closed
-      from chat_polls p where p.message_id = any(${pollIds})`;
+      from chat_polls p join chats c on c.id = p.chat_id where p.message_id = any(${pollIds})`;
     const pids = ps.map(p => p.id);
     const votes = pids.length ? await sql`
-      select v.poll_id, v.member_id, v.choices, mem.name
-      from poll_votes v join members mem on mem.id = v.member_id
+      select v.poll_id, v.member_id, v.choices, v.by_member, mem.name, b.name as by_name
+      from poll_votes v join members mem on mem.id = v.member_id left join members b on b.id = v.by_member
       where v.poll_id = any(${pids}) order by v.updated_at` : [];
+    // Who is in each poll's chat: on Parwah (they can vote themself) or not
+    // (someone can vote for them, in the family chat only).
+    const people = {};
+    for (const p of ps) {
+      if (people[p.chat_id]) continue;
+      people[p.chat_id] = p.chat_kind === 'circle'
+        ? await sql`select m.id, m.name, (m.user_id is not null) as on_app from members m
+                    where m.circle_id = ${p.circle_id} and not coalesce((to_jsonb(m)->>'remembered')::boolean, false) order by m.created_at`
+        : await sql`select m.id, m.name, (m.user_id is not null) as on_app from chat_members cm join members m on m.id = cm.member_id
+                    where cm.chat_id = ${p.chat_id} and not coalesce((to_jsonb(m)->>'remembered')::boolean, false) order by m.created_at`;
+    }
     ps.forEach(p => {
       const opts = (Array.isArray(p.options) ? p.options : JSON.parse(p.options || '[]'))
         .map(t => ({ text: t, count: 0, names: [] }));
       let mine = [], voters = 0;
+      const mineFor = [], voted = [];
       votes.filter(v => v.poll_id === p.id).forEach(v => {
-        voters++;
-        (v.choices || []).forEach(i => { const o = opts[i]; if (o) { o.count++; o.names.push(v.member_id === meId ? 'You' : v.name); } });
+        voters++; voted.push(v.member_id);
+        const proxy = v.by_member && v.by_member !== v.member_id;
+        // One ballot, one count. A SECRET ballot carries no name at all.
+        (v.choices || []).forEach(i => { const o = opts[i]; if (o) { o.count++; if (!p.secret) o.names.push(proxy ? proxyLabel(v.name, v.by_name) : v.member_id === meId ? 'You' : v.name); } });
         if (v.member_id === meId) mine = (v.choices || []).map(Number);
+        if (proxy && v.by_member === meId) mineFor.push({ id: v.member_id, name: v.name, choices: (v.choices || []).map(Number), label: proxyLabel(v.name, v.by_name) });
       });
-      polls[p.message_id] = { id: p.id, question: p.question, options: opts, multi: p.multi,
-        closeAt: p.close_at, closed: !!p.closed, mine, voters, canClose: p.by_member === meId && !p.closed };
+      const here = people[p.chat_id] || [];
+      const waiting = p.closed ? [] : waitingFor(here.filter(x => x.on_app), voted);
+      polls[p.message_id] = { id: p.id, question: p.question, options: opts, multi: p.multi, secret: !!p.secret,
+        closeAt: p.close_at, closed: !!p.closed, mine, voters, canClose: p.by_member === meId && !p.closed,
+        waiting: p.closed ? null : waitingLine(waiting), reminded: !!p.reminded_at,
+        canRemind: p.by_member === meId && !p.closed && !p.reminded_at && waiting.length > 0,
+        // People not on the app, whom someone here can vote for.
+        offApp: p.closed || p.chat_kind !== 'circle' ? [] : here.filter(x => !x.on_app).map(x => ({ id: x.id, name: x.name, voted: voted.includes(x.id) })),
+        mineFor };
     });
   }
   return msgs.map(m => {
@@ -187,7 +232,7 @@ export function cleanPoll(body) {
     if (d.getTime() > Date.now() + 90 * 86400000) return { err: 'A poll can stay open for 90 days at most' };
     closeAt = d.toISOString();
   }
-  return { question, options, multi: !!body.multi, closeAt };
+  return { question, options, multi: !!body.multi, closeAt, secret: !!body.secret };
 }
 
 // Returns the poll row and the message, so the caller can push once.
@@ -195,15 +240,15 @@ export async function createPoll(sql, chat, me, body) {
   const p = cleanPoll(body);
   if (p.err) return { status: 400, json: { ok: false, error: p.err } };
   const m = await sql`insert into messages (chat_id, member_id, text, kind) values (${chat.id}, ${me.id}, ${p.question}, 'poll') returning id`;
-  const row = await sql`insert into chat_polls (message_id, chat_id, by_member, question, options, multi, close_at)
-                        values (${m[0].id}, ${chat.id}, ${me.id}, ${p.question}, ${JSON.stringify(p.options)}::jsonb, ${p.multi}, ${p.closeAt})
+  const row = await sql`insert into chat_polls (message_id, chat_id, by_member, question, options, multi, close_at, secret)
+                        values (${m[0].id}, ${chat.id}, ${me.id}, ${p.question}, ${JSON.stringify(p.options)}::jsonb, ${p.multi}, ${p.closeAt}, ${p.secret})
                         returning id`;
   return { status: 201, json: { ok: true, pollId: row[0].id, messageId: m[0].id }, poll: p };
 }
 
 async function pollInChat(sql, chat, pollId) {
   if (!/^[0-9a-f-]{36}$/i.test(String(pollId || ''))) return null;
-  const r = await sql`select id, by_member, options, multi,
+  const r = await sql`select id, by_member, options, multi, question, reminded_at,
                         (closed_at is not null or (close_at is not null and close_at <= now())) as closed
                       from chat_polls where id = ${pollId} and chat_id = ${chat.id}`;
   return r[0] || null;
@@ -219,12 +264,28 @@ export async function votePoll(sql, chat, me, body) {
   const picks = [...new Set(raw.map(Number))];
   if (picks.some(i => !Number.isInteger(i) || i < 0 || i >= n)) return { status: 400, json: { ok: false, error: 'That choice is not in the poll' } };
   if (!p.multi && picks.length > 1) return { status: 400, json: { ok: false, error: 'Pick one choice' } };
+  // A vote for someone who is not on the app. Only in the family chat (the
+  // one chat they belong to), only for someone in this family who cannot
+  // vote themself, and never for someone who is remembered. It counts
+  // once, the same as any vote, and is kept as "for Dadi, by Rohan".
+  let voter = me.id, by = null;
+  if (body.forId) {
+    if (chat.kind !== 'circle') return { status: 400, json: { ok: false, error: 'You can vote for someone only in the family chat' } };
+    if (!/^[0-9a-f-]{36}$/i.test(String(body.forId))) return { status: 400, json: { ok: false, error: 'Choose who you are voting for' } };
+    const t = (await sql`select m.id, m.name, m.user_id from members m join chats c on c.circle_id = m.circle_id
+                         where m.id = ${body.forId} and c.id = ${chat.id}
+                           and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`)[0];
+    if (!t) return { status: 404, json: { ok: false, error: 'Choose someone in this family' } };
+    if (t.user_id) return { status: 400, json: { ok: false, error: t.name + ' is on Parwah and votes for themself' } };
+    voter = t.id; by = me.id;
+  }
   if (!picks.length) {
-    await sql`delete from poll_votes where poll_id = ${p.id} and member_id = ${me.id}`;
+    // My own vote, or a vote I gave for someone: never anyone else's.
+    await sql`delete from poll_votes where poll_id = ${p.id} and member_id = ${voter} and (${by}::uuid is null or by_member = ${by}::uuid)`;
   } else {
     picks.sort((a, b) => a - b);
-    await sql`insert into poll_votes (poll_id, member_id, choices) values (${p.id}, ${me.id}, ${picks})
-              on conflict (poll_id, member_id) do update set choices = excluded.choices, updated_at = now()`;
+    await sql`insert into poll_votes (poll_id, member_id, choices, by_member) values (${p.id}, ${voter}, ${picks}, ${by})
+              on conflict (poll_id, member_id) do update set choices = excluded.choices, by_member = excluded.by_member, updated_at = now()`;
   }
   return { status: 200, json: { ok: true } };
 }
@@ -235,4 +296,26 @@ export async function closePoll(sql, chat, me, body) {
   if (p.by_member !== me.id) return { status: 403, json: { ok: false, error: 'Only the person who asked can close it' } };
   await sql`update chat_polls set closed_at = now() where id = ${p.id} and closed_at is null`;
   return { status: 200, json: { ok: true } };
+}
+
+// ONE reminder, from the person who asked, to the people who have not voted
+// yet. Claimed by one UPDATE, so a second tap (or a second phone) sends
+// nothing. Returns who to tell; the route sends the pushes.
+export async function remindPoll(sql, chat, me, body) {
+  const p = await pollInChat(sql, chat, body.pollId);
+  if (!p) return { status: 404, json: { ok: false, error: 'That poll is not here' } };
+  if (p.by_member !== me.id) return { status: 403, json: { ok: false, error: 'Only the person who asked can send the reminder' } };
+  if (p.closed) return { status: 409, json: { ok: false, error: 'This poll is closed' } };
+  const got = await sql`update chat_polls set reminded_at = now() where id = ${p.id} and reminded_at is null returning id`;
+  if (!got[0]) return { status: 409, json: { ok: false, error: 'The reminder has already been sent. It goes only once.' } };
+  const who = chat.kind === 'circle'
+    ? await sql`select m.id from members m join chats c on c.circle_id = m.circle_id
+                where c.id = ${chat.id} and m.user_id is not null and m.id <> ${me.id}
+                  and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)
+                  and not exists (select 1 from poll_votes v where v.poll_id = ${p.id} and v.member_id = m.id)`
+    : await sql`select m.id from chat_members cm join members m on m.id = cm.member_id
+                where cm.chat_id = ${chat.id} and m.user_id is not null and m.id <> ${me.id}
+                  and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)
+                  and not exists (select 1 from poll_votes v where v.poll_id = ${p.id} and v.member_id = m.id)`;
+  return { status: 200, json: { ok: true, reminded: who.length }, ids: who.map(w => w.id), question: p.question };
 }

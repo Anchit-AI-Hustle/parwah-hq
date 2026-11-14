@@ -197,11 +197,12 @@ export default async function handler(req, res) {
     // THE PULSE - one answer per person per day, replaceable, same style for all.
     await ensurePulseSchema(sql);
     const pday = pulseDay(), pstyle = styleFor(pday);
-    await sql`insert into pulse (circle_id, member_id, day, style, value)
-              values (${circleId}, ${papa[0].id}, ${pday}, ${pstyle}, ${PULSE_STYLES[pstyle].options[0].k})`;
+    // Told to the family: an answer is private unless its owner says so.
+    await sql`insert into pulse (circle_id, member_id, day, style, value, tell)
+              values (${circleId}, ${papa[0].id}, ${pday}, ${pstyle}, ${PULSE_STYLES[pstyle].options[0].k}, 'family')`;
     const callOpt = PULSE_STYLES[pstyle].options.filter(o => o.call)[0];
-    await sql`insert into pulse (circle_id, member_id, day, style, value)
-              values (${circleId}, ${papa[0].id}, ${pday}, ${pstyle}, ${callOpt.k})
+    await sql`insert into pulse (circle_id, member_id, day, style, value, tell)
+              values (${circleId}, ${papa[0].id}, ${pday}, ${pstyle}, ${callOpt.k}, 'family')
               on conflict (circle_id, member_id, day) do update set value = excluded.value`;
     const pt = await pulseToday(sql, circleId);
     const papaP = pt.answers.filter(a => a.memberId === papa[0].id);

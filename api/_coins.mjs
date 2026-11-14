@@ -16,6 +16,7 @@
 // twice in a month pays once, checking in twice in a day pays once. That is
 // enforced by a unique index, not by remembering to check.
 import { dayIn } from './_recur.mjs';
+import { coinsLeftToday } from './_heardrules.mjs';
 
 // Only what is really paid is listed: a rule shown on screen that never pays
 // teaches the family the coins are not to be trusted. Check-ins and
@@ -27,8 +28,16 @@ export const EARN = {
   memory_ok:  { n: 2,   label: 'Checked something is still current' },
   vault_add:  { n: 10,  label: 'Put a document in the vault' },
   welcomed:   { n: 5,   label: 'Welcomed someone into the family' },
-  game:       { n: 3,   label: 'Finished a game together' }
+  game:       { n: 3,   label: 'Finished a game together' },
+  // Being heard, and answering (Nov 2026): small on purpose, each at most
+  // once a day, and no more than HEARD_COIN_CAP a day for one person
+  // altogether, so they cannot be farmed. See awardHeard below.
+  story_told: { n: 2,   label: 'Told a story' },
+  card_line:  { n: 2,   label: 'Wrote in a card' },
+  sawaal:     { n: 2,   label: 'Answered the weekly question' },
+  shukriya:   { n: 1,   label: 'Said shukriya' }
 };
+export const HEARD_EARN = ['story_told', 'card_line', 'sawaal', 'shukriya'];
 // Rows from before those rules were dropped still read sensibly.
 export const PAST_LABELS = { checkin: 'Checked in', pill: 'Took the medicines', game: 'Played together' };
 
@@ -75,6 +84,22 @@ export async function award(sql, circleId, memberId, reason, ref = null) {
       on conflict do nothing
       returning id`;
     return rows.length ? rule.n : 0;
+  } catch (e) { return 0; }
+}
+
+// Coins for telling a story, writing in a card, answering the weekly
+// question and saying shukriya. Each pays once a day at most (the day is
+// the ref, and the unique index is the rule), and together they stop at the
+// day's cap. Like award, this can never break the action that earned it.
+export async function awardHeard(sql, circleId, memberId, reason, day) {
+  const rule = EARN[reason];
+  if (!rule || !HEARD_EARN.includes(reason) || !day) return 0;
+  try {
+    await ensureCoinSchema(sql);
+    const got = await sql`select coalesce(sum(delta), 0)::int as n from coins
+                          where circle_id = ${circleId} and member_id = ${memberId} and ref = ${day} and reason = any(${HEARD_EARN}::text[])`;
+    if (coinsLeftToday(got[0].n) < rule.n) return 0;
+    return await award(sql, circleId, memberId, reason, day);
   } catch (e) { return 0; }
 }
 

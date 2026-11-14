@@ -1813,8 +1813,12 @@ check("today: five things and no more - four tiles and the emergency card (the f
       len(_wnames) == 4 and _above_more.count('class="widget"') == 4 and 'id="btn-ecard"' in _above_more)
 check("today: everything else is kept, one tap away under More",
       all(x in _home[_home.index('id="more"'):] for x in ('data-goto="chat"', 'data-sec="plans"', 'data-goto="ekta"', 'data-sec="muhurat"', 'data-sec="pay"', 'data-sec="games"', 'id="coincard"')))
-check("today: no daily food or mood question (families already chat about that on WhatsApp)",
-      'id="pulsecard"' not in _appt and "renderPulse" not in _appt and 'id="pu-pick"' not in _appt)
+# Changed Nov 2026 (being heard): the mood question is back, but as one
+# quiet card that is PRIVATE by default. The old public version (everyone's
+# answer on the feed, a rotating food or weather question) stays gone.
+check("today: no public food or mood question; the mood card is one private card below the alerts, not a sixth tile",
+      'id="pulsecard"' not in _appt and "renderPulse" not in _appt and 'id="pu-pick"' not in _appt
+      and _appt.count('id="hd-today"') == 1 and _appt.index('id="hd-today"') < _appt.index('id="widgets"'))
 _circ = (API_DIR / "circle.mjs").read_text(encoding="utf-8")
 _rels = re.findall(r"'([a-z-]+)'", re.search(r"const RELATIONS = \[([^\]]*)\]", _circ).group(1))
 for _pick in ("c-role", "j-role", "e-role"):
@@ -2980,8 +2984,10 @@ check("rasoi: recipes are for food: the form says so, nothing invites a home rem
       and not re.search(r"nuskh|remed|ilaaj|upchar|gharelu|kadha", (_mb_js + _mb_html + " ".join(_mb_rc)), re.I)
       and "NOT_FOOD.test(" in _mb_api)
 check("stories: the storyteller decides who hears each answer (the whole family, some people, only me)",
-      "if (r.about_member !== me.id) return { s: 403, e: 'Only the storyteller can do that' };" in _mb_api
-      and "(s.visibility = 'circle' or s.about_member = ${me.id} or (s.visibility = 'some' and ${me.id} = any(s.share_with)))" in _mb_api
+      # Nov 2026: a relative who recorded a story for someone not on the app
+      # stands in for the storyteller on that one story.
+      "if (r.about_member !== me.id && r.recorded_by !== me.id) return { s: 403, e: 'Only the storyteller can do that' };" in _mb_api
+      and "(s.visibility = 'circle' or s.about_member = ${me.id} or s.recorded_by = ${me.id} or (s.visibility = 'some' and ${me.id} = any(s.share_with)))" in _mb_api
       and "data-mbvis" in _mb_js)
 check("voice: our own recorder, 3 minutes at most, an allow-listed type, a byte cap on the server, never auto-played",
       "MB_MAX_SECS = 180" in _mb_js and "audioBitsPerSecond: 24000" in _mb_js
@@ -3516,7 +3522,8 @@ check("remembrance: every sweep that would chase or name a remembered person ski
       and _dz.count("and not exists (select 1 from members m where m.id = d.person_id and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 2
       and _tasksrc.count("and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 3
       and _fc_api.count("and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 1
-      and "if (!who || who.remembered || (who2 && who2.remembered) || dstr(c.date) > todayFor(who)) continue;" in (API_DIR / "_bond.mjs").read_text(encoding="utf-8"))
+      and "if (!who || who.remembered || (who2 && who2.remembered) || dstr(c.date) > todayFor(who, nowMs)) continue;" in (API_DIR / "_bond.mjs").read_text(encoding="utf-8")
+      and "if (!who || who.remembered || (who2 && who2.remembered)) continue;" in (API_DIR / "_bond.mjs").read_text(encoding="utf-8"))
 check("remembrance: my own sheet offers to take a mistaken mark off, and never to set one",
       "$('rm-mp-open').hidden = (self && !gone) || !fam;" in _app_src and "This is a mistake. Take the mark off" in _app_src
       and "if (state && id === state.memberId) { rmUndoAsk(" in _app_src)
@@ -3648,8 +3655,12 @@ check("album: tables through schemaOnce, every call through requireMember, ids t
       "schemaOnce(() => albumTables(sql))" in _ab and "requireMember(sql, code, memberId, tokenOf(req))" in _ab
       and _ab.count("isUuid(") >= 4 and "return fail(res, e);" in _ab and "return failDb(res, e);" in _ab
       and "noteRisk(caption.value)" in _ab and "noteRisk(name.value)" in _ab)
-check("album: Today shows one older photo a week and never pushes; a person's page and Family Memory draw it too",
-      "pushCircle" not in _ab and "weeklyPick(me.id, today, cands.map(c => c.id))" in _ab
+# Nov 2026: new photos in a family album push the family at most once a
+# day (the count is kept on the server). The weekly photo still never pushes.
+check("album: Today shows one older photo a week and never pushes (new photos push once a day at most); a person's page and Family Memory draw it too",
+      _ab.count("pushCircle(") == 1 and "rateLimit(sql, 'album_push', circle.id, ALBUM_PUSH_PER_DAY, 86400, { failClosed: true })" in _ab
+      and "pushCircle" not in _ab.split("async function todayView(")[1].split("export default async function albumApi")[0]
+      and "weeklyPick(me.id, today, cands.map(c => c.id))" in _ab
       and "primary key (member_id, week)" in _ab_tables
       and "\n    albumTodayLoad();\n" in _app_src and "\n    albumPersonRender(id);\n" in _app_src
       and 'id="ab-today"' in _app_src and 'data-mbv="album"' in _app_src and "if (album) { albumLoad(); return; }" in _app_src
@@ -4081,6 +4092,103 @@ check("safety: its tests are in the gate and in npm run test:db, and its browser
       "node site/tests/safetytest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
       and all("site/tests/db/" + f in (REPO / "package.json").read_text(encoding="utf-8") for f in ("safety.dbtest.mjs", "safety.e2e.dbtest.mjs"))
       and "waitForTimeout" not in (REPO / "site/tests/db/safety.e2e.dbtest.mjs").read_text(encoding="utf-8"))
+
+# ---------- 10z. BEING HEARD, AND ANSWERED (stream D, Nov 2026) ----------
+# The rules that must never regress: who may read what is in the SQL; the
+# private word is read by nobody else; a secret ballot sends no name; an
+# empty card is never handed over; festivals change one at a time.
+_hd = {n: (API_DIR / n).read_text(encoding="utf-8") for n in
+       ("_heard.mjs", "_baat.mjs", "_heardrules.mjs", "_pulse.mjs", "_chatbond.mjs", "_bond.mjs", "_memorybond.mjs",
+        "_album.mjs", "_pasand.mjs", "_coins.mjs", "_tyohaar.mjs", "_remember.mjs", "chats.mjs", "events.mjs")}
+_hd_reads = re.findall(r"(?:from|update|into)\s+baat\b[^`]*`", _hd["_baat.mjs"])
+check("heard: every query on a private word carries 'only the two of them' (or is the insert, or the timer's one reminder)",
+      len(_hd_reads) >= 6 and all(("from_member = ${me.id}" in q or "to_member = ${me.id}" in q or q.lstrip().startswith("into baat")
+                                   or "reminded_at is null" in q) for q in _hd_reads),
+      str([q[:70] for q in _hd_reads if not ("from_member = ${me.id}" in q or "to_member = ${me.id}" in q or q.lstrip().startswith("into baat") or "reminded_at is null" in q)]))
+_hd_others = [f.name for f in sorted(API_DIR.glob("*.mjs")) if f.name not in ("_baat.mjs", "_heard.mjs")
+              and re.search(r"\b(from|join|into|update)\s+baat\b", f.read_text(encoding="utf-8"))]
+check("heard: no other module reads a private word: not Ekta, not the digest, not the feed, not an admin screen",
+      _hd_others == [] and "insert into events" not in _hd["_baat.mjs"] and "pushCircle(sql, circle.id, { ...baatPush" in _hd["_baat.mjs"]
+      and all("baat" not in (API_DIR / n).read_text(encoding="utf-8") for n in ("ekta.mjs", "_ektalocal.mjs", "_digest.mjs", "_digestrules.mjs", "_famfacts.mjs")),
+      str(_hd_others))
+check("heard: the mood is private by default, and who may see an answer is in the query",
+      "default 'self'" in _hd["_pulse.mjs"] and "p.tell = 'family' or p.member_id = ${viewerId}::uuid or (p.tell = 'one' and p.to_member = ${viewerId}::uuid)" in _hd["_pulse.mjs"]
+      and "if (moodOnFeed(tell))" in _hd["_pulse.mjs"] and "export const moodOnFeed = (tell) => tell === 'family';" in _hd["_heardrules.mjs"]
+      and "pulseToday(sql, circle.id, reqTz(req), g.me.id)" in _hd["events.mjs"] and "insert into events" not in _hd["events.mjs"].split("if (type === 'pulse')")[1].split("if (type === 'sos_ack'")[0])
+check("heard: five moods, each a word with its emoji, and the same five on the screen",
+      len(re.findall(r"\{ k: '\w+',\s+e: '[^']+', t: '[^']+',\s+en: '[^']+'", _hd["_heardrules.mjs"])) == 5
+      and "data-hdmood" in _app_src and "<span><b>' + esc(x.t) + '</b><small>' + esc(x.en) + '</small></span>" in _app_src
+      and "'🔒 Keep to myself'" in _app_src and "'👤 Tell only...'" in _app_src and "'👪 Tell the family'" in _app_src)
+check("heard: a shukriya is read by the two, or the family when the writer chose; the weekly prompt is the fair pure rule and sends no count",
+      "(s.from_member = ${me.id} or s.to_member = ${me.id} or s.audience = 'family')" in _hd["_heard.mjs"]
+      and "shukriyaPick({ viewerId: me.id, members, thanked, suggested: counts, week })" in _hd["_heard.mjs"]
+      and "return t ? { toId: t.id, name: t.name, onApp: t.on_app } : null;" in _hd["_heard.mjs"]
+      and "!m.remembered" in _hd["_heardrules.mjs"].split("export function shukriyaPick")[1].split("export function shukriyaClean")[0])
+check("heard: the weekly question shows answers only to someone who has answered, in the query; at least 40 questions",
+      _hd["_heard.mjs"].count("exists (select 1 from sawaal_answers x where x.circle_id = a.circle_id and x.week = a.week and x.member_id = ${me.id})") == 2
+      and len(re.findall(r"^  '[^\n]+[?.]',?$", _hd["_heardrules.mjs"].split("export const FAMILY_QUESTIONS = [")[1].split("];")[0], re.M)) >= 40)
+check("heard: a secret ballot sends no name (chat polls and date polls), and one reminder is claimed by one UPDATE",
+      "if (!p.secret) o.names.push(" in _hd["_chatbond.mjs"]
+      and "yes: p.secret ? [] : pick('yes'), maybe: p.secret ? [] : pick('maybe'), no: p.secret ? [] : pick('no')," in _hd["_bond.mjs"]
+      and "yesNames: p.secret ? [] :" in _hd["_bond.mjs"]
+      and "update chat_polls set reminded_at = now() where id = ${p.id} and reminded_at is null returning id" in _hd["_chatbond.mjs"]
+      and "update plan_polls set reminded_at = now() where id = ${p.id} and reminded_at is null returning id" in _hd["_bond.mjs"]
+      and "update plan_polls set decided = ${JSON.stringify(decided)}::jsonb" in _hd["_bond.mjs"]
+      and "...(p.secret ? [] : yes)" in _hd["_bond.mjs"])
+check("heard: a vote for someone not on the app is kept with who cast it, and no vote is weighed by age or role",
+      "by_member" in _hd["_chatbond.mjs"] and "proxyLabel(v.name, v.by_name)" in _hd["_chatbond.mjs"] and "proxyLabel(x.n, x.bn)" in _hd["_bond.mjs"]
+      and not re.search(r"\b(dob|role|isAdult|weight)\b", _hd["_chatbond.mjs"])
+      and not re.search(r"\b(dob|role|isAdult|weight)\b", _hd["_bond.mjs"].split("if (a === 'bond_poll_create')")[1].split("if (a === 'bond_poll_cancel')")[0]))
+check("heard: an empty card is never marked as delivered, and the evening-before reminder never goes to the person",
+      "if (!c.n) continue;                    // empty: not delivered" in _hd["_bond.mjs"]
+      and _hd["_bond.mjs"].index("if (!c.n) continue;") < _hd["_bond.mjs"].index("const got = await sql`update cards set delivered_at = now()")
+      and "m.id !== c.for_member && m.id !== c.for_member2" in _hd["_bond.mjs"] and "update cards set eve_at = now() where id = ${c.id} and eve_at is null returning id" in _hd["_bond.mjs"])
+check("heard: festivals change one at a time with a feed line; nobody can replace the whole list",
+      "bond_fest_set" not in _hd["_bond.mjs"] and "bond_fest_set" not in _app_src and "delete from circle_festivals where circle_id = ${circle.id}`" not in _hd["_bond.mjs"]
+      and "if (got[0]) await feed(sql, circle.id, me.id, festChangeLine(me.name, f.name, f.icon, add));" in _hd["_bond.mjs"]
+      and all(("key: '" + k + "'") in _hd["_tyohaar.mjs"] for k in ("janmashtami", "dussehra", "chhath", "baisakhi", "ugadi", "onam", "pongal", "eidfitr", "christmas", "gurunanak")))
+check("heard: chat pages by a cursor compared in the database, deletes only my own message, mutes for me, and sends pushes together",
+      "(m.created_at, m.id) < (select b.created_at, b.id from messages b where b.id = ${before}::uuid and b.chat_id = ${chat.id})" in _hd["chats.mjs"]
+      and "delete from messages where id = ${body.messageId} and chat_id = ${chat.id} and member_id = ${me.id} returning id" in _hd["chats.mjs"]
+      and "insert into chat_mutes (chat_id, member_id) values (${chat.id}, ${me.id})" in _hd["chats.mjs"]
+      and "Promise.allSettled([...new Set(ids)].map(id => pushCircle(sql, circleId, payload, { only: id })))" in _hd["chats.mjs"]
+      and not re.search(r"for \(const p of audience\) \{\s*(if \(pinged\[p\.id\]\) continue;\s*)?await pushCircle", _hd["chats.mjs"]))
+check("heard: coins for being heard are small, once a day each, and capped; none for a mood or a private word",
+      all(k in _hd["_coins.mjs"] for k in ("story_told: { n: 2", "card_line:  { n: 2", "sawaal:     { n: 2", "shukriya:   { n: 1"))
+      and "if (coinsLeftToday(got[0].n) < rule.n) return 0;" in _hd["_coins.mjs"] and "export const HEARD_COIN_CAP = 6;" in _hd["_heardrules.mjs"]
+      and "award" not in _hd["_baat.mjs"] and "award" not in _hd["_pulse.mjs"])
+check("heard: a like noted for someone not on the app carries who wrote it, and their own first like replaces the notes",
+      "by_member" in _hd["_pasand.mjs"] and "delete from pasand_likes where member_id = ${me.id} and circle_id = ${circle.id} and by_member is not null and by_member <> ${me.id}" in _hd["_pasand.mjs"]
+      and "if (who.user_id) return bad(who.name + ' is on Parwah and writes their own likes.');" in _hd["_pasand.mjs"])
+check("heard: a story is heard and answered, and one told for someone carries both names",
+      "action === 'story_heard'" in _hd["_memorybond.mjs"] and "action === 'story_for'" in _hd["_memorybond.mjs"]
+      and "export const toldByLine = (teller, recorder) => 'told by ' + first(teller) + ', recorded by ' + first(recorder);" in _hd["_heardrules.mjs"]
+      and "if (t.remembered) return bad(400, t.name + ' is remembered here." in _hd["_memorybond.mjs"])
+check("heard: photos take a reaction and a voice caption under the album's own audience rule, and one push a day",
+      _hd["_album.mjs"].count("(a.audience = 'family' or a.by_member = ${me.id} or (a.audience = 'chosen' and ${me.id}::uuid = any(a.chosen)))") >= 7
+      and "rateLimit(sql, 'album_push', circle.id, ALBUM_PUSH_PER_DAY, 86400, { failClosed: true })" in _hd["_album.mjs"]
+      and "export const ALBUM_PUSH_PER_DAY = 1;" in _hd["_heardrules.mjs"] and "navigator.share({ files: [file]" in _app_src)
+check("heard: a day of remembrance opens one memory card a year, and the timer has one line for the private word's reminder",
+      "rememberCardOpen(sql, circleId, m.id, due.year, due.date)" in _hd["_remember.mjs"] and "unique (member_id, year)" in _hd["_heard.mjs"]
+      and _hd["events.mjs"].count("await heardSweepAll(sql)") == 1 and "export async function heardSweepAll(sql, nowMs = Date.now())" in _hd["_heard.mjs"])
+check("heard: someone remembered is never suggested, asked, pushed or voted for",
+      _hd["_heard.mjs"].count("not coalesce((to_jsonb(m)->>'remembered')::boolean, false)") >= 4
+      and "if (t.remembered) return bad(first(t.name) + ' is remembered here.', 400);" in _hd["_baat.mjs"]
+      and _hd["_chatbond.mjs"].count("not coalesce((to_jsonb(m)->>'remembered')::boolean, false)") >= 5)
+_hd_static = [i for i in _static_ids if i.startswith("hd-")]
+check(f"heard: its static ids all start with hd- ({len(_hd_static)}), none twice in the page, and its functions start with hd",
+      sorted(_hd_static) == ["hd-bf-how", "hd-cv-more", "hd-person", "hd-pl-secret", "hd-today"]
+      and len(re.findall(r"function hd[A-Z]\w*\(", _app_src)) >= 40, str(sorted(_hd_static)))
+_hd_block = _app_src.split("// ---------- BEING HEARD, AND ANSWERED (api/_heard.mjs, api/_baat.mjs) ----------")[1].split("// ---------- family memory: stories, yaadein, recipes, nudges")[0]
+check("heard: the screen's own words carry no long dash and no banned word, and no button is an emoji alone",
+      not re.search("[" + chr(8211) + chr(8212) + "]", _hd_block + _hd["_heardrules.mjs"] + _hd["_heard.mjs"] + _hd["_baat.mjs"])
+      and not re.search(r"\b(elderly|burden|cure|treat|heal|therapy|remedy|medicinal|prevents|reverses|clinically proven|doctor recommended|pain relief|guaranteed|arthritis|diabetes)\b", _hd_block + _hd["_heardrules.mjs"], re.I)
+      and not re.search(r"<button[^>]*>(?:' \+ [a-z.\[\]0-9]+ \+ ')?[^A-Za-z<']{1,4}</button>", _hd_block))
+_testdb_hd = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("heard: the rules test runs in the gate, and the db and browser tests run in test:db and never wait a fixed time",
+      "node site/tests/heardtest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all(("site/tests/db/" + f) in _testdb_hd and (REPO / "site/tests/db" / f).exists()
+              and "waitForTimeout" not in (REPO / "site/tests/db" / f).read_text(encoding="utf-8") for f in ("heard.dbtest.mjs", "heard.e2e.dbtest.mjs")))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

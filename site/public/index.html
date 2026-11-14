@@ -1587,6 +1587,24 @@ body.senior .mbcard p{font-size:var(--fs-16)}
   body.mbprint .mbbook h2{break-after:avoid}
   body.mbprint .mbbook section{break-inside:avoid}
 }
+/* BEING HEARD (api/_heard.mjs): the mood choices on Today, each a word with
+   its emoji, and the small lines under a card. Built from the shared parts
+   and the tokens; no new token. */
+.hdmoods{display:grid;grid-template-columns:1fr;gap:var(--space-8);margin:var(--space-8) 0}
+.hdmood{display:flex;align-items:center;gap:var(--space-12);width:100%;min-height:56px;padding:var(--space-8) var(--space-12);border:1.5px solid var(--bone-2);border-radius:var(--radius-12);background:var(--surface);color:var(--ink);font-family:var(--body);font-size:var(--fs-16);text-align:left;cursor:pointer}
+.hdmood .hde{font-size:var(--fs-24);line-height:1}
+.hdmood b{display:block;font-weight:700}
+.hdmood small{display:block;font-size:var(--fs-12);color:var(--ink-soft)}
+.hdmood.sel{border-color:var(--marigold);background:var(--tint-warm)}
+.mbcard .hdline,.bondsheet .hdline,.hdline{font-size:var(--fs-14);color:var(--ink);margin:var(--space-8) 0}
+.hdtell{margin-bottom:var(--space-8)}
+.hdtold{font-size:var(--fs-12);color:var(--ink-soft)}
+.hdrx{flex-basis:100%;margin:0 0 var(--space-8)}
+.hdfull{flex-basis:100%}
+#hd-person .mbacts .cbtn{flex:1 1 45%;min-height:var(--tap-min)}
+body.senior .hdmood{min-height:64px;font-size:var(--fs-18)}
+body.senior .hdmood small{font-size:var(--fs-14)}
+@media(min-width:900px){.hdmoods{grid-template-columns:repeat(5,1fr)}.hdmood{flex-direction:column;text-align:center;padding:var(--space-12) var(--space-8)}}
 /* YAADON KI ALBUM (api/_album.mjs): the grid, one photo full width, the add
    sheet. Built from the shared parts and the tokens; no new token. Every
    tile is a fixed square, so nothing moves as pictures arrive. */
@@ -1968,6 +1986,11 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     <!-- AAJ KA DIN (api/_ektaday.mjs): what today holds, from Ekta. One row
          in the morning, written by plain rules. -->
     <div id="ek2-today"></div>
+    <!-- BEING HEARD (api/_heard.mjs): "Aaj kaisa lag raha hai?" (private
+         unless I choose to tell someone), a private word to one person, a
+         quiet shukriya, the family's weekly question, and the memory card
+         of a day of remembrance. Senior mode shows it too, larger. -->
+    <div id="hd-today" aria-live="polite"></div>
     <!-- AAJ KYA HUA (api/_digest.mjs): what happened in the family today,
          from Ekta. One row, from 6pm, that opens the day's note. -->
     <div id="dg-today"></div>
@@ -2914,6 +2937,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button class="cbtn ghost" id="pp-audit" style="grid-column:1/-1;min-height:48px">👁️ Who can see this?</button>
       <button class="cbtn ghost cc-admit" id="pp-admit" style="grid-column:1/-1;min-height:48px">🏥 Admitted to hospital</button>
     </div>
+    <!-- BEING HEARD: thank this person, or send them a private word. -->
+    <div class="card" id="hd-person" hidden></div>
     <div class="card" id="pp-todo-card" hidden><h3 id="pp-todo-title">To complete</h3><div class="feed" id="pp-todo"></div></div>
     <!-- CARE CYCLE: medicine times and ticks, doctor visits, hospital stays. -->
     <div class="card" id="pp-doses-card">
@@ -3275,6 +3300,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         <span style="flex:1"><b id="cv-name"></b><small id="cv-sub"></small></span>
         <button class="cbtn ghost" id="cv-add" hidden>➕ Add</button>
         <button class="cbtn ghost" id="cv-poll" aria-label="Start a poll" aria-haspopup="dialog">📊 Poll</button>
+        <button class="cbtn ghost" id="hd-cv-more" type="button" aria-label="More for this chat: mute, and a private word" aria-haspopup="dialog">More</button>
         <a class="cbtn ghost" id="cv-call" hidden>📞</a>
       </div>
       <div id="addbox" hidden></div>
@@ -3443,7 +3469,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <p class="hint" style="margin:0 0 var(--space-8)" id="bf-sub">Nothing is chosen for you. Pick the ones you keep, and 14 days before each, Parwah offers one plan for everyone, with a call for anyone away.</p>
       <div class="pkind bondfest" id="bf-chips" role="group" aria-label="Festivals"></div>
       <p class="hint" id="bf-note"></p>
-      <button type="button" class="go" id="bf-save">Save our festivals</button>
+      <p class="hint" id="hd-bf-how">Tap a festival to add it or take it off. Each change is saved at once, and the family feed says who changed what.</p>
     </div>
     </div>
 
@@ -4540,6 +4566,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     <div id="pl-opts"></div>
     <button type="button" class="cbtn ghost" id="pl-more" style="min-height:var(--tap-min)">＋ Add a choice</button>
     <label class="seniorchk"><input type="checkbox" id="pl-multi"> People can pick more than one</label>
+    <label class="seniorchk"><input type="checkbox" id="hd-pl-secret"> 🔒 Secret ballot: nobody sees who picked what</label>
     <label for="pl-close">Close it at (optional)</label>
     <input type="datetime-local" id="pl-close">
     <p class="fielderr" id="pl-err" hidden></p>
@@ -5393,6 +5420,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     mbTodayLoad();
     pasandRefresh();
     albumTodayLoad();
+    hdTodayLoad();
     digestRenderToday();
     ek2RenderToday();
     refreshChats();
@@ -5462,7 +5490,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         curChatMembers = j.members || [];
         var reads = (j.reads || []).filter(function(r){ return r.member_id !== state.memberId; });
         var h = '', lastDay = '';
-        j.messages.forEach(function(m, mi){
+        // Earlier pages the member asked for, then this newest page.
+        var msgs = hdChatMerge(j);
+        msgs.forEach(function(m, mi){
           var day = fmtDue(localYmd(m.created_at));
           if (day && day !== lastDay) { h += '<div class="dsep">' + esc(day) + '</div>'; lastDay = day; }
           var mine = m.member_id === state.memberId;
@@ -5480,13 +5510,14 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           h += '<div class="em ' + (mine ? 'u' : 'a') + (ekta ? ' ekta' : '') + '" data-mid="' + esc(m.id) + '">' +
                (mine ? '' : '<span class="from">' + esc(m.name) + '</span>') + body +
                '<small class="mt">' + esc(fmtTime(m.created_at)) + '</small>' + tick + bondFootHtml(m) + '</div>';
-          if (mi === j.messages.length - 1 && seenBy.length) {
+          if (mi === msgs.length - 1 && seenBy.length) {
             h += '<div class="seenline">Seen by ' + esc(seenBy.map(function(r){ return r.name; }).join(', ')) + '</div>';
           }
         });
-        $('cmsgs').innerHTML = h || '<div class="em a">Say hello 🧡</div>';
+        $('cmsgs').innerHTML = hdChatTop() + (h || '<div class="em a">Say hello 🧡</div>');
         var box = $('cmsgs'); box.scrollTop = box.scrollHeight;
-        bondAfterRender(j.messages);
+        bondAfterRender(msgs);
+        hdChatAfter();
       }).catch(function(){});
   }
 
@@ -12163,7 +12194,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     $('rx-row').innerHTML = RX.map(function(x){
       return '<button type="button" class="rx-big" data-rxpick="' + x[0] + '" aria-pressed="' + (x[0] === mine) + '" aria-label="' + x[1] + (x[0] === mine ? ', yours, tap to take it back' : '') + '">' + x[0] + '</button>';
     }).join('');
-    $('rx-who').innerHTML = (m.reactions || []).map(function(g){ return '<li>' + esc(g.emoji) + ' ' + esc(g.names.join(', ')) + '</li>'; }).join('');
+    $('rx-who').innerHTML = (m.reactions || []).map(function(g){ return '<li>' + esc(g.emoji) + ' ' + esc(g.names.join(', ')) + '</li>'; }).join('') + hdRxExtra(m);
     $('rxsheet').hidden = false;
     try { ($('rx-row').querySelector('[aria-pressed="true"]') || $('rx-row').firstChild).focus(); } catch (e) {}
   }
@@ -12237,7 +12268,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var p = m.poll;
     if (!p) return '<b>📊 ' + esc(m.text) + '</b>';
     var meta = (p.multi ? 'Pick one or more' : 'Pick one') + ' · ' + p.voters + (p.voters === 1 ? ' person voted' : ' people voted') +
-      (p.closed ? ' · Closed' : p.closeAt ? ' · Closes ' + whenSaid(p.closeAt) : '');
+      (p.closed ? ' · Closed' : p.closeAt ? ' · Closes ' + whenSaid(p.closeAt) : '') + hdPollMeta(p);
     var h = '<div class="pl" role="group" aria-label="' + esc('Poll: ' + p.question) + '"><b class="pl-q">📊 ' + esc(p.question) + '</b><small class="pl-meta">' + esc(meta) + '</small>';
     p.options.forEach(function(o, i){
       var mine = p.mine.indexOf(i) >= 0, pct = p.voters ? Math.round(o.count / p.voters * 100) : 0;
@@ -12246,8 +12277,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       h += p.closed ? '<div class="pl-opt' + (mine ? ' mine' : '') + '">' + inner + '</div>'
         : '<button type="button" class="pl-opt' + (mine ? ' mine' : '') + '" data-plvote="' + esc(m.id) + '" data-i="' + i + '" aria-pressed="' + mine + '">' + inner + '</button>';
     });
-    h += '<div class="pl-acts"><button type="button" class="cbtn ghost" data-plwho="' + esc(m.id) + '">👥 Who voted</button>' +
-         (p.canClose ? '<button type="button" class="cbtn ghost" data-plclose="' + esc(m.id) + '">Close poll</button>' : '') + '</div></div>';
+    // A secret ballot has no "Who voted": the server sends no names at all.
+    h += '<div class="pl-acts">' + (p.secret ? '' : '<button type="button" class="cbtn ghost" data-plwho="' + esc(m.id) + '">👥 Who voted</button>') +
+         (p.canClose ? '<button type="button" class="cbtn ghost" data-plclose="' + esc(m.id) + '">Close poll</button>' : '') + '</div>' + hdPollExtra(m) + '</div>';
     return h;
   }
   function bondVote(mid, i){
@@ -12293,7 +12325,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   function plOpen(){
     if (!curChat) return;
     $('pl-q').value = ''; $('pl-opts').innerHTML = plRow() + plRow(); plSync();
-    $('pl-multi').checked = false; $('pl-close').value = ''; $('pl-err').hidden = true;
+    $('pl-multi').checked = false; $('hd-pl-secret').checked = false; $('pl-close').value = ''; $('pl-err').hidden = true;
     var d = new Date(Date.now() + 5 * 60000); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     $('pl-close').min = d.toISOString().slice(0, 16);
     $('pl-title').textContent = curChat.kind === 'circle' ? 'Ask the ' + spaceWord() : curChat.kind === 'dm' ? 'Ask ' + chatTitle(curChat) : 'Ask the group';
@@ -12329,7 +12361,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (!curChat) return;
     var b = this; b.disabled = true;
     post(API.chats, { code: state.code, memberId: state.memberId, action: 'poll_create', chatId: curChat.id,
-                      question: q, options: opts, multi: $('pl-multi').checked, closeAt: closeAt })
+                      question: q, options: opts, multi: $('pl-multi').checked, secret: $('hd-pl-secret').checked, closeAt: closeAt })
       .then(function(j){
         b.disabled = false;
         if (!j.ok) { $('pl-err').textContent = humanFail(j.error, 'Could not ask that'); $('pl-err').hidden = false; return; }
@@ -12883,6 +12915,642 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     }
   });
 
+  // ---------- BEING HEARD, AND ANSWERED (api/_heard.mjs, api/_baat.mjs) ----------
+  // Today: how I feel (private unless I say so), a private word to one
+  // person, a quiet shukriya, the family's weekly question and the memory
+  // card of a day of remembrance. Every function here starts with "hd".
+  // The same file adds the answer loops elsewhere: heard-by on stories,
+  // thank-you on cards, reactions on photos, equal votes, and chat basics.
+  var HD_API = '/api/chats?area=heard';
+  var hdData = null, hdAt = 0, hdOlder = {}, hdKeep = null, hdRec = null;
+  var HD_RX = [['❤️', 'Love'], ['🙏', 'Pranam'], ['😂', 'Haha'], ['👏', 'Shabash'], ['😮', 'Wah']];
+  function hdQs(){ return '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId); }
+  function hdGet(extra){ return apiGet(HD_API + hdQs() + (extra || '')); }
+  function hdPost(body){
+    body.area = 'heard'; body.code = state.code; body.memberId = state.memberId;
+    return post(HD_API, body).catch(function(){ return { ok: false, error: 'No connection. Try again.' }; });
+  }
+  function hdFirst(n){ return String(n || '').split(' ')[0] || 'Someone'; }
+  function hdPerson(id){ return ((hdData && hdData.people) || []).filter(function(p){ return p.id === id; })[0] || null; }
+  function hdTodayLoad(force){
+    if (!state) return;
+    if (!force && Date.now() - hdAt < 45000) return;
+    hdAt = Date.now();
+    hdGet('&view=today').then(function(j){ if (j && j.ok) { hdData = j; hdTodayRender(); if (curTab === 'person' && personId) hdPersonRender(personId); } }).catch(function(){});
+  }
+  function hdPlayBtn(key, label){ return '<span data-hdaudio="' + esc(key) + '"><button type="button" class="cbtn ghost" data-hdplay="' + esc(key) + '">▶ ' + esc(label) + '</button></span>'; }
+  function hdPeopleSelect(id, list, pick, first){
+    return '<select id="' + id + '">' + (first ? '<option value="">' + esc(first) + '</option>' : '') + list.map(function(p){
+      return '<option value="' + esc(p.id) + '"' + (p.id === pick ? ' selected' : '') + '>' + esc(p.name) + (p.onApp ? '' : ' (not on Parwah)') + '</option>'; }).join('') + '</select>';
+  }
+
+  // ---- Today
+  function hdMoodHtml(){
+    var m = hdData.mood, mine = m.mine && m.mine.mood ? m.mine : null, h = '';
+    var cur = mine ? m.moods.filter(function(x){ return x.k === mine.value; })[0] : null;
+    var mid = '<div class="hdmoods" role="group" aria-label="' + esc(m.ask) + '">' + m.moods.map(function(x){
+      var on = !!(cur && cur.k === x.k);
+      return '<button type="button" class="hdmood' + (on ? ' sel' : '') + '" aria-pressed="' + on + '" data-hdmood="' + esc(x.k) + '"><span class="hde" aria-hidden="true">' + x.e + '</span><span><b>' + esc(x.t) + '</b><small>' + esc(x.en) + '</small></span></button>';
+    }).join('') + '</div>';
+    var who = !cur ? 'Only you see your answer. You choose if anyone else is told.'
+      : mine.tell === 'family' ? 'You told the family.' : mine.tell === 'one' ? 'You told only ' + hdFirst(mine.toName) + '.' : 'Kept to yourself. Nobody else can see it.';
+    if (cur) {
+      mid += '<div class="pkind hdtell" role="group" aria-label="Who should know">' +
+        [['self', '🔒 Keep to myself'], ['one', '👤 Tell only...'], ['family', '👪 Tell the family']].map(function(t){
+          var on = mine.tell === t[0];
+          return '<button type="button" class="' + (on ? 'sel' : '') + '" aria-pressed="' + on + '" data-hdtell="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
+    }
+    (m.told || []).forEach(function(t){
+      mid += '<p class="hdline"><b>' + esc(hdFirst(t.name)) + '</b> ' + t.emoji + ' ' + esc(t.text) + (t.en ? ' (' + esc(t.en) + ')' : '') + (t.low ? '. A call would be nice.' : '') + '</p>';
+    });
+    h += mbCard('hdcard', '🙂 How are you today', esc(m.ask), esc(who),
+      '<button type="button" class="cbtn ghost" data-hdbaat="talk|">🫶 Mujhe baat karni hai (I need to talk)</button>', mid);
+    return h;
+  }
+  function hdBaatHtml(){
+    var h = '';
+    ((hdData.baat && hdData.baat.list) || []).forEach(function(b){
+      var play = b.hasAudio ? hdPlayBtn('baat:' + b.id, 'Play the voice note') : '';
+      var rep = b.reply ? '<p class="hdline"><b>' + esc(b.mine ? hdFirst(b.toName) : 'You') + ' answered:</b> ' + b.reply.emoji + ' ' + esc(b.reply.title) + (b.reply.at ? ' ' + esc(b.reply.at) : '') + '</p>' +
+        (b.reply.hasAudio ? hdPlayBtn('baatreply:' + b.id, 'Play the answer') : '') : '';
+      var away = '<button type="button" class="cbtn no" data-hdbclose="' + esc(b.id) + '">Put it away</button>';
+      if (b.mine) {
+        h += mbCard('nudge', '🔒 Only you and ' + esc(hdFirst(b.toName)) + ' can see this', b.emoji + ' You told ' + esc(hdFirst(b.toName)) + ': ' + esc(b.title),
+          esc(b.line || '') + (b.reply ? '' : (b.line ? ' ' : '') + 'They will answer when they can.'), away, play + rep);
+        return;
+      }
+      var acts = b.reply ? away :
+        '<button type="button" class="cbtn" data-hdbreply="call|' + esc(b.id) + '">📞 I will call you at...</button>' +
+        '<button type="button" class="cbtn ghost" data-hdbreply="come|' + esc(b.id) + '">🫶 Aao, baat karte hain (Come, let us talk)</button>' +
+        '<button type="button" class="cbtn ghost" data-hdbreply="voice|' + esc(b.id) + '">🎙 Answer by voice</button>' + away;
+      h += mbCard('nudge', '🔒 Only you and ' + esc(hdFirst(b.fromName)) + ' can see this', b.emoji + ' ' + esc(hdFirst(b.fromName)) + ': ' + esc(b.title) + ' (' + esc(b.en) + ')',
+        esc(b.line || '') + (b.line ? ' ' : '') + esc(b.when || ''), acts, play + rep);
+    });
+    return h;
+  }
+  function hdShukriyaHtml(){
+    var s = hdData.shukriya || {}, h = '';
+    (s.recent || []).forEach(function(x){
+      h += '<div class="crow"><span class="txt"><b>🙏 ' + esc(hdFirst(x.fromName)) + ' says shukriya to ' + esc(x.forMe ? 'you' : hdFirst(x.toName)) + '</b><small>' + esc(x.line || 'A voice note') + '</small></span>' +
+        (x.hasAudio ? hdPlayBtn('shukriya:' + x.id, 'Play it') : '') + '</div>';
+    });
+    if (s.prompt) {
+      var nm = esc(hdFirst(s.prompt.name));
+      h += mbCard('nudge', '🙏 Shukriya, just a thought', 'Is there something to thank ' + nm + ' for?', 'A line or a voice note. Only you see this thought.',
+        '<button type="button" class="cbtn" data-hdshuk="' + esc(s.prompt.toId) + '">🙏 Say shukriya to ' + nm + '</button><button type="button" class="cbtn no" data-hdshuklater="1">Not this week</button>');
+    }
+    return h;
+  }
+  function hdSawaalHtml(){
+    var q = hdData.sawaal; if (!q) return '';
+    var mid = '';
+    if (q.answered) {
+      mid = '<div class="mbside">' + q.answers.map(function(a){
+        return '<div><b>' + esc(a.mine ? 'You' : hdFirst(a.name)) + '</b>' + esc(a.text || '') + (a.told ? ' <span class="hdtold">(' + esc(a.told) + ')</span>' : '') +
+          (a.hasAudio ? ' ' + hdPlayBtn('sawaal:' + a.id, 'Listen') : '') + '</div>'; }).join('') + '</div>' +
+        (q.waiting ? '<p class="hdline">' + esc(q.waiting) + '</p>' : '');
+    }
+    var acts = q.answered ? '<button type="button" class="cbtn ghost" data-hdsawaal="type">Change my answer</button>'
+      : '<button type="button" class="cbtn" data-hdsawaal="voice">🎙 Answer by voice</button><button type="button" class="cbtn ghost" data-hdsawaal="type">⌨️ Type it</button>';
+    if ((q.offApp || []).length) acts += '<button type="button" class="cbtn ghost" data-hdsawaal="for">✍️ Answer for someone not on Parwah</button>';
+    return mbCard('hdcard', '💬 This week, for the whole family', esc(q.question),
+      q.answered ? '' : 'Everyone answers, by voice or by typing. You read the others once you have answered.', acts, mid);
+  }
+  function hdRememberHtml(){
+    var h = '';
+    (hdData.remember || []).forEach(function(c){
+      var lines = c.entries.map(function(e){
+        var del = e.mine ? '<button type="button" class="cbtn no" data-hdrcdel="' + esc(e.id) + '">Take mine off</button>' : '';
+        var from = '<small>From ' + esc(e.mine ? 'you' : hdFirst(e.name)) + '</small>';
+        if (e.kind === 'photo') { var src = safeImageUri(e.data); return '<div class="bondline">' + (src ? '<img src="' + esc(src) + '" alt="A photo from ' + esc(e.name) + '">' : '') + esc(e.text || '') + from + del + '</div>'; }
+        if (e.kind === 'voice') return '<div class="bondline">🎙 A voice note' + from + hdPlayBtn('rcard:' + e.id, 'Play it') + del + '</div>';
+        return '<div class="bondline">' + esc(e.text) + from + del + '</div>';
+      }).join('');
+      var acts = c.left > 0 ? '<button type="button" class="cbtn" data-hdrc="text|' + esc(c.id) + '">✍️ Add a line</button><button type="button" class="cbtn ghost" data-hdrc="photo|' + esc(c.id) + '">📷 Add a photo</button>' +
+        '<button type="button" class="cbtn ghost" data-hdrc="voice|' + esc(c.id) + '">🎙 Add a voice note</button>' : '';
+      h += mbCard('yaad', '🪔 A memory card, together', esc(c.title), esc(c.sub) + (c.line ? ' ' + esc(c.line) : ''), acts,
+        '<div class="feed">' + (lines || '<div class="ev">Add a line, a photo or a voice note. The whole family sees this card.</div>') + '</div>');
+    });
+    return h;
+  }
+  function hdTodayRender(){
+    var box = $('hd-today'); if (!box || !hdData) return;
+    box.innerHTML = hdRememberHtml() + hdBaatHtml() + hdMoodHtml() + hdShukriyaHtml() + hdSawaalHtml();
+  }
+  function hdDone(j, msg){
+    if (!j || !j.ok) { mbErr(humanFail(j && j.error, 'That did not work. Try again.')); return false; }
+    mbSheetClose(); if (msg) toast(msg); hdTodayLoad(true); return true;
+  }
+  function hdVoice(body, rec){ if (rec && rec.result) { body.audio = rec.result.data; body.mime = rec.result.mime; body.secs = rec.result.secs; } return body; }
+  function hdBusy(rec){ if (rec && rec.busy()) { mbErr('Tap Stop first, then send.'); return true; } return false; }
+
+  // ---- how I feel: saved private first, then the member chooses
+  function hdMoodSet(value, tell, toId){
+    hdPost({ action: 'mood_set', value: value, tell: tell || 'self', toId: toId || undefined }).then(function(j){
+      if (!j.ok) { toast(humanFail(j.error, 'Could not save that')); return; }
+      toast(j.tell === 'family' ? 'The family can see it now' : j.tell === 'one' ? 'Told only ' + hdFirst((hdPerson(j.toId) || {}).name) : 'Saved. Only you can see it 🔒');
+      mbSheetClose(); hdTodayLoad(true);
+    });
+  }
+  function hdMoodOneSheet(value){
+    var list = ((hdData && hdData.people) || []).filter(function(p){ return p.onApp; });
+    if (!list.length) { toast('Nobody else in the family is on Parwah yet'); return; }
+    mbSheet('👤 Tell only one person', '<p class="hint">Only this one person is told how you feel today. Nobody else, and not the family feed.</p>' +
+      '<label for="hd-m-to">Who</label>' + hdPeopleSelect('hd-m-to', list, null) +
+      '<p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="hd-m-save">Tell only them</button>');
+    $('hd-m-save').addEventListener('click', function(){ hdMoodSet(value, 'one', $('hd-m-to').value); });
+  }
+
+  // ---- a private word to one person: "Mujhe baat karni hai", "Maaf karna", "Can we talk?"
+  function hdBaatSheet(kind, toId){
+    if (!hdData) { hdTodayLoad(true); toast('One moment. Try again.'); return; }
+    var list = hdData.people.filter(function(p){ return p.onApp; }), kinds = hdData.baat.kinds;
+    if (!list.length) { toast('Nobody else here is on Parwah yet'); return; }
+    mbSheet('🔒 A private word', '<p class="hint">Only the one person you choose will see this. Not the family, not the feed, not Ekta.</p>' +
+      '<label for="hd-b-to">Who is it for</label>' + hdPeopleSelect('hd-b-to', list, toId) +
+      '<div class="pkind" id="hd-b-kind" role="group" aria-label="What you want to say">' + ['talk', 'sorry', 'cantalk'].map(function(k){
+        var on = k === (kind || 'talk');
+        return '<button type="button" class="' + (on ? 'sel' : '') + '" aria-pressed="' + on + '" data-hdbk="' + k + '">' + kinds[k].e + ' ' + esc(kinds[k].title) + '</button>'; }).join('') + '</div>' +
+      '<label for="hd-b-line">A line, if you wish</label><textarea id="hd-b-line" rows="2" maxlength="240" placeholder="You can leave this empty"></textarea>' +
+      '<p class="eyebrow">Or say it as a voice note</p><div class="mbrec" id="hd-b-rec"></div>' +
+      '<label for="hd-b-when">When</label><input type="text" id="hd-b-when" maxlength="60" placeholder="' + esc(hdData.baat.whenDefault) + '">' +
+      '<p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="hd-b-send">Send it, privately</button>');
+    mbSheetRec = mbRecorder($('hd-b-rec'));
+    $('hd-b-send').addEventListener('click', function(){
+      var rec = mbSheetRec; if (hdBusy(rec)) return;
+      var kb = document.querySelector('#hd-b-kind .sel'), to = $('hd-b-to').value;
+      var body = hdVoice({ action: 'baat_send', kind: kb ? kb.getAttribute('data-hdbk') : 'talk', toId: to, line: $('hd-b-line').value, when: $('hd-b-when').value }, rec);
+      var b = this; b.disabled = true;
+      hdPost(body).then(function(j){ b.disabled = false; hdDone(j, 'Sent. Only ' + hdFirst((hdPerson(to) || {}).name) + ' can see it 🔒'); });
+    });
+  }
+  function hdBaatReply(kind, id){
+    if (kind === 'come') { hdPost({ action: 'baat_reply', id: id, reply: 'come' }).then(function(j){ if (!j.ok) { toast(humanFail(j.error, 'Could not send')); return; } toast('Answered 🫶'); hdTodayLoad(true); }); return; }
+    if (kind === 'call') {
+      mbSheet('📞 I will call you at...', '<label for="hd-r-at">When will you call?</label><input type="text" id="hd-r-at" maxlength="60" placeholder="e.g. 7 this evening">' +
+        '<p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="hd-r-send">Send my answer</button>');
+      $('hd-r-send').addEventListener('click', function(){
+        var at = $('hd-r-at').value.trim(); if (!at) { mbErr('Say when you will call, like "7 this evening".'); return; }
+        hdPost({ action: 'baat_reply', id: id, reply: 'call', at: at }).then(function(j){ hdDone(j, 'Answered 📞'); });
+      });
+      try { $('hd-r-at').focus(); } catch (e) {}
+      return;
+    }
+    mbSheet('🎙 Answer by voice', '<div class="mbrec" id="hd-r-rec"></div><p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="hd-r-send">Send my answer</button>');
+    mbSheetRec = mbRecorder($('hd-r-rec'));
+    $('hd-r-send').addEventListener('click', function(){
+      var rec = mbSheetRec; if (hdBusy(rec)) return;
+      if (!rec || !rec.result) { mbErr('Record your answer first.'); return; }
+      hdPost(hdVoice({ action: 'baat_reply', id: id, reply: 'voice' }, rec)).then(function(j){ hdDone(j, 'Answered 🎙'); });
+    });
+  }
+
+  // ---- shukriya
+  function hdShukriyaSheet(toId){
+    if (!hdData) { hdTodayLoad(true); toast('One moment. Try again.'); return; }
+    mbSheet('🙏 Say shukriya', '<label for="hd-s-to">Who do you want to thank</label>' + hdPeopleSelect('hd-s-to', hdData.people, toId) +
+      '<label for="hd-s-line">A line</label><textarea id="hd-s-line" rows="3" maxlength="300" placeholder="e.g. Thank you for the chai every morning"></textarea>' +
+      '<p class="eyebrow">Or say it as a voice note</p><div class="mbrec" id="hd-s-rec"></div>' +
+      '<div class="pkind" id="hd-s-aud" role="group" aria-label="Who sees it">' +
+      '<button type="button" class="sel" aria-pressed="true" data-hdsa="two">🔒 Just the two of us</button><button type="button" aria-pressed="false" data-hdsa="family">👪 Show the family</button></div>' +
+      '<p class="hint">Someone not on Parwah does not get a message. It is kept for the day they join, and you can read it out or share it.</p>' +
+      '<p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="hd-s-send">Say shukriya</button>');
+    mbSheetRec = mbRecorder($('hd-s-rec'));
+    $('hd-s-send').addEventListener('click', function(){
+      var rec = mbSheetRec; if (hdBusy(rec)) return;
+      var to = $('hd-s-to').value, line = $('hd-s-line').value.trim(), ab = document.querySelector('#hd-s-aud .sel');
+      if (!line && !(rec && rec.result)) { mbErr('Write a line, or say it by voice.'); return; }
+      var b = this, who = hdPerson(to) || {}; b.disabled = true;
+      hdPost(hdVoice({ action: 'shukriya_send', toId: to, line: line, audience: ab ? ab.getAttribute('data-hdsa') : 'two' }, rec)).then(function(j){
+        b.disabled = false;
+        if (!j.ok) { mbErr(humanFail(j.error, 'Could not send')); return; }
+        hdTodayLoad(true);
+        if (!j.kept) { mbSheetClose(); toast('Shukriya sent 🙏'); return; }
+        // Kept for someone not on the app: the writer reads it out, or shares it.
+        mbSheet('🙏 Kept for ' + hdFirst(who.name), '<p class="hint">' + esc(hdFirst(who.name)) + ' is not on Parwah, so this is kept for the day they join. You can read it out to them now, or share it.</p>' +
+          (line ? '<p class="bondtext" id="hd-s-kept">' + esc(line) + '</p><button type="button" class="cbtn bondwide" id="hd-s-share">📤 Share these words</button>' : '') +
+          '<button type="button" class="cbtn ghost bondwide" id="hd-s-ok">Done</button>');
+        $('hd-s-ok').addEventListener('click', mbSheetClose);
+        if ($('hd-s-share')) $('hd-s-share').addEventListener('click', function(){ hdShareText('Shukriya, ' + hdFirst(who.name), line); });
+      });
+    });
+  }
+  // The member's own act, through their own phone's share sheet.
+  function hdShareText(title, text){
+    if (navigator.share) { navigator.share({ title: title, text: text }).catch(function(){}); return; }
+    try { navigator.clipboard.writeText(text).then(function(){ toast('Copied. Paste it where you like.'); }, function(){ toast('This phone cannot share from here.'); }); }
+    catch (e) { toast('This phone cannot share from here.'); }
+  }
+
+  // ---- the family's weekly question
+  function hdSawaalSheet(mode){
+    var q = hdData && hdData.sawaal; if (!q) return;
+    var forSel = mode === 'for' ? '<label for="hd-q-for">Who are you answering for</label>' + hdPeopleSelect('hd-q-for', q.offApp.map(function(p){ return { id: p.id, name: p.name, onApp: true }; }), null) +
+      '<p class="hint">It is shown with both names, like "told by Dadi, recorded by Rohan".</p>' : '';
+    mbSheet('💬 ' + q.question, forSel +
+      (mode === 'voice' ? '<div class="mbrec" id="hd-q-rec"></div><label for="hd-q-text">Or type it</label>' : '<label for="hd-q-text">' + (mode === 'for' ? 'What they said' : 'Your answer') + '</label>') +
+      '<textarea id="hd-q-text" rows="4" maxlength="600" placeholder="In your own words"></textarea>' +
+      (mode === 'voice' ? '' : '<p class="eyebrow">Or say it as a voice note</p><div class="mbrec" id="hd-q-rec"></div>') +
+      '<p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="hd-q-send">Share my answer</button>');
+    mbSheetRec = mbRecorder($('hd-q-rec'));
+    $('hd-q-send').addEventListener('click', function(){
+      var rec = mbSheetRec; if (hdBusy(rec)) return;
+      var text = $('hd-q-text').value.trim();
+      if (!text && !(rec && rec.result)) { mbErr('Say it or type it first.'); return; }
+      var body = hdVoice({ action: 'sawaal_answer', text: text }, rec);
+      if (mode === 'for') body.forId = $('hd-q-for').value;
+      hdPost(body).then(function(j){ hdDone(j, mode === 'for' ? 'Added, with both names 💬' : 'Shared. Now you can read the others 💬'); });
+    });
+  }
+
+  // ---- the memory card
+  function hdRcardSheet(kind, cardId){
+    if (kind === 'photo') {
+      var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+      inp.addEventListener('change', function(){
+        if (!inp.files || !inp.files[0]) return;
+        bondShrink(inp.files[0], function(data){
+          if (!data) { toast('That photo could not be used. Try another.'); return; }
+          hdPost({ action: 'rcard_add', cardId: cardId, kind: 'photo', data: data }).then(function(j){ if (!j.ok) { toast(humanFail(j.error, 'Could not add it')); return; } toast('Added to the memory card 🪔'); hdTodayLoad(true); });
+        });
+      });
+      inp.click(); return;
+    }
+    mbSheet(kind === 'voice' ? '🎙 Add a voice note' : '✍️ Add a line', (kind === 'voice' ? '<div class="mbrec" id="hd-c-rec"></div>'
+      : '<label for="hd-c-text">A line to remember them by</label><textarea id="hd-c-text" rows="3" maxlength="300" placeholder="e.g. Your stories at the dinner table"></textarea>') +
+      '<p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="hd-c-send">Add to the card</button>');
+    if (kind === 'voice') mbSheetRec = mbRecorder($('hd-c-rec'));
+    $('hd-c-send').addEventListener('click', function(){
+      var rec = mbSheetRec, body = { action: 'rcard_add', cardId: cardId, kind: kind };
+      if (kind === 'voice') { if (hdBusy(rec)) return; if (!rec || !rec.result) { mbErr('Record a voice note first.'); return; } hdVoice(body, rec); }
+      else { body.text = $('hd-c-text').value.trim(); if (!body.text) { mbErr('Write a line first.'); return; } }
+      hdPost(body).then(function(j){ hdDone(j, 'Added to the memory card 🪔'); });
+    });
+  }
+
+  // ---- on a person's page: thank them, or a private word
+  function hdPersonRender(id){
+    var card = $('hd-person'); if (!card) return;
+    var m = (membersCache || []).filter(function(x){ return x.id === id; })[0];
+    if (!m || id === state.memberId || m.remembered) { card.hidden = true; return; }
+    var nm = esc(hdFirst(m.name));
+    card.innerHTML = '<h3>🙏 Say it to ' + nm + '</h3><div class="mbacts">' +
+      '<button type="button" class="cbtn" data-hdshuk="' + esc(id) + '">🙏 Say shukriya</button>' +
+      (m.on_app ? '<button type="button" class="cbtn ghost" data-hdbaat="talk|' + esc(id) + '">🫶 Mujhe baat karni hai</button>' +
+        '<button type="button" class="cbtn ghost" data-hdbaat="sorry|' + esc(id) + '">🙏 Maaf karna</button>' +
+        '<button type="button" class="cbtn ghost" data-hdbaat="cantalk|' + esc(id) + '">🤝 Can we talk?</button>' : '') + '</div>' +
+      '<p class="hint">' + (m.on_app ? 'A private word is seen only by ' + nm + ' and you.' : nm + ' is not on Parwah. A shukriya is kept for the day they join, and you can read it out.') + '</p>';
+    card.hidden = false;
+  }
+
+  // ---- chat: earlier messages, delete my own, mute, a private word from a 1:1 chat
+  function hdChatMerge(j){
+    var id = curChat.id, o = hdOlder[id] || (hdOlder[id] = { msgs: [], before: null, more: false });
+    if (!o.msgs.length) { o.before = j.before || null; o.more = !!j.more; }
+    var have = {}; (j.messages || []).forEach(function(m){ have[m.id] = 1; });
+    o.msgs = o.msgs.filter(function(m){ return !have[m.id]; });
+    // While someone is reading back, new messages push older ones off the
+    // newest page: those are kept in view, so nothing drops out mid-read.
+    var firstAt = j.messages && j.messages.length ? new Date(j.messages[0].created_at).getTime() : 0;
+    if (o.msgs.length) (o.tail || []).forEach(function(m){ if (!have[m.id] && new Date(m.created_at).getTime() < firstAt) o.msgs.push(m); });
+    o.tail = j.messages || [];
+    curChat.muted = !!(j.chat && j.chat.muted);
+    return o.msgs.concat(j.messages || []);
+  }
+  function hdChatTop(){
+    var o = curChat && hdOlder[curChat.id];
+    return o && o.more ? '<button type="button" class="cbtn ghost bondwide" id="hd-earlier">Earlier messages</button>' : '';
+  }
+  function hdChatAfter(){
+    if (hdKeep !== null) { var box = $('cmsgs'); box.scrollTop = Math.max(0, box.scrollHeight - hdKeep); hdKeep = null; }
+    var b = $('hd-cv-more'); if (b && curChat) b.textContent = curChat.muted ? '🔕 Muted' : 'More';
+  }
+  function hdEarlier(btn){
+    var o = curChat && hdOlder[curChat.id]; if (!o || !o.before) return;
+    var id = curChat.id; btn.disabled = true; btn.textContent = 'Loading…';
+    apiGet(API.chats + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + '&chat=' + encodeURIComponent(id) + '&before=' + encodeURIComponent(o.before))
+      .then(function(j){
+        if (!j.ok || !curChat || curChat.id !== id) { btn.disabled = false; btn.textContent = 'Earlier messages'; return; }
+        o.msgs = (j.messages || []).concat(o.msgs); o.before = j.before || null; o.more = !!j.more;
+        var box = $('cmsgs'); hdKeep = box.scrollHeight - box.scrollTop;
+        loadMsgs();
+      }).catch(function(){ btn.disabled = false; btn.textContent = 'Earlier messages'; toast('No connection - try again'); });
+  }
+  function hdRxExtra(m){
+    return m && m.member_id === state.memberId ? '<li><button type="button" class="cbtn no bondwide" data-hddelmsg="' + esc(m.id) + '">🗑 Delete my message</button></li>' : '';
+  }
+  function hdDeleteMsg(mid){
+    if (!curChat) return;
+    var chatId = curChat.id;
+    askSheet('Delete this message?', 'It is removed for everyone in this chat.', 'Delete it', 'Keep it', true).then(function(y){
+      if (!y) return;
+      post(API.chats, { code: state.code, memberId: state.memberId, action: 'delete_message', chatId: chatId, messageId: mid }).then(function(j){
+        if (!j.ok) { toast(humanFail(j.error, 'Could not delete it')); return; }
+        var o = hdOlder[chatId]; if (o) { o.msgs = o.msgs.filter(function(x){ return x.id !== mid; }); o.tail = (o.tail || []).filter(function(x){ return x.id !== mid; }); }
+        try { rxClose(); } catch (e) {}
+        toast('Deleted'); loadMsgs(); refreshChats();
+      }).catch(function(){ toast('No connection - try again'); });
+    });
+  }
+  function hdChatMore(){
+    if (!curChat) return;
+    var c = curChat, other = null;
+    if (c.kind === 'dm') (curChatMembers || []).forEach(function(m){ if (m.id !== state.memberId) other = m; });
+    mbSheet('More for this chat', '<button type="button" class="cbtn ghost bondwide" id="hd-mute">' + (c.muted ? '🔔 Turn sounds back on for this chat' : '🔕 Mute this chat for me') + '</button>' +
+      '<p class="hint">' + (c.muted ? 'Muted. You still hear when someone names you with @.' : 'Only you stop hearing it. A message that names you with @ still reaches you.') + '</p>' +
+      (other ? '<p class="eyebrow">A private word to ' + esc(hdFirst(other.name)) + '</p>' +
+        '<button type="button" class="cbtn ghost bondwide" data-hdbaat="sorry|' + esc(other.id) + '">🙏 Maaf karna</button>' +
+        '<button type="button" class="cbtn ghost bondwide" data-hdbaat="cantalk|' + esc(other.id) + '">🤝 Can we talk?</button>' +
+        '<button type="button" class="cbtn ghost bondwide" data-hdbaat="talk|' + esc(other.id) + '">🫶 Mujhe baat karni hai</button>' : ''));
+    $('hd-mute').addEventListener('click', function(){
+      post(API.chats, { code: state.code, memberId: state.memberId, action: 'mute', chatId: c.id, on: !c.muted }).then(function(j){
+        if (!j.ok) { toast(humanFail(j.error, 'Could not change that')); return; }
+        c.muted = !!j.muted; mbSheetClose(); toast(c.muted ? 'Muted for you 🔕' : 'Sounds are back on 🔔'); hdChatAfter(); refreshChats();
+      }).catch(function(){ toast('No connection - try again'); });
+    });
+  }
+
+  // ---- equal votes in a chat poll
+  function hdPollMeta(p){ return p.secret ? ' · 🔒 Secret ballot' : ''; }
+  function hdPollExtra(m){
+    var p = m.poll, h = '';
+    if (p.secret) h += '<small class="pl-meta">🔒 Secret ballot: only the counts are shown, to everyone. Nobody sees who picked what.</small>';
+    if (p.waiting) h += '<small class="pl-meta">' + esc(p.waiting) + (p.reminded ? ' · Reminder sent' : '') + '</small>';
+    (p.mineFor || []).forEach(function(f){ h += '<small class="pl-meta">You voted ' + esc(f.label) + '</small>'; });
+    var acts = '';
+    if (p.canRemind) acts += '<button type="button" class="cbtn ghost" data-hdplremind="' + esc(m.id) + '">🔔 Remind them once</button>';
+    if (!p.closed && (p.offApp || []).length) acts += '<button type="button" class="cbtn ghost" data-hdplfor="' + esc(m.id) + '">✍️ Vote for someone not on Parwah</button>';
+    return h + (acts ? '<div class="pl-acts">' + acts + '</div>' : '');
+  }
+  function hdPollFor(mid){
+    var m = bondMsgs[mid]; if (!m || !m.poll || !curChat) return;
+    var p = m.poll, chatId = curChat.id;
+    mbSheet('✍️ Vote for someone not on Parwah', '<p class="hint">Their vote counts once, like anyone\'s. It is shown as "for Dadi, by ' + esc(hdFirst(state.name)) + '".</p>' +
+      '<label for="hd-pf-who">Who are you voting for</label>' + hdPeopleSelect('hd-pf-who', p.offApp.map(function(x){ return { id: x.id, name: x.name, onApp: true }; }), null) +
+      '<div class="pkind" id="hd-pf-opts" role="group" aria-label="Their choice">' + p.options.map(function(o, i){
+        return '<button type="button" aria-pressed="false" data-hdpfo="' + i + '">' + esc(o.text) + '</button>'; }).join('') + '</div>' +
+      '<p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="hd-pf-save">Save their vote</button>');
+    $('hd-pf-save').addEventListener('click', function(){
+      var picks = [].map.call(document.querySelectorAll('#hd-pf-opts .sel'), function(b){ return +b.getAttribute('data-hdpfo'); });
+      if (!picks.length) { mbErr('Pick their choice.'); return; }
+      post(API.chats, { code: state.code, memberId: state.memberId, action: 'poll_vote', chatId: chatId, pollId: p.id, choices: p.multi ? picks : picks.slice(0, 1), forId: $('hd-pf-who').value })
+        .then(function(j){ if (!j.ok) { mbErr(humanFail(j.error, 'Could not save')); return; } mbSheetClose(); toast('Saved their vote'); loadMsgs(); })
+        .catch(function(){ mbErr('No connection. Try again.'); });
+    });
+  }
+  function hdPollRemind(mid){
+    var m = bondMsgs[mid]; if (!m || !m.poll || !curChat) return;
+    post(API.chats, { code: state.code, memberId: state.memberId, action: 'poll_remind', chatId: curChat.id, pollId: m.poll.id })
+      .then(function(j){ toast(j.ok ? 'Reminded, just this once 🔔' : humanFail(j.error, 'Could not remind')); loadMsgs(); })
+      .catch(function(){ toast('No connection - try again'); });
+  }
+
+  // ---- equal votes in a date poll
+  function hdDatePollExtra(p, host){
+    var h = '';
+    if (p.secret) h += '<small>🔒 Secret ballot: only the counts are shown. Nobody sees who said what.</small>';
+    if (p.waiting) h += '<small>' + esc(p.waiting) + (p.reminded ? ' · Reminder sent' : '') + '</small>';
+    p.options.forEach(function(o){ (o.mineFor || []).forEach(function(f){ h += '<small>You answered ' + esc(f.answer) + ' ' + esc(f.label) + ' (' + esc(bondWhen(o.at)) + ')</small>'; }); });
+    var acts = '';
+    if (p.canRemind) acts += '<button type="button" class="cbtn ghost" data-hdbpremind="' + esc(p.id) + '">🔔 Remind them once</button>';
+    if ((p.offApp || []).length) acts += '<button type="button" class="cbtn ghost" data-hdbpfor="' + esc(p.id) + '">✍️ Answer for someone not on Parwah</button>';
+    return h + (acts ? '<div class="prow">' + acts + '</div>' : '');
+  }
+  // What the host is shown before locking: the count for every date.
+  function hdLockWords(pollId, optId){
+    var p = ((bondData && bondData.polls) || []).filter(function(x){ return x.id === pollId; })[0];
+    if (!p || !p.tally) return 'It becomes the plan, and the ' + bondWord() + ' is told once.';
+    var lines = p.tally.rows.map(function(r){
+      return bondWhen(r.at) + ': ' + r.yes + ' yes, ' + r.maybe + ' maybe, ' + r.no + ' no' + (r.id === p.tally.best ? ' (most can make this)' : '') + (r.id === optId ? ' (the one you are locking)' : ''); });
+    return 'The count so far. ' + lines.join('. ') + '. ' + (p.waiting && p.waiting !== 'Everyone has answered.' ? p.waiting + '. ' : '') + 'The count is kept with the plan, and the ' + bondWord() + ' is told once.';
+  }
+  function hdDatePollFor(pollId){
+    var p = ((bondData && bondData.polls) || []).filter(function(x){ return x.id === pollId; })[0]; if (!p) return;
+    mbSheet('✍️ Answer for someone not on Parwah', '<p class="hint">Their answer counts once, like anyone\'s. It is shown as "for Dadi, by ' + esc(hdFirst(state.name)) + '".</p>' +
+      '<label for="hd-df-who">Who are you answering for</label>' + hdPeopleSelect('hd-df-who', p.offApp.map(function(x){ return { id: x.id, name: x.name, onApp: true }; }), null) +
+      p.options.map(function(o){
+        return '<p class="eyebrow">' + esc(bondWhen(o.at)) + '</p><div class="pkind hddf" role="group" aria-label="Their answer for ' + esc(bondWhen(o.at)) + '" data-hddfo="' + esc(o.id) + '">' +
+          [['yes', 'Yes'], ['maybe', 'Maybe'], ['no', 'No']].map(function(a){ return '<button type="button" aria-pressed="false" data-hddfa="' + a[0] + '">' + a[1] + '</button>'; }).join('') + '</div>'; }).join('') +
+      '<p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="hd-df-save">Save their answers</button>');
+    $('hd-df-save').addEventListener('click', function(){
+      var who = $('hd-df-who').value, jobs = [];
+      document.querySelectorAll('#mbs-body .hddf').forEach(function(g){ var s = g.querySelector('.sel'); if (s) jobs.push({ optionId: g.getAttribute('data-hddfo'), answer: s.getAttribute('data-hddfa') }); });
+      if (!jobs.length) { mbErr('Pick their answer for at least one date.'); return; }
+      Promise.all(jobs.map(function(x){ return post(API.plans, { code: state.code, memberId: state.memberId, action: 'bond_poll_vote', optionId: x.optionId, answer: x.answer, forId: who }); }))
+        .then(function(rs){ var bad = rs.filter(function(r){ return !r.ok; })[0]; if (bad) { mbErr(humanFail(bad.error, 'Could not save')); return; } mbSheetClose(); toast('Saved their answers'); bondRefresh(true); })
+        .catch(function(){ mbErr('No connection. Try again.'); });
+    });
+  }
+
+  // ---- a card: say thank you; show, print or share it for someone not on the app
+  function hdCardExtra(j){
+    var c = j.card, h = '';
+    (j.thanks || []).forEach(function(t){
+      h += '<p class="hdline">🙏 <b>' + esc(t.memberId === state.memberId ? 'You' : hdFirst(t.name)) + '</b> said thank you for this card.</p>' +
+        (t.hasAudio ? hdPlayBtn('thanks:' + c.id + ':' + t.memberId, 'Play the thank-you') : '');
+    });
+    if (c.canThank) h += '<button type="button" class="go" data-hdthanks="tap">🙏 Say thank you to everyone who wrote</button>' +
+      '<button type="button" class="cbtn ghost bondwide" data-hdthanks="voice">🎙 Say thank you by voice</button>';
+    if (c.offApp && j.entries.length) h += '<p class="hint" style="margin-top:var(--space-12)">' + esc(c.for_member ? bondName(c.for_member) : (c.for_name || 'They')) + ' is not on Parwah. Show it on this phone, print it, or send the words.</p>' +
+      '<button type="button" class="cbtn bondwide" data-hdcardprint="1">🖨 Show or print this card</button>' +
+      '<button type="button" class="cbtn ghost bondwide" data-hdcardshare="1">📤 Share the words</button>';
+    return h;
+  }
+  function hdCardWords(j){
+    return j.entries.filter(function(e){ return e.kind === 'text' || (e.kind === 'photo' && e.text); }).map(function(e){ return e.text + '\n- ' + hdFirst(e.name); }).join('\n\n');
+  }
+  function hdCardPrint(){
+    var j = bondCardNow; if (!j) return;
+    var h = '<h1 id="mbb-title">' + esc(j.card.title) + '</h1><p class="mbbsub">' + esc(bondDay(j.card.date)) + '. With love from the ' + bondWord() + '.</p>';
+    j.entries.forEach(function(e){
+      var src = e.kind === 'photo' ? safeImageUri(e.data) : null;
+      h += '<section>' + (src ? '<img src="' + esc(src) + '" alt="A photo from ' + esc(e.name) + '" style="max-width:100%">' : '') +
+        (e.kind === 'voice' ? '<p>(A voice note. Play it in Parwah.)</p>' : e.text ? '<p>' + esc(e.text) + '</p>' : '') + '<small>From ' + esc(e.name) + '</small></section>';
+    });
+    bondSheetClose();
+    $('mbb-body').innerHTML = h; $('mb-book').hidden = false; document.body.classList.add('mbprint');
+    try { $('mbb-print').focus(); } catch (e) {}
+  }
+  function hdCardThanks(kind){
+    var j = bondCardNow; if (!j) return;
+    var id = j.card.id, done = function(r){ if (r.ok) { toast('They have been told 🙏'); bondCardOpen(id); } };
+    if (kind === 'tap') { bondPost({ action: 'bond_card_thanks', cardId: id }).then(done); return; }
+    bondSheetClose();
+    mbSheet('🎙 Say thank you by voice', '<div class="mbrec" id="hd-t-rec"></div><p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="hd-t-send">Send my thank-you</button>');
+    mbSheetRec = mbRecorder($('hd-t-rec'));
+    $('hd-t-send').addEventListener('click', function(){
+      var rec = mbSheetRec; if (hdBusy(rec)) return;
+      if (!rec || !rec.result) { mbErr('Record your thank-you first.'); return; }
+      bondPost({ action: 'bond_card_thanks', cardId: id, data: rec.result.data, mime: rec.result.mime, seconds: Math.min(60, rec.result.secs) }, $('mbs-err')).then(function(r){ if (r.ok) { mbSheetClose(); toast('They have been told 🙏'); } });
+    });
+  }
+
+  // ---- stories: heard by, a reply, and a story told by someone not on the app
+  function hdStoryFoot(s){
+    var h = (s.told ? '<small>📖 ' + esc(s.told) + '</small>' : '') +
+      ((s.heardBy || []).length ? '<small>👂 Heard by ' + esc(s.heardBy.join(', ')) + '</small>' : '');
+    (s.replies || []).forEach(function(r){ h += hdPlayBtn('heard:' + s.id + ':' + r.memberId, hdFirst(r.name) + '\'s voice reply'); });
+    if (!s.mine && s.kind !== 'throwback') {
+      h += '<div class="mbacts">' + (s.heardByMe ? '' : '<button class="cbtn" type="button" data-hdheard="' + esc(s.id) + '">👂 Suna, bahut accha laga</button>') +
+        '<button class="cbtn ghost" type="button" data-hdheardv="' + esc(s.id) + '">🎙 Reply by voice</button></div>';
+    }
+    return h;
+  }
+  function hdStoryTools(m){
+    var off = (m.members || []).filter(function(x){ return !x.on_app && !x.remembered; });
+    return off.length ? '<button class="cbtn ghost" type="button" data-hdstoryfor="1">✍️ Record a story for someone not on Parwah</button>' : '';
+  }
+  function hdStoryHeard(id, voice){
+    if (!voice) { mbPost({ action: 'story_heard', id: id }).then(function(j){ if (!j.ok) { toast(humanFail(j.error, 'Could not send')); return; } toast('They have been told you heard it 👂'); mbMemLoad(); }); return; }
+    mbSheet('🎙 Reply by voice', '<p class="hint">Only the storyteller hears your reply.</p><div class="mbrec" id="hd-h-rec"></div><p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="hd-h-send">Send my reply</button>');
+    mbSheetRec = mbRecorder($('hd-h-rec'));
+    $('hd-h-send').addEventListener('click', function(){
+      var rec = mbSheetRec; if (hdBusy(rec)) return;
+      if (!rec || !rec.result) { mbErr('Record your reply first.'); return; }
+      mbPost(hdVoice({ action: 'story_heard', id: id }, rec)).then(function(j){ if (!j.ok) { mbErr(humanFail(j.error, 'Could not send')); return; } mbSheetClose(); toast('Sent to the storyteller 🎙'); mbMemLoad(); });
+    });
+  }
+  function hdStoryForSheet(){
+    var off = ((mbMem && mbMem.members) || []).filter(function(x){ return !x.on_app && !x.remembered; });
+    mbSheet('✍️ A story from someone not on Parwah', '<p class="hint">Ask them, and write or record what they say. It is kept with both names, like "told by Dadi, recorded by ' + esc(hdFirst(state.name)) + '".</p>' +
+      '<label for="hd-f-who">Who told it</label>' + hdPeopleSelect('hd-f-who', off.map(function(x){ return { id: x.id, name: x.name, onApp: true }; }), null) +
+      '<label for="hd-f-q">The question you asked</label><input type="text" id="hd-f-q" maxlength="160" placeholder="e.g. How did you and Dadaji meet?">' +
+      '<label for="hd-f-text">What they said</label><textarea id="hd-f-text" rows="5" maxlength="4000" placeholder="In their own words"></textarea>' +
+      '<p class="eyebrow">Or record them telling it</p><div class="mbrec" id="hd-f-rec"></div>' +
+      '<p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="hd-f-save">Save the story</button>');
+    mbSheetRec = mbRecorder($('hd-f-rec'));
+    $('hd-f-save').addEventListener('click', function(){
+      var rec = mbSheetRec; if (hdBusy(rec)) return;
+      var q = $('hd-f-q').value.trim(), text = $('hd-f-text').value.trim();
+      if (q.length < 8) { mbErr('Write the question in a few words, like "How did you meet?"'); return; }
+      if (!text && !(rec && rec.result)) { mbErr('Write what they said, or record them.'); return; }
+      mbPost(hdVoice({ action: 'story_for', targetId: $('hd-f-who').value, question: q, text: text }, rec)).then(function(j){
+        if (!j.ok) { mbErr(humanFail(j.error, 'Could not save')); return; }
+        mbSheetClose(); toast('Saved: ' + j.told + ' 📖'); mbMemLoad();
+      });
+    });
+  }
+
+  // ---- a photo: reactions, a voice caption, share this one photo
+  function hdAlbumActs(p){
+    var rx = '<div class="pkind hdrx" role="group" aria-label="React to this photo">' + HD_RX.map(function(x){
+      var g = (p.reactions || []).filter(function(r){ return r.emoji === x[0]; })[0], on = !!(g && g.mine);
+      return '<button type="button" class="' + (on ? 'sel' : '') + '" aria-pressed="' + on + '" data-hdabrx="' + x[0] + '">' + x[0] + ' ' + x[1] + (g ? ' · ' + g.count : '') + '</button>'; }).join('') + '</div>';
+    var who = (p.reactions || []).map(function(g){ return g.emoji + ' ' + g.names.join(', '); }).join(' · ');
+    return rx + (who ? '<p class="abview-meta hdfull">' + esc(who) + '</p>' : '') +
+      (p.hasVoice ? hdPlayBtn('abvoice:' + p.id, 'Hear the voice caption') : '') +
+      (p.canChange ? '<button type="button" class="cbtn ghost" data-hdabvoice="' + (p.hasVoice ? 'off' : 'on') + '">' + (p.hasVoice ? 'Remove the voice caption' : '🎙 Add a voice caption') + '</button>' : '') +
+      '<button type="button" class="cbtn ghost" data-hdabshare="1">📤 Share this photo</button>';
+  }
+  function hdAlbumCur(){ return abView && abView.list ? abView.list[abView.i] : null; }
+  function hdAlbumReact(emoji){
+    var p = hdAlbumCur(); if (!p) return;
+    var g = (p.reactions || []).filter(function(r){ return r.mine; })[0];
+    abPost({ action: 'photo_react', id: p.id, emoji: g && g.emoji === emoji ? null : emoji }).then(function(j){
+      if (!j || !j.ok) { if (j && j.error) toast(humanFail(j.error, 'Could not react')); return; }
+      if (j.photo) { abView.list[abView.i] = j.photo; $('ab-v-acts').querySelectorAll('.hdrx, .hdfull').forEach(function(x){ x.remove(); });
+        var tmp = document.createElement('div'); tmp.innerHTML = hdAlbumActs(j.photo);
+        var acts = $('ab-v-acts'), first = acts.firstChild;
+        [].slice.call(tmp.querySelectorAll('.hdrx, .hdfull')).forEach(function(n){ acts.insertBefore(n, first); }); }
+      albumLoad(true);
+    });
+  }
+  function hdAlbumVoice(mode){
+    var p = hdAlbumCur(); if (!p) return;
+    if (mode === 'off') { abPost({ action: 'photo_voice_remove', id: p.id }).then(function(j){ if (j && j.ok) { toast('Voice caption removed'); p.hasVoice = false; albumViewShow(); albumLoad(true); } }); return; }
+    mbSheet('🎙 A voice caption', '<p class="hint">Say where this was, or who is in it. Everyone who can see the photo can hear it.</p><div class="mbrec" id="hd-v-rec"></div><p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="hd-v-save">Save the voice caption</button>');
+    mbSheetRec = mbRecorder($('hd-v-rec'));
+    $('hd-v-save').addEventListener('click', function(){
+      var rec = mbSheetRec; if (hdBusy(rec)) return;
+      if (!rec || !rec.result) { mbErr('Record the caption first.'); return; }
+      // (The album never reads a "mime" from a request: the voice type has its own name.)
+      abPost({ action: 'photo_voice', id: p.id, audio: rec.result.data, voiceMime: rec.result.mime, secs: rec.result.secs }).then(function(j){ if (!j || !j.ok) { mbErr(humanFail(j && j.error, 'Could not save')); return; } mbSheetClose(); toast('Voice caption saved 🎙'); p.hasVoice = true; albumViewShow(); albumLoad(true); });
+    });
+  }
+  // One photo, through the phone's own share sheet: the member's own act.
+  function hdAlbumShare(){
+    var p = hdAlbumCur(), img = $('ab-v-img'); if (!p || !img || !img.src) { toast('Wait for the photo to load, then share it.'); return; }
+    // The picture this phone already holds (a local address, not a request
+    // to the server), read back as a file for the share sheet.
+    new Promise(function(done, fail){
+      var x = new XMLHttpRequest(); x.open('GET', img.src); x.responseType = 'blob';
+      x.onload = function(){ done(x.response); }; x.onerror = fail; x.send();
+    }).then(function(blob){
+      var file = new File([blob], albumFileName(p), { type: 'image/jpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) return navigator.share({ files: [file], title: p.caption || 'A family photo' });
+      toast('This phone cannot share from here. Use "Save to my phone", then share it from your gallery.');
+    }).catch(function(){});
+  }
+
+  // ---- pasand: what someone not on the app likes, noted by the family
+  function hdPasandNote(p){ return p.canNote ? '<div class="prow"><button type="button" class="cbtn ghost pstap" data-hdpsnote="' + esc(p.memberId) + '">✍️ Note what ' + esc(hdFirst(p.name)) + ' likes</button></div>' : ''; }
+  function hdPasandSheet(id){
+    var p = ((pasandData && pasandData.people) || []).filter(function(x){ return x.memberId === id; })[0]; if (!p) return;
+    var mine = (p.likes || []).filter(function(l){ return l.mine; });
+    mbSheet('✍️ What ' + hdFirst(p.name) + ' likes', '<p class="hint">' + esc(hdFirst(p.name)) + ' is not on Parwah, so the family can note it. Each note says who wrote it. When they join, their own likes take the place of these.</p>' +
+      mine.map(function(l){ return '<div class="mbrow"><span>' + esc(l.text) + '</span><button type="button" class="cbtn no" data-hdpsdel="' + esc(l.id) + '">Take it off</button></div>'; }).join('') +
+      '<label for="hd-p-kind">What kind of thing</label><select id="hd-p-kind">' + psKinds.map(function(k){ return '<option value="' + k[0] + '">' + k[1] + ' ' + k[2] + '</option>'; }).join('') + '</select>' +
+      '<label for="hd-p-text">What they like</label><input type="text" id="hd-p-text" maxlength="60" placeholder="e.g. Old Lata songs">' +
+      '<p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="hd-p-save">Note it</button>');
+    $('hd-p-save').addEventListener('click', function(){
+      var t = $('hd-p-text').value.trim(); if (!t) { mbErr('Write what they like first.'); return; }
+      pasandPost({ action: 'like_add', kind: $('hd-p-kind').value, text: t, forId: id }, $('mbs-err')).then(function(j){ if (j && j.ok) { mbSheetClose(); toast('Noted, with your name'); } });
+    });
+  }
+
+  // ---- play a voice note, wherever it lives
+  function hdPlay(key, btn){
+    var k = key.split(':'), get;
+    if (k[0] === 'thanks') get = apiGet(bondQ('&thanks=' + encodeURIComponent(k[1]) + '&by=' + encodeURIComponent(k[2]))).then(function(j){ return j.ok ? { ok: true, audio: 'data:' + j.mime + ';base64,' + j.data } : j; });
+    else if (k[0] === 'heard') get = mbGet('audio', '&kind=heard&id=' + encodeURIComponent(k[1]) + '&by=' + encodeURIComponent(k[2]));
+    else if (k[0] === 'abvoice') get = abGet('&view=voice&id=' + encodeURIComponent(k[1]));
+    else get = hdGet('&view=audio&kind=' + encodeURIComponent(k[0]) + '&id=' + encodeURIComponent(k[1]));
+    var was = btn.textContent; btn.disabled = true; btn.textContent = 'Loading…';
+    get.then(function(j){
+      if (!j || !j.ok || !/^data:audio\/[a-z0-9.+-]+;base64,[A-Za-z0-9+\/]+=*$/.test(j.audio || '')) { btn.disabled = false; btn.textContent = was; toast((j && j.error) || 'It could not be played'); return; }
+      var au = document.createElement('audio'); au.controls = true; au.src = j.audio; au.style.width = '100%';
+      btn.replaceWith(au);
+      try { au.play().catch(function(){}); } catch (x) {}
+    }).catch(function(){ btn.disabled = false; btn.textContent = was; toast('No connection - try again'); });
+  }
+
+  // Every button of this section, in one place.
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-hdmood],[data-hdtell],[data-hdbaat],[data-hdbreply],[data-hdbclose],[data-hdshuk],[data-hdshuklater],[data-hdsawaal],[data-hdrc],[data-hdrcdel],[data-hdplay],[data-hdbk],[data-hdsa],[data-hdpfo],[data-hddfa],[data-hddelmsg],[data-hdplremind],[data-hdplfor],[data-hdbpremind],[data-hdbpfor],[data-hdthanks],[data-hdcardprint],[data-hdcardshare],[data-hdheard],[data-hdheardv],[data-hdstoryfor],[data-hdabrx],[data-hdabvoice],[data-hdabshare],[data-hdpsnote],[data-hdpsdel],#hd-earlier,#hd-cv-more');
+    if (!b || !state) return;
+    var d = b.dataset, one = function(){ var box = b.parentNode; box.querySelectorAll('button').forEach(function(x){ var on = x === b; x.classList.toggle('sel', on); x.setAttribute('aria-pressed', on); }); };
+    if (d.hdmood) { var mm = hdData && hdData.mood.mine; hdMoodSet(d.hdmood, mm && mm.mood ? mm.tell : 'self', mm && mm.mood ? mm.toId : null); }
+    else if (d.hdtell) { var cur = hdData && hdData.mood.mine; if (!cur) return; if (d.hdtell === 'one') hdMoodOneSheet(cur.value); else hdMoodSet(cur.value, d.hdtell); }
+    else if (d.hdbaat) { var bk = d.hdbaat.split('|'); hdBaatSheet(bk[0], bk[1] || null); }
+    else if (d.hdbreply) { var br = d.hdbreply.split('|'); hdBaatReply(br[0], br[1]); }
+    else if (d.hdbclose) hdPost({ action: 'baat_close', id: d.hdbclose }).then(function(){ hdTodayLoad(true); });
+    else if (d.hdshuk) hdShukriyaSheet(d.hdshuk);
+    else if (d.hdshuklater) hdPost({ action: 'shukriya_later' }).then(function(){ hdTodayLoad(true); });
+    else if (d.hdsawaal) hdSawaalSheet(d.hdsawaal);
+    else if (d.hdrc) { var rc = d.hdrc.split('|'); hdRcardSheet(rc[0], rc[1]); }
+    else if (d.hdrcdel) hdPost({ action: 'rcard_remove', entryId: d.hdrcdel }).then(function(){ hdTodayLoad(true); });
+    else if (d.hdplay) hdPlay(d.hdplay, b);
+    else if (d.hdbk || d.hdsa || d.hddfa || d.hdpfo) one();
+    else if (d.hddelmsg) hdDeleteMsg(d.hddelmsg);
+    else if (d.hdplremind) hdPollRemind(d.hdplremind);
+    else if (d.hdplfor) hdPollFor(d.hdplfor);
+    else if (d.hdbpremind) bondPost({ action: 'bond_poll_remind', pollId: d.hdbpremind }).then(function(j){ if (j.ok) toast('Reminded, just this once 🔔'); });
+    else if (d.hdbpfor) hdDatePollFor(d.hdbpfor);
+    else if (d.hdthanks) hdCardThanks(d.hdthanks);
+    else if (d.hdcardprint) hdCardPrint();
+    else if (d.hdcardshare) { if (bondCardNow) hdShareText(bondCardNow.card.title, bondCardNow.card.title + '\n\n' + hdCardWords(bondCardNow)); }
+    else if (d.hdheard) hdStoryHeard(d.hdheard, false);
+    else if (d.hdheardv) hdStoryHeard(d.hdheardv, true);
+    else if (d.hdstoryfor) hdStoryForSheet();
+    else if (d.hdabrx) hdAlbumReact(d.hdabrx);
+    else if (d.hdabvoice) hdAlbumVoice(d.hdabvoice);
+    else if (d.hdabshare) hdAlbumShare();
+    else if (d.hdpsnote) hdPasandSheet(d.hdpsnote);
+    else if (d.hdpsdel) pasandPost({ action: 'like_remove', id: d.hdpsdel }).then(function(j){ if (j && j.ok) { mbSheetClose(); toast('Taken off'); } });
+    else if (b.id === 'hd-earlier') hdEarlier(b);
+    else if (b.id === 'hd-cv-more') hdChatMore();
+  });
+
   // ---------- family memory: stories, yaadein, recipes, nudges (api/_memorybond.mjs) ----------
   // Ek sawaal (one question a week for each storyteller who said yes),
   // Yaadein (this day in past years, once a day), Rasoi (the family's
@@ -13075,7 +13743,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   function mbStoryHtml(s){
     return '<div class="mbstory"><h4>' + esc(s.question) + '</h4>' + (s.answer_text ? '<p>' + esc(s.answer_text) + '</p>' : '') +
       (s.has_audio ? '<div data-mbaudio="story:' + esc(s.id) + '"><button class="cbtn ghost" type="button" data-mblisten="story:' + esc(s.id) + '">🎧 Listen (' + mbSecs(s.audio_secs) + ')</button></div>' : '') +
-      '<small>' + mbDate(s.answered_at) + (s.mine ? ' · ' + mbVisLabel(s.visibility) : '') + '</small>' +
+      '<small>' + mbDate(s.answered_at) + (s.mine ? ' · ' + mbVisLabel(s.visibility) : '') + '</small>' + hdStoryFoot(s) +
       (s.mine ? '<div class="mbacts"><button class="cbtn ghost" type="button" data-mbvis="' + esc(s.id) + '">Who can hear it</button><button class="cbtn no" type="button" data-mbdel="' + esc(s.id) + '">Remove</button></div>' : '') + '</div>';
   }
   function mbStoriesRender(){
@@ -13083,7 +13751,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     h += '<p class="hint">' + (grp ? 'Stories from the group, and the weekly throwback answers.' : 'Each storyteller gets one question a week, like “How did you meet?”. Their answers stay here, by person, newest first.') + '</p>';
     h += '<div class="mbtools"><button class="cbtn" type="button" data-mbtool="book">📕 Family book</button>' +
          '<button class="cbtn ghost" type="button" data-mbtool="teller">🎙 Pick a storyteller</button>' +
-         '<button class="cbtn ghost" type="button" data-mbtool="suggest">💡 Suggest a question</button></div>';
+         '<button class="cbtn ghost" type="button" data-mbtool="suggest">💡 Suggest a question</button>' + hdStoryTools(m) + '</div>';
     if (m.tellers.length) {
       h += '<p class="eyebrow">Storytellers</p>' + m.tellers.map(function(t){
         var st = t.status === 'yes' ? 'Says yes: one question a week' : t.status === 'asked' ? 'Asked' + (t.askedBy ? ' by ' + esc(mbFirst(t.askedBy)) : '') + '. Waiting for their yes.' : 'Not now';
@@ -13091,7 +13759,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           (t.memberId === me && t.status === 'yes' ? '<button class="cbtn no" type="button" data-mbtool="stop">Stop my questions</button>' : '') + '</div>';
       }).join('');
     }
-    var stories = m.stories.filter(function(s){ return s.kind === 'story'; }), byP = {}, order = [];
+    var stories = m.stories.filter(function(s){ return s.kind === 'story' || s.kind === 'told'; }), byP = {}, order = [];
     stories.forEach(function(s){ if (!byP[s.about_member]) { byP[s.about_member] = []; order.push(s.about_member); } byP[s.about_member].push(s); });
     order.forEach(function(pid){
       var list = byP[pid];
@@ -13169,13 +13837,13 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   }
   // The family book: every story this person may read, by storyteller.
   function mbBookOpen(){
-    var m = mbMem, stories = m.stories.filter(function(s){ return s.kind === 'story'; }), byP = {}, order = [];
+    var m = mbMem, stories = m.stories.filter(function(s){ return s.kind === 'story' || s.kind === 'told'; }), byP = {}, order = [];
     stories.slice().reverse().forEach(function(s){ if (!byP[s.about_member]) { byP[s.about_member] = []; order.push(s.about_member); } byP[s.about_member].push(s); });
     var name = (state.circleName || ('Our ' + mbWord())), h = '<h1 id="mbb-title">' + esc(name) + ': our book of stories</h1>' +
       '<p class="mbbsub">' + stories.length + (stories.length === 1 ? ' story' : ' stories') + ', told in our own words. Made with Parwah on ' + mbDate(new Date().toISOString()) + '.</p>';
     order.forEach(function(pid){
       h += '<section><h2>' + esc(byP[pid][0].about_name) + '</h2>' + byP[pid].map(function(s){
-        return '<h3>' + esc(s.question) + '</h3>' + (s.answer_text ? '<p>' + esc(s.answer_text) + '</p>' : '<p>(Told by voice. Listen in Parwah.)</p>') + '<small>' + mbDate(s.answered_at) + '</small>';
+        return '<h3>' + esc(s.question) + '</h3>' + (s.answer_text ? '<p>' + esc(s.answer_text) + '</p>' : '<p>(Told by voice. Listen in Parwah.)</p>') + '<small>' + mbDate(s.answered_at) + (s.told ? ' · ' + esc(s.told) : '') + '</small>';
       }).join('') + '</section>';
     });
     if (!order.length) h += '<p>No stories yet. When the first answer comes in, it will be here.</p>';
@@ -13646,6 +14314,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       (p.taggedMe ? '<button type="button" class="cbtn ghost" data-abuntag="1">Remove my name from it</button>' : '') +
       (p.canChange ? '<button type="button" class="cbtn ghost" data-abedit="1">Change caption and people</button>' +
         '<button type="button" class="cbtn no" data-abdel="1">Remove photo</button>' : '');
+    // Reactions, a voice caption, and sharing this one photo.
+    $('ab-v-acts').insertAdjacentHTML('afterbegin', hdAlbumActs(p));
     var id = p.id;
     albumFetch(id, 'full').then(function(u){
       var cur = abView.list[abView.i]; if (!cur || cur.id !== id) return;
@@ -14363,15 +15033,18 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var me = state.memberId, h = '';
     (bondData.polls || []).forEach(function(p){
       if (p.status === 'cancelled') return;
-      if (p.status === 'locked') { h += '<div class="plan bondpoll"><b>🗓 ' + esc(p.title) + '</b><small>The date is locked. It is in the plans above.</small></div>'; return; }
+      if (p.status === 'locked') { h += '<div class="plan bondpoll"><b>🗓 ' + esc(p.title) + '</b><small>' + esc(p.decided && p.decided.line ? p.decided.line + ' Locked by ' + hdFirst(p.decided.byName) + '.' : 'The date is locked.') + ' It is in the plans above.</small></div>'; return; }
       var host = p.by_member === me;
       h += '<div class="plan bondpoll" id="bpoll-' + p.id + '"><b>🗳 ' + esc(p.title) + '</b><small>' + (host ? 'You asked' : 'Asked by ' + esc(p.by_name || 'someone')) + '. Times are in your time.' + (p.items && p.items.length ? ' To bring: ' + esc(p.items.join(', ')) + '.' : '') + '</small>';
       p.options.forEach(function(o){
-        h += '<div class="opt"><b>' + esc(bondWhen(o.at)) + '</b><span class="cnt">' + o.yes.length + ' yes' + (o.yes.length ? ' (' + esc((o.yesNames || []).join(', ')) + ')' : '') + ' · ' + o.maybe.length + ' maybe · ' + o.no.length + ' no</span>' +
+        // The counts come from the server; names only when the poll is not a secret ballot.
+        var cn = o.n || { yes: o.yes.length, maybe: o.maybe.length, no: o.no.length };
+        h += '<div class="opt"><b>' + esc(bondWhen(o.at)) + '</b><span class="cnt">' + cn.yes + ' yes' + ((o.yesNames || []).length ? ' (' + esc(o.yesNames.join(', ')) + ')' : '') + ' · ' + cn.maybe + ' maybe · ' + cn.no + ' no</span>' +
           '<div class="pkind" role="group" aria-label="Your answer for ' + esc(bondWhen(o.at)) + '">' +
           [['yes', 'Yes'], ['maybe', 'Maybe'], ['no', 'No']].map(function(a){ var on = o.mine === a[0]; return '<button type="button" class="' + (on ? 'sel' : '') + '" aria-pressed="' + on + '" data-bpv="' + o.id + '|' + a[0] + '">' + a[1] + '</button>'; }).join('') + '</div>' +
           (host ? '<button type="button" class="cbtn" data-bplock="' + p.id + '|' + o.id + '">Lock this date</button>' : '') + '</div>';
       });
+      h += hdDatePollExtra(p, host);
       if (host) h += '<div class="prow"><button type="button" class="cbtn no" data-bpcancel="' + p.id + '">Close the poll</button></div>';
       h += '</div>';
     });
@@ -14390,6 +15063,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       '<div id="bp-opts">' + rows + '</div>' +
       '<button type="button" class="cbtn ghost bondwide" id="bp-more">＋ Another date</button>' +
       '<label for="bp-items">Who brings what (optional)</label><input type="text" id="bp-items" maxlength="300" placeholder="e.g. sweets, plates, a speaker">' +
+      '<label class="seniorchk"><input type="checkbox" id="hd-bp-secret"> 🔒 Secret ballot: nobody sees who said what</label>' +
       '<p class="bonderr" id="bp-err" role="alert" hidden></p>' +
       '<button type="button" class="go" id="bp-send">Ask the ' + bondWord() + '</button>');
     try { $('bp-title').focus(); } catch (e) {}
@@ -14412,7 +15086,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (opts.length < 2) { say('Give at least 2 dates to choose from.'); return; }
     var kb = document.querySelector('#bp-kind .sel');
     var items = $('bp-items').value.split(',').map(function(x){ return x.trim(); }).filter(Boolean);
-    bondPost({ action: 'bond_poll_create', title: title, kind: kb ? kb.getAttribute('data-bpk') : 'meet', options: opts, items: items }, err).then(function(j){
+    bondPost({ action: 'bond_poll_create', title: title, kind: kb ? kb.getAttribute('data-bpk') : 'meet', options: opts, items: items, secret: !!($('hd-bp-secret') && $('hd-bp-secret').checked) }, err).then(function(j){
       if (!j.ok) return;
       bondSheetClose(); toast('Asked. Everyone can answer now 🗳');
       if (curTab !== 'fun') { switchTab('fun'); setSec('fun', 'plans'); }
@@ -14537,6 +15211,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         '<button type="button" class="cbtn ghost bondwide" id="bcv-rec">🎙 Record a voice note (up to 60 s)</button>' +
         '<p class="bondrec" id="bcv-recst" role="status"></p><p class="bonderr" id="bcv-err" role="alert" hidden></p>';
     }
+    h += hdCardExtra(j);
     bondSheet((BOND_OCC[c.occasion] || '💌') + ' ' + c.title, h);
   }
   function bondCardAdd(body){
@@ -14612,7 +15287,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   function bondRenderFests(){
     var box = $('bf-chips'); if (!box || !bondData) return;
     var f = bondData.festivals; if (!f) return;
-    if (!bondFestSel) bondFestSel = f.chosen.slice();
+    bondFestSel = f.chosen.slice();   // what the family keeps, as the server has it
     var today = bondData.today;
     box.innerHTML = f.list.map(function(x){
       var next = x.dates.filter(function(d){ return d >= today; })[0];
@@ -14643,6 +15318,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
 
   // ---- 2b. the anniversary, on a person's page
   function bondPersonRender(id){
+    hdPersonRender(id);
     var card = $('pp-anniv-card'); if (!card) return;
     if (!bondData) { bondRefresh(true); $('pa-now').textContent = 'Loading…'; return; }
     var a = (bondData.anniv || []).filter(function(x){ return x.id === id; })[0];
@@ -14676,11 +15352,6 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   $('bondsheet').addEventListener('keydown', function(e){ if (e.key === 'Escape') bondSheetClose(); });
   $('bp-open').addEventListener('click', function(){ bondPollSheet(); });
   $('bc-start').addEventListener('click', bondCardStart);
-  $('bf-save').addEventListener('click', function(){
-    bondPost({ action: 'bond_fest_set', keys: bondFestSel || [] }).then(function(j){
-      if (j.ok) { bondFestSel = null; toast(j.chosen.length ? 'Saved. ' + j.chosen.length + ' festivals, 14 days ahead 🪔' : 'Saved. No festivals chosen.'); }
-    });
-  });
   $('bt-post').addEventListener('click', function(){
     var err = $('bt-err'), city = $('bt-city').value.trim(), f = $('bt-from').value, t = $('bt-to').value;
     err.hidden = true;
@@ -14735,7 +15406,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (d.bpv) { var pv = d.bpv.split('|'); bondPost({ action: 'bond_poll_vote', optionId: pv[0], answer: pv[1] }); }
     if (d.bplock) {
       var pl = d.bplock.split('|'), opt = b.closest('.opt'), when = opt ? opt.querySelector('b').textContent : 'this date';
-      askSheet('Lock ' + when + '?', 'It becomes the plan, everyone who said Yes is going, and the ' + bondWord() + ' is told once.', 'Lock this date', 'Not yet').then(function(y){
+      askSheet('Lock ' + when + '?', hdLockWords(pl[0], pl[1]), 'Lock this date', 'Not yet').then(function(y){
         if (y) bondPost({ action: 'bond_poll_lock', pollId: pl[0], optionId: pl[1] }).then(function(j){ if (j.ok) { toast('Locked. The plan is set 🗓'); refreshFun(); } });
       });
     }
@@ -14743,11 +15414,15 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (d.bpgo) { switchTab('fun'); setSec('fun', 'plans'); setTimeout(function(){ var el = $('bpoll-' + d.bpgo); if (el) try { el.scrollIntoView({ block: 'start' }); } catch (x) {} }, 400); }
     if (d.bpk || d.bak || d.bco) { pickIn(b.parentNode); if (d.bak) bondActMore(d.bak, ''); }
     if (d.bfk) {
-      // Festivals are many at once, unlike the other chips.
+      // One festival at a time, saved at once: nobody replaces the family's
+      // whole list, and the feed says who changed what.
       bondFestSel = bondFestSel || [];
-      var fi = bondFestSel.indexOf(d.bfk);
-      if (fi >= 0) bondFestSel.splice(fi, 1); else bondFestSel.push(d.bfk);
-      b.classList.toggle('sel', fi < 0); b.setAttribute('aria-pressed', fi < 0);
+      var fi = bondFestSel.indexOf(d.bfk), fAdd = fi < 0;
+      b.classList.toggle('sel', fAdd); b.setAttribute('aria-pressed', fAdd);
+      bondPost({ action: fAdd ? 'bond_fest_add' : 'bond_fest_remove', key: d.bfk }).then(function(j){
+        if (j.ok) toast(fAdd ? 'Added. The family is offered a plan 14 days before 🪔' : 'Taken off');
+        else { b.classList.toggle('sel', !fAdd); b.setAttribute('aria-pressed', !fAdd); }
+      });
     }
     if (b.id === 'bp-more') { var rows = document.querySelectorAll('#bp-opts .pickrow').length; if (rows >= 5) { b.hidden = true; return; } $('bp-opts').insertAdjacentHTML('beforeend', bondPollRow(rows, '', '19:00')); if (rows + 1 >= 5) b.hidden = true; }
     if (b.id === 'bp-send') bondPollSend();
@@ -15063,7 +15738,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var h = '';
     psKinds.forEach(function(k){
       var ls = (p.likes || []).filter(function(l){ return l.kind === k[0]; });
-      if (ls.length) h += '<small>' + k[1] + ' ' + esc(ls.map(function(l){ return l.text; }).join(', ')) + '</small>';
+      if (ls.length) h += '<small>' + k[1] + ' ' + esc(ls.map(function(l){ return l.text + (l.by ? ' (' + l.by + ')' : ''); }).join(', ')) + '</small>';
     });
     var ps = p.platforms || [];
     if (ps.length) h += '<small>Watches and listens on: ' + esc(ps.map(function(x){ var q = pasandPick(psPlatforms, x.platform); return q ? q[1] : 'Other'; }).join(', ')) + '</small>';
@@ -15078,7 +15753,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var people = pasandData.people || [];
     $('ps-people').innerHTML = people.length ? people.map(function(p){
       return '<div class="plan"><b>' + esc(p.name) + '</b>' + pasandPersonHtml(p) +
-        (p.onApp ? '<div class="prow"><button type="button" class="cbtn pstap" data-psrec="' + esc(p.memberId) + '">Recommend something to ' + esc(p.name) + '</button></div>' : '') + '</div>';
+        (p.onApp ? '<div class="prow"><button type="button" class="cbtn pstap" data-psrec="' + esc(p.memberId) + '">Recommend something to ' + esc(p.name) + '</button></div>' : '') + hdPasandNote(p) + '</div>';
     }).join('') : '<div class="ev">Nobody else has shared their likes yet. Add yours, and ask them to add theirs.</div>';
   }
   // On a person's page: their likes and platforms, when the server sent them.

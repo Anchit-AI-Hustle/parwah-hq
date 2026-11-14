@@ -29,9 +29,10 @@ import { reqTz, dayIn } from './_recur.mjs';
 import { sweepRemember, ensureRememberSchema, rememberToday } from './_remember.mjs';
 import { digestSweep } from './_digest.mjs';
 import { ektaNudgeSweep } from './_ektaday.mjs';
+import { heardSweepAll } from './_heard.mjs';
 
 import { index as kinIndex, kinLabel, generations, kinEveryone, kinChainWords } from './_kin.mjs';
-import { pulseToday, ensurePulseSchema, optionOf, styleFor, today as pulseDay } from './_pulse.mjs';
+import { pulseToday, pulseSave } from './_pulse.mjs';
 import { FC_EVENT_TYPES, familyCarePost, familyCareState, quietSweep, quietSweepAll, rotaSweep, pulseCallNudge } from './_familycare.mjs';
 
 const SOS_ESCALATE_MIN = 5;   // nobody answered in this long → shout louder
@@ -94,6 +95,7 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
   let reminded = 0, late = 0, events = 0, done = 0;
   // Missed check-ins first: the alert families most need on time.
   try { events += await quietSweepAll(sql); } catch (e) { tickNote(e, 'quiet'); /* never stops the timer */ }
+  try { events += await heardSweepAll(sql); } catch (e) { tickNote(e, 'heard'); /* a private word that has waited a day: one reminder */ }
   // Each sweep on its own: a family that never opened one feature (no table
   // yet, or a bad row) must not stop the other alerts for that family.
   const one = async f => { try { return (await f()) || 0; } catch (e) { tickNote(e, 'sweep'); return 0; } };
@@ -282,7 +284,7 @@ export default async function handler(req, res) {
       try { await quietSweep(sql, circle.id); await rotaSweep(sql, circle.id); } catch (e) { /* never break a read */ }
       // A day of remembrance tomorrow or today, told once a year.
       try { await sweepRemember(sql, circle.id); } catch (e) { /* never break a read */ }
-      const pulse = await pulseToday(sql, circle.id, reqTz(req));
+      const pulse = await pulseToday(sql, circle.id, reqTz(req), g.me.id);
       const sosOpen = await sql`
         select s.id, s.member_id, s.status, s.escalated, s.created_at, s.acked_at, s.safe_at,
                s.lat, s.lng, s.accuracy,
@@ -341,28 +343,22 @@ export default async function handler(req, res) {
         if (!isUuid(memberId)) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
         const pm = await ownedMember(sql, circle.id, memberId, tokenOf(req), `id, name`);
         if (!pm[0]) return res.status(403).json({ ok: false, error: 'Not a member of this family' });
-        await ensurePulseSchema(sql);
+        // A tap made with no network arrives once (api/_push.mjs lateTap).
         const tap = await lateTap(sql, req.body, pm[0].id, 'pulse');
         if (tap.dup) return res.status(200).json({ ok: true, dup: true });
         if (tap.error) return res.status(tap.status).json({ ok: false, error: tap.error, stale: tap.status === 422 });
-        const day = tap.at ? dayIn(reqTz(req), tap.at) : pulseDay(reqTz(req)), styleKey = styleFor(day);
-        const opt = optionOf(styleKey, String(req.body.value || ''));
-        if (!opt) return res.status(400).json({ ok: false, error: 'Pick how you are today' });
-        const note = String(req.body.note || '').trim().slice(0, 120) || null;
-        await sql`insert into pulse (circle_id, member_id, day, style, value, note, at)
-                  values (${circle.id}, ${pm[0].id}, ${day}, ${styleKey}, ${opt.k}, ${note}, coalesce(${tap.at}::timestamptz, now()))
-                  on conflict (circle_id, member_id, day)
-                  do update set style = excluded.style, value = excluded.value, note = excluded.note, at = excluded.at`;
-        await sql`insert into events (circle_id, member_id, type, text, created_at)
-                  values (${circle.id}, ${pm[0].id}, 'checkin', ${pm[0].name + ' is ' + opt.e + ' ' + opt.t}, coalesce(${tap.at}::timestamptz, now()))`;
-        if (tap.late) await lateArrived(sql, circle, pm[0], tap.at);
+        // Private by default (api/_pulse.mjs): the member chooses to keep it
+        // to themself, tell one person, or tell the family. Nothing goes on
+        // the feed, and nobody is pushed, unless they chose that.
         // No coins for saying how you are: an adult's check-in is not a game.
+        const saved = await pulseSave(sql, circle, pm[0], req.body, reqTz(req));
         // "A call would be nice" is the reason this feature exists - it lets
-        // someone say they are not fine without having to say it.
-        // Someone who could do with a call: whoever is on the call rota for
-        // them today hears first, by name (api/_familycare.mjs).
-        if (opt.call) await pulseCallNudge(sql, circle.id, pm[0], opt.e + ' ' + opt.t + (note ? ' - ' + note : ''));
-        return res.status(201).json({ ok: true });
+        // someone say they are not fine without having to say it. Someone
+        // who could do with a call, and told the family: whoever is on the
+        // call rota for them today hears first, by name (api/_familycare.mjs).
+        if (saved.call) await pulseCallNudge(sql, circle.id, pm[0], saved.call);
+        if (saved.one) await pushCircle(sql, circle.id, { title: '🧡 ' + pm[0].name + ' told only you how today is', body: saved.one.line + (saved.one.low ? '. A call would be nice.' : ''), url: '/#home' }, { only: saved.one.id });
+        return res.status(saved.status).json(saved.json);
       }
 
       // Somebody is on it - everyone else stops worrying, and the person who

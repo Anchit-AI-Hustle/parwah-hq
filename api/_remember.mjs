@@ -156,8 +156,11 @@ export async function sweepRemember(sql, circleId, nowMs = Date.now()) {
                           on conflict do nothing returning member_id`;
     if (!got[0]) continue;   // another phone, or this evening's earlier tick, told the family
     sent++;
+    // The reminder opens a shared memory card for that day (api/_heard.mjs):
+    // the family can add a line, a photo or a voice note, together.
+    try { await (await import('./_heard.mjs')).rememberCardOpen(sql, circleId, m.id, due.year, due.date); } catch (e) { /* the reminder still goes */ }
     await pushCircle(sql, circleId, { title: '🪔 ' + remembranceLine(m.name, due.when),
-      body: 'A quiet day to remember ' + firstName(m.name) + ', together.', url: '/#home' }, {});
+      body: 'A quiet day to remember ' + firstName(m.name) + ', together. Add a line, a photo or a voice note to the memory card.', url: '/#home' }, {});
   }
   return sent;
 }
