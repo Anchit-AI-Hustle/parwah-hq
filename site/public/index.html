@@ -10598,7 +10598,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   });
   $('mp-docs').addEventListener('click', function(){ openVaultFor($('msheet').dataset.mid); });
   $('mp-page').addEventListener('click', function(){ var mid = $('msheet').dataset.mid; $('msheet').hidden = true; openPerson(mid); });
-  $('btn-ecard').addEventListener('click', function(){
+  $('btn-ecard').addEventListener('click', function(){ cnEcReady(ecOpenFirst); });
+  function ecOpenFirst(){
     // A parent in senior mode opens their own card; anyone else, a parent's
     // (the others are one tap away inside the card), else their own.
     var d = ecData(), pick = null;
@@ -10606,7 +10607,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (!pick) d.members.forEach(function(m){ if (!pick && m.role === 'parent' && m.id !== state.memberId && cnEcMay(m.id) && !rmGone(m)) pick = m; });
     if (!pick) d.members.forEach(function(m){ if (!pick && m.id === state.memberId) pick = m; });
     if (pick) openEcard(pick.id); else toast(navigator.onLine === false ? 'No saved copy on this phone yet - open Parwah once with internet' : 'Loading the family - try again in a moment');
-  });
+  }
   $('ec-x').addEventListener('click', function(){ $('ecard').hidden = true; });
   $('ecard').addEventListener('click', function(e){ if (e.target === this) this.hidden = true; });
   $('ec-copy').addEventListener('click', function(){
@@ -17052,6 +17053,15 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (Date.now() - cnEcAt < 60000) return;
     cnEcAt = Date.now();
     apiGet(CN_EC + cnQs()).then(function(j){ if (j.ok) { cnEc.may = j.mayOpen || []; cnEcKeep(); } }).catch(function(){});
+  }
+  // A tap that comes before this phone has ever heard whose cards it may
+  // open waits for that answer (or for the network to fail), then goes on.
+  function cnEcReady(then){
+    if (!state) return;
+    cnEcRead();
+    if (cnEc.may) { then(); return; }
+    cnEcAt = Date.now();
+    apiGet(CN_EC + cnQs()).then(function(j){ if (j.ok) { cnEc.may = j.mayOpen || []; cnEcKeep(); } then(); }).catch(function(){ then(); });
   }
   // Not known to be allowed: ask once, then open it or say why not.
   function cnEcAsk(id){
