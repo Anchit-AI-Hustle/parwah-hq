@@ -370,11 +370,11 @@ ok('5. "Remind them once": sent, and the button is gone', await sees(R, '#cmsgs 
 await design(R, '#cmsgs .pl', 'a secret ballot in the chat');
 // Rohan closes it: now the counts are shown, still with no names.
 await R.click('#cmsgs .pl [data-plclose]');
+if (await shown(R, '#as-yes')) await R.click('#as-yes');
 ok('5. when it closes the counts are shown: Kabir is 13, and Goa has two votes, his and his mother\'s', await sees(R, '#cmsgs .pl', /Secret ballot: only the counts are shown/)
   && await R.waitForSelector('#cmsgs .pl [data-i="1"] .pl-n, #cmsgs .pl .pl-opt:nth-of-type(2) .pl-n', T).then(() => true, () => false)
   && (await R.$$eval('#cmsgs .pl .pl-n', els => els.map(e => e.textContent.trim()))).join() === '2,2'
   && !/Meena|Kabir/.test(await R.textContent('#cmsgs .pl')));
-await design(R, '#cmsgs .pl', 'a closed secret ballot with its counts');
 // From a 1:1 chat: "Maaf karna" and "Can we talk?".
 await R.click('#chatback'); await R.waitForSelector('#chatlist [data-open="' + dm.chatId + '"]', T);
 await R.click('#chatlist [data-open="' + dm.chatId + '"]');

@@ -636,6 +636,14 @@ export async function accountAction(sql, req, body, token) {
       await sql`delete from user_devices where user_id = ${uid} and device_hash = ${al.device_hash}`;
     }
     await dropPush(sql, uid, { deviceHash: al.device_hash || (theirs && theirs.device_hash) || null });
+    // THIS phone was here first (checked above), so it is one that may
+    // choose the new PIN, even if it signed in before phones had ids of
+    // their own: it is written down as known since its session began.
+    const mine = cur.device_hash || deviceHashOf(body.deviceId);
+    if (mine && mine !== al.device_hash) {
+      await sql`insert into user_devices (user_id, device_hash, name, first_seen) values (${uid}, ${mine}, ${deviceName(uaOf(req))}, ${cur.created_at || new Date()})
+                on conflict (user_id, device_hash) do update set first_seen = least(user_devices.first_seen, excluded.first_seen)`;
+    }
     // The new PIN is chosen on a phone that was here BEFORE that sign-in.
     const flagged = (await sql`select created_at from account_alerts where id = ${al.id}`)[0];
     await sql`update users set must_change_pin = true, must_change_at = ${flagged ? flagged.created_at : new Date()} where id = ${uid}`;
@@ -720,14 +728,16 @@ export function vetoUntil(nowMs = Date.now()) {
 // With no address to go by (no proxy in front), there is nothing to compare.
 export function fromHash(ip, ua) { return !ip || ip === 'unknown' ? null : sha('from:' + String(ip) + '|' + String(ua || '')); }
 // May this session say yes to this request? Never the phone that asked:
-// not by its own id (on this session, sent with the yes, or any phone the
-// approver has used), and not from the same address and browser.
+// not by its own id (on this session, sent with the yes, or a phone the
+// approver is signed in on right now), and not from the same address and
+// browser. A phone the approver only USED to be signed in on does not
+// count: a son who once set up his mother's phone must still be able to
+// let her back in from his own.
 export async function sameAsAsker(sql, reset, approverId, { sessionDevice, sentDevice, from }) {
   if (reset.req_from && from && reset.req_from === from) return true;
   if (!reset.req_device) return false;
   if (reset.req_device === sessionDevice || reset.req_device === sentDevice) return true;
-  const mine = await sql`select 1 as x from user_devices where user_id = ${approverId} and device_hash = ${reset.req_device}
-                         union all select 1 from sessions where user_id = ${approverId} and device_hash = ${reset.req_device} limit 1`;
+  const mine = await sql`select 1 as x from sessions where user_id = ${approverId} and device_hash = ${reset.req_device} and expires_at > now() limit 1`;
   return !!mine[0];
 }
 export { hashPin, standingOf };

@@ -788,3 +788,25 @@ Checked at 320 and 390, light and dark, and at 1280 for sideways scroll, on the 
 | E16 | 9 Error recovery | A message from someone who has left showed under Ekta's name | 3 | Fixed for text messages: "A former member". Open: a photo, a voice note or a poll from someone who has left still shows under Ekta's name, and the chat list preview does too |
 
 New patterns: none. The two-button choice on the sign-in card is the app's `seg`; every notice is a `resetcard`; every row of the decisions card is an `ev` with a `prow2`; the two sheets are the app's `msheet`. No new CSS and no new token. Ids start with `ac-`, functions with `ac`.
+
+### Review N (fix pass), what the review of the combined build found (2026-11-14)
+
+Checked at 320 and 390, light and dark, on the real app (`standing.e2e`, `consent.e2e` and `heard.e2e` measure the changed screens). No new screen and no new pattern: every change is words, or a row in a card that already exists.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| F1 | 5 Error prevention | One adult could ask for another member's PIN reset from their own phone and say yes to it themself | 4 | Fixed: the phone that asked cannot say yes ("Someone else in the family has to say yes, from their own phone"). The new PIN always waits ten minutes, and the adult who said yes is told so |
+| F2 | 1 Visibility | "Has not tapped Reached safely", "cannot get in", "asked to reset your PIN", wrong PIN tries and a new sign-in waited for the morning | 4 | Fixed: they get through quiet hours and no switch turns them off. A chat called "Mum is safe" no longer does |
+| F3 | 4 Consistency | Five rules said who is an adult, and disagreed | 4 | Fixed: one rule, on the server and in every query |
+| F4 | 3 User control | One adult could answer "not an adult" about another and then remove them alone | 4 | Fixed: the person is asked in the decisions card ("Rohan says you are under 18. Is that right?"), or a second adult is. A row of the existing card, Yes and No |
+| F5 | 5 Error prevention | After "Not me" the intruder could choose the new PIN first | 4 | Fixed: only a phone that was already theirs. Any other phone is told to use "Forgot PIN", in plain words |
+| F6 | 10 Privacy | A signed-out phone went on getting the family's alerts | 3 | Fixed on the server and on the phone |
+| F7 | 10 Privacy | The emergency card's lock was on the screen only: the Family book sent the same details to every member | 4 | Fixed in the query. Where details are kept back the book says "Papa's health details are on their emergency card", one line a person, so an empty list is not read as nothing saved. Ekta says the same instead of "nothing is recorded" |
+| F8 | 10 Privacy | "Download my data" could hold a paper the owner had taken back | 3 | Fixed: only what the person can open today |
+| F9 | 10 Privacy | A phone its owner kept to themself still went out through Ekta, a trip and a card's contacts | 3 | Fixed: the card says "keeps their number to themself. Ask Papa for it." |
+| F10 | 2 Real-world match | A secret ballot showed live counts beside "Waiting for" | 3 | Fixed: "3 of 5 have voted" and "the counts stay hidden until the poll closes", then the counts |
+| F11 | 9 Error recovery | A child who types a date of birth that makes them 18 | 3 | Fixed: the rest of the profile saves, and the toast says an adult has to say yes; the adult sees the new date and Yes or No |
+| F12 | 1 Visibility | Open: a secret DATE poll still shows live counts (the host needs the tally to lock a date) | 2 | Open: said in the coverage notes |
+| F13 | 3 User control | Open: an adult who is not chosen on Papa's card no longer sees Papa's medicines in the Family book unless they wrote the entry, Papa shared it by name, or an SOS is open | 2 | Open by design: it is the card's own rule. Worth a second look with real families |
+
+New patterns: none.

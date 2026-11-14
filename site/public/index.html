@@ -8676,7 +8676,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         }
         pendingResets = pendingResets.filter(function(x){ return x.id !== id; });
         renderResets();
-        toast(!j.ok ? (j.error || 'Already decided') : yes ? name + ' can choose a new PIN now 🧡' : 'Not now. ' + name + ' can ask again.');
+        toast(!j.ok ? (j.error || 'Already decided') : yes ? name + ' can choose a new PIN in ten minutes. The short wait keeps their account safe 🧡' : 'Not now. ' + name + ' can ask again.');
       })
       .catch(function(){
         document.querySelectorAll('[data-resetcard="' + id + '"] button').forEach(function(b){ b.disabled = false; });
@@ -8853,8 +8853,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     // subscription is ended here, and the server is told its address so it
     // forgets it too: a signed-out phone must not go on showing the
     // family's alerts to whoever holds it. Never waits long for either.
-    var ended = ('serviceWorker' in navigator && navigator.serviceWorker.ready)
-      ? Promise.race([navigator.serviceWorker.ready.then(function(reg){ return reg.pushManager.getSubscription(); }).then(function(s){
+    var ended = ('serviceWorker' in navigator && navigator.serviceWorker.getRegistration)
+      ? Promise.race([navigator.serviceWorker.getRegistration().then(function(reg){ return reg && reg.pushManager ? reg.pushManager.getSubscription() : null; }).then(function(s){
           if (!s) return '';
           var ep = s.endpoint;
           return s.unsubscribe().then(function(){ return ep; }, function(){ return ep; });
@@ -9179,7 +9179,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     id = b.getAttribute('data-acnotme');
     askSheet('Sign that phone out?', 'It is signed out at once. Then you choose a new PIN, so whoever it was cannot come back.', 'Not me, sign it out', 'Go back', true).then(function(y){
       if (!y) return;
-      acAuth({ action: 'alert_notme', alertId: id }).then(function(j){
+      acAuth({ action: 'alert_notme', alertId: id, deviceId: acDeviceId() }).then(function(j){
         if (!j.ok) { toast(j.error || 'Could not do that'); return; }
         acSecurity.alerts = (acSecurity.alerts || []).filter(function(x){ return x.id !== id; }); acRenderSec();
         if (j.changeSecret) askNewSecret(true);

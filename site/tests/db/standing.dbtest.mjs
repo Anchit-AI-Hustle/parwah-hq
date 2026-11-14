@@ -1039,6 +1039,23 @@ ok('setup: five Vermas', (await rows('select id from members where circle_id = $
     inn = await callAt(auth, { action: 'enter', phone: bina.phone, cc: '+91', resetSecret: r.resetSecret, newPin: '9038', deviceId: DEV(82) }, null, '10.77.1.1', UA_IPHONE);
     ok('fix 1: then she is in', inn.ok && !!inn.token);
     bina.token = inn.token; bina.pin = '9038';
+    // A son who once set up his mother's phone can still let her back in
+    // from his own. Only being signed in on the asking phone NOW counts.
+    await forgetLimits(); await admin.query('delete from pin_locks');
+    const onHers = await enter(dev.phone, { pin: dev.pin, deviceId: DEV(82) });
+    await A(bina.token, { action: 'signout_all', token: bina.token });
+    r = await callAt(auth, { action: 'reset_request', phone: bina.phone, cc: '+91', deviceId: DEV(82) }, null, '10.77.2.1', UA_IPHONE);
+    rs = await one(`select id from pin_resets where user_id = $1 and status = 'pending'`, [bina.id]);
+    a = await callAt(auth, { action: 'reset_approve', resetId: rs.id, sayCode: r.sayCode, token: dev.token, deviceId: DEV(83) }, dev.token, '10.77.2.2', UA_ANDROID);
+    ok('fix 1: while Dev is signed in on the asking phone, his yes is refused even from his own', a.http === 403 && a.sameDevice === true, JSON.stringify(a));
+    await A(onHers.token, { action: 'signout', token: onHers.token });
+    a = await callAt(auth, { action: 'reset_approve', resetId: rs.id, sayCode: r.sayCode, token: dev.token, deviceId: DEV(83) }, dev.token, '10.77.2.2', UA_ANDROID);
+    ok('fix 1: once he is signed out of it, he can let her back in from his own phone', a.ok && a.status === 'approved', JSON.stringify(a));
+    await admin.query(`update pin_resets set veto_until = now() - interval '1 second' where id = $1`, [rs.id]);
+    inn = await callAt(auth, { action: 'enter', phone: bina.phone, cc: '+91', resetSecret: r.resetSecret, newPin: '9038', deviceId: DEV(82) }, null, '10.77.2.1', UA_IPHONE);
+    ok('fix 1: and she is in again', inn.ok && !!inn.token);
+    bina.token = inn.token;
+    await admin.query('delete from account_alerts where user_id = any($1::uuid[])', [[bina.id, dev.id]]);
   }
 
   // ---------------- 17. a stranger cannot push the owner's own request aside, or use up her tries
@@ -1086,6 +1103,28 @@ ok('setup: five Vermas', (await rows('select id from members where circle_id = $
     r = await enter(bina.phone, { pin: bina.pin, newPin: '2581', deviceId: DEV(82) });
     ok('fix 5: and chooses it', r.ok && !!r.token, JSON.stringify(r).slice(0, 200));
     bina.token = r.token; bina.pin = '2581';
+  }
+
+  // ---------------- 5b. a phone signed in before phones had ids of their own
+  {
+    await forgetLimits(); await admin.query('delete from pin_locks');
+    // Dev's session is from before: no device id on it, no known device.
+    await admin.query('update sessions set device_hash = null where user_id = $1', [dev.id]);
+    await admin.query('delete from user_devices where user_id = $1', [dev.id]);
+    await admin.query(`update sessions set created_at = now() - interval '3 days' where user_id = $1`, [dev.id]);
+    const thief = await enter(dev.phone, { pin: dev.pin, deviceId: DEV(981) });
+    const al = (await A(dev.token, { action: 'account_state' })).alerts[0];
+    ok('fix 5: (a new sign-in is flagged on Dev\'s older phone)', !!thief.token && !!al);
+    // The intruder cannot use "Not me" to become the trusted phone.
+    let r = await A(thief.token, { action: 'alert_notme', alertId: al.id, deviceId: DEV(981) });
+    ok('fix 5: the newer phone cannot say "Not me"', r.http === 403);
+    r = await A(dev.token, { action: 'alert_notme', alertId: al.id, deviceId: DEV(83) });
+    ok('fix 5: the older phone says "Not me", and says which phone it is', r.ok && r.changeSecret === true);
+    r = await enter(dev.phone, { pin: dev.pin, newPin: '7410', deviceId: DEV(981) });
+    ok('fix 5: the intruder still cannot choose the new PIN', !r.token && r.askFamily === true);
+    r = await enter(dev.phone, { pin: dev.pin, newPin: '7410', deviceId: DEV(83) });
+    ok('fix 5: the phone that said "Not me" chooses it, though it had no id on file before', r.ok && !!r.token, JSON.stringify(r).slice(0, 200));
+    dev.token = r.token; dev.pin = '7410';
   }
 
   // ---------------- 6. signing out stops the pushes
@@ -1273,6 +1312,18 @@ ok('setup: five Vermas', (await rows('select id from members where circle_id = $
     await admin.query(`update members set is_child = false, adult_confirmed = null, dob = '2014-01-01' where id = $1`, [mohan.m]);
     r = await C(lata.token, { action: 'remove_ask', code: lal.code, memberId: lata.m, targetId: mohan.m });
     ok('fix 4: the only adult may still remove a child by date of birth', r.ok && r.removed === mohan.m, JSON.stringify(r));
+  }
+
+  // ---------------- 11. a child cannot change their date of birth from another circle either
+  {
+    await forgetLimits();
+    const g = await C(chintu.token, { action: 'create', kind: 'group', memberName: 'Chintu', circleName: 'Cricket' });
+    await admin.query('update members set dob = null where id = $1', [g.memberId]);
+    const r = await C(chintu.token, { action: 'update_member', code: g.code, memberId: g.memberId, dob: '1995-03-03' });
+    const both = await rows(`select to_char(dob, 'YYYY-MM-DD') as d from members where user_id = $1 order by created_at`, [chintu.id]);
+    ok('fix 11: a child in one family cannot become an adult by changing the date in a group of their own', r.ok && r.dobPending === false && /Kapoor/.test(r.message || '')
+       && both[0].d === '2015-03-03' && both[1].d === null, JSON.stringify([r.message, both]));
+    ok('fix 11: and is still a child for the family\'s gates', (await state(chintu, kap.code, chintu.m)).me.may === false);
   }
 
   // ---------------- 19. saving the profile keeps the sizes and likes

@@ -192,8 +192,21 @@ export async function childMark(sql, circle, meId, targetId) {
 // → null (save it now) or { pending, message } (the old date stays).
 export async function dobChangeGate(sql, circle, memberId, newDob) {
   const s = await standingOfCaller(sql, circle, memberId);
-  if (!s.me || !isMinor(s.me, s.today)) return null;
-  if (isMinor({ ...s.me, dob: newDob || null, is_child: false, adult_confirmed: null }, s.today)) return null;
+  if (!s.me) return null;
+  const wouldBeChild = isMinor({ dob: newDob || null, is_child: false, adult_confirmed: null }, s.today);
+  if (!isMinor(s.me, s.today)) {
+    // One person, one date of birth: it is copied to every family they are
+    // in. A child in ANOTHER family must not change it from here, where
+    // nobody has said they are one.
+    if (!wouldBeChild && s.me.user_id) {
+      const other = await sql`select m.dob, m.is_child, m.adult_confirmed, c.name from members m join circles c on c.id = m.circle_id
+                              where m.user_id = ${s.me.user_id} and m.id <> ${s.me.id}`;
+      const where = other.find(o => isMinor(o, s.today));
+      if (where) return { pending: false, message: 'Your date of birth was not changed. In ' + where.name + ' an adult has to agree to that. Open ' + where.name + ' and change it there.' };
+    }
+    return null;
+  }
+  if (wouldBeChild) return null;
   const adults = actingAdults(s.rows, s.today).filter(a => a.id !== s.me.id);
   if (!adults.length) {
     return { pending: false, message: 'Your date of birth was not changed. An adult in the ' + word(circle) + ' has to agree to that, and none is on Parwah here yet.' };

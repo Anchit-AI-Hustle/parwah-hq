@@ -23,7 +23,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | Where everyone is, only while they agree to share | Live | location shares, places |
 | My location stays mine: "Announce my arrivals" is my own switch (off until I say yes), an ask to share has a "Not now" that mutes that person for 7 days, I see who looked ("Seen by Rohan, 10 min ago"), and an old position says "Last seen" | Live | `api/_locationapi.mjs`: `location_consent`, `location_asks`, `location_looks`; other people's positions are sent only on a read with `look=1` |
 | "Reached safely": I say where I am going and by when; one tap tells the people I chose; if I forget, they are asked gently to call, 30 minutes after the time | Live | `api/_ashirwad.mjs` (`trips`), `sweepTripsAll` from the timer |
-| An emergency card for each person, shown to that person and the adults they chose, with two contacts they chose, printable, and open with no signal once opened | Live | the card on the phone, plus `api/_ecard.mjs` behind `/api/book?area=ecard` |
+| An emergency card for each person, shown to that person and the adults they chose, with two contacts they chose, printable, and open with no signal once opened | Live | the card on the phone, plus `api/_ecard.mjs` behind `/api/book?area=ecard`. The lock is on the server: the Family book's own read (`api/book.mjs`) and Ekta's reads send the blood group, allergies, medicines and insurance about a person only to someone who may open that person's card, never to a child; the book says "health details are on their emergency card" where they are kept back |
 | Find a phone that is on silent | Live | find me |
 | A helper nearby is told when family is far | Live | nearby ladder |
 | An SOS reaches every family a person belongs to, and is shouted once more by the timer when nobody answers | Live | SOS fan-out, timer escalation |
@@ -100,7 +100,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | **Thanking each other, evenly** | Live | Shukriya: a line or a voice note to anyone, on Parwah or not (kept for the day they join), private to the two or shown to the family. A weekly quiet thought on Today suggests someone, chosen so everyone is suggested about equally often. No counts, no ranking |
 | **One question a week for the whole family** | Live | at least 40 warm questions; each member answers by voice or text and reads the others once they have answered; someone not on Parwah can be answered for ("told by Dadi, recorded by Rohan") |
 | **Being answered**: heard-by on a story, a thank-you for a card, a reaction on a photo | Live | stories ("Suna, bahut accha laga" or a voice reply, pushed to the teller); cards (reminded the evening before, never handed over empty, "Say thank you", a print and share view for someone not on Parwah); photos (reactions, a voice caption, share one photo, one "new photos" push a day) |
-| **Equal votes** | Live | chat polls and date polls: a secret ballot (no name is sent to any phone), "Waiting for...", one reminder, a vote "for Dadi, by Rohan", the host sees the tally before a lock and the lock records it. Every vote counts once, whoever cast it |
+| **Equal votes** | Live | chat polls and date polls: a secret ballot (no name is sent to any phone; a chat poll's counts stay hidden until it closes, and the screen says so), "Waiting for...", one reminder, a vote "for Dadi, by Rohan", the host sees the tally before a lock and the lock records it. Every vote counts once, whoever cast it |
 | Care that flows back from a parent: Ashirwad (a one-tap blessing or a voice note, answered with "🙏 Pranam" or a voice reply) and "How is your day?" asked of a child | Live | `api/_ashirwad.mjs` behind `/api/chats?area=ashirwad`; the parent's big button is on the senior Today |
 | A daily "what happened today" digest | Live | Aaj kya hua, from Ekta: plain words for everyone; one model call per member per day at most, 12 a circle a day, only when the owner's key is set |
 | A morning note of the day ahead | Live | Aaj ka din, from Ekta (`api/_ektaday.mjs`): medicine times of people the reader may see, plans, birthdays and anniversaries today, renewals this week, who is away. Plain rules by default; a model line only with `EKTA_MORNING_MODEL=on`, on the same one call a day as the evening note. Senior mode has a big "Sunao" button on both notes, and the thumbs |
@@ -152,7 +152,8 @@ and a 4-number PIN; no text message is ever sent (owner's decision).
 
 | Need | Status | Where |
 |---|---|---|
-| Equal standing: who decides what | Live | ONE adult rule, `isAdultMember` in `api/_standingrules.mjs`; "Is Tara an adult?" asked once of an adult (`api/_standing.mjs`) |
+| Equal standing: who decides what | Live | ONE adult rule, `standingOf` / `isAdultMember` / `isMinor` in `api/_standingrules.mjs`, reading the date of birth, `is_child` and `adult_confirmed`; the same three columns in every SQL that must not reach a child (`audienceFor`, `minorOf`, costs, the card, the safe word). "Is Tara an adult?" asked once of an adult (`api/_standing.mjs`). "Under 18" about someone on Parwah needs their own yes or a second adult; one adult alone removes only a child by date of birth; a child cannot make themself an adult by changing their own date of birth (an adult says yes) |
+| Getting back in, safely | Live | a PIN reset is never approved from the phone that asked, and the new PIN always waits ten minutes from the yes; after "Not me" only a phone known before that sign-in chooses the new PIN; signing out forgets that phone's push subscription (`api/auth.mjs`, `api/_account.mjs`) |
 | A PIN nobody can walk through, and a parent nobody can lock out | Live | the lock grows (15 minutes, 1 hour, 24 hours); a phone that has signed in before keeps its own count (`api/_account.mjs`) |
 | Knowing when someone signs in as me | Live | a new phone is told to the older phones, with "Not me"; never a blocking step |
 | Nobody learns whether a number is on Parwah | Live | sign-in, a wrong PIN, the lock and a reset read the same for a number nobody has; the sign-in card asks "I have a profile" or "I am new here" |
@@ -168,7 +169,7 @@ and a 4-number PIN; no text message is ever sent (owner's decision).
 | Two households linked only when the grown-ups are fine with it | Live | 48 hours after the yes unless an adult objects; at once if every adult says yes |
 | Seeing what was looked at or changed about me | Live | the audit trail shows a member only their own rows; "My activity" in Profile |
 | My devices, with sign out for each | Live | Devices in Profile; "Sign out everywhere" |
-| A copy of my data, and a real delete | Live | "Download my data"; "Delete my account" and "Delete this family", each with a 7-day way back |
+| A copy of my data, and a real delete | Live | "Download my data": a list of tables in `api/_account.mjs`, each with the rule its own module reads by, so it holds only what I can open in the app today; "Delete my account" and "Delete this family", each with a 7-day way back |
 | A sign-in that proves the number is mine (a text message or a call) | Decide | the owner chose no SMS; without it, making a new profile can still show that a number is free (it is counted per device) |
 
 ## 2. The architecture every feature follows
@@ -345,9 +346,12 @@ Honest limits:
 - **A private word needs the other person to be on Parwah.** For someone who
   is not, the app says so and suggests a call. A shukriya is kept for them.
 - **A secret ballot hides who chose what, not who has voted.** "Waiting for"
-  names the people who have not answered yet, in every poll. With very few
-  voters the counts alone can give a vote away; the screen says only what it
-  shows.
+  names the people who have not answered yet, in every poll. In a chat poll
+  the counts stay hidden until the poll closes (live counts beside "Waiting
+  for" let a watcher match a vote to a name); the screen says so, and shows
+  "3 of 5 have voted". With very few voters the final counts can still give
+  a vote away. A secret DATE poll still shows live counts, because the host
+  needs the tally to lock a date: that one is open.
 - **A vote, an answer or a story given for someone not on Parwah is the
   word of the relative who typed it.** It is always shown with both names.
 - **Festival dates for 2028 to 2030 come from one published calendar** (Drik

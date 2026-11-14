@@ -357,8 +357,14 @@ const PM2 = await open(M.Maa, '#people');
   ok('let back in: the wrong two numbers are refused by the server', await toastSays(PP, /not the two numbers on their screen/) && (await q1(`select status from pin_resets where user_id = $1 order by created_at desc limit 1`, [U.Rohan.userId])).status === 'pending');
   await PP.fill('#pinresets [data-resetcode]', said);
   await PP.click('#pinresets [data-resetok]'); await confirmSheet(PP);
-  ok('let back in: the right two numbers, and Papa has let him in', await toastSays(PP, /can choose a new PIN now/));
-  // Rohan had no phone signed in, so there is nothing to wait for.
+  ok('let back in: the right two numbers, and Papa has let him in, and is told of the short wait', await toastSays(PP, /can choose a new PIN in ten minutes/));
+  // The new PIN ALWAYS waits ten minutes from the yes, even though Rohan has
+  // no phone signed in: the wait is what lets him, or the family, stop it.
+  await F.click('#au-rs-check').catch(() => {});
+  ok('forgot: the asking phone is told the family said yes, and to wait a few minutes', await sees(F, '#au-rs-msg', /family said yes/i) && !(await F.isVisible('#au-pin2')));
+  ok('forgot: the wait is on the server too', new Date((await q1(`select veto_until from pin_resets where user_id = $1 order by created_at desc limit 1`, [U.Rohan.userId])).veto_until) > new Date());
+  // Here the ten minutes have passed.
+  await admin.query(`update pin_resets set veto_until = now() - interval '1 second' where status = 'approved'`);
   await F.click('#au-rs-check').catch(() => {});
   ok('forgot: the yes reaches the phone that asked: choose a new PIN', await shown(F, '#au-pin2') && await sees(F, '#au-pinnote', /family said yes/));
   await F.fill('#au-pin', '5927'); await F.fill('#au-pin2', '5927'); await F.click('#au-go');
