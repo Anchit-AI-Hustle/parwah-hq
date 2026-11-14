@@ -563,25 +563,25 @@ const VOICE = 'data:audio/webm;base64,' + Buffer.concat([Buffer.from([0x1A, 0x45
   r = await bookOf(tara);
   ok('fix 7: Tara, marked as a child, is not sent them either', !HEALTH.some(h => JSON.stringify(r).includes(h)) && !JSON.stringify(r).includes('DADI-MEDICINE'), await names(tara));
   r = await bookOf(rohan);
-  ok('fix 7: an adult Papa has not chosen is not sent them', !HEALTH.some(h => JSON.stringify(r).includes(h)) && r.cardLocked.map(x => x.name).join() === 'Papa', await names(rohan));
+  ok('fix 7: an adult of the family is sent them as before: each entry is already "whole family" or by name', HEALTH.every(h => JSON.stringify(r).includes(h)) && r.cardLocked.length === 0, await names(rohan));
   ok('fix 7: an adult keeps the health details of someone who is not on Parwah', /DADI-MEDICINE/.test(await names(rohan)));
-  ok('fix 7: whoever wrote an entry still reads it', /PAPA-MEDICINE-ONE/.test(await names(meera)) && !/PAPA-BLOOD/.test(await names(meera)));
+  ok('fix 7: whoever wrote an entry still reads it', /PAPA-MEDICINE-ONE/.test(await names(meera)));
   const papaAll = await names(papa);
   ok('fix 7: Papa reads everything about himself', HEALTH.every(h => papaAll.includes(h)) && (await bookOf(papa)).cardLocked.length === 0);
   ok('fix 7: preparedness still counts what is recorded, without saying what it is', (await bookOf(chintu)).prep.find(x => x.memberId === papa.id).items.blood === 'ok');
   await post('book', papa, { action: 'ecard_set', viewers: [rohan.id], contacts: [] });
   r = await bookOf(rohan);
   ok('fix 7: once Papa chooses Rohan, Rohan is sent them', HEALTH.every(h => JSON.stringify(r).includes(h)) && r.cardLocked.length === 0, await names(rohan));
-  ok('fix 7: and Meera, not chosen, still is not', !/PAPA-BLOOD/.test(await names(meera)));
+  ok('fix 7: and Meera, an adult, is sent them too', /PAPA-BLOOD/.test(await names(meera)));
   await admin.query(`insert into sos (circle_id, member_id, status) values ($1, $2, 'open')`, [F.id, papa.id]);
   ok('fix 7: while Papa\'s SOS is open every adult is sent them', /PAPA-BLOOD/.test(await names(meera)));
   ok('fix 7: a child still is not', !/PAPA-BLOOD/.test(await names(chintu)));
   await admin.query(`update sos set status = 'resolved' where circle_id = $1`, [F.id]);
-  ok('fix 7: and when it closes, it closes', !/PAPA-BLOOD/.test(await names(meera)));
+  ok('fix 7: and when it closes, a child still is not', !/PAPA-BLOOD/.test(await names(chintu)));
   // An entry Papa shared with Meera by name is hers to read, as before.
   const shared = (await admin.query(`select id from family_book where name = 'PAPA-POLICY'`)).rows[0].id;
   await admin.query(`insert into book_access (entry_id, member_id, granted_by) values ($1, $2, $3)`, [shared, meera.id, papa.id]);
-  ok('fix 7: an entry shared with someone by name is still theirs to read', /PAPA-POLICY/.test(await names(meera)) && !/PAPA-BLOOD/.test(await names(meera)));
+  ok('fix 7: an entry shared with someone by name is still theirs to read', /PAPA-POLICY/.test(await names(meera)));
 }
 
 // 9. A phone its owner keeps to themself is not sent by a trip or a card.

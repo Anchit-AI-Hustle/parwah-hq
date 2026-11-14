@@ -215,8 +215,7 @@ async function runTool(ctx, name, input) {
                         or not (b.kind in ('med', 'insurance') or (b.kind = 'fact' and b.category in ('blood', 'allergy'))))
                    and (b.about_member is null
                        or not (b.kind in ('med', 'insurance') or (b.kind = 'fact' and b.category in ('blood', 'allergy')))
-                       or (not (case when v.dob is not null then v.dob > current_date - interval '18 years' else (v.is_child or v.adult_confirmed is false) end)
-                           and (am.user_id is null or v.id = any(coalesce(ep.viewers, '{}')) or b.about_member = any(${sosNow}::uuid[])))))
+                       or (not (case when v.dob is not null then v.dob > current_date - interval '18 years' else (v.is_child or v.adult_confirmed is false) end))))
                   or (not ${open} and (b.about_member = ${me.id}
                   or b.by_member = ${me.id} or ba.member_id is not null)))) as may_read
       from family_book b
@@ -278,8 +277,7 @@ async function runTool(ctx, name, input) {
       where b.circle_id = ${circle.id} and b.about_member = ${m.id}
         and ((b.visibility = 'circle' and (b.about_member is null
                   or not (b.kind in ('med', 'insurance') or (b.kind = 'fact' and b.category in ('blood', 'allergy')))
-                  or (not (case when v.dob is not null then v.dob > current_date - interval '18 years' else (v.is_child or v.adult_confirmed is false) end)
-                      and (am.user_id is null or v.id = any(coalesce(ep.viewers, '{}')) or b.about_member = any(${sosNow}::uuid[])))))
+                  or (not (case when v.dob is not null then v.dob > current_date - interval '18 years' else (v.is_child or v.adult_confirmed is false) end))))
              or b.about_member = ${me.id}
              or b.by_member = ${me.id} or ba.member_id is not null)
       order by b.kind limit 200`;

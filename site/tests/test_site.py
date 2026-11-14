@@ -4331,9 +4331,11 @@ check("emergency card: the person, the adults they chose, the adults during an S
       "where p.circle_id = ${circleId} and not p.remembered" in _cn["_ecard.mjs"]
       and "v.id = any(coalesce(e.viewers, '{}'))" in _cn["_ecard.mjs"] and "p.id = any(${sos}::uuid[])" in _cn["_ecard.mjs"]
       and ("not " + _cn_minor_v) in _cn["_ecard.mjs"]
-      # The lock is in the Family book's own read too, not only on the screen.
+      # A child is not sent these through the Family book's own read either.
+      # Adults of the family keep them: each entry is already "whole family"
+      # or shared by name, and that choice is the person's.
       and ("(not " + _cn_minor_v) in _cn["book.mjs"]
-      and "(am.user_id is null or v.id = any(coalesce(ep.viewers, '{}')) or b.about_member = any(${sosNow}::uuid[]))" in _cn["book.mjs"]
+      and "ep.viewers" not in _cn["book.mjs"]
       and "b.kind in ('med', 'insurance') or (b.kind = 'fact' and b.category in ('blood', 'allergy'))" in _cn["book.mjs"]
       and "bookLocked = j.cardLocked || []" in _app_src
       and "await audienceFor(sql, circle.id, 'emergency_items', { only: wantV })" in _cn["_ecard.mjs"]
@@ -4465,7 +4467,7 @@ check("chat: a secret ballot keeps its counts until it closes, someone remembere
       and "rateLimit(sql, 'locask', me.id + ':' + t[0].id, 1, 600, { failClosed: true })" in _cn["_locationapi.mjs"])
 check("privacy: Ekta, a trip, and the card's contacts send a phone only as the member card would, and Ekta reads health details by the card's rule",
       "await memberCards(sql, circle, me, rows);" in (API_DIR / "ekta.mjs").read_text(encoding="utf-8")
-      and (API_DIR / "ekta.mjs").read_text(encoding="utf-8").count("(am.user_id is null or v.id = any(coalesce(ep.viewers, '{}')) or b.about_member = any(${sosNow}::uuid[]))") == 2
+      and (API_DIR / "ekta.mjs").read_text(encoding="utf-8").count("b.kind in ('med', 'insurance') or (b.kind = 'fact' and b.category in ('blood', 'allergy'))") >= 2
       and "await memberCards(ctx.sql, ctx.circle, ctx.me, raw.map(" in (API_DIR / "_ektaagent.mjs").read_text(encoding="utf-8")
       and "await memberCards(sql, circle, me, trips.map(" in _cn["_ashirwad.mjs"]
       and "await memberCards(sql, circle, me, contacts.map(" in _cn["_ecard.mjs"])

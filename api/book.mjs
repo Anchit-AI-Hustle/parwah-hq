@@ -88,16 +88,14 @@ export default async function handler(req, res) {
       // may actually read it. Private rows are stripped below rather than
       // filtered out of the count, so preparedness stays truthful without
       // leaking what is inside.
-      // THE EMERGENCY CARD'S LOCK IS HERE TOO, not only on the screen. What
-      // a card shows about a person (blood group, allergies, medicines,
-      // insurance) used to reach every member, children included, through
-      // this read, whoever the person had chosen. A "whole family" entry of
-      // those kinds about someone else is now sent only to a viewer who
-      // may open that person's card (api/_ecard.mjs: the adults they
-      // chose, any adult when the person is not on Parwah, any adult while
-      // their SOS is open; never a child). Nothing else changes: my own
-      // entries, entries about me, and entries shared with me by name are
-      // mine to read as before.
+      // WHAT A CHILD IS NOT SENT. What an emergency card shows about a
+      // person (blood group, allergies, medicines, insurance) used to reach
+      // every member, children included, through this read. A "whole family"
+      // entry of those kinds about someone else is now sent to the adults of
+      // the family only, never to a child or teenager. For adults nothing
+      // changes: the person already chooses, entry by entry, between the
+      // whole family and the people they name. Who may open the CARD itself
+      // (the printable summary and its two contacts) is api/_ecard.mjs.
       await ensureEcardSchema(sql);
       const sosNow = await openSos(sql, circle.id);
       const all = await sql`
@@ -108,8 +106,7 @@ export default async function handler(req, res) {
                 or (b.visibility = 'circle'
                     and (b.about_member is null
                          or not (b.kind in ('med', 'insurance') or (b.kind = 'fact' and b.category in ('blood', 'allergy')))
-                         or (not (case when v.dob is not null then v.dob > current_date - interval '18 years' else (v.is_child or v.adult_confirmed is false) end)
-                             and (am.user_id is null or v.id = any(coalesce(ep.viewers, '{}')) or b.about_member = any(${sosNow}::uuid[])))))) as can_see,
+                         or (not (case when v.dob is not null then v.dob > current_date - interval '18 years' else (v.is_child or v.adult_confirmed is false) end))))) as can_see,
                (b.visibility = 'circle') as on_card
         from family_book b
         join members v on v.id = ${memberId}

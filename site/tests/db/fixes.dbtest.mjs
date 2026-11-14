@@ -143,7 +143,7 @@ ok('setup: three in the Sharma family, one in the Guptas', U.papa.id && U.rohan.
   // plainly instead of "nothing is recorded" (the card's lock is on the
   // server, not only on the screen).
   const locked = await call(ekta, { token: U.meera.token, body: { code, memberId: U.meera.id, text: "what is Papa's blood group?" } });
-  ok("on her own screen, before Papa chose her: the blood group is not read out, and she is told why", locked.ok && !/B\+/.test(locked.reply) && /emergency card/.test(locked.reply) && !/Nothing is recorded/.test(locked.reply), JSON.stringify(locked).slice(0, 300));
+  ok("on her own screen, an adult of the family: Papa's blood group, B+", locked.ok && /B\+/.test(locked.reply), JSON.stringify(locked).slice(0, 300));
   // Papa ticks Meera on his own card.
   await rows(`insert into ecard_prefs (circle_id, member_id, viewers) select circle_id, id, array[$2]::uuid[] from members where id = $1
               on conflict (circle_id, member_id) do update set viewers = excluded.viewers`, [U.papa.id, U.meera.id]);
