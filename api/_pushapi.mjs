@@ -14,7 +14,7 @@ import { tokenOf } from './_token.mjs';
 import { ensurePushSchema, vapidPublicKey, isPushEndpoint, pushSeen, lastTickAt } from './_push.mjs';
 import { cleanPrefs, minsToHHMM, PUSH_KINDS, PUSH_KIND_WORDS, cleanReport, cleanDevice, REPORT_KEEP_DAYS } from './_pushrules.mjs';
 import { validTz, reqTz } from './_recur.mjs';
-import { afterlossIsAdult } from './_afterloss.mjs';
+import { isAdult } from './_rememberrules.mjs';
 import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
 import { dialConfig } from './_sosdial.mjs';
 
@@ -48,7 +48,9 @@ export async function errorCounts(sql) {
   return { last_24h: r.day, different_last_24h: r.kinds_day, kept_14d: r.kept };
 }
 
-const adultOf = (m) => afterlossIsAdult({ user_id: m.user_id, dob: m.dob });
+// Who may see this view: on Parwah, and not a child by date of birth. (The
+// stricter rule that needs a date of birth is for the after-loss list only.)
+const adultOf = (m) => !!m.user_id && isAdult(m.dob, new Date().toISOString().slice(0, 10));
 
 export default async function handler(req, res) {
   let sql;

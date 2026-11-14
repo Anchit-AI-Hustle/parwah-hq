@@ -183,6 +183,19 @@ async function sendAll(sql, wp, list, opts) {
 // EVERYTHING A PERSON CHOSE IS APPLIED HERE, the one place a push is sent:
 // their quiet hours on their own clock, the kinds they turned off, a chat
 // they muted. An SOS and the other urgent kinds go to every device at once.
+// Whose phones a push to this family may reach, by member: the same rule
+// pushCircle applies, for a caller (or a test) that needs the list itself.
+export async function pushTargets(sql, circleId, { except = null, only = null, evenRemembered = false } = {}) {
+  return sql`
+    select distinct on (s.id) s.id, m.id as member_id, s.endpoint, s.p256dh, s.auth
+    from members m join push_subs s on (s.user_id is not null and s.user_id = m.user_id) or s.member_id = m.id
+    where m.circle_id = ${circleId}
+      and (${except}::uuid is null or m.id <> ${except})
+      and (${only}::uuid is null or m.id = ${only})
+      and (${!!evenRemembered} or not coalesce((to_jsonb(m)->>'remembered')::boolean, false))
+    order by s.id`;
+}
+
 // Someone marked as no longer with us is never pushed: not an SOS, not a
 // reminder, nothing, whichever module asks. The one exception is the note
 // that tells a person on Parwah they were marked, so a mistake can be undone
