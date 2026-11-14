@@ -82,7 +82,11 @@ export function adultByRole(m) {
 export function surelyAdult(m, today = new Date()) {
   if (!m || !(m.user_id || m.on_app)) return false;
   const age = ageOn(m.dob, today);
-  return age === null ? adultByRole(m) : age >= 18;
+  if (age !== null) return age >= 18;
+  // Never looser than the one rule (api/_standingrules.mjs): with no date
+  // of birth, a mark the family made ("a child", "not an adult") is a no.
+  if (m.is_child === true || m.adult_confirmed === false) return false;
+  return adultByRole(m);
 }
 export const ADULT_HOW = 'Add your date of birth in Edit profile first. This is for the adults of the family.';
 
@@ -113,11 +117,12 @@ export function doseTellWho({ onApp, tell, carerId }) {
 }
 // Words that never read as blame: nobody "missed" anything.
 export function doseNudgeText(slot) {
-  return { title: '💊 ' + slot + ' medicines', body: 'When you have had them, tap the tick in Parwah. Skipped them today? You can say so. No hurry.' };
+  // A time the person chose for themself: quiet hours do not hold it.
+  return { kind: 'care', timed: true, title: '💊 ' + slot + ' medicines', body: 'When you have had them, tap the tick in Parwah. Skipped them today? You can say so. No hurry.' };
 }
 export function doseFamilyText(name, slot) {
   const first = String(name || 'Someone').trim().split(/\s+/)[0] || 'Someone';
-  return { title: '💊 ' + first + "'s " + slot + ' medicines have no tick yet',
+  return { kind: 'care', title: '💊 ' + first + "'s " + slot + ' medicines have no tick yet',
            body: first + ' may have had them and not tapped. A warm call is the kind thing.' };
 }
 export const RAN_OUT = 'Ran out';
@@ -132,11 +137,11 @@ export function refillTitle(personName, medName, shared) {
 // ---------------------------------------------------------------------------
 export const TASK_FAMILY_AFTER_MIN = 60;
 export function taskOwnerText(title, status) {
-  return { title: '⏰ Past its time: ' + title,
+  return { kind: 'care', timed: true, title: '⏰ Past its time: ' + title,
            body: (status === 'assigned' ? 'It is waiting for your yes. ' : '') + 'Mark it done, set a new time, or hand it on. Only you see this for now.' };
 }
 export function taskFamilyText(title, hasOwner) {
-  return { title: '🤝 Still open: ' + title,
+  return { kind: 'care', title: '🤝 Still open: ' + title,
            body: hasOwner ? 'It could do with a hand. Open Parwah to help or set a new time.' : 'Nobody has it yet. Open Parwah to take it or set a new time.' };
 }
 export function taskFamilyFeed(title, hasOwner) {

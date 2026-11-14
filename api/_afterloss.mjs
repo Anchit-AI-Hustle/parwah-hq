@@ -226,8 +226,8 @@ export function afterlossNote(v, risks = []) {
 // to the family when it starts (or is opened again), and the one to the two
 // who started it when the person it is about closes it themself.
 export function afterlossPush(kind, { starter, person, confirmer }) {
-  if (kind === 'ask') return { title: starter + ' asks you to confirm', body: starter + " wants to start '" + AFTERLOSS_NAME + "' for " + person + '. It starts only if you agree.', url: '/#vault' };
-  if (kind === 'void') return { title: "'" + AFTERLOSS_NAME + "' was closed", body: person + ' closed the list that was started for them.', url: '/#vault' };
-  if (kind === 'reopened') return { title: starter + " opened '" + AFTERLOSS_NAME + "' for " + person + ' again', body: (confirmer ? confirmer + ' confirmed. ' : '') + 'The list is in the Family register.', url: '/#vault' };
-  return { title: starter + " started '" + AFTERLOSS_NAME + "' for " + person, body: (confirmer ? confirmer + ' confirmed. ' : '') + 'The list is in the Family register.', url: '/#vault' };
+  if (kind === 'ask') return { kind: 'other', title: starter + ' asks you to confirm', body: starter + " wants to start '" + AFTERLOSS_NAME + "' for " + person + '. It starts only if you agree.', url: '/#vault' };
+  if (kind === 'void') return { kind: 'other', title: "'" + AFTERLOSS_NAME + "' was closed", body: person + ' closed the list that was started for them.', url: '/#vault' };
+  if (kind === 'reopened') return { kind: 'other', title: starter + " opened '" + AFTERLOSS_NAME + "' for " + person + ' again', body: (confirmer ? confirmer + ' confirmed. ' : '') + 'The list is in the Family register.', url: '/#vault' };
+  return { kind: 'other', title: starter + " started '" + AFTERLOSS_NAME + "' for " + person, body: (confirmer ? confirmer + ' confirmed. ' : '') + 'The list is in the Family register.', url: '/#vault' };
 }

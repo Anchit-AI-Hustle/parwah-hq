@@ -12,7 +12,7 @@ import { index as kinIndex, placement, PLACES, GENDERS, FAMILY_TYPES, genderFrom
 import { famlinkAction } from './_famlink.mjs';
 import { famfactsAction } from './_famfacts.mjs';
 import { rememberAction } from './_remember.mjs';
-import { STANDING_ACTIONS, standingAction, standingOfCaller, joinPolicyChange, recordTreeEdit, ADULT_ONLY } from './_standing.mjs';
+import { STANDING_ACTIONS, standingAction, standingOfCaller, joinPolicyChange, recordTreeEdit, dobChangeGate, ADULT_ONLY } from './_standing.mjs';
 import { ensureStandingSchema } from './_account.mjs';
 import { codeProblem, cleanCode, isAdultMember, JOIN_PENDING_MAX } from './_standingrules.mjs';
 
@@ -162,7 +162,7 @@ export default async function handler(req, res) {
         for (const a of s.rows.filter(x => x.user_id && !x.remembered)) {
           if (!isAdultMember(a, s.today)) continue;
           await pushCircle(sql, circle.id, {
-            title: '🙋 ' + askName + ' wants to join ' + circle.name,
+            kind: 'care', title: '🙋 ' + askName + ' wants to join ' + circle.name,
             body: claimId ? 'Open Parwah to let them in, or say no if it is not really them' : 'Open Parwah to let them in, or say no if you do not know them'
           }, { only: a.id });
         }
@@ -608,6 +608,15 @@ export default async function handler(req, res) {
         if (derr) return res.status(400).json({ ok: false, error: derr });
         newDob = d || null;
       }
+      // A child cannot make themself an adult by typing a new date of
+      // birth, or by taking it away: that waits for an adult's yes, and
+      // the rest of the profile is saved now.
+      let dobHeld = null;
+      const sameDay = v => (v instanceof Date ? v.getFullYear() + '-' + String(v.getMonth() + 1).padStart(2, '0') + '-' + String(v.getDate()).padStart(2, '0') : String(v || '').slice(0, 10));
+      if (req.body.dob !== undefined && sameDay(newDob) !== sameDay(cur.dob)) {
+        dobHeld = await dobChangeGate(sql, circle, cur.id, newDob);
+        if (dobHeld) newDob = cur.dob;
+      }
       // A new number that is someone else's sign-in is refused HERE, before
       // anything is written. The app saves this first and the profile second,
       // and the profile refused it: the family saw one number, the sign-in
@@ -626,7 +635,7 @@ export default async function handler(req, res) {
         if (req.body.place !== undefined || req.body.country !== undefined) {
           await sql`update members set place = ${newPlace}, country = ${newCountry} where user_id = ${cur.user_id} and id <> ${cur.id}`;
         }
-        if (req.body.dob !== undefined) {
+        if (req.body.dob !== undefined && !dobHeld) {
           await sql`update members set dob = ${newDob} where user_id = ${cur.user_id} and id <> ${cur.id}`;
         }
         if (giftInfo !== undefined) {
@@ -641,7 +650,8 @@ export default async function handler(req, res) {
         await sql`insert into events (circle_id, member_id, type, text)
                   values (${circle.id}, ${cur.id}, 'care', ${cur.name + ' updated their profile' + (newName !== cur.name ? ' - now ' + newName : '')})`;
       }
-      return res.status(200).json({ ok: true, name: newName, role: newRole, relation: newRelation, phone: newPhone, place: newPlace, country: newCountry, gift_info: newGift });
+      return res.status(200).json({ ok: true, name: newName, role: newRole, relation: newRelation, phone: newPhone, place: newPlace, country: newCountry, gift_info: newGift,
+        dobPending: dobHeld ? !!dobHeld.pending : undefined, message: dobHeld ? dobHeld.message : undefined });
     }
 
     return res.status(400).json({ ok: false, error: 'Unknown action' });

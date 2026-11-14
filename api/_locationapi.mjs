@@ -334,7 +334,7 @@ export default async function handler(req, res) {
           and not coalesce((to_jsonb(m) ->> 'remembered')::boolean, false)
         on conflict (circle_id, member_id) do nothing returning member_id`;
       for (const a of asked) {
-        await pushCircle(sql, circle.id, { title: '📍 ' + firstName(me.name) + ' saved a place: ' + name,
+        await pushCircle(sql, circle.id, { kind: 'care', title: '📍 ' + firstName(me.name) + ' saved a place: ' + name,
           body: 'Should the family be told when you arrive and leave? Only if you say yes.', url: '/#people' }, { only: a.member_id });
       }
       return res.status(201).json({ ok: true, id: r[0].id, asked: asked.length });
@@ -373,7 +373,7 @@ export default async function handler(req, res) {
       }
       await sql`insert into location_consent (circle_id, member_id, announce, asked_by, asked_at) values (${circle.id}, ${t[0].id}, false, ${me.id}, now())
                 on conflict (circle_id, member_id) do update set asked_by = ${me.id}, asked_at = now(), answered_at = null`;
-      await pushCircle(sql, circle.id, { title: '📍 ' + firstName(me.name) + ' asks: announce your arrivals?',
+      await pushCircle(sql, circle.id, { kind: 'care', title: '📍 ' + firstName(me.name) + ' asks: announce your arrivals?',
         body: 'The family would be told when you arrive at and leave saved places. Only if you say yes.', url: '/#people' }, { only: t[0].id });
       return res.status(200).json({ ok: true, asked: t[0].name });
     }
@@ -403,7 +403,7 @@ export default async function handler(req, res) {
                               and target_id = ${t[0].id} and muted_until > now()`;
       if (muted[0]) return res.status(429).json({ ok: false, notNow: true, mutedUntil: muted[0].muted_until,
         error: firstName(t[0].name) + ' said not now. You can ask again in a few days.' });
-      if (!(await rateLimit(sql, 'locask', me.id + ':' + t[0].id, 1, 600))) {
+      if (!(await rateLimit(sql, 'locask', me.id + ':' + t[0].id, 1, 600, { failClosed: true })) || !(await rateLimit(sql, 'locaskday', me.id, 30, 86400, { failClosed: true }))) {
         return res.status(429).json({ ok: false, error: 'You asked ' + t[0].name + ' a few minutes ago - give them a little time' });
       }
       await sql`insert into location_asks (circle_id, asker_id, target_id, status, asked_at) values (${circle.id}, ${me.id}, ${t[0].id}, 'waiting', now())

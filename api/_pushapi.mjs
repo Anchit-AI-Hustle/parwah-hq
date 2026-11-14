@@ -14,7 +14,7 @@ import { tokenOf } from './_token.mjs';
 import { ensurePushSchema, vapidPublicKey, isPushEndpoint, pushSeen, lastTickAt } from './_push.mjs';
 import { cleanPrefs, minsToHHMM, PUSH_KINDS, PUSH_KIND_WORDS, cleanReport, cleanDevice, REPORT_KEEP_DAYS } from './_pushrules.mjs';
 import { validTz, reqTz } from './_recur.mjs';
-import { isAdult } from './_rememberrules.mjs';
+import { isMinor } from './_standingrules.mjs';
 import { providerKeys, MODEL_PROVIDERS } from './_keys.mjs';
 import { dialConfig } from './_sosdial.mjs';
 
@@ -48,9 +48,9 @@ export async function errorCounts(sql) {
   return { last_24h: r.day, different_last_24h: r.kinds_day, kept_14d: r.kept };
 }
 
-// Who may see this view: on Parwah, and not a child by date of birth. (The
-// stricter rule that needs a date of birth is for the after-loss list only.)
-const adultOf = (m) => !!m.user_id && isAdult(m.dob, new Date().toISOString().slice(0, 10));
+// Who may see this view: on Parwah, and not a child by the one rule
+// (api/_standingrules.mjs). The stricter rule is for the after-loss list.
+const adultOf = (m) => !!m.user_id && !isMinor(m, new Date().toISOString().slice(0, 10));
 
 export default async function handler(req, res) {
   let sql;
@@ -101,6 +101,7 @@ export default async function handler(req, res) {
     if (body.action === 'reach' || body.action === 'selfcheck') {
       const ms = await sql`
         select m.id, m.name, m.role, m.user_id, to_char(m.dob, 'YYYY-MM-DD') as dob,
+               coalesce((to_jsonb(m)->>'is_child')::boolean, false) as is_child, (to_jsonb(m)->>'adult_confirmed')::boolean as adult_confirmed,
                coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered,
                (to_jsonb(m)->>'checkin_by') is not null as checks_in,
                exists (select 1 from push_subs s where (s.user_id is not null and s.user_id = m.user_id) or s.member_id = m.id) as reachable

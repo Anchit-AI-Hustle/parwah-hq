@@ -17,7 +17,7 @@
 import { isUuid, rateLimit } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import { ensureStandingSchema, standingRows, forgetMember, logEvent, finalizeAccount } from './_account.mjs';
-import { isAdultMember, standingOf, actingAdults, todayIn, removalRule, openJoinRule, deleteFamilyRule,
+import { isAdultMember, standingOf, isMinor, minorByBirth, ageOn, actingAdults, todayIn, removalRule, openJoinRule, deleteFamilyRule,
          codeIsWeak, cardFor, seeChoice, defaultSee, writtenAbout, CLAIM_CHOICES, HIDEABLE, UNDO_DAYS } from './_standingrules.mjs';
 
 const bad = (error, status = 400, extra) => ({ status, json: { ok: false, error, ...(extra || {}) } });
@@ -25,7 +25,7 @@ const good = (json, status = 200) => ({ status, json: { ok: true, ...(json || {}
 const feed = (sql, circleId, memberId, text) => sql`insert into events (circle_id, member_id, type, text) values (${circleId}, ${memberId}, 'care', ${text})`;
 const word = c => (c && c.kind === 'group' ? 'group' : 'family');
 
-export const STANDING_ACTIONS = ['standing_state', 'adult_confirm', 'remove_ask', 'ask_vote', 'ask_cancel',
+export const STANDING_ACTIONS = ['standing_state', 'adult_confirm', 'child_mark', 'remove_ask', 'ask_vote', 'ask_cancel',
   'family_delete_ask', 'family_delete_undo', 'tree_undo', 'privacy_set', 'claim_review'];
 
 // Who is calling, as the adult rule sees them, with the whole family.
@@ -61,7 +61,7 @@ async function vote(sql, askId, memberId, yes) {
 // recorded about them, and their own private things, go with them.
 async function removeNow(sql, circle, target, askerName, confirmerName) {
   const by = confirmerName ? askerName + ' and ' + confirmerName + ' decided this together.' : askerName + ' decided this.';
-  await pushCircle(sql, circle.id, { title: 'You are no longer in ' + circle.name, body: by + ' Your other families are not changed.', url: '/' }, { only: target.id });
+  await pushCircle(sql, circle.id, { kind: 'other', title: 'You are no longer in ' + circle.name, body: by + ' Your other families are not changed.', url: '/' }, { only: target.id });
   if (target.user_id) await logEvent(sql, target.user_id, 'removed', 'You were removed from ' + circle.name + '. ' + by);
   await forgetMember(sql, target.id);
   await feed(sql, circle.id, null, target.name + ' is no longer in the ' + word(circle) + '. ' + by);
@@ -77,9 +77,9 @@ async function settle(sql, circle, ask, rows, today) {
   const no = votes.find(v => !v.yes && isAdult(v.member_id));
   if (no) {
     if (await close('declined')) {
-      const what = ask.kind === 'remove_member' ? 'removing ' + nameOf(ask.target_member) : ask.kind === 'open_join' ? 'letting the code be enough' : 'deleting this ' + word(circle);
+      const what = ask.kind === 'dob_change' ? 'the new date of birth for ' + nameOf(ask.target_member) : ask.kind === 'remove_member' ? 'removing ' + nameOf(ask.target_member) : ask.kind === 'child_mark' ? 'marking ' + nameOf(ask.target_member) + ' as under 18' : ask.kind === 'open_join' ? 'letting the code be enough' : 'deleting this ' + word(circle);
       await feed(sql, circle.id, no.member_id, nameOf(no.member_id) + ' said no to ' + what);
-      if (ask.asked_by) await pushCircle(sql, circle.id, { title: nameOf(no.member_id) + ' said no', body: 'Nothing has changed.', url: '/#people' }, { only: ask.asked_by });
+      if (ask.asked_by) await pushCircle(sql, circle.id, { kind: 'other', title: nameOf(no.member_id) + ' said no', body: 'Nothing has changed.', url: '/#people' }, { only: ask.asked_by });
     }
     return { status: 'declined' };
   }
@@ -90,7 +90,7 @@ async function settle(sql, circle, ask, rows, today) {
     if (!(await close('done'))) return { status: 'done' };
     await sql`update circles set join_policy = 'open' where id = ${circle.id}`;
     await feed(sql, circle.id, second, nameOf(ask.asked_by) + ' and ' + nameOf(second) + ' let anyone with the code join straight away');
-    await pushCircle(sql, circle.id, { title: '🔓 Anyone with the code can now join', body: nameOf(ask.asked_by) + ' and ' + nameOf(second) + ' changed how people join ' + circle.name }, {});
+    await pushCircle(sql, circle.id, { kind: 'other', title: '🔓 Anyone with the code can now join', body: nameOf(ask.asked_by) + ' and ' + nameOf(second) + ' changed how people join ' + circle.name }, {});
     return { status: 'done', joinPolicy: 'open' };
   }
   if (ask.kind === 'remove_member') {
@@ -101,16 +101,118 @@ async function settle(sql, circle, ask, rows, today) {
     await removeNow(sql, circle, target, nameOf(ask.asked_by), nameOf(second));
     return { status: 'done', removed: target.id };
   }
+  if (ask.kind === 'child_mark') {
+    // The person's own yes, or a second adult's: never the asker alone.
+    const target = rows.find(r => r.id === ask.target_member);
+    const second = yes.find(id => id !== ask.asked_by);
+    if (!second || !target) return { status: 'pending' };
+    if (!(await close('done'))) return { status: 'done' };
+    await applyChildMark(sql, circle, target, ask.asked_by, nameOf(ask.asked_by), second === target.id ? null : nameOf(second));
+    return { status: 'done', child: true };
+  }
+  if (ask.kind === 'dob_change') {
+    // A child cannot make themself an adult: one adult, not them, says yes.
+    const target = rows.find(r => r.id === ask.target_member);
+    const second = yes.find(id => id !== ask.target_member);
+    if (!second || !target) return { status: 'pending' };
+    if (!(await close('done'))) return { status: 'done' };
+    const dob = ask.detail && ask.detail.dob ? String(ask.detail.dob).slice(0, 10) : null;
+    await sql`update members set dob = ${dob}, is_child = false, child_by = null,
+                adult_confirmed = case when adult_confirmed is false then null else adult_confirmed end
+              where id = ${target.id} and circle_id = ${circle.id}`;
+    if (target.user_id) {
+      await sql`update members set dob = ${dob} where user_id = ${target.user_id} and id <> ${target.id}`;
+      await logEvent(sql, target.user_id, 'standing', nameOf(second) + ' agreed to the change to your date of birth in ' + circle.name + '.');
+    }
+    await pushCircle(sql, circle.id, { title: nameOf(second) + ' said yes to your date of birth', body: 'It is saved in your profile now.', url: '/#people', kind: 'other' }, { only: target.id });
+    return { status: 'done' };
+  }
   if (ask.kind === 'delete_family') {
     if (!adults.length || !adults.every(a => yes.includes(a.id))) return { status: 'pending' };
     if (!(await close('done'))) return { status: 'done' };
     const at = new Date(Date.now() + UNDO_DAYS * 86400000).toISOString();
     await sql`update circles set delete_at = ${at} where id = ${circle.id}`;
     await feed(sql, circle.id, null, 'Every adult said yes: this ' + word(circle) + ' will be deleted from Parwah in ' + UNDO_DAYS + ' days. Any adult can stop it before then.');
-    await pushCircle(sql, circle.id, { title: circle.name + ' will be deleted in ' + UNDO_DAYS + ' days', body: 'Every adult said yes. Any adult can stop it in the Family tab before then.', url: '/#people' }, {});
+    await pushCircle(sql, circle.id, { kind: 'other', title: circle.name + ' will be deleted in ' + UNDO_DAYS + ' days', body: 'Every adult said yes. Any adult can stop it in the Family tab before then.', url: '/#people' }, {});
     return { status: 'done', deleteAt: at };
   }
   return { status: 'pending' };
+}
+
+// "UNDER 18" SAID ABOUT SOMEONE. It takes away their say in who joins, who
+// is removed and who is let back in, so about a person who is on Parwah and
+// has no date of birth it is never one person's word: the person themself
+// says yes, or a second adult does. About a name in the tree (nobody signs
+// in as them) it is one adult's to say. A date of birth always decides.
+async function applyChildMark(sql, circle, target, byId, byName, secondName) {
+  await sql`update members set is_child = true, child_by = ${byId}, adult_confirmed = false, adult_confirmed_by = ${byId}
+            where id = ${target.id} and circle_id = ${circle.id} and dob is null`;
+  await feed(sql, circle.id, byId, byName + (secondName ? ' and ' + secondName : '') + ' marked ' + target.name + ' as a child in the family (under 18)');
+  if (target.user_id) await logEvent(sql, target.user_id, 'standing', byName + ' told Parwah you are under 18 in ' + circle.name + '. Your date of birth in your profile decides it if you add it.');
+}
+export async function childMark(sql, circle, meId, targetId) {
+  const s = await standingOfCaller(sql, circle, meId);
+  if (!s.may) return bad('An adult in the family does this.', 403);
+  const t = s.rows.find(r => r.id === targetId);
+  if (!t) return bad('Choose someone in this family', 404);
+  if (t.id === s.me.id) return bad('This is for someone else in the family.');
+  if (t.remembered) return bad(t.name + ' is remembered here.');
+  const age = ageOn(t.dob, s.today);
+  if (age !== null) {
+    return age >= 18 ? bad(t.name + ' is 18 or over by their date of birth, so cannot be marked as a child.', 409) : good({ child: true, already: true });
+  }
+  if (t.is_child && t.adult_confirmed === false) return good({ child: true, already: true });
+  if (!t.user_id) {
+    await applyChildMark(sql, circle, t, s.me.id, s.me.name, null);
+    return good({ child: true });
+  }
+  let ask = await pendingAsk(sql, circle.id, 'child_mark', t.id);
+  if (ask && ask.asked_by !== s.me.id) {
+    await vote(sql, ask.id, s.me.id, true);
+    const out = await settle(sql, circle, ask, s.rows, s.today);
+    return good({ ...out, child: out.status === 'done' });
+  }
+  if (!ask) {
+    if (!(await rateLimit(sql, 'standing_ask', circle.id + ':' + s.me.id, 6, 86400, { failClosed: true }))) return bad('That has been asked a lot today. Please try again tomorrow.', 429);
+    ask = (await sql`insert into standing_asks (circle_id, kind, target_member, asked_by) values (${circle.id}, 'child_mark', ${t.id}, ${s.me.id}) returning *`)[0];
+    await vote(sql, ask.id, s.me.id, true);
+    await pushCircle(sql, circle.id, { title: s.me.name + ' says you are under 18', body: 'Is that right? Open the Family tab to say yes or no. Your date of birth in your profile decides it if you add it.', url: '/#people', kind: 'other' }, { only: t.id });
+    for (const o of actingAdults(s.rows, s.today)) {
+      if (o.id === s.me.id || o.id === t.id) continue;
+      await pushCircle(sql, circle.id, { title: s.me.name + ' says ' + t.name + ' is under 18', body: 'Is that right? Open the Family tab to say yes or no.', url: '/#people', kind: 'other' }, { only: o.id });
+    }
+  }
+  return good({ pending: true, child: false, askId: ask.id, message: t.name + ' or another adult has to agree first. They have been told.' }, 202);
+}
+
+// A DATE OF BIRTH THAT WOULD MAKE A CHILD AN ADULT. A child or a teenager
+// changing (or removing) their own date of birth so that Parwah no longer
+// sees a child would hand themself every door the adults hold. That change
+// waits for one adult's yes. Any other change is the member's own to make.
+// → null (save it now) or { pending, message } (the old date stays).
+export async function dobChangeGate(sql, circle, memberId, newDob) {
+  const s = await standingOfCaller(sql, circle, memberId);
+  if (!s.me || !isMinor(s.me, s.today)) return null;
+  if (isMinor({ ...s.me, dob: newDob || null, is_child: false, adult_confirmed: null }, s.today)) return null;
+  const adults = actingAdults(s.rows, s.today).filter(a => a.id !== s.me.id);
+  if (!adults.length) {
+    return { pending: false, message: 'Your date of birth was not changed. An adult in the ' + word(circle) + ' has to agree to that, and none is on Parwah here yet.' };
+  }
+  const detail = JSON.stringify({ dob: newDob || null });
+  const had = await pendingAsk(sql, circle.id, 'dob_change', s.me.id);
+  if (had) {
+    await sql`update standing_asks set detail = ${detail}::jsonb where id = ${had.id} and status = 'pending'`;
+    await sql`delete from standing_votes where ask_id = ${had.id}`;
+  } else {
+    if (!(await rateLimit(sql, 'standing_ask', circle.id + ':' + s.me.id, 6, 86400, { failClosed: true }))) {
+      return { pending: false, message: 'Your date of birth was not changed. That has been asked a lot today. Please try again tomorrow.' };
+    }
+    await sql`insert into standing_asks (circle_id, kind, target_member, asked_by, detail) values (${circle.id}, 'dob_change', ${s.me.id}, ${s.me.id}, ${detail}::jsonb)`;
+    for (const o of adults) {
+      await pushCircle(sql, circle.id, { title: s.me.name + ' wants to change their date of birth', body: 'It would make them an adult in ' + circle.name + '. Open the Family tab to say yes or no.', url: '/#people', kind: 'other' }, { only: o.id });
+    }
+  }
+  return { pending: true, message: 'Your date of birth will change when an adult in the ' + word(circle) + ' says yes. They have been told.' };
 }
 
 // HOW PEOPLE JOIN. Asking for a yes each time is always one adult's to
@@ -122,7 +224,7 @@ export async function joinPolicyChange(sql, circle, memberId, policy) {
     await sql`update circles set join_policy = 'approve' where id = ${circle.id}`;
     await sql`update standing_asks set status = 'cancelled', decided_at = now() where circle_id = ${circle.id} and kind = 'open_join' and status = 'pending'`;
     await feed(sql, circle.id, s.me.id, s.me.name + ' made joining need a family member to say yes');
-    await pushCircle(sql, circle.id, { title: '🔒 Joining now needs approval', body: s.me.name + ' changed how people join ' + circle.name }, { except: s.me.id });
+    await pushCircle(sql, circle.id, { kind: 'other', title: '🔒 Joining now needs approval', body: s.me.name + ' changed how people join ' + circle.name }, { except: s.me.id });
     return good({ joinPolicy: 'approve' });
   }
   const rule = openJoinRule({ me: s.me, members: s.rows, today: s.today });
@@ -137,7 +239,7 @@ export async function joinPolicyChange(sql, circle, memberId, policy) {
     if (!(await rateLimit(sql, 'standing_ask', circle.id + ':' + s.me.id, 6, 86400, { failClosed: true }))) return bad('That has been asked a lot today. Please try again tomorrow.', 429);
     ask = (await sql`insert into standing_asks (circle_id, kind, asked_by) values (${circle.id}, 'open_join', ${s.me.id}) returning *`)[0];
     await vote(sql, ask.id, s.me.id, true);
-    await pushAdults(sql, circle, s.rows, s.today, { title: s.me.name + ' wants the code to be enough to join', body: 'Anyone with the code would join ' + circle.name + ' with no questions asked. Open the Family tab to say yes or no.', url: '/#people' }, s.me.id);
+    await pushAdults(sql, circle, s.rows, s.today, { kind: 'other', title: s.me.name + ' wants the code to be enough to join', body: 'Anyone with the code would join ' + circle.name + ' with no questions asked. Open the Family tab to say yes or no.', url: '/#people' }, s.me.id);
     return good({ joinPolicy: 'approve', pending: true, askId: ask.id, message: 'Another adult in the family has to say yes first. They have been told.' }, 202);
   }
   // A second adult pressing the same button is the second yes.
@@ -171,7 +273,7 @@ export async function recordTreeEdit(sql, circle, me, before, note) {
                            returning id`;
     for (const p of people) {
       await logEvent(sql, p.user_id, 'tree', me.name + ' changed your place in the family tree of ' + circle.name + '.');
-      await pushCircle(sql, circle.id, { title: '🌳 ' + me.name + ' changed your place in the family tree', body: 'Not right? Open Parwah and undo it in one tap.', url: '/#people' }, { only: p.id });
+      await pushCircle(sql, circle.id, { kind: 'other', title: '🌳 ' + me.name + ' changed your place in the family tree', body: 'Not right? Open Parwah and undo it in one tap.', url: '/#people' }, { only: p.id });
     }
     return made[0].id;
   } catch (e) { return null; /* telling someone never breaks the edit */ }
@@ -182,7 +284,7 @@ export async function recordTreeEdit(sql, circle, me, before, note) {
 export async function memberCards(sql, circle, me, members) {
   try {
     await ensureStandingSchema(sql);
-    const prefs = await sql`select m.id, m.see_phone, m.see_birth, m.hidden_fields, m.user_id, m.dob, m.role, m.relation, m.adult_confirmed, m.spouse_id, m.remembered,
+    const prefs = await sql`select m.id, m.see_phone, m.see_birth, m.hidden_fields, m.user_id, m.dob, m.role, m.relation, m.adult_confirmed, m.is_child, m.spouse_id, m.remembered,
                                    exists (select 1 from members c where c.parent_id = m.id) as has_child
                             from members m where m.circle_id = ${circle.id}`;
     const by = new Map(prefs.map(p => [p.id, p]));
@@ -227,7 +329,7 @@ async function stateOf(sql, circle, s) {
       const votes = a.votes || [];
       const mine = votes.find(v => v.member_id === s.me.id);
       return { id: a.id, kind: a.kind, askedBy: a.asked_by, askedByName: nameOf(a.asked_by), targetId: a.target_member, targetName: nameOf(a.target_member),
-               mine: a.asked_by === s.me.id, voted: mine ? (mine.yes ? 'yes' : 'no') : null,
+               aboutMe: a.target_member === s.me.id, newDob: a.kind === 'dob_change' && a.detail ? a.detail.dob || null : undefined, mine: a.asked_by === s.me.id, voted: mine ? (mine.yes ? 'yes' : 'no') : null,
                yes: votes.filter(v => v.yes).map(v => nameOf(v.member_id)).filter(Boolean),
                waitingFor: a.kind === 'delete_family' ? adults.filter(x => !votes.some(v => v.member_id === x.id && v.yes)).map(x => x.name) : [],
                at: a.created_at, expiresAt: a.expires_at };
@@ -247,7 +349,8 @@ async function stateOf(sql, circle, s) {
     me: { standing: standingOf(s.me, s.today), may: s.may },
     adults: adults.length,
     // Asked of the grown-ups, once per person: "Is Aarav an adult?"
-    unsure: s.may ? s.rows.filter(r => r.id !== s.me.id && r.user_id && !r.remembered && standingOf(r, s.today) === 'unsure').map(r => ({ id: r.id, name: r.name })) : [],
+    unsure: s.may ? s.rows.filter(r => r.id !== s.me.id && r.user_id && !r.remembered && standingOf(r, s.today) === 'unsure'
+      && !asksRaw.some(a => a.kind === 'child_mark' && a.target_member === r.id)).map(r => ({ id: r.id, name: r.name })) : [],
     codeWeak: s.may && codeIsWeak(c.code),
     asks, deleteAt: c.delete_at || null,
     treeEdits: edits.map(e => ({ id: e.id, by: e.by_name || 'Someone in the family', note: e.note, at: e.created_at })),
@@ -287,7 +390,9 @@ export async function standingAction(sql, circle, me, body) {
       if (ch[key] !== 'delete') continue;
       hidden.delete(key);
       if (key === 'relation') relation = null;
-      if (key === 'dob') dob = null;
+      // A child by date of birth cannot delete the date and stop being one:
+      // it is hidden from the others instead.
+      if (key === 'dob') { if (minorByBirth({ dob }, s.today)) hidden.add('dob'); else dob = null; }
       if (key === 'place') { place = null; country = null; }
       if (key === 'sizes' && gift) ['clothes', 'shoe', 'ring'].forEach(k => { delete gift[k]; });
       if (key === 'likes' && gift) ['color', 'likes', 'wishlist'].forEach(k => { delete gift[k]; });
@@ -316,7 +421,7 @@ export async function standingAction(sql, circle, me, body) {
       await sql`update members set parent_id = ${c.before.parent_id}::uuid, spouse_id = ${c.before.spouse_id}::uuid where id = ${c.id} and circle_id = ${circle.id}`;
     }
     await feed(sql, circle.id, s.me.id, s.me.name + ' put their place in the family tree back as it was');
-    if (e.by_member) await pushCircle(sql, circle.id, { title: '🌳 ' + s.me.name + ' undid a change to the family tree', body: 'Their place is back as it was. Talk to them before changing it again.', url: '/#people' }, { only: e.by_member });
+    if (e.by_member) await pushCircle(sql, circle.id, { kind: 'other', title: '🌳 ' + s.me.name + ' undid a change to the family tree', body: 'Their place is back as it was. Talk to them before changing it again.', url: '/#people' }, { only: e.by_member });
     return good({});
   }
 
@@ -329,10 +434,14 @@ export async function standingAction(sql, circle, me, body) {
     const t = s.rows.find(r => r.id === body.targetId);
     if (!t || t.id === s.me.id || !t.user_id) return bad('Choose someone in this family', 404);
     if (standingOf(t, s.today) !== 'unsure') return good({ already: true });
-    await sql`update members set adult_confirmed = ${body.adult === true}, adult_confirmed_by = ${s.me.id} where id = ${t.id} and adult_confirmed is null`;
-    await logEvent(sql, t.user_id, 'standing', s.me.name + ' told Parwah you are ' + (body.adult === true ? 'an adult' : 'under 18') + ' in ' + circle.name + '. Your date of birth in your profile decides it if you add it.');
+    // "No, under 18" takes their say away: their own yes, or a second adult's.
+    if (body.adult !== true) return childMark(sql, circle, s.me.id, t.id);
+    await sql`update members set adult_confirmed = true, adult_confirmed_by = ${s.me.id} where id = ${t.id} and adult_confirmed is null`;
+    await logEvent(sql, t.user_id, 'standing', s.me.name + ' told Parwah you are an adult in ' + circle.name + '. Your date of birth in your profile decides it if you add it.');
     return good({});
   }
+
+  if (a === 'child_mark') return childMark(sql, circle, s.me.id, body.targetId);
 
   if (a === 'remove_ask') {
     const target = s.rows.find(r => r.id === body.targetId) || null;
@@ -355,7 +464,7 @@ export async function standingAction(sql, circle, me, body) {
       ask = (await sql`insert into standing_asks (circle_id, kind, target_member, asked_by) values (${circle.id}, 'remove_member', ${target.id}, ${s.me.id}) returning *`)[0];
       await vote(sql, ask.id, s.me.id, true);
       for (const o of rule.others) {
-        await pushCircle(sql, circle.id, { title: s.me.name + ' asks to remove ' + target.name + ' from ' + circle.name, body: 'Two adults decide this together. Open the Family tab to say yes or no.', url: '/#people' }, { only: o.id });
+        await pushCircle(sql, circle.id, { kind: 'other', title: s.me.name + ' asks to remove ' + target.name + ' from ' + circle.name, body: 'Two adults decide this together. Open the Family tab to say yes or no.', url: '/#people' }, { only: o.id });
       }
     }
     return good({ pending: true, askId: ask.id, message: 'Another adult has to agree. They have been told.' }, 202);
@@ -369,7 +478,7 @@ export async function standingAction(sql, circle, me, body) {
       if (!(await rateLimit(sql, 'standing_ask', circle.id + ':' + s.me.id, 6, 86400, { failClosed: true }))) return bad('That has been asked a lot today. Please try again tomorrow.', 429);
       ask = (await sql`insert into standing_asks (circle_id, kind, asked_by) values (${circle.id}, 'delete_family', ${s.me.id}) returning *`)[0];
       await feed(sql, circle.id, s.me.id, s.me.name + ' asked to delete this ' + word(circle) + ' from Parwah. Every adult has to say yes.');
-      await pushCircle(sql, circle.id, { title: s.me.name + ' asked to delete ' + circle.name, body: 'Every adult has to say yes. Open the Family tab to answer.', url: '/#people' }, { except: s.me.id });
+      await pushCircle(sql, circle.id, { kind: 'other', title: s.me.name + ' asked to delete ' + circle.name, body: 'Every adult has to say yes. Open the Family tab to answer.', url: '/#people' }, { except: s.me.id });
     }
     await vote(sql, ask.id, s.me.id, true);
     const out = await settle(sql, circle, ask, s.rows, s.today);
@@ -379,7 +488,7 @@ export async function standingAction(sql, circle, me, body) {
     const done = await sql`update circles set delete_at = null where id = ${circle.id} and delete_at is not null returning id`;
     if (done[0]) {
       await feed(sql, circle.id, s.me.id, s.me.name + ' stopped the delete. This ' + word(circle) + ' stays.');
-      await pushCircle(sql, circle.id, { title: circle.name + ' stays', body: s.me.name + ' stopped the delete.', url: '/#people' }, { except: s.me.id });
+      await pushCircle(sql, circle.id, { kind: 'other', title: circle.name + ' stays', body: s.me.name + ' stopped the delete.', url: '/#people' }, { except: s.me.id });
     }
     return good({ deleteAt: null });
   }
@@ -393,7 +502,7 @@ export async function standingAction(sql, circle, me, body) {
       await sql`update standing_asks set status = 'cancelled', decided_at = now() where id = ${ask.id} and status = 'pending'`;
       return good({ status: 'cancelled' });
     }
-    if (ask.kind === 'remove_member' && ask.target_member === s.me.id) return bad('This one is not yours to answer.', 403);
+    if ((ask.kind === 'remove_member' || ask.kind === 'dob_change') && ask.target_member === s.me.id) return bad('This one is not yours to answer.', 403);
     await vote(sql, ask.id, s.me.id, body.yes === true);
     return good(await settle(sql, circle, ask, s.rows, s.today));
   }

@@ -113,7 +113,7 @@ export function baatRemindDue(row, nowMs) {
 export const baatMaySee = (row, viewerId) => !!row && !!viewerId && (row.from_member === viewerId || row.to_member === viewerId);
 export function baatPush(kind, fromName) {
   const k = BAAT_KINDS[kind] || BAAT_KINDS.talk;
-  return { title: k.e + ' ' + first(fromName) + ': ' + k.title, body: 'Only you can see this. Open Parwah when you have a quiet minute.' };
+  return { kind: 'chat', title: k.e + ' ' + first(fromName) + ': ' + k.title, body: 'Only you can see this. Open Parwah when you have a quiet minute.' };
 }
 
 // ------------------------------------------------------------ 3. shukriya

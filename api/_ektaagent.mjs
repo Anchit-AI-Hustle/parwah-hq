@@ -156,15 +156,12 @@ export async function ektaSwitches(sql, circle, me) {
 export const PAUSED_LINE = 'Ekta is paused for this family right now. An adult in the family can turn her back on in Ekta\'s settings. In an emergency, call your local emergency number and send SOS.';
 export const NO_ACTIONS_LINE = 'You have told Ekta not to do things for you, so I have not done that. You can do it yourself in the app, or turn "Ekta may do things for me" back on in my settings. I can still read things out for you.';
 
-// An adult: no date of birth saved, or 18 and over. The family switch is
-// theirs to see and to turn.
-async function isAdult(sql, me) {
-  const r = (await sql`select dob from members where id = ${me.id}`)[0];
-  if (!r || !r.dob) return true;
-  const d = new Date(r.dob), n = new Date(nowOf());
-  let age = n.getUTCFullYear() - d.getUTCFullYear();
-  if (n.getUTCMonth() < d.getUTCMonth() || (n.getUTCMonth() === d.getUTCMonth() && n.getUTCDate() < d.getUTCDate())) age--;
-  return age >= 18;
+// An adult, by the one rule every gate asks (api/_standingrules.mjs, read
+// in SQL by minorOf): not a child by date of birth, and not marked as one.
+// The family switch is theirs to see and to turn.
+async function isAdult(sql, circle, me) {
+  const { minorOf } = await import('./_audience.mjs');
+  return !(await minorOf(sql, circle.id, me.id));
 }
 
 // ---------------------------------------------------------------- the saved chat
@@ -196,9 +193,14 @@ export function memoryRefusal(key, value) {
 // ---------------------------------------------------------------- people
 async function people(ctx) {
   if (!ctx._people) {
-    const rows = await ctx.sql`select id, name, relation, remembered, phone, (user_id is not null) as on_app,
-                                      to_char(dob, 'MM-DD') as bd
-                               from members where circle_id = ${ctx.circle.id} order by created_at`;
+    const raw = await ctx.sql`select id, name, relation, remembered, phone, (user_id is not null) as on_app,
+                                     to_char(dob, 'MM-DD') as bd
+                              from members where circle_id = ${ctx.circle.id} order by created_at`;
+    // A number the person chose to keep to themself is not Ekta's to use
+    // either: each row goes through the member card's rule for the asker.
+    const { memberCards } = await import('./_standing.mjs');
+    const seenPhone = new Map((await memberCards(ctx.sql, ctx.circle, ctx.me, raw.map(r => ({ id: r.id, phone: r.phone })))).map(c => [c.id, c.phone]));
+    const rows = raw.map(r => ({ ...r, phone: seenPhone.get(r.id) || null }));
     // Anniversaries live in api/_bond.mjs; a family that never opened it has no column yet.
     const ann = await q(() => ctx.sql`select id, to_char(anniversary, 'MM-DD') as anniv, anniv_with from members
                                       where circle_id = ${ctx.circle.id} and anniversary is not null`);
@@ -786,7 +788,7 @@ export async function ektaAgentHandle(sql, circle, me, req, res) {
       const sw = await ektaSwitches(sql, circle, me);
       const lang = ektaLang(((await sql`select lang from members where id = ${me.id}`)[0] || {}).lang);
       return res.status(200).json({ ok: true, thread: await threadLoad(sql, me), proposals: await pendingCards(sql, me, nowMs),
-        switches: sw, canPause: await isAdult(sql, me), lang, say: EKTA_SAY[lang], photo: photoOn(),
+        switches: sw, canPause: await isAdult(sql, circle, me), lang, say: EKTA_SAY[lang], photo: photoOn(),
         minutes: EKTA.proposalMinutes });
     }
     if (action === 'ekta_confirm') {
@@ -834,7 +836,7 @@ export async function ektaAgentHandle(sql, circle, me, req, res) {
       return res.status(200).json({ ok: true, switches: await ektaSwitches(sql, circle, me) });
     }
     if (action === 'ekta_pause') {
-      if (!(await isAdult(sql, me))) return res.status(403).json({ ok: false, error: 'An adult in the family can change this.' });
+      if (!(await isAdult(sql, circle, me))) return res.status(403).json({ ok: false, error: 'An adult in the family can change this.' });
       const on = body.on === true;
       await sql`insert into ekta_circle (circle_id, paused, paused_by, paused_at) values (${circle.id}, ${on}, ${me.id}, ${new Date(nowMs)})
                 on conflict (circle_id) do update set paused = excluded.paused, paused_by = excluded.paused_by, paused_at = excluded.paused_at`;

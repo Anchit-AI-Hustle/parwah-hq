@@ -48,7 +48,7 @@ export async function rotaRefused(sql, circleId, aboutId) {
 // they can do about it. Only someone on Parwah has a phone to be told on.
 export async function rotaTellPerson(sql, circleId, me, about, time) {
   if (!about || !about.on_app || about.remembered || about.id === me.id) return false;
-  await pushCircle(sql, circleId, { title: '📞 ' + firstName(me.name) + ' set up a daily call for you',
+  await pushCircle(sql, circleId, { kind: 'care', title: '📞 ' + firstName(me.name) + ' set up a daily call for you',
     body: 'Someone in the family will call you each day at ' + clock(time) + '. You can choose a time that suits you, or say no thank you.',
     url: '/#care' }, { only: about.id });
   return true;
@@ -88,7 +88,7 @@ export async function rotaConsentAction(sql, circle, me, body, tz, h) {
     await h.feed(sql, circle.id, me.id, '📞 ' + me.name + ' chose ' + clock(time) + ' for the daily call');
     for (const id of rota) {
       if (id === me.id) continue;
-      await pushCircle(sql, circle.id, { title: '📞 ' + firstName(me.name) + ' chose ' + clock(time) + ' for the daily call',
+      await pushCircle(sql, circle.id, { kind: 'care', title: '📞 ' + firstName(me.name) + ' chose ' + clock(time) + ' for the daily call',
         body: 'That is the time that suits them. The rota follows it from now.', url: '/#care' }, { only: id });
     }
     return ok(200, { time, dueAt });
@@ -102,7 +102,7 @@ export async function rotaConsentAction(sql, circle, me, body, tz, h) {
     await h.feed(sql, circle.id, me.id, '📞 ' + me.name + ' said: no daily call, thank you. The call rota has stopped.');
     for (const id of rota) {
       if (id === me.id) continue;
-      await pushCircle(sql, circle.id, { title: '📞 ' + firstName(me.name) + ': no daily call, thank you',
+      await pushCircle(sql, circle.id, { kind: 'care', title: '📞 ' + firstName(me.name) + ': no daily call, thank you',
         body: 'The call rota has stopped, as they asked. A call when you feel like it is still welcome.', url: '/#care' }, { only: id });
     }
     return ok(200, { stopped: gone.length });

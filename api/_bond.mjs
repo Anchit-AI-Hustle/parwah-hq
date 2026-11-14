@@ -47,7 +47,7 @@ import { pushCircle } from './_push.mjs';
 import { placeOf } from './_places.mjs';
 import { localDate, validTz, fromWall } from './_recur.mjs';
 import { FESTIVALS, FEST_NOTE, festivalOf, festivalsDue, nextYearly, daysBetween, KIT_DAYS } from './_tyohaar.mjs';
-import { isAdult } from './_rememberrules.mjs';
+import { isMinor } from './_standingrules.mjs';
 import { awardHeard } from './_coins.mjs';
 import { cardEveDue, dateTally, decidedLine, proxyLabel, waitingFor, waitingLine, festChangeLine } from './_heardrules.mjs';
 
@@ -233,7 +233,9 @@ async function pushIds(sql, circleId, ids, payload) {
 // festival 14 days out is announced (one insert, once).
 export async function sweepBond(sql, circle, nowMs = Date.now()) {
   let sent = 0;
-  const members = await sql`select id, name, dob, place, country, anniversary, anniv_with, remembered, user_id from members where circle_id = ${circle.id}`;
+  const members = await sql`select m.id, m.name, m.dob, m.place, m.country, m.anniversary, m.anniv_with, m.remembered, m.user_id,
+                                    coalesce((to_jsonb(m)->>'is_child')::boolean, false) as is_child, (to_jsonb(m)->>'adult_confirmed')::boolean as adult_confirmed
+                             from members m where m.circle_id = ${circle.id}`;
   const byId = new Map(members.map(m => [m.id, m]));
   const make = async (key, occ, title, day, a, b) => {
     const row = await sql`insert into cards (circle_id, for_member, for_member2, occasion, title, date, auto_key)
@@ -275,7 +277,7 @@ export async function sweepBond(sql, circle, nowMs = Date.now()) {
     const when = dstr(c.date) === todayFor(who, nowMs) ? 'today' : 'tomorrow';
     const remind = { title: '💌 ' + c.title + ' is ' + when, body: 'Your line is not on the card yet. Add a line, a photo or a voice note. It stays a surprise.', url: '/#home' };
     if (!writers.length) {
-      const adults = others.filter(m => isAdult(m.dob, todayFor(m, nowMs)));
+      const adults = others.filter(m => !isMinor(m, todayFor(m, nowMs)));
       await pushIds(sql, circle.id, adults.map(m => m.id), { title: '💌 ' + c.title + ' is ' + when + ', and the card is still empty',
         body: 'Nobody has written yet. Add a line tonight so there is a card to open. ' + first(who.name) + ' is not told.', url: '/#home' });
       await pushIds(sql, circle.id, others.filter(m => !adults.includes(m)).map(m => m.id), remind);

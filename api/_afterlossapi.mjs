@@ -152,6 +152,7 @@ export async function afterlossActiveFor(sql, circleId, personId) {
 // birth was written (afterlossIsAdult).
 const circleMembers = (sql, circleId) => sql`select m.id, m.name, m.user_id, m.remembered, to_char(m.dob, 'YYYY-MM-DD') as dob,
                                                     m.role, m.relation, m.spouse_id,
+                                                    coalesce((to_jsonb(m)->>'is_child')::boolean, false) as is_child, (to_jsonb(m)->>'adult_confirmed')::boolean as adult_confirmed,
                                                     exists (select 1 from members c where c.parent_id = m.id) as has_child
                                              from members m where m.circle_id = ${circleId} order by m.created_at`;
 

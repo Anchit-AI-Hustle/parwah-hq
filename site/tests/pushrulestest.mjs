@@ -24,6 +24,42 @@ ok('chat, plans, games, album, care and the digest are told apart',
    && kind('🤝 Rohan needs a hand') === 'care' && kind("💊 Papa's morning medicines are not marked") === 'care' && kind('🙌 Rohan is on it') === 'care'
    && kind('🌙 Aaj kya hua') === 'digest');
 ok('a caller may name the kind, and a name wins over the words', pushKind({ title: '💬 x', kind: 'album' }).kind === 'album' && pushKind({ title: 'x', kind: 'safety' }).through);
+// ---- nothing urgent waits for the morning, and nothing else slips through
+// Each caller below names its kind (kind: 'safety'); the words are a second
+// lock, so the alert still gets through if a caller ever forgets.
+const URGENT_TITLES = [
+  '🧡 Rohan has not tapped Reached safely yet. A call may help.',   // api/_ashirwad.mjs, the overdue trip
+  '🔑 Papa cannot get in',                                           // api/auth.mjs, a PIN reset ask (15 minutes)
+  '🔑 Someone asked to reset your PIN',                              // the owner's 10-minute "Not me"
+  '🔑 Meera said yes to a new PIN for you',
+  '🔒 Wrong PIN tries on your number',
+  '📱 New sign-in on another phone',
+  '✅ Rohan reached Pune safely', '✅ Papa did check in', '✅ Papa is safe', '✅ Papa is alright', '✅ Meera marked you safe',
+  '📵 Papa has lost their phone', '🛡 Papa is asking the family first', '🏥 Papa is in hospital',
+  '🧡 Papa has not checked in today', '🧡 Papa could do with a call', '🧡 Papa could do with a call - it is your turn today',
+  '🧡 Meera has seen it, calling you now', '🧡 Meera is on it', '🧡 Meera is calling Papa', 'Meera marked you as no longer with us'
+];
+const NIGHT = Date.UTC(2026, 10, 12, 19, 0);   // half past midnight in India
+for (const t of URGENT_TITLES) {
+  ok('gets through by its words alone: ' + t, pushKind({ title: t }).through === true);
+  ok('and by the kind its caller names: ' + t, pushKind({ title: t, kind: 'safety' }).through === true);
+  ok('quiet hours do not hold it, and no switch drops it: ' + t,
+     decide(pushKind({ title: t, kind: 'safety' }), { quiet: true, from: 1320, to: 420, kinds: { care: false, chat: false } }, NIGHT, 'Asia/Kolkata') === 'send');
+}
+// A chat called "Mum is safe", or a message whose sender is named like an
+// alert, is a chat message: it waits for the morning like any other.
+for (const t of ['💬 Rohan in Mum is safe', '💬 Rohan mentioned you in Papa is alright', '💬 Rohan in Dadi has not checked in today',
+                 '📊 Rohan asked in Papa is in hospital', '➕ Rohan added you to Meera marked you safe', '👥 Rohan started "Papa could do with a call"',
+                 '💬 Rohan in Papa has lost their phone', '💬 marked you as no longer with us']) {
+  ok('a chat title is not an alert: ' + t, pushKind({ title: t }).through === false && pushKind({ title: t }).kind === 'chat');
+  ok('and a named kind is believed before the words: ' + t, pushKind({ title: t, kind: 'chat' }).through === false);
+  ok('so it waits for the morning: ' + t, decide(pushKind({ title: t, kind: 'chat' }), { quiet: true, from: 1320, to: 420 }, NIGHT, 'Asia/Kolkata') === 'hold');
+}
+ok('a named kind is believed first, even when the words look like an alert', pushKind({ title: '✅ Papa is safe', kind: 'chat' }).through === false && pushKind({ title: '✅ Papa is safe', kind: 'other' }).kind === 'other');
+ok('"other" can be named: no switch, and it waits for the morning', pushKind({ title: '🌳 Family trees linked with Sharma', kind: 'other' }).kind === 'other'
+   && decide(pushKind({ title: 'x', kind: 'other' }), { quiet: true, from: 1320, to: 420 }, NIGHT, 'Asia/Kolkata') === 'hold');
+ok('a medicine time the person chose is timed by name, not by its words', pushKind({ title: '💊 Night medicines', kind: 'care', timed: true }).timed === true
+   && decide(pushKind({ title: '💊 Night medicines', kind: 'care', timed: true }), { quiet: true, from: 1320, to: 420 }, NIGHT, 'Asia/Kolkata') === 'send');
 ok('anything else is "other": no switch turns it off', kind('🔐 Rohan asks to open Aadhaar') === 'other' && kind('🔑 Invite code is now ABC') === 'other');
 ok('a time the person chose (own medicines, a task reminder, the check-in nudge, the evening line) is timed, not urgent',
    ['💊 Your morning medicines', '⏰ Call the bank', '🧡 Sab theek?', '🌙 Aaj kya hua'].every(t => pushKind({ title: t }).timed && !pushKind({ title: t }).through));

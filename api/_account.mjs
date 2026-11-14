@@ -35,6 +35,9 @@ export async function ensureStandingSchema(sql) {
 async function standingTables(sql) {
   // ---- the account
   await sql`alter table users add column if not exists must_change_pin boolean not null default false`;
+  // When the sign-in the owner said "Not me" to happened: only a phone
+  // known before then may choose the new PIN.
+  await sql`alter table users add column if not exists must_change_at timestamptz`;
   await sql`alter table users add column if not exists recovery_user uuid references users(id) on delete set null`;
   await sql`alter table users add column if not exists delete_at timestamptz`;
   await sql`alter table users add column if not exists delete_posts boolean not null default false`;
@@ -83,10 +86,21 @@ async function standingTables(sql) {
   await sql`alter table pin_resets add column if not exists say_code text`;
   await sql`alter table pin_resets add column if not exists code_tries integer not null default 0`;
   await sql`alter table pin_resets add column if not exists veto_until timestamptz`;
+  // WHO ASKED. The phone that asked (its own id, hashed), and where it asked
+  // from (address and browser together, hashed): a yes is never taken from
+  // that phone. req_own: the ask came from a phone the owner already uses,
+  // so a stranger's later ask must not take its place.
+  await sql`alter table pin_resets add column if not exists req_device text`;
+  await sql`alter table pin_resets add column if not exists req_from text`;
+  await sql`alter table pin_resets add column if not exists req_own boolean not null default false`;
   // ---- standing in a family
   // The same column, in the same words, as api/_remember.mjs makes.
   await sql`alter table members add column if not exists remembered boolean not null default false`;
   await sql`alter table members add column if not exists adult_confirmed boolean`;
+  // The same column, in the same words, as api/_audience.mjs makes: the one
+  // adult rule reads both marks.
+  await sql`alter table members add column if not exists is_child boolean not null default false`;
+  await sql`alter table members add column if not exists child_by uuid references members(id) on delete set null`;
   await sql`alter table members add column if not exists adult_confirmed_by uuid references members(id) on delete set null`;
   await sql`alter table members add column if not exists see_phone text`;
   await sql`alter table members add column if not exists see_birth text`;
@@ -109,6 +123,8 @@ async function standingTables(sql) {
     decided_at timestamptz
   )`;
   await sql`create index if not exists standing_asks_circle on standing_asks (circle_id, status)`;
+  // What a request carries besides who and whom: a new date of birth.
+  await sql`alter table standing_asks add column if not exists detail jsonb`;
   await sql`create table if not exists standing_votes (
     ask_id uuid not null references standing_asks(id) on delete cascade,
     member_id uuid not null references members(id) on delete cascade,
@@ -163,17 +179,42 @@ export async function logEvent(sql, userId, kind, text) {
 }
 // Every phone this person is signed in to Parwah on, whichever family the
 // alert was turned on in. A person who has passed away is never pushed.
+// ONE push per phone: a subscription belongs to the person, so a push
+// through any one of their memberships reaches every phone they have. It
+// goes through the first membership only (the newest), never once per
+// family, which rang the same phone three times for someone in three.
 export async function pushUser(sql, userId, payload) {
   try {
-    const ms = await sql`select id, circle_id from members where user_id = ${userId} and not remembered limit 30`;
-    for (const m of ms) await pushCircle(sql, m.circle_id, payload, { only: m.id });
+    const ms = await sql`select id, circle_id from members where user_id = ${userId} and not remembered order by created_at desc limit 1`;
+    if (ms[0]) await pushCircle(sql, ms[0].circle_id, payload, { only: ms[0].id });
   } catch (e) { /* a notice never breaks the action */ }
+}
+// SIGNING OUT STOPS THE PUSHES. A phone that is signed out must not go on
+// showing "Papa has not checked in" to whoever holds it. deviceHash: that
+// phone only (its subscription carries the phone's own id). endpoint: the
+// address the phone itself says it was using. all: every phone. When
+// nobody is signed in any more, every subscription goes.
+export async function dropPush(sql, userId, { deviceHash = null, endpoint = null, all = false } = {}) {
+  if (!userId) return;
+  try {
+    if (!all) {
+      const live = await sql`select count(*)::int as n from sessions where user_id = ${userId} and expires_at > now()`;
+      if (!live[0].n) all = true;
+    }
+    if (all) { await sql`delete from push_subs where user_id = ${userId} or member_id in (select id from members where user_id = ${userId})`; return; }
+    if (endpoint) await sql`delete from push_subs where endpoint = ${String(endpoint).slice(0, 500)} and (user_id = ${userId} or member_id in (select id from members where user_id = ${userId}))`;
+    if (deviceHash) {
+      const rows = await sql`select id, device_id from push_subs where user_id = ${userId} and device_id is not null`;
+      const ids = rows.filter(r => deviceHashOf(r.device_id) === deviceHash).map(r => r.id);
+      if (ids.length) await sql`delete from push_subs where id = any(${ids}::uuid[])`;
+    }
+  } catch (e) { /* no push table yet: nothing to stop */ }
 }
 
 // Everyone in a family, with what the adult rule needs.
 export async function standingRows(sql, circleId) {
   return await sql`
-    select m.id, m.name, m.user_id, m.dob, m.role, m.relation, m.adult_confirmed, m.spouse_id, m.parent_id, m.remembered,
+    select m.id, m.name, m.user_id, m.dob, m.role, m.relation, m.adult_confirmed, m.is_child, m.spouse_id, m.parent_id, m.remembered,
            m.user_id is not null as on_app,
            exists (select 1 from members c where c.parent_id = m.id) as has_child
     from members m where m.circle_id = ${circleId} order by m.created_at, m.id`;
@@ -235,7 +276,7 @@ export async function lockNotice(sql, user, minutes, ownDevice) {
     ? 'A phone you use typed a wrong PIN 5 times. It is locked for ' + t + '. Your other phones still work.'
     : 'Someone typed a wrong PIN for your number 5 times. New phones are locked for ' + t + '. The phones you already use still work.';
   await logEvent(sql, user.id, 'lock', body);
-  await pushUser(sql, user.id, { title: '🔒 Wrong PIN tries on your number', body, url: '/#home' });
+  await pushUser(sql, user.id, { kind: 'safety', title: '🔒 Wrong PIN tries on your number', body, url: '/#home' });
 }
 
 // ---- sessions and devices --------------------------------------------------
@@ -261,7 +302,7 @@ export async function startSession(sql, user, { device, deviceHash, ua, quiet = 
     const text = 'New sign-in on another phone (' + name + '). Was this you?';
     await sql`insert into account_alerts (user_id, kind, sid, device_hash, text) values (${user.id}, 'new_device', ${made[0].sid}, ${deviceHash}, ${text})`;
     await logEvent(sql, user.id, 'signin', 'Signed in on a new phone: ' + name);
-    await pushUser(sql, user.id, { title: '📱 New sign-in on another phone', body: 'Was this you? If not, open Parwah and tap "Not me".', url: '/#home' });
+    await pushUser(sql, user.id, { kind: 'safety', title: '📱 New sign-in on another phone', body: 'Was this you? If not, open Parwah and tap "Not me".', url: '/#home' });
   } else if (!quiet) {
     await logEvent(sql, user.id, 'signin', 'Signed in on ' + name);
   }
@@ -279,7 +320,7 @@ export async function startSession(sql, user, { device, deviceHash, ua, quiet = 
 export async function resetApprovers(sql, userId) {
   const today = todayIn();
   const rows = await sql`
-    select b.id as member_id, b.circle_id, b.user_id, b.name, b.dob, b.role, b.relation, b.adult_confirmed, b.spouse_id, b.remembered,
+    select b.id as member_id, b.circle_id, b.user_id, b.name, b.dob, b.role, b.relation, b.adult_confirmed, b.is_child, b.spouse_id, b.remembered,
            exists (select 1 from members c where c.parent_id = b.id) as has_child
     from members a join members b on b.circle_id = a.circle_id join circles c on c.id = a.circle_id
     where a.user_id = ${userId} and b.user_id is not null and b.user_id <> ${userId} and c.kind = 'family'
@@ -382,15 +423,67 @@ export async function activityFor(sql, userId) {
 }
 
 // ---- download my data ---------------------------------------------------------
-// Everything about me and written by me that I may see. Tables are found
-// from the database's own foreign keys to members, so a feature added later
-// is included without this file changing. A column that says a row is ABOUT
-// me (not by me) is included only for tables where the person it is about
-// can already read it in the app: a surprise card, or a list started about
-// someone, is not handed over by a download.
-const ABOUT_COL = /^(about|for|person|target|subject|to)_|^(person|target|subject)$/;
-const ABOUT_OK = new Set(['reminders', 'requests', 'vault_docs', 'family_book', 'biomarker_records', 'medicine_schedules']);
-const SKIP_TABLE = new Set(['members', 'push_subs', 'pin_resets', 'standing_votes', 'notif_seen', 'chat_reads', 'chat_members', 'vault_files']);
+// Everything about me and written by me THAT I CAN OPEN IN THE APP TODAY,
+// and nothing else. It used to take any row whose foreign key pointed at
+// me, whatever the column meant, so it handed over a vault paper whose
+// owner had taken my access back (I was only its uploader, or the person
+// who once checked it) and a Family book entry later made private (I was
+// only the last to edit it). Now it is a list, table by table and column
+// by column, of the rows that are mine to read, each with the same rule the
+// module itself reads by. A table that is not on the list is not exported:
+// a new feature is added here on purpose, with its rule.
+//   cols: the columns that make a row mine (I wrote it, or it is about me
+//         and the person it is about can read it in the app).
+//   keep: the module's own read rule, where being named is not enough.
+const mineIs = (ids, v) => !!v && ids.includes(v);
+const EXPORT_TABLES = {
+  messages: { cols: ['member_id'], keep: (r, x) => x.chats.has(r.chat_id) },          // only in a chat I am still in
+  message_reactions: { cols: ['member_id'] },
+  events: { cols: ['member_id'] },
+  notes: { cols: ['by_member'] },
+  reminders: { cols: ['by_member', 'for_member'] },
+  requests: { cols: ['by_member', 'about_member', 'claimed_by', 'completed_by'] },
+  // The Family book's rule: about me, or written by me. Never "last edited by".
+  family_book: { cols: ['about_member', 'by_member'] },
+  book_access: { cols: ['member_id'] },
+  // The vault's rule: mine, or added by me while the owner still lets me.
+  // Never "checked by me". What I was only allowed to see exists comes
+  // through vault_access, as the grant, not the paper.
+  vault_docs: { cols: ['about_member', 'by_member'], keep: (r, x) => mineIs(x.ids, r.about_member) || (mineIs(x.ids, r.by_member) && r.uploader_access !== false) },
+  vault_access: { cols: ['member_id'] },
+  vault_requests: { cols: ['from_member', 'to_member'] },
+  // The register: an entry someone made theirs alone is not mine to read.
+  legacy_asset_locators: { cols: ['created_by', 'person_id'], keep: (r, x) => !(r.unlock_policy === 'ONLY_ME' && !mineIs(x.ids, r.created_by)) },
+  biomarker_records: { cols: ['person_id', 'created_by'] },
+  insurance_preauth_packets: { cols: ['person_id', 'created_by'] },
+  audio_consultations: { cols: ['person_id', 'created_by'] },
+  medicine_schedules: { cols: ['person_id', 'created_by'] },
+  medicine_doses: { cols: ['person_id', 'marked_by'] },
+  medicine_inventory: { cols: ['member_id', 'created_by'] },
+  // The cost ledger's rule: what I paid or wrote down, and never for a child.
+  care_expenses: { cols: ['paid_by', 'created_by'], keep: (r, x) => !x.minor.has(r.paid_by) && !x.minor.has(r.created_by) },
+  care_bills: { cols: ['created_by', 'assigned_payer_id', 'settled_by'], keep: (r, x) => ![r.created_by, r.assigned_payer_id, r.settled_by].some(id => x.minor.has(id)) },
+  sibling_care_tasks: { cols: ['created_by', 'assigned_to_id'] },
+  task_log: { cols: ['member_id'] },
+  renewals: { cols: ['created_by', 'owner_member'] },
+  // A surprise card is exported to whoever wrote it, never to who it is for.
+  cards: { cols: ['by_member'] },
+  card_entries: { cols: ['member_id'] },
+  plans: { cols: ['by_member'] }, plan_polls: { cols: ['by_member'] }, plan_votes: { cols: ['member_id'] },
+  plan_items: { cols: ['by_member', 'claimed_by'] }, plan_interest: { cols: ['member_id'] },
+  chat_polls: { cols: ['by_member'] }, poll_votes: { cols: ['member_id'] },
+  recipes: { cols: ['by_member'] }, stories: { cols: ['about_member'] },
+  story_tellers: { cols: ['member_id'] }, story_questions: { cols: ['for_member', 'by_member'] },
+  pulse: { cols: ['member_id'] }, coins: { cols: ['member_id'] }, in_town: { cols: ['member_id'] },
+  bond_prefs: { cols: ['member_id'] }, yaad_days: { cols: ['member_id'] }, yaad_hidden: { cols: ['member_id'] },
+  location_shares: { cols: ['member_id'] }, location_places: { cols: ['by_member'] }, location_consent: { cols: ['member_id'] },
+  sos: { cols: ['member_id'] }, help_asks: { cols: ['member_id', 'claimed_by'] }, askfirst: { cols: ['member_id'] },
+  admissions: { cols: ['person_id', 'opened_by'] }, nearby_ladder: { cols: ['person_id', 'created_by'] }, quiet_ladder: { cols: ['person_id'] },
+  calls: { cols: ['by_member'] },
+  ashirwad: { cols: ['from_member', 'to_member'] }, ashirwad_replies: { cols: ['member_id'] }, trips: { cols: ['member_id'] },
+  ecard_prefs: { cols: ['member_id'] }, ekta_prefs: { cols: ['member_id'] }, ekta_thread: { cols: ['member_id'] },
+  tree_edits: { cols: ['by_member'] }, standing_asks: { cols: ['asked_by'] }
+};
 const SECRET_KEY = /hash|salt|secret|token|p256dh|^auth$|endpoint|bytes|^data$|ip_fingerprint/i;
 function scrub(row) {
   const o = {};
@@ -418,6 +511,16 @@ export async function exportFor(sql, userId) {
     tables: {}
   };
   if (ids.length) {
+    // What the rules below need to know about me, read once.
+    const today = todayIn();
+    const x = { ids, chats: new Set(), minor: new Set(memberships.filter(m => standingOf(m, today) === 'minor').map(m => m.id)) };
+    try {
+      (await sql`select c.id from chats c where c.circle_id = any(${memberships.map(m => m.circle_id)}::uuid[])
+                   and (c.kind = 'circle' or exists (select 1 from chat_members cm where cm.chat_id = c.id and cm.member_id = any(${ids}::uuid[])))`)
+        .forEach(c => x.chats.add(c.id));
+    } catch (e) { /* no chats yet */ }
+    // Only a column that really is a link to a member is ever read, and its
+    // name comes from this file and the database's own list, never a request.
     const refs = await sql`
       select cl.relname as tbl, att.attname as col
       from pg_constraint con
@@ -429,12 +532,11 @@ export async function exportFor(sql, userId) {
         and array_length(con.conkey, 1) = 1
       order by cl.relname, att.attname`;
     for (const r of refs) {
-      if (SKIP_TABLE.has(r.tbl)) continue;
-      if (ABOUT_COL.test(r.col) && !ABOUT_OK.has(r.tbl)) continue;
+      const rule = EXPORT_TABLES[r.tbl];
+      if (!rule || !rule.cols.includes(r.col)) continue;
       let rows = [];
-      try { rows = (await sql`select parwah_rows_for(${r.tbl}, ${r.col}, ${ids}::uuid[], 2000) as j`).map(x => x.j); } catch (e) { continue; }
-      // An entry about me that someone made theirs alone is not mine to read.
-      if (r.tbl === 'legacy_asset_locators') rows = rows.filter(x => !(x.unlock_policy === 'ONLY_ME' && !ids.includes(x.created_by) && !ids.includes(x.person_id)));
+      try { rows = (await sql`select parwah_rows_for(${r.tbl}, ${r.col}, ${ids}::uuid[], 2000) as j`).map(x2 => x2.j); } catch (e) { continue; }
+      if (rule.keep) rows = rows.filter(row => rule.keep(row, x));
       if (!rows.length) continue;
       const key = r.tbl + ' (' + r.col + ')';
       data.tables[key] = rows.map(scrub);
@@ -492,7 +594,7 @@ export async function accountAction(sql, req, body, token) {
     // Who could be the recovery contact: grown-ups on Parwah in any circle of mine.
     const today = todayIn();
     const people = await sql`
-      select distinct on (b.user_id) b.user_id, b.name, b.dob, b.role, b.relation, b.adult_confirmed, b.spouse_id, b.remembered, c.name as family,
+      select distinct on (b.user_id) b.user_id, b.name, b.dob, b.role, b.relation, b.adult_confirmed, b.is_child, b.spouse_id, b.remembered, c.name as family,
              exists (select 1 from members k where k.parent_id = b.id) as has_child
       from members a join members b on b.circle_id = a.circle_id join circles c on c.id = a.circle_id
       where a.user_id = ${uid} and b.user_id is not null and b.user_id <> ${uid}
@@ -507,8 +609,11 @@ export async function accountAction(sql, req, body, token) {
 
   if (a === 'device_signout') {
     if (!isUuid(body.sid)) return bad('Bad request');
-    const gone = await sql`delete from sessions where user_id = ${uid} and sid = ${body.sid} returning sid, ua`;
-    if (gone[0]) await logEvent(sql, uid, 'device', 'Signed out of ' + deviceName(gone[0].ua));
+    const gone = await sql`delete from sessions where user_id = ${uid} and sid = ${body.sid} returning sid, ua, device_hash`;
+    if (gone[0]) {
+      await dropPush(sql, uid, { deviceHash: gone[0].device_hash });
+      await logEvent(sql, uid, 'device', 'Signed out of ' + deviceName(gone[0].ua));
+    }
     return good({ self: body.sid === cur.sid });
   }
 
@@ -522,7 +627,7 @@ export async function accountAction(sql, req, body, token) {
     }
     // "Not me" is for a phone that was here first. The new phone cannot
     // use it to put the older ones out.
-    const theirs = al.sid ? (await sql`select created_at from sessions where sid = ${al.sid}`)[0] : null;
+    const theirs = al.sid ? (await sql`select created_at, device_hash from sessions where sid = ${al.sid}`)[0] : null;
     if (al.sid && al.sid === cur.sid) return bad('This is the phone the alert is about.', 403);
     if (theirs && cur.created_at && new Date(cur.created_at) > new Date(theirs.created_at)) return bad('Only a phone that was signed in before can say this.', 403);
     if (al.sid) await sql`delete from sessions where user_id = ${uid} and sid = ${al.sid}`;
@@ -530,7 +635,10 @@ export async function accountAction(sql, req, body, token) {
       await sql`delete from sessions where user_id = ${uid} and device_hash = ${al.device_hash}`;
       await sql`delete from user_devices where user_id = ${uid} and device_hash = ${al.device_hash}`;
     }
-    await sql`update users set must_change_pin = true where id = ${uid}`;
+    await dropPush(sql, uid, { deviceHash: al.device_hash || (theirs && theirs.device_hash) || null });
+    // The new PIN is chosen on a phone that was here BEFORE that sign-in.
+    const flagged = (await sql`select created_at from account_alerts where id = ${al.id}`)[0];
+    await sql`update users set must_change_pin = true, must_change_at = ${flagged ? flagged.created_at : new Date()} where id = ${uid}`;
     await sql`update account_alerts set status = 'notme' where id = ${al.id}`;
     await logEvent(sql, uid, 'device', 'You said a new sign-in was not you. That phone was signed out, and a new PIN was asked for.');
     return good({ changeSecret: true });
@@ -555,7 +663,7 @@ export async function accountAction(sql, req, body, token) {
     if (!isUuid(body.contactUserId) || body.contactUserId === uid) return bad('Choose someone in one of your families.');
     const today = todayIn();
     const rows = await sql`
-      select b.user_id, b.name, b.dob, b.role, b.relation, b.adult_confirmed, b.spouse_id, b.remembered,
+      select b.user_id, b.name, b.dob, b.role, b.relation, b.adult_confirmed, b.is_child, b.spouse_id, b.remembered,
              exists (select 1 from members k where k.parent_id = b.id) as has_child
       from members a join members b on b.circle_id = a.circle_id
       where a.user_id = ${uid} and b.user_id = ${body.contactUserId}`;
@@ -564,7 +672,7 @@ export async function accountAction(sql, req, body, token) {
     if (!(await rateLimit(sql, 'recovery', uid, 6, 86400, { failClosed: true }))) return bad('You have changed this a lot today. Please try again tomorrow.', 429);
     await sql`update users set recovery_user = ${pick.user_id} where id = ${uid}`;
     await logEvent(sql, uid, 'recovery', 'You chose ' + pick.name + ' as your recovery contact.');
-    await pushUser(sql, pick.user_id, { title: '🤝 ' + su.name + ' trusts you', body: su.name + ' chose you to let them back in if they forget their PIN. Call them before you say yes.', url: '/#home' });
+    await pushUser(sql, pick.user_id, { kind: 'care', title: '🤝 ' + su.name + ' trusts you', body: su.name + ' chose you to let them back in if they forget their PIN. Call them before you say yes.', url: '/#home' });
     return good({ recovery: { userId: pick.user_id, name: pick.name } });
   }
 
@@ -596,16 +704,30 @@ export async function accountAction(sql, req, body, token) {
     const at = new Date(Date.now() + UNDO_DAYS * 86400000).toISOString();
     await sql`update users set delete_at = ${at}, delete_posts = ${body.removePosts === true} where id = ${uid}`;
     await logEvent(sql, uid, 'delete', 'You asked to delete your account. It will be deleted in ' + UNDO_DAYS + ' days unless you keep it.');
-    await pushUser(sql, uid, { title: 'Your Parwah account will be deleted in ' + UNDO_DAYS + ' days', body: 'Not you, or changed your mind? Open Parwah and tap "Keep my account".', url: '/#home' });
+    await pushUser(sql, uid, { kind: 'safety', title: 'Your Parwah account will be deleted in ' + UNDO_DAYS + ' days', body: 'Not you, or changed your mind? Open Parwah and tap "Keep my account".', url: '/#home' });
     return good({ deleteAt: at });
   }
   return bad('Unknown action');
 }
 
-// The owner had live sessions when a reset was asked for: the new PIN
-// waits this long, so they can stop it.
-export async function vetoUntilFor(sql, userId) {
-  const live = await sql`select count(*)::int as n from sessions where user_id = ${userId} and expires_at > now()`;
-  return live[0].n > 0 ? new Date(Date.now() + RESET_VETO_MINUTES * 60000).toISOString() : null;
+// THE NEW PIN ALWAYS WAITS. Ten minutes from the ask, and ten minutes again
+// from the yes, whether or not the owner has a phone signed in: the wait is
+// what gives the owner (and the family, who are told) time to say "not me".
+export function vetoUntil(nowMs = Date.now()) {
+  return new Date(nowMs + RESET_VETO_MINUTES * 60000).toISOString();
+}
+// Where an ask or a yes came from: this address and this browser, hashed.
+// With no address to go by (no proxy in front), there is nothing to compare.
+export function fromHash(ip, ua) { return !ip || ip === 'unknown' ? null : sha('from:' + String(ip) + '|' + String(ua || '')); }
+// May this session say yes to this request? Never the phone that asked:
+// not by its own id (on this session, sent with the yes, or any phone the
+// approver has used), and not from the same address and browser.
+export async function sameAsAsker(sql, reset, approverId, { sessionDevice, sentDevice, from }) {
+  if (reset.req_from && from && reset.req_from === from) return true;
+  if (!reset.req_device) return false;
+  if (reset.req_device === sessionDevice || reset.req_device === sentDevice) return true;
+  const mine = await sql`select 1 as x from user_devices where user_id = ${approverId} and device_hash = ${reset.req_device}
+                         union all select 1 from sessions where user_id = ${approverId} and device_hash = ${reset.req_device} limit 1`;
+  return !!mine[0];
 }
 export { hashPin, standingOf };

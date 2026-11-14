@@ -486,12 +486,29 @@ let famChat;
   for (const who of [rohan, meena, papa, kabir]) {
     const raw = await CG(who, { chat: famChat });
     const p = raw.messages.filter(m => m.poll && m.poll.id === sp)[0].poll;
-    ok('5. ' + who.name + ': the counts are sent, and NO NAME OF WHO PICKED WHAT', p.secret === true && p.options.map(o => o.count).join() === '1,2,0' && p.options.every(o => o.names.length === 0), JSON.stringify(p.options));
+    // WHILE IT IS OPEN, NO COUNT IS SENT AT ALL. Live counts beside
+    // "Waiting for Rohan" let a watcher see whose vote moved which count.
+    // Everyone is sent how many have voted, of how many, and who is still
+    // to vote; the counts come when the poll closes.
+    ok('5. ' + who.name + ': while it is open NO COUNT is sent, and NO NAME OF WHO PICKED WHAT', p.secret === true && p.held === true && p.options.every(o => o.count === null && o.names.length === 0)
+       && p.voters === 3 && p.of === 5, JSON.stringify([p.options, p.voters, p.of]));
     ok('5. ' + who.name + ': no voter id is anywhere in the poll', ![meena, kabir, papa].some(v => v.id !== who.id && JSON.stringify(p).includes(v.id)));
   }
   ok('5. each still sees their own vote', (await poll(meena, sp)).mine.join() === '1' && (await poll(rohan, sp)).mine.length === 0);
-  ok('5. KABIR IS 13 AND HIS VOTE COUNTS THE SAME: Goa has two, his and his mother\'s', (await poll(papa, sp)).options[1].count === 2 && (await poll(papa, sp)).voters === 3);
   ok('5. "Waiting for" says who has not voted (not how anyone voted)', (await poll(meena, sp)).waiting === 'Waiting for Rohan', (await poll(meena, sp)).waiting);
+  // A watcher who reads the poll before and after one more vote learns only
+  // that someone voted: no count moved, because no count is there.
+  const before = JSON.stringify((await poll(papa, sp)).options);
+  await vote(rohan, sp, [2]);
+  ok('5. one more vote changes nothing a watcher can read but "4 of 5 have voted"', JSON.stringify((await poll(papa, sp)).options) === before && (await poll(papa, sp)).voters === 4);
+  r = await C(rohan, 'poll_close', { chatId: famChat, pollId: sp });
+  const done = await poll(papa, sp);
+  ok('5. when the poll closes the counts are shown, still with no names', r.status === 200 && done.closed === true && done.held === false && done.options.map(o => o.count).join() === '1,2,1' && done.options.every(o => o.names.length === 0), JSON.stringify(done.options));
+  ok('5. KABIR IS 13 AND HIS VOTE COUNTS THE SAME: Goa has two, his and his mother\'s', done.options[1].count === 2 && done.voters === 4);
+  // A poll that is not secret shows its counts as it goes, as before.
+  r = await ask(rohan, { question: 'Tea or coffee?', options: ['Tea', 'Coffee'] });
+  await vote(meena, r.pollId, [0]);
+  ok('5. an open (not secret) poll still shows live counts', (await poll(papa, r.pollId)).held === false && (await poll(papa, r.pollId)).options[0].count === 1);
 
   // An open poll, a proxy vote and the one reminder.
   r = await ask(rohan, { question: 'Sunday lunch at whose house?', options: ['Ours', 'Chacha ji'] });
@@ -513,6 +530,37 @@ let famChat;
   ok('5. ONE reminder, only to the people who have not voted', r.status === 200 && pushed.length === 2 && to(papa).length === 1 && to(kabir).length === 1 && to(meena).length === 0 && /waiting for your vote/.test(pushed[0].body.title), JSON.stringify(pushed.map(x => x.body.title)));
   ok('5. a second reminder is refused, and sends nothing', (await C(rohan, 'poll_remind', { chatId: famChat, pollId: op })).status === 409 && pushed.length === 2 && (await poll(rohan, op)).canRemind === false);
   // A group chat inside the family: no proxy there.
+  // Someone the family remembers is refused on the server (finding 20).
+  // Dadaji had signed in to Parwah before he passed away.
+  {
+    const hadUser = (await admin.query('select user_id from members where id = $1', [dadaji.id])).rows[0].user_id;
+    if (!hadUser) {
+      const du = (await admin.query(`insert into users (phone, phone_cc, phone_local, name) values ('+919800009999', '+91', '9800009999', 'Dadaji') returning id`)).rows[0].id;
+      await admin.query('update members set user_id = $2 where id = $1', [dadaji.id, du]);
+    }
+    ok('20. (Dadaji had an account, and is remembered)', !!(await admin.query('select user_id from members where id = $1 and remembered', [dadaji.id])).rows[0].user_id);
+    const gg = await C(rohan, 'create_group', { name: 'With Dadaji', memberIds: [meena.id, dadaji.id] });
+    const inIt = (await admin.query('select member_id from chat_members where chat_id = $1', [gg.chatId])).rows.map(x => x.member_id);
+    ok('20. someone remembered is left out of a new group', gg.status === 201 && inIt.includes(meena.id) && !inIt.includes(dadaji.id), JSON.stringify(inIt));
+    const add = await C(rohan, 'add_member', { chatId: gg.chatId, addId: dadaji.id });
+    ok('20. and cannot be added to one later, with kind words', add.status === 400 && /remembered here/.test(add.error)
+       && !(await admin.query('select 1 from chat_members where chat_id = $1 and member_id = $2', [gg.chatId, dadaji.id])).rows.length, JSON.stringify(add));
+    const dm = await C(rohan, 'open_dm', { otherId: dadaji.id });
+    ok('20. nor is a personal chat opened with them', dm.status === 400, JSON.stringify(dm));
+    // An @ with their name in the family chat is a line of love, not a ping.
+    const { pushSeams } = await import('../../../api/_push.mjs');
+    const pinged = [];
+    const before = pushSeams.send;
+    await admin.query(`insert into push_subs (member_id, user_id, endpoint, p256dh, auth) values ($1, null, 'https://fcm.googleapis.com/fcm/send/dadaji-old-phone', 'k', 'a') on conflict do nothing`, [dadaji.id]);
+    pushSeams.send = async (sub, body) => { pinged.push({ endpoint: sub.endpoint, ...JSON.parse(body) }); };
+    const fc = (await CG(rohan)).chats.find(c => c.kind === 'circle').id;
+    const sentMsg = await C(rohan, 'send', { chatId: fc, text: 'Missing you today @Dadaji' });
+    ok('20. a message that names them with @ is sent, and their old phone is not pushed', sentMsg.status === 201 && !pinged.some(x => /dadaji-old-phone/.test(x.endpoint)), JSON.stringify(pinged.map(x => x.endpoint)));
+    ok('20. and nobody is told they were "mentioned" by it', !pinged.some(x => /mentioned you/.test(x.title)) || pinged.every(x => !/dadaji/.test(x.endpoint)));
+    pushSeams.send = before;
+    await admin.query(`delete from push_subs where endpoint like '%dadaji-old-phone'`);
+    if (!hadUser) { await admin.query('update members set user_id = null where id = $1', [dadaji.id]); await admin.query(`delete from users where phone = '+919800009999'`); }
+  }
   const g = await C(rohan, 'create_group', { name: 'Parents', memberIds: [meena.id] });
   const gp = await C(rohan, 'poll_create', { chatId: g.chatId, question: 'Tuition or not?', options: ['Yes', 'No'], secret: true });
   ok('5. a vote for someone not on the app is for the family chat only', (await C(rohan, 'poll_vote', { chatId: g.chatId, pollId: gp.pollId, choices: [0], forId: dadi.id })).status === 400);

@@ -199,6 +199,15 @@ const vikram = await seat(kapoor, await user('Vikram'));
 
   // 1am in India: still her night.
   p0 = sent.length;
+  // Run from a member's poll the timer has a few seconds (finding 15): with
+  // its time already spent, the morning line starts nobody, loses nothing,
+  // and the next run sends it.
+  {
+    const held0 = (await admin.query('select count(*)::int as n from push_held')).rows[0].n;
+    const none = await pushMorning(sql, Date.UTC(2026, 10, 13, 1, 35), Date.now() - 1);
+    ok('with its time spent, the morning line sends nothing and keeps what waited', none === 0 && since(p0).length === 0 && held0 > 0
+       && (await admin.query('select count(*)::int as n from push_held')).rows[0].n === held0);
+  }
   let m = await pushMorning(sql, T1 + 3600000);
   ok('at 1am nothing is announced', m === 0 && since(p0).length === 0);
   // 7:05am in India.
@@ -335,6 +344,19 @@ const vikram = await seat(kapoor, await user('Vikram'));
 
   const at = await lastTickAt(sql);
   ok('it writes down when it last ran', !!at && Date.now() - new Date(at).getTime() < 60000, String(at));
+  // ONE record (review finding 15): kv 'tick_at', in milliseconds. Both
+  // readers (this one, and tickSeen in api/_safety.mjs, which the family's
+  // "Reminders last ran" line reads) see the same moment.
+  {
+    const kv = (await admin.query(`select k, v from kv where k in ('tick_at', 'last_tick_at')`)).rows;
+    const { tickSeen } = await import('../../../api/_safety.mjs');
+    ok('when the timer last ran is kept in one row, not two', kv.length === 1 && kv[0].k === 'tick_at' && /^\d{13}$/.test(kv[0].v), JSON.stringify(kv));
+    ok('and both readers read that row', new Date(at).getTime() === await tickSeen(sql), at + ' ' + (await tickSeen(sql)));
+    await admin.query(`update kv set v = $1 where k = 'tick_at'`, [String(Date.now() - 17 * 60000)]);
+    const old = await lastTickAt(sql);
+    ok('a change to the one row is seen by both', Math.abs(Date.now() - new Date(old).getTime() - 17 * 60000) < 5000 && new Date(old).getTime() === await tickSeen(sql));
+    await admin.query(`update kv set v = $1 where k = 'tick_at'`, [String(new Date(at).getTime())]);
+  }
   r = await dg({ method: 'GET', headers: { 'x-diag-key': 'diag-key-for-this-test' }, query: { probe: 'status' } });
   ok('/api/diag says when, and how long ago', r.ok && r.last_tick_at === at && r.last_tick_age_sec >= 0 && r.last_tick_age_sec < 60, JSON.stringify(r));
   r = await dg({ method: 'GET', query: { probe: 'status' } });

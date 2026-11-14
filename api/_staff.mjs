@@ -358,7 +358,7 @@ export async function sweepStaffLate(sql, circleId, nowMs = Date.now()) {
       // who is. One person either way.
       let to = s.owner_id ? await audienceFor(sql, circleId, 'staff_late', { only: s.owner_id }) : [];
       if (!to.length) to = (await audienceFor(sql, circleId, 'staff_late')).slice(0, 1);
-      if (to[0]) await pushCircle(sql, circleId, { title: '🕘 ' + s.name + ' not marked in yet', body, url: '/#care' }, { only: to[0] });
+      if (to[0]) await pushCircle(sql, circleId, { kind: 'care', title: '🕘 ' + s.name + ' not marked in yet', body, url: '/#care' }, { only: to[0] });
       n++;
     }
   } catch (e) { /* never breaks a read */ }

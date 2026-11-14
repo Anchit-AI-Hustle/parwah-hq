@@ -172,7 +172,15 @@ export async function attachBond(sql, msgs, meId) {
       });
       const here = people[p.chat_id] || [];
       const waiting = p.closed ? [] : waitingFor(here.filter(x => x.on_app), voted);
+      // A SECRET BALLOT KEEPS ITS COUNTS UNTIL IT CLOSES. Live counts next
+      // to "waiting for Meera" let anyone watching see a count go up the
+      // moment Meera's name left the list, which is her vote. While it is
+      // open, everyone is sent how many have voted and who is still to
+      // vote, and no count at all; the counts come when the poll closes.
+      const held = !!p.secret && !p.closed;
+      if (held) opts.forEach(o => { o.count = null; });
       polls[p.message_id] = { id: p.id, question: p.question, options: opts, multi: p.multi, secret: !!p.secret,
+        held, of: here.filter(x => x.on_app || p.chat_kind === 'circle').length,
         closeAt: p.close_at, closed: !!p.closed, mine, voters, canClose: p.by_member === meId && !p.closed,
         waiting: p.closed ? null : waitingLine(waiting), reminded: !!p.reminded_at,
         canRemind: p.by_member === meId && !p.closed && !p.reminded_at && waiting.length > 0,

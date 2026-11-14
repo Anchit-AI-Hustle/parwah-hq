@@ -266,12 +266,15 @@ export async function pushCircle(sql, circleId, payload, { except = null, only =
 // quiet hours have ended: one push, counts only ("6 messages in Family").
 // Each person's rows are claimed by deleting them, so two timers never send
 // it twice. Anything older than a day is forgotten, not announced.
-export async function pushMorning(sql, nowMs = nowOf()) {
+export async function pushMorning(sql, nowMs = nowOf(), deadlineMs = null) {
   await ensurePushSchema(sql);
   await sql`delete from push_held where at < ${new Date(nowMs - 24 * 3600000)}`;
   const who = await sql`select distinct user_id from push_held limit 500`;
   let sent = 0;
   for (const w of who) {
+    // Run from a member's poll, the timer has a few seconds: whoever is not
+    // reached in this run keeps their rows and is told by the next one.
+    if (deadlineMs && Date.now() > deadlineMs) break;
     const pref = prefOf((await sql`select quiet, quiet_from, quiet_to, kinds, tz from push_prefs where user_id = ${w.user_id}`)[0]);
     const subs = await sql`select id, endpoint, p256dh, auth, tz, seen_at from push_subs where user_id = ${w.user_id}`;
     const zone = zoneOf(pref, subs);
@@ -294,26 +297,27 @@ export async function pushSeen(sql, userId) {
   try { await sql`delete from push_held where user_id = ${userId}`; } catch (e) {}
 }
 
-// AFTER EVERY RUN OF THE TIMER (one call from runTick): when it last ran,
-// which family the next run starts with, and the morning line.
-// The record is two rows in kv: last_tick_at and tick_next.
-export async function afterTick(sql, circles, done) {
+// AFTER EVERY RUN OF THE TIMER (one call from runTick): which family the
+// next run starts with, and the morning line. WHEN the timer last ran is
+// ONE record, kv 'tick_at' in milliseconds, written by tickMark in
+// api/_safety.mjs right after this; lastTickAt below reads the same row.
+// deadlineMs: the morning line stops starting new people after it.
+export async function afterTick(sql, circles, done, deadlineMs = null) {
   await ensurePushSchema(sql);
-  const at = new Date(nowOf()).toISOString();
-  await sql`insert into kv (k, v) values ('last_tick_at', ${at}) on conflict (k) do update set v = excluded.v`;
   // The run stopped at its time budget: the next one starts where this one
   // stopped, so the families at the end of the list are never always last.
   const list = circles || [];
   if (list.length && done < list.length) {
     await sql`insert into kv (k, v) values ('tick_next', ${String(list[done])}) on conflict (k) do update set v = excluded.v`;
   }
-  return pushMorning(sql);
+  return pushMorning(sql, nowOf(), deadlineMs);
 }
 export async function tickCursor(sql) {
   try { const r = await sql`select v from kv where k = 'tick_next'`; return r[0] ? r[0].v : null; } catch (e) { return null; }
 }
 // When the timer last ran: the tick_runs table if another module keeps one
-// (any timestamp column in it), else our own kv row. → ISO string or null.
+// (any timestamp column in it), else the one kv row, 'tick_at', that
+// api/_safety.mjs writes and reads (milliseconds). → ISO string or null.
 export async function lastTickAt(sql) {
   let best = null;
   const take = v => { const ms = v ? new Date(v).getTime() : NaN; if (Number.isFinite(ms) && (best === null || ms > best)) best = ms; };
@@ -325,6 +329,6 @@ export async function lastTickAt(sql) {
       for (const x of rows) for (const c of cols) take(x.r && x.r[c.column_name]);
     }
   } catch (e) { /* no such table */ }
-  try { const r = await sql`select v from kv where k = 'last_tick_at'`; take(r[0] && r[0].v); } catch (e) { /* no kv yet */ }
+  try { const r = await sql`select v from kv where k = 'tick_at'`; const n = r[0] ? Number(r[0].v) : NaN; if (Number.isFinite(n)) take(n); } catch (e) { /* no kv yet */ }
   return best === null ? null : new Date(best).toISOString();
 }

@@ -642,7 +642,7 @@ export default async function bondApi(req, res) {
       // reply. A story told for someone not on the app goes to whoever recorded it.
       if (ins[0] || voiceNew) {
         const to = st.teller_user && !st.teller_remembered ? st.about_member : st.recorded_by;
-        if (to && to !== me.id) await pushCircle(sql, circle.id, { title: '📖 ' + first(me.name) + ' heard your story',
+        if (to && to !== me.id) await pushCircle(sql, circle.id, { kind: 'album', title: '📖 ' + first(me.name) + ' heard your story',
           body: audio ? first(me.name) + ' left a voice reply. Open Parwah to hear it.' : '"' + HEARD_TAP + '"', url: '/#memory' }, { only: to });
       }
       return res.status(200).json({ ok: true, first: !!ins[0] });
@@ -671,7 +671,7 @@ export default async function bondApi(req, res) {
                           returning id`;
       const label = toldByLine(t.name, me.name);
       await sql`insert into events (circle_id, member_id, type, text) values (${circle.id}, ${me.id}, 'care', ${'A story ' + label + ' 📖'})`;
-      await pushCircle(sql, circle.id, { title: '📖 A story from ' + first(t.name), body: question + ' (' + label + ')', url: '/#memory' }, { except: me.id });
+      await pushCircle(sql, circle.id, { kind: 'album', title: '📖 A story from ' + first(t.name), body: question + ' (' + label + ')', url: '/#memory' }, { except: me.id });
       await awardHeard(sql, circle.id, me.id, 'story_told', dayOf(nowMs, tz));
       return res.status(201).json({ ok: true, id: r[0].id, told: label });
     }
@@ -836,9 +836,9 @@ export default async function bondApi(req, res) {
       const selfUndo = !body.on && t.id === me.id;
       if (t.id === me.id && !selfUndo) return bad(400, 'This is for someone the ' + word + ' remembers');
       // Otherwise it is set, or taken back, by an adult who is on Parwah.
-      const { isAdult } = await import('./_rememberrules.mjs');
-      const mine = (await sql`select dob, user_id from members where id = ${me.id}`)[0] || {};
-      if (!selfUndo && (!mine.user_id || !isAdult(mine.dob, new Date().toISOString().slice(0, 10)))) return bad(403, 'An adult in the ' + word + ' can mark this.');
+      const { minorOf } = await import('./_audience.mjs');
+      const mine = (await sql`select user_id from members where id = ${me.id}`)[0] || {};
+      if (!selfUndo && (!mine.user_id || await minorOf(sql, circle.id, me.id))) return bad(403, 'An adult in the ' + word + ' can mark this.');
       if (body.on && !t.remembered) {
         // Someone who used Parwah in the last 30 days is not marked by one
         // person alone; someone on Parwah who is marked is told, once.

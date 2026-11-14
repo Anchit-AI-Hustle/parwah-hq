@@ -37,8 +37,9 @@ import { schemaOnce, isUuid, rateLimit } from './_db.mjs';
 import { pushCircle } from './_push.mjs';
 import { placeOf } from './_places.mjs';
 import { noteRisk } from './_notesapi.mjs';
-import { passedClean, remembranceDue, remembranceLine, yearsLine, passedWords, wallIn, isAdult, REMEMBER_LINE_MAX } from './_rememberrules.mjs';
+import { passedClean, remembranceDue, remembranceLine, yearsLine, passedWords, wallIn, REMEMBER_LINE_MAX } from './_rememberrules.mjs';
 import { surelyAdult } from './_safetyrules.mjs';
+import { minorOf } from './_audience.mjs';
 
 let ready = false;
 export async function ensureRememberSchema(sql) {
@@ -99,6 +100,7 @@ export async function rememberAsksFor(sql, circleId, meId) {
 // counts only when their place in the family says adult (surelyAdult).
 async function secondAdults(sql, circleId, meId, targetId) {
   const ms = await sql`select m.id, m.name, m.user_id, to_char(m.dob, 'YYYY-MM-DD') as dob, m.role, m.relation, m.spouse_id,
+                              coalesce((to_jsonb(m)->>'is_child')::boolean, false) as is_child, (to_jsonb(m)->>'adult_confirmed')::boolean as adult_confirmed,
                               exists (select 1 from members c where c.parent_id = m.id) as has_child
                        from members m where m.circle_id = ${circleId} and m.user_id is not null and not m.remembered
                          and m.id <> ${meId} and m.id <> ${targetId} order by m.created_at`;
@@ -186,7 +188,7 @@ export async function rememberTell(sql, circleId, me, target) {
   if (!(await rateLimit(sql, 'remember_tell', me.id + ':' + target.id, 3, 3600, { failClosed: true }))) return;
   // The one push that may go to someone who is marked: it is how a mistake
   // is found. Every other push leaves a remembered person in peace.
-  await pushCircle(sql, circleId, { title: firstName(me.name) + ' marked you as no longer with us',
+  await pushCircle(sql, circleId, { kind: 'safety', title: firstName(me.name) + ' marked you as no longer with us',
     body: firstName(me.name) + ' marked you as no longer with us. If this is a mistake, open Parwah to undo it.', url: '/#profile' }, { only: target.id, evenRemembered: true });
 }
 
@@ -205,7 +207,7 @@ export async function rememberAction(sql, circle, me, body) {
   // The person a waiting mark is about takes it back: they are here.
   const selfCancel = a === 'remember_cancel' && body.targetId === me.id;
   // With the family's care: an adult, on Parwah, decides this.
-  if (!selfUndo && !selfCancel && !isAdult(me.dob, today)) return bad('An adult in the family does this.', 403);
+  if (!selfUndo && !selfCancel && await minorOf(sql, circle.id, me.id)) return bad('An adult in the family does this.', 403);
   if (!isUuid(body.targetId)) return bad('Choose someone in this family');
   const t = (await sql`select id, name, user_id, remembered, to_char(dob, 'YYYY') as born from members where id = ${body.targetId} and circle_id = ${circle.id}`)[0];
   if (!t) return bad('Choose someone in this family', 404);
@@ -255,7 +257,7 @@ export async function rememberAction(sql, circle, me, body) {
                   line = excluded.line, created_at = now()`;
       // Asking is a push: three an hour from one person about one person.
       if (await rateLimit(sql, 'remember_ask', me.id + ':' + t.id, 3, 3600, { failClosed: true })) {
-        await pushCircle(sql, circle.id, { title: firstName(me.name) + ' asks you to confirm something about ' + firstName(t.name),
+        await pushCircle(sql, circle.id, { kind: 'other', title: firstName(me.name) + ' asks you to confirm something about ' + firstName(t.name),
           body: 'Open Parwah to read it. Nothing changes until you answer.', url: '/#people' }, { only: body.askId });
       }
       return good({ pending: true, askName: others.find(m => m.id === body.askId).name });

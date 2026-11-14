@@ -323,7 +323,7 @@ export default async function heardApi(req, res) {
     if (action === 'mood_set') {
       const saved = await pulseSave(sql, circle, me, body, tz);
       if (saved.call) await pulseCallNudge(sql, circle.id, me, saved.call);
-      if (saved.one) await pushCircle(sql, circle.id, { title: '🧡 ' + me.name + ' told only you how today is', body: saved.one.line + (saved.one.low ? '. A call would be nice.' : ''), url: '/#home' }, { only: saved.one.id });
+      if (saved.one) await pushCircle(sql, circle.id, { kind: 'care', title: '🧡 ' + me.name + ' told only you how today is', body: saved.one.line + (saved.one.low ? '. A call would be nice.' : ''), url: '/#home' }, { only: saved.one.id });
       return send(saved);
     }
 
@@ -351,7 +351,7 @@ export default async function heardApi(req, res) {
       }
       // The person thanked hears of it, if they are on Parwah. If not, it is
       // kept for the day they join, and the writer can read it out or share it.
-      if (t.on_app) await pushCircle(sql, circle.id, { title: '🙏 ' + first(me.name) + ' says shukriya', body: c.line ? c.line.slice(0, 120) : 'A voice note is waiting for you', url: '/#home' }, { only: t.id });
+      if (t.on_app) await pushCircle(sql, circle.id, { kind: 'chat', title: '🙏 ' + first(me.name) + ' says shukriya', body: c.line ? c.line.slice(0, 120) : 'A voice note is waiting for you', url: '/#home' }, { only: t.id });
       await awardHeard(sql, circle.id, me.id, 'shukriya', dayIn(tz, nowMs));
       return good({ id: r[0].id, kept: !t.on_app }, 201);
     }

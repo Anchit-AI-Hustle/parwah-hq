@@ -24,8 +24,28 @@ for (const r of ['father', 'mother', 'grandfather', 'grandmother', 'daughter-in-
   ok('no date of birth, relation ' + r + ': adult', S.standingOf(M('a', { relation: r }), TODAY) === 'adult');
 ok('married in the tree: adult', S.standingOf(M('a', { spouse_id: 'b' }), TODAY) === 'adult');
 ok('a parent in the tree: adult', S.standingOf(M('a', { has_child: true }), TODAY) === 'adult');
-ok('grandson with no date of birth: the relation says child', S.standingOf(M('a', { relation: 'grandson' }), TODAY) === 'minor');
-ok('granddaughter the same', S.standingOf(M('a', { relation: 'granddaughter' }), TODAY) === 'minor');
+// A relation is not an age: a grandson can be thirty. With no date of birth
+// and nothing the family said, he is not known either way.
+ok('grandson with no date of birth: not known, the relation is not an age', S.standingOf(M('a', { relation: 'grandson' }), TODAY) === 'unsure');
+ok('granddaughter the same', S.standingOf(M('a', { relation: 'granddaughter' }), TODAY) === 'unsure');
+// THE MATRIX: date of birth (child / adult / none) x is_child x adult_confirmed.
+{
+  const want = (dob, child, conf) => dob === 'minor' ? 'minor' : dob === 'adult' ? 'adult'
+    : (child || conf === false) ? 'minor' : conf === true ? 'adult' : 'unsure';
+  for (const dob of ['minor', 'adult', 'none']) for (const child of [true, false]) for (const conf of [true, false, null]) {
+    const m = M('a', { dob: dob === 'minor' ? '2012-05-01' : dob === 'adult' ? '1980-05-01' : null, is_child: child, adult_confirmed: conf });
+    const w = want(dob, child, conf), got = S.standingOf(m, TODAY);
+    const label = 'matrix: dob ' + dob + ', is_child ' + child + ', adult_confirmed ' + conf;
+    ok(label + ' is ' + w, got === w, got);
+    ok(label + ': isMinor agrees', S.isMinor(m, TODAY) === (w === 'minor'));
+    ok(label + ': may act only when not a child', S.isAdultMember(m, TODAY) === (w !== 'minor'));
+    ok(label + ': the strict gate only for a known adult', S.isAdultMember(m, TODAY, { strict: true }) === (w === 'adult'));
+    ok(label + ': a child by birth only by the date', S.minorByBirth(m, TODAY) === (dob === 'minor'));
+  }
+}
+ok('marked as a child beats a grown-up role when there is no date of birth', S.standingOf(M('a', { role: 'parent', is_child: true }), TODAY) === 'minor');
+ok('"not an adult" beats a grown-up relation when there is no date of birth', S.standingOf(M('a', { relation: 'mother', adult_confirmed: false }), TODAY) === 'minor');
+ok('nobody is not a child for the warm rule, and never an adult', !S.isMinor(null, TODAY) && !S.isAdultMember(null, TODAY));
 ok('a son with no date of birth is not known either way', S.standingOf(M('a', { relation: 'son' }), TODAY) === 'unsure');
 ok('nothing at all on file: not known', S.standingOf(M('a'), TODAY) === 'unsure');
 ok('an adult said yes: adult', S.standingOf(M('a', { adult_confirmed: true }), TODAY) === 'adult');
@@ -122,6 +142,13 @@ const aarav = M('aarav', { dob: '2014-02-02' }), dadi = M('dadi', { user_id: nul
   ok('two adults only: neither can remove the other', two.status === 409 && /one cannot remove the other/.test(two.error));
   const solo = S.removalRule({ me: papa, target: aarav, members: [papa, aarav], today: TODAY });
   ok('the only adult may remove a child alone', solo.needs === false && !solo.error);
+  // A mark is not a date of birth. One adult who says "not an adult" (or
+  // "is a child") about someone with no date of birth cannot then put them
+  // out alone.
+  const marked = M('rohan', { adult_confirmed: false }), kid = M('rohan', { is_child: true });
+  ok('sole adult, the other marked "not an adult" with no date of birth: refused', S.removalRule({ me: papa, target: marked, members: [papa, marked], today: TODAY }).status === 409);
+  ok('sole adult, the other marked as a child with no date of birth: refused', S.removalRule({ me: papa, target: kid, members: [papa, kid], today: TODAY }).status === 409);
+  ok('and it says why, kindly', /no date of birth/.test(S.removalRule({ me: papa, target: kid, members: [papa, kid], today: TODAY }).error));
   ok('a child cannot ask', S.removalRule({ me: aarav, target: rohan, members: [papa, maa, rohan, aarav], today: TODAY }).status === 403);
   ok('nobody removes themselves this way', S.removalRule({ me: papa, target: papa, members: [papa, maa], today: TODAY }).status === 400);
   ok('someone not on Parwah is taken out of the tree instead', S.removalRule({ me: papa, target: dadi, members: [papa, maa, dadi], today: TODAY }).status === 400);

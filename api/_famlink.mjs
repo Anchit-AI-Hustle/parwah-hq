@@ -121,7 +121,7 @@ async function activate(sql, l) {
   const nameOf = id => (names.find(n => n.id === id) || {}).name || 'the other family';
   await feed(sql, l.a_circle, null, 'Your family tree is now linked with ' + nameOf(l.b_circle) + ' 🌳');
   await feed(sql, l.b_circle, null, 'Your family tree is now linked with ' + nameOf(l.a_circle) + ' 🌳');
-  if (l.asked_by) await pushCircle(sql, l.a_circle, { title: '🌳 Family trees linked with ' + nameOf(l.b_circle),
+  if (l.asked_by) await pushCircle(sql, l.a_circle, { kind: 'other', title: '🌳 Family trees linked with ' + nameOf(l.b_circle),
     body: 'You can now see each other\'s family tree and Rishtedaar list. Nothing else is shared.', url: '/#people' }, { only: l.asked_by });
   return true;
 }
@@ -323,7 +323,7 @@ export async function famlinkAction(sql, req, circle, me, body) {
     const { all } = await bothAdults(sql, got[0]);
     for (const m of all) {
       if (m.id === me.id) continue;
-      await pushCircle(sql, m.circle_id, { title: '🌳 Family trees will be linked in ' + LINK_HOLD_HOURS + ' hours',
+      await pushCircle(sql, m.circle_id, { kind: 'other', title: '🌳 Family trees will be linked in ' + LINK_HOLD_HOURS + ' hours',
         body: (m.circle_id === circle.id ? otherName : circle.name) + ' and your family. Open the Family tab to say yes now, or to object.', url: '/#people' }, { only: m.id });
     }
     return good({ linkId: l.id, active: false, startsAt: starts, holdHours: LINK_HOLD_HOURS });
