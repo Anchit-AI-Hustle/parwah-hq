@@ -179,6 +179,16 @@ const papa = await person(fam, 'SHARMA', 'Sharma Family', 'Papa', 'parent');
 const rohan = await person(fam, 'SHARMA', 'Sharma Family', 'Rohan');
 const meera = await person(fam, 'SHARMA', 'Sharma Family', 'Meera');
 const priya = await person(fam, 'SHARMA', 'Sharma Family', 'Priya');
+// Stream A (A10): a grown-up is known by a date of birth (or an adult role),
+// and no list is put in force about someone who used Parwah in the last 30
+// days. The three adults have their dates of birth; Papa last opened Parwah
+// 40 days ago (his own phone is opened only near the end of this file).
+await admin.query(`update members set dob = '1984-02-02' where id = any($1::uuid[])`, [[rohan.id, meera.id, priya.id]]);
+const papaQuiet = async () => {
+  await admin.query(`update sessions set last_used_at = now() - interval '40 days' where user_id = $1`, [papa.userId]);
+  await admin.query(`update events set created_at = created_at - interval '40 days' where member_id = $1 and created_at > now() - interval '31 days'`, [papa.id]);
+};
+await papaQuiet();
 const SEC = '#pane-vault .subsec[data-sec="locator"]';
 const registerRead = (P) => P.waitForFunction(() => { const f = document.getElementById('locator-feed'); return f && !/Loading/.test(f.textContent); }, null, { timeout: T });
 const openRegister = async (who, opts) => {
@@ -247,7 +257,7 @@ ok('it asks first, in the app\'s own sheet, naming Papa and Meera', await shown(
 await design(R, '#asksheet', 'the "start it?" sheet');
 await R.click('#as-no'); await hiddenNow(R, '#asksheet');
 ok('"Not now" starts nothing', (await lists()).length === 0);
-await R.click('#al-body [data-alstart]'); await yes(R);
+await papaQuiet(); await R.click('#al-body [data-alstart]'); await yes(R);
 ok('Rohan sees that he asked Meera, and that nothing is open yet', await has(R, '#al-body [data-alpending]', /You asked Meera to confirm this list for Papa\..*It starts only if Meera agrees\. Nothing is open yet\./));
 let L = await lists();
 ok('the list waits: asked by Rohan, of Meera, not confirmed', L.length === 1 && L[0].status === 'pending' && L[0].started_by === rohan.id && L[0].ask_member === meera.id && L[0].confirmed_by === null, JSON.stringify(L));
@@ -267,7 +277,7 @@ ok('she is told who asked, and to say yes only if Papa has passed away', await h
 ok('she can say yes or not now; neither is the bright primary', await M.$eval('#al-body [data-alconfirm]', b => b.classList.contains('ghost')) && await M.$eval('#al-body [data-alcancel]', b => b.classList.contains('no')));
 await design(M, '#al-wrap', 'being asked to confirm');
 await shotAll(M, 'afterloss-confirm', '#al-wrap');
-await M.click('#al-body [data-alconfirm]');
+await papaQuiet(); await M.click('#al-body [data-alconfirm]');
 ok('saying yes asks once more, plainly', await shown(M, '#asksheet') && /Say yes only if Papa has passed away\. The family will be told\./.test(await M.textContent('#as-sub')));
 await M.click('#as-yes'); await hiddenNow(M, '#asksheet');
 ok('the list starts: 0 of 11 done for Meera (nine first things, the bank, the locker)', await progress(M, '0 of 11 done'));
@@ -379,11 +389,11 @@ ok('closed: opening it again asks who should confirm', await shown(M, '#al-body 
    && await has(M, '#al-body', /Two people open this again together/));
 await M.selectOption('#al-ask', rohan.id);
 await design(M, '#al-wrap', 'a closed list, with who should confirm');
-await M.click('#al-body [data-alreopen]');
+await papaQuiet(); await M.click('#al-body [data-alreopen]');
 ok('Meera asks Rohan: it waits, and nothing is open yet', await has(M, '#al-body [data-alpending]', /You asked Rohan to confirm this list for Papa.*Nothing is open yet/) && (await lists())[0].status === 'pending'
    && (await lists())[0].started_by === meera.id && (await lists())[0].confirmed_by === null);
 ok('Rohan\'s phone shows the request, and no steps', await has(R, '#al-body [data-alpending]', /Meera asked you to confirm/) && await shown(R, '#al-body [data-alconfirm]') && !(await R.$('#al-body [data-altick]')));
-await R.click('#al-body [data-alconfirm]'); await yes(R);
+await papaQuiet(); await R.click('#al-body [data-alconfirm]'); await yes(R);
 ok('Rohan says yes: it is open again, the locker step is back, still given to Rohan, the ticks kept', await progress(M, '2 of 11 done') && await has(M, stepSel('e:' + lockerId) + ' [data-almeta]', /Rohan is doing this/)
    && (await lists())[0].status === 'active' && (await lists())[0].confirmed_by === rohan.id);
 

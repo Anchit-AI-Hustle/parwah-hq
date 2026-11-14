@@ -486,11 +486,19 @@ await admin.query(`update sessions set last_used_at = now() - interval '40 days'
 await admin.query(`update events set created_at = created_at - interval '40 days' where member_id = $1`, [a.Nani.id]);
 await admin.query(`update members set checkin_ask = '10:00', checkin_ask_by = $2 where id = $1`, [a.Nani.id, a.Arjun.id]);
 const p0 = pushed.length;
+// Quiet for 40 days, but ON Parwah: one adult alone still cannot. A second
+// adult is named, and the mark waits for their yes (stream A, A11).
 r = await act(a.Arjun, 'remember_mark', { targetId: a.Nani.id, year: 2024 });
+ok('someone on Parwah is not marked by one adult alone, however long they have been quiet', r.status === 400 && r.field === 'ask' && r.needsSecond === true
+   && (await row(a.Nani.id)).remembered === false && pushed.length === p0, JSON.stringify(r));
+r = await act(a.Arjun, 'remember_mark', { targetId: a.Nani.id, year: 2024, askId: a.Bharat.id });
+ok('with a second adult named, it waits: nothing about Nani changes, and only that adult is asked', r.status === 200 && r.pending === true && (await row(a.Nani.id)).remembered === false
+   && pushed.length === p0 + 1 && pushed[p0].endpoint.endsWith(a.Bharat.id), JSON.stringify([r, pushed.slice(p0)]));
+r = await act(a.Bharat, 'remember_confirm', { targetId: a.Nani.id });
 ok('marking someone who is on Parwah keeps their check-in time: undo could not put it back', r.status === 200 && (await row(a.Nani.id)).remembered === true && (await row(a.Nani.id)).checkin_by === '09:00'
    && (await row(a.Nani.id)).checkin_ask === '10:00' && (await row(a.Nani.id)).checkin_ask_by === a.Arjun.id, JSON.stringify(r));
-ok('Nani is told once, and how to undo it; nobody else is pushed', pushed.length === p0 + 1 && pushed[p0].endpoint.endsWith(a.Nani.id)
-   && pushed[p0].body.body === 'Arjun marked you as no longer with us. If this is a mistake, open Parwah to undo it.', JSON.stringify(pushed.slice(p0)));
+ok('Nani is told once, and how to undo it; nobody else is pushed', pushed.length === p0 + 2 && pushed[p0 + 1].endpoint.endsWith(a.Nani.id)
+   && pushed[p0 + 1].body.body === 'Arjun marked you as no longer with us. If this is a mistake, open Parwah to undo it.', JSON.stringify(pushed.slice(p0)));
 await Fc.quietSweep(sql, A.id, istAt('23'));
 ok('the check-in sweep nudges Bharat, and never the person who is remembered', (await row(a.Bharat.id)).quiet_nudged_for !== null && (await row(a.Nani.id)).quiet_nudged_for === null && (await row(a.Nani.id)).quiet_alerted_for === null);
 r = await call(api.events, { token: a.Arjun.token, body: { code: A.code, memberId: a.Arjun.id, type: 'quiet_ask', targetId: a.Nani.id, checkinBy: '10:00' } });

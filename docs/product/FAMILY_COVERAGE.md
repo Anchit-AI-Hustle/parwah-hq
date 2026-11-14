@@ -23,6 +23,12 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | Where everyone is, only while they agree to share | Live | location shares, places |
 | Find a phone that is on silent | Live | find me |
 | A helper nearby is told when family is far | Live | nearby ladder |
+| An SOS reaches every family a person belongs to, and is shouted once more by the timer when nobody answers | Live | SOS fan-out, timer escalation |
+| Someone who has passed away is never called, texted, pushed or listed, anywhere | Live | enforced on the server: SOS contacts, the dialler, every push, Lost mode |
+| The family is told honestly when calls and texts are not set up, and when timed reminders last ran | Live | Safety card in Profile, the SOS screen |
+| A parent who chatted, ticked a medicine or answered the pulse is not reported as missing | Live | check-in counts any sign of life that day |
+| Nobody pauses another person's check-in without that person's yes | Live | a request on their own phone |
+| Marking someone who is on Parwah as no longer with us takes two adults | Live | a second adult confirms; the person can undo it |
 | Fall or no-movement signal from the phone | Later | needs the native apps (phase 2 onward) |
 | An alert reaches a person in every family they are in, and says which family | Live | push by person and device (`api/_push.mjs`) |
 | Alerts that respect a night: quiet hours on each person's own clock, six switches, one morning line; an SOS always comes through | Live | Notifications in Profile (`api/_pushrules.mjs`) |
@@ -35,6 +41,8 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | Need | Status | Where |
 |---|---|---|
 | Medicines: the list, the doses, the stock, the refill | Live | doses, inventory, refill |
+| The person decides whether the family hears about a medicine with no tick | Live | asked once on their own phone, off until they say yes; "Ran out" becomes a task for the family |
+| A task past its time is told to whoever has it first, and the family only later, naming nobody | Live | tasks |
 | Doctor visits: before, during, after, and the follow-ups | Live | visits, audio consultations |
 | Reports and numbers over time | Live | biomarkers, health records in the vault |
 | A hospital stay: papers, insurer, pre-auth, discharge | Live | admissions, pre-auth packets |
@@ -233,6 +241,41 @@ Honest limits:
   that it did not go, and offers Call.
 - **The live timer needs its key.** With no `CRON_SECRET` set on the live
   site the daily cron is refused; alerts still ring from every signed-in poll.
+**Safety and alert correctness (stream A, 2026-11-13)**
+
+| Feature | Module | Route | Tables |
+|---|---|---|---|
+| The timer shouts "still nobody" for an unanswered SOS, once | `api/events.mjs` (`escalateStaleSos`, at module scope) | the timer | none |
+| Each emergency push has its own topic; reminders are not emergencies | `api/_safetyrules.mjs`, `api/_push.mjs`, `sw.js` | every push | none |
+| Nobody who has passed away is called, texted, pushed or listed | `api/_sos.mjs`, `api/_sosdial.mjs`, `api/_push.mjs`, `api/_findme.mjs`, `api/_ladder.mjs`, `api/_tasks.mjs` | SOS, Lost mode, every push | none |
+| An SOS reaches every family the sender belongs to | `api/events.mjs`, `api/_sos.mjs` | `/api/events` type `sos` | one `sos` row per family |
+| Calls and texts not set up, said in words; when reminders last ran | `api/_safety.mjs`, `api/_sosdial.mjs` | `/api/events` GET, as `safety` | `kv` row `tick_at` |
+| Any sign of life counts as checked in | `api/_familycare.mjs` | the check-in sweep | none |
+| A pause on someone else's check-in waits for their yes | `api/_familycare.mjs` | `/api/events` types `quiet_away`, `quiet_away_answer` | `members.away_ask`, `away_ask_by` |
+| Tell the family if I miss a medicine: the person's own choice; "Ran out" is a task | `api/_doses.mjs` | `/api/care` action `dose_tell_set` | `members.dose_tell` |
+| A late task: the owner first, the family a window later | `api/_tasks.mjs` | the timer | `requests.overdue_alerted_at`, `family_alerted_for` |
+| No after-loss list about someone seen in the last 30 days; an adult needs a date of birth or an adult role | `api/_afterlossapi.mjs`, `api/_afterloss.mjs` | `/api/book?area=afterloss` | none |
+| Two adults to mark someone who is on Parwah | `api/_remember.mjs` | `/api/circle` actions `remember_mark`, `remember_confirm`, `remember_cancel` | `remember_asks` |
+
+Honest limits:
+- **Timed alerts still ride on phones and the outside timer.** Nothing new
+  schedules them. What changed is that the family can see when they last ran,
+  and is warned when that is more than 15 minutes ago.
+- **Without a Twilio account Parwah does not text or ring anyone.** The SOS
+  goes to the family inside Parwah and the phone offers the Call buttons; the
+  screen now says so.
+- **For 30 days after someone last used Parwah they cannot be marked as no
+  longer with us, and no "What needs doing" list can be started about them.**
+  This protects a living person from a mistake. It also means a family that
+  has just lost someone who used Parwah waits, or asks for help. The owner
+  may want a kinder path here (see the open question in the review).
+- **"Adult" needs a date of birth, or a role that says it** (the parent
+  role, father, mother, grandparent, a son or daughter-in-law, a spouse or a
+  child in the tree). A grown-up son or daughter with no date of birth is
+  asked to add it in Edit profile before starting or confirming a list.
+- **An SOS in two families is closed in each.** "I am safe" from the person
+  closes all of them; someone else marking it sorted closes it in their own
+  family only, as before.
 
 ## 4. What comes next
 

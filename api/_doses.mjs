@@ -10,7 +10,14 @@
 // Parwah never says whether a medicine or a dose is right. No dose advice.
 //
 // Not marked 60 minutes after its time: the person is nudged, once.
-// Not marked 120 minutes after its time: the family is told, once.
+// Not marked 120 minutes after its time: the family is told, once, AND ONLY
+// IF THE PERSON SAID YES to "Tell the family if I miss a medicine". That is
+// asked once, on their own phone; they can change it any time; until they
+// answer it is off. For someone who is not on Parwah, only the one person
+// who set the times (and so does the marking) hears, never the whole family.
+// A dose skipped because the medicine "Ran out" is not a missed dose: it
+// becomes a task for the family to get more.
+// No push here is sent as an emergency, and none reads as blame.
 // Both are claimed by one conditional UPDATE (the overdue_alerted_for
 // pattern in _tasks.mjs), so any number of phones polling at once send each
 // exactly once; and both only inside waking hours at home, and only in a
@@ -31,6 +38,8 @@ import { pushCircle } from './_push.mjs';
 import { validTz, reqTz, dayIn, fromWall } from './_recur.mjs';
 import { ensureBookSchema } from './_bookschema.mjs';
 import { ensureCarePrepSchema } from './_careprep.mjs';
+import { ensureTaskSchema, createTask } from './_tasks.mjs';
+import { doseTellWho, doseNudgeText, doseFamilyText, refillTitle, RAN_OUT } from './_safetyrules.mjs';
 
 export const NUDGE_AFTER_MIN = 60;    // the person is nudged
 export const ALERT_AFTER_MIN = 120;   // then the family is told
@@ -82,6 +91,9 @@ export async function ensureDoseSchema(sql) {
     )`;
     await sql`create unique index if not exists medicine_doses_once on medicine_doses (schedule_id, due_at)`;
     await sql`create index if not exists medicine_doses_circle on medicine_doses (circle_id, status, due_at)`;
+    // The person's own answer to "Tell the family if I miss a medicine".
+    // null: not asked yet, and so off.
+    await sql`alter table members add column if not exists dose_tell boolean`;
   });
   ready = true;
 }
@@ -173,8 +185,32 @@ export async function alertRecipients(sql, circleId, personId, medIds) {
     select distinct m.id from members m
     join family_book b on b.id = any(${medIds}::uuid[])
     where m.circle_id = ${circleId} and m.id <> ${personId} and m.user_id is not null
+      and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)
       and (b.visibility = 'circle' or b.about_member = m.id or b.by_member = m.id
            or exists (select 1 from book_access ba where ba.entry_id = b.id and ba.member_id = m.id))`;
+}
+
+// Who actually hears, after the person's own choice (doseTellWho):
+// the family that may read the medicine, the one carer who set its times,
+// or nobody.
+export async function doseAlertTo(sql, circleId, personId, medIds) {
+  const p = (await sql`select m.user_id is not null as on_app, m.dose_tell from members m where m.id = ${personId} and m.circle_id = ${circleId}`)[0];
+  if (!p) return [];
+  const carers = p.on_app ? [] : (await sql`select distinct created_by from medicine_schedules
+                                            where circle_id = ${circleId} and medicine_id = any(${medIds}::uuid[]) and created_by is not null`).map(r => r.created_by);
+  const who = doseTellWho({ onApp: p.on_app, tell: p.dose_tell, carerId: carers[0] });
+  if (who === 'nobody') return [];
+  const may = await alertRecipients(sql, circleId, personId, medIds);
+  return who === 'family' ? may : may.filter(t => carers.includes(t.id));
+}
+
+// The person's own answer, for their own phone: on (true, false, or null
+// when never asked) and whether to ask now (they have medicine times and
+// have not answered).
+export async function doseTellState(sql, circleId, meId) {
+  const r = (await sql`select m.dose_tell, exists (select 1 from medicine_schedules s where s.person_id = m.id and s.active) as has
+                       from members m where m.id = ${meId} and m.circle_id = ${circleId}`)[0];
+  return r ? { on: r.dose_tell, ask: r.dose_tell === null && r.has } : null;
 }
 
 // ---------- the sweep: nudge once, then tell the family once ----------
@@ -202,21 +238,14 @@ export async function sweepDoses(sql, circleId) {
   // One message per person per time, however many medicines share it.
   const group = (rows) => { const g = new Map(); for (const r of rows) { const k = r.person_id + '|' + r.slot; if (!g.has(k)) g.set(k, []); g.get(k).push(r); } return g; };
   for (const [, rows] of group(nudged)) {
-    await pushCircle(sql, circleId, {
-      title: '💊 Your ' + slot12(rows[0].slot) + ' medicines',
-      body: 'Tap the tick in Parwah once you have had them. If you skipped them, you can say so.',
-      url: '/#home', urgent: true
-    }, { only: rows[0].person_id });
+    // A reminder, never an emergency: it must not sit where an SOS would.
+    await pushCircle(sql, circleId, { ...doseNudgeText(slot12(rows[0].slot)), url: '/#home', soon: true }, { only: rows[0].person_id });
   }
   for (const [, rows] of group(alerted)) {
     const who = (await sql`select name from members where id = ${rows[0].person_id}`)[0];
-    const to = await alertRecipients(sql, circleId, rows[0].person_id, rows.map(r => r.medicine_id));
+    const to = await doseAlertTo(sql, circleId, rows[0].person_id, rows.map(r => r.medicine_id));
     for (const t of to) {
-      await pushCircle(sql, circleId, {
-        title: '💊 ' + (who ? who.name : 'Someone') + "'s " + slot12(rows[0].slot) + ' medicines are not marked',
-        body: 'Not marked in 2 hours. A tick is what was marked, not a check, so a call may be the kind thing.',
-        url: '/#people'
-      }, { only: t.id });
+      await pushCircle(sql, circleId, { ...doseFamilyText(who && who.name, slot12(rows[0].slot)), url: '/#people' }, { only: t.id });
     }
   }
   return nudged.length + alerted.length;
@@ -317,7 +346,8 @@ export async function doseAction(sql, circle, me, body, tzHint) {
     const status = body.status === 'skipped' ? 'skipped' : 'taken';
     const reason = status === 'skipped' ? (String(body.reason || '').trim().slice(0, 120) || null) : null;
     const rows = await sql`
-      select d.id, d.person_id, d.medicine_id, d.slot, d.status, d.due_at, m.name as person_name
+      select d.id, d.person_id, d.medicine_id, d.slot, d.status, d.due_at, m.name as person_name,
+             b.name as med_name, b.visibility
       from medicine_doses d
       join family_book b on b.id = d.medicine_id
       join members m on m.id = d.person_id
@@ -327,12 +357,29 @@ export async function doseAction(sql, circle, me, body, tzHint) {
     if (rows.length !== ids.length) return no(404, 'That dose is not here, or it is not shared with you');
     if (rows.some(r => new Date(r.due_at).getTime() > Date.now() + 3 * 3600000)) return no(409, 'That one is later - mark it nearer the time');
     let marked = 0;
+    const ranOut = [];
     for (const d of rows) {
       const u = await sql`update medicine_doses set status = ${status}, taken_at = now(), marked_by = ${me.id}, skip_reason = ${reason}
                           where id = ${d.id} and status = 'due' returning id`;
       if (!u[0]) continue;   // someone else marked it a moment ago
       marked++;
       if (status === 'taken') await moveStock(sql, circle.id, d, -1);
+      else if (reason === RAN_OUT) ranOut.push(d);
+    }
+    // "Ran out" is nobody's miss: it is a job. One open task for the family
+    // to get more, named only when the medicine is shared with the family.
+    const refills = [];
+    for (const d of ranOut) {
+      const title = refillTitle(d.person_name, d.med_name, d.visibility === 'circle');
+      if (refills.includes(title)) continue;
+      refills.push(title);
+      try {
+        await ensureTaskSchema(sql);
+        const open = await sql`select id from requests where circle_id = ${circle.id} and title = ${title}
+                               and status in ('open','assigned','claimed') limit 1`;
+        if (!open[0]) await createTask(sql, circle, me, { title, aboutMemberId: d.person_id, tz: validTz(body.tz) || tzHint || 'Asia/Kolkata',
+          notes: 'Marked as ran out. Tick this once there is more at home.' });
+      } catch (e) { /* the skip is still saved */ }
     }
     if (marked) {
       const d = rows[0];
@@ -341,7 +388,16 @@ export async function doseAction(sql, circle, me, body, tzHint) {
         ${d.person_id === me.id ? me.name + ' marked the ' + slot12(d.slot) + ' medicines ' + what
                                 : me.name + ' marked ' + d.person_name + "'s " + slot12(d.slot) + ' medicines ' + what})`;
     }
-    return yes({ marked, status });
+    return yes({ marked, status, refill: refills.length ? refills : undefined });
+  }
+
+  // "Tell the family if I miss a medicine": only ever the person's own choice.
+  if (action === 'dose_tell_set') {
+    if (typeof body.on !== 'boolean') return no(400, 'Choose yes or no');
+    await sql`update members set dose_tell = ${body.on} where id = ${me.id} and circle_id = ${circle.id}`;
+    if (body.on) await sql`insert into events (circle_id, member_id, type, text) values (${circle.id}, ${me.id}, 'care',
+      ${me.name + ' chose: tell the family if a medicine has no tick'})`;
+    return yes({ on: body.on });
   }
 
   if (action === 'dose_undo') {

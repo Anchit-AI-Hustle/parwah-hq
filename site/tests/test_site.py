@@ -865,7 +865,7 @@ CIRCLE_WIDE_OK = {
     ("events.mjs", "on now"):             "a live call is open to all",
     ("events.mjs", "could do with a call"): "the point of the pulse",
     ("care.mjs",   "needs a hand"):       "a job anyone can pick up",
-    ("_tasks.mjs", "payload, {})"):       "late, and nobody has it - or the family chose to tell everyone",
+    ("_tasks.mjs", "taskFamilyText(t.title, false)"): "past its time and nobody has it: anyone may take it (a task someone has tells only them first)",
     ("_tasks.mjs", "Nobody has it yet - first to tap"): "its time has come and nobody has it: anyone may take it",
     ("plans.mjs",  ""):                   "a plan invites the whole circle",
     ("games.mjs",  "lobby is open"):      "an open lobby invites everyone",
@@ -2503,14 +2503,15 @@ check("sos: a countdown with Cancel stands in for the question, and every SOS bu
       "SOS_COUNT = 5" in _app_src and "$('btn-sos').addEventListener('click', function(){ sosStart(''); });" in _app_src
       and "sosStart(said)" in _app_src)
 check("sos: sent as an emergency push (high urgency, stays on screen, long buzz)",
-      "urgency: 'high'" in (API_DIR / "_push.mjs").read_text(encoding="utf-8")
+      "urgency: 'high'" in (API_DIR / "_safetyrules.mjs").read_text(encoding="utf-8")
+      and "const how = pushOptions(payload);" in (API_DIR / "_push.mjs").read_text(encoding="utf-8")
       and "requireInteraction: urgent" in (REPO / "site/public/sw.js").read_text(encoding="utf-8"))
 check("sos: the message goes in the family chat with a map link",
-      "ensureCircleChat(sql, circle.id)" in _evt and "maps.google.com/?q=" in _sosmod)
+      "ensureCircleChat(sql, p.circleId)" in _evt and "maps.google.com/?q=" in _sosmod)
 # Owner (2026-10-10): anyone in the family or group ends an SOS, the person
 # who sent it included; until then the location stays held on (sos.e2e).
 check("sos: location is held on until the SOS is closed, by the sender or anyone in the family",
-      "lockForSos(sql, circle.id, me.id, sosId, pos)" in _evt and "unlockSos(sql, circle.id, row[0].member_id)" in _evt
+      "lockForSos(sql, circleId, memberId, sosId, pos)" in _evt and "unlockSos(sql, circle.id, row[0].member_id)" in _evt
       and "unlockSos(sql, circle.id, memberId)" in _evt
       and "status(423)" in _locapi and "s.sos_lock is null" in _locapi
       and "othersOnApp(sql, circle.id, memberId)) > 0" not in _evt)
@@ -3315,7 +3316,9 @@ _al_css = "\n".join(l for l in _al_app.splitlines() if l.startswith((".al", ".ca
 _al_legal = "This is a list to help you remember, not legal advice. Rules differ by bank and state."
 _al_sorry = "We are sorry. This list is here so nothing is forgotten."
 check("afterloss: its rules import nothing, and take the register's viewing rule as an argument",
-      not re.search(r"^\s*import\s", _al, re.M) and "rowFor(row, viewerId" in _al
+      re.findall(r"(?m)^import .*$", _al) == ["import { surelyAdult, ADULT_HOW } from './_safetyrules.mjs';"]
+      and not re.search(r"(?m)^\s*import\s", (API_DIR / "_safetyrules.mjs").read_text(encoding="utf-8"))
+      and "rowFor(row, viewerId" in _al
       and "if (typeof rowFor !== 'function') throw" in _al)
 check("afterloss: the single viewing rule is reused: registerRowFor, never a second rule",
       "import { registerRowFor, registerLogsView, registerSecretRisk } from './_register.mjs';" in _al_api
@@ -3353,7 +3356,8 @@ check("afterloss: a tick, an assignment and a note are one statement each, so no
 check("afterloss: a note is checked for a card number, CVV, OTP, PIN or password",
       "afterlossNote(body.note, [noteRisk, registerSecretRisk])" in _al_api)
 check("afterloss: its pushes are the ask (one place, at most three an hour per person about one person), the family once when it comes into force, and the two starters when the person closes it; nothing timed",
-      _al_api.count("await pushCircle(") == 4 and "afterlossPush('ask', { starter: me.name, person: person.name }), { only: askId }" in _al_api
+      _al_api.count("await pushCircle(") == 5 and "afterlossPush('ask', { starter: me.name, person: person.name }), { only: askId }" in _al_api
+      and "await pushCircle(sql, g.circle.id, told, { only: list.person_id, evenRemembered: true });" in _al_api
       and _al_api.count("afterlossPush('ask'") == 1 and _al_api.count("await pushAsk(sql, g.circle.id, g.me,") == 2
       and "rateLimit(sql, 'afterloss_ask', me.id + ':' + person.id, 3, 3600, { failClosed: true })" in _al_api
       and "afterlossPush(can.reopening ? 'reopened' : 'started'," in _al_api and _al_api.count("afterlossPush('void'") == 1
@@ -3489,12 +3493,12 @@ check("facts: every text passes the notes rule (no card number, CVV, OTP or bank
       "import { noteRisk } from './_notesapi.mjs';" in _wf_fact and _wf_fact.count("const risk = noteRisk(text);") == 2
       and "const risk = noteRisk(line);" in _wf_rem)
 check("remembrance: only an adult marks or undoes (the marked person may undo their own mark, never set it), with the year at least",
-      "if (!selfUndo && !isAdult(me.dob, today)) return bad('An adult in the family does this.', 403);" in _wf_rem
+      "if (!selfUndo && !selfCancel && !isAdult(me.dob, today)) return bad('An adult in the family does this.', 403);" in _wf_rem
       and "const selfUndo = a === 'remember_undo' && body.targetId === me.id;" in _wf_rem
-      and "if (t.id === me.id && !selfUndo) return bad('This is for someone else in the family.');" in _wf_rem
+      and "if (t.id === me.id && !selfUndo && !selfCancel) return bad('This is for someone else in the family.');" in _wf_rem
       and "const selfUndo = !body.on && t.id === me.id;" in _mb_api
       and "if (t.id === me.id && !selfUndo) return bad(400," in _mb_api
-      and _wf_rem.index("if (!selfUndo && !isAdult(me.dob, today))") < _wf_rem.index("if (a === 'remember_mark')") < _wf_rem.index("if (a === 'remember_undo')")
+      and _wf_rem.index("if (!selfUndo && !selfCancel && !isAdult(me.dob, today))") < _wf_rem.index("if (a === 'remember_mark')") < _wf_rem.index("if (a === 'remember_undo')")
       and "if (year === null) return { error: 'Write the year." in _wf_rules and not re.search(r"(?m)^import ", _wf_rules))
 check("remembrance: marking destroys nothing undo cannot restore: the check-in time is never cleared",
       not re.search(r"set\s+checkin_by\s*=\s*null", _wf_rem) and "checkin_ask = null" not in _wf_rem
@@ -3506,11 +3510,11 @@ check("remembrance: someone who used Parwah in the last 30 days is not marked by
       and "if (await rememberRecent(sql, full)) return bad(409, rememberRecentWhy(t.name));" in _mb_api
       and "' marked you as no longer with us. If this is a mistake, open Parwah to undo it.'" in _wf_rem
       and "rateLimit(sql, 'remember_tell', me.id + ':' + target.id, 3, 3600, { failClosed: true })" in _wf_rem
-      and _wf_rem.count("await rememberTell(sql, circle.id, me, t);") == 1 and "await rememberTell(sql, circle.id, me, full);" in _mb_api)
+      and _wf_rem.count("await rememberTell(sql, circle.id, by, t);") == 1 and "await rememberTell(sql, circle.id, me, full);" in _mb_api)
 check("remembrance: every sweep that would chase or name a remembered person skips them (check-ins, doses, tasks, the call rota, cards)",
       _fc_api.count("and not m.remembered") >= 2
       and _dz.count("and not exists (select 1 from members m where m.id = d.person_id and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 2
-      and _tasksrc.count("and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 2
+      and _tasksrc.count("and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 3
       and _fc_api.count("and not exists (select 1 from members m where m.id = requests.about_member and coalesce((to_jsonb(m)->>'remembered')::boolean, false))") == 1
       and "if (!who || who.remembered || (who2 && who2.remembered) || dstr(c.date) > todayFor(who)) continue;" in (API_DIR / "_bond.mjs").read_text(encoding="utf-8"))
 check("remembrance: my own sheet offers to take a mistaken mark off, and never to set one",
@@ -3978,6 +3982,105 @@ check("ekta: the rules test runs in the gate, and the db and browser tests run i
 check("ekta: the coverage map says what is live and what was left out, and the review is written down",
       "Ekta asks before she acts" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
       and "Ekta: the confirm card" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
+
+# ---------- Safety and alert correctness (stream A) ----------
+# The rules that must never regress. Proved in site/tests/safetytest.mjs,
+# site/tests/db/safety.dbtest.mjs and safety.e2e.dbtest.mjs; held here.
+_sf_rules = (API_DIR / "_safetyrules.mjs").read_text(encoding="utf-8")
+_sf_push = (API_DIR / "_push.mjs").read_text(encoding="utf-8")
+_sf_dial = (API_DIR / "_sosdial.mjs").read_text(encoding="utf-8")
+_sf_find = (API_DIR / "_findme.mjs").read_text(encoding="utf-8")
+_sf_al = (API_DIR / "_afterloss.mjs").read_text(encoding="utf-8")
+_sf_alapi = (API_DIR / "_afterlossapi.mjs").read_text(encoding="utf-8")
+_sf_api = {f.name: f.read_text(encoding="utf-8") for f in sorted(API_DIR.glob("*.mjs"))}
+_sf_gone = "coalesce((to_jsonb(m)->>'remembered')::boolean, false)"
+# The timer can only call what exists where it lives: a function declared
+# inside the request handler is invisible to it, and the error was swallowed.
+_sf_tick = _evt[_evt.index("async function dueCircles(sql)"):_evt.index("export default async function handler")]
+_sf_tick = _sf_tick[:_sf_tick.index("export async function escalateStaleSos")] if "export async function escalateStaleSos" in _sf_tick else _sf_tick
+_sf_called = set(re.findall(r"\b([A-Za-z_]\w*)\(sql\b", _sf_tick)) - {"dueCircles", "runTick"}
+_sf_known = set()
+for _m in re.finditer(r"(?m)^import\s*\{([^}]*)\}\s*from", _evt):
+    for _n in _m.group(1).split(","):
+        _n = _n.strip()
+        if _n: _sf_known.add(_n.split(" as ")[-1].strip())
+_sf_known |= set(re.findall(r"(?m)^(?:export\s+)?(?:async\s+)?function\s+(\w+)", _evt))
+_sf_handler = _evt[_evt.index("export default async function handler"):_evt.index("// ONE PRESS OF SOS")]
+check("safety: every function the timer calls is at module scope or imported, and none is declared inside the handler",
+      len(_sf_called) >= 12 and not (_sf_called - _sf_known) and "escalateStaleSos" in _sf_called
+      and not re.search(r"(?m)^\s*(?:async\s+)?function\s+\w+\s*\(", _sf_handler),
+      ", ".join(sorted(_sf_called - _sf_known)))
+_sf_urgent = [(n, l.strip()) for n, s in _sf_api.items() for l in s.splitlines()
+              if "urgent: true" in l and not l.strip().startswith("//") and n not in ("_safetyrules.mjs",)]
+check("safety: every emergency push has a topic of its own, so nothing replaces an SOS that has not arrived",
+      len(_sf_urgent) >= 7 and all("topic: pushTopic(" in l for _, l in _sf_urgent)
+      and "'parwah-sos'" not in _sf_push and "const how = pushOptions(payload);" in _sf_push
+      and "topic: pushTopic('sos', p.sosId)" in _evt and "TOPIC_OK = /^[A-Za-z0-9_-]{1,32}$/" in _sf_rules
+      and "d.tag.length <= 32 && d.tag" in (REPO / "site/public/sw.js").read_text(encoding="utf-8"),
+      "; ".join(n for n, l in _sf_urgent if "topic: pushTopic(" not in l))
+check("safety: a medicine nudge, a task reminder and a plan reminder are never sent as an emergency",
+      all("urgent: true" not in _sf_api[n] for n in ("_doses.mjs", "_tasks.mjs", "_plansweep.mjs"))
+      and "url: '/#home', soon: true }" in _dz and "url: '/#care', soon: true }" in _tasksrc)
+# THE OWNER'S RULE: someone who has passed away is never called, texted,
+# pushed or listed. Each of these is the server, not the screen.
+check("safety: someone who has passed away is never in the SOS contacts, never texted or rung, never the Lost-mode call person",
+      "return orderContacts({ chosen, own:" in _sosmod and _sf_gone + " as remembered" in _sosmod
+      and "seen.has(t) || gone.has(t)" in _sf_rules and "const alive = family.filter(m => m && !m.remembered);" in _sf_rules
+      and "if (to && !gone.has(to) && !people.some(p => p.to === to))" in _sf_dial and "await rememberedPhones(sql, sc[0].circle_id)" in _sf_dial
+      and "seen.has(t) || gone.has(t)) continue;" in _evt
+      and _sf_find.count("and not " + _sf_gone) >= 4 and "so no phone is rung." in _sf_find)
+check("safety: someone who has passed away is never pushed, by any module; the one exception is the note that lets a mistake be undone",
+      "and (${!!evenRemembered} or not " + _sf_gone + ")" in _sf_push
+      and "evenRemembered = false } = {}) {" in _sf_push
+      and sorted(n for n, s in _sf_api.items() if "evenRemembered: true" in s) == ["_afterlossapi.mjs", "_remember.mjs"]
+      and sum(s.count("evenRemembered: true") for s in _sf_api.values()) == 2)
+check("safety: an SOS reaches every family the sender belongs to, and a group only when it is the one open",
+      "others = await sosOtherFamilies(sql, circle.id, me.user_id);" in _evt
+      and "and c.id <> ${circleId} and coalesce(c.kind, 'family') = 'family'" in _sosmod
+      and "await sosSafeElsewhere(sql, circle.id, sm[0]);" in _evt)
+check("safety: calls and texts not set up is said in words, in Profile and on the SOS screen",
+      "CALLS_OFF_LINE = 'Calls and texts are not set up. Family is told inside Parwah.'" in _sf_rules
+      and "if (!cfg.on) out.line = CALLS_OFF_LINE;" in _sf_dial and 'id="sf-calls"' in _app_src
+      and "if (j.dialed && j.dialed.line && !j.throttled) $('ss-status').textContent += " in _app_src)
+check("safety: any sign of life that day counts as checked in (the tap, a pulse, a medicine tick, a chat message), never an SOS message",
+      all(x in _fc_api for x in ("from events where member_id = ${memberId} and type = 'checkin'", "from pulse where member_id = ${memberId} and day = ${today}",
+                                 "from medicine_doses where marked_by = ${memberId} and taken_at >= ${from}",
+                                 "from messages where member_id = ${memberId} and created_at >= ${from} and text not like '🆘%'")))
+check("safety: pausing someone else's check-in is a question on their own phone, never a notice afterwards",
+      "if (t.id !== me.id && t.on_app) {" in _fc_api and "set away_ask = ${until || 'back'}, away_ask_by = ${me.id}" in _fc_api
+      and "'quiet_away_answer'" in _fc_api and "paused your daily check-in" not in _fc_api
+      and "data-sfawy" in _app_src and "data-sfawn" in _app_src)
+check("safety: a medicine with no tick tells the family only after the person's own yes; for someone not on Parwah only the carer; Ran out is a task",
+      "const who = doseTellWho({ onApp: p.on_app, tell: p.dose_tell, carerId: carers[0] });" in _dz
+      and "const to = await doseAlertTo(sql, circleId, rows[0].person_id," in _dz
+      and "update members set dose_tell = ${body.on} where id = ${me.id} and circle_id = ${circle.id}" in _dz
+      and "if (onApp) return tell === true ? 'family' : 'nobody';" in _sf_rules
+      and "else if (reason === RAN_OUT) ranOut.push(d);" in _dz and "data-sftell" in _app_src and 'id="sf-tellbtn"' in _app_src
+      and "are not marked" not in _dz)
+check("safety: a task past its time tells its owner first and alone; the family a window later, in words that name nobody",
+      "await pushCircle(sql, circleId, { ...taskOwnerText(t.title, t.status), url: '/#care' }, { only: t.claimed_by });" in _tasksrc
+      and "and overdue_alerted_at < now() - make_interval(mins => ${TASK_FAMILY_AFTER_MIN})" in _tasksrc
+      and "has it)" not in _tasksrc and "who.name + ' has" not in _tasksrc and "TASK_FAMILY_AFTER_MIN = 60" in _sf_rules)
+check("safety: no after-loss list about someone who used Parwah in the last 30 days, at start, confirm and reopen; no date of birth and no adult role is not an adult",
+      _sf_alapi.count("if (await recentStop(sql, res,") == 3 and "await rememberRecent(sql, person)" in _sf_alapi
+      and "return surelyAdult(m, today);" in _sf_al and "return age === null ? adultByRole(m) : age >= 18;" in _sf_rules
+      and "if (!m.dob) return true;" not in _sf_al)
+check("safety: someone on Parwah is never marked as no longer with us by one adult: a second adult confirms, and they can still undo it",
+      "if (!t.remembered && t.user_id) {" in _wf_rem and "create table if not exists remember_asks" in _wf_rem
+      and "if (ask.ask_member !== me.id) return bad('Only the person who was asked can confirm this.', 403);" in _wf_rem
+      and _wf_rem.count("await rememberRecent(sql, t)") == 2
+      and "'remember_confirm', 'remember_cancel'" in _sf_api["circle.mjs"]
+      and "if (full.user_id) return bad(409, 'This needs a second adult to confirm." in _mb_api
+      and 'id="sf-rm-ask"' in _app_src and 'id="sf-mp-ask"' in _app_src and "data-sfrmyes" in _app_src)
+check("safety: the timer writes down each run, the family reads the time from before this phone woke it, and no scheduler is made",
+      "await one(() => tickMark(sql));" in _evt
+      and _evt.index("const tickBefore = await tickSeen(sql)") < _evt.index("await runTick(sql, PIGGYBACK_BUDGET_MS)")
+      and "safety: await safetyState(sql, circle, g.me, tickBefore)" in _evt and "TIMER_LATE_MIN = 15" in _sf_rules
+      and 'id="sf-timer"' in _app_src and "setInterval" not in _sf_api["_safety.mjs"] and "cron" not in _sf_api["_safety.mjs"].lower())
+check("safety: its tests are in the gate and in npm run test:db, and its browser test never waits a fixed time",
+      "node site/tests/safetytest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all("site/tests/db/" + f in (REPO / "package.json").read_text(encoding="utf-8") for f in ("safety.dbtest.mjs", "safety.e2e.dbtest.mjs"))
+      and "waitForTimeout" not in (REPO / "site/tests/db/safety.e2e.dbtest.mjs").read_text(encoding="utf-8"))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

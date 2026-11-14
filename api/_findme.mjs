@@ -79,8 +79,13 @@ export async function findState(sql, circle, me, token) {
       const here = !!token && u.lost_session === tokenHash(token);
       if (here) lostHere = true;
       else {
-        const call = u.lost_call
-          ? (await sql`select name, phone from members where id = ${u.lost_call} and phone is not null`)[0] : null;
+        // The person chosen then, unless they have since passed away: then
+        // the next living person with a number, so a finder still reaches one.
+        const call = (u.lost_call
+          ? (await sql`select m.name, m.phone from members m where m.id = ${u.lost_call} and m.phone is not null and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`)[0] : null)
+          || (u.lost_call ? (await sql`select m.name, m.phone from members m where m.circle_id = ${circle.id} and m.id <> ${me.id} and m.phone is not null
+                                        and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)
+                                      order by (m.user_id is not null) desc, m.created_at limit 1`)[0] : null);
         lost = { since: u.lost_at, message: u.lost_msg, call: call ? { name: call.name, phone: call.phone } : null };
       }
     }
@@ -103,9 +108,11 @@ export async function findAction(sql, circle, me, body, token) {
   const fam = circle.kind === 'group' ? 'group' : 'family';
 
   if (action === 'ring') {
-    const t = (await sql`select id, name, user_id from members where id = ${String(body.targetId || '')}::uuid and circle_id = ${circle.id}`
+    const t = (await sql`select m.id, m.name, m.user_id, coalesce((to_jsonb(m)->>'remembered')::boolean, false) as remembered from members m
+                         where m.id = ${String(body.targetId || '')}::uuid and m.circle_id = ${circle.id}`
       .catch(() => []))[0];
     if (!t) return { status: 404, json: { ok: false, error: 'That person is not in this ' + fam } };
+    if (t.remembered) return { status: 400, json: { ok: false, error: t.name + ' is remembered here, so no phone is rung.' } };
     if (!t.user_id) return { status: 400, json: { ok: false, error: t.name + ' is not on Parwah, so their phone cannot ring from here. A call might help.' } };
     if (!(await rateLimit(sql, 'findring', me.id + ':' + t.id, 1, 60))) {
       return { status: 429, json: { ok: false, error: 'It is already ringing - give it a minute before ringing again' } };
@@ -133,12 +140,13 @@ export async function findAction(sql, circle, me, body, token) {
     if (m.error) return { status: 400, json: { ok: false, error: m.error, field: 'message' } };
     let call = null;
     if (body.callId) {
-      call = (await sql`select id from members where id = ${String(body.callId)}::uuid and circle_id = ${circle.id}
-                          and id <> ${me.id} and phone is not null`.catch(() => []))[0];
+      call = (await sql`select m.id from members m where m.id = ${String(body.callId)}::uuid and m.circle_id = ${circle.id}
+                          and m.id <> ${me.id} and m.phone is not null and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`.catch(() => []))[0];
       if (!call) return { status: 400, json: { ok: false, error: 'Pick someone in the ' + fam + ' who has a phone number', field: 'call' } };
     } else {
-      call = (await sql`select id from members where circle_id = ${circle.id} and id <> ${me.id} and phone is not null
-                        order by (user_id is not null) desc, created_at limit 1`)[0] || null;
+      // Never someone who has passed away: a finder must reach a person.
+      call = (await sql`select m.id from members m where m.circle_id = ${circle.id} and m.id <> ${me.id} and m.phone is not null and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)
+                        order by (m.user_id is not null) desc, m.created_at limit 1`)[0] || null;
     }
     await sql`update users set lost_at = now(), lost_msg = ${m.text}, lost_session = ${token ? tokenHash(token) : null},
               lost_circle = ${circle.id}, lost_call = ${call ? call.id : null} where id = ${me.user_id}`;

@@ -702,3 +702,20 @@ Checked at 320 and 390, light and dark, and at 1280 for sideways scroll and smal
 | C14 | 9 Error recovery | A voice not heard, or no connection, left a silent screen | 2 | Fixed: she says so in the member's language, on screen and aloud |
 
 New patterns: the confirm card (`.ek2card` with `.ek2row`), the bar under her chat (`.ek2bar`), a plain list with one action per row (`.ek2list`), a sheet heading (`.ek2h`) and the read-aloud button (`.ek2sunao`). All from existing tokens; no new token. The sheets are the app's one bond sheet; the morning row is a `bondtoday` row. Ids start with `ek2-`.
+### Review N (stream A), safety and alerts said honestly (2026-11-13)
+
+Checked at 320 and 390 in light and dark, and at 1280 for sideways scroll, on the real app with a family of three (`site/tests/db/safety.e2e.dbtest.mjs` measures 44px targets, the 12px floor, AA contrast and sideways scroll on the Safety card, the two questions on Today, the sheet that asks for a second adult, a person's card with a mark that is waiting, the confirmation sheet and the SOS screen).
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| A1 | 1 Visibility | A family could believe a phone would ring in an SOS when no calls are set up | 4 | Fixed: "Calls and texts are not set up. Family is told inside Parwah." in Profile and on the SOS screen, next to the Call buttons |
+| A2 | 1 Visibility | Timed alerts can be late and nobody could tell | 3 | Fixed: one quiet line for adults, "Reminders last ran: 2 minutes ago", and a plain warning past 15 minutes. The time shown is from before this phone woke the timer, so a gap is not hidden by opening the app |
+| A3 | 3 User control | A person's check-in could be paused for 90 days by someone else, with a notice afterwards | 4 | Fixed: it is a question on their own phone, "Nothing changes until you say yes". The asker sees it waiting |
+| A4 | 3 User control | A medicine with no tick told the whole family, whatever the person wanted | 4 | Fixed: asked once on their own phone, off until they answer, changeable under Profile. For someone not on Parwah only the one carer who marks is told |
+| A5 | 2 Real-world match | "medicines are not marked" and "Running late (Rohan has it)" read as blame | 3 | Fixed: "have no tick yet ... may have had them and not tapped", and a late task tells only its owner first; the family line a window later names nobody |
+| A6 | 5 Error prevention | One adult could mark a living, quiet person as no longer with us | 4 | Fixed: for someone on Parwah a second adult is named and must confirm; their card shows it waiting; the person can stop it, and can still undo it afterwards |
+| A7 | 2 Real-world match | Dignity: someone who has passed away could still be listed on the SOS screen or rung | 4 | Fixed on the server, everywhere a person is chosen to call or alert |
+| A8 | 9 Error recovery | A grown-up with no date of birth is refused when starting "What needs doing" | 2 | Fixed in words: "Add your date of birth in Edit profile first." Open: the after-loss screen could offer that step itself |
+| A9 | 2 Real-world match | A family that has just lost someone who used Parwah is told "used Parwah recently" for 30 days | 3 | Open, for the owner: the guard protects a living person; a kinder path (two adults and a waiting day, with the person told) may be wanted |
+
+New patterns: `.sf-line` (one quiet line in a card, `.sf-warn` when it is a warning) and `.sf-mp` (a waiting note with its buttons on a person's card). Both are built from existing tokens; no new token. The questions on Today are the existing `crow fcrow` rows. Ids start with `sf-`.
