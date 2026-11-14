@@ -8637,7 +8637,13 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     pendingResets = j.pinResets;
     renderResets();
   }
+  var resetsDrawn = null;
   function renderResets(){
+    // The same requests as last time: leave the cards alone. Every refresh
+    // used to redraw them, which wiped the two numbers someone was typing.
+    var sig = pendingResets.map(function(r){ return r.id + ':' + r.name; }).join('|');
+    if (sig === resetsDrawn && (!$('pinresets') || $('pinresets').children.length === pendingResets.length)) return;
+    resetsDrawn = sig;
     var h = pendingResets.map(function(r){
       return '<div class="card resetcard" data-resetcard="' + esc(r.id) + '">' +
         '<h3>🔑 ' + esc(r.name) + ' cannot get in. Let them back in?</h3>' +
