@@ -30,3 +30,4 @@ ops/deploy.log
 /.kotlin/
 /local.properties
 *.iml
+.env.local
