@@ -50,7 +50,9 @@ const ok = (c, m) => { console.log((c ? 'PASS  ' : 'FAIL  ') + m); c ? pass++ : 
 
 // Every page a person can be sent to, the app included: it is used on the
 // same phones. 320px is the narrowest phone still in real use in India.
-const ROUTES = ['/', '/welcome/', '/story/', '/story/aisle/', '/care/', '/get/', '/launch/', '/privacy/', '/demo/'];
+// /apna/ is one person's no-sign-in page (api/_eldlink.mjs); with no key it shows its
+// "this link is not on" screen, which is what a stranger would see.
+const ROUTES = ['/', '/welcome/', '/story/', '/story/aisle/', '/care/', '/get/', '/launch/', '/privacy/', '/demo/', '/apna/'];
 const WIDTHS = [[320, 'a 320px phone'], [390, 'a 390px phone']];
 
 const browser = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});

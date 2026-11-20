@@ -361,8 +361,21 @@ ok('I5. a blessing can be sent to Dadi, who is not on Parwah, because her link i
 await M.click('#cn-who [data-cnto="' + dadi.id + '"]');
 await M.click('#cn-lines [data-cnline="khush"]');
 await M.waitForFunction(() => document.getElementById('cn-sheet').hidden, null, T);
+// A card being written for her: the writers are told it opens on her link on the day.
+const { wallIn } = await import('../../../api/_rememberrules.mjs');
+const cardD = await api(rohan, 'plans', { action: 'bond_card_start', forMember: dadi.id, occasion: 'birthday', date: wallIn(Date.now(), 'Asia/Kolkata').date, title: "Dadi's birthday" });
+await api(rohan, 'plans', { action: 'bond_card_add', cardId: cardD.id, kind: 'text', text: 'Pranam Dadi, janamdin mubarak' });
+await M.reload(); await M.waitForSelector('#bond-today [data-bcopen="' + cardD.id + '"]', T);
+await M.click('#bond-today [data-bcopen="' + cardD.id + '"]');
+ok('I5. a card for Dadi says it also opens on her link on the day', await sees(M, '#bs-body', /On the day, this card also opens on Dadi\'s link\./));
+await design(M, '#bondsheet', 'a card for someone whose link is on');
+await M.click('#bs-x');
 await D.reload();
-ok('I5. and it shows on her page, with no extra work for Meena', await sees(D, '#view [data-act="inbox"]', /From your family \(2 new\)/));
+ok('I5. the blessing and the card show on her page, with no extra work for the family', await sees(D, '#view [data-act="inbox"]', /From your family \(3 new\)/));
+await D.click('#view [data-act="inbox"]');
+ok('I2b. her card opens on the page with who wrote each line', await sees(D, '#card-in', /Rohan[\s\S]*Pranam Dadi, janamdin mubarak/));
+await design(D, '#apna', 'Dadi\'s page: her card', 56);
+await D.click('#view [data-act="home"]');
 
 // ================================================================ revoke
 await R.click('#el-card [data-eloff]');

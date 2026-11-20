@@ -705,6 +705,9 @@ export async function eldlinkApi(req, res, hooks = {}) {
   let sql;
   try { sql = db(); await ensureSchema(sql); await ensureEldSchema(sql); } catch (e) { return failDb(res, e); }
   try {
+    // The answer to "make a link" carries the key once, to the adult who asked:
+    // nothing on this route is ever kept by a browser or anything in between.
+    res.setHeader('Cache-Control', 'no-store');
     const h = (req && req.headers) || {};
     const paged = h[ELD.header] !== undefined || h['X-Parwah-Link'] !== undefined || (req.body && typeof req.body.op === 'string');
     if (paged) return await pageApi(sql, req, res, hooks);

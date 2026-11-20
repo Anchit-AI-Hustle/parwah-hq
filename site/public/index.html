@@ -14073,6 +14073,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (c.offApp && j.entries.length) h += '<p class="hint" style="margin-top:var(--space-12)">' + esc(c.for_member ? bondName(c.for_member) : (c.for_name || 'They')) + ' is not on Parwah. Show it on this phone, print it, or send the words.</p>' + elCardNote(c) +
       '<button type="button" class="cbtn bondwide" data-hdcardprint="1">🖨 Show or print this card</button>' +
       '<button type="button" class="cbtn ghost bondwide" data-hdcardshare="1">📤 Share the words</button>';
+    // Still being written: the writers are told it will open on the link on the day.
+    if (c.offApp && !j.entries.length) h += elCardNote(c);
     return h;
   }
   function hdCardWords(j){
@@ -18938,7 +18940,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       var ans = [];
       (j.sent || []).forEach(function(s){ (s.replies || []).forEach(function(r){ if (Date.now() - Date.parse(r.at) < 86400000) ans.push({ s: s, r: r }); }); });
       if (ans.length) h += '<div class="cn-card ok" data-cnanswers="1"><h3>🧡 Answers for you</h3>' + ans.slice(0, 6).map(function(x){
-        return '<p><b>' + esc(cnFirst(x.r.name)) + '</b>' + (x.r.hasVoice ? ' sent a voice reply' : ': ' + esc(x.r.line)) + '</p>' +
+        return '<p><b>' + esc(cnFirst(x.r.name)) + '</b>' + (x.r.hasVoice ? ' sent a voice reply' : ': ' + esc(x.r.line)) + (x.r.via === 'link' ? ' <span class="hdtold">(' + esc(elLabel(x.r.name)) + ')</span>' : '') + '</p>' +
           (x.r.hasVoice ? '<div class="cn-acts">' + cnVoice('cn-r-' + x.s.id + '-' + x.r.memberId, x.r.secs, '&reply=' + x.s.id + '&by=' + x.r.memberId) + '</div>' : '');
       }).join('') + '</div>';
       if (j.me && j.me.rotaNo) h += '<div class="cn-card" data-cnrotaoff="1"><h3>📞 No daily call, as you asked</h3><p>The family does not set one up unless you say so.</p>' +
