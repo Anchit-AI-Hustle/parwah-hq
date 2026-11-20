@@ -4559,6 +4559,89 @@ check("standing: the coverage map says what is live, and the review is written d
       "| Equal standing: who decides what |" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
       and "accounts, joining and equal standing" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
 
+# ---------- 10zz. Today for each person, and five places (stream G) ----------
+# Found by a family of five walking through the real app. The journeys run
+# in site/tests/db/todaynav.e2e.dbtest.mjs and the read's visibility in
+# todaynav.dbtest.mjs; these keep the source honest.
+_tn_app = (REPO / "site" / "public" / "index.html").read_text(encoding="utf-8")
+_tn_api = (API_DIR / "_today.mjs").read_text(encoding="utf-8")
+_tn_rules = (API_DIR / "_todayrules.mjs").read_text(encoding="utf-8")
+_tn_chats = (API_DIR / "chats.mjs").read_text(encoding="utf-8")
+check("today: 'From the family' rides /api/chats in an underscore module, behind requireMember, and only reads",
+      not (API_DIR / "today.mjs").exists() and "if (area === 'today') return todayApi(req, res);" in _tn_chats
+      and "const g = await requireMember(sql, q.circle, q.member, tokenOf(req));" in _tn_api
+      and "if (!isUuid(q.member))" in _tn_api and "if (req.method !== 'GET')" in _tn_api
+      and not re.search(r"\b(insert into|update \w+ set|delete from)\b", _tn_api))
+check("today: GATHERING NEVER WIDENS WHAT A MEMBER MAY SEE - each part is read through the module that owns it",
+      all(x in _tn_api for x in ("import { listChats } from './chats.mjs';", "import { baatList } from './_baat.mjs';",
+                                 "import { ashirwadInbox } from './_ashirwad.mjs';", "shukriyaList } from './_heard.mjs';",
+                                 "sealedTo } from './_bond.mjs';", "import { doseState, ensureDoseSchema } from './_doses.mjs';",
+                                 "memberCards } from './_standing.mjs';"))
+      and "m.chat_id = any(${ids}::uuid[])" in _tn_api and "if (!s.forMe" in _tn_api and "if (b.mine || b.reply) continue;" in _tn_api
+      and "!sealedTo(c, me) && c.for_member !== me.id && c.for_member2 !== me.id" in _tn_api
+      and "export async function listChats(" in _tn_chats
+      and "export async function ashirwadInbox(" in (API_DIR / "_ashirwad.mjs").read_text(encoding="utf-8")
+      and "const inbox = await ashirwadInbox(sql, circle, me);" in (API_DIR / "_ashirwad.mjs").read_text(encoding="utf-8"))
+check("today: a child is never sent a request to join, by the one adult rule, on the server and again in the order",
+      "const adult = !minor && (await soft(async () => (await standingOfCaller(sql, circle, me.id, nowMs)).may, false));" in _tn_api
+      and "if (adult) {" in _tn_api and "fromFamily(items, { minor })" in _tn_api
+      and "export const ADULT_ONLY = ['join'];" in _tn_rules and "minorOf(sql, circle.id, me.id)" in _tn_api
+      and not re.search(r"is_child|adult_confirmed", _tn_api.split("async function parentCards", 1)[0]))
+check("today: a parent's card never names a medicine, never shows a kept-back number, and is never made for a child or about someone remembered",
+      "parents: (!minor && !senior" in _tn_api and "!m.remembered && !m.minor" in _tn_rules
+      and "phones.get(m.id) || null" in _tn_api and "await memberCards(sql, circle, me," in _tn_api
+      and "family_book" not in _tn_api and "d.name" not in _tn_api and "meds: mine.length ? { total: mine.length, taken:" in _tn_api
+      and "okToday(sql, m.id, today, tz)" in _tn_api)
+check("today: the rules import nothing, the app carries its own copy between two marks, and the gate runs both",
+      not re.search(r"^\s*import\s", _tn_rules, flags=re.M)
+      and "/*tn-rules-start*/" in _tn_app and "/*tn-rules-end*/" in _tn_app
+      and "node site/tests/todaytest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and "new Function(app.slice(a, b)" in (REPO / "site/tests/todaytest.mjs").read_text(encoding="utf-8"))
+check("today: no name is cut at the first space in the app; the rule is tnShort (an honorific, or a script that is not Latin, keeps the whole name)",
+      len(re.findall(r"split\(' '\)\[0\]", _tn_app)) == 1 and "var first = full.split(' ')[0];" in _tn_app
+      and "split(/\\s+/)[0]" not in _tn_app and "if (!TN_LATIN.test(full)) return full;" in _tn_app
+      and "'shri'" in _tn_rules and "'smt'" in _tn_rules and "'dr'" in _tn_rules)
+check("today: From the family comes right after the elder's buttons; the mood card stays above the tiles; a card per parent and the young Today follow the header",
+      _tn_app.index('id="seniorui"') < _tn_app.index('id="tn-from"') < _tn_app.index('class="homehero"')
+      < _tn_app.index('id="tn-parents"') < _tn_app.index('id="tn-young"') < _tn_app.index('id="hd-today"') < _tn_app.index('id="frslot"')
+      and _tn_app.count('id="tn-from"') == 1)
+check("today: senior mode and a young member get no setup list; the hero says You to the person who checked in",
+      "if (!state || frDone() || state.role === 'parent' || tnYoung()) { $('firstrun').hidden = true; return; }" in _tn_app
+      and "var tnWho = e.member_id === state.memberId ? 'You' : e.member_name;" in _tn_app
+      and "body.tn-isyoung #firstrun,body.tn-isyoung #readycard" in _tn_app)
+check("words: an SOS that did not go says NOT sent, hides the waiting rows and offers to try again; nobody is ever 'on their way'",
+      "$('ss-live-title').textContent = bad ? '⚠️ SOS NOT sent' : '🆘 SOS sent';" in _tn_app
+      and "live.querySelector('.ss-checks').hidden = bad;" in _tn_app and 'id="tn-sos-retry"' in _tn_app
+      and "on their way" not in _tn_app and "on their way" not in (API_DIR / "events.mjs").read_text(encoding="utf-8")
+      and "has seen it and is calling" in _tn_app and ".tn-sosfail #ss-calls .ss-btn,.tn-sosfail #ss-sms{min-height:72px" in _tn_app)
+check("words: a chat message leaves the box only into a bubble that is kept until it goes",
+      "tnUnsentSave(tnUnsent().concat([u]));" in _tn_app and "Not sent. Tap to retry" in _tn_app
+      and _tn_app.index("tnUnsentSave(tnUnsent().concat([u]));") < _tn_app.index("$('msg').value = '';\n    tnUnsentDraw();")
+      and ".catch(function(){ tnUnsentSet(u.id, { failed: true }); });" in _tn_app)
+check("first run: the tour is written down when it ends and skipped for an invite; one family opens straight away; Mother or Father is asked",
+      "function afterTour(){\n    // The introduction is over; carry on to whatever this person actually has.\n    tnToured();" in _tn_app
+      and "if (pendingJoin) tnToured();" in _tn_app
+      and "if (circles && circles.length === 1) { enterCircle(circles[0]); return; }" in _tn_app
+      and "$(p[1]).checked = grand;" in _tn_app and "Use the simpler, larger screen?" in _tn_app
+      and "Who are you to this family?" in _tn_app and "everyone is an equal admin" not in _tn_app)
+check("words: a new cost is shared between everyone, a new medicine asks when it is taken, and a living person's page has no bereavement link",
+      "d.members.map(function(m){ return m.id; });" in _tn_app and "Who is this shared between?" in _tn_app
+      and "if (!bEditId && body.kind === 'med' && body.aboutId && j.id) tnAskTimes = j.id;" in _tn_app
+      and "b.hidden = !state || id === state.memberId || !rmGone(tnWho);" in _tn_app
+      and '<details class="card fmore" id="pp-todo-card" hidden>' in _tn_app)
+_tn_static = set(re.findall(r'\bid="(tn-[a-z0-9-]+)"', _tn_app))
+_tn_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("today: its screens keep to their own names (ids tn-, functions tn...), and its tests run in test:db without fixed waits",
+      len(_tn_static) >= 20 and len(re.findall(r"\n  function tn[A-Z]\w*\(", _tn_app)) >= 20
+      and all(("site/tests/db/" + f) in _tn_testdb and (REPO / "site/tests/db" / f).exists() for f in ("todaynav.dbtest.mjs", "todaynav.e2e.dbtest.mjs"))
+      and "waitForTimeout" not in (REPO / "site/tests/db/todaynav.e2e.dbtest.mjs").read_text(encoding="utf-8")
+      and all(x in (REPO / "site/tests/db/todaynav.dbtest.mjs").read_text(encoding="utf-8")
+              for x in ("A PRIVATE WORD BETWEEN TWO OTHERS NEVER APPEARS", "A CHILD IS NEVER SENT IT", "A MEMBER OF ANOTHER FAMILY GETS NOTHING OF THIS ONE")))
+check("today: the coverage map says what is live, and the review is written down",
+      "| **What the family sent me, first on Today** | Live |" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
+      and "Today for each person and five places" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8")
+      and "Today is different for each person" in (REPO / "docs/design/TODAY.md").read_text(encoding="utf-8"))
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

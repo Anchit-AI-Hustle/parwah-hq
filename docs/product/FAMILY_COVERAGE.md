@@ -27,6 +27,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | Find a phone that is on silent | Live | find me |
 | A helper nearby is told when family is far | Live | nearby ladder |
 | An SOS reaches every family a person belongs to, and is shouted once more by the timer when nobody answers | Live | SOS fan-out, timer escalation |
+| An SOS that did not go says so, and says nothing else | Live | with no network the heading is "SOS NOT sent", the rows about waiting and recording are put away, Call and SMS are the largest things on the screen, and "Try to send it again" is one tap. The Call buttons are filled from the family this phone last saw: 112 (or the country's own number), then the first adult who can be reached, never someone remembered. When someone answers, the words are "Rohan has seen it and is calling", never "on their way" |
 | Someone who has passed away is never called, texted, pushed or listed, anywhere | Live | enforced on the server: SOS contacts, the dialler, every push, Lost mode |
 | The family is told honestly when calls and texts are not set up, and when timed reminders last ran | Live | Safety card in Profile, the SOS screen |
 | A parent who chatted, ticked a medicine or answered the pulse is not reported as missing | Live | check-in counts any sign of life that day |
@@ -102,7 +103,10 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | **Being answered**: heard-by on a story, a thank-you for a card, a reaction on a photo | Live | stories ("Suna, bahut accha laga" or a voice reply, pushed to the teller); cards (reminded the evening before, never handed over empty, "Say thank you", a print and share view for someone not on Parwah); photos (reactions, a voice caption, share one photo, one "new photos" push a day) |
 | **Equal votes** | Live | chat polls and date polls: a secret ballot (no name is sent to any phone; a chat poll's counts stay hidden until it closes, and the screen says so), "Waiting for...", one reminder, a vote "for Dadi, by Rohan", the host sees the tally before a lock and the lock records it. Every vote counts once, whoever cast it |
 | Care that flows back from a parent: Ashirwad (a one-tap blessing or a voice note, answered with "🙏 Pranam" or a voice reply) and "How is your day?" asked of a child | Live | `api/_ashirwad.mjs` behind `/api/chats?area=ashirwad`; the parent's big button is on the senior Today |
-| A daily "what happened today" digest | Live | Aaj kya hua, from Ekta: plain words for everyone; one model call per member per day at most, 12 a circle a day, only when the owner's key is set |
+| A daily "what happened today" digest | Live | Aaj kya hua, from Ekta: plain words for everyone; one model call per member per day at most, 12 a circle a day, only when the owner's key is set. It leads with what is for the reader: who wrote to them today (counted, never read), a thank-you they received, a plan waiting for their answer. Someone joining is not in it, and it never ends with a count of what was left out |
+| **What the family sent me, first on Today** | Live | "From the family" (`api/_today.mjs`, behind `/api/chats?area=today`): unread messages to me or in the family chat (who, the first words), a private word, an Ashirwad, "How is your day?", a shukriya, a plan with "Going?" and Yes, Maybe, No in place, a poll I have not voted in, a card I have not written in. One read; each part is read by the module that owns it, by that module's own rule. In senior mode it sits right under the big buttons, with "Dekh liya" and hold to talk |
+| **Today is different for each person** | Live | senior mode: the big buttons, then From the family, no setup list, and the status line says "You said all is well". An adult: a card for each parent the family looks after (seen today or not yet, today's medicines as this person may see them, the last message, Call and Message). Under 18 (the one adult rule): games, polls, Pasand, stories, "Ask Dada a question" and their own plans first, with no vault, setup list or readiness score. The mood card is near the top for all three |
+| **Five places, not thirty rows** | Live | Today, Chat, Together, Family, More: the phone's five tabs (SOS still docked), the menu and the laptop sidebar alike. Together holds plans, games, the board, Pasand, the album, stories, recipes, festivals and the week's question. Family holds people, the tree, Rishtedaar and Health and contacts. More holds the Vault, the Family register, To do, Ekta, The day, Notifications and Profile. Every old address (`#vault`, `#care`, `#memory` and the rest) still opens its screen; the rule for which screen is in which place is `placeOf` in `api/_todayrules.mjs` |
 | A morning note of the day ahead | Live | Aaj ka din, from Ekta (`api/_ektaday.mjs`): medicine times of people the reader may see, plans, birthdays and anniversaries today, renewals this week, who is away. Plain rules by default; a model line only with `EKTA_MORNING_MODEL=on`, on the same one call a day as the evening note. Senior mode has a big "Sunao" button on both notes, and the thumbs |
 | An assistant that reads the family's own things back, and does small things for me | Live | Ekta asks before she acts (`api/_ektaagent.mjs`): she reads plans, polls, occasions, likes, renewals, today's medicine times, stories and what is waiting on me, each with that feature's own rule; a message, plan, poll, private note, reminder, request or card line is a card first ("Ekta wants to: ...", "Yes, do it" / "No"), run once on the yes, as me, through the same handler as the screen |
 | Someone who does not type can still send word ("Ekta, tell Rohan I reached") | Live | read by rule, with no AI key and no coins; the same confirm card; spoken and heard in English or Hindi (`members.lang`) |
@@ -440,3 +444,39 @@ the phone's "Save as PDF", is the way today).
    `docs/design/CHECKLIST.md`. Record a leader review in
    `docs/design/REVIEWS.md` for a new screen.
 4. Move the row to Live in the same pull request.
+
+### Today for each person, and five places (stream G, live)
+
+Found by a family of five walking through the real app on a phone. What
+changed, and where the rule for each lives:
+
+- **From the family** is one read, `GET /api/chats?area=today`
+  (`api/_today.mjs`). It calls each module's own read (`listChats`,
+  `baatList`, `ashirwadInbox`, `shukriyaList`) or carries that module's own
+  SQL rule, so gathering never shows a member more than the module's own
+  screen would. A child or a teenager is never sent a request to join. The
+  order is one order for everyone (`fromFamily` in `api/_todayrules.mjs`).
+- **A card for each parent** is in the same read: seen today
+  (`okToday`), medicines counted through `doseState` (a private medicine is
+  not counted and no medicine is named), the last message the reader can
+  open, and a phone number only when the parent lets this person see it.
+  Never for a child, never about someone remembered.
+- **Names** are never cut at the first space when the first word is an
+  honorific or the name is not in Latin letters (`shortName`). The app
+  carries its own copy of these rules between two marks, and the unit test
+  runs that copy from the page.
+- **First run**: the tour is written down when it ends and is skipped for
+  an invite; with one family the app opens it; "Invite one person by name"
+  carries who they are, so the join form opens with it chosen; a new
+  member's bell starts when they joined; choosing Mother or Father asks
+  about the larger screen and switches nothing on by itself.
+- **A message is never lost**: with no network it stays on the screen as
+  "Not sent. Tap to retry", is kept on the phone, and goes by itself when
+  the network is back.
+
+Not built here: the link for an elder who is not on Parwah, a child's own
+page, home repairs and the event kit (other streams). One known gap: the
+two rules files that must import nothing (`_safetyrules.mjs`,
+`_rememberrules.mjs`) still shorten a name at the first space in three
+sentences ("Papa's medicines have no tick yet", "Get more medicines for",
+"We remember ... today").

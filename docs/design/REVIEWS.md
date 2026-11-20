@@ -810,3 +810,31 @@ Checked at 320 and 390, light and dark, on the real app (`standing.e2e`, `consen
 | F13 | 3 User control | Open: an adult who is not chosen on Papa's card no longer sees Papa's medicines in the Family book unless they wrote the entry, Papa shared it by name, or an SOS is open | 2 | Open by design: it is the card's own rule. Worth a second look with real families |
 
 New patterns: none.
+
+### Review N (stream G), Today for each person and five places (2026-11-20)
+
+A family of five walked through the real app on a 390 by 844 phone. This is what they found and what was done. Measured on the real app by `todaynav.e2e` at 320 and 390 in light and dark, and Today and the sidebar at 1280.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| G1 | 1 Visibility | A message from a son was invisible on his father's Today: a subtitle of a tile inside the collapsed "More", about 3,000 pixels down. The chat bubble had no mark and was labelled "Start a new chat" | 4 | Fixed: "From the family" is first on Today, right under the big buttons in senior mode. "Rohan sent you a message", the first words, "Dekh liya", "Hold to talk" and "Open and reply". The bubble and the Chat tab carry a count, and the bubble's label says what a tap will do |
+| G2 | 2 Real-world match | A 14-year-old got the adult admin home: vault, Aadhaar, emergency-card setup | 3 | Fixed: under 18 gets games, polls, Pasand, stories, a question for an elder and their own plans first; no vault tile, setup list or readiness score |
+| G3 | 1 Visibility | No "how are Papa and Maa" view for a child abroad: Home was one line | 4 | Fixed: a card for each parent, with seen today or not yet, medicines as this person may see them, the last message, Call and Message |
+| G4 | 8 Minimalist | Five tabs, five top-bar icons, a 30-item menu and a 30-entry sidebar. Chat had no tab while Vault and Ekta did | 4 | Fixed: five places, Today, Chat, Together, Family, More, in the tab bar, the menu and the sidebar. The menu shows 10 rows on Today; a place opens to show what is inside it. Every old address still works |
+| G5 | 4 Consistency | Stories, recipes and the album lived inside "Health & contacts" | 3 | Fixed: they are reached from Together and light the Together tab; Health and contacts is reached from Family and no longer carries their switch |
+| G6 | 8 Minimalist | To do carried seven sections | 2 | Fixed: three sections and three filters; bills, costs, home staff and renewals are one tap away and open by themselves when one of them is where you are |
+| G7 | 5 Error prevention | An SOS that failed said "SOS sent", then "could not be sent", then "The alert still went" and "Waiting for someone" | 4 | Fixed: "SOS NOT sent", the waiting rows are put away, Call and SMS are the largest things on the screen, and one button tries again |
+| G8 | 9 Error recovery | With no network a typed chat message was deleted | 4 | Fixed: it stays as a bubble, "Not sent. Tap to retry", is kept on the phone, and goes by itself when the network is back |
+| G9 | 2 Real-world match | "Rohan is on their way to Papa" was untrue from another country; the SOS message named the sender's clock ("5:50 PM UTC") | 3 | Fixed: "Rohan has seen it and is calling"; in the chat the time is the reader's own |
+| G10 | 2 Real-world match | Names were cut at the first space: "Ask श्रीमती" | 3 | Fixed in the app and in eight server modules: never after an honorific, never in a script that is not Latin. Open: two rules files that must import nothing keep the old cut in three sentences |
+| G11 | 3 User control | Choosing "Mother" switched the larger, simpler screen on by itself | 3 | Fixed: it asks "Use the simpler, larger screen?" with Yes and No. Grandparents still start with it on |
+| G12 | 7 Efficiency | First run took 21 taps and 16 screens before a father and son were connected | 4 | Fixed: 4 taps from the invite link to the family's Today, measured in the test. No tour for an invite, the role is already chosen, one family opens straight away, and the adult lets them in from Today in one tap |
+| G13 | 1 Visibility | A new member's bell held eight old notices, their own "has asked to join" among them; "Invite someone" stayed unticked with five members | 2 | Fixed: the bell starts when they joined; "asked to join" and "joined" are one line; the step ticks when a second person is here |
+| G14 | 6 Recognition | A person's page opened with six "Not recorded yet" rows and ended with "When someone passes away" | 3 | Fixed: what is recorded comes first, empty cards are put away, and what is missing is folded under "Add more". The link stays in the Family register and on the page of someone who is remembered |
+| G15 | 5 Error prevention | A new cost was shared only with "You", so the sums said "Everyone is square" | 3 | Fixed: "Who is this shared between?" with everyone listed and ticked |
+| G16 | 7 Efficiency | A medicine was added in one place and its times set in another | 2 | Fixed: after Save the times sheet opens, "When does Papa take it?" |
+| G17 | 2 Real-world match | The evening note read like a log and left out messages and plans | 3 | Fixed: it leads with who wrote to the reader (counted, never read), a thank-you, a plan waiting for their answer; joins are gone, and so is "One more small thing happened too" |
+| G18 | 8 Minimalist | Open: the older Today blocks (a private word, an Ashirwad, a card) still show lower on Today as well as in "From the family" | 2 | Open: each row in "From the family" opens the full card below; folding the two together needs a second look with real families |
+| G19 | 4 Consistency | Open: on a laptop the bell, the chat bubble and Notifications in the sidebar are three ways to the same two lists | 1 | Open |
+
+New patterns: one. `tn-row` is a row of "From the family": a line, a second line and one to three buttons, built from the tokens of `crow` (surface, bone border, radius 12) with a 4px rani edge so it reads as the family speaking, not as an alert (alerts keep sindoor). `tn-pcard` (a card for a parent) is the app's `card` with a row of buttons. The More screen and the young Today reuse `widgets` and `widget` unchanged. No new token. Ids start with `tn-`, functions with `tn`.

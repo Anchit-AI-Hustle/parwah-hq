@@ -16,7 +16,7 @@
 //   4. Five tabs and SOS on a phone; every old address still lands on its
 //      screen; the menu is short; stories, recipes and the album are in
 //      Together; To do opens on one list.
-//   5. First run with an invite, counting the taps.
+//   5. First run with an invite, counting the taps: 4, where it was 21.
 //   6. Offline: SOS says NOT sent with large Call and SMS; a chat message
 //      is kept and retried.
 //   7. The small words: a medicine asks when it is taken, a person's page
@@ -455,7 +455,7 @@ ok('3. and the card leaves Today', await R.waitForFunction(() => !document.query
   const joined = await until(async () => (await q1(`select id, created_at from members where circle_id = $1 and name = 'Suresh' and user_id is not null`, [fam])));
   await tap(N, '#pend-check');
   const inApp = await N.waitForFunction(() => { const m = document.getElementById('main'), t = document.getElementById('m-title'); return m && !m.hidden && t && /Sharma Family/.test(t.textContent); }, null, T).then(() => true, () => false);
-  ok(`5. FIRST RUN WITH AN INVITE: ${taps} taps from the link to the family's Today (it was 21 taps and 16 screens)`, !!joined && inApp && taps <= 5, taps + ' taps');
+  ok('5. FIRST RUN WITH AN INVITE: 4 taps from the link to the family\'s Today (it was 21 taps and 16 screens)', !!joined && inApp && taps === 4, taps + ' taps');
   ok('5. with one family he goes straight in: no picker, no tour', inApp && !(await N.isVisible('#circle-step')) && !(await N.isVisible('#tour-step')));
   ok('5. the tour is written down as done, so it never comes back', !!(await until(async () => (await q1(`select toured_at from users where phone = '+919875099001'`)).toured_at)));
   // Signing in again later: straight in.

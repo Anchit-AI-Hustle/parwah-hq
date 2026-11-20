@@ -120,7 +120,8 @@ const ravi = await user('Ravi');
 const R = await phone(ravi);
 await R.click('#pk-join');
 await R.waitForTimeout(300);
-ok('joining asks for your role without assuming a family', (await R.textContent('#joincard')).includes('Your role (everyone is an equal admin)'));
+ok('joining asks "Who are you to this family?" in plain words, and a group of friends has its own answer', (await R.textContent('#joincard')).includes('Who are you to this family?')
+  && (await R.textContent('#joincard')).includes('Joining a group of friends? Pick Friend.') && !(await R.textContent('#joincard')).includes('equal admin'));
 await R.fill('#j-code', gcode.code);
 await R.click('#j-role [data-role="friend"]');
 await R.click('#j-go');
