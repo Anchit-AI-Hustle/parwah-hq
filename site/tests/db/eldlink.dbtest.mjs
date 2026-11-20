@@ -251,24 +251,27 @@ let blessAll, thanks, thanksOther, card, cardOther, famPhoto, privPhoto, chosenP
   await A(rohan, 'photo_add', { albumId: famAlbum, photos: [{ photo: makeJpeg(1600, 1200, 5000), thumb: makeJpeg(320, 240, 900) }], caption: 'Shimla, 1987' });
   famPhoto = (await admin.query(`select id from album_photos where album_id = $1`, [famAlbum])).rows[0].id;
   const mine = await A(meena, 'album_save', { name: 'Only me', audience: 'me' });
-  const chosen = await A(meena, 'album_save', { name: 'For Dadi and me', audience: 'chosen', chosen: [dadi.id] });
-  const privId = mine.id || (await admin.query(`select id from album_albums where name = 'Only me'`)).rows[0].id;
-  const chosenId = chosen.id || (await admin.query(`select id from album_albums where name = 'For Dadi and me'`)).rows[0]?.id;
+  // The app does not let a "chosen" album name someone who is not on Parwah.
+  // The row is forced to name Dadi here, so the page's own rule is what holds.
+  await A(meena, 'album_save', { name: 'For Dadi and me', audience: 'chosen', chosen: [rohan.id] });
+  const privId = (await admin.query(`select id from album_albums where name = 'Only me'`)).rows[0].id;
+  const chosenId = (await admin.query(`select id from album_albums where name = 'For Dadi and me'`)).rows[0].id;
+  await admin.query(`update album_albums set chosen = array[$2::uuid] where id = $1`, [chosenId, dadi.id]);
+  ok('(setup) a private album and a chosen album exist beside the family one', !!mine.ok && !!privId && !!chosenId);
   // Newer than the family photo, so "the newest photo" would pick them if the rule slipped.
   await A(meena, 'photo_add', { albumId: privId, photos: [{ photo: makeJpeg(1600, 1200, 5100), thumb: makeJpeg(320, 240, 910) }], caption: 'PRIVATE PHOTO' });
   privPhoto = (await admin.query(`select id from album_photos where album_id = $1`, [privId])).rows[0].id;
-  if (chosenId) {
-    await A(meena, 'photo_add', { albumId: chosenId, photos: [{ photo: makeJpeg(1600, 1200, 5200), thumb: makeJpeg(320, 240, 920) }], caption: 'CHOSEN PHOTO' });
-    chosenPhoto = (await admin.query(`select id from album_photos where album_id = $1`, [chosenId])).rows[0]?.id;
-  }
+  await A(meena, 'photo_add', { albumId: chosenId, photos: [{ photo: makeJpeg(1600, 1200, 5200), thumb: makeJpeg(320, 240, 920) }], caption: 'CHOSEN PHOTO' });
+  chosenPhoto = (await admin.query(`select id from album_photos where album_id = $1`, [chosenId])).rows[0].id;
   // The family chat, a private chat, a poll in each.
   const chats = (await CG(rohan)).chats;
   const famChat = chats.find(c => c.kind === 'circle').id;
   await C(rohan, 'send', { chatId: famChat, text: 'CHAT HISTORY she must never read' });
   r = await C(rohan, 'poll_create', { chatId: famChat, question: 'Diwali at whose home?', options: ['Rohan and Meena', 'Dadi'] }); poll = r.pollId;
-  const dm = await C(rohan, 'dm', { otherId: meena.id });
-  const dmId = dm.chatId || dm.id || (await admin.query(`select id from chats where circle_id = $1 and kind <> 'circle' limit 1`, [fam])).rows[0]?.id;
-  if (dmId) { r = await C(rohan, 'poll_create', { chatId: dmId, question: 'PRIVATE POLL', options: ['a', 'b'] }); pollPrivate = r.pollId; }
+  await C(rohan, 'open_dm', { otherId: meena.id });
+  const dmId = (await admin.query(`select id from chats where circle_id = $1 and kind <> 'circle' limit 1`, [fam])).rows[0].id;
+  r = await C(rohan, 'poll_create', { chatId: dmId, question: 'PRIVATE POLL', options: ['a', 'b'] }); pollPrivate = r.pollId;
+  ok('(setup) a poll in the family chat and one in a private chat', !!poll && !!pollPrivate && !!privPhoto && !!chosenPhoto);
 
   const s = await page(key, 'open');
   const kinds = s.items.map(i => i.kind + ':' + i.id);
@@ -293,11 +296,11 @@ let blessAll, thanks, thanksOther, card, cardOther, famPhoto, privPhoto, chosenP
   ok('SEC. Meena\'s card cannot be opened by sending its id', (await page(key, 'card', { id: cardOther })).status === 404);
   ok('SEC. a card whose day has not come stays a surprise', (await page(key, 'card', { id: sealed })).status === 404);
   ok('SEC. A PRIVATE ALBUM\'S PHOTO IS NEVER SHOWN, even by its id', (await page(key, 'photo', { id: privPhoto })).status === 404 && (await page(key, 'photo', { id: privPhoto, size: 'full' })).status === 404);
-  if (chosenPhoto) ok('SEC. nor a "chosen" album\'s photo, even one that names her', (await page(key, 'photo', { id: chosenPhoto })).status === 404);
+  ok('SEC. nor a "chosen" album\'s photo, even one that names her', (await page(key, 'photo', { id: chosenPhoto })).status === 404 && (await page(key, 'say', { about: { kind: 'photo', id: chosenPhoto }, kind: 'heart' })).status === 404);
   ok('SEC. a thank-you to someone else cannot be answered, and its voice cannot be fetched', (await page(key, 'say', { about: { kind: 'shukriya', id: thanksOther }, kind: 'heart' })).status === 404
     && (await page(key, 'audio', { kind: 'shukriya', id: thanksOther })).status === 404);
   ok('SEC. a blessing to Meena cannot be answered as Dadi', (await page(key, 'say', { about: { kind: 'ashirwad', id: blessMeena }, kind: 'heart' })).status === 404);
-  if (pollPrivate) ok('SEC. a poll in a private chat cannot be voted in', (await page(key, 'vote', { pollId: pollPrivate, choices: [0] })).status === 404);
+  ok('SEC. a poll in a private chat cannot be voted in', (await page(key, 'vote', { pollId: pollPrivate, choices: [0] })).status === 404);
   ok('SEC. sending a memberId, a code or a circle in the body changes nothing: the key decides who she is',
     (await page(key, 'open', { memberId: meena.id, code: 'VERMA9', circle: fam2, member: meena.id })).me.first === 'Dadi');
 }
