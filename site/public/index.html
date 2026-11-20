@@ -2200,6 +2200,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button data-sec="staff">🧹 Home staff</button>
       <button data-sec="renewals">📅 Renewals</button>
       <button data-sec="kids">🎒 Bachchon ka panna</button>
+      <button data-sec="haath">🤲 Thoda sa haath batao</button>
     </div>
     <div class="subsec" data-sec="rem">
     <p class="hint" style="margin:0 0 var(--space-12)">What needs doing, who is handling it, and when it is done - the whole family sees the same list.</p>
@@ -2459,6 +2460,14 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <div class="feed" id="kd-kid-today" hidden></div>
       <div class="seg" id="kd-kid-pick" role="group" aria-label="Whose page" hidden></div>
       <div id="kd-kid-page"><div class="ev">Loading…</div></div>
+    </div>
+
+    <!-- CARER LOAD AND RESPITE, "Thoda sa haath batao" (api/_carerload.mjs):
+         what I did this week (only I see it), one gentle line for the
+         family with no numbers, and "I need a day off". -->
+    <div class="subsec kd" data-sec="haath" hidden>
+      <p class="hint" id="kd-cl-hint" style="margin:0 0 var(--space-12)">Looking after the family is shared work. Here you see what you did this week, and only you see it. You can also ask the family for a day off.</p>
+      <div id="kd-cl-body"><div class="ev">Loading…</div></div>
     </div>
 
 
@@ -4153,6 +4162,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button data-tab="care" data-sec="staff">Home staff</button>
       <button data-tab="care" data-sec="renewals">Renewals</button>
       <button data-tab="care" data-sec="kids">Bachchon ka panna</button>
+      <button data-tab="care" data-sec="haath">Thoda sa haath batao</button>
     </div>
     <button data-tab="people" id="tab-people"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-users"/></svg></span><span id="tab-people-l">Family</span></button>
     <p class="side-more side-only">More</p>
@@ -4274,6 +4284,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         <button class="ditem sub" data-tab="care" data-sec="staff">Home staff</button>
         <button class="ditem sub" data-tab="care" data-sec="renewals">Renewals</button>
         <button class="ditem sub" data-tab="care" data-sec="kids">Bachchon ka panna</button>
+        <button class="ditem sub" data-tab="care" data-sec="haath">Thoda sa haath batao</button>
       </div>
     </div>
     <button class="ditem" data-tab="people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg> Family</button>
@@ -22068,6 +22079,64 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     else if (t.id === 'kd-kfee-sub') kdKidDo('kid_fee_sub', { childId: kdKidCur, on: t.checked }, t.checked ? 'You will be reminded ✓' : 'Reminders are off for you');
   });
   kdShown(document.querySelector('#pane-care .subsec[data-sec="kids"]'), kdKidsLoad);
+  // ---- carer load and respite, "Thoda sa haath batao" (api/_carerload.mjs)
+  var kdCl = null;
+  function kdClLoad(){
+    if (!state) return;
+    kdGet(API.care, 'carerload').then(function(j){
+      if (!j.ok) { $('kd-cl-body').innerHTML = '<div class="ev">Could not load this. ' + esc(humanFail(j.error, 'Try again in a minute.')) + '</div>'; return; }
+      kdCl = j; kdClShow();
+    }).catch(function(){ $('kd-cl-body').innerHTML = '<div class="ev">No connection. This will load when you are back online.</div>'; });
+  }
+  function kdClShow(){
+    var j = kdCl, h = '';
+    if (!j.adult) { $('kd-cl-body').innerHTML = '<div class="ev">This part is for the adults of the family.</div>'; return; }
+    if (!j.on) {
+      $('kd-cl-body').innerHTML = kdCard('kd-cl-off', '🤲 Switched off for your family', kdNone('Nobody sees a summary or a line here while it is off.') +
+        '<button type="button" class="cbtn kd-wide" data-kdcl="on">Switch it on again</button>');
+      return;
+    }
+    if (j.line) h += '<div class="ev" id="kd-cl-line">🤲 ' + esc(j.line.text) + '</div>';
+    h += kdCard('kd-cl-mine', '🧡 What you did this week', (j.mine.lines.length ? '<div class="kd-list">' + j.mine.lines.map(function(l){ return '<p class="kd-line">' + esc(l) + '</p>'; }).join('') + '</div>' : '') +
+      '<p class="kd-legal" id="kd-cl-note">' + esc(j.mine.note) + '</p>');
+    h += kdCard('kd-cl-ask', '🤲 I need a day off', kdNone('The other adults in the family are asked. Whoever can, says yes.') +
+      '<div class="pickrow"><label class="pick"><span>Which day</span><select id="kd-cl-day">' + j.days.map(function(d){ return '<option value="' + esc(d.day) + '">' + esc(d.words) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="pick"><span>Something to hand over</span><select id="kd-cl-task"><option value="">Just the day</option>' +
+        j.duties.map(function(d){ return '<option value="' + esc(d.id) + '" data-day="' + esc(d.day) + '">' + esc(d.title) + ' (' + esc(kdDay(d.day)) + ')</option>'; }).join('') + '</select></label></div>' +
+      '<button type="button" class="cbtn kd-wide" id="kd-cl-go" data-kdcl="ask">Ask the family</button>');
+    if (j.asks.length) {
+      h += kdCard('kd-cl-asks', '📅 Days off asked for', '<div class="kd-list">' + j.asks.map(function(a){
+        var what = a.taskTitle ? ' · ' + a.taskTitle : '';
+        if (a.status === 'taken') return '<div class="crow kd-ok"><span class="txt"><b>✓ ' + (a.takenByMe ? 'You' : esc(kdFirst(a.takenByName))) + ' will take ' + esc(a.dayWords) + '</b><small>' + (a.mine ? 'Your day off' : esc(kdFirst(a.byName)) + "'s day off") + esc(what) + '</small></span></div>';
+        return '<div class="crow"><span class="txt"><b>' + (a.mine ? 'You asked for ' : esc(kdFirst(a.byName)) + ' needs a day off on ') + esc(a.dayWords) + '</b><small>' + (a.taskTitle ? 'To hand over: ' + esc(a.taskTitle) : 'Just the day') + '</small></span>' +
+          (a.mine ? '<button type="button" class="cbtn ghost" data-kdcl="cancel" data-id="' + esc(a.id) + '">Take it back</button>' : '<button type="button" class="cbtn" data-kdcl="take" data-id="' + esc(a.id) + '">I will take it</button>') + '</div>';
+      }).join('') + '</div>');
+    }
+    h += kdCard('kd-cl-switch', '⚙️ For the family', '<details><summary>Switch this off for our family</summary>' + kdNone('Nobody is ranked here and nobody sees what someone else did. If your family would still like it off, any adult can switch it off, and on again.') +
+      '<button type="button" class="cbtn ghost kd-wide" data-kdcl="off">Switch it off</button></details>');
+    $('kd-cl-body').innerHTML = h;
+  }
+  $('kd-cl-body').addEventListener('change', function(e){
+    // Choosing a task to hand over sets the day it falls on.
+    if (e.target.id === 'kd-cl-task') { var o = e.target.options[e.target.selectedIndex], d = o && o.getAttribute('data-day'); if (d && $('kd-cl-day').querySelector('option[value="' + d + '"]')) $('kd-cl-day').value = d; }
+  });
+  $('kd-cl-body').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-kdcl]'); if (!b) return;
+    var act = b.getAttribute('data-kdcl'), send = function(action, body, msg){
+      b.disabled = true;
+      kdPost(API.care, action, body).then(function(j){
+        b.disabled = false;
+        if (!j.ok) { toast(j.error || 'Could not save. Try again.'); return; }
+        kdCl = j; kdClShow(); toast(msg);
+      }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+    };
+    if (act === 'ask') send('carer_dayoff', { day: kdVal('kd-cl-day'), taskId: kdVal('kd-cl-task') || undefined }, 'The family has been asked 🤲');
+    else if (act === 'take') send('carer_take', { id: b.getAttribute('data-id') }, 'Thank you. They have been told 🧡');
+    else if (act === 'cancel') send('carer_cancel', { id: b.getAttribute('data-id') }, 'Taken back');
+    else if (act === 'on') send('carer_switch', { on: true }, 'Switched on for the family');
+    else if (act === 'off') askSheet('Switch this off for the whole family?', 'Nobody will see a summary or a line. Any adult can switch it on again.', 'Yes, switch it off', 'Keep it on').then(function(y){ if (y) send('carer_switch', { on: false }, 'Switched off for the family'); });
+  });
+  kdShown(document.querySelector('#pane-care .subsec[data-sec="haath"]'), kdClLoad);
   // ---------- end of the remaining family needs (stream J) ----------
 
   // Inside the iPhone and Android apps this page runs in a frame, and the
