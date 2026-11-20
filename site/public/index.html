@@ -2703,28 +2703,30 @@ details.kd{margin-bottom:var(--space-12)}
       <div class="abnote" id="ab-state" aria-live="polite"></div>
       <div class="abgrid" id="ab-grid"></div>
     </div>
+    <div id="kd-health" class="kd" hidden>
+    <!-- THE DOCTOR-READY SUMMARY and THE BLOOD GROUP LOOKUP
+         (api/_bloodlookup.mjs): both read what is already written here,
+         and neither gives advice. For the adults of the family. -->
+    <details class="card kd" id="kd-sum-card" hidden>
+      <summary>🩺 Doctor-ready summary</summary>
+      <p class="hint" style="margin:0 0 var(--space-12)">One page to take to the doctor: medicines, allergies, blood group, past visits and who to call. It shows only what you can already see. Written by the family, not a medical record.</p>
+      <div class="pickrow"><label class="pick"><span>For whom</span><select id="kd-sum-who"></select></label></div>
+      <button type="button" class="cbtn kd-wide" id="kd-sum-open">Open the page</button>
+    </details>
+    <details class="card kd" id="kd-bl-card" hidden>
+      <summary>🩸 Blood group in the family</summary>
+      <p class="hint" style="margin:0 0 var(--space-12)">Find who in your family, and in families linked to yours, has a blood group. Only people who said yes are shown.</p>
+      <div class="pickrow"><label class="pick"><span>Blood group</span><select id="kd-bl-group"></select></label></div>
+      <button type="button" class="cbtn kd-wide" id="kd-bl-find">Find in the family</button>
+      <div class="feed" id="kd-bl-out" style="margin-top:var(--space-12)" hidden></div>
+      <button type="button" class="cbtn ghost kd-wide" id="kd-bl-ask" hidden>Tell them someone is looking</button>
+      <h4 class="kd-sub">Your own answer</h4>
+      <div class="kd-chk" style="margin-top:0"><label><input type="checkbox" id="kd-bl-consent"> <span id="kd-bl-line">Tell my family, and the families linked to ours, my blood group if someone needs blood.</span></label></div>
+      <p class="hint" id="kd-bl-mine"></p>
+      <p class="kd-legal" id="kd-bl-legal"></p>
+    </details>
+    </div>
     <div id="book-list-view">
-      <!-- THE DOCTOR-READY SUMMARY and THE BLOOD GROUP LOOKUP
-           (api/_bloodlookup.mjs): both read what is already written here,
-           and neither gives advice. For the adults of the family. -->
-      <details class="card kd" id="kd-sum-card" hidden>
-        <summary>🩺 Doctor-ready summary</summary>
-        <p class="hint" style="margin:0 0 var(--space-12)">One page to take to the doctor: medicines, allergies, blood group, past visits and who to call. It shows only what you can already see. Written by the family, not a medical record.</p>
-        <div class="pickrow"><label class="pick"><span>For whom</span><select id="kd-sum-who"></select></label></div>
-        <button type="button" class="cbtn kd-wide" id="kd-sum-open">Open the page</button>
-      </details>
-      <details class="card kd" id="kd-bl-card" hidden>
-        <summary>🩸 Blood group in the family</summary>
-        <p class="hint" style="margin:0 0 var(--space-12)">Find who in your family, and in families linked to yours, has a blood group. Only people who said yes are shown.</p>
-        <div class="pickrow"><label class="pick"><span>Blood group</span><select id="kd-bl-group"></select></label></div>
-        <button type="button" class="cbtn kd-wide" id="kd-bl-find">Find in the family</button>
-        <div class="feed" id="kd-bl-out" style="margin-top:var(--space-12)" hidden></div>
-        <button type="button" class="cbtn ghost kd-wide" id="kd-bl-ask" hidden>Tell them someone is looking</button>
-        <h4 class="kd-sub">Your own answer</h4>
-        <div class="kd-chk" style="margin-top:0"><label><input type="checkbox" id="kd-bl-consent"> <span id="kd-bl-line">Tell my family, and the families linked to ours, my blood group if someone needs blood.</span></label></div>
-        <p class="hint" id="kd-bl-mine"></p>
-        <p class="kd-legal" id="kd-bl-legal"></p>
-      </details>
       <div class="addrow" style="margin-top:0">
         <input type="search" id="b-search" maxlength="60" placeholder="Search health and contacts…" aria-label="Search health and contacts">
       </div>
@@ -22548,6 +22550,11 @@ details.kd{margin-bottom:var(--space-12)}
       kdPaperOpen(h);
     }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
   });
+  // The two cards sit above the health list and are shown with it (not
+  // inside it: that list is a grid with its own count of children).
+  function kdHealthSync(){ $('kd-health').hidden = $('book-list-view').hidden; }
+  if (typeof MutationObserver !== 'undefined') new MutationObserver(kdHealthSync).observe($('book-list-view'), { attributes: true, attributeFilter: ['hidden'] });
+  kdHealthSync();
   kdShown($('book-list-view'), kdHealthLoad);
   // ---------- end of the remaining family needs (stream J) ----------
 
