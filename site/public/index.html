@@ -1713,6 +1713,20 @@ body.senior .abview-meta{font-size:var(--fs-16)}
 .kd-line{font-size:var(--fs-14);color:var(--ink);margin:0 0 var(--space-8)}
 .kd details summary{cursor:pointer;font-weight:700;min-height:var(--tap-min);display:flex;align-items:center;color:var(--ink)}
 .kd .seg{margin-bottom:var(--space-12)}
+#kd-kit,#kd-paper{position:fixed;inset:0;z-index:var(--z-sheet);background:var(--day);overflow-y:auto;padding:var(--space-16);overscroll-behavior:contain}
+.kd-bar{display:flex;gap:var(--space-8);align-items:center;justify-content:space-between;max-width:720px;margin:0 auto var(--space-16)}
+.kd-bar h2{font-family:var(--disp);font-size:var(--fs-20);color:var(--ink);margin:0}
+.kd-wrap{max-width:720px;margin:0 auto}
+.kd-rowpick{flex:1 1 150px;margin:0}
+.kd-side{font-size:var(--fs-12);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin:var(--space-12) 0 var(--space-4)}
+@media print{
+  body.kdprint{background:none}
+  body.kdprint > *:not(#kd-paper){display:none!important}
+  body.kdprint #kd-paper{display:block!important;position:static;padding:0;overflow:visible;background:none}
+  body.kdprint .mbbook-bar{display:none}
+  body.kdprint .mbbook{box-shadow:none;max-width:none;padding:0;color:var(--card-ink);background:none}
+  body.kdprint .mbbook section{break-inside:avoid}
+}
 /* end of stream J styles */
 </style>
 </head>
@@ -4959,6 +4973,21 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     <div id="ac-claimlist"></div>
     <button class="go" id="ac-claim-save" type="button" style="margin-top:var(--space-12)">Save my choices</button>
   </div>
+</div>
+<!-- THE FUNCTION KIT, "Shaadi / function kit" (api/_eventkit.mjs): guests,
+     sides, tasks, arrivals and the budget of a plan. Opened from a plan. -->
+<div id="kd-kit" class="kd" hidden role="dialog" aria-modal="true" aria-labelledby="kd-kit-title">
+  <div class="kd-bar"><h2 id="kd-kit-title">🎊 Shaadi / function kit</h2><button class="cbtn ghost" id="kd-kit-x" type="button">Close</button></div>
+  <div class="kd-wrap" id="kd-kit-body"></div>
+</div>
+<!-- A page to print: the guest sheet, or the doctor-ready summary. The
+     phone's own Print (and "Save as PDF") does the rest; nothing leaves it. -->
+<div id="kd-paper" class="kd" hidden role="dialog" aria-modal="true" aria-labelledby="kd-paper-title">
+  <div class="mbbook-bar">
+    <button class="cbtn" id="kd-paper-print" type="button">🖨 Print or save as PDF</button>
+    <button class="cbtn ghost" id="kd-paper-x" type="button">Close</button>
+  </div>
+  <article class="mbbook" id="kd-paper-body"><h1 id="kd-paper-title">Family page</h1></article>
 </div>
 <div class="msheet" id="asksheet" hidden role="dialog" aria-modal="true" aria-labelledby="as-q">
   <div class="mp">
@@ -22137,6 +22166,178 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     else if (act === 'off') askSheet('Switch this off for the whole family?', 'Nobody will see a summary or a line. Any adult can switch it on again.', 'Yes, switch it off', 'Keep it on').then(function(y){ if (y) send('carer_switch', { on: false }, 'Switched off for the family'); });
   });
   kdShown(document.querySelector('#pane-care .subsec[data-sec="haath"]'), kdClLoad);
+  // ---- a page to print (the guest sheet, the doctor-ready summary)
+  function kdPaperOpen(html){ $('kd-paper-body').innerHTML = html; $('kd-paper').hidden = false; document.body.classList.add('kdprint'); try { $('kd-paper').scrollTop = 0; } catch (e) {} }
+  function kdPaperClose(){ $('kd-paper').hidden = true; document.body.classList.remove('kdprint'); }
+  $('kd-paper-print').addEventListener('click', function(){ try { window.print(); } catch (e) {} });
+  $('kd-paper-x').addEventListener('click', kdPaperClose);
+
+  // ---- the function kit, "Shaadi / function kit" (api/_eventkit.mjs)
+  var kdKit = null, kdKitPlan = null;
+  function kdWhen(s){ var d = new Date(s); return isNaN(d) ? '' : d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+  // The kit hangs off a plan of the "function" or "party" kind: its button
+  // is added to that plan's card each time the plans are drawn.
+  function kdKitButtons(){
+    var list = $('plist'); if (!list) return;
+    list.querySelectorAll('button[data-pcancel]').forEach(function(c){
+      var card = c.closest('.plan'); if (!card || card.querySelector('[data-kdkit]')) return;
+      var id = c.getAttribute('data-pcancel'), p = (plansCache || []).filter(function(x){ return x.id === id; })[0];
+      if (!p || (p.kind !== 'function' && p.kind !== 'party')) return;
+      var row = document.createElement('div'); row.className = 'prow';
+      row.innerHTML = '<button type="button" class="cbtn ghost kd-tap" data-kdkit="' + esc(id) + '">🎊 Shaadi / function kit</button>';
+      card.appendChild(row);
+    });
+  }
+  if (typeof MutationObserver !== 'undefined') new MutationObserver(kdKitButtons).observe($('plist'), { childList: true });
+  document.addEventListener('click', function(e){ var b = e.target.closest('button[data-kdkit]'); if (b && state) kdKitOpen(b.getAttribute('data-kdkit')); });
+  function kdKitOpen(planId){
+    kdKitPlan = planId; kdKit = null;
+    $('kd-kit-body').innerHTML = '<div class="ev">Loading…</div>'; $('kd-kit').hidden = false;
+    try { $('kd-kit').scrollTop = 0; $('kd-kit-x').focus(); } catch (e) {}
+    kdGet(API.plans, 'eventkit', '&plan=' + encodeURIComponent(planId)).then(function(j){
+      if (!j.ok) { $('kd-kit-body').innerHTML = '<div class="ev">' + esc(humanFail(j.error, 'Could not open the kit. Try again in a minute.')) + '</div>'; return; }
+      kdKit = j; kdKitShow();
+    }).catch(function(){ $('kd-kit-body').innerHTML = '<div class="ev">No connection. The kit will open when you are back online.</div>'; });
+  }
+  function kdKitClose(){ $('kd-kit').hidden = true; }
+  $('kd-kit-x').addEventListener('click', kdKitClose);
+  function kdOpts(list, pick, first){ return (first ? '<option value="">' + esc(first) + '</option>' : '') + list.map(function(o){ return '<option value="' + esc(o[0]) + '"' + (o[0] === pick ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join(''); }
+  function kdKitShow(){
+    var j = kdKit, k = j.kit, p = j.plan, h = '';
+    $('kd-kit-title').textContent = '🎊 ' + p.title;
+    h += '<p class="kd-line" id="kd-kit-when">' + esc(kdWhen(p.at)) + (p.place ? ' · ' + esc(p.place) : '') + '</p>';
+    if (!k) {
+      $('kd-kit-body').innerHTML = h + (j.canStart
+        ? kdCard('kd-kit-start', '🎊 Shaadi / function kit', kdNone('One place for the guest list, tasks, who arrives when, and the budget. You and the hosts you name can change it. The whole family can see it.') +
+            '<button type="button" class="cbtn kd-wide" data-kdk="start">Start the kit</button>')
+        : '<div class="ev">' + esc(kdFirst(p.byName || 'Whoever made this plan')) + ' made this plan, and can start its kit.</div>');
+      return;
+    }
+    var hosts = [kdFirst(p.byName || 'The maker') + ' (made the plan)'].concat(k.hosts.map(function(x){ return kdFirst(x.name); }));
+    h += '<p class="kd-line" id="kd-kit-hosts"><b>Hosts:</b> ' + esc(hosts.join(', ')) + '. ' + (k.canEdit ? 'You can change this kit.' : 'The hosts change it. Everyone in the family can see it.') + '</p>';
+    // Guests
+    var c = k.counts, sideOpts = k.sides.map(function(s){ return [s, s]; });
+    var gl = '';
+    k.sides.concat([null]).forEach(function(side){
+      var rows = k.guests.filter(function(g){ return side === null ? !g.side || k.sides.indexOf(g.side) < 0 : g.side === side; });
+      if (!rows.length) return;
+      gl += '<p class="kd-side">' + esc(side || 'Others') + '</p>' + rows.map(function(g){
+        return '<div class="crow"><span class="txt"><b>' + esc(g.name) + '</b><small>' + (g.people > 1 ? g.people + ' people' : '1 person') + (g.note ? ' · ' + esc(g.note) : '') + (k.canEdit ? '' : ' · ' + esc(g.statusWords)) + '</small></span>' +
+          (k.canEdit ? '<label class="pick kd-rowpick"><span>Invite</span><select data-kdgstat="' + esc(g.id) + '">' + kdOpts(j.statuses, g.status) + '</select></label>' +
+            '<button type="button" class="cbtn ghost" data-kdk="gdel" data-id="' + esc(g.id) + '">Remove</button>' : '') + '</div>';
+      }).join('');
+    });
+    var names = [];
+    try { ['ghar', 'kareebi', 'door'].forEach(function(grp){ flRzList(grp, '').forEach(function(x){ if (x[1] && x[1].name && !x[1].same && names.indexOf(x[1].name) < 0) names.push(x[1].name); }); }); } catch (e) {}
+    h += kdCard('kd-kit-guests', '👥 Guest list',
+      '<p class="kd-line" id="kd-kit-counts">' + (c.invites ? c.invites + (c.invites === 1 ? ' invite' : ' invites') + ' · ' + c.to_invite + ' to invite · ' + c.invited + ' invited · ' + c.coming + ' coming · ' + c.not_coming + ' not coming · ' + c.peopleComing + ' people coming so far' : 'No guests yet.') + '</p>' +
+      (gl ? '<div class="kd-list">' + gl + '</div>' : '') +
+      (k.canEdit ? '<details id="kd-kit-pick"><summary>Pick from the family tree</summary><div class="kd-chk" id="kd-kit-people">' +
+          (j.people || []).filter(function(m){ return !k.guests.some(function(g){ return g.memberId === m.id; }); }).map(function(m){ return '<label><input type="checkbox" value="' + esc(m.id) + '"> ' + esc(m.name) + (m.onApp ? '' : ' (by name)') + '</label>'; }).join('') + '</div>' +
+          '<div class="pickrow"><label class="pick"><span>Side</span><select id="kd-kit-pside">' + kdOpts(sideOpts) + '</select></label></div>' +
+          '<button type="button" class="cbtn kd-wide" data-kdk="gpick">Add the people ticked</button></details>' +
+        '<details id="kd-kit-type"><summary>Type a name</summary><div class="pickrow">' + kdPickIn('Name', 'kd-kit-gname', 'text', '', 'maxlength="60" list="kd-kit-names" placeholder="e.g. Gupta ji and family"') +
+          '<label class="pick"><span>Side</span><select id="kd-kit-gside">' + kdOpts(sideOpts) + '</select></label></div>' +
+          '<datalist id="kd-kit-names">' + names.map(function(n){ return '<option value="' + esc(n) + '">'; }).join('') + '</datalist>' +
+          '<div class="pickrow">' + kdPickIn('How many people', 'kd-kit-gpeople', 'number', '1', 'min="1" max="30" inputmode="numeric"') + kdPickIn('A note', 'kd-kit-gnote', 'text', '', 'maxlength="120"') + '</div>' +
+          '<p class="kd-legal">Only the name is kept. No phone number is needed.</p>' +
+          '<button type="button" class="cbtn kd-wide" data-kdk="gadd">Add guest</button></details>' : '') +
+      '<button type="button" class="cbtn ghost kd-wide" data-kdk="sheet">🖨 Guest sheet to print</button>');
+    // Tasks
+    var owners = (j.people || []).filter(function(m){ return m.onApp; }).map(function(m){ return [m.id, m.id === state.memberId ? 'Me' : m.name]; });
+    h += kdCard('kd-kit-tasks', '✅ Tasks', (k.tasks.length ? '<div class="kd-list">' + k.tasks.map(function(t){
+        return '<div class="crow' + (t.status === 'done' ? ' kd-ok' : '') + '"><span class="txt"><b>' + (t.status === 'done' ? '✓ ' : '') + esc(t.title) + '</b><small>' + esc((t.ownerName ? kdFirst(t.ownerName) + ' has it' : 'Nobody has it yet') + (t.dueDate ? ' · by ' + kdDay(t.dueDate) : '')) + '</small></span></div>';
+      }).join('') + '</div>' : kdNone('No tasks yet.')) +
+      (k.canEdit ? '<details id="kd-kit-taskadd"><summary>Add a task</summary><div class="pickrow">' + kdPickIn('What needs doing', 'kd-kit-ttitle', 'text', '', 'maxlength="200" placeholder="e.g. Book the halwai"') +
+          '<label class="pick"><span>Who</span><select id="kd-kit-towner">' + kdOpts(owners, '', 'Anyone who takes it') + '</select></label></div>' +
+          '<div class="pickrow">' + kdPickIn('By when', 'kd-kit-tdate', 'date', '') + '</div><button type="button" class="cbtn kd-wide" data-kdk="tadd">Add task</button></details>' : '') +
+      '<p class="kd-legal">These are ordinary family tasks. They also show in To do.</p>');
+    // Arrivals
+    var recv = (j.people || []).map(function(m){ return [m.id, m.id === state.memberId ? 'Me' : m.name]; });
+    h += kdCard('kd-kit-arrivals', '🚉 Who is arriving when', (k.arrivals.length ? '<div class="kd-list">' + k.arrivals.map(function(a){
+        var trip = a.trip ? (a.trip.status === 'reached' ? ' · ✓ Reached safely' : a.trip.status === 'open' ? ' · 🧳 On the way, expected by ' + kdTime(a.trip.expectAt) : '') : '';
+        return '<div class="crow"><span class="txt"><b>' + esc(a.who) + '</b><small>' + esc(kdWhen(a.arriveAt) + (a.modeWords ? ' · ' + a.modeWords : '') + (a.from ? ' from ' + a.from : '')) + esc(trip) +
+          '<br>' + (a.receiverName ? 'Received by ' + esc(kdFirst(a.receiverName)) : 'Nobody is receiving them yet') + '</small></span>' +
+          (!a.receiverId && !a.mine ? '<button type="button" class="cbtn" data-kdk="recv" data-id="' + esc(a.id) + '">I will receive them</button>' : '') +
+          (a.mine && !a.trip ? '<button type="button" class="cbtn ghost" data-kdk="trip">🧳 Start Reached safely</button>' : '') +
+          (k.canEdit || a.mine ? '<button type="button" class="cbtn ghost" data-kdk="adel" data-id="' + esc(a.id) + '">Remove</button>' : '') + '</div>';
+      }).join('') + '</div>' : kdNone('Nobody is written down yet.')) +
+      '<details id="kd-kit-arradd"><summary>' + (k.canEdit ? 'Add an arrival' : 'Add my own arrival') + '</summary>' +
+        (k.canEdit ? '<div class="pickrow"><label class="pick"><span>Who is arriving</span><select id="kd-kit-awho"><option value="">Someone I will name</option>' + kdOpts(recv) + '</select></label>' +
+          kdPickIn('Their name', 'kd-kit-aname', 'text', '', 'maxlength="60" placeholder="e.g. Mausi from Pune"') + '</div>' : '') +
+        '<div class="pickrow">' + kdPickIn('Day and time', 'kd-kit-aat', 'datetime-local', '') + '<label class="pick"><span>How</span><select id="kd-kit-amode">' + kdOpts([['train', 'By train'], ['flight', 'By flight'], ['car', 'By car'], ['bus', 'By bus'], ['other', 'Another way']]) + '</select></label></div>' +
+        '<div class="pickrow">' + kdPickIn('Coming from', 'kd-kit-afrom', 'text', '', 'maxlength="60"') +
+          (k.canEdit ? '<label class="pick"><span>Who receives them</span><select id="kd-kit-arecv">' + kdOpts(recv, '', 'Not decided yet') + '</select></label>' : '') + '</div>' +
+        '<button type="button" class="cbtn kd-wide" data-kdk="aadd">' + (k.canEdit ? 'Add arrival' : 'Add my arrival') + '</button></details>' +
+      '<p class="kd-legal">"Reached safely" shows here only to the people the traveller chose to tell.</p>');
+    // Budget
+    if (k.budget) {
+      var b = k.budget;
+      h += kdCard('kd-kit-budget', '💰 Budget', (b.hidden
+        ? kdNone('The costs of this plan are seen by the people who share them.')
+        : '<p class="kd-line"><b>Planned:</b> ' + esc(b.planned || 'not set yet') + '</p><p class="kd-line"><b>Spent so far:</b> ' + esc(b.spent) + '</p>' +
+          (b.left ? '<p class="kd-line"><b>' + (b.over ? '! Over by:' : 'Left:') + '</b> ' + esc(b.left) + '</p>' : '') +
+          '<button type="button" class="cbtn ghost kd-wide" data-kdk="costs">Open the costs of this plan</button>') +
+        (k.canEdit ? '<div class="pickrow">' + kdPickIn('Planned budget', 'kd-kit-bamt', 'text', '', 'maxlength="14" inputmode="numeric" placeholder="e.g. 500000"') + '</div><button type="button" class="cbtn kd-wide" data-kdk="bset">Save budget</button>' : '') +
+        '<p class="kd-legal">Parwah does not move money. This only does the sums.</p>');
+    }
+    if (k.canEdit) {
+      h += kdCard('kd-kit-setup', '⚙️ Sides and hosts', '<details><summary>Change the sides</summary><div class="pickrow">' + kdPickIn('Sides, with a comma between', 'kd-kit-sides', 'text', k.sides.join(', '), 'maxlength="200"') + '</div>' +
+        '<button type="button" class="cbtn kd-wide" data-kdk="sides">Save sides</button></details>' +
+        (k.isMaker ? '<details><summary>Choose the hosts</summary>' + kdNone('Hosts can add guests, tasks and arrivals. They must be on Parwah.') + '<div class="kd-chk" id="kd-kit-hostpick">' +
+          (j.people || []).filter(function(m){ return m.onApp && m.id !== state.memberId; }).map(function(m){ return '<label><input type="checkbox" value="' + esc(m.id) + '"' + (k.hosts.some(function(x){ return x.id === m.id; }) ? ' checked' : '') + '> ' + esc(m.name) + '</label>'; }).join('') +
+          '</div><button type="button" class="cbtn kd-wide" data-kdk="hosts">Save hosts</button></details>' : ''));
+    }
+    $('kd-kit-body').innerHTML = h;
+  }
+  function kdKitDo(action, body, okMsg, btn){
+    if (btn) btn.disabled = true;
+    return kdPost(API.plans, action, body).then(function(j){
+      if (btn) btn.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not save. Try again.'); return false; }
+      kdKit = j; kdKitShow(); if (okMsg) toast(okMsg);
+      return true;
+    }).catch(function(){ if (btn) btn.disabled = false; toast('No connection - try again'); return false; });
+  }
+  function kdKitSheet(){
+    var j = kdKit, p = j.plan, k = j.kit;
+    var h = '<h1 id="kd-paper-title">' + esc(p.title) + '</h1><p class="mbbsub">Guest sheet · ' + esc(kdWhen(p.at)) + (p.place ? ' · ' + esc(p.place) : '') + ' · ' + k.counts.peopleInvited + ' people invited, ' + k.counts.peopleComing + ' coming so far</p>';
+    k.sheet.forEach(function(s){
+      h += '<section><h2>' + esc(s.side) + ' (' + s.people + (s.people === 1 ? ' person' : ' people') + ')</h2>' + s.guests.map(function(g){
+        return '<p>☐ ' + esc(g.name) + ' · ' + g.people + (g.people === 1 ? ' person' : ' people') + ' · ' + esc(g.status) + (g.note ? ' · ' + esc(g.note) : '') + '</p>';
+      }).join('') + '</section>';
+    });
+    if (!k.sheet.length) h += '<p>No guests yet.</p>';
+    h += '<small>Printed from Parwah on ' + esc(new Date().toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })) + '. Names only: no phone numbers are kept on this list.</small>';
+    kdPaperOpen(h);
+  }
+  $('kd-kit-body').addEventListener('change', function(e){
+    var t = e.target;
+    if (t.hasAttribute && t.hasAttribute('data-kdgstat')) kdKitDo('kit_guest_update', { id: t.getAttribute('data-kdgstat'), status: t.value }, 'Saved ✓');
+  });
+  $('kd-kit-body').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-kdk]'); if (!b || !kdKit) return;
+    var act = b.getAttribute('data-kdk'), id = b.getAttribute('data-id'), pid = kdKitPlan;
+    if (act === 'start') kdKitDo('kit_start', { planId: pid }, 'The kit is ready 🎊', b);
+    else if (act === 'gpick') { var ids = kdChecked('kd-kit-people'); if (!ids.length) { toast('Tick at least one person'); return; } kdKitDo('kit_guest_add', { planId: pid, memberIds: ids, side: kdVal('kd-kit-pside') }, 'Added to the guest list ✓', b); }
+    else if (act === 'gadd') kdKitDo('kit_guest_add', { planId: pid, name: kdVal('kd-kit-gname'), side: kdVal('kd-kit-gside'), people: Number(kdVal('kd-kit-gpeople') || 1), note: kdVal('kd-kit-gnote') }, 'Added to the guest list ✓', b);
+    else if (act === 'gdel') askSheet('Take this guest off the list?', '', 'Yes, remove', 'Keep them').then(function(y){ if (y) kdKitDo('kit_guest_remove', { id: id }, 'Removed'); });
+    else if (act === 'sheet') kdKitSheet();
+    else if (act === 'tadd') kdKitDo('kit_task_add', { planId: pid, title: kdVal('kd-kit-ttitle'), ownerId: kdVal('kd-kit-towner') || undefined, dueDate: kdVal('kd-kit-tdate') || undefined, tz: homeTz() }, 'Task added ✓', b).then(function(ok){ if (ok) { try { refresh(); } catch (x) {} } });
+    else if (act === 'aadd') {
+      var at = kdVal('kd-kit-aat'); if (!at) { toast('Pick the day and time they arrive'); return; }
+      var who = $('kd-kit-awho') ? kdVal('kd-kit-awho') : state.memberId;
+      kdKitDo('kit_arrival_add', { planId: pid, travellerId: who || undefined, who: who ? undefined : kdVal('kd-kit-aname'), arriveAt: new Date(at).toISOString(), mode: kdVal('kd-kit-amode'), from: kdVal('kd-kit-afrom'),
+        receiverId: ($('kd-kit-arecv') && kdVal('kd-kit-arecv')) || undefined }, 'Arrival added ✓', b);
+    }
+    else if (act === 'recv') kdKitDo('kit_arrival_receive', { id: id }, 'Thank you. It shows you will receive them 🧡', b);
+    else if (act === 'adel') kdKitDo('kit_arrival_remove', { id: id }, 'Removed', b);
+    else if (act === 'trip') { kdKitClose(); try { cnTripOpen(); if (kdKit.plan.place) $('cn-trip-to').value = kdKit.plan.place; } catch (x) {} }
+    else if (act === 'costs') { kdKitClose(); try { splitOpen(pid); } catch (x) {} }
+    else if (act === 'bset') kdKitDo('kit_budget_set', { planId: pid, amount: kdVal('kd-kit-bamt') }, 'Budget saved ✓', b);
+    else if (act === 'sides') kdKitDo('kit_sides_set', { planId: pid, sides: kdVal('kd-kit-sides').split(',') }, 'Sides saved ✓', b);
+    else if (act === 'hosts') kdKitDo('kit_hosts_set', { planId: pid, hosts: kdChecked('kd-kit-hostpick') }, 'Hosts saved ✓', b);
+  });
   // ---------- end of the remaining family needs (stream J) ----------
 
   // Inside the iPhone and Android apps this page runs in a frame, and the
