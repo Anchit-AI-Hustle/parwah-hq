@@ -335,6 +335,9 @@ let sayHeart, sayVoice;
   ok('I2c. a few words answer her card: the whole family may read it', r.status === 201 && (await admin.query(`select to_member, body from eld_says where id = $1`, [r.id])).rows[0].to_member === null);
   r = await page(key, 'say', { about: { kind: 'photo', id: famPhoto }, kind: 'heart' });
   ok('I2c. and a heart for the family photo', r.status === 201);
+  const again = await page(key, 'say', { about: { kind: 'photo', id: famPhoto }, kind: 'heart' });
+  ok('I2c. IDEMPOTENT: a second tap on the same heart adds nothing', again.status === 200 && again.already === true && again.id === r.id
+    && (await count(`select count(*)::int as n from eld_says where member_id = $1 and about_kind = 'photo'`, [dadi.id])) === 1);
   // In the app, under her own name.
   let g = await EG(meena);
   ok('I2c. IN THE APP: Meena sees Dadi\'s heart, her words and her photo heart, each "from Dadi\'s link"', g.said.length === 3 && g.said.every(x => x.name === 'Dadi' && x.label === "from Dadi's link")
@@ -410,6 +413,9 @@ let blessOne;
   r = await E(rohan, 'eld_contacts', { personId: dadi.id, contacts: [meena.id, rohan.id, kabir.id, dadaji.id] });
   ok('I2e. an adult chooses up to two: adults on the app with a number, never a child or someone remembered', r.status === 200 && r.contacts.join() === [meena.id, rohan.id].join());
   ok('I2e. a child cannot change them', (await E(kabir, 'eld_contacts', { personId: dadi.id, contacts: [kabir.id] })).status === 403);
+  await admin.query(`update members set see_phone = 'me' where id = $1`, [meena.id]);
+  ok('I2e. a number its owner later keeps to themself leaves her page too', (await page(key, 'open')).contacts.map(c => c.id).join() === rohan.id);
+  await admin.query(`update members set see_phone = null where id = $1`, [meena.id]);
   await clearRate();
 }
 

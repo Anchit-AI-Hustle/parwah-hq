@@ -146,6 +146,7 @@ textarea{width:100%;min-height:120px;font:inherit;font-size:var(--fs-20);padding
     call('audio', { kind: kind, id: id }).then(function(j){
       busy(btn, false);
       if (!j.ok) return oops(j);
+      if (!/^data:audio\/[a-z0-9.+-]+;base64,/.test(j.audio || '')) return toast('आवाज़ नहीं चल पाई', 'The voice note could not be played.');
       try { var a = new Audio(j.audio); stopAll.audio = a; a.play(); } catch (e) { toast('आवाज़ नहीं चल पाई', 'The voice note could not be played.'); }
     }).catch(function(){ busy(btn, false); offline(); });
   }
@@ -275,7 +276,7 @@ textarea{width:100%;min-height:120px;font:inherit;font-size:var(--fs-20);padding
       var box = $('card-in'); if (!box || !j.ok) return;
       box.innerHTML = j.entries.map(function(e){
         return '<p class="from">' + esc(e.from) + '</p>' +
-          (e.kind === 'photo' && e.data ? '<img alt="A photo from ' + esc(e.from) + '" src="' + esc(e.data) + '">' : '') +
+          (e.kind === 'photo' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(e.data || '') ? '<img alt="A photo from ' + esc(e.from) + '" src="' + esc(e.data) + '">' : '') +
           (e.text ? '<p class="msg">' + esc(e.text) + '</p>' : '') +
           (e.kind === 'voice' ? B('play', '▶ ' + esc(e.from) + ' की आवाज़', 'Play ' + esc(e.from) + "'s voice note", '', ' data-kind="cardentry" data-id="' + e.id + '"') : '');
       }).join('');
@@ -310,6 +311,7 @@ textarea{width:100%;min-height:120px;font:inherit;font-size:var(--fs-20);padding
     call('photo', { id: st.photo.id, size: size }).then(function(j){
       var box = $('ph'); if (!box) return;
       if (!j.ok) { box.innerHTML = '<p class="note">The photo could not be opened.</p>'; return; }
+      if (!/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(j.data || '')) { box.innerHTML = '<p class="note">The photo could not be opened.</p>'; return; }
       box.innerHTML = '<img alt="' + esc(st.photo.caption || 'A family photo') + '" src="' + esc(j.data) + '">';
     }).catch(offline);
   }

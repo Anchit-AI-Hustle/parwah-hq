@@ -379,11 +379,15 @@ async function pageState(sql, L, body) {
   const okDone = !!(await sql`select 1 as x from eld_days where member_id = ${her} and day = ${today}::date and kind = 'ok'`)[0];
   const peopleIds = await audienceFor(sql, cid, 'ashirwad', {});
   const people = peopleIds.length ? await sql`select id, name from members where circle_id = ${cid} and id = any(${peopleIds}::uuid[]) order by created_at` : [];
-  const contacts = (L.contacts || []).length
+  // The people she was given to call. Each one's own choice about who sees
+  // their number is read again every time (memberCards), so a number its
+  // owner has since kept to themself leaves the page too.
+  const given = (L.contacts || []).length
     ? await sql`select m.id, m.name, m.phone from members m
                 where m.circle_id = ${cid} and m.id = any(${L.contacts}::uuid[]) and m.phone is not null and m.user_id is not null
                   and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)`
     : [];
+  const contacts = (await memberCards(sql, { id: cid, kind: L.circle_kind }, { id: her }, given)).filter(c => c && c.phone);
   let photo = null;
   try { const p = await familyPhoto(sql, cid); if (p) photo = { id: p.id, caption: p.caption || null, by: first(p.by_name), at: p.created_at }; } catch (e) { /* no album yet */ }
   const sosOpen = !!(await sql`select 1 as x from sos where circle_id = ${cid} and member_id = ${her} and status <> 'resolved' limit 1`.catch(() => []))[0];
@@ -551,6 +555,12 @@ async function pageApi(sql, req, res, hooks) {
       if (voice.err) return no(400, voice.err);
     }
     if (c.text) { const risk = noteRisk(c.text); if (risk) return no(400, risk); }
+    // One heart is one heart: a second tap on the same thing changes nothing.
+    if (c.kind === 'heart' || c.kind === 'pranam') {
+      const had = (await sql`select id from eld_says where circle_id = ${cid} and member_id = ${her} and about_kind = ${c.about.kind}
+                             and about_id = ${c.about.id} and kind = ${c.kind} limit 1`)[0];
+      if (had) return good({ id: had.id, already: true });
+    }
     if (!(await lim(sql, 'say', L.id))) return no(429, 'That is a lot for one day. More tomorrow.', { wait: true });
     const r = await sql`insert into eld_says (circle_id, member_id, to_member, about_kind, about_id, kind, body, audio, audio_secs)
                         values (${cid}, ${her}, ${to}, ${c.about.kind}, ${c.about.id}, ${c.kind}, ${c.text}, ${voice ? voice.uri : null}, ${voice ? voice.secs : null})
