@@ -40,6 +40,8 @@ body{margin:0;background:var(--day);color:var(--ink);font:var(--fs-20)/1.45 syst
 .top{background:var(--dusk);color:var(--on-dusk);padding:var(--space-12) var(--space-16);font-weight:700;font-size:var(--fs-18)}
 main{max-width:560px;margin:0 auto;padding:var(--space-20) var(--space-16) var(--space-32)}
 h1{font-size:var(--fs-32);line-height:1.2;margin:0 0 var(--space-4)}
+/* The heading is focused by script so a screen reader reads the new screen; it is not a control, so it draws no ring. */
+h1:focus{outline:none}
 .sub{font-size:var(--fs-20);margin:0 0 var(--space-20);color:var(--ink-soft)}
 p{margin:0 0 var(--space-12)}
 .b{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;min-height:var(--tap);

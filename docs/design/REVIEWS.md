@@ -810,3 +810,25 @@ Checked at 320 and 390, light and dark, on the real app (`standing.e2e`, `consen
 | F13 | 3 User control | Open: an adult who is not chosen on Papa's card no longer sees Papa's medicines in the Family book unless they wrote the entry, Papa shared it by name, or an SOS is open | 2 | Open by design: it is the card's own rule. Worth a second look with real families |
 
 New patterns: none.
+
+### Review N (stream I), Dadi's link: a page for someone who will never install the app (2026-11-20)
+
+Who: a 70-year-old with a small Android phone, WhatsApp, weak eyes and a slow network, and the adult child who sends her the link. Goal: she tells the family she is fine, hears them and answers, with nothing to learn. Feel: large, calm, hers.
+
+Checked at 320 and 390, light and dark, in a real browser with no session (`eldlink.e2e` measures every screen of the page at a 56px target floor and a 16px text floor, and the app's new card at 44 and 12; the card also at 1280).
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 1 | 2 Real-world match | An English-only page would be read to her by someone else, which is the dependence this was meant to end | 4 | Fixed: Hindi first and English under it on every button and heading; `lang="hi"` on each Hindi run so a screen reader and the read-aloud voice pick the right language |
+| 2 | 6 Recognition | A list of small links needs reading and aim | 3 | Fixed: one column of 64px buttons, one thing on a screen, a big "वापस / Back" on every screen, no menus |
+| 3 | 5 Error prevention | "I need help" one mis-tap away from ringing every phone | 4 | Fixed: five seconds with a full-width "रुकिए, गलती से दब गया / Stop, I pressed by mistake"; Cancel tells nobody |
+| 4 | 1 Visibility | After a tap she must know it reached someone | 3 | Fixed: "✓ परिवार को बता दिया / Your family has been told you are fine" replaces the button for the day; every send ends on a plain "sent" screen or line |
+| 5 | 3 User control | A page set up for her by someone else | 4 | Fixed: the first screen says who set it up and what the family can see, with "नहीं चाहिए / I do not want this"; "What I sent" lists everything with Delete; she can turn the page off herself |
+| 6 | 9 Error recovery | A dead link showing an error, or naming the family to a stranger | 3 | Fixed: one kind screen for a wrong, old or turned-off link, in both languages, with no name on it |
+| 7 | 7 Flexibility | Typing is hard on a small phone | 3 | Fixed: every answer can be one tap or a voice note; writing is the third choice |
+| 8 | 4 Consistency | The heading took a focus ring when a new screen opened | 1 | Fixed: the heading is focused for screen readers only and draws no ring; every control has a 4px ring |
+| 9 | 10 Privacy | Adults sending the link might think Parwah sent it, or forward it widely | 3 | Fixed: the card says "Parwah does not send it: you do, from your own WhatsApp" and that anyone with the link can open her page |
+| 10 | 2 Real-world match | Open: the weekly question is written in English, so it is shown and read aloud in English | 2 | Open: said in the coverage notes |
+| 11 | 1 Visibility | Open: "Send again" makes a fresh link and the old one stops, because only a hash is kept | 2 | Open by design: the button asks first and says so |
+
+New patterns: one, for the page only. A two-line bilingual button (`.b` with `.hi` and `.en`), 64px tall, in three weights: the gradient for the one main thing, the emergency red for help, an outline for everything else. Tokens are the site's own names and values, kept inline so the page needs no stylesheet. In the app there is no new pattern and no new CSS: the link card is a `card` with `ftchip`, `mbacts`, `pkind` and `pickrow`; what she said is an `mbcard` of `crow`s. Ids start with `el-`, functions with `el`.
