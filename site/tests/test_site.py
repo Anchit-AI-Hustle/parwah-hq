@@ -3772,8 +3772,21 @@ check("digest: what is gathered is only what the viewer may open - each feature'
       and "s.visibility = 'circle' or s.about_member = ${mid} or (s.visibility = 'some' and ${mid} = any(s.share_with))" in _dg_gather
       and "join pasand_rec_to t on t.rec_id = r.id and t.member_id = ${mid}" in _dg_gather
       and "for_member is distinct from ${mid} and for_member2 is distinct from ${mid}" in _dg_gather
-      and not re.search(r"from\s+(notes|vault_\w+|legacy_asset_\w+|biomarker_records|pulse|messages|care_bills|care_expenses|pay_\w+|book_consent)\b", _dg)
+      and not re.search(r"from\s+(notes|vault_\w+|legacy_asset_\w+|biomarker_records|pulse|care_bills|care_expenses|pay_\w+|book_consent)\b", _dg)
       and "b.name" not in _dg_gather and "answer_text" not in _dg and "export function digestMaySee(" in _dgr)
+# Changed Nov 2026 (the family walkthrough): the note leads with what is FOR
+# the reader, so it now knows WHO wrote to them today and HOW MANY times. It
+# still never reads a word of any message: one query, a count grouped by
+# sender, only in chats the reader is in, and the only use of the text
+# column is to leave SOS messages out.
+check("digest: MESSAGES ARE COUNTED, NEVER READ - who wrote and how many, in chats the reader is in; joins are not in the note",
+      _dg.count("from messages") == 1
+      and "select m.member_id as by, (c.kind = 'dm') as dm, count(*)::int as n" in _dg_gather
+      and "(c.kind = 'circle' or exists (select 1 from chat_members x where x.chat_id = c.id and x.member_id = ${mid}))" in _dg_gather
+      and _dg_gather.count("m.text") == 1 and "m.text not like" in _dg_gather
+      and "where circle_id = ${cid} and to_member = ${mid}" in _dg_gather
+      and "raw.joined" not in _dg and "joined:" not in _dgr and "happened too" not in _dgr
+      and "message: 94, thanks: 92, plan_ask: 90" in _dgr)
 check("digest: ONE CALL PER MEMBER PER DAY - the row is claimed final once, and only the claimer may ask the model",
       "primary key (member_id, day)" in _dg and "where digest_daily.final = false" in _dg_open
       and "if (mine[0] && evening) row = await digestByModel(" in _dg_open and _dg.count("digestByModel(") == 2

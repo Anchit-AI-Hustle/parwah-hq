@@ -70,13 +70,32 @@ ok('a plan for tomorrow, with its time', bf.some(f => f.text === 'Tomorrow at 1:
 ok('a plan made today for tomorrow is said once, not twice', bf.filter(f => /Sunday lunch/.test(f.text)).length === 1
    && bf.some(f => f.text === 'Priya made a plan: Diwali cleaning.'));
 ok('a recommendation sent to me', bf.some(f => f.text === 'Priya recommended something for you: Panchayat.'));
-ok('a story, a recipe, a card, tasks and a new member', bf.some(f => f.text === 'Papa told a new story.')
+ok('a story, a recipe, a card and tasks', bf.some(f => f.text === 'Papa told a new story.')
    && bf.some(f => f.text === 'Maa added a family recipe: Aloo paratha.') && bf.some(f => f.text === 'Priya started a card for Chachu.')
-   && bf.some(f => f.text === 'Priya finished 2 tasks today.') && bf.some(f => f.text === 'Priya joined the family.'));
-ok('a busy day is written in 3 to 6 sentences, plus one line for the rest',
-   sentences(btext).length >= DG.minSentences && sentences(btext).length <= DG.maxSentences + 1, sentences(btext).length + ': ' + btext);
+   && bf.some(f => f.text === 'Priya finished 2 tasks today.'));
+ok('SOMEONE JOINING IS NEVER IN THE NOTE: the bell says it once', !bf.some(f => /joined the/.test(f.text) || f.kind === 'joined') && !/joined/.test(btext));
+ok('a busy day is written in 3 to 6 sentences',
+   sentences(btext).length >= DG.minSentences && sentences(btext).length <= DG.maxSentences, sentences(btext).length + ': ' + btext);
 ok('the heaviest fact is the first sentence', btext.startsWith(bf[0].text) && digestFirst(bf, 'family') === bf[0].text);
-ok('what did not fit is counted, not dropped in silence', /more small things happened too\.$/.test(btext), btext);
+ok('IT NEVER READS LIKE A LOG: no "more small things happened too" tacked on the end', !/small thing/.test(btext) && !/happened too/.test(btext), btext);
+
+// ---- what is for this person leads
+const forMe = digestFacts({ ...busy, viewerId: 'papa',
+  messages: [{ by: 'rohan', dm: true, n: 2 }, { by: 'priya', dm: false, n: 3 }, { by: 'maa', dm: false, n: 1 }, { by: 'papa', dm: false, n: 4 }],
+  thanks: [{ id: 't1', by: 'chachu' }],
+  plansAsk: [{ planId: 'p2', title: 'Diwali cleaning', by: 'priya' }],
+  sos: [{ sosId: 'k1', id: 'papa', at: at(11, 20), open: false, closedAt: at(11, 40) }] });
+const forMeText = digestWrite(forMe, 'family');
+ok('a message for me leads the note: who, and how many, never the words', forMe[0].text === 'Rohan sent you 2 messages today.' && forMeText.startsWith('Rohan sent you 2 messages today.'), forMe.map(f => f.text).join(' | '));
+ok('then the thanks I received, then the plan waiting for my answer', forMe[1].text === 'Chachu said thank you to you today.' && forMe[2].text === 'Priya planned Diwali cleaning and is waiting for your answer.');
+ok('an SOS that is closed comes after what is for me; it does not lead', forMe.findIndex(f => f.kind === 'sos_closed') === 3 && /^You raised an SOS at 11:20 am, and it was closed at 11:40 am\.$/.test(forMe[3].text), forMe[3].text);
+ok('a plan that asks for my answer is said once, as the question', forMe.filter(f => /Diwali cleaning/.test(f.text)).length === 1);
+ok('the family chat is one line, and I am not told I wrote in it', forMe.some(f => f.text === 'Maa and Priya wrote in the family chat today.') && !forMe.some(f => f.kind === 'family_chat' && /You|Papa/.test(f.text)));
+ok('an SOS still open comes before everything', digestFacts({ ...busy, viewerId: 'papa', messages: [{ by: 'rohan', dm: true, n: 1 }], sos: [{ sosId: 'k2', id: 'maa', at: at(9, 0), open: true }] })[0].kind === 'sos_open');
+ok('one message is "a message"; two people are named together', digestFacts({ viewerId: 'papa', tz: TZ, people, messages: [{ by: 'rohan', dm: true, n: 1 }] })[0].text === 'Rohan sent you a message today.'
+   && digestFacts({ viewerId: 'papa', tz: TZ, people, messages: [{ by: 'rohan', dm: true, n: 1 }, { by: 'priya', dm: true, n: 5 }] })[0].text === 'Priya and Rohan sent you messages today.');
+ok('a message from someone remembered, or from nobody we know, is never said', digestFacts({ viewerId: 'papa', tz: TZ, people, messages: [{ by: 'dada', dm: true, n: 1 }, { by: 'stranger', dm: true, n: 2 }], thanks: [{ id: 't', by: 'dada' }], plansAsk: [{ planId: 'p', title: 'x', by: 'dada' }] }).length === 0);
+ok('no words of any message can be in the list: only a count is read', !JSON.stringify(digestFacts({ viewerId: 'papa', tz: TZ, people, messages: [{ by: 'rohan', dm: true, n: 1, text: 'SECRET WORDS' }] })).includes('SECRET'));
 ok('it stays short enough for a phone', btext.length <= 700, btext.length);
 
 // ---- "You" for the viewer
