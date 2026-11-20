@@ -1692,7 +1692,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
 .kd-rc-t{font-family:var(--disp);font-size:var(--fs-18);color:var(--ink)}
 .kd-rc-s{font-size:var(--fs-14);color:var(--ink-soft)}
 .kd-row{display:flex;gap:var(--space-8);flex-wrap:wrap;align-items:center}
-.kd-big{flex:1 1 130px;min-height:56px;font-size:var(--fs-16)}
+.kd-big{flex:1 1 130px;min-height:56px;border:0;border-radius:var(--radius-12);padding:var(--space-8) var(--space-16);font-family:var(--body);font-weight:700;font-size:var(--fs-16);cursor:pointer}
 .kd-safe{background:var(--ok);color:var(--on-accent)}
 .kd-help{background:var(--alert);color:var(--on-accent)}
 .kd-tap{min-height:var(--tap-min)}
@@ -1702,6 +1702,17 @@ body.senior .abview-meta{font-size:var(--fs-16)}
 .crow.kd-ok{border-left:4px solid var(--ok)}
 .kd-lead{font-size:var(--fs-14);font-weight:600;margin:var(--space-8) 0 var(--space-12)}
 .kd-sub{font-family:var(--disp);font-size:var(--fs-14);margin:var(--space-16) 0 var(--space-8);color:var(--ink)}
+.kd .cbtn,.kd .seg button{min-height:var(--tap-min)}
+.kd .card h3{font-size:var(--fs-16)}
+.kd-list{display:flex;flex-direction:column;gap:var(--space-8);margin:0 0 var(--space-12)}
+.kd-chk{display:flex;flex-wrap:wrap;gap:var(--space-4) var(--space-16);margin-top:var(--space-12)}
+.kd-chk label{display:flex;align-items:center;gap:var(--space-8);min-height:var(--tap-min);font-size:var(--fs-14);color:var(--ink);cursor:pointer}
+.kd-chk input{width:24px;height:24px;flex:none;accent-color:var(--marigold)}
+.kd-legal{font-size:var(--fs-12);color:var(--ink-soft);margin-top:var(--space-12)}
+.kd-hi{font-family:var(--disp);font-size:var(--fs-20);color:var(--ink);margin:0 0 var(--space-12)}
+.kd-line{font-size:var(--fs-14);color:var(--ink);margin:0 0 var(--space-8)}
+.kd details summary{cursor:pointer;font-weight:700;min-height:var(--tap-min);display:flex;align-items:center;color:var(--ink)}
+.kd .seg{margin-bottom:var(--space-12)}
 /* end of stream J styles */
 </style>
 </head>
@@ -2188,6 +2199,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button data-sec="expenses">💸 Costs</button>
       <button data-sec="staff">🧹 Home staff</button>
       <button data-sec="renewals">📅 Renewals</button>
+      <button data-sec="kids">🎒 Bachchon ka panna</button>
     </div>
     <div class="subsec" data-sec="rem">
     <p class="hint" style="margin:0 0 var(--space-12)">What needs doing, who is handling it, and when it is done - the whole family sees the same list.</p>
@@ -2437,6 +2449,16 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         <button type="button" class="go" id="rn-add" style="margin-top:var(--space-16)">Add it</button>
         <p class="hint">Papers in the Vault with an expiry date show here on their own.</p>
       </div>
+    </div>
+
+    <!-- A CHILD'S PAGE, "Bachchon ka panna" (api/_kids.mjs): one page for
+         each member under 18. Parents see it all; the child sees a friendly
+         page of their own; the rest of the family sees what a parent shares. -->
+    <div class="subsec kd" data-sec="kids" hidden>
+      <p class="hint" id="kd-kid-hint" style="margin:0 0 var(--space-12)">One page for each child: school, fee dates, exams, who collects them, the vaccination record and classes. Parents see everything. The rest of the family sees only what a parent shares.</p>
+      <div class="feed" id="kd-kid-today" hidden></div>
+      <div class="seg" id="kd-kid-pick" role="group" aria-label="Whose page" hidden></div>
+      <div id="kd-kid-page"><div class="ev">Loading…</div></div>
     </div>
 
 
@@ -4130,6 +4152,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button data-tab="care" data-sec="expenses">Costs</button>
       <button data-tab="care" data-sec="staff">Home staff</button>
       <button data-tab="care" data-sec="renewals">Renewals</button>
+      <button data-tab="care" data-sec="kids">Bachchon ka panna</button>
     </div>
     <button data-tab="people" id="tab-people"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-users"/></svg></span><span id="tab-people-l">Family</span></button>
     <p class="side-more side-only">More</p>
@@ -4250,6 +4273,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         <button class="ditem sub" data-tab="care" data-sec="expenses">Costs</button>
         <button class="ditem sub" data-tab="care" data-sec="staff">Home staff</button>
         <button class="ditem sub" data-tab="care" data-sec="renewals">Renewals</button>
+        <button class="ditem sub" data-tab="care" data-sec="kids">Bachchon ka panna</button>
       </div>
     </div>
     <button class="ditem" data-tab="people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg> Family</button>
@@ -21724,8 +21748,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       bn.classList.toggle('kd-done', !!o.mine);
       bn.innerHTML = !o.mine
         ? '<b class="kd-rc-t">🛟 Sab theek? ' + esc(kdFirst(o.byName)) + ' is asking everyone</b><span class="kd-rc-s">' + esc(why) + '. One tap tells the family.</span>' +
-          '<div class="kd-row"><button type="button" class="cbtn kd-big kd-safe" id="kd-rc-safe" data-kdrc="safe">✓ I am safe</button>' +
-          '<button type="button" class="cbtn kd-big kd-help" id="kd-rc-help" data-kdrc="help">! I need help</button></div>' +
+          '<div class="kd-row"><button type="button" class="kd-big kd-safe" id="kd-rc-safe" data-kdrc="safe">✓ I am safe</button>' +
+          '<button type="button" class="kd-big kd-help" id="kd-rc-help" data-kdrc="help">! I need help</button></div>' +
           '<button type="button" class="cbtn ghost kd-tap" data-kdrc="see">See who has answered</button>'
         : '<span class="kd-rc-s"><b>🛟 Roll-call is open.</b> You said: ' + (o.mine === 'safe' ? '✓ I am safe' : '! I need help') + '. ' +
           (o.board.waiting.length ? o.board.waiting.length + ' yet to answer.' : 'Everyone has answered.') + '</span>' +
@@ -21811,6 +21835,239 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   kdShown($('pane-people'), kdRcLoad);
   document.addEventListener('visibilitychange', function(){ if (!document.hidden && state && !$('main').hidden) kdRcLoad(); });
   setInterval(function(){ if (state && !document.hidden && !$('main').hidden) kdRcLoad(); }, 60000);
+  // ---- a child's page, "Bachchon ka panna" (api/_kids.mjs)
+  var kdKids = null, kdKidCur = null, kdKid = null;
+  var KD_DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  function kdDate(s){ if (!s) return ''; var d = new Date(String(s).slice(0, 10) + 'T12:00:00'); return isNaN(d) ? '' : d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }); }
+  function kdClock(t){ if (!t) return ''; var h = +t.slice(0, 2); return (h % 12 || 12) + ':' + t.slice(3, 5) + (h < 12 ? ' am' : ' pm'); }
+  function kdAddDays(day, n){ var d = new Date(day + 'T12:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function kdCard(id, title, inner){ return '<div class="card" id="' + id + '"><h3>' + title + '</h3>' + inner + '</div>'; }
+  function kdNone(t){ return '<p class="hint" style="margin:0 0 var(--space-12)">' + esc(t) + '</p>'; }
+  function kdPickIn(label, id, type, val, more){ return '<label class="pick"><span>' + esc(label) + '</span><input type="' + type + '" id="' + id + '" value="' + esc(val || '') + '" ' + (more || '') + '></label>'; }
+  function kdKidsLoad(){
+    if (!state) return;
+    kdGet(API.care, 'kids').then(function(j){
+      if (!j.ok) { $('kd-kid-page').innerHTML = '<div class="ev">Could not load this page. ' + esc(humanFail(j.error, 'Try again in a minute.')) + '</div>'; return; }
+      // My own page first, then my children, then the rest of the family's.
+      var rank = { self: 0, parent: 1 };
+      kdKids = j.kids.map(function(x, i){ return { x: x, i: i }; }).sort(function(a, b){
+        return ((rank[a.x.rel] === undefined ? 2 : rank[a.x.rel]) - (rank[b.x.rel] === undefined ? 2 : rank[b.x.rel])) || (a.i - b.i);
+      }).map(function(o){ return o.x; });
+      if (!kdKidCur || !kdKids.some(function(x){ return x.id === kdKidCur; })) kdKidCur = (kdKids[0] || {}).id || null;
+      var pick = $('kd-kid-pick');
+      pick.hidden = kdKids.length < 2;
+      pick.innerHTML = kdKids.map(function(x){ return '<button type="button" data-kdkid="' + esc(x.id) + '"' + (x.id === kdKidCur ? ' class="sel" aria-pressed="true"' : ' aria-pressed="false"') + '>' + (x.rel === 'self' ? 'My page' : esc(kdFirst(x.name))) + '</button>'; }).join('');
+      if (!kdKidCur) { $('kd-kid-page').innerHTML = '<div class="ev">No one under 18 is in this family yet. A page appears here once a child is in the family tree with a date of birth.</div>'; $('kd-kid-today').hidden = true; return; }
+      kdKidOpen(kdKidCur);
+      kdKidTurns();
+    }).catch(function(){ $('kd-kid-page').innerHTML = '<div class="ev">No connection. This page will load when you are back online.</div>'; });
+  }
+  // "Your turn today": whoever collects a child today has the one tap at the top.
+  function kdKidTurns(){
+    var box = $('kd-kid-today'), rows = [], left = kdKids.length;
+    if (!left) { box.hidden = true; return; }
+    kdKids.forEach(function(x){
+      if (x.rel === 'self' || x.rel === 'minor' || !x.hasPage) { if (!--left) fin(); return; }
+      kdGet(API.care, 'kids', '&child=' + encodeURIComponent(x.id)).then(function(j){
+        if (j.ok && j.page) j.page.pickups.forEach(function(p){ if (p.day === j.page.today && p.mine && !p.pickedAt) rows.push({ kid: x, p: p }); });
+        if (!--left) fin();
+      }).catch(function(){ if (!--left) fin(); });
+    });
+    function fin(){
+      box.hidden = !rows.length;
+      box.innerHTML = rows.map(function(r){
+        return '<div class="crow' + (r.p.late ? ' kd-bad' : '') + '"><span class="txt"><b>🚗 Your turn today: collect ' + esc(kdFirst(r.kid.name)) + '</b><small>At ' + esc(kdTime(r.p.expectAt)) + '. One tap tells the parents.</small></span>' +
+          '<button type="button" class="cbtn" data-kdturn="' + esc(r.kid.id) + '">✓ Picked up</button></div>';
+      }).join('');
+    }
+  }
+  function kdKidOpen(id){
+    kdKidCur = id;
+    kdGet(API.care, 'kids', '&child=' + encodeURIComponent(id)).then(function(j){
+      if (!j.ok) { $('kd-kid-page').innerHTML = '<div class="ev">' + esc(humanFail(j.error, 'That page is not here.')) + '</div>'; return; }
+      kdKid = j; kdKidShow();
+    }).catch(function(){ $('kd-kid-page').innerHTML = '<div class="ev">No connection. This page will load when you are back online.</div>'; });
+  }
+  function kdKidDetailsForm(p, starting){
+    var s = (p && p.school) || {}, h = (p && p.health) || {};
+    return '<div class="pickrow">' + kdPickIn('School', 'kd-kf-school', 'text', s.name, 'maxlength="80" placeholder="e.g. City Montessori"') + kdPickIn('Class', 'kd-kf-class', 'text', s.className, 'maxlength="40" placeholder="e.g. 5 B"') + '</div>' +
+      '<div class="pickrow">' + kdPickIn('Class teacher', 'kd-kf-teacher', 'text', s.teacher, 'maxlength="80"') + kdPickIn('School phone', 'kd-kf-sphone', 'tel', s.phone, 'maxlength="20" inputmode="tel"') + '</div>' +
+      '<div class="pickrow">' + kdPickIn('Allergies, as you know them', 'kd-kf-allergy', 'text', h.allergies, 'maxlength="300" placeholder="e.g. Peanuts"') + kdPickIn("Doctor's name", 'kd-kf-doc', 'text', h.doctorName, 'maxlength="80"') + '</div>' +
+      '<div class="pickrow">' + kdPickIn("Doctor's phone", 'kd-kf-dphone', 'tel', h.doctorPhone, 'maxlength="20" inputmode="tel"') + '</div>' +
+      '<button type="button" class="cbtn kd-wide" data-kdact="save">' + (starting ? 'Start this page' : 'Save details') + '</button>';
+  }
+  function kdKidPickups(p, friendly){
+    if (!p.pickups.length) return kdNone(friendly ? 'Nobody has written who picks you up yet.' : 'No pick-up is set for this week yet.');
+    return '<div class="kd-list">' + p.pickups.map(function(k){
+      var day = k.day === p.today ? 'Today' : kdDay(k.day);
+      var who = k.mine ? 'You' : esc(kdFirst(k.byName || 'Someone'));
+      var st = k.pickedAt ? '✓ Picked up' + (k.pickedName ? ' (marked by ' + esc(kdFirst(k.pickedName)) + ')' : '') : k.late ? '! Not marked as picked up yet' : 'At ' + esc(kdTime(k.expectAt));
+      return '<div class="crow' + (k.pickedAt ? ' kd-ok' : k.late ? ' kd-bad' : '') + '"><span class="txt"><b>' + day + ': ' + who + (friendly ? (k.mine ? '' : ' picks you up') : (k.mine ? ' collect' : ' collects')) + '</b><small>' + st + '</small></span>' +
+        (k.canTap && !k.pickedAt && k.day === p.today ? '<button type="button" class="cbtn" data-kdact="picked" data-day="' + esc(k.day) + '">✓ Picked up</button>' : '') +
+        (p.can.edit && !k.pickedAt ? '<button type="button" class="cbtn ghost" data-kdact="pclear" data-day="' + esc(k.day) + '">Remove</button>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+  function kdKidItems(list, kind, p, friendly){
+    if (!list || !list.length) return '';
+    return '<div class="kd-list">' + list.map(function(i){
+      var mineOrParent = p.can.edit || ((kind === 'exam' || kind === 'note') && p.rel === 'self' && i.by_member === state.memberId);
+      var sub = kind === 'fee' ? 'Due ' + kdDate(i.on_date) + (i.paid ? ' · ✓ Paid' : '')
+        : kind === 'exam' ? kdDate(i.on_date) + (i.result ? ' · Result: ' + i.result : '')
+        : kind === 'vaccine' ? 'Given on ' + kdDate(i.on_date) + (i.next_due ? ' · Next date, as written: ' + kdDate(i.next_due) : '')
+        : kind === 'activity' ? (i.days || []).map(function(d){ return KD_DOW[d]; }).join(', ') + (i.at_time ? ' · ' + kdClock(i.at_time) : '')
+        : (i.by_name ? 'From ' + kdFirst(i.by_name) : '') + (i.share === 'family' ? ' · for the whole family' : ' · for the parents');
+      return '<div class="crow' + (kind === 'fee' && i.paid ? ' kd-ok' : '') + '"><span class="txt"><b>' + esc(i.title) + '</b><small>' + esc(sub) + '</small></span>' +
+        (kind === 'fee' && p.can.edit && !i.paid ? '<button type="button" class="cbtn" data-kdact="paid" data-id="' + esc(i.id) + '">Mark paid</button>' : '') +
+        (kind === 'exam' && mineOrParent ? '<button type="button" class="cbtn ghost" data-kdact="result" data-id="' + esc(i.id) + '">' + (friendly ? 'Write my marks' : 'Write the result') + '</button>' : '') +
+        (mineOrParent ? '<button type="button" class="cbtn ghost" data-kdact="remove" data-id="' + esc(i.id) + '">Remove</button>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+  function kdKidShow(){
+    var j = kdKid, p = j.page, name = esc(kdFirst(j.kid.name)), h = '';
+    if (!p) {
+      $('kd-kid-page').innerHTML = j.mayStart
+        ? kdCard('kd-kc-start', '🎒 Start ' + name + "'s page", kdNone('Write what you know. You can add fees, exams, pick-up and the vaccination record after this.') + kdKidDetailsForm(null, true))
+        : '<div class="ev">' + (j.kid.rel === 'self' ? 'Your parents have not started your page yet.' : name + "'s parents have not started this page yet.") + '</div>';
+      return;
+    }
+    var me = p.rel === 'self', par = p.rel === 'parent';
+    if (me) h += '<p class="kd-hi">Namaste, ' + name + '! This is your page 🎒</p>';
+    // School
+    if (p.sees.school) {
+      var s = p.school;
+      h += kdCard('kd-kc-school', me ? '🏫 My school' : '🏫 School',
+        (s.name || s.className || s.teacher || s.phone
+          ? '<p class="kd-line"><b>' + esc(s.name || 'School not written yet') + '</b>' + (s.className ? ' · Class ' + esc(s.className) : '') + '</p>' +
+            (s.teacher ? '<p class="kd-line">Class teacher: ' + esc(s.teacher) + '</p>' : '') +
+            (s.phone && !me ? '<a class="cbtn ghost kd-call" href="' + kdTel(s.phone) + '">📞 Call the school</a>' : '')
+          : kdNone('Nothing written yet.')));
+    }
+    // Pick-up
+    if (p.sees.pickup) {
+      var form = '';
+      if (par) {
+        form = '<details><summary>Set who collects</summary><div class="pickrow"><label class="pick"><span>Who collects</span><select id="kd-kp-who">' +
+          p.collectors.map(function(c){ return '<option value="' + esc(c.id) + '">' + (c.id === state.memberId ? 'Me' : esc(c.name) + (c.onApp ? '' : ' (by name)')) + '</option>'; }).join('') + '</select></label>' +
+          kdPickIn('School ends at', 'kd-kp-time', 'time', '14:30') + '</div><div class="kd-chk" id="kd-kp-days">' +
+          [0, 1, 2, 3, 4, 5, 6].map(function(n){ var d = kdAddDays(p.today, n); return '<label><input type="checkbox" value="' + d + '"' + (n === 0 ? ' checked' : '') + '> ' + (n === 0 ? 'Today' : esc(kdDay(d))) + '</label>'; }).join('') +
+          '</div><button type="button" class="cbtn kd-wide" data-kdact="pset">Save pick-up</button></details>';
+      }
+      h += kdCard('kd-kc-pickup', me ? '🚗 Who picks me up' : '🚗 Pick-up duty', kdKidPickups(p, me) + form +
+        (par ? '<p class="kd-legal">If "Picked up" is not tapped 20 minutes after the time, the adults of the family are told.</p>' : ''));
+    }
+    // Exams
+    if (p.sees.exams) {
+      h += kdCard('kd-kc-exams', me ? '📝 My exams' : '📝 Exams', (kdKidItems(p.exams, 'exam', p, me) || kdNone(me ? 'No exam dates yet. Add one below.' : 'No exam dates yet.')) +
+        (p.can.addExam ? '<div class="pickrow">' + kdPickIn(me ? 'Which exam' : 'Exam', 'kd-ke-title', 'text', '', 'maxlength="80" placeholder="e.g. Maths unit test"') + kdPickIn('Date', 'kd-ke-date', 'date', '') + '</div>' +
+          '<button type="button" class="cbtn kd-wide" data-kdact="exam">Add exam date</button>' : '') +
+        (p.can.resultsShare ? '<p class="kd-line" style="margin-top:var(--space-16)"><b>' + (me ? 'Who sees my marks' : 'Who sees the results') + '</b></p><div class="seg" id="kd-ke-share" role="group" aria-label="Who sees the results">' +
+            '<button type="button" data-kdres="parents"' + (p.resultsShare !== 'family' ? ' class="sel" aria-pressed="true"' : ' aria-pressed="false"') + '>' + (me ? 'Only Mummy Papa' : 'Parents only') + '</button>' +
+            '<button type="button" data-kdres="family"' + (p.resultsShare === 'family' ? ' class="sel" aria-pressed="true"' : ' aria-pressed="false"') + '>Whole family</button></div>'
+          : par ? '<p class="kd-legal">' + name + ' chooses whether results are shown to the wider family. Right now: ' + (p.resultsShare === 'family' ? 'whole family' : 'parents only') + '.</p>' : ''));
+    }
+    // Classes
+    if (p.sees.activities) {
+      h += kdCard('kd-kc-classes', me ? '🎨 My classes' : '🎨 Classes and activities', (kdKidItems(p.activities, 'activity', p, me) || kdNone('No classes written yet.')) +
+        (par ? '<details><summary>Add a class</summary><div class="pickrow">' + kdPickIn('Class', 'kd-ka-title', 'text', '', 'maxlength="80" placeholder="e.g. Tabla class"') + kdPickIn('Time', 'kd-ka-time', 'time', '17:00') + '</div>' +
+          '<div class="kd-chk" id="kd-ka-days">' + KD_DOW.map(function(d, n){ return '<label><input type="checkbox" value="' + n + '"> ' + d + '</label>'; }).join('') + '</div>' +
+          '<button type="button" class="cbtn kd-wide" data-kdact="class">Add class</button></details>' : ''));
+    }
+    // Fees: never on the child's own page.
+    if (p.sees.fees) {
+      h += kdCard('kd-kc-fees', '🧾 Fee dates', (kdKidItems(p.fees, 'fee', p) || kdNone('No fee dates yet.')) +
+        (par ? '<div class="pickrow">' + kdPickIn('Which fee', 'kd-kfee-title', 'text', '', 'maxlength="80" placeholder="e.g. Term 2 fee"') + kdPickIn('Due on', 'kd-kfee-date', 'date', '') + '</div>' +
+          '<button type="button" class="cbtn kd-wide" data-kdact="fee">Add fee date</button>' : '') +
+        (p.can.feeReminder ? '<div class="kd-chk"><label><input type="checkbox" id="kd-kfee-sub"' + (p.feeReminder ? ' checked' : '') + '> Remind me a week before and the day before</label></div>' : '') +
+        '<p class="kd-legal">Reminders go only to the adults who ask for them, never to ' + name + '.</p>');
+    }
+    // Vaccination record
+    if (p.sees.vaccines) {
+      h += kdCard('kd-kc-vaccines', '💉 Vaccination record', (kdKidItems(p.vaccines, 'vaccine', p) || kdNone('Nothing written yet.')) +
+        (par ? '<details><summary>Add an entry</summary><div class="pickrow">' + kdPickIn('Which one', 'kd-kv-title', 'text', '', 'maxlength="80" placeholder="As on the card"') + kdPickIn('Date given', 'kd-kv-date', 'date', '') + '</div>' +
+          '<div class="pickrow">' + kdPickIn('Next date, if the card says one', 'kd-kv-next', 'date', '') + '</div>' +
+          '<button type="button" class="cbtn kd-wide" data-kdact="vaccine">Add to the record</button></details>' : '') +
+        '<p class="kd-legal">' + esc(j.legal) + '</p>');
+    }
+    // Allergies and the doctor: adults only.
+    if (p.sees.health) {
+      var hl = p.health;
+      h += kdCard('kd-kc-health', '🩺 Allergies and doctor',
+        '<p class="kd-line"><b>Allergies, as the family wrote them:</b> ' + esc(hl.allergies || 'none written') + '</p>' +
+        (hl.doctorName ? '<p class="kd-line">Doctor: ' + esc(hl.doctorName) + '</p>' : '') +
+        (hl.doctorPhone ? '<a class="cbtn ghost kd-call" href="' + kdTel(hl.doctorPhone) + '">📞 Call the doctor</a>' : '') +
+        '<p class="kd-legal">' + esc(j.legal) + '</p>');
+    }
+    // Notes
+    if (p.notes.length || p.can.addNote) {
+      h += kdCard('kd-kc-notes', me ? '💬 What I want to tell the family' : '💬 From ' + name, (kdKidItems(p.notes, 'note', p, me) || kdNone(me ? 'Anything you want them to know. A wish, a worry, a plan.' : 'Nothing yet.')) +
+        (me ? '<div class="pickrow">' + kdPickIn('What I want to say', 'kd-kn-text', 'text', '', 'maxlength="300"') +
+          '<label class="pick"><span>Who can read it</span><select id="kd-kn-who"><option value="parents">Only Mummy Papa</option><option value="family">Whole family</option></select></label></div>' +
+          '<button type="button" class="cbtn kd-wide" data-kdact="note">Tell them</button>' : ''));
+    }
+    if (par) {
+      h += kdCard('kd-kc-share', '👪 What the rest of the family sees', kdNone('Each part is for the parents only until you choose "Whole family". ' + name + ' never sees fees, the vaccination record or the health lines.') +
+        '<div class="pickrow">' + p.sections.map(function(sc){
+          return '<label class="pick"><span>' + esc(sc.label) + '</span><select data-kdshare="' + esc(sc.key) + '"><option value="parents"' + (sc.who !== 'family' ? ' selected' : '') + '>Parents only</option><option value="family"' + (sc.who === 'family' ? ' selected' : '') + '>' + (sc.key === 'health' || sc.key === 'fees' || sc.key === 'vaccines' ? 'Adults of the family' : 'Whole family') + '</option></select></label>';
+        }).join('') + '</div>');
+      h += kdCard('kd-kc-edit', '✏️ School, allergies and doctor', '<details><summary>Change these details</summary>' + kdKidDetailsForm(p, false) + '</details>');
+    }
+    if (!h) h = '<div class="ev">' + name + "'s parents have not shared this page with the family yet.</div>";
+    $('kd-kid-page').innerHTML = h;
+  }
+  function kdKidDo(action, body, okMsg, btn){
+    if (btn) btn.disabled = true;
+    return kdPost(API.care, action, body).then(function(j){
+      if (btn) btn.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not save. Try again.'); return false; }
+      if (j.page) { kdKid = { ok: true, legal: kdKid.legal, page: j.page, kid: { id: kdKid.kid.id, name: kdKid.kid.name, rel: j.page.rel } }; kdKidShow(); }
+      if (okMsg) toast(okMsg);
+      return true;
+    }).catch(function(){ if (btn) btn.disabled = false; toast('No connection - try again'); return false; });
+  }
+  function kdVal(id){ var e = $(id); return e ? e.value.trim() : ''; }
+  function kdChecked(id){ return Array.prototype.map.call($(id).querySelectorAll('input:checked'), function(x){ return x.value; }); }
+  $('kd-kid-pick').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-kdkid]'); if (!b) return;
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+    kdKidOpen(b.getAttribute('data-kdkid'));
+  });
+  $('kd-kid-today').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-kdturn]'); if (!b) return;
+    b.disabled = true;
+    kdPost(API.care, 'kid_pickup_done', { childId: b.getAttribute('data-kdturn') }).then(function(j){
+      toast(j.ok ? 'Marked as picked up. The parents have been told ✓' : (j.error || 'Could not save. Try again.'));
+      kdKidsLoad();
+    }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  $('kd-kid-page').addEventListener('click', function(e){
+    var res = e.target.closest('button[data-kdres]');
+    if (res) { kdKidDo('kid_results_share', { childId: kdKidCur, who: res.getAttribute('data-kdres') }, res.getAttribute('data-kdres') === 'family' ? 'The whole family can see the results now' : 'Results are for the parents only'); return; }
+    var b = e.target.closest('button[data-kdact]'); if (!b || !kdKid) return;
+    var act = b.getAttribute('data-kdact'), id = b.getAttribute('data-id'), kid = kdKidCur;
+    if (act === 'save') {
+      kdKidDo('kid_page_save', { childId: kid, school: kdVal('kd-kf-school'), className: kdVal('kd-kf-class'), teacher: kdVal('kd-kf-teacher'), schoolPhone: kdVal('kd-kf-sphone'),
+        allergies: kdVal('kd-kf-allergy'), doctorName: kdVal('kd-kf-doc'), doctorPhone: kdVal('kd-kf-dphone') }, 'Saved ✓', b).then(function(ok){ if (ok) kdKidsLoad(); });
+    } else if (act === 'pset') {
+      var days = kdChecked('kd-kp-days');
+      if (!days.length) { toast('Tick at least one day'); return; }
+      kdKidDo('kid_pickup_set', { childId: kid, days: days, byId: kdVal('kd-kp-who'), time: kdVal('kd-kp-time') }, 'Pick-up saved ✓', b).then(function(ok){ if (ok) kdKidTurns(); });
+    } else if (act === 'pclear') kdKidDo('kid_pickup_clear', { childId: kid, day: b.getAttribute('data-day') }, 'Removed', b).then(function(ok){ if (ok) kdKidTurns(); });
+    else if (act === 'picked') kdKidDo('kid_pickup_done', { childId: kid, day: b.getAttribute('data-day') }, 'Marked as picked up. The parents have been told ✓', b).then(function(ok){ if (ok) kdKidTurns(); });
+    else if (act === 'exam') kdKidDo('kid_item_add', { childId: kid, kind: 'exam', title: kdVal('kd-ke-title'), onDate: kdVal('kd-ke-date') }, 'Exam date added ✓', b);
+    else if (act === 'fee') kdKidDo('kid_item_add', { childId: kid, kind: 'fee', title: kdVal('kd-kfee-title'), onDate: kdVal('kd-kfee-date') }, 'Fee date added ✓', b);
+    else if (act === 'vaccine') kdKidDo('kid_item_add', { childId: kid, kind: 'vaccine', title: kdVal('kd-kv-title'), onDate: kdVal('kd-kv-date'), nextDue: kdVal('kd-kv-next') || undefined }, 'Added to the record ✓', b);
+    else if (act === 'class') kdKidDo('kid_item_add', { childId: kid, kind: 'activity', title: kdVal('kd-ka-title'), atTime: kdVal('kd-ka-time'), days: kdChecked('kd-ka-days').map(Number) }, 'Class added ✓', b);
+    else if (act === 'note') kdKidDo('kid_item_add', { childId: kid, kind: 'note', title: kdVal('kd-kn-text'), share: kdVal('kd-kn-who') }, 'Sent 🧡', b);
+    else if (act === 'paid') kdKidDo('kid_item_update', { id: id, paid: true }, 'Marked as paid ✓', b);
+    else if (act === 'remove') askSheet('Remove this entry?', '', 'Yes, remove it', 'Keep it').then(function(y){ if (y) kdKidDo('kid_item_remove', { id: id }, 'Removed'); });
+    else if (act === 'result') askText(kdKid.page.rel === 'self' ? 'What marks did you get?' : 'What was the result?', 'Like 18 of 20, or A grade', 'Save', 'Not now').then(function(v){ if (v) kdKidDo('kid_item_update', { id: id, result: v }, 'Saved ✓'); });
+  });
+  $('kd-kid-page').addEventListener('change', function(e){
+    var t = e.target;
+    if (t.hasAttribute && t.hasAttribute('data-kdshare')) kdKidDo('kid_share_set', { childId: kdKidCur, section: t.getAttribute('data-kdshare'), who: t.value }, t.value === 'family' ? 'Shared with the family ✓' : 'For the parents only ✓');
+    else if (t.id === 'kd-kfee-sub') kdKidDo('kid_fee_sub', { childId: kdKidCur, on: t.checked }, t.checked ? 'You will be reminded ✓' : 'Reminders are off for you');
+  });
+  kdShown(document.querySelector('#pane-care .subsec[data-sec="kids"]'), kdKidsLoad);
   // ---------- end of the remaining family needs (stream J) ----------
 
   // Inside the iPhone and Android apps this page runs in a frame, and the

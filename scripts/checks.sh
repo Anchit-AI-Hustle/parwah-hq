@@ -133,6 +133,12 @@ node site/tests/consenttest.mjs
 # who is sent a phone and a birth year, and who decides what together.
 # _standingrules.mjs imports nothing, so this runs before npm install too.
 node site/tests/standingtest.mjs
+# The remaining family needs: the roll-call (who starts, who answers for
+# whom, what a child sees), a child's page (who reads and writes what, the
+# late pick-up), the carer-load fairness line, the function kit, home
+# upkeep and the blood group consent. Every rule file here imports nothing
+# but other rule files, so this runs before npm install too.
+node site/tests/familyneedstest.mjs
 # The native apps' copy of the server's rules (PINs, for now) is written by
 # the server itself. If a rule changes in api/ and the contract is not
 # regenerated, the phones would accept what the server then refuses. Vercel's
