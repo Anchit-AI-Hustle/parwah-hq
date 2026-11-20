@@ -132,7 +132,7 @@ async function raiseOwnSos(req, body) {
   try {
     const events = (await import('./events.mjs')).default;
     await events({ method: 'POST', headers: req.headers || {}, query: {},
-      body: { code: body.code, memberId: body.memberId, type: 'sos', text: 'Needs help (roll-call)', tz: body.tz, lat: body.lat, lng: body.lng, acc: body.acc } }, res);
+      body: { code: body.code, memberId: body.memberId, type: 'sos', text: 'Needs help (roll-call)', tz: body.tz, lat: body.lat, lng: body.lng, accuracy: body.accuracy } }, res);
   } catch (e) { /* the family has still been told below */ }
   return out;
 }

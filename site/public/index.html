@@ -1683,6 +1683,26 @@ body.senior .hdmood small{font-size:var(--fs-14)}
 .abview .mbacts a.cbtn[hidden]{display:none}
 body.senior .abview-cap{font-size:var(--fs-24)}
 body.senior .abview-meta{font-size:var(--fs-16)}
+/* THE REMAINING FAMILY NEEDS (stream J: api/_rollcall.mjs, _kids.mjs,
+   _carerload.mjs, _eventkit.mjs, _home.mjs, _summary.mjs). Built from the
+   shared parts and the tokens; no new token. Safe and help are the status
+   colours with their words and marks, never a vibe colour. */
+.kd-rc{background:var(--surface);border:1px solid var(--bone-2);border-left:4px solid var(--alert);border-radius:var(--radius-16);padding:var(--space-16);margin-bottom:var(--space-16);box-shadow:var(--sh-1);display:flex;flex-direction:column;gap:var(--space-8)}
+.kd-rc.kd-done{border-left-color:var(--ok)}
+.kd-rc-t{font-family:var(--disp);font-size:var(--fs-18);color:var(--ink)}
+.kd-rc-s{font-size:var(--fs-14);color:var(--ink-soft)}
+.kd-row{display:flex;gap:var(--space-8);flex-wrap:wrap;align-items:center}
+.kd-big{flex:1 1 130px;min-height:56px;font-size:var(--fs-16)}
+.kd-safe{background:var(--ok);color:var(--on-accent)}
+.kd-help{background:var(--alert);color:var(--on-accent)}
+.kd-tap{min-height:var(--tap-min)}
+.kd-wide{width:100%;min-height:var(--tap-min);margin-top:var(--space-12)}
+.kd-call{display:inline-flex;align-items:center;justify-content:center;min-height:var(--tap-min);text-decoration:none}
+.crow.kd-bad{border-left:4px solid var(--alert)}
+.crow.kd-ok{border-left:4px solid var(--ok)}
+.kd-lead{font-size:var(--fs-14);font-weight:600;margin:var(--space-8) 0 var(--space-12)}
+.kd-sub{font-family:var(--disp);font-size:var(--fs-14);margin:var(--space-16) 0 var(--space-8);color:var(--ink)}
+/* end of stream J styles */
 </style>
 </head>
 <body>
@@ -1977,6 +1997,10 @@ body.senior .abview-meta{font-size:var(--fs-16)}
 
 <!-- ============ MAIN (tabbed) ============ -->
 <div class="wrap" id="main" hidden>
+
+  <!-- "SAB THEEK?" THE FAMILY ROLL-CALL (api/_rollcall.mjs). On every screen
+       while one is open: two big buttons until this person has answered. -->
+  <div class="kd-rc" id="kd-rc-banner" hidden role="region" aria-label="Family roll-call" aria-live="polite"></div>
 
   <!-- HOME -->
   <section id="pane-home">
@@ -2422,6 +2446,24 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   <!-- FAMILY - who is who, and how ready the family is for each person -->
   <section id="pane-people" hidden>
     <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg></span><span><b>Family</b><small>Who is who, and how ready the family is for each person</small></span></div>
+    <!-- "SAB THEEK?" THE FAMILY ROLL-CALL: start one, see who has answered. -->
+    <div class="card" id="kd-rc-card">
+      <h3>🛟 Sab theek? Family roll-call</h3>
+      <p class="hint" id="kd-rc-hint" style="margin:0 0 var(--space-12)">In a flood, a power cut or any emergency, ask the whole family at once. Each person taps "I am safe" or "I need help". It closes by itself after 24 hours.</p>
+      <div id="kd-rc-open" hidden>
+        <p class="kd-lead" id="kd-rc-who"></p>
+        <div class="feed" id="kd-rc-board"></div>
+        <button type="button" class="cbtn ghost kd-wide" id="kd-rc-close" hidden>Close the roll-call</button>
+      </div>
+      <div id="kd-rc-startbox" hidden>
+        <div class="pickrow">
+          <label class="pick"><span>What is happening</span><select id="kd-rc-reason"></select></label>
+          <label class="pick"><span>A few words</span><input type="text" id="kd-rc-note" maxlength="120" placeholder="e.g. Water on the road"></label>
+        </div>
+        <button type="button" class="cbtn kd-wide" id="kd-rc-start">Ask everyone now</button>
+      </div>
+      <p class="hint" id="kd-rc-last" hidden></p>
+    </div>
     <div class="card" id="joinreq-card" hidden>
       <h3>🙋 Waiting to join</h3>
       <p class="hint" id="jr-count" style="margin:var(--space-2) 0 var(--space-12)"></p>
@@ -21637,6 +21679,140 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     showStep('auth');
     rsResume();
   }
+  // ---------- THE REMAINING FAMILY NEEDS (stream J) ----------
+  // Roll-call, a child's page, carer load, the function kit, home upkeep,
+  // the doctor-ready summary and the blood group lookup. Every rule is on
+  // the server; these screens only show what it sends.
+  function kdFirst(n){ return String(n || '').trim().split(/\s+/)[0] || 'Someone'; }
+  function kdGet(route, area, extra){
+    return apiGet(route + (route.indexOf('?') < 0 ? '?' : '&') + 'area=' + area + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + (extra || ''));
+  }
+  function kdPost(route, action, body){ var b = body || {}; b.code = state.code; b.memberId = state.memberId; b.action = action; return post(route, b); }
+  function kdDay(s){ if (!s) return ''; var d = new Date(String(s).slice(0, 10) + 'T12:00:00'); return isNaN(d) ? '' : d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }); }
+  function kdTime(s){ var d = new Date(s); return isNaN(d) ? '' : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+  function kdTel(p){ return 'tel:' + encodeURIComponent(String(p || '')); }
+  // Run fn each time a part of the screen comes into view (its own hidden
+  // attribute, or a parent's, is taken off). No shared code is touched.
+  function kdShown(el, fn){
+    if (!el || typeof MutationObserver === 'undefined') return;
+    var was = false;
+    function look(){ var now = el.offsetParent !== null; if (now && !was && state) { try { fn(); } catch (e) {} } was = now; }
+    var mo = new MutationObserver(look);
+    for (var n = el; n && n !== document.body; n = n.parentElement) mo.observe(n, { attributes: true, attributeFilter: ['hidden'] });
+    mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    look();
+  }
+
+  // ---- "Sab theek?" the family roll-call (api/_rollcall.mjs)
+  var kdRc = null, kdRcBusy = false;
+  function kdRcLoad(){
+    if (!state) return;
+    kdGet(API.care, 'rollcall').then(function(j){ if (j && j.ok) { kdRc = j; kdRcRender(); } }).catch(function(){});
+  }
+  function kdRcRow(r, kind, adult){
+    var call = r.phone ? '<a class="cbtn ghost kd-call" href="' + kdTel(r.phone) + '">📞 Call ' + esc(kdFirst(r.name)) + '</a>' : '';
+    if (kind === 'help') return '<div class="crow kd-bad"><span class="txt"><b>! ' + esc(r.line) + '</b><small>Call now. If you cannot reach them, call ' + esc(myEmergencyNo()) + '.</small></span>' + call + '</div>';
+    if (kind === 'safe') return '<div class="crow kd-ok"><span class="txt"><b>✓ ' + esc(r.line) + '</b><small>' + esc(kdTime(r.at)) + '</small></span></div>';
+    return '<div class="crow"><span class="txt"><b>' + esc(r.name) + '</b><small>' + (r.onApp ? 'Has not answered yet' : 'Not on Parwah. Call, then tick for them.') + '</small></span>' + call +
+      (adult ? '<button type="button" class="cbtn" data-kdrcfor="' + esc(r.id) + '" data-name="' + esc(r.name) + '">Mark safe</button>' : '') + '</div>';
+  }
+  function kdRcRender(){
+    var j = kdRc, o = j && j.open, bn = $('kd-rc-banner');
+    if (!o) { bn.hidden = true; bn.innerHTML = ''; }
+    else {
+      var why = o.reasonWords + (o.note ? ': ' + o.note : '');
+      bn.classList.toggle('kd-done', !!o.mine);
+      bn.innerHTML = !o.mine
+        ? '<b class="kd-rc-t">🛟 Sab theek? ' + esc(kdFirst(o.byName)) + ' is asking everyone</b><span class="kd-rc-s">' + esc(why) + '. One tap tells the family.</span>' +
+          '<div class="kd-row"><button type="button" class="cbtn kd-big kd-safe" id="kd-rc-safe" data-kdrc="safe">✓ I am safe</button>' +
+          '<button type="button" class="cbtn kd-big kd-help" id="kd-rc-help" data-kdrc="help">! I need help</button></div>' +
+          '<button type="button" class="cbtn ghost kd-tap" data-kdrc="see">See who has answered</button>'
+        : '<span class="kd-rc-s"><b>🛟 Roll-call is open.</b> You said: ' + (o.mine === 'safe' ? '✓ I am safe' : '! I need help') + '. ' +
+          (o.board.waiting.length ? o.board.waiting.length + ' yet to answer.' : 'Everyone has answered.') + '</span>' +
+          '<div class="kd-row"><button type="button" class="cbtn ghost kd-tap" data-kdrc="see">See everyone</button>' +
+          (o.mine === 'help' ? '<button type="button" class="cbtn ghost kd-tap" data-kdrc="safe">I am safe now</button>' : '') + '</div>';
+      bn.hidden = false;
+    }
+    if (!j) return;
+    $('kd-rc-open').hidden = !o; $('kd-rc-startbox').hidden = !!o || !j.canStart; $('kd-rc-hint').hidden = !!o;
+    if (!$('kd-rc-reason').options.length) $('kd-rc-reason').innerHTML = j.reasons.map(function(r){ return '<option value="' + esc(r[0]) + '">' + esc(r[1]) + '</option>'; }).join('');
+    var last = $('kd-rc-last');
+    if (o) {
+      $('kd-rc-who').textContent = kdFirst(o.byName) + ' asked at ' + kdTime(o.startedAt) + ': ' + o.reasonWords + (o.note ? ' (' + o.note + ')' : '') + '.';
+      var b = o.board, adult = j.me && j.me.adult;
+      $('kd-rc-board').innerHTML =
+        (b.help.length ? '<h4 class="kd-sub">Needs help</h4>' + b.help.map(function(r){ return kdRcRow(r, 'help', adult); }).join('') : '') +
+        (b.waiting.length ? '<h4 class="kd-sub">Not answered yet</h4>' + b.waiting.map(function(r){ return kdRcRow(r, 'wait', adult); }).join('') : '') +
+        (b.safe.length ? '<h4 class="kd-sub">Safe</h4>' + b.safe.map(function(r){ return kdRcRow(r, 'safe', adult); }).join('') : '');
+      $('kd-rc-close').hidden = !o.canClose;
+      last.hidden = true;
+    } else if (j.last) {
+      last.textContent = 'The last roll-call (' + j.last.reasonWords + ', asked by ' + kdFirst(j.last.byName) + ') closed at ' + kdTime(j.last.closedAt) + '.'; last.hidden = false;
+    } else if (!j.canStart) {
+      last.textContent = j.me && j.me.adult ? 'The family has been asked ' + j.perDay + ' times today. Call the people you are worried about, or press SOS.' : 'An adult in the family starts a roll-call. In an emergency, press SOS.';
+      last.hidden = false;
+    } else last.hidden = true;
+  }
+  function kdRcAnswer(answer, forId){
+    if (kdRcBusy || !state) return;
+    kdRcBusy = true;
+    var send = function(pos){
+      var body = { answer: answer, tz: homeTz() };
+      if (forId) body.forId = forId;
+      if (pos) { body.lat = pos.lat; body.lng = pos.lng; body.accuracy = Math.round(pos.accuracy || 0); }
+      return kdPost(API.care, 'rollcall_answer', body).then(function(j){
+        kdRcBusy = false;
+        if (!j.ok) { toast(j.error || 'Could not send. Try again.'); kdRcLoad(); return; }
+        kdRc = j; kdRcRender();
+        if (answer === 'help' && !forId) { toast('Your family has been alerted. Call ' + myEmergencyNo() + ' if you need help now.'); try { refresh(); } catch (e) {} }
+        else toast(forId ? 'Marked safe. The family can see it.' : 'The family can see you are safe 🧡');
+      }).catch(function(){ kdRcBusy = false; toast(answer === 'help' ? 'No connection. Call ' + myEmergencyNo() + ' or your family now.' : 'No connection - try again'); });
+    };
+    // A position helps, but "I need help" never waits more than 3 seconds for one.
+    if (answer === 'help' && !forId) { var p; try { p = sosPos(3000); } catch (e) { p = Promise.resolve(null); } p.then(send, function(){ send(null); }); }
+    else send(null);
+  }
+  $('kd-rc-banner').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-kdrc]'); if (!b) return;
+    var what = b.getAttribute('data-kdrc');
+    if (what === 'see') { switchTab('people'); try { $('kd-rc-card').scrollIntoView({ block: 'start' }); } catch (x) {} return; }
+    if (what === 'safe') { kdRcAnswer('safe'); return; }
+    askSheet('Tell the family you need help?', 'This sends your SOS to the family, with where you are if location is on.', 'Yes, I need help', 'No, go back', true)
+      .then(function(y){ if (y) kdRcAnswer('help'); });
+  });
+  $('kd-rc-board').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-kdrcfor]'); if (!b) return;
+    var nm = kdFirst(b.getAttribute('data-name'));
+    askSheet('Have you heard from ' + nm + '?', 'It will show as: ' + kdFirst(state.name) + ' says ' + nm + ' is safe.', 'Yes, ' + nm + ' is safe', 'Not yet')
+      .then(function(y){ if (y) kdRcAnswer('safe', b.getAttribute('data-kdrcfor')); });
+  });
+  $('kd-rc-start').addEventListener('click', function(){
+    var btn = this;
+    askSheet('Ask everyone in the family now?', 'Every member gets an alert with two buttons, even at night.', 'Yes, ask everyone', 'No, go back').then(function(y){
+      if (!y) return;
+      btn.disabled = true;
+      kdPost(API.care, 'rollcall_start', { reason: $('kd-rc-reason').value, note: $('kd-rc-note').value }).then(function(j){
+        btn.disabled = false;
+        if (!j.ok) { toast(j.error || 'Could not start the roll-call'); kdRcLoad(); return; }
+        $('kd-rc-note').value = ''; kdRc = j; kdRcRender(); toast('Everyone has been asked 🛟');
+      }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
+    });
+  });
+  $('kd-rc-close').addEventListener('click', function(){
+    askSheet('Close the roll-call?', 'Nobody will be asked again. It also closes by itself after 24 hours.', 'Yes, close it', 'Keep it open').then(function(y){
+      if (!y) return;
+      kdPost(API.care, 'rollcall_close', {}).then(function(j){ if (!j.ok) toast(j.error || 'Could not close it'); else { kdRc = j; kdRcRender(); toast('Roll-call closed'); } })
+        .catch(function(){ toast('No connection - try again'); });
+    });
+  });
+  // Looked at when the app opens, when this phone comes back to the front,
+  // when the Family tab opens, and once a minute while the app is in view.
+  kdShown($('main'), kdRcLoad);
+  kdShown($('pane-people'), kdRcLoad);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden && state && !$('main').hidden) kdRcLoad(); });
+  setInterval(function(){ if (state && !document.hidden && !$('main').hidden) kdRcLoad(); }, 60000);
+  // ---------- end of the remaining family needs (stream J) ----------
+
   // Inside the iPhone and Android apps this page runs in a frame, and the
   // app shows its own loading screen until it hears this. It says only that
   // Parwah has started - nothing about the family, so any origin may hear it.
