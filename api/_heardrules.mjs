@@ -17,8 +17,9 @@
 //   6. The words for a story recorded for someone, a festival change, and
 //      the evening before a card's day.
 import { wallIn } from './_rememberrules.mjs';
+import { shortName } from './_todayrules.mjs';
 
-const first = n => String(n || '').trim().split(/\s+/)[0] || 'Someone';
+const first = n => shortName(n, 'Someone');
 const clean = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
 export const isId = v => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ''));
 

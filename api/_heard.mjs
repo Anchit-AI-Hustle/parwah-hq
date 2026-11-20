@@ -36,6 +36,7 @@ import { awardHeard } from './_coins.mjs';
 import { ensureBaatSchema, baatList, baatAudio, baatAction, baatSweep } from './_baat.mjs';
 import { ensureRememberSchema } from './_remember.mjs';
 import { remembranceDue, remembranceLine, yearsLine } from './_rememberrules.mjs';
+import { shortName } from './_todayrules.mjs';
 import { MOODS, MOOD_ASK, BAAT_KINDS, BAAT_REPLIES, BAAT_WHEN_DEFAULT, SHUKRIYA_REST_DAYS, shukriyaPick, shukriyaClean,
          questionFor, weekOfDay, SAWAAL_MAX, toldByLine, waitingFor, waitingLine } from './_heardrules.mjs';
 
@@ -43,7 +44,7 @@ const HOME_TZ = 'Asia/Kolkata';
 export const RCARD_PER_PERSON = 3;
 const PHOTO_URI = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 const PHOTO_MAX = 220000;
-const first = n => String(n || '').trim().split(/\s+/)[0] || 'Someone';
+const first = n => shortName(n, 'Someone');
 const clip = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
 
 let ready = false;

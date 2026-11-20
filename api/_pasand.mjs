@@ -33,6 +33,7 @@ import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 import { noteRisk } from './_notesapi.mjs';
+import { shortName } from './_todayrules.mjs';
 import { PASAND_MAX, PASAND_AUDIENCES, isLikeKind, isPlatform, isRecKind, isResponse,
          platformName, cleanText, cleanLink, credRisk } from './_pasandrules.mjs';
 
@@ -133,7 +134,7 @@ async function state(sql, circle, me) {
     if (m.id === me.id) continue;
     // A like noted for someone carries who wrote it, and only that person can take it off.
     const ls = likes.filter(l => l.member_id === m.id).map(l => ({ id: l.id, kind: l.kind, text: l.text,
-      by: l.by_member && l.by_member !== m.id ? 'noted by ' + String(l.by_name || 'the family').split(' ')[0] : null, mine: l.by_member === me.id }));
+      by: l.by_member && l.by_member !== m.id ? 'noted by ' + shortName(l.by_name || 'the family') : null, mine: l.by_member === me.id }));
     const ps = plats.filter(s => s.member_id === m.id).map(s => ({ platform: s.platform, link: s.link }));
     // Someone not on the app is always listed, so the family can note what they like.
     if (ls.length || ps.length || !m.on_app) people.push({ memberId: m.id, name: m.name, onApp: m.on_app, likes: ls, platforms: ps, canNote: !m.on_app });
@@ -157,7 +158,7 @@ async function state(sql, circle, me) {
   return {
     me: { audience: prefs.audience, chosen: prefs.chosen || [],
           likes: likes.filter(l => l.member_id === me.id).map(l => ({ id: l.id, kind: l.kind, text: l.text,
-            by: l.by_member && l.by_member !== me.id ? 'noted by ' + String(l.by_name || 'the family').split(' ')[0] : null })),
+            by: l.by_member && l.by_member !== me.id ? 'noted by ' + shortName(l.by_name || 'the family') : null })),
           platforms: plats.filter(s => s.member_id === me.id).map(s => ({ platform: s.platform, link: s.link })) },
     people,
     forMe: recs.filter(r => r.for_me).slice(0, PASAND_MAX.list).map(r => ({ ...shape(r), response: r.response, reply: r.reply })),
@@ -206,7 +207,7 @@ export default async function handler(req, res) {
         if (cnt[0].n >= PASAND_MAX.likes) return bad(who.name + ' has ' + PASAND_MAX.likes + ' likes noted. Remove one to add another.');
         const rf = await sql`insert into pasand_likes (circle_id, member_id, kind, text, by_member) values (${circle.id}, ${who.id}, ${body.kind}, ${t.value}, ${me.id})
                              on conflict do nothing returning id`;
-        return good({ id: rf[0] ? rf[0].id : null, already: !rf[0], by: 'noted by ' + String(me.name).split(' ')[0] }, rf[0] ? 201 : 200);
+        return good({ id: rf[0] ? rf[0].id : null, already: !rf[0], by: 'noted by ' + shortName(me.name) }, rf[0] ? 201 : 200);
       }
       // MY OWN WORDS REPLACE THE FAMILY'S NOTES: what the family noted for
       // me before I joined goes the moment I write a like of my own.

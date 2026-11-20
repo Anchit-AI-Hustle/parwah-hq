@@ -2708,7 +2708,7 @@ check("repairs: the phone that forgot waits for the family with its secret, then
       and "setInterval(function(){ rsPoll(false); }, 10000)" in _app_src and "document.hidden" in _app_src[_app_src.index("function rsPoll("):_app_src.index("function rsPoll(") + 400])
 check("repairs: the server's newer replies are read: a voice task's own title and time, a throttled SOS, Ekta's emergency in chat, a horoscope feed that is down",
       "intent.task.title" in _app_src and "voiceDue(intent.task.time" in _app_src and "if (j.throttled)" in _app_src
-      and "if (j.ektaEmergency) chatUrgent(v)" in _app_src and "h.feedDown" in _app_src)
+      and "if (j.ektaEmergency) chatUrgent(u.text)" in _app_src and "h.feedDown" in _app_src)
 check("repairs: the To do filters call the function that exists",
       "renderReminders(" not in _js)
 

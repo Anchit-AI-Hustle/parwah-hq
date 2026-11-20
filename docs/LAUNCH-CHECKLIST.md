@@ -1,6 +1,6 @@
 # Website Launch Checklist
 
-Run through every item before shipping a new page, microsite, or major update. Do not assume — inspect the built `www/` output directly.
+Run through every item before shipping a new page, microsite, or major update. Do not assume: inspect the built `www/` output directly.
 
 ## The Page
 - [ ] Every section has one clear job you can state in one line.

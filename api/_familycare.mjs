@@ -47,13 +47,14 @@ import { tokenOf } from './_token.mjs';
 import { ladderFor, ensureLadderSchema } from './_ladder.mjs';
 import { dialQuietLadder } from './_sosdial.mjs';
 import { ROTA_CONSENT_ACTIONS, rotaConsentAction, rotaRefused, rotaTellPerson } from './_rotaconsent.mjs';
+import { shortName } from './_todayrules.mjs';
 import { validHHMM, validDay, addDays, quietPhase, quietFamilyText, QUIET_NUDGE, QUIET_GRACE_MIN, AWAY_MAX_DAYS,
          QUIET_LADDER_MIN, quietCallHour, quietLadderText,
          lifecertWindow, ackNoCheck, rotaNext, safeWordCheck, JEEVAN_SITE } from './_carerules.mjs';
 
 const HOME_TZ = 'Asia/Kolkata';
 const clip = (s, n) => { const t = String(s == null ? '' : s).trim().slice(0, n); return t || null; };
-const first = (name) => String(name || '').split(' ')[0];
+const first = (name) => shortName(name);
 
 let fcReady = false;
 export async function ensureFamilyCareSchema(sql) {
