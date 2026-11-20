@@ -1711,7 +1711,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
 .kd-legal{font-size:var(--fs-12);color:var(--ink-soft);margin-top:var(--space-12)}
 .kd-hi{font-family:var(--disp);font-size:var(--fs-20);color:var(--ink);margin:0 0 var(--space-12)}
 .kd-line{font-size:var(--fs-14);color:var(--ink);margin:0 0 var(--space-8)}
-.kd details summary{cursor:pointer;font-weight:700;min-height:var(--tap-min);display:flex;align-items:center;color:var(--ink)}
+.kd details summary,details.kd > summary{cursor:pointer;font-weight:700;min-height:var(--tap-min);display:flex;align-items:center;color:var(--ink)}
+details.kd{margin-bottom:var(--space-12)}
 .kd .seg{margin-bottom:var(--space-12)}
 #kd-kit,#kd-paper{position:fixed;inset:0;z-index:var(--z-sheet);background:var(--day);overflow-y:auto;padding:var(--space-16);overscroll-behavior:contain}
 .kd-bar{display:flex;gap:var(--space-8);align-items:center;justify-content:space-between;max-width:720px;margin:0 auto var(--space-16)}
@@ -2703,6 +2704,27 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <div class="abgrid" id="ab-grid"></div>
     </div>
     <div id="book-list-view">
+      <!-- THE DOCTOR-READY SUMMARY and THE BLOOD GROUP LOOKUP
+           (api/_bloodlookup.mjs): both read what is already written here,
+           and neither gives advice. For the adults of the family. -->
+      <details class="card kd" id="kd-sum-card" hidden>
+        <summary>🩺 Doctor-ready summary</summary>
+        <p class="hint" style="margin:0 0 var(--space-12)">One page to take to the doctor: medicines, allergies, blood group, past visits and who to call. It shows only what you can already see. Written by the family, not a medical record.</p>
+        <div class="pickrow"><label class="pick"><span>For whom</span><select id="kd-sum-who"></select></label></div>
+        <button type="button" class="cbtn kd-wide" id="kd-sum-open">Open the page</button>
+      </details>
+      <details class="card kd" id="kd-bl-card" hidden>
+        <summary>🩸 Blood group in the family</summary>
+        <p class="hint" style="margin:0 0 var(--space-12)">Find who in your family, and in families linked to yours, has a blood group. Only people who said yes are shown.</p>
+        <div class="pickrow"><label class="pick"><span>Blood group</span><select id="kd-bl-group"></select></label></div>
+        <button type="button" class="cbtn kd-wide" id="kd-bl-find">Find in the family</button>
+        <div class="feed" id="kd-bl-out" style="margin-top:var(--space-12)" hidden></div>
+        <button type="button" class="cbtn ghost kd-wide" id="kd-bl-ask" hidden>Tell them someone is looking</button>
+        <h4 class="kd-sub">Your own answer</h4>
+        <div class="kd-chk" style="margin-top:0"><label><input type="checkbox" id="kd-bl-consent"> <span id="kd-bl-line">Tell my family, and the families linked to ours, my blood group if someone needs blood.</span></label></div>
+        <p class="hint" id="kd-bl-mine"></p>
+        <p class="kd-legal" id="kd-bl-legal"></p>
+      </details>
       <div class="addrow" style="margin-top:0">
         <input type="search" id="b-search" maxlength="60" placeholder="Search health and contacts…" aria-label="Search health and contacts">
       </div>
@@ -2834,6 +2856,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button data-sec="docs" class="sel">🔐 Documents</button>
       <button data-sec="pay">💳 Payments</button>
       <button data-sec="locator">📒 Family register</button>
+      <button data-sec="home">🔧 Ghar ka saaman</button>
     </div>
     <!-- "What needs doing" (api/_afterlossapi.mjs): one quiet line when a
          list is waiting for this person or is open. Nothing otherwise. -->
@@ -3077,6 +3100,45 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           <select id="al-person"><option value="">Choose a person</option></select>
           <div id="al-body"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- HOME: REPAIRS AND WARRANTIES, "Ghar ka saaman" (api/_home.mjs):
+         appliances, vehicles and house papers, with the same four choices
+         of who sees each one as the Family register. -->
+    <div class="subsec kd" data-sec="home" hidden>
+      <p class="hint" id="kd-hm-hint" style="margin:0 0 var(--space-12)">Appliances, vehicles and house papers: when the warranty ends, when the service is due, who to call, and who fixed it last time. You are reminded a month and a week before.</p>
+      <div class="feed" id="kd-hm-list"><div class="ev">Loading…</div></div>
+      <div class="card" id="kd-hm-form" style="margin-top:var(--space-16)">
+        <h3 id="kd-hm-head">Add something</h3>
+        <div class="pickrow">
+          <label class="pick"><span>What it is</span><select id="kd-hm-kind"></select></label>
+          <label class="pick"><span>Name it</span><input type="text" id="kd-hm-title" maxlength="80" placeholder="e.g. Fridge"></label>
+        </div>
+        <div class="pickrow">
+          <label class="pick"><span>Bought on</span><input type="date" id="kd-hm-bought"></label>
+          <label class="pick"><span>Bought where</span><input type="text" id="kd-hm-where" maxlength="80" placeholder="Shop or website"></label>
+        </div>
+        <div class="pickrow">
+          <label class="pick"><span>Warranty until</span><input type="date" id="kd-hm-warranty"></label>
+          <label class="pick"><span>Service due on</span><input type="date" id="kd-hm-service"></label>
+        </div>
+        <div class="pickrow">
+          <label class="pick"><span>Who to call</span><select id="kd-hm-contact"></select></label>
+          <label class="pick"><span>Or write a name</span><input type="text" id="kd-hm-calltext" maxlength="80" placeholder="e.g. Company helpline"></label>
+        </div>
+        <div class="pickrow">
+          <label class="pick"><span>The bill, in the Vault</span><select id="kd-hm-bill"></select></label>
+          <label class="pick"><span>Bill number</span><input type="text" id="kd-hm-billnote" maxlength="80" placeholder="e.g. Invoice 4471"></label>
+        </div>
+        <div class="pickrow">
+          <label class="pick"><span>Who fixed it last time</span><input type="text" id="kd-hm-fixed" maxlength="200" placeholder="Name, and what was done"></label>
+          <label class="pick"><span>Who can see this</span><select id="kd-hm-who"></select></label>
+        </div>
+        <div class="kd-chk" id="kd-hm-people" hidden></div>
+        <button type="button" class="cbtn kd-wide" id="kd-hm-save">Add it</button>
+        <button type="button" class="cbtn ghost kd-wide" id="kd-hm-cancel" hidden>Leave it as it was</button>
+        <p class="kd-legal">Parwah never keeps a card number, a password or a PIN. To keep the bill itself, add it in Documents first.</p>
       </div>
     </div>
   </section>
@@ -4165,6 +4227,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button data-tab="vault" data-sec="docs">Documents</button>
       <button data-tab="vault" data-sec="pay">Payments</button>
       <button data-tab="vault" data-sec="locator">Family register</button>
+      <button data-tab="vault" data-sec="home">Ghar ka saaman</button>
     </div>
     <button data-tab="memory" class="deskonly"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-health"/></svg></span>Health &amp; contacts</button>
     <button data-tab="care"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></span>To do<i class="dot" id="care-dot" hidden></i></button>
@@ -22338,6 +22401,154 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     else if (act === 'sides') kdKitDo('kit_sides_set', { planId: pid, sides: kdVal('kd-kit-sides').split(',') }, 'Sides saved ✓', b);
     else if (act === 'hosts') kdKitDo('kit_hosts_set', { planId: pid, hosts: kdChecked('kd-kit-hostpick') }, 'Hosts saved ✓', b);
   });
+  // ---- home: repairs and warranties, "Ghar ka saaman" (api/_home.mjs)
+  var kdHm = null, kdHmEdit = null;
+  function kdBook(action, body){ return kdPost(API.notes.split('?')[0], action, body); }
+  function kdInDays(n){ return n === null || n === undefined ? '' : n < 0 ? 'ended ' + (-n) + (n === -1 ? ' day ago' : ' days ago') : n === 0 ? 'today' : n === 1 ? 'tomorrow' : 'in ' + n + ' days'; }
+  function kdHmLoad(){
+    if (!state) return;
+    kdGet(API.notes.split('?')[0], 'home').then(function(j){
+      if (!j.ok) { $('kd-hm-list').innerHTML = '<div class="ev">Could not load this list. ' + esc(humanFail(j.error, 'Try again in a minute.')) + '</div>'; return; }
+      kdHm = j; kdHmShow();
+    }).catch(function(){ $('kd-hm-list').innerHTML = '<div class="ev">No connection. This list will load when you are back online.</div>'; });
+  }
+  function kdHmFormFill(it){
+    var j = kdHm;
+    $('kd-hm-kind').innerHTML = kdOpts(j.kinds, it ? it.kind : 'appliance');
+    $('kd-hm-contact').innerHTML = kdOpts(j.contacts.map(function(c){ return [c.id, c.name]; }), it && it.contact ? it.contact.id : '', 'Nobody chosen');
+    $('kd-hm-bill').innerHTML = kdOpts(j.docs.map(function(d){ return [d.id, d.label]; }), it && it.bill ? it.bill.id : '', 'No paper chosen');
+    $('kd-hm-who').innerHTML = kdOpts(j.who, it ? it.audience : 'IMMEDIATE');
+    $('kd-hm-people').innerHTML = j.people.map(function(p){ return '<label><input type="checkbox" value="' + esc(p.id) + '"' + (it && it.people && it.people.indexOf(p.id) >= 0 ? ' checked' : '') + '> ' + esc(p.name) + '</label>'; }).join('');
+    $('kd-hm-people').hidden = $('kd-hm-who').value !== 'NOMINEES_ONLY';
+    $('kd-hm-title').value = it ? it.title : ''; $('kd-hm-bought').value = (it && it.boughtOn) || ''; $('kd-hm-where').value = (it && it.boughtWhere) || '';
+    $('kd-hm-warranty').value = (it && it.warrantyUntil) || ''; $('kd-hm-service').value = (it && it.serviceDue) || '';
+    $('kd-hm-calltext').value = (it && it.callText) || ''; $('kd-hm-billnote').value = (it && it.billNote) || ''; $('kd-hm-fixed').value = '';
+    $('kd-hm-fixed').closest('label').hidden = !!it;
+    $('kd-hm-head').textContent = it ? 'Change: ' + it.title : 'Add something';
+    $('kd-hm-save').textContent = it ? 'Save changes' : 'Add it'; $('kd-hm-cancel').hidden = !it;
+  }
+  function kdHmShow(){
+    var j = kdHm;
+    $('kd-hm-list').innerHTML = j.items.length ? j.items.map(function(i){
+      var chip = function(n){ return n === null ? '' : ' <span class="ftchip ' + (n < 0 ? 'bad' : n <= 30 ? 'warn' : 'ok') + '">' + esc(kdInDays(n)) + '</span>'; };
+      var who = j.who.filter(function(w){ return w[0] === i.audience; })[0];
+      return '<div class="crow"><span class="txt"><b>' + i.icon + ' ' + esc(i.title) + '</b>' +
+        (i.boughtOn || i.boughtWhere ? '<small>Bought' + (i.boughtOn ? ' on ' + esc(kdDate(i.boughtOn)) : '') + (i.boughtWhere ? ' at ' + esc(i.boughtWhere) : '') + '</small>' : '') +
+        (i.warrantyUntil ? '<small>Warranty until ' + esc(kdDate(i.warrantyUntil)) + chip(i.warrantyDays) + '</small>' : '') +
+        (i.serviceDue ? '<small>Service due ' + esc(kdDate(i.serviceDue)) + chip(i.serviceDays) + '</small>' : '') +
+        (i.contact ? '<small>To call: ' + esc(i.contact.name) + '</small>' : i.contactKept ? '<small>To call: a contact ' + esc(kdFirst(i.byName)) + ' keeps. Ask ' + esc(kdFirst(i.byName)) + '.</small>' : '') +
+        (i.callText ? '<small>To call: ' + esc(i.callText) + '</small>' : '') +
+        (i.bill ? '<small>Bill: ' + esc(i.bill.label) + (i.billNote ? ' · ' + esc(i.billNote) : '') + '</small>' : i.billKept ? '<small>The bill is in ' + esc(kdFirst(i.byName)) + "'s Vault" + (i.billNote ? ' · ' + esc(i.billNote) : '') + '</small>' : i.billNote ? '<small>Bill: ' + esc(i.billNote) + '</small>' : '') +
+        (i.fixedNote ? '<small>Fixed last time: ' + esc(i.fixedNote) + (i.fixedByName ? ' (written by ' + esc(kdFirst(i.fixedByName)) + (i.fixedAt ? ', ' + esc(kdDate(i.fixedAt)) : '') + ')' : '') + '</small>' : '') +
+        '<small>' + (i.mine ? 'You wrote this' : 'Written by ' + esc(kdFirst(i.byName))) + ' · ' + esc(who ? who[1] : '') + '</small></span>' +
+        (i.contact && i.contact.phone ? '<a class="cbtn ghost kd-call" href="' + kdTel(i.contact.phone) + '">📞 Call</a>' : '') +
+        (i.bill ? '<button type="button" class="cbtn ghost" data-kdhm="bill" data-id="' + esc(i.bill.id) + '">Open the bill</button>' : '') +
+        (j.canLog ? '<button type="button" class="cbtn" data-kdhm="log" data-id="' + esc(i.id) + '">Write down a repair</button>' : '') +
+        (i.mine ? '<button type="button" class="cbtn ghost" data-kdhm="edit" data-id="' + esc(i.id) + '">Change</button><button type="button" class="cbtn ghost" data-kdhm="del" data-id="' + esc(i.id) + '">Remove</button>' : '') + '</div>';
+    }).join('') : '<div class="ev">Nothing here yet. Add the fridge, the scooter or the house tax receipt, and the family will know who to call.</div>';
+    kdHmFormFill(kdHmEdit ? j.items.filter(function(i){ return i.id === kdHmEdit; })[0] || null : null);
+  }
+  function kdHmSend(action, body, msg){
+    return kdBook(action, body).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not save. Try again.'); return false; }
+      kdHm = j; kdHmEdit = null; kdHmShow(); toast(msg); return true;
+    }).catch(function(){ toast('No connection - try again'); return false; });
+  }
+  $('kd-hm-who').addEventListener('change', function(){ $('kd-hm-people').hidden = this.value !== 'NOMINEES_ONLY'; });
+  $('kd-hm-cancel').addEventListener('click', function(){ kdHmEdit = null; kdHmShow(); });
+  $('kd-hm-save').addEventListener('click', function(){
+    var b = { kind: kdVal('kd-hm-kind'), title: kdVal('kd-hm-title'), boughtOn: kdVal('kd-hm-bought'), boughtWhere: kdVal('kd-hm-where'), warrantyUntil: kdVal('kd-hm-warranty'), serviceDue: kdVal('kd-hm-service'),
+      callContactId: kdVal('kd-hm-contact') || undefined, callText: kdVal('kd-hm-calltext'), billDocId: kdVal('kd-hm-bill') || undefined, billNote: kdVal('kd-hm-billnote'), fixedNote: kdVal('kd-hm-fixed'),
+      audience: kdVal('kd-hm-who'), people: kdChecked('kd-hm-people') };
+    if (!b.title) { toast('Say what it is, like "Fridge"'); return; }
+    if (kdHmEdit) { b.id = kdHmEdit; kdHmSend('home_update', b, 'Saved ✓'); } else kdHmSend('home_add', b, 'Added ✓');
+  });
+  $('kd-hm-list').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-kdhm]'); if (!b || !kdHm) return;
+    var act = b.getAttribute('data-kdhm'), id = b.getAttribute('data-id');
+    if (act === 'edit') { kdHmEdit = id; kdHmShow(); try { $('kd-hm-form').scrollIntoView({ block: 'start' }); $('kd-hm-title').focus(); } catch (x) {} }
+    else if (act === 'del') askSheet('Remove this entry?', 'Its reminders stop too.', 'Yes, remove it', 'Keep it').then(function(y){ if (y) kdHmSend('home_remove', { id: id }, 'Removed'); });
+    else if (act === 'log') askText('Who fixed it, and what was done?', 'Like: Imran from Sharma Electricals changed the gasket', 'Save', 'Not now').then(function(v){ if (v) kdHmSend('home_log', { id: id, note: v }, 'Written down ✓'); });
+    else if (act === 'bill') { setSec('vault', 'docs'); var tries = 0, go = function(){ try { if (vDoc(id)) openDoc(id); else if (tries++ < 20) setTimeout(go, 150); } catch (x) {} }; go(); }
+  });
+  kdShown(document.querySelector('#pane-vault .subsec[data-sec="home"]'), kdHmLoad);
+
+  // ---- the doctor-ready summary and the blood group lookup (api/_bloodlookup.mjs)
+  var kdBl = null, kdBlGroup = null;
+  function kdHealthLoad(){
+    if (!state) return;
+    var base = API.notes.split('?')[0];
+    kdGet(base, 'summary').then(function(j){
+      if (!j.ok) return;
+      $('kd-sum-card').hidden = !j.adult;
+      $('kd-sum-who').innerHTML = j.people.map(function(p){ return '<option value="' + esc(p.id) + '">' + (p.me ? 'Me' : esc(p.name)) + '</option>'; }).join('');
+    }).catch(function(){});
+    kdGet(base, 'blood').then(function(j){
+      if (!j.ok) return;
+      kdBl = j; $('kd-bl-card').hidden = !j.adult;
+      if (!j.adult) return;
+      if (!$('kd-bl-group').options.length) $('kd-bl-group').innerHTML = j.groups.map(function(g){ return '<option value="' + esc(g) + '">' + esc(g) + '</option>'; }).join('');
+      $('kd-bl-line').textContent = j.consentLine; $('kd-bl-legal').textContent = j.legal;
+      kdBlMine(j.mine);
+    }).catch(function(){});
+  }
+  function kdBlMine(m){
+    $('kd-bl-consent').checked = !!m.consent;
+    $('kd-bl-mine').textContent = (m.group ? 'Your blood group on record: ' + m.group + '.' : m.written ? 'Your blood group is written as "' + m.written + '". Write it like O+ or AB- so it can be found.' : 'Your blood group is not written down yet. Add it below, under Health & contacts.') +
+      (m.consent ? ' The family can find you.' : ' Nobody can find you until you tick this.') +
+      (m.looks && m.looks.length ? ' Looked for lately by: ' + m.looks.map(function(l){ return kdFirst(l.name); }).filter(function(n, i, a){ return a.indexOf(n) === i; }).join(', ') + '.' : '');
+  }
+  $('kd-bl-consent').addEventListener('change', function(){
+    var box = this, on = box.checked;
+    kdBook('blood_consent_set', { on: on }).then(function(j){
+      if (!j.ok) { box.checked = !on; toast(j.error || 'Could not save. Try again.'); return; }
+      kdBlMine(j.mine); toast(on ? 'The family can find your blood group now' : 'Your blood group is yours alone again');
+    }).catch(function(){ box.checked = !on; toast('No connection - try again'); });
+  });
+  $('kd-bl-find').addEventListener('click', function(){
+    var btn = this, grp = kdVal('kd-bl-group');
+    btn.disabled = true;
+    kdBook('blood_find', { group: grp }).then(function(j){
+      btn.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not look this up. Try again.'); return; }
+      kdBlGroup = grp;
+      var out = $('kd-bl-out');
+      out.innerHTML = j.matches.length ? j.matches.map(function(m){
+        return '<div class="crow"><span class="txt"><b>' + esc(m.name) + '</b><small>' + esc(grp) + ', as they wrote it' + (m.family ? ' · ' + esc(m.family) : '') + (m.phone || !m.family ? '' : ' · ask your family for the number') + '</small></span>' +
+          (m.phone ? '<a class="cbtn ghost kd-call" href="' + kdTel(m.phone) + '">📞 Call ' + esc(kdFirst(m.name)) + '</a>' : '') + '</div>';
+      }).join('') : '<div class="ev">Nobody who said yes has ' + esc(grp) + ' written down. Others may have it and have not said yes: a call is the way to ask.</div>';
+      out.hidden = false; $('kd-bl-ask').hidden = !j.matches.length;
+    }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
+  });
+  $('kd-bl-ask').addEventListener('click', function(){
+    var btn = this;
+    askText('Tell them someone is looking for ' + kdBlGroup + ' blood?', 'A few words, like: For Maa at the hospital', 'Tell them', 'Not now').then(function(v){
+      if (!v) return;
+      btn.disabled = true;
+      kdBook('blood_ask', { group: kdBlGroup, note: v }).then(function(j){ btn.disabled = false; toast(j.ok ? 'They have been told. A call is still the quickest.' : (j.error || 'Could not send. Try again.')); })
+        .catch(function(){ btn.disabled = false; toast('No connection - try again'); });
+    });
+  });
+  $('kd-sum-open').addEventListener('click', function(){
+    var btn = this, who = kdVal('kd-sum-who'); if (!who) return;
+    btn.disabled = true;
+    kdGet(API.notes.split('?')[0], 'summary', '&person=' + encodeURIComponent(who)).then(function(j){
+      btn.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not open the page. Try again.'); return; }
+      var s = j.summary, sec = function(title, inner){ return '<section><h2>' + title + '</h2>' + inner + '</section>'; }, none = '<p>Nothing written down.</p>';
+      var h = '<h1 id="kd-paper-title">' + esc(s.name) + ': summary for the doctor</h1><p class="mbbsub">' + esc(kdDate(s.date)) + ' · ' + esc(s.line) + '</p>';
+      if (s.empty) h += '<p>Nothing is written down for ' + esc(kdFirst(s.name)) + ' yet, or it has not been shared with you.</p>';
+      h += sec('Blood group', s.blood ? '<p>' + esc(s.blood) + '</p>' : none) +
+        sec('Allergies, as the family wrote them', s.allergies.length ? s.allergies.map(function(a){ return '<p>' + esc(a) + '</p>'; }).join('') : none) +
+        sec('Medicines list', s.medicines.length ? s.medicines.map(function(m){ return '<p><b>' + esc(m.name) + '</b>' + (m.note ? ' · ' + esc(m.note) : '') + '</p>'; }).join('') : none) +
+        sec('Doctors', s.doctors.length ? s.doctors.map(function(d){ return '<p><b>' + esc(d.name) + '</b>' + (d.note ? ' · ' + esc(d.note) : '') + (d.phone ? ' · ' + esc(d.phone) : '') + '</p>'; }).join('') : none) +
+        sec('Past visits and follow-ups', s.visits.length ? s.visits.map(function(v){ return '<h3>' + esc(kdDate(v.on)) + ' · ' + esc(v.title) + '</h3>' + (v.notes ? '<p>' + esc(v.notes) + '</p>' : '') + (v.next ? '<small>Follow-up written for ' + esc(kdDate(v.next)) + '</small>' : ''); }).join('') : none) +
+        sec('Who to call', s.contacts.length ? s.contacts.map(function(c){ return '<p><b>' + esc(c.name) + '</b>' + (c.note ? ' · ' + esc(c.note) : '') + (c.phone ? ' · ' + esc(c.phone) : '') + '</p>'; }).join('') : none) +
+        '<small>' + esc(s.line) + ' ' + esc(s.legal) + '</small>';
+      kdPaperOpen(h);
+    }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
+  });
+  kdShown($('book-list-view'), kdHealthLoad);
   // ---------- end of the remaining family needs (stream J) ----------
 
   // Inside the iPhone and Android apps this page runs in a frame, and the
