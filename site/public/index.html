@@ -250,10 +250,10 @@ label + select{width:100%}
 @media (max-width:899px){
   .tabs .inner{padding-left:68px}
   .tabs button[data-tab="home"]{order:1}
-  .tabs button[data-tab="vault"]{order:2}
-  .tabs button[data-tab="ekta"]{order:3}
-  .tabs button[data-tab="care"]{order:4}
-  .tabs button[data-tab="people"]{order:5}
+  .tabs button[data-tab="chat"]{order:2}
+  .tabs button[data-tab="fun"]{order:3}
+  .tabs button[data-tab="people"]{order:4}
+  .tabs button[data-tab="menu"]{order:5}
   /* The tab bar covers the bottom of the screen. A field scrolled into view
      has to stop above it, or the last row of a form sits under SOS. */
   body.inapp input, body.inapp select, body.inapp textarea, body.inapp .go{
@@ -273,12 +273,48 @@ label + select{width:100%}
 .ss-label{font-size:var(--fs-14)!important;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:var(--space-8)!important}
 .ss-note{font-size:var(--fs-14)!important;opacity:.95}
 /* The SOS did not go: Call and SMS are the biggest things on the screen. */
+/* Five places: the small rows of shortcuts inside Together and Family, the
+   More screen, and To do's folded sections. */
+.tn-tog{display:flex;flex-wrap:wrap;gap:var(--space-8);margin:0 0 var(--space-12)}
+.tn-tog .cbtn{min-height:var(--tap-min);flex:1 1 auto}
+.tn-menu{margin-top:0}
+#care-seg .tn-extra{display:none}
+#care-seg.tn-all .tn-extra{display:inline-flex}
+#tn-care-more{margin-top:0}
+#tn-mem-back{min-height:var(--tap-min);margin-bottom:var(--space-12)}
+/* From the family, a card per parent, a young member's Today. */
+.tn-from{margin:0 0 var(--space-16)}
+.tn-from h2,.tn-parents h2,.tn-young h2{font-family:var(--disp);font-size:var(--fs-18);margin:0 0 var(--space-8);color:var(--ink)}
+.tn-row{background:var(--surface);border:1px solid var(--bone-2);border-left:4px solid var(--rani);border-radius:var(--radius-12);padding:var(--space-12) var(--space-16);margin-bottom:var(--space-8);box-shadow:var(--sh-1);display:flex;flex-wrap:wrap;gap:var(--space-8) var(--space-12);align-items:center}
+.tn-row .txt{flex:1;min-width:160px;font-size:var(--fs-16);color:var(--ink)}
+.tn-row .txt b{display:block}
+.tn-row .txt small{display:block;color:var(--ink-soft);font-size:var(--fs-14);margin-top:var(--space-2);overflow-wrap:anywhere}
+.tn-row.tap{cursor:pointer}
+.tn-acts{display:flex;flex-wrap:wrap;gap:var(--space-8)}
+.tn-acts .cbtn,.tn-row > .cbtn{min-height:var(--tap-min);min-width:var(--tap-min)}
+.tn-hold{touch-action:none;user-select:none;-webkit-user-select:none}
+.tn-hold.rec{background:var(--sos);color:var(--on-sos)}
+body.senior .tn-row .txt{font-size:var(--fs-20)}
+body.senior .tn-row .txt small{font-size:var(--fs-16)}
+body.senior .tn-acts{flex-basis:100%}
+body.senior .tn-acts .cbtn,body.senior .tn-row > .cbtn{min-height:56px;font-size:var(--fs-18);flex:1 1 140px}
+.tn-pcard{background:var(--surface);border:1px solid var(--bone-2);border-radius:var(--radius-16);padding:var(--space-16);margin-bottom:var(--space-12);box-shadow:var(--sh-1)}
+.tn-pcard h3{font-family:var(--disp);font-size:var(--fs-18);margin:0 0 var(--space-8);color:var(--ink)}
+.tn-pcard p{margin:0 0 var(--space-4);font-size:var(--fs-14);color:var(--ink)}
+.tn-pcard p.soft{color:var(--ink-soft)}
+.tn-pcard .tn-acts{margin-top:var(--space-12)}
+.tn-pcard .tn-acts .cbtn{flex:1 1 120px;text-decoration:none}
+.tn-young .widgets{margin-top:0}
+.tn-parents,.tn-young{margin:0 0 var(--space-16)}
+/* Under 18: no vault or payment setup, no setup list, no readiness score. */
+body.tn-isyoung #firstrun,body.tn-isyoung #readycard,body.tn-isyoung #widgets [data-goto="vault"],body.tn-isyoung .quickadd [data-qadd=doc],body.tn-isyoung #morewidgets [data-sec="pay"]{display:none!important}
+#chat-fab .dot{position:absolute;top:-2px;right:-2px;min-width:15px;height:15px;border-radius:var(--radius-pill);background:var(--sindoor);color:var(--on-accent);font-size:var(--fs-12);font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 var(--space-4);font-style:normal}
 .tn-ask{margin-top:var(--space-12);padding:var(--space-12);border:1.5px solid var(--marigold);border-radius:var(--radius-12);background:var(--tint-warm)}
 .tn-ask p{margin:0 0 var(--space-8);font-size:var(--fs-14);color:var(--ink)}
 .tn-ask .cbtn.sel{border-color:var(--marigold-d);box-shadow:inset 0 0 0 2px var(--marigold-d)}
 .tn-unsent{opacity:.75}
 .tn-unsent.failed{opacity:1;border:2px solid var(--alert);cursor:pointer;min-height:var(--tap-min)}
-.tn-unsent.failed .mt{color:var(--alert);font-weight:700;font-size:var(--fs-12)}
+.tn-unsent.failed .mt{font-weight:700;font-size:var(--fs-12);opacity:1;text-decoration:underline}
 .tn-sosfail #ss-calls{grid-template-columns:1fr}
 .tn-sosfail #ss-calls .ss-btn,.tn-sosfail #ss-sms{min-height:72px;font-size:var(--fs-24)}
 .tn-sosfail #ss-sms{background:var(--on-sos);color:var(--sos-deep);grid-column:1/-1;order:-1}
@@ -572,7 +608,7 @@ button.pcard:disabled{opacity:.45;cursor:default}
 .dpanel{position:absolute;left:0;top:0;bottom:0;width:280px;max-width:82vw;background:var(--dusk);color:var(--bone);padding:var(--space-20) var(--space-12);overflow-y:auto;display:flex;flex-direction:column;box-shadow:8px 0 30px rgba(0,0,0,.35);padding-top:calc(var(--space-20) + env(safe-area-inset-top))}
 .dhead{display:flex;align-items:center;gap:var(--space-8);font-family:var(--disp);font-weight:600;font-size:var(--fs-18);color:var(--on-dark);padding:var(--space-2) var(--space-12) var(--space-16)}
 .dhead .dev{font-family:var(--dev);color:var(--marigold)}
-.dhead .x{margin-left:auto;border:0;background:var(--pine-2);color:var(--bone);border-radius:var(--radius-pill);width:30px;height:30px;cursor:pointer}
+.dhead .x{margin-left:auto;border:0;background:var(--pine-2);color:var(--on-dark);border-radius:var(--radius-pill);width:30px;height:30px;cursor:pointer}
 .dlabel,.side-more{margin:var(--space-12) var(--space-12) var(--space-4);font-size:var(--fs-12);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
 .ditem{display:flex;align-items:center;gap:var(--space-12);width:100%;border:0;background:none;color:var(--dim);font-family:var(--body);font-weight:600;font-size:var(--fs-16);text-align:left;padding:var(--space-12) var(--space-12);border-radius:var(--radius-12);cursor:pointer;text-decoration:none}
 .ditem.sub{padding-left:var(--space-48);font-size:var(--fs-14);position:relative}
@@ -1219,6 +1255,10 @@ a.pstap,a.bondwide{text-decoration:none}
 .deskonly{display:none!important}
 @media(min-width:900px){
   .deskonly{display:flex!important}
+  .phoneonly{display:none!important}
+  /* A place shows its own shortcuts only while you are in it. */
+  .tabs .subnav.side-only{display:none}
+  .tabs .subnav.side-only.tn-open{display:flex}
   #hamb,.drawer{display:none!important}
   .side-only{display:flex}
   .tabs .side-only{display:flex}
@@ -1747,7 +1787,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
        does anything, so the grouping depended on which of them happened to be
        hidden. -->
   <div class="bar-actions">
-    <button id="chat-fab" hidden aria-label="Start a new chat" title="Start a new chat" aria-haspopup="dialog"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg></button>
+    <button id="chat-fab" hidden aria-label="Start a new chat" title="Start a new chat" aria-haspopup="dialog"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><i class="dot" id="tn-chat-dot" hidden></i></button>
     <button id="bell" hidden aria-label="Notifications"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg><i class="dot" id="bell-dot" hidden></i></button>
     <a id="getapp" href="get/" target="_blank" rel="noopener" aria-label="Install the Parwah app" title="Install the app"><svg class="i" aria-hidden="true"><use href="#i-get"/></svg></a>
     <button id="metile" class="metile" hidden aria-label="Your profile"><span id="me-init">··</span></button>
@@ -2033,6 +2073,12 @@ body.senior .abview-meta{font-size:var(--fs-16)}
            how a child's day is, the way the children ask after them. -->
       <button class="big pill" id="cn-bless-big">🙏 Send Ashirwad<span class="sub">A blessing, or ask how their day is</span></button>
     </div>
+    <!-- FROM THE FAMILY (api/_today.mjs): what is waiting for THIS person,
+         first on Today and right under the big buttons in senior mode: a
+         message, a private word, a blessing, a plan to answer, a poll, a
+         card to write in, someone asking to join. One read, each part by
+         the rule of the module that owns it. -->
+    <div id="tn-from" aria-live="polite"></div>
     <!-- Home staff, one tap each a day (api/_staff.mjs). -->
     <div class="card" id="staff-today" hidden></div>
     <div class="homehero">
@@ -2043,6 +2089,19 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     <div id="pinresets"></div>
     <!-- A new sign-in, a PIN reset asked for my number, an account set to be deleted. -->
     <div id="ac-sec"></div>
+    <!-- A CARD FOR EACH PARENT (api/_today.mjs), for a grown-up who looks
+         after them from elsewhere: seen today or not yet, today's medicines
+         as this person may see them, the last message, Call and Message. -->
+    <div id="tn-parents"></div>
+    <!-- A YOUNG MEMBER'S TODAY: games, polls, Pasand, stories, a question
+         for an elder and their own plans come first. -->
+    <div id="tn-young" hidden></div>
+    <!-- BEING HEARD (api/_heard.mjs): "Aaj kaisa lag raha hai?" (private
+         unless I choose to tell someone), a private word to one person, a
+         quiet shukriya, the family's weekly question, and the memory card
+         of a day of remembrance. Near the top for everyone; senior mode
+         shows it too, larger. -->
+    <div id="hd-today" aria-live="polite"></div>
     <div id="frslot"></div>
     <!-- CARE CYCLE: someone in hospital, a visit to note, my own medicine times. -->
     <div id="cc-today"></div>
@@ -2057,11 +2116,6 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     <!-- AAJ KA DIN (api/_ektaday.mjs): what today holds, from Ekta. One row
          in the morning, written by plain rules. -->
     <div id="ek2-today"></div>
-    <!-- BEING HEARD (api/_heard.mjs): "Aaj kaisa lag raha hai?" (private
-         unless I choose to tell someone), a private word to one person, a
-         quiet shukriya, the family's weekly question, and the memory card
-         of a day of remembrance. Senior mode shows it too, larger. -->
-    <div id="hd-today" aria-live="polite"></div>
     <!-- AAJ KYA HUA (api/_digest.mjs): what happened in the family today,
          from Ekta. One row, from 6pm, that opens the day's note. -->
     <div id="dg-today"></div>
@@ -2072,6 +2126,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     <div class="cn-ways" id="cn-ways" role="group" aria-label="Care both ways">
       <button type="button" class="cbtn ghost" id="cn-bless-open">🙏 Send Ashirwad</button>
       <button type="button" class="cbtn ghost" id="cn-trip-open">🧳 I am leaving</button>
+      <button type="button" class="cbtn ghost" id="tn-ekta-today" data-goto="ekta">✨ Ask Ekta</button>
     </div>
     <!-- The daily check-in: off until the person it is about says yes. -->
     <div class="card fccard" id="fcquiet" hidden>
@@ -2173,17 +2228,43 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     </div>
   </section>
 
+  <!-- MORE: the fifth place. Papers, things to do, Ekta, and you. Each row
+       opens a screen that already existed; nothing was moved or renamed. -->
+  <section id="pane-menu" hidden>
+    <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg></span><span><b>More</b><small>Papers, things to do, Ekta and your own settings</small></span></div>
+    <p class="eyebrow" style="margin-top:0">Papers and records</p>
+    <div class="widgets tn-menu">
+      <button class="widget" data-goto="vault" data-sec="docs"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg></span><b>Vault</b><small>Aadhaar, PAN, licence, policies</small></button>
+      <button class="widget" data-goto="vault" data-sec="locator"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-key"/></svg></span><b>Family register</b><small>Property, accounts, where things are kept</small></button>
+    </div>
+    <p class="eyebrow">Things to do</p>
+    <div class="widgets tn-menu">
+      <button class="widget" data-goto="care" data-sec="rem"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg></span><b>To do</b><small id="tn-m-todo">Tasks, bills, notes and lists</small></button>
+      <button class="widget" data-goto="ekta"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-spark"/></svg></span><b>Ask Ekta</b><small>Reminders, help, scam check</small></button>
+      <button class="widget" data-goto="day" data-sec="muhurat"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-sun"/></svg></span><b>The day</b><small>Good times and the horoscope</small></button>
+      <button class="widget" data-goto="notifs"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg></span><b>Notifications</b><small>What needs you, SOS, new joiners</small></button>
+    </div>
+    <p class="eyebrow">You</p>
+    <div class="widgets tn-menu">
+      <button class="widget" data-goto="profile"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg></span><b>Profile and settings</b><small>Your name, alerts, larger text, sign out</small></button>
+      <button class="widget" data-goto="memory" data-mbv="health"><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-health"/></svg></span><b>Health &amp; contacts</b><small>Also under Family</small></button>
+    </div>
+  </section>
+
   <!-- TO DO -->
   <section id="pane-care" hidden>
     <div class="seg pageseg" id="care-seg" role="tablist" aria-label="To do sections">
       <button data-sec="rem" class="sel">✅ To do</button>
-      <button data-sec="bills">🧾 Bills</button>
       <button data-sec="req">💡 Suggested<i class="dot" id="sugg-dot" hidden></i></button>
       <button data-sec="notes">📝 Notes &amp; lists</button>
-      <button data-sec="expenses">💸 Costs</button>
-      <button data-sec="staff">🧹 Home staff</button>
-      <button data-sec="renewals">📅 Renewals</button>
+      <button data-sec="bills" class="tn-extra">🧾 Bills</button>
+      <button data-sec="expenses" class="tn-extra">💸 Costs</button>
+      <button data-sec="staff" class="tn-extra">🧹 Home staff</button>
+      <button data-sec="renewals" class="tn-extra">📅 Renewals</button>
     </div>
+    <!-- One list first. Bills, costs, home staff and renewals are one tap
+         away, and open by themselves when one of them is where you are. -->
+    <button type="button" class="linkbtn" id="tn-care-more" aria-expanded="false" aria-controls="care-seg">More: bills, costs, home staff, renewals</button>
     <div class="subsec" data-sec="rem">
     <p class="hint" style="margin:0 0 var(--space-12)">What needs doing, who is handling it, and when it is done - the whole family sees the same list.</p>
     <div id="refill-alerts" hidden class="card alertbox" style="margin-bottom:var(--space-12);border-left:4px solid var(--sindoor);padding:var(--space-12)">
@@ -2441,6 +2522,10 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   <!-- FAMILY - who is who, and how ready the family is for each person -->
   <section id="pane-people" hidden>
     <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg></span><span><b>Family</b><small>Who is who, and how ready the family is for each person</small></span></div>
+    <div class="tn-tog" role="group" aria-label="Also in Family">
+      <button type="button" class="cbtn ghost" data-goto="memory" data-mbv="health">🩺 Health &amp; contacts</button>
+      <button type="button" class="cbtn ghost" id="tn-fam-reg" data-goto="vault" data-sec="locator">📒 Family register</button>
+    </div>
     <div class="card" id="joinreq-card" hidden>
       <h3>🙋 Waiting to join</h3>
       <p class="hint" id="jr-count" style="margin:var(--space-2) 0 var(--space-12)"></p>
@@ -2603,6 +2688,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-health"/></svg></span><span><b>Health &amp; contacts</b><small>Medicines, blood groups, allergies, doctors and addresses</small></span></div>
     <!-- FAMILY MEMORY: the family's health and contacts, and its stories and
          recipes (api/_memorybond.mjs). -->
+    <button type="button" class="cbtn ghost" id="tn-mem-back" hidden>← Together</button>
     <div class="seg mbswitch" id="mb-switch" role="group" aria-label="Family Memory sections">
       <button type="button" data-mbv="health" class="sel">🩺 Health &amp; contacts</button>
       <button type="button" data-mbv="stories">📖 Stories</button>
@@ -3379,6 +3465,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     <div id="chatlist">
       <p class="eyebrow" style="margin-top:0">Chats</p>
       <div class="feed" id="clist"><div class="ev">Loading…</div></div>
+      <button type="button" class="cbtn ghost bondwide" id="tn-ekta-chat" data-goto="ekta" style="margin-top:var(--space-12)">✨ Ask Ekta something</button>
       <div class="addrow">
         <button class="cbtn" id="newgroup">＋ New group</button>
         <select id="dm-pick" aria-label="Start a personal chat"><option value="">Personal chat with…</option></select>
@@ -3475,6 +3562,15 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   <section id="pane-fun" hidden>
     <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-party"/></svg></span><span><b>Together</b><small>Calls, plans and games - distance is just a number</small></span></div>
 
+    <!-- The family's own things to do together. Album, stories and recipes
+         moved here from Health and contacts; their screens are the same. -->
+    <div class="tn-tog" id="tn-together" role="group" aria-label="More to do together">
+      <button type="button" class="cbtn ghost" data-goto="memory" data-mbv="album">📷 Album</button>
+      <button type="button" class="cbtn ghost" data-goto="memory" data-mbv="stories">📖 Stories</button>
+      <button type="button" class="cbtn ghost" data-goto="memory" data-mbv="recipes">🍲 Recipes</button>
+      <button type="button" class="cbtn ghost" id="tn-tog-fest">🪔 Festivals</button>
+      <button type="button" class="cbtn ghost" id="tn-tog-q">💭 This week's question</button>
+    </div>
     <div class="seg pageseg" id="fun-seg" role="tablist" aria-label="Together sections">
       <button data-sec="plans" class="sel">🗓 Plans</button>
       <button data-sec="games">🎲 Games</button>
@@ -4089,24 +4185,33 @@ body.senior .abview-meta{font-size:var(--fs-16)}
 <nav class="tabs" id="tabs" hidden aria-label="App sections">
   <div class="inner">
     <div class="side-brand side-only"><svg class="i brandflower" aria-hidden="true"><use href="#i-flower"/></svg><span class="side-name">Parwah<small class="side-tag">family superapp</small></span></div>
+    <!-- FIVE PLACES (owner, 2026-11-20): Today, Chat, Together, Family, More.
+         On a phone these are the five tabs, with SOS docked beside them.
+         On a laptop the same five group the sidebar: a place shows its own
+         shortcuts only while you are in it. Every old address still works. -->
     <button data-tab="home" class="sel"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-home"/></svg></span>Today</button>
-    <button data-tab="chat" class="deskonly"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-chat"/></svg></span>Chat</button>
-    <button data-tab="ekta" aria-label="Ask Ekta"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-spark"/></svg></span>Ekta</button>
-    <button data-tab="fun" class="deskonly"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-party"/></svg></span>Together</button>
+    <button data-tab="chat"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-chat"/></svg></span>Chat<i class="dot" id="tn-tab-dot" hidden></i></button>
+    <button data-tab="fun"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-party"/></svg></span>Together</button>
     <div class="subnav side-only" data-parent="fun">
       <button data-tab="fun" data-sec="plans">Plans &amp; calls</button>
       <button data-tab="fun" data-sec="games">Games</button>
       <button data-tab="fun" data-sec="board">Drawing board</button>
       <button data-tab="fun" data-sec="pasand">Pasand</button>
+      <button data-tab="memory" data-mbv="album">Album</button>
+      <button data-tab="memory" data-mbv="stories">Stories</button>
+      <button data-tab="memory" data-mbv="recipes">Recipes</button>
     </div>
-    <button data-tab="vault"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-lock"/></svg></span>Vault</button>
+    <button data-tab="people" id="tab-people"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-users"/></svg></span><span id="tab-people-l">Family</span></button>
+    <button data-tab="memory" class="deskonly tn-under"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-health"/></svg></span>Health &amp; contacts</button>
+    <button data-tab="menu" class="phoneonly" id="tn-tab-more"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-menu"/></svg></span>More<i class="dot" id="tn-more-dot" hidden></i></button>
+    <p class="side-more side-only">More</p>
+    <button data-tab="vault" class="deskonly"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-lock"/></svg></span>Vault</button>
     <div class="subnav side-only" data-parent="vault">
       <button data-tab="vault" data-sec="docs">Documents</button>
       <button data-tab="vault" data-sec="pay">Payments</button>
       <button data-tab="vault" data-sec="locator">Family register</button>
     </div>
-    <button data-tab="memory" class="deskonly"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-health"/></svg></span>Health &amp; contacts</button>
-    <button data-tab="care"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></span>To do<i class="dot" id="care-dot" hidden></i></button>
+    <button data-tab="care" class="deskonly"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></span>To do<i class="dot" id="care-dot" hidden></i></button>
     <div class="subnav side-only" data-parent="care">
       <button data-tab="care" data-sec="rem">To do</button>
       <button data-tab="care" data-sec="req">Suggested</button>
@@ -4115,8 +4220,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button data-tab="care" data-sec="staff">Home staff</button>
       <button data-tab="care" data-sec="renewals">Renewals</button>
     </div>
-    <button data-tab="people" id="tab-people"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-users"/></svg></span><span id="tab-people-l">Family</span></button>
-    <p class="side-more side-only">More</p>
+    <button data-tab="ekta" class="deskonly" aria-label="Ask Ekta"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-spark"/></svg></span>Ekta</button>
     <button data-tab="notifs" class="deskonly" id="side-nb" style="position:relative"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-bell"/></svg></span>Notifications<i class="dot" id="nb-dot2" hidden></i></button>
     <button data-tab="day" class="deskonly"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-sun"/></svg></span>The day</button>
     <div class="subnav side-only" data-parent="day">
@@ -4205,48 +4309,41 @@ body.senior .abview-meta{font-size:var(--fs-16)}
 <div class="drawer" id="drawer" hidden role="dialog" aria-modal="true" aria-label="Menu">
   <div class="dpanel">
     <div class="dhead"><span class="dev" aria-hidden="true">🧡</span> Parwah <button class="x" id="drawer-x" aria-label="Close menu">✕</button></div>
+    <!-- The same five places. A place opens to show what is inside it; the
+         rest stay folded, so the menu is a short list. -->
     <button class="ditem" data-tab="home"><svg class="i" aria-hidden="true"><use href="#i-home"/></svg> Today</button>
     <button class="ditem" data-tab="chat"><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg> Chat</button>
-    <button class="ditem" data-tab="ekta"><svg class="i" aria-hidden="true"><use href="#i-spark"/></svg> Ask Ekta</button>
-    <div class="dgroup">
-      <button class="ditem dparent" data-grp="fun"><svg class="i" aria-hidden="true"><use href="#i-party"/></svg> Together <span class="caret">▾</span></button>
+    <div class="dgroup closed" data-place="fun">
+      <button class="ditem dparent" data-grp="fun" aria-expanded="false"><svg class="i" aria-hidden="true"><use href="#i-party"/></svg> Together <span class="caret">▾</span></button>
       <div class="dsub">
         <button class="ditem sub" data-tab="fun" data-sec="plans">Plans &amp; calls</button>
         <button class="ditem sub" data-tab="fun" data-sec="games">Games</button>
         <button class="ditem sub" data-tab="fun" data-sec="board">Drawing board</button>
         <button class="ditem sub" data-tab="fun" data-sec="pasand">Pasand</button>
+        <button class="ditem sub" data-tab="memory" data-mbv="album">Photo album</button>
+        <button class="ditem sub" data-tab="memory" data-mbv="stories">Stories</button>
+        <button class="ditem sub" data-tab="memory" data-mbv="recipes">Recipes</button>
       </div>
     </div>
-    <div class="dgroup">
-      <button class="ditem dparent" data-grp="vault"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg> Vault <span class="caret">▾</span></button>
+    <div class="dgroup closed" data-place="people">
+      <button class="ditem dparent" data-grp="people" aria-expanded="false"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg> Family <span class="caret">▾</span></button>
       <div class="dsub">
-        <button class="ditem sub" data-tab="vault" data-sec="docs">Documents</button>
-        <button class="ditem sub" data-tab="vault" data-sec="pay">Payments</button>
+        <button class="ditem sub" data-tab="people">People and the family tree</button>
+        <button class="ditem sub" data-tab="memory" data-mbv="health">Health &amp; contacts</button>
       </div>
     </div>
-    <button class="ditem" data-tab="memory"><svg class="i" aria-hidden="true"><use href="#i-health"/></svg> Health &amp; contacts</button>
-    <div class="dgroup">
-      <button class="ditem dparent" data-grp="care"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg> To do <span class="caret">▾</span></button>
+    <div class="dgroup closed" data-place="menu">
+      <button class="ditem dparent" data-grp="menu" aria-expanded="false"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg> More <span class="caret">▾</span></button>
       <div class="dsub">
+        <button class="ditem sub" data-tab="vault" data-sec="docs">Vault</button>
+        <button class="ditem sub" data-tab="vault" data-sec="locator">Family register</button>
         <button class="ditem sub" data-tab="care" data-sec="rem">To do</button>
-        <button class="ditem sub" data-tab="care" data-sec="req">Suggested</button>
-        <button class="ditem sub" data-tab="care" data-sec="notes">Notes &amp; lists</button>
-        <button class="ditem sub" data-tab="care" data-sec="expenses">Costs</button>
-        <button class="ditem sub" data-tab="care" data-sec="staff">Home staff</button>
-        <button class="ditem sub" data-tab="care" data-sec="renewals">Renewals</button>
+        <button class="ditem sub" data-tab="ekta">Ask Ekta</button>
+        <button class="ditem sub" data-tab="day" data-sec="muhurat">The day</button>
+        <button class="ditem sub" data-tab="notifs">Notifications</button>
+        <button class="ditem sub" data-tab="profile">Profile and settings</button>
       </div>
     </div>
-    <button class="ditem" data-tab="people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg> Family</button>
-    <p class="dlabel">More</p>
-    <button class="ditem" data-tab="notifs"><svg class="i" aria-hidden="true"><use href="#i-bell"/></svg> Notifications</button>
-    <div class="dgroup">
-      <button class="ditem dparent" data-grp="day"><svg class="i" aria-hidden="true"><use href="#i-sun"/></svg> The day <span class="caret">▾</span></button>
-      <div class="dsub">
-        <button class="ditem sub" data-tab="day" data-sec="muhurat">Good times of the day</button>
-        <button class="ditem sub" data-tab="day" data-sec="rashi">Daily horoscope</button>
-      </div>
-    </div>
-    <button class="ditem" data-tab="profile"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg> Profile</button>
     <div class="dgroup" id="d-groups-wrap" hidden>
       <button class="ditem dparent" data-grp="groups"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg> My Groups <span class="caret">▾</span></button>
       <div class="dsub" id="d-groups"></div>
@@ -4941,7 +5038,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
 (function(){
   var $ = function(id){ return document.getElementById(id); };
   var API = { notes: '/api/book?area=notes', circle: '/api/circle', events: '/api/events', care: '/api/care', ekta: '/api/ekta', chats: '/api/chats', games: '/api/games', plans: '/api/plans', auth: '/api/auth', book: '/api/book', vault: '/api/book?area=vault', pay: '/api/book?area=pay', push: '/api/settings?area=push', keys: '/api/settings?area=keys', coins: '/api/settings?area=coins', plan: '/api/settings?area=plan', day: '/api/settings?area=day', pin: '/api/settings?area=pin', location: '/api/settings?area=location', refill: '/api/care?area=refill', bills: '/api/care?area=bills', tasks: '/api/care?area=tasks', biomarkers: '/api/book?area=biomarkers', preauth: '/api/book?area=preauth', locator: '/api/book?area=locator', afterloss: '/api/book?area=afterloss', audit: '/api/book?area=audit' };
-  var TABS = ['home','people','person','memory','vault','care','day','chat','ekta','profile','fun','notifs'];
+  var TABS = ['home','people','person','memory','vault','care','day','chat','ekta','profile','fun','notifs','menu'];
 
   // WHEN THE PAGE BREAKS ON SOMEONE'S PHONE, WE HEAR OF IT. Set up before
   // anything else runs, so a mistake further down this script is caught too.
@@ -5126,23 +5223,61 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     // front of the paint - a 168-240 ms spread on the same tap.
     setTimeout(run, 1000);
   }
-  function switchTab(t){
-    if (TABS.indexOf(t) < 0) t = 'home';
-    if (TABS.indexOf(t) < 0) t = 'home'; // bad/old hash → land safely on Home
-    TABS.forEach(function(n){ $('pane-' + n).hidden = n !== t; });
+  // WHICH OF THE FIVE PLACES IS THIS? Every screen belongs to one (the
+  // rule is tnPlaceOf, tested in api/_todayrules.mjs). The tab, the sidebar
+  // and the menu mark the place, and a place shows its own shortcuts.
+  function tnPlace(){ return tnPlaceOf(curTab, typeof mbView === 'string' ? mbView : 'health'); }
+  function tnNavSync(){
+    var t = curTab, place = tnPlace(), view = typeof mbView === 'string' ? mbView : 'health';
     document.querySelectorAll('#tabs .inner > button').forEach(function(b){
-      b.classList.toggle('sel', b.getAttribute('data-tab') === t);
+      var bt = b.getAttribute('data-tab');
+      // Stories, recipes and the album are Together's, so "Health &
+      // contacts" is not lit while one of them is open.
+      b.classList.toggle('sel', bt === place || (bt === t && !(t === 'memory' && place === 'fun')));
+      if (bt === place || bt === t) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+    document.querySelectorAll('#tabs .subnav').forEach(function(n){
+      var par = n.getAttribute('data-parent');
+      n.classList.toggle('tn-open', par === t || (par === 'fun' && place === 'fun'));
+      n.querySelectorAll('button[data-mbv]').forEach(function(b){ b.classList.toggle('sel', t === 'memory' && b.getAttribute('data-mbv') === view); });
     });
     document.querySelectorAll('#drawer .ditem[data-tab]').forEach(function(b){
-      b.classList.toggle('sel', b.getAttribute('data-tab') === t && !b.dataset.sec);
+      var bt = b.getAttribute('data-tab'), on = bt === t && !b.dataset.sec && !b.dataset.mbv && !b.classList.contains('sub');
+      if (b.dataset.mbv) on = t === 'memory' && b.dataset.mbv === view;
+      else if (b.classList.contains('sub') && !b.dataset.sec) on = bt === t;
+      b.classList.toggle('sel', on);
     });
+    // The menu opens on the place you are in; the others stay folded.
+    document.querySelectorAll('#drawer .dgroup[data-place]').forEach(function(g){
+      var open = g.getAttribute('data-place') === place;
+      g.classList.toggle('closed', !open);
+      g.querySelector('.dparent').setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    // Stories, recipes and the album: reached from Together, and they say so.
+    var tog = t === 'memory' && place === 'fun';
+    if ($('tn-mem-back')) {
+      $('tn-mem-back').hidden = !tog;
+      document.querySelectorAll('#mb-switch [data-mbv]').forEach(function(b){
+        var v = b.getAttribute('data-mbv');
+        b.hidden = v === 'health';
+      });
+      $('mb-switch').hidden = !tog;
+    }
+  }
+  var tnWasTab = 'home';
+  function switchTab(t){
+    if (TABS.indexOf(t) < 0) t = 'home';
+    tnWasTab = curTab;
+    if (TABS.indexOf(t) < 0) t = 'home'; // bad/old hash → land safely on Home
+    TABS.forEach(function(n){ $('pane-' + n).hidden = n !== t; });
+    curTab = t;
+    tnNavSync();
     if (t === 'care' || t === 'fun' || t === 'vault' || t === 'day') {
       var seg = $(t + '-seg'), cur = seg && seg.querySelector('.sel');
       if (cur) setSec(t, cur.getAttribute('data-sec'));
     }
     // Arriving at the day always starts on its plain summary.
-    if (t === 'day' && curTab !== 'day') showMuTab('overview');
-    curTab = t;
+    if (t === 'day' && tnWasTab !== 'day') showMuTab('overview');
     setInputMode();
     // New chat lives in the top bar, one tap from anywhere; Chat's own
     // screen has its own buttons, so it steps aside there. Ekta is a tab.
@@ -5248,7 +5383,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     return kept.filter(function(e){ var j = tnJoinWho(e); return !(j && j.kind === 'ask' && joined[j.who]); });
   }
   function tnPlaceOf(tab, view){
-    if (tab === 'memory') return view === 'stories' || view === 'recipes' || view === 'album' ? 'fun' : 'people';
+    if (tab === 'memory') return view === 'stories' || view === 'recipes' || view === 'album' || view === 'settings' ? 'fun' : 'people';
     return ({ home: 'home', chat: 'chat', fun: 'fun', people: 'people', person: 'people',
       vault: 'menu', care: 'menu', ekta: 'menu', profile: 'menu', day: 'menu', notifs: 'menu', menu: 'menu' })[tab] || 'home';
   }
@@ -5289,6 +5424,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     document.querySelectorAll('#tabs .subnav[data-parent="' + pane + '"] button').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-sec') === sec);
     });
+    if (pane === 'care') tnCareFold(['bills', 'expenses', 'staff', 'renewals'].indexOf(sec) >= 0 ? true : null);
     if (pane === 'care' && sec === 'notes') refreshNotes();
     if (pane === 'care' && sec === 'bills') loadBills();
     if (pane === 'care' && sec === 'expenses') loadExpenses();
@@ -5297,6 +5433,30 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (pane === 'vault' && sec === 'locator') loadAssetLocators();
     if (pane === 'fun' && sec === 'pasand') pasandRefresh();
   }
+  // To do opens on one list. Bills, costs, home staff and renewals stay
+  // folded until asked for, or until one of them is the section shown.
+  function tnCareFold(open){
+    var seg = $('care-seg'), btn = $('tn-care-more');
+    if (open === null) open = seg.classList.contains('tn-all');
+    seg.classList.toggle('tn-all', !!open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.textContent = open ? 'Fewer sections' : 'More: bills, costs, home staff, renewals';
+  }
+  $('tn-care-more').addEventListener('click', function(){
+    var open = !$('care-seg').classList.contains('tn-all');
+    // Folding while one of them is open goes back to the list.
+    if (!open && $('care-seg').querySelector('.tn-extra.sel')) setSec('care', 'rem');
+    tnCareFold(open);
+  });
+  $('tn-mem-back').addEventListener('click', function(){ switchTab('fun'); });
+  $('tn-tog-fest').addEventListener('click', function(){
+    setSec('fun', 'plans');
+    setTimeout(function(){ try { $('bond-fests').scrollIntoView({ block: 'start' }); $('bond-fests').querySelector('button, summary, [tabindex]').focus({ preventScroll: true }); } catch (e) {} }, 60);
+  });
+  $('tn-tog-q').addEventListener('click', function(){
+    switchTab('home');
+    setTimeout(function(){ try { var q = document.querySelector('#hd-today [data-hdsawaal]'); (q ? q.closest('.card, .ev, div') : $('hd-today')).scrollIntoView({ block: 'center' }); if (q) q.focus({ preventScroll: true }); } catch (e) {} }, 120);
+  });
   ['care', 'fun', 'vault', 'day'].forEach(function(pane){
     $(pane + '-seg').addEventListener('click', function(e){
       var b = e.target.closest('button'); if (b) setSec(pane, b.getAttribute('data-sec'));
@@ -5331,7 +5491,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   $('drawer').addEventListener('click', function(e){
     if (e.target === this) { drawerOpen(false); return; }
     var g = e.target.closest('.dparent');
-    if (g) { g.closest('.dgroup').classList.toggle('closed'); return; }
+    if (g) { var grp = g.closest('.dgroup'), shut = grp.classList.toggle('closed'); g.setAttribute('aria-expanded', shut ? 'false' : 'true'); return; }
     var b = e.target.closest('button.ditem'); if (!b || !b.dataset.tab) return;
     switchTab(b.dataset.tab);
     if (b.dataset.sec) setSec(b.dataset.tab, b.dataset.sec);
@@ -5507,7 +5667,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       if (new Date(e.created_at).toDateString() !== today) return;
       if (e.type === 'sos' && !sosToday) sosToday = e;
       if (e.type === 'care' && /SOS is closed|SOS as sorted/.test(e.text || '') && !closedAt) closedAt = e.created_at;
-      if (e.type === 'checkin' && e.member_name && ins.indexOf(e.member_name) < 0) ins.push(e.member_name);
+      // To the person who pressed it, it is "You", never their own name.
+      var tnWho = e.member_id === state.memberId ? 'You' : e.member_name;
+      if (e.type === 'checkin' && tnWho && ins.indexOf(tnWho) < 0) { if (tnWho === 'You') ins.unshift(tnWho); else ins.push(tnWho); }
     });
     // One line, from the five things: an SOS first, then who said all is
     // well, then what is waiting. Never a nudge to go and chat.
@@ -5532,6 +5694,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
 
     staffTodayMaybe();
     cnLoad(); cnEcLoad();
+    tnLoad();
     notifsCache = data.events;
     renderNotifs();
     pillFromFeed(data.events);
@@ -8057,11 +8220,14 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var dot = $('care-dot');
     if (waiting > 0) { dot.textContent = waiting; dot.hidden = false; }
     else dot.hidden = true;
+    // On a phone To do is under More, so More carries the same mark.
+    $('tn-more-dot').textContent = dot.textContent; $('tn-more-dot').hidden = dot.hidden;
     var cc = window._careCounts, parts = [];
     if (cc.need) parts.push(cc.need + (cc.need === 1 ? ' needs attention' : ' need attention'));
     if (cc.today) parts.push(cc.today + ' today');
     if (cc.soon) parts.push(cc.soon + ' coming up');
     $('w-rem').textContent = parts.length ? parts.join(' · ') : 'Nothing to do';
+    $('tn-m-todo').textContent = parts.length ? parts.join(' · ') : 'Tasks, bills, notes and lists';
   }
 
   document.addEventListener('click', function(e){
@@ -9163,6 +9329,239 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       })
       .catch(function(){ btn.disabled = false; toast('No connection - try again'); });
   });
+
+  // ---------- TODAY, FOR EACH PERSON (api/_today.mjs) ----------
+  // One read fills "From the family" and the card for each parent. It is
+  // asked for with every refresh of Today, at most once in fifteen seconds,
+  // and at once after anything that changes it.
+  var tnData = null, tnAt = 0, tnBusy = false, tnHoldChat = null;
+  function tnYoung(){
+    if (tnData && tnData.me) return !!tnData.me.minor;
+    try { return localStorage.getItem('parwah-young:' + (state && state.memberId)) === '1'; } catch (e) { return false; }
+  }
+  function tnKind(){ return tnTodayKind({ senior: !!state && state.role === 'parent', minor: tnYoung() }); }
+  function tnLoad(force){
+    if (!state || tnBusy) return;
+    // Another family, or another person on this phone: nothing is carried over.
+    if (tnData && tnData.me && tnData.me.id !== state.memberId) { tnData = null; tnAt = 0; }
+    if (!force && Date.now() - tnAt < 15000) { tnRender(); return; }
+    tnBusy = true;
+    var code = state.code, mid = state.memberId;
+    apiGet(API.chats + '?area=today&circle=' + encodeURIComponent(code) + '&member=' + encodeURIComponent(mid))
+      .then(function(j){
+        tnBusy = false;
+        if (!state || state.code !== code || state.memberId !== mid) return;
+        if (!j || !j.ok) { tnRender(); return; }
+        tnData = j; tnAt = Date.now();
+        try { localStorage.setItem('parwah-young:' + mid, j.me && j.me.minor ? '1' : '0'); } catch (e) {}
+        tnRender();
+      }).catch(function(){ tnBusy = false; tnRender(); });
+  }
+  function tnWhenPlan(iso){
+    var d = new Date(iso); if (isNaN(d)) return '';
+    return dtf([], { weekday: 'short', day: 'numeric', month: 'short' }).format(d) + ', ' + dtf([], { hour: 'numeric', minute: '2-digit' }).format(d);
+  }
+  // One row of "From the family". Words beside every emoji; one main
+  // action, in place where it can be.
+  function tnRow(x, senior){
+    var who = esc(tnShort(x.fromName, 'Someone')), t = '', sub = '', acts = '', tap = '';
+    if (x.kind === 'join') {
+      t = '🙋 ' + who + ' is asking to join'; sub = x.relation ? 'They say they are: ' + esc(x.relation) : 'Someone in the family lets them in.';
+      acts = '<button type="button" class="cbtn" data-tnjoin="' + esc(x.id) + '">🧡 Let them in</button>' +
+             '<button type="button" class="cbtn ghost" data-tngo="joinreq">Not sure</button>';
+    } else if (x.kind === 'message') {
+      t = '💬 ' + who + (x.chatKind === 'dm' ? ' sent you a message' : x.chatKind === 'circle' ? ' wrote in the family chat' : ' wrote in ' + esc(x.chatName || 'a group'));
+      sub = (x.voice ? '🎙 ' : '') + esc(x.text) + (x.n > 1 ? ' · ' + x.n + ' new' : '');
+      if (senior) {
+        acts = '<button type="button" class="cbtn" data-tnseen="' + esc(x.chatId) + '">✓ Dekh liya</button>' +
+               '<button type="button" class="cbtn ghost tn-hold" data-tnhold="' + esc(x.chatId) + '" aria-label="Hold to talk to ' + who + ', let go to send">🎙 Hold to talk</button>' +
+               '<button type="button" class="cbtn ghost" data-tnchat="' + esc(x.chatId) + '">Open and reply</button>';
+      } else { tap = ' data-tnchat="' + esc(x.chatId) + '"'; acts = '<button type="button" class="cbtn" data-tnchat="' + esc(x.chatId) + '">Open and reply</button>'; }
+    } else if (x.kind === 'word') {
+      t = (x.emoji ? x.emoji + ' ' : '🫶 ') + who + ': ' + esc(x.title || 'A private word'); sub = (x.voice ? '🎙 A voice note. ' : '') + esc(x.text || '') + ' Only the two of you see this.';
+      acts = '<button type="button" class="cbtn" data-tngo="heard">Answer</button>';
+    } else if (x.kind === 'day') {
+      t = '☀️ ' + who + ' asks: how is your day?'; sub = 'One tap answers it.';
+      acts = '<button type="button" class="cbtn" data-tngo="ashirwad">Answer</button>';
+    } else if (x.kind === 'blessing') {
+      t = '🙏 ' + who + ' sent you Ashirwad'; sub = (x.voice ? '🎙 A voice note. ' : '') + esc(x.text || '');
+      acts = '<button type="button" class="cbtn" data-tngo="ashirwad">See it</button>';
+    } else if (x.kind === 'thanks') {
+      t = '🙏 ' + who + ' said shukriya'; sub = (x.voice ? '🎙 A voice note. ' : '') + esc(x.text || 'Thank you');
+      acts = '<button type="button" class="cbtn ghost" data-tngo="heard">See it</button>';
+    } else if (x.kind === 'plan') {
+      t = '🗓 ' + esc(x.text); sub = esc(tnWhenPlan(x.when)) + (x.place ? ' · ' + esc(x.place) : '') + (x.fromName ? ' · from ' + who : '') + '. Going?';
+      acts = '<button type="button" class="cbtn" data-tnrsvp="in" data-plan="' + esc(x.id) + '">Yes</button>' +
+             '<button type="button" class="cbtn ghost" data-tnrsvp="maybe" data-plan="' + esc(x.id) + '">Maybe</button>' +
+             '<button type="button" class="cbtn ghost" data-tnrsvp="no" data-plan="' + esc(x.id) + '">No</button>';
+    } else if (x.kind === 'poll') {
+      t = '📊 ' + (x.fromName ? who + ' asks' : 'A question for the family'); sub = esc(x.text) + (x.poll === 'date' ? ' · which day suits you?' : '');
+      acts = x.poll === 'chat' ? '<button type="button" class="cbtn" data-tnchat="' + esc(x.chatId) + '">Vote</button>'
+                               : '<button type="button" class="cbtn" data-tngo="plans">Pick a day</button>';
+    } else if (x.kind === 'card') {
+      t = '💌 ' + esc(x.text); sub = 'You have not written in it yet.';
+      acts = '<button type="button" class="cbtn" data-tncard="' + esc(x.id) + '">Write in it</button>';
+    } else return '';
+    return '<div class="tn-row' + (tap ? ' tap' : '') + '" data-tnkind="' + x.kind + '"' + tap + '><span class="txt"><b>' + t + '</b><small>' + sub + '</small></span><span class="tn-acts">' + acts + '</span></div>';
+  }
+  function tnRender(){
+    var box = $('tn-from'); if (!box || !state) return;
+    var d = tnData, senior = state.role === 'parent';
+    // Somebody is holding the talk button: the rows are not redrawn under their finger.
+    if (vrec && vrec.mode === 'hold' && tnHoldChat) return;
+    var items = d ? tnFromFamily(d.items || [], { minor: !!(d.me && d.me.minor) }) : [];
+    box.innerHTML = items.length
+      ? '<section class="tn-from" aria-labelledby="tn-from-h"><h2 id="tn-from-h">🧡 From the family</h2>' + items.map(function(x){ return tnRow(x, senior); }).join('') + '</section>'
+      : '';
+    // The chat bubble says what it will do: with something new it opens it.
+    var n = d && d.unread ? d.unread.messages : 0, fab = $('chat-fab'), dot = $('tn-chat-dot');
+    dot.hidden = !n; dot.textContent = n > 9 ? '9+' : (n || '');
+    var lab = n ? n + (n === 1 ? ' new message' : ' new messages') + '. Open chats' : 'Start a new chat';
+    fab.setAttribute('aria-label', lab); fab.title = lab;
+    if (n) fab.removeAttribute('aria-haspopup'); else fab.setAttribute('aria-haspopup', 'dialog');
+    var td = $('tn-tab-dot'); if (td) { td.hidden = !n; td.textContent = n > 9 ? '9+' : (n || ''); }
+    document.body.classList.toggle('tn-isyoung', tnKind() === 'young');
+    tnParents(); tnYoungRender();
+    try { renderFirstRunList(); } catch (e) {}
+  }
+  // A card for each parent: only what the server sent, which is only what
+  // this person may see.
+  function tnParents(){
+    var box = $('tn-parents'); if (!box) return;
+    var ps = (tnData && tnData.parents) || [];
+    if (!ps.length || tnKind() !== 'family') { box.innerHTML = ''; return; }
+    box.innerHTML = '<section class="tn-parents" aria-labelledby="tn-parents-h"><h2 id="tn-parents-h">How they are today</h2>' + ps.map(function(p){
+      var f = esc(tnShort(p.name, 'They'));
+      var ok = p.ok ? '✅ Said all is well today, ' + esc(fmtTime(p.ok.at).replace(/^Today, /, 'at ')) : (p.onApp ? '🕚 Not checked in yet today' : 'Not on Parwah, so no check-in here');
+      var meds = p.meds ? '💊 Medicines today: ' + p.meds.taken + ' of ' + p.meds.total + ' marked taken' + (p.meds.late ? ', ' + p.meds.late + ' with no tick yet' : '') : '💊 No medicine times you can see';
+      var last = p.last ? '💬 Last message: “' + esc(p.last.text) + '” · ' + esc(fmtTime(p.last.at)) : '💬 No message yet';
+      return '<div class="tn-pcard" data-tnparent="' + esc(p.id) + '"><h3>' + esc(p.name) + '</h3>' +
+        '<p>' + ok + '</p><p>' + meds + '</p><p class="soft">' + last + '</p>' +
+        '<div class="tn-acts">' +
+        (p.phone ? '<a class="cbtn" href="tel:' + encodeURIComponent(p.phone) + '">📞 Call ' + f + '</a>' : '') +
+        (p.onApp ? '<button type="button" class="cbtn' + (p.phone ? ' ghost' : '') + '" data-tndm="' + esc(p.id) + '">💬 Message ' + f + '</button>' : '') +
+        '<button type="button" class="cbtn ghost" data-person="' + esc(p.id) + '">Open ' + f + '\'s page</button>' +
+        '</div></div>';
+    }).join('') + '</section>';
+  }
+  // Who a young member can ask: an elder who is on Parwah and with us.
+  function tnElder(){
+    var ms = (membersCache || []).filter(function(m){ return state && m.id !== state.memberId && onApp(m); });
+    var grand = ms.filter(function(m){ return /^(grand|dada|dadi|nana|nani)/i.test(String(m.kin || '')) || /^grand/.test(String(m.relation || '')); })[0];
+    return grand || ms.filter(function(m){ return m.role === 'parent'; })[0] || null;
+  }
+  function tnYoungRender(){
+    var box = $('tn-young'); if (!box) return;
+    var young = tnKind() === 'young';
+    box.hidden = !young;
+    if (!young) { box.innerHTML = ''; return; }
+    var el = tnElder(), ask = el ? 'Ask ' + tnShort(el.name) + ' a question' : 'Ask the family a question';
+    var tile = function(attrs, icon, name, sub){ return '<button type="button" class="widget" ' + attrs + '><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#' + icon + '"/></svg></span><b>' + esc(name) + '</b><small>' + esc(sub) + '</small></button>'; };
+    box.innerHTML = '<section class="tn-young" aria-labelledby="tn-young-h"><h2 id="tn-young-h">For you today</h2><div class="widgets">' +
+      tile('data-goto="fun" data-sec="games"', 'i-dice', 'Games', 'Play with the family') +
+      tile('data-tnyoung="polls"', 'i-chat', 'Polls', 'Ask everyone, or vote') +
+      tile('data-goto="fun" data-sec="pasand"', 'i-spark', 'Pasand', 'What to watch, read and hear') +
+      tile('data-goto="memory" data-mbv="stories"', 'i-book', 'Stories', 'The family\'s own stories') +
+      tile('data-tnyoung="ask"', 'i-bulb', ask, 'They would love to tell you') +
+      tile('data-goto="fun" data-sec="plans"', 'i-cal', 'My plans', 'Birthdays, trips and get-togethers') +
+      '</div></section>';
+  }
+  function tnOpenChat(chatId, prefill){
+    var open = function(){
+      switchTab('chat'); openChat(chatId);
+      if (prefill) { $('msg').value = prefill; try { $('msg').focus(); } catch (e) {} }
+      setTimeout(function(){ tnLoad(true); }, 1200);
+    };
+    if ((chatsCache || []).some(function(c){ return c.id === chatId; })) open(); else refreshChats(open);
+  }
+  function tnDm(memberId, prefill){
+    post(API.chats, { code: state.code, memberId: state.memberId, action: 'open_dm', otherId: memberId })
+      .then(function(j){
+        if (!j.ok) { toast(j.error || 'Could not open that chat'); return; }
+        refreshChats(function(){ tnOpenChat(j.chatId, prefill); });
+      }).catch(function(){ toast('No connection - try again'); });
+  }
+  function tnFamilyChat(prefill){
+    var go = function(){ var c = (chatsCache || []).filter(function(x){ return x.kind === 'circle'; })[0]; if (c) tnOpenChat(c.id, prefill); else switchTab('chat'); };
+    if ((chatsCache || []).length) go(); else refreshChats(go);
+  }
+  function tnGo(where){
+    if (where === 'joinreq') { switchTab('people'); setTimeout(function(){ try { $('joinreq-card').scrollIntoView({ block: 'center' }); } catch (e) {} }, 150); return; }
+    if (where === 'plans') { switchTab('fun'); setSec('fun', 'plans'); return; }
+    var el = $(where === 'heard' ? 'hd-today' : 'cn-today');
+    try { el.scrollIntoView({ block: 'start', behavior: 'auto' }); var f = el.querySelector('button, [tabindex]'); if (f) f.focus({ preventScroll: true }); } catch (e) {}
+  }
+  function tnClick(e){
+    var b;
+    if ((b = e.target.closest('[data-tnjoin]'))) {
+      b.disabled = true;
+      joinAct(Object.assign({ action: 'approve_join', requestId: b.getAttribute('data-tnjoin') }, acClaimChoice(b.getAttribute('data-tnjoin'))), 'They are in 🧡', function(){ tnLoad(true); });
+      setTimeout(function(){ b.disabled = false; }, 4000);
+      return;
+    }
+    if ((b = e.target.closest('[data-tnrsvp]'))) {
+      var row = b.closest('.tn-row'), ans = b.getAttribute('data-tnrsvp');
+      row.querySelectorAll('button').forEach(function(x){ x.disabled = true; });
+      post(API.plans, { code: state.code, memberId: state.memberId, action: 'rsvp', planId: b.getAttribute('data-plan'), answer: ans })
+        .then(function(j){
+          if (!j.ok) { row.querySelectorAll('button').forEach(function(x){ x.disabled = false; }); toast(j.error || 'Could not send that'); return; }
+          toast(ans === 'in' ? 'You are going 🙌' : ans === 'maybe' ? 'Marked as maybe' : 'They know you cannot come');
+          tnLoad(true); try { refreshFun(); } catch (x) {}
+        }).catch(function(){ row.querySelectorAll('button').forEach(function(x){ x.disabled = false; }); toast('No connection - try again'); });
+      return;
+    }
+    if ((b = e.target.closest('[data-tnseen]'))) {
+      b.disabled = true;
+      apiGet(API.chats + '?circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + '&chat=' + encodeURIComponent(b.getAttribute('data-tnseen')))
+        .then(function(){ toast('They will see that you read it'); tnLoad(true); }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+      return;
+    }
+    if (e.target.closest('[data-tnhold]')) return;   // held, not tapped
+    if ((b = e.target.closest('[data-tncard]'))) { bondCardOpen(b.getAttribute('data-tncard')); return; }
+    if ((b = e.target.closest('[data-tngo]'))) { tnGo(b.getAttribute('data-tngo')); return; }
+    if ((b = e.target.closest('[data-tndm]'))) { tnDm(b.getAttribute('data-tndm')); return; }
+    if ((b = e.target.closest('[data-tnyoung]'))) {
+      if (b.getAttribute('data-tnyoung') === 'polls') { tnFamilyChat(''); return; }
+      var el = tnElder();
+      if (el) tnDm(el.id, tnShort(el.name) + ', ek sawaal hai: '); else tnFamilyChat('Ek sawaal hai: ');
+      return;
+    }
+    if ((b = e.target.closest('[data-tnchat]'))) { tnOpenChat(b.getAttribute('data-tnchat')); return; }
+  }
+  ['tn-from', 'tn-parents', 'tn-young'].forEach(function(id){ $(id).addEventListener('click', tnClick); });
+  // Hold to talk, right on Today: press, speak, let go. The same recorder
+  // as in a chat, sent to the chat the message came from.
+  function tnHoldPaint(){
+    document.querySelectorAll('#tn-from [data-tnhold]').forEach(function(b){
+      var on = !!(vrec && vrec.mode === 'hold' && tnHoldChat === b.getAttribute('data-tnhold'));
+      b.classList.toggle('rec', on);
+      b.textContent = on ? (vrec.pending ? '🎙 Starting…' : '🎙 Talking… let go to send') : '🎙 Hold to talk';
+    });
+  }
+  (function(){
+    var box = $('tn-from'), pid = null;
+    function end(send){
+      if (!vrec || vrec.mode !== 'hold' || !tnHoldChat) { tnHoldChat = null; return; }
+      if (send) vnFinish(true); else vnCancel();
+      setTimeout(function(){ tnHoldChat = null; tnHoldPaint(); }, 50);
+    }
+    box.addEventListener('pointerdown', function(e){
+      var b = e.target.closest('[data-tnhold]'); if (!b || e.button) return;
+      e.preventDefault();
+      pid = e.pointerId; try { b.setPointerCapture(pid); } catch (x) {}
+      tnHoldChat = b.getAttribute('data-tnhold');
+      vnStart('hold', tnHoldChat);
+    });
+    box.addEventListener('pointerup', function(e){ if (pid === e.pointerId) { pid = null; end(true); } });
+    box.addEventListener('pointercancel', function(e){ if (pid === e.pointerId) { pid = null; end(false); } });
+    box.addEventListener('contextmenu', function(e){ if (e.target.closest('[data-tnhold]')) e.preventDefault(); });
+    box.addEventListener('keydown', function(e){
+      var b = e.target.closest('[data-tnhold]'); if (!b) return;
+      if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); if (!vrec) { tnHoldChat = b.getAttribute('data-tnhold'); vnStart('hold', tnHoldChat); } }
+      else if (e.key === 'Escape') { e.preventDefault(); end(false); }
+    });
+    box.addEventListener('keyup', function(e){ if (e.target.closest('[data-tnhold]') && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); end(true); } });
+  })();
 
   // ---------- people waiting to join ----------
   var joinReqs = [], joinPolicy = 'approve';
@@ -10785,7 +11184,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   }
   function renderFirstRunList(){
     if ($('frslot') && $('firstrun').parentNode !== $('frslot')) $('frslot').appendChild($('firstrun'));
-    if (!state || frDone()) { $('firstrun').hidden = true; return; }
+    // Not in senior mode (the big buttons come first, then the family), and
+    // not for someone under 18: a setup list is a grown-up's chore.
+    if (!state || frDone() || state.role === 'parent' || tnYoung()) { $('firstrun').hidden = true; return; }
     var members = (membersCache || []).length;
     var steps = [
       { k:'alerts', done: !pushSupported() || (typeof Notification !== 'undefined' && Notification.permission === 'granted'),
@@ -13025,11 +13426,12 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   function vnSpeed(){ vnRate = vnRate === 1 ? 1.5 : 1; if (vnNow) vnNow.audio.playbackRate = vnRate; vnPaint(); }
 
   function vnSupported(){ return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && typeof MediaRecorder !== 'undefined'); }
-  function vnStart(mode){
-    if (!curChat || vrec) return;
+  function vnStart(mode, chatId){
+    var tnChat = chatId || (curChat && curChat.id);
+    if (!tnChat || vrec) return;
     if (!vnSupported()) { toast('This phone cannot record a voice note here. You can still type.'); return; }
     vnHalt();
-    var r = vrec = { mode: mode, pending: true, parts: [], chatId: curChat.id };
+    var r = vrec = { mode: mode, pending: true, parts: [], chatId: tnChat };
     navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
       if (vrec !== r || r.cancelled) { stream.getTracks().forEach(function(t){ t.stop(); }); return; }
       var types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
@@ -13096,7 +13498,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   function vnSend(uri, secs, chatId){
     post(API.chats, { code: state.code, memberId: state.memberId, action: 'send', chatId: chatId, kind: 'audio', text: uri, secs: secs })
       .then(function(j){
-        if (j.ok) { loadMsgs(); refreshChats(); toast('Voice note sent'); }
+        if (j.ok) { loadMsgs(); refreshChats(); toast('Voice note sent'); tnLoad(true); }
         else toast(j.error || 'Could not send the voice note');
       })
       .catch(function(){ toast('No connection - try again'); });
@@ -13115,6 +13517,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var hb = $('vnhold'), hold = !!(r && r.mode === 'hold');
     hb.classList.toggle('rec', hold && !r.away);
     hb.classList.toggle('away', hold && !!r.away);
+    tnHoldPaint();
     hb.textContent = !hold ? '🎙 Hold to talk, let go to send'
       : r.away ? 'Let go to cancel'
       : r.pending ? '🎙 Starting the microphone…'
@@ -14727,6 +15130,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       : mbView === 'recipes' ? (mbGroup() ? 'The group cookbook' : 'The family’s recipes, in their own words')
       : mbView === 'settings' ? 'Nudges, Yaadein and who is remembered'
       : album ? 'Yaadon ki album: the ' + mbWord() + '’s own photos' : 'One question a week, answers kept by person';
+    try { tnNavSync(); } catch (e) {}
     // The album (api/_album.mjs) draws itself.
     if (album) { albumLoad(); return; }
     if (!health) {
@@ -18125,7 +18529,12 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     $('ncsheet').hidden = true;
     if (!go()) refreshChats(function(){ if (!go()) toast('Could not open the chat - try again'); });
   }
-  $('chat-fab').addEventListener('click', ncOpen);
+  $('chat-fab').addEventListener('click', function(){
+    var d = tnData, n = d && d.unread ? d.unread.messages : 0;
+    if (!n) { ncOpen(); return; }
+    var first = (d.items || []).filter(function(x){ return x.kind === 'message'; });
+    if (first.length === 1) tnOpenChat(first[0].chatId); else switchTab('chat');
+  });
   $('nc-x').addEventListener('click', ncClose);
   $('ncsheet').addEventListener('click', function(e){ if (e.target === this) ncClose(); });
   $('ncsheet').addEventListener('keydown', function(e){ if (e.key === 'Escape') ncClose(); });

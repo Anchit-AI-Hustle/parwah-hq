@@ -99,7 +99,7 @@ export const PLACE_NAME = { home: 'Today', chat: 'Chat', fun: 'Together', people
 // part of a screen that decides (the stories, recipes and album views of
 // the old Health & contacts screen belong to Together).
 export function placeOf(tab, view) {
-  if (tab === 'memory') return view === 'stories' || view === 'recipes' || view === 'album' ? 'fun' : 'people';
+  if (tab === 'memory') return view === 'stories' || view === 'recipes' || view === 'album' || view === 'settings' ? 'fun' : 'people';
   return ({ home: 'home', chat: 'chat', fun: 'fun', people: 'people', person: 'people',
     vault: 'menu', care: 'menu', ekta: 'menu', profile: 'menu', day: 'menu', notifs: 'menu', menu: 'menu' })[tab] || 'home';
 }

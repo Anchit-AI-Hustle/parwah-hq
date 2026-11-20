@@ -1565,7 +1565,7 @@ check("day: the verdict, band, coming up and hours all read one timeline",
       and "segs.slice(at + 1, at + 6)" in appday)
 check("day: the detail is in tabs, and the day opens on the overview",
       'role="tablist"' in appday and 'id="mu-tabs"' in appday
-      and "if (t === 'day' && curTab !== 'day') showMuTab('overview');" in appday)
+      and "if (t === 'day' && tnWasTab !== 'day') showMuTab('overview');" in appday)
 check("day: no city is told apart from an unknown one",
       "unset: true" in plc and "j.place.unset" in appday and 'id="mu-addcity"' in appday)
 _coins_src = (API_DIR / "_coins.mjs").read_text(encoding="utf-8")
@@ -2094,23 +2094,44 @@ check("theme: a status button keeps its status colour under the Mela gradient",
 # The day, Profile). The Today screen's own cards and shortcuts are ranked in
 # docs/design/TODAY.md and guarded by the "today:" checks.
 _navseg = _appt[_appt.index('<nav class="tabs" id="tabs"'):_appt.index('id="side-groups-head"')]
-_nav = re.findall(r'<button data-tab="(\w+)"(?! data-sec)([^>]*)>', _navseg)
+_nav = re.findall(r'<button data-tab="(\w+)"(?! data-(?:sec|mbv))([^>]*)>', _navseg)
 # Owner (2026-10-04): Chat, Ask Ekta and Together (Plans & calls, Games,
 # Drawing board) sit right under Today, ahead of the records. On a phone,
 # Ekta is a tab, New chat is in the top bar, and Together is in the menu.
-_want_nav = ["home", "chat", "ekta", "fun", "vault", "memory", "care", "people", "notifs", "day", "profile"]
-check("order: the sidebar runs by real-life use",
+# Owner (2026-11-20, after the family walkthrough): FIVE PLACES. A phone had
+# five tabs, five top-bar icons and a 30-item menu, and Chat had no tab
+# while Vault did. Now: Today, Chat, Together, Family, More, on the phone's
+# tab bar, in the menu and in the laptop sidebar alike. Vault, To do, Ekta,
+# The day, Notifications and Profile are under More. The rules for which
+# screen belongs to which place are in api/_todayrules.mjs (placeOf).
+_want_nav = ["home", "chat", "fun", "people", "memory", "menu", "vault", "care", "ekta", "notifs", "day", "profile"]
+check("order: the sidebar is the five places, then what More holds",
       [t for t, _ in _nav] == _want_nav, " > ".join(t for t, _ in _nav))
-check("order: the phone tab bar is Today, Vault, Ekta, To do, Family - one bar, SOS docked at its left",
-      [t for t, a in _nav if "deskonly" not in a] == ["home", "ekta", "vault", "care", "people"]
-      and all(x in _appt for x in ('.tabs button[data-tab="home"]{order:1}', '.tabs button[data-tab="vault"]{order:2}',
-                                   '.tabs button[data-tab="ekta"]{order:3}', '.tabs button[data-tab="care"]{order:4}',
-                                   '.tabs button[data-tab="people"]{order:5}', ".tabs .inner{padding-left:68px}")),
+check("order: the phone tab bar is Today, Chat, Together, Family, More - one bar, SOS docked at its left",
+      [t for t, a in _nav if "deskonly" not in a] == ["home", "chat", "fun", "people", "menu"]
+      and all(x in _appt for x in ('.tabs button[data-tab="home"]{order:1}', '.tabs button[data-tab="chat"]{order:2}',
+                                   '.tabs button[data-tab="fun"]{order:3}', '.tabs button[data-tab="people"]{order:4}',
+                                   '.tabs button[data-tab="menu"]{order:5}', ".tabs .inner{padding-left:68px}")),
       " > ".join(t for t, a in _nav if "deskonly" not in a))
 _drw = _appt[_appt.index('<div class="dhead">'):_appt.index('id="d-groups-wrap"')]
 _drw_top = re.findall(r'class="ditem(?: dparent)?" data-(?:tab|grp)="(\w+)"', _drw)
-check("order: the menu drawer runs by real-life use",
-      _drw_top == _want_nav, " > ".join(_drw_top))
+check("order: the menu drawer is the same five places, each folded until it is where you are",
+      _drw_top == ["home", "chat", "fun", "people", "menu"] and _drw.count('class="dgroup closed" data-place=') == 3
+      and len(re.findall(r'class="ditem sub"', _drw)) <= 16,
+      " > ".join(_drw_top))
+_today_rules = (API_DIR / "_todayrules.mjs").read_text(encoding="utf-8")
+check("nav: every old address is still a screen, and More is one more",
+      all(("'" + t + "'") in _appt[_appt.index("var TABS = ["):_appt.index("];", _appt.index("var TABS = ["))]
+          for t in ("home", "people", "person", "memory", "vault", "care", "day", "chat", "ekta", "profile", "fun", "notifs", "menu"))
+      and all(('id="pane-' + t + '"') in _appt for t in ("home", "people", "person", "memory", "vault", "care", "day", "chat", "ekta", "profile", "fun", "notifs", "menu")))
+check("nav: stories, recipes and the album are reached from Together, not from Health & contacts",
+      all(x in _appt for x in ('id="tn-together"', 'data-goto="memory" data-mbv="album">', 'data-goto="memory" data-mbv="stories">', 'data-goto="memory" data-mbv="recipes">'))
+      and "view === 'stories' || view === 'recipes' || view === 'album'" in _today_rules and "b.hidden = v === 'health';" in _appt)
+check("nav: To do opens on one list with three filters at most; the other sections fold under More",
+      len(re.findall(r'data-tfilter="', _appt[_appt.index('id="task-filter-seg"'):_appt.index('id="rlist"')])) <= 3
+      and _appt.count('class="tn-extra"') == 4 and 'id="tn-care-more"' in _appt and "#care-seg .tn-extra{display:none}" in _appt)
+check("nav: Ekta is one tap from Today and from Chat",
+      'id="tn-ekta-today" data-goto="ekta"' in _appt and 'id="tn-ekta-chat" data-goto="ekta"' in _appt)
 # Owner (2026-10-13): nothing floats on a phone. New chat sits in the top
 # bar, SOS is docked in the tab bar, Ekta is a tab - for parents too; that
 # none of them cover All is well, Pills or SOS is proved in firstrun.e2e.

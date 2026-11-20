@@ -85,7 +85,7 @@ ok('who an event is about, from its words', T.joinWho(ev[0]).kind === 'ask' && T
 ok('five places, in this order', same(T.PLACES, ['home', 'chat', 'fun', 'people', 'menu']) && same(T.PLACES.map(p => T.PLACE_NAME[p]), ['Today', 'Chat', 'Together', 'Family', 'More']));
 const OLD = ['home', 'people', 'person', 'memory', 'vault', 'care', 'day', 'chat', 'ekta', 'profile', 'fun', 'notifs'];
 ok('every old address lands in a place', OLD.every(t => T.PLACES.includes(T.placeOf(t))));
-ok('stories, recipes and the album belong to Together', ['stories', 'recipes', 'album'].every(v => T.placeOf('memory', v) === 'fun'));
+ok('stories, recipes and the album (and their settings) belong to Together', ['stories', 'recipes', 'album', 'settings'].every(v => T.placeOf('memory', v) === 'fun'));
 ok('health and contacts belong to Family', T.placeOf('memory', 'health') === 'people' && T.placeOf('memory') === 'people' && T.placeOf('person') === 'people');
 ok('vault, to do, Ekta and profile are under More', ['vault', 'care', 'ekta', 'profile', 'menu'].every(t => T.placeOf(t) === 'menu'));
 ok('an address nobody knows lands on Today', T.placeOf('nonsense') === 'home');
@@ -105,7 +105,7 @@ if (a > 0 && b > a) {
   ok('app: the same From the family', same(M.tnFromFamily(items), T.fromFamily(items)) && same(M.tnFromFamily(items, { minor: true }), T.fromFamily(items, { minor: true })));
   ok('app: the same first words', ['Kaise ho?', 'Papa,   kal\nsubah doctor ke paas chalna hai, 10 baje tak tayyar rehna please'].every(t => M.tnFirstWords(t, 30) === T.firstWords(t, 30)));
   ok('app: the same bell', same(M.tnBellFor(ev, '2026-11-20T08:04:00Z'), T.bellFor(ev, '2026-11-20T08:04:00Z')) && same(M.tnBellFor(ev, null), T.bellFor(ev, null)));
-  ok('app: the same places', OLD.concat(['menu', 'nonsense']).every(t => M.tnPlaceOf(t) === T.placeOf(t)) && ['stories', 'recipes', 'album', 'health'].every(v => M.tnPlaceOf('memory', v) === T.placeOf('memory', v)));
+  ok('app: the same places', OLD.concat(['menu', 'nonsense']).every(t => M.tnPlaceOf(t) === T.placeOf(t)) && ['stories', 'recipes', 'album', 'settings', 'health'].every(v => M.tnPlaceOf('memory', v) === T.placeOf('memory', v)));
 }
 
 if (fails.length) { console.error('todaytest: ' + fails.length + ' FAILED\n  ' + fails.join('\n  ')); process.exit(1); }

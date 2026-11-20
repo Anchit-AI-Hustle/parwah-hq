@@ -147,7 +147,7 @@ async function shukriyaPrompt(sql, circle, me, week) {
   return t ? { toId: t.id, name: t.name, onApp: t.on_app } : null;
 }
 // What this member may read: sent by them, sent to them, or shown to the family.
-async function shukriyaList(sql, circle, me, limit = 40) {
+export async function shukriyaList(sql, circle, me, limit = 40) {
   const rows = await sql`
     select s.id, s.line, (s.audio is not null) as has_audio, s.audio_secs, s.audience, s.created_at,
            s.from_member, f.name as from_name, s.to_member, t.name as to_name, (t.user_id is not null) as to_on_app

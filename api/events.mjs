@@ -389,7 +389,7 @@ export default async function handler(req, res) {
           await sql`update sos set status = 'acked', acked_by = ${memberId}, acked_at = now()
                     where id = ${row[0].id} and status = 'open'`;
           await sql`insert into events (circle_id, member_id, type, text)
-                    values (${circle.id}, ${memberId}, 'care', ${am[0].name + ' is on their way to ' + row[0].name + ' 🧡'})`;
+                    values (${circle.id}, ${memberId}, 'care', ${am[0].name + ' has seen the SOS and is calling ' + row[0].name + ' 🧡'})`;
           await pushCircle(sql, circle.id, { kind: 'safety', title: '🧡 ' + am[0].name + ' is on it',
             body: 'They are helping ' + row[0].name + ' - you do not need to call as well' }, { except: memberId });
           return res.status(200).json({ ok: true });
