@@ -46,6 +46,7 @@ import { safeImageUri } from './_sec.mjs';
 import { tokenOf } from './_token.mjs';
 import { ladderFor, ensureLadderSchema } from './_ladder.mjs';
 import { dialQuietLadder } from './_sosdial.mjs';
+import { eldTables } from './_eldlinkrules.mjs';
 import { ROTA_CONSENT_ACTIONS, rotaConsentAction, rotaRefused, rotaTellPerson } from './_rotaconsent.mjs';
 import { validHHMM, validDay, addDays, quietPhase, quietFamilyText, QUIET_NUDGE, QUIET_GRACE_MIN, AWAY_MAX_DAYS,
          QUIET_LADDER_MIN, quietCallHour, quietLadderText,
@@ -60,6 +61,9 @@ export async function ensureFamilyCareSchema(sql) {
   if (fcReady) return;
   await ensureLadderSchema(sql);
   await schemaOnce(async () => {
+    // A link for someone not on the app (api/_eldlink.mjs): the daily check-in
+    // reads it below, so its tables are made here too.
+    await eldTables(sql);
     await sql`alter table members add column if not exists checkin_by text`;
     await sql`alter table members add column if not exists tz text`;
     await sql`alter table members add column if not exists quiet_alerted_for date`;
@@ -185,7 +189,8 @@ export async function quietSweep(sql, circleId, nowMs = Date.now(), opts = {}) {
                               to_char(m.quiet_alerted_for, 'YYYY-MM-DD') as alerted,
                               to_char(m.quiet_ack_for, 'YYYY-MM-DD') as acked,
                               (select to_char(max(q.day), 'YYYY-MM-DD') from quiet_ladder q where q.person_id = m.id) as laddered
-                       from members m where m.circle_id = ${circleId} and m.checkin_by is not null and m.user_id is not null and not m.remembered`;
+                       from members m where m.circle_id = ${circleId} and m.checkin_by is not null and not m.remembered
+                         and (m.user_id is not null or exists (select 1 from eld_links l where l.member_id = m.id and l.revoked_at is null and l.expires_at > now() and l.consent_at is not null))`;
   let sent = 0;
   for (const m of ms) {
     const by = validHHMM(m.checkin_by); if (!by) continue;
@@ -318,7 +323,8 @@ export async function familyCareState(sql, circleId, meId, nowMs = Date.now()) {
                               to_char(m.quiet_ack_for, 'YYYY-MM-DD') as acked, k.name as ack_by_name, m.quiet_ack_by
                        from members m left join members a on a.id = m.checkin_ask_by left join members k on k.id = m.quiet_ack_by
                          left join members w on w.id = m.away_ask_by
-                       where m.circle_id = ${circleId} and m.user_id is not null and not m.remembered
+                       where m.circle_id = ${circleId} and not m.remembered
+                         and (m.user_id is not null or (m.checkin_by is not null and exists (select 1 from eld_links l where l.member_id = m.id and l.revoked_at is null and l.expires_at > now() and l.consent_at is not null)))
                          and (m.checkin_by is not null or m.checkin_ask is not null or m.away_ask is not null or m.role = 'parent' or m.id = ${meId})
                        order by m.created_at`;
   const quiet = [];
@@ -406,12 +412,15 @@ export async function familyCarePost(sql, req, res, reqTzValue) {
     if (!t) return no(res, 404, 'That person is not in this family');
     if (t.id === me.id) return no(res, 400, 'Set your own time with Turn on');
     if (t.remembered) return no(res, 400, t.name + ' is remembered here, so is not asked');
-    if (!t.on_app) return no(res, 400, t.name + ' is not on Parwah, so cannot check in here');
+    // Someone not on Parwah can still say "I am fine" from their own link
+    // (api/_eldlink.mjs): the question waits on that page for their yes.
+    const linked = !t.on_app && !!(await sql`select 1 as x from members m where m.id = ${t.id} and exists (select 1 from eld_links l where l.member_id = m.id and l.revoked_at is null and l.expires_at > now() and l.consent_at is not null)`)[0];
+    if (!t.on_app && !linked) return no(res, 400, t.name + ' is not on Parwah, so cannot check in here');
     if (!(await rateLimit(sql, 'quietask', t.id, 3, 86400))) return no(res, 429, t.name + ' has been asked already today');
     await sql`update members set checkin_ask = ${by}, checkin_ask_by = ${me.id} where id = ${t.id}`;
     await pushCircle(sql, circle.id, { title: '🕚 ' + me.name + ' asks: a daily check-in by ' + by + '?',
       body: 'It stays off until you say yes on your phone.', url: '/#home' }, { only: t.id });
-    return send(res, 200, { ok: true });
+    return send(res, 200, { ok: true, onLink: linked });
   }
   if (type === 'quiet_answer') {
     const r = (await sql`select checkin_ask, checkin_ask_by from members where id = ${me.id}`)[0];

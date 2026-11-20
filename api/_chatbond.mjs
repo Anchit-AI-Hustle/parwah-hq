@@ -28,6 +28,7 @@
 import { schemaOnce } from './_db.mjs';
 import { proxyLabel, waitingFor, waitingLine } from './_heardrules.mjs';
 import { SOS_AUDIO_TYPES } from './_sos.mjs';
+import { linkLabel } from './_eldlinkrules.mjs';
 
 export const VOICE_MAX_SECS = 60;
 // 60 s at 32 kbps is 240 KB. The cap leaves room for container overhead and
@@ -143,7 +144,7 @@ export async function attachBond(sql, msgs, meId) {
       from chat_polls p join chats c on c.id = p.chat_id where p.message_id = any(${pollIds})`;
     const pids = ps.map(p => p.id);
     const votes = pids.length ? await sql`
-      select v.poll_id, v.member_id, v.choices, v.by_member, mem.name, b.name as by_name
+      select v.poll_id, v.member_id, v.choices, v.by_member, mem.name, b.name as by_name, to_jsonb(v)->>'via' as via
       from poll_votes v join members mem on mem.id = v.member_id left join members b on b.id = v.by_member
       where v.poll_id = any(${pids}) order by v.updated_at` : [];
     // Who is in each poll's chat: on Parwah (they can vote themself) or not
@@ -166,7 +167,9 @@ export async function attachBond(sql, msgs, meId) {
         voters++; voted.push(v.member_id);
         const proxy = v.by_member && v.by_member !== v.member_id;
         // One ballot, one count. A SECRET ballot carries no name at all.
-        (v.choices || []).forEach(i => { const o = opts[i]; if (o) { o.count++; if (!p.secret) o.names.push(proxy ? proxyLabel(v.name, v.by_name) : v.member_id === meId ? 'You' : v.name); } });
+        (v.choices || []).forEach(i => { const o = opts[i]; if (o) { o.count++; if (!p.secret) o.names.push(proxy ? proxyLabel(v.name, v.by_name) : v.member_id === meId ? 'You'
+          // Their own vote, cast from their no-sign-in link (api/_eldlink.mjs).
+          : v.via === 'link' ? v.name + ' (' + linkLabel(v.name) + ')' : v.name); } });
         if (v.member_id === meId) mine = (v.choices || []).map(Number);
         if (proxy && v.by_member === meId) mineFor.push({ id: v.member_id, name: v.name, choices: (v.choices || []).map(Number), label: proxyLabel(v.name, v.by_name) });
       });

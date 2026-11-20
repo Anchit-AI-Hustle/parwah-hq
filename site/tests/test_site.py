@@ -17,8 +17,13 @@ PAGES = sorted((ROOT / "public").rglob("*.html"))
 # suite, where visibility is knowable); and the shared stylesheet is the
 # marketing design system, which the app deliberately does not use.
 APP_PAGE = ROOT / "public" / "index.html"
+# /apna/ is one person's own no-sign-in page (api/_eldlink.mjs): an
+# application too, and a private one. It fetches no font and no shared
+# stylesheet on purpose (a slow network), has no share card and is never
+# measured; its own rules are checked under "eldlink:" below.
+ELD_PAGE = ROOT / "public" / "apna" / "index.html"
 SITE_PAGES = [p for p in PAGES
-              if p != APP_PAGE and "demo" not in p.relative_to(ROOT / "public").parts]
+              if p != APP_PAGE and p != ELD_PAGE and "demo" not in p.relative_to(ROOT / "public").parts]
 
 def markup_only(html):
     """Drop script and style bodies. A href inside a JS template string is
@@ -876,6 +881,7 @@ CIRCLE_WIDE_OK = {
     ("_standing.mjs", "Anyone with the code can now join"): "two adults opened the door: it changes who can walk in, for everyone",
     ("_standing.mjs", "will be deleted in"): "the whole family is about to be deleted: every member must hear, with the way to stop it",
     ("_remember.mjs", "A quiet day to remember"): "a day of remembrance is the whole family's, once a year",
+    ("_eldlink.mjs", "fineLine(L.name)"): "someone not on the app tapped 'I am fine' on their link: the whole family hears, once a day, when no daily check-in is set",
 }
 def _push_calls(src):
     out = []
@@ -1213,7 +1219,7 @@ _an = _an_path.read_text(encoding="utf-8") if _an_path.exists() else ""
 # it is a page we send traffic to.
 # The app is excluded by being the app, wherever it lives - it moved from
 # /app/ to the root, and a path-based rule would have demanded analytics on it.
-_measured = [q for q in PAGES if q != APP_PAGE]
+_measured = [q for q in PAGES if q != APP_PAGE and q != ELD_PAGE]
 check("analytics: there are marketing pages to measure", len(_measured) >= 5,
       f"{len(_measured)} pages")
 for _mp in _measured:
