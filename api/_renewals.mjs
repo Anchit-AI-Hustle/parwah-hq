@@ -16,7 +16,6 @@ import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 import { reqTz } from './_recur.mjs';
 import { createTask, ensureTaskSchema } from './_tasks.mjs';
-import { sweepHome } from './_home.mjs';
 
 export const RENEWAL_KINDS = {
   health_ins:   { label: 'Health insurance',   icon: '🛡' },
@@ -219,8 +218,6 @@ export async function sweepRenewals(sql, circleId, nowMs = Date.now()) {
       if (it.src === 'own') await sql`insert into events (circle_id, member_id, type, text) values (${circleId}, null, 'care', ${'📅 ' + it.label + ' runs out ' + when})`;
       n++;
     }
-    // Home upkeep (api/_home.mjs): a warranty running out, a service due.
-    n += await sweepHome(sql, circleId, nowMs);
   } catch (e) { /* never breaks a read */ }
   return n;
 }

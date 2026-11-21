@@ -10,7 +10,7 @@
 //      already read them.
 //   4. Only the writer changes or removes; an adult who may see it writes
 //      down a repair; a child does not.
-//   5. Reminders 30 and 7 days ahead, once each, through sweepRenewals,
+//   5. Reminders 30 and 7 days ahead, once each, on the timer's own line (sweepHome),
 //      only to people who may see the entry; never someone who has passed
 //      away; "whole family" tells the adults.
 //   6. Never a card number or a password. Another family reads nothing.
@@ -18,7 +18,7 @@ import { kit } from './jkit.mjs';
 const k = await kit('home.dbtest', ['book', 'care', 'events']);
 const { ok, call, user, family, seat, pushed, pushedTo, admin, sql, api } = k;
 const H = await import('../../../api/_home.mjs');
-const { sweepRenewals } = await import('../../../api/_renewals.mjs');
+const { sweepHome } = await import('../../../api/_home.mjs');
 await H.ensureHomeSchema(sql);
 await call(api.events, { method: 'GET', query: { circle: 'NOPE00', member: 'x' } });   // the SOS table
 
@@ -108,7 +108,7 @@ ok('4. the writer changes it', r.ok && r.items.some(i => i.title === 'Fridge (ki
 
 // ------------------------------------------------------------ 5. reminders
 let mark = pushed.length;
-await sweepRenewals(sql, fam.id, now);
+await sweepHome(sql, fam.id, now);
 const svc = pushed.slice(mark).filter(p => /Fridge \(kitchen\): service is due in 5 days/.test(p.body.title)).map(p => p.to);
 const war = pushed.slice(mark).filter(p => /Fridge \(kitchen\): warranty runs out in 20 days/.test(p.body.title)).map(p => p.to);
 ok('5. a "whole family" entry tells the adults: service in 5 days, warranty in 20', svc.sort().join() === [rohan.id, meena.id, papa.id].sort().join() && war.sort().join() === svc.sort().join(), svc.join() + ' / ' + war.join());
@@ -117,18 +117,29 @@ const own = pushedTo(mark, /Scooter: service is due in 6 days/);
 ok('5. an "only me" entry reminds only its writer', own.join() === rohan.id);
 ok('5. an entry with no dates reminds nobody', pushedTo(mark, /House tax|Almirah/).length === 0);
 mark = pushed.length;
-await sweepRenewals(sql, fam.id, now + 3600000);
+await sweepHome(sql, fam.id, now + 3600000);
 ok('5. each reminder is sent once', pushed.length === mark);
 mark = pushed.length;
-await sweepRenewals(sql, fam.id, now + 14 * DAY);
+await sweepHome(sql, fam.id, now + 14 * DAY);
 ok('5. a week before the warranty ends, once more', pushedTo(mark, /warranty runs out in 6 days/).sort().join() === [rohan.id, meena.id, papa.id].sort().join());
-ok('5. the hook is inside the renewals sweep the timer already runs: no new timer line',
-  (await import('fs')).readFileSync(new URL('../../../api/_renewals.mjs', import.meta.url), 'utf8').includes('n += await sweepHome(sql, circleId, nowMs);')
-  && !(await import('fs')).readFileSync(new URL('../../../api/events.mjs', import.meta.url), 'utf8').includes('sweepHome'));
+{
+  const fs = await import('fs'), src = n => fs.readFileSync(new URL('../../../api/' + n, import.meta.url), 'utf8');
+  ok('5. the sweep is its own line in the timer, never inside another sweep\'s try', src('events.mjs').split('await one(() => sweepHome(sql, id));').length === 2
+    && src('events.mjs').includes("import { sweepHome } from './_home.mjs';") && !src('_renewals.mjs').includes('sweepHome'));
+}
+// "Days left" is by the India day. At 19:30 UTC it is already the next day
+// in India: a warranty that ends on that India day runs out today, not tomorrow.
+{
+  const late = Date.parse('2027-02-10T19:30:00Z');          // 01:00 on 11 Feb in India
+  const add = await P(rohan, 'home_add', { kind: 'appliance', title: 'Geyser', warrantyUntil: '2027-02-11', audience: 'ONLY_ME' });
+  mark = pushed.length;
+  await sweepHome(sql, fam.id, late);
+  ok('5. DAYS LEFT ARE COUNTED BY THE INDIA DAY, NOT THE UTC DAY: "runs out today"', add.ok && pushed.slice(mark).some(p => /Geyser: warranty runs out today/.test(p.body.title)), JSON.stringify(pushed.slice(mark).map(p => p.body.title)));
+}
 // People I choose: the writer and the people named.
 await P(rohan, 'home_add', { kind: 'appliance', title: 'Inverter', warrantyUntil: day(29), audience: 'NOMINEES_ONLY', people: [meena.id] });
 mark = pushed.length;
-await sweepRenewals(sql, fam.id, now);
+await sweepHome(sql, fam.id, now);
 ok('5. "people I choose" tells the writer and those people only', pushedTo(mark, /Inverter: warranty/).sort().join() === [rohan.id, meena.id].sort().join());
 
 // --------------------------------------------------------------- 6. others

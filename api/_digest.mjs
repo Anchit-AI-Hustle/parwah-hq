@@ -37,6 +37,7 @@ import { fail } from './_fail.mjs';
 import { dayIn, reqTz, validTz, fromWall } from './_recur.mjs';
 import { pushCircle } from './_push.mjs';
 import { placeOf } from './_places.mjs';
+import { ensureTogetherSchema } from './_together.mjs';
 import { remembranceDue } from './_rememberrules.mjs';
 import { DG, digestFacts, digestWrite, digestFirst, digestSince, digestPrompt, digestCheck, digestHour } from './_digestrules.mjs';
 
@@ -239,14 +240,19 @@ export async function digestGather(sql, circle, me, tz, nowMs = Date.now()) {
     order by created_at limit 6`)).map(r => ({ id: r.id, by: r.from_member }));
   // A plan still waiting for this member's answer. Plans belong to the
   // whole circle; one made for named people asks only those people.
-  raw.plansAsk = (await q(() => sql`
+  // The answer columns come from api/_together.mjs: ensured here, so this
+  // read is never quietly empty on a database that has not made them yet.
+  // (No plans table at all means nobody here has ever made a plan.)
+  const hasPlans = (await sql`select to_regclass('plans') is not null as x`)[0].x;
+  if (hasPlans) await ensureTogetherSchema(sql);
+  raw.plansAsk = !hasPlans ? [] : (await sql`
     select id, title, by_member from plans
     where circle_id = ${cid} and at > ${now} and (by_member is null or by_member <> ${mid})
       and not (${mid}::uuid = any(coalesce(going, '{}'::uuid[])))
       and not (${mid}::uuid = any(coalesce(maybe, '{}'::uuid[])))
       and not (${mid}::uuid = any(coalesce(cannot, '{}'::uuid[])))
       and (coalesce(cardinality(invited), 0) = 0 or ${mid}::uuid = any(invited))
-    order by at limit 2`)).map(r => ({ planId: r.id, title: r.title, by: r.by_member }));
+    order by at limit 2`).map(r => ({ planId: r.id, title: r.title, by: r.by_member }));
   // Someone joining is not said in the note (the bell says it once).
   return raw;
 }

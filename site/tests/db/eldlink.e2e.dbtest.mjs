@@ -274,6 +274,8 @@ await design(D, '#apna', 'Dadi\'s page: choosing a blessing', 56);
 await D.click('#view [data-act="blessline"][data-line="khush"]');
 ok('I2d. one tap: "Your blessing has been sent"', await sees(D, '#hs', /Your blessing has been sent/));
 const KH = await phone(kabir);
+// A row in "From the family" first; "See it" opens the card where it is answered.
+await KH.waitForSelector('#tn-from [data-tnkind="blessing"] [data-tngo]', T); await KH.click('#tn-from [data-tnkind="blessing"] [data-tngo]');
 ok('I2d. A BLESSING ARRIVES IN THE APP: Kabir\'s Today shows "Ashirwad from Dadi, for everyone", from her link', await sees(KH, '#cn-today', /Ashirwad from Dadi, for everyone/) && await sees(KH, '#cn-today', /from Dadi's link/) && await sees(KH, '#cn-today', /Khush raho/));
 await design(KH, '#cn-today', 'a blessing that came from a link');
 await D.click('#view [data-act="home"]');
@@ -365,8 +367,9 @@ await M.waitForFunction(() => document.getElementById('cn-sheet').hidden, null, 
 const { wallIn } = await import('../../../api/_rememberrules.mjs');
 const cardD = await api(rohan, 'plans', { action: 'bond_card_start', forMember: dadi.id, occasion: 'birthday', date: wallIn(Date.now(), 'Asia/Kolkata').date, title: "Dadi's birthday" });
 await api(rohan, 'plans', { action: 'bond_card_add', cardId: cardD.id, kind: 'text', text: 'Pranam Dadi, janamdin mubarak' });
-await M.reload(); await M.waitForSelector('#bond-today [data-bcopen="' + cardD.id + '"]', T);
-await M.click('#bond-today [data-bcopen="' + cardD.id + '"]');
+// A card she has not written in is shown once: a row in "From the family", or (once it has gone to its person) in Closer together.
+await M.reload(); await M.waitForSelector('#tn-from [data-tncard="' + cardD.id + '"], #bond-today [data-bcopen="' + cardD.id + '"]', T);
+await M.click('#tn-from [data-tncard="' + cardD.id + '"], #bond-today [data-bcopen="' + cardD.id + '"]');
 ok('I5. a card for Dadi says it also opens on her link on the day', await sees(M, '#bs-body', /On the day, this card also opens on Dadi\'s link\./));
 await design(M, '#bondsheet', 'a card for someone whose link is on');
 await M.click('#bs-x');

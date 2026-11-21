@@ -79,6 +79,10 @@ r = await P(meena, 'kit_guest_update', { id: r.kit.guests.find(g => g.name === '
 ok('2. the counts: invites by where they stand, and heads coming', r.kit.counts.invites === 4 && r.kit.counts.to_invite === 1 && r.kit.counts.invited === 1 && r.kit.counts.coming === 1 && r.kit.counts.not_coming === 1 && r.kit.counts.peopleComing === 4 && r.kit.counts.peopleInvited === 7, JSON.stringify(r.kit.counts));
 ok('2. an unknown status is refused', (await P(meena, 'kit_guest_update', { id: gupta.id, status: 'maybe' })).status === 400);
 ok('2. the family cannot change a guest, and another family cannot find one', (await P(papa, 'kit_guest_update', { id: gupta.id, status: 'invited' })).status === 403 && (await P(vikram, 'kit_guest_update', { id: gupta.id, status: 'invited' })).status === 404);
+ok('2. a guest\'s name or note is never changed to hold an OTP or a card number', (await P(meena, 'kit_guest_update', { id: gupta.id, name: 'Gupta ji OTP 4821' })).status === 400
+  && (await P(meena, 'kit_guest_update', { id: gupta.id, note: 'card 4111 1111 1111 1111' })).status === 400
+  && (await G(meena, planId)).kit.guests.find(g => g.id === gupta.id).name === 'Gupta ji and family');
+ok('2. nor is a side', (await P(meena, 'kit_sides_set', { planId, sides: ['Ladki wale', 'atm pin 4821'] })).status === 400 && (await G(meena, planId)).kit.sides.join('|') === 'Ladki wale|Ladke wale|Dost');
 ok('2. the family reads the same list', (await G(papa, planId)).kit.guests.length === 4 && (await G(kabir, planId)).kit.guests.length === 4);
 
 // -------------------------------------------------- 3. never the remembered
@@ -112,6 +116,8 @@ ok('4. someone not on Parwah cannot own a task', (await P(meena, 'kit_task_add',
 
 // ------------------------------------------------------------ 5. arrivals
 const arr = new Date(Date.now() + 19 * 86400000).toISOString();
+ok('5. who is arriving, and from where, never hold an OTP or a card number', (await P(meena, 'kit_arrival_add', { planId, who: 'Mausi cvv 123', arriveAt: arr, mode: 'train', from: 'Pune' })).status === 400
+  && (await P(meena, 'kit_arrival_add', { planId, who: 'Mausi', arriveAt: arr, mode: 'train', from: '4111 1111 1111 1111' })).status === 400);
 r = await P(meena, 'kit_arrival_add', { planId, who: 'Mausi from Pune', arriveAt: arr, mode: 'train', from: 'Pune', receiverId: chacha.id });
 ok('5. who arrives when, how, from where, and who receives them', r.status === 201 && r.kit.arrivals[0].who === 'Mausi from Pune' && r.kit.arrivals[0].receiverName === 'Chacha' && r.kit.arrivals[0].modeWords === 'by train');
 ok('5. whoever receives a guest is an adult with us', (await P(meena, 'kit_arrival_add', { planId, who: 'Bua', arriveAt: arr, receiverId: kabir.id })).status === 400

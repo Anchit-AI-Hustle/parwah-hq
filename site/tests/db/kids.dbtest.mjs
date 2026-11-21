@@ -153,6 +153,11 @@ ok('4. the child chooses to show results to the wider family', r.ok && r.page.re
 await P(aarav, 'kid_results_share', { childId: aarav.id, who: 'parents' });
 ok('4. and can take that back', (await page(chacha, aarav)).exams.every(e => e.result === null));
 ok('4. for a child who is not on Parwah, a parent chooses', (await P(meena, 'kid_results_share', { childId: tara.id, who: 'family' })).ok);
+// A parent's own "parents only" note stays with the parents.
+r = await P(meena, 'kid_item_add', { childId: aarav.id, kind: 'note', title: 'Ask the teacher about extra reading', share: 'parents' });
+ok('4. a parent writes a note for the parents only', r.status === 201 && r.page.notes.some(n => n.title.startsWith('Ask the teacher')) && (await page(rohan, aarav)).notes.some(n => n.title.startsWith('Ask the teacher')));
+ok('4. A "PARENTS ONLY" NOTE A PARENT WROTE IS NOT SENT TO THE CHILD', !JSON.stringify(await page(aarav, aarav)).includes('Ask the teacher'));
+ok('4. the child still reads their own note for the parents, and the family one', (await page(aarav, aarav)).notes.some(n => n.title.startsWith('I want to join')) && (await page(aarav, aarav)).notes.some(n => n.title.startsWith('Diwali')));
 for (let i = 0; i < 5; i++) await P(aarav, 'kid_item_add', { childId: aarav.id, kind: 'note', title: 'note ' + i });
 ok('4. notes to the parents are limited, so they cannot be rung over and over', (await P(aarav, 'kid_item_add', { childId: aarav.id, kind: 'note', title: 'one more' })).status === 429);
 

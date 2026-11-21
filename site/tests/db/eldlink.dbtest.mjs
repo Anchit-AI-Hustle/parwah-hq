@@ -186,11 +186,18 @@ let key;
   ok('I2a. ONCE A DAY: a second tap changes nothing and tells nobody again', r.status === 200 && r.already === true && (await count(`select count(*)::int as n from events where member_id = $1 and type = 'checkin'`, [dadi.id])) === 1
     && to(rohan).filter(p => /I am fine/.test(p.body.title)).length === 1);
   ok('I2a. the page shows it as done', (await page(key, 'open')).okToday === true);
+  // "Today" is HER day (her saved zone, else India), never the zone the page
+  // sends. One of these two zones is always on another date than India.
+  pushed.length = 0;
+  const far = [await page(key, 'ok', { tz: 'Pacific/Kiritimati' }), await page(key, 'ok', { tz: 'Pacific/Pago_Pago' })];
+  ok('I2a. SENDING ANOTHER ZONE DOES NOT CLAIM A SECOND "I am fine"', far.every(x => x.status === 200 && x.already === true)
+    && (await count(`select count(*)::int as n from events where member_id = $1 and type = 'checkin'`, [dadi.id])) === 1 && !pushed.some(p => /I am fine/.test(p.body.title)), JSON.stringify(far));
 
   // The daily check-in: the family asks, she answers on her own page.
   pushed.length = 0;
   r = await call(api.events, { token: rohan.token, body: { code: 'SHARMA', memberId: rohan.id, type: 'quiet_ask', targetId: dadi.id, checkinBy: '11:00' } });
   ok('I2a. the family can ask Dadi for a daily check-in time, because her link is on', r.status === 200 && r.onLink === true, JSON.stringify(r));
+  ok('I2a. she has no app, so nothing is pushed at her: the question waits on her page', !pushed.some(p => /asks: a daily check-in/.test(p.body.title)), JSON.stringify(pushed.map(p => p.body.title)));
   r = await call(api.events, { token: asha.token, body: { code: 'VERMA9', memberId: asha.id, type: 'quiet_ask', targetId: nani.id, checkinBy: '11:00' } });
   ok('I2a. someone with no link still cannot be asked (unchanged)', r.status === 400 && /is not on Parwah, so cannot check in here/.test(r.error));
   let s = await page(key, 'open');
@@ -217,6 +224,10 @@ let key;
   ok('I2a. with a check-in set, the tap is recorded and nobody is pushed', r.status === 201 && pushed.length === 0);
   r = await page(key, 'checkin', { stop: true });
   ok('I2a. she can stop the daily check-in herself', r.status === 200 && (await admin.query(`select checkin_by from members where id = $1`, [dadi.id])).rows[0].checkin_by === null);
+  const offLines = () => count(`select count(*)::int as n from events where member_id = $1 and text like '%turned off the daily check-in'`, [dadi.id]);
+  ok('I2a. the family feed says so, once', (await offLines()) === 1);
+  r = await page(key, 'checkin', { stop: true }); await page(key, 'checkin', { stop: true });
+  ok('I2a. STOPPING AGAIN, WITH NONE ON, WRITES NO MORE FEED LINES', r.status === 200 && (await offLines()) === 1);
 }
 
 // ================================================================ I2 (b) what the family sent HER
@@ -294,7 +305,19 @@ let blessAll, thanks, thanksOther, card, cardOther, famPhoto, privPhoto, chosenP
 
   // ---- id tampering: every id she sends is looked up beside HER and HER family
   ok('SEC. Meena\'s card cannot be opened by sending its id', (await page(key, 'card', { id: cardOther })).status === 404);
+  {
+    const kindsNow = (await page(key, 'open')).items.map(i => i.kind);
+    ok('I2b. HER CARD COMES FIRST AT ANY HOUR (a card has a day, not a time), then the newest', kindsNow[0] === 'card', kindsNow.join());
+  }
   ok('SEC. a card whose day has not come stays a surprise', (await page(key, 'card', { id: sealed })).status === 404);
+  // 8pm in India: in a +14 zone it is already tomorrow, the card's day.
+  Eld.eldSeams.now = () => Date.parse(today + 'T14:30:00Z');
+  const early = await page(key, 'card', { id: sealed, tz: 'Pacific/Kiritimati' });
+  const earlyList = await page(key, 'open', { tz: 'Pacific/Kiritimati' });
+  ok('SEC. A FAR-AHEAD ZONE SENT BY THE PAGE DOES NOT OPEN IT A DAY EARLY', early.status === 404 && !(earlyList.items || []).some(i => i.id === sealed), JSON.stringify([early.status, (earlyList.items || []).map(i => i.kind)]));
+  Eld.eldSeams.now = () => Date.parse(today + 'T14:30:00Z') + 86400000;
+  ok('SEC. on its own day in India it opens', (await page(key, 'card', { id: sealed })).status === 200);
+  Eld.eldSeams.now = null;
   ok('SEC. A PRIVATE ALBUM\'S PHOTO IS NEVER SHOWN, even by its id', (await page(key, 'photo', { id: privPhoto })).status === 404 && (await page(key, 'photo', { id: privPhoto, size: 'full' })).status === 404);
   ok('SEC. nor a "chosen" album\'s photo, even one that names her', (await page(key, 'photo', { id: chosenPhoto })).status === 404 && (await page(key, 'say', { about: { kind: 'photo', id: chosenPhoto }, kind: 'heart' })).status === 404);
   ok('SEC. a thank-you to someone else cannot be answered, and its voice cannot be fetched', (await page(key, 'say', { about: { kind: 'shukriya', id: thanksOther }, kind: 'heart' })).status === 404

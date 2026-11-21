@@ -40,6 +40,7 @@ import { minorOf } from './_audience.mjs';
 import { standingOfCaller, memberCards } from './_standing.mjs';
 import { okToday, ensureFamilyCareSchema } from './_familycare.mjs';
 import { doseState, ensureDoseSchema } from './_doses.mjs';
+import { ensureTogetherSchema } from './_together.mjs';
 import { fromFamily, firstWords, lookedAfter } from './_todayrules.mjs';
 
 const HOME_TZ = 'Asia/Kolkata';
@@ -62,6 +63,7 @@ async function unreadChats(sql, me, all) {
     select m.chat_id, m.id, m.kind, m.text, m.created_at, mem.name
     from messages m join members mem on mem.id = m.member_id
     where m.chat_id = any(${ids}::uuid[]) and m.member_id <> ${me.id}
+      and not coalesce((to_jsonb(mem)->>'remembered')::boolean, false)
       and m.created_at > greatest(
             coalesce((select r.read_at from chat_reads r where r.chat_id = m.chat_id and r.member_id = ${me.id}), 'epoch'::timestamptz),
             (select x.created_at from members x where x.id = ${me.id}))
@@ -122,7 +124,7 @@ async function cardsToWrite(sql, circle, me) {
       and c.date >= current_date and c.date <= current_date + ${CARD_DAYS}::int
     order by c.date asc limit 20`;
   return rows.filter(c => !c.mine && !sealedTo(c, me) && c.for_member !== me.id && c.for_member2 !== me.id).slice(0, 3)
-    .map(c => ({ kind: 'card', id: c.id, text: c.title, occasion: c.occasion, at: c.created_at }));
+    .map(c => ({ kind: 'card', id: c.id, text: c.title, occasion: c.occasion, surprise: !!c.for_member, at: c.created_at }));
 }
 
 // ---------------------------------------------- a card for each parent
@@ -145,13 +147,21 @@ async function parentCards(sql, circle, me, nowMs, chatIds) {
     from messages m
     where m.chat_id = any(${chatIds}::uuid[]) and m.member_id = any(${who.map(m => m.id)}::uuid[]) and m.text not like '🆘%'
     order by m.member_id, m.created_at desc` : [];
+  // Whose own link is on (agreed to, not turned off, not run out).
+  const linked = new Set((await soft(() => sql`
+    select distinct l.member_id from eld_links l
+    where l.circle_id = ${circle.id} and l.member_id = any(${who.map(m => m.id)}::uuid[])
+      and l.revoked_at is null and l.expires_at > now() and l.consent_at is not null`, [])).map(r => r.member_id));
   const out = [];
   for (const m of who) {
     const tz = validTz(m.tz) || HOME_TZ, today = dayIn(tz, nowMs);
-    const okAt = m.user_id ? await soft(() => okToday(sql, m.id, today, tz), null) : null;
+    // Someone with no app can still say "I am fine" from their own link
+    // (api/_eldlink.mjs), so everyone looked after is asked, not only
+    // the people on Parwah.
+    const okAt = await soft(() => okToday(sql, m.id, today, tz), null);
     const mine = doses.filter(d => d.person_id === m.id && d.today);
     const lm = last.find(x => x.member_id === m.id) || null;
-    out.push({ id: m.id, name: m.name, onApp: !!m.user_id, phone: phones.get(m.id) || null,
+    out.push({ id: m.id, name: m.name, onApp: !!m.user_id, link: !m.user_id && linked.has(m.id), phone: phones.get(m.id) || null,
       ok: okAt ? { at: okAt } : null,
       meds: mine.length ? { total: mine.length, taken: mine.filter(d => d.status === 'taken').length,
                             skipped: mine.filter(d => d.status === 'skipped').length, late: mine.filter(d => d.passed).length } : null,
@@ -191,7 +201,13 @@ export async function todayState(sql, circle, me, nowMs = Date.now()) {
     if (!s.forMe || new Date(s.at).getTime() < since) continue;
     items.push({ kind: 'thanks', id: s.id, fromId: s.fromId, fromName: s.fromName, text: s.line ? firstWords(s.line, 80) : null, voice: !!s.hasAudio, at: s.at });
   }
-  for (const p of await soft(() => plansToAnswer(sql, circle, me), [])) items.push(p);
+  // The answer columns are made by api/_together.mjs: they are ensured
+  // here, so a plan waiting for an answer is never lost to a quiet error.
+  // (No plans table at all means nobody here has ever made a plan.)
+  if ((await sql`select to_regclass('plans') is not null as x`)[0].x) {
+    await ensureTogetherSchema(sql);
+    for (const p of await plansToAnswer(sql, circle, me)) items.push(p);
+  }
   for (const p of await soft(() => openPolls(sql, circle, me, chatIds), [])) items.push(p);
   for (const c of await soft(async () => { await ensureBondSchema(sql); return cardsToWrite(sql, circle, me); }, [])) items.push(c);
 

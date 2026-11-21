@@ -22,13 +22,15 @@ const chacha = await seat(fam, U.Chacha, { dob: '1985-01-01' });
 const kabir = await seat(fam, U.Kabir, { dob: '2012-05-05', parent: chacha.id });
 await seat(fam, { name: 'Nani' }, { role: 'parent', dob: '1950-02-02' });
 
-const kidsTab = async (page) => { await page.click('#care-seg [data-sec="kids"]'); await page.waitForSelector('#kd-kid-page .card, #kd-kid-page .ev:not(:has-text("Loading"))', T); };
+// The page is one of the folded sections of To do: a person opens "More" first.
+const kidsTab = async (page) => { await page.waitForSelector('#tn-care-more', T); if (!(await page.isVisible('#care-seg [data-sec="kids"]'))) await page.click('#tn-care-more'); await page.click('#care-seg [data-sec="kids"]'); await page.waitForSelector('#kd-kid-page .card, #kd-kid-page .ev:not(:has-text("Loading"))', T); };
 const pageText = (page) => page.textContent('#kd-kid-page');
 const today = await (async () => { const { dayIn } = await import('../../../api/_recur.mjs'); return dayIn('Asia/Kolkata'); })();
 
 // ---- Rohan starts the page
 const R = await phone(rohan, { hash: '#care' });
-ok('to do: "Bachchon ka panna" is its own section', await shown(R, '#care-seg [data-sec="kids"]'));
+await R.waitForSelector('#tn-care-more', T); await R.click('#tn-care-more');
+ok('to do: "Bachchon ka panna" is its own section, one tap away under "More"', await shown(R, '#care-seg [data-sec="kids"]'));
 await kidsTab(R);
 ok('a parent sees both children to pick from, his own first', await R.locator('#kd-kid-pick button').count() === 2 && (await R.textContent('#kd-kid-pick button.sel')).trim() === 'Aarav');
 ok('start: a parent is offered "Start Aarav\'s page"', await sees(R, '#kd-kc-start h3', /Start Aarav's page/));

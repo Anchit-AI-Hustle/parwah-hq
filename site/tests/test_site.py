@@ -4130,9 +4130,12 @@ check("safety: calls and texts not set up is said in words, in Profile and on th
       and "if (!cfg.on) out.line = CALLS_OFF_LINE;" in _sf_dial and 'id="sf-calls"' in _app_src
       and "if (j.dialed && j.dialed.line && !j.throttled) $('ss-status').textContent += " in _app_src)
 check("safety: any sign of life that day counts as checked in (the tap, a pulse, a medicine tick, a chat message), never an SOS message",
-      all(x in _fc_api for x in ("from events where member_id = ${memberId} and type = 'checkin'", "from pulse where member_id = ${memberId} and day = ${today}",
+      all(x in _fc_api for x in ("from events where member_id = ${memberId} and type = 'checkin'", "from pulse where member_id = ${memberId} and at >= ${from}",
                                  "from medicine_doses where marked_by = ${memberId} and taken_at >= ${from}",
                                  "from messages where member_id = ${memberId} and created_at >= ${from} and text not like '🆘%'")))
+check("safety: asking someone for a daily check-in names its push kind, is limited by a limiter that fails closed, and never pushes at someone with no app",
+      "rateLimit(sql, 'quietask', t.id, 3, 86400, { failClosed: true })" in _fc_api
+      and "if (t.on_app) await pushCircle(sql, circle.id, { kind: 'care', title: '🕚 ' + me.name + ' asks: a daily check-in by '" in _fc_api)
 check("safety: pausing someone else's check-in is a question on their own phone, never a notice afterwards",
       "if (t.id !== me.id && t.on_app) {" in _fc_api and "set away_ask = ${until || 'back'}, away_ask_by = ${me.id}" in _fc_api
       and "'quiet_away_answer'" in _fc_api and "paused your daily check-in" not in _fc_api
@@ -4767,10 +4770,11 @@ check("needs: each sits behind an existing route, by area or by the name of its 
       and "if (area === 'eventkit' || (typeof body.action === 'string' && /^kit_/.test(body.action)))" in _nd_route["plans.mjs"]
       and all(x in _nd_route["book.mjs"] for x in ("/^home_/.test(req.body.action))) return homeApi(req, res);", "/^blood_/.test(req.body.action))) return bloodApi(req, res);",
                                               "if (area === 'summary') return summaryApi(req, res);")))
-check("needs: what is timed runs from the timer, one imported line each; home upkeep rides the renewals sweep",
+check("needs: what is timed runs from the timer, one imported line each; home upkeep has its own line, never inside another sweep's try",
       _nd_route["events.mjs"].count("await one(() => sweepRollcallAll(sql));") == 1 and _nd_route["events.mjs"].count("await one(() => sweepKidsAll(sql));") == 1
       and "import { sweepRollcallAll } from './_rollcall.mjs';" in _nd_route["events.mjs"] and "import { sweepKidsAll } from './_kids.mjs';" in _nd_route["events.mjs"]
-      and _nd_route["_renewals.mjs"].count("n += await sweepHome(sql, circleId, nowMs);") == 1 and "sweepHome" not in _nd_route["events.mjs"]
+      and _nd_route["events.mjs"].count("await one(() => sweepHome(sql, id));") == 1 and "import { sweepHome } from './_home.mjs';" in _nd_route["events.mjs"]
+      and "sweepHome" not in _nd_route["_renewals.mjs"]
       and all("nowMs = Date.now()" in _nd[n] for n in ("_rollcall.mjs", "_kids.mjs", "_home.mjs")))
 check("needs: every handler asks who is calling, and every push names its kind",
       all("requireMember(sql," in _nd[n] for n in ("_rollcall.mjs", "_kids.mjs", "_carerload.mjs", "_home.mjs", "_bloodlookup.mjs"))

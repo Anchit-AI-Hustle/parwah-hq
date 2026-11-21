@@ -293,6 +293,35 @@ await R.evaluate(() => { location.hash = '#home'; });
 await shown(R, pcard + ' [data-tndm]'); await R.click(pcard + ' [data-tndm]');
 ok('2. "Message Papa" opens the chat with Papa', await shown(R, '#chatview') && await sees(R, '#cv-name', /Papa/));
 await R.evaluate(() => { location.hash = '#home'; });
+// A parent with no app: her card goes by her own link (api/_eldlink.mjs).
+{
+  await (await import('../../../api/_eldlink.mjs')).ensureEldSchema(db());
+  const nani = await seat('Nani', 'parent', '1940-01-01', false);
+  const ncard = `#tn-parents [data-tnparent="${nani.id}"]`;
+  await R.reload(); await shown(R, ncard);
+  ok('2. no app and no link: the card says so, and promises no check-in', await sees(R, ncard, /Not on Parwah and no link, so no check-in here/));
+  await admin.query(`insert into eld_links (circle_id, member_id, token_hash, created_by, expires_at, consent_at) values ($1,$2,$3,$4, now() + interval '30 days', now())`, [fam, nani.id, 'h-' + nani.id, rohan.id]);
+  await R.reload(); await shown(R, ncard);
+  ok('2. with her link on: "Not checked in from their link yet today"', await sees(R, ncard, /Not checked in from their link yet today/));
+  await admin.query(`insert into events (circle_id, member_id, type, text) values ($1,$2,'checkin','from Nani''s link')`, [fam, nani.id]);
+  await R.reload(); await shown(R, ncard);
+  ok('2. HER "I AM FINE" FROM THE LINK IS ON HER CARD', await sees(R, ncard, /Checked in from their link today, at /));
+  await design(R, '#tn-parents', 'a card for a parent with a link');
+  await admin.query(`delete from members where id = $1`, [nani.id]);
+  await R.reload(); await shown(R, '#tn-parents .tn-pcard');
+}
+// SHOWN ONCE: an Ashirwad is a row in "From the family", and is not drawn a
+// second time lower down until "See it" opens it there.
+{
+  const bl = await api(papa, 'chats', { area: 'ashirwad', action: 'bless', to: rohan.id, line: 'khush' });
+  await R.reload(); await shown(R, '#tn-from [data-tnkind="blessing"]');
+  ok('2. Papa\'s Ashirwad is a row in From the family' + (bl.ok ? '' : ' (' + bl.status + ' ' + bl.error + ')'), await sees(R, '#tn-from [data-tnkind="blessing"]', /Papa sent you Ashirwad/));
+  ok('2. AND IT IS NOT SHOWN A SECOND TIME LOWER DOWN', await R.waitForFunction(() => document.getElementById('cn-today').getAttribute('data-ready') === '1' && !document.querySelector('#cn-today [data-cncard]'), null, T).then(() => true, () => false));
+  await R.click('#tn-from [data-tnkind="blessing"] [data-tngo]');
+  ok('2. "See it" opens it where it is answered, with Pranam', await shown(R, `#cn-today [data-cncard="${bl.id}"] [data-cnpranam]`));
+  await R.click(`#cn-today [data-cncard="${bl.id}"] [data-cnpranam]`);
+  ok('2. once answered it leaves both places', await R.waitForFunction(() => !document.querySelector('#cn-today [data-cncard]') && !document.querySelector('#tn-from [data-tnkind="blessing"]'), null, T).then(() => true, () => false));
+}
 
 // ================================================================ 3. Kabir, who is 14
 await api(priya, 'chats', { action: 'poll_create', chatId: famChat, question: 'Sunday ko kya khayenge?', options: ['Chole bhature', 'Dosa'] });
@@ -407,12 +436,13 @@ ok('3. and the card leaves Today', await R.waitForFunction(() => !document.query
   const filters = await R.$$eval('#task-filter-seg button', bs => bs.filter(b => b.getBoundingClientRect().width > 0).length);
   ok('4. To do opens on one list: three sections and three filters, not seven and eight', segs === 3 && filters <= 3 && await R.isVisible('#rlist'), segs + ' ' + filters);
   await R.click('#tn-care-more');
-  ok('4. bills, costs, home staff and renewals are one tap away', (await R.$$eval('#care-seg button', bs => bs.filter(b => b.getBoundingClientRect().width > 0).length)) === 7 && (await R.getAttribute('#tn-care-more', 'aria-expanded')) === 'true');
+  ok('4. bills, costs, home staff, renewals, children and sharing the work are one tap away', (await R.$$eval('#care-seg button', bs => bs.filter(b => b.getBoundingClientRect().width > 0).length)) === 9 && (await R.getAttribute('#tn-care-more', 'aria-expanded')) === 'true');
   await R.click('#care-seg [data-sec="bills"]');
   ok('4. and each opens', await R.waitForFunction(() => { const d = document.querySelector('#pane-care .subsec[data-sec="bills"]'); return d && !d.hidden; }, null, T).then(() => true, () => false));
   await design(R, '#care-seg', 'To do\'s sections');
   await R.click('#tn-care-more');
   ok('4. folding them goes back to the list', await R.waitForFunction(() => { const d = document.querySelector('#pane-care .subsec[data-sec="rem"]'); return d && !d.hidden; }, null, T).then(() => true, () => false));
+  ok('4. folded again, the button still names all six: children and sharing the work too', (await R.textContent('#tn-care-more')) === 'More: bills, costs, home staff, renewals, children, sharing the work');
   // A laptop: the same five places group the sidebar.
   const W = await phone(rohan, { width: 1280 });
   const side = await W.$$eval('#tabs .inner > button, #tabs .subnav button', bs => bs.filter(b => b.getBoundingClientRect().height > 0).map(b => b.textContent.replace(/\d+\+?$/, '').trim()));
@@ -421,6 +451,12 @@ ok('3. and the card leaves Today', await R.waitForFunction(() => !document.query
   ok('4. a place shows its own shortcuts while you are in it', await shown(W, '#tabs .subnav[data-parent="fun"] [data-mbv="album"]') && !(await W.isVisible('#tabs .subnav[data-parent="care"] button')));
   await W.click('#tabs .subnav[data-parent="fun"] [data-mbv="stories"]');
   ok('4. Stories opens from the sidebar, under Together', await shown(W, '#mb-stories') && await W.$eval('#tabs button[data-tab="fun"]', b => b.classList.contains('sel')) && !(await W.$eval('#tabs button[data-tab="memory"]', b => b.classList.contains('sel'))));
+  // A folded section opened from the sidebar unfolds the row, so its own button shows as chosen.
+  await W.click('#tabs button[data-tab="care"]'); await shown(W, '#tabs .subnav[data-parent="care"] [data-sec="haath"]');
+  await W.click('#tabs .subnav[data-parent="care"] [data-sec="haath"]');
+  ok('4. opening "Thoda sa haath batao" from the sidebar unfolds the sections', await W.waitForFunction(() => document.getElementById('care-seg').classList.contains('tn-all') && document.querySelector('#care-seg [data-sec="haath"]').classList.contains('sel')
+    && document.getElementById('tn-care-more').getAttribute('aria-expanded') === 'true', null, T).then(() => true, () => false));
+  await W.click('#tabs button[data-tab="fun"]');
   await shot(W, 'sidebar-1280', false);
   await wide(W, '#tabs', 'the sidebar');
   await W.context().close();
