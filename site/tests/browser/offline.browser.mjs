@@ -134,7 +134,8 @@ await page.click('#ss-now');
 ok(await until(() => !document.getElementById('ss-live').hidden && document.querySelectorAll('#ss-calls a[href^="tel:"]').length >= 2
    && [...document.querySelectorAll('#ss-calls a')].some(a => /Rohan/.test(a.textContent) && decodeURIComponent(a.getAttribute('href')) === 'tel:+919811100002')),
    'the SOS screen opens with no network and offers Call buttons at once: the emergency number and the family');
-ok(await until(() => /No connection - the SOS could not be sent\. Call /.test(document.getElementById('ss-status').textContent)), 'it says plainly that the alert did not go, and to call');
+ok(await until(() => /SOS NOT sent/.test(document.getElementById('ss-live-title').textContent) && /No connection\. Your family has NOT been told\. Call /.test(document.getElementById('ss-status').textContent)
+   && document.querySelector('#ss-live .ss-checks').hidden), 'the heading says "SOS NOT sent", it says plainly that the family has not been told, and to call; nothing says anyone is waiting to answer');
 ok(await page.evaluate(() => /^sms:\+919811100002\?body=/.test(document.getElementById('ss-sms').getAttribute('href') || '') && /^https:\/\/wa\.me\//.test(document.getElementById('ss-wa').getAttribute('href') || '')),
    'and the text-message and WhatsApp buttons are ready with the family numbers');
 ok(await page.evaluate(() => !JSON.parse(localStorage.getItem('parwah-queue') || '[]').some(x => x.type === 'sos')), 'an SOS is never put in the waiting list');

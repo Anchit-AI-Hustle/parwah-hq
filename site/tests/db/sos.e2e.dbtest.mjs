@@ -191,7 +191,7 @@ await R.click('#sa-ack'); await R.waitForTimeout(800);
 ok('I am on it closes the alarm', !(await vis(R, '#sosalert')));
 ok('and the SOS shows Rohan has it', (await q1('select status, acked_by from sos where id = $1', [sos.id])).acked_by === rohan.id);
 await P.waitForTimeout(13000);
-ok('Papa\'s screen says Rohan is on it', /Rohan is on it/.test(await P.textContent('#ss-who')), await P.textContent('#ss-who'));
+ok('Papa\'s screen says Rohan has seen it and is calling (never "on their way")', /Rohan has seen it and is calling/.test(await P.textContent('#ss-who')), await P.textContent('#ss-who'));
 
 // ---- 9. Rohan marks it sorted: over, and the location is Papa's again
 await R.reload(); await R.waitForTimeout(1500);

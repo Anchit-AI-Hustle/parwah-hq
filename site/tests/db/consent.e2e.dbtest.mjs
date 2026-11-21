@@ -288,7 +288,9 @@ ok('and his Today says so, with a way back', await sees(PP, '#cn-today [data-cnr
 // =============================================================== B3: costs
 await api('care', rohan, { action: 'expense_add', amount: 500, category: 'medicines', forMemberId: papa.memberId });
 await api('care', papa, { action: 'expense_add', amount: 120, category: 'groceries' });
-const careSec = async (page, sec) => { await page.evaluate(() => { location.hash = '#care'; }); await page.waitForSelector('#care-seg [data-sec="' + sec + '"]', { state: 'visible', ...T }); await page.click('#care-seg [data-sec="' + sec + '"]'); };
+const careSec = async (page, sec) => { await page.evaluate(() => { location.hash = '#care'; }); await page.waitForSelector('#care-seg', { state: 'visible', ...T });
+  if (!(await page.isVisible('#care-seg [data-sec="' + sec + '"]'))) await page.click('#tn-care-more');
+  await page.waitForSelector('#care-seg [data-sec="' + sec + '"]', { state: 'visible', ...T }); await page.click('#care-seg [data-sec="' + sec + '"]'); };
 await careSec(PP, 'expenses');
 ok('Papa has a "Show me the costs" switch, off', await shown(PP, '#cn-costs-row') && !(await PP.isChecked('#cn-costs')) && await sees(PP, '#cn-costs-hint', /only what you paid yourself/));
 ok('and reads only what he paid', await sees(PP, '#ex-list', /120/) && !/500/.test(await PP.textContent('#ex-list')) && !/500/.test(await PP.textContent('#ex-sum')));

@@ -139,8 +139,8 @@ const S = await ctxS.newPage(); S.on('pageerror', e => errors.push('S: ' + e.mes
 await S.goto(BASE + '/'); await S.waitForTimeout(700);
 await S.fill('#au-phone', U.Anchit.phone.slice(3)); await S.click('#au-go'); await S.waitForTimeout(900);
 await S.fill('#au-pin', '4819'); await S.click('#au-go'); await S.waitForTimeout(1200);
-// Signing in lands on the list of families; the question waits for Today.
-await S.click('[data-encircle="0"]'); await S.waitForTimeout(1500);
+// With one family, signing in opens it (no list to tap); the question waits on Today.
+await S.waitForSelector('#main', { state: 'visible', timeout: 15000 }); await S.waitForTimeout(1500);
 ok('signed in, Today shows "Rahul cannot get in. Let them back in?"', await S.isVisible('#pinresets [data-resetok]') && /Rahul cannot get in\. Let them back in\?/.test(await S.textContent('#pinresets')), await S.textContent('#pinresets'));
 ok('with "Let them in" and "Not now", 44px or more', await S.$$eval('#pinresets button', bs => bs.length === 2 && bs.every(b => b.getBoundingClientRect().height >= 44)));
 await S.click('#bell'); await S.waitForTimeout(300);
@@ -167,7 +167,7 @@ if (!(await S.$('#pinresets [data-resetno]'))) {
   await S.reload(); await S.waitForTimeout(700);
   await S.fill('#au-phone', U.Anchit.phone.slice(3)); await S.click('#au-go'); await S.waitForTimeout(900);
   await S.fill('#au-pin', '4819'); await S.click('#au-go'); await S.waitForTimeout(1200);
-  await S.click('[data-encircle="0"]'); await S.waitForTimeout(1500);
+  await S.waitForSelector('#main', { state: 'visible', timeout: 15000 }); await S.waitForTimeout(1500);
 }
 ok('Papa\'s request shows', /Papa cannot get in/.test(await S.textContent('#pinresets')));
 await shotAll(S, 'pinreset-today');
@@ -215,7 +215,7 @@ await shotAll(F, 'reset-newpin');
 await F.fill('#au-pin', '1234'); await F.fill('#au-pin2', '1234'); await F.click('#au-go'); await F.waitForTimeout(900);
 ok('a PIN the server will not take says why, and the yes is kept', (await F.textContent('#ob-err')).length > 5 && await F.isVisible('#au-pin') && !!(await F.evaluate(() => sessionStorage.getItem('parwah-reset'))), await F.textContent('#ob-err'));
 await F.fill('#au-pin', '5927'); await F.fill('#au-pin2', '5927'); await F.click('#au-go'); await F.waitForTimeout(1500);
-ok('a good PIN signs Papa in', await F.isVisible('#circle-step') && !!(await F.evaluate(() => localStorage.getItem('parwah-token'))));
+ok('a good PIN signs Papa in, straight into his one family', (await F.isVisible('#main') || await F.isVisible('#circle-step')) && !!(await F.evaluate(() => localStorage.getItem('parwah-token'))));
 ok('and the secret is gone from the phone', !(await F.evaluate(() => sessionStorage.getItem('parwah-reset'))));
 let pe = await call('auth', { action: 'enter', phone: U.Papa.phone.slice(3), cc: '+91', pin: '4819' });
 ok('the old PIN no longer works', !pe.ok && pe.wrongPin, JSON.stringify(pe));

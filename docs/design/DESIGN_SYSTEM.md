@@ -107,6 +107,9 @@ focus, active, disabled; loading where it acts).
   shrink).
 - List row `.crow` (text + one next action), chat row `.chatrow`, task title
   `.tlink`.
+- A row from the family `.tn-row` (a line, a second line, one to three
+  actions; a 4px rani edge, never the sindoor of an alert) and a card for a
+  parent `.tn-pcard`. Used on Today only ("From the family").
 - Member picker `.members` of `.gchk`, widget tile `.widget`, seat `.bseat`,
   calendar header `.calhead`, toast `.toast`.
 - Form fold `details.fmore` ("More options: ..."): the fields most people

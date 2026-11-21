@@ -145,6 +145,11 @@ node site/tests/eldlinktest.mjs
 # upkeep and the blood group consent. Every rule file here imports nothing
 # but other rule files, so this runs before npm install too.
 node site/tests/familyneedstest.mjs
+# Today, for each person: short names that are never cut after an honorific,
+# which Today a person gets, the order of "From the family", the bell of
+# someone new, and the five places. _todayrules.mjs imports nothing, and the
+# app's own copy of the rules is run from the page's source.
+node site/tests/todaytest.mjs
 # The native apps' copy of the server's rules (PINs, for now) is written by
 # the server itself. If a rule changes in api/ and the contract is not
 # regenerated, the phones would accept what the server then refuses. Vercel's

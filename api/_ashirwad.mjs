@@ -129,6 +129,22 @@ const tripOut = (t, nowMs) => ({ id: t.id, memberId: t.member_id, name: t.name, 
   byWords: TRIP_MODE_WORDS[t.mode] || '', expectAt: t.expect_at, status: t.status, phase: tripPhase(t, nowMs),
   reachedAt: t.reached_at, tell: t.tell });
 
+// Waiting for my answer: sent to me, or to everyone by someone else. One
+// function, so Today's "From the family" (api/_today.mjs) reads exactly what
+// this route's own read shows, and never more.
+export async function ashirwadInbox(sql, circle, me) {
+  await ensureAshirwadSchema(sql);
+  const inbox = await sql`
+  select a.id, a.kind, a.line, a.audio is not null as has_audio, a.audio_secs, a.from_member, f.name as from_name,
+         a.to_member, null::text as to_name, a.created_at, to_jsonb(a)->>'via' as via
+  from ashirwad a join members f on f.id = a.from_member
+  where a.circle_id = ${circle.id} and a.created_at > now() - interval '7 days' and a.from_member <> ${me.id}
+    and (a.to_member = ${me.id} or a.to_member is null) and not f.remembered
+    and not exists (select 1 from ashirwad_replies r where r.ashirwad_id = a.id and r.member_id = ${me.id})
+  order by a.created_at desc limit 12`;
+  return inbox.map(r => cardOut(r, me.id));
+}
+
 export default async function ashirwadApi(req, res) {
   let sql;
   try { sql = db(); await ensureSchema(sql); await ensureChatBond(sql); await ensureAshirwadSchema(sql); }
@@ -158,15 +174,7 @@ export default async function ashirwadApi(req, res) {
         if (!a[0]) return no(404, 'That voice note is not here');
         return res.status(200).json({ ok: true, audio: a[0].audio, secs: a[0].audio_secs });
       }
-      // Waiting for my answer: sent to me, or to everyone by someone else.
-      const inbox = await sql`
-        select a.id, a.kind, a.line, a.audio is not null as has_audio, a.audio_secs, a.from_member, f.name as from_name,
-               a.to_member, null::text as to_name, a.created_at, to_jsonb(a)->>'via' as via
-        from ashirwad a join members f on f.id = a.from_member
-        where a.circle_id = ${circle.id} and a.created_at > now() - interval '7 days' and a.from_member <> ${me.id}
-          and (a.to_member = ${me.id} or a.to_member is null) and not f.remembered
-          and not exists (select 1 from ashirwad_replies r where r.ashirwad_id = a.id and r.member_id = ${me.id})
-        order by a.created_at desc limit 12`;
+      const inbox = await ashirwadInbox(sql, circle, me);
       // What I sent, with who answered.
       const sent = await sql`
         select a.id, a.kind, a.line, a.audio is not null as has_audio, a.audio_secs, a.from_member, ${me.name}::text as from_name,
@@ -203,7 +211,7 @@ export default async function ashirwadApi(req, res) {
               // "No daily call, thank you" (api/_rotaconsent.mjs): only they can lift it.
               rotaNo: !!((await sql`select to_jsonb(m) ->> 'rota_no_at' as no from members m where m.id = ${me.id}`)[0] || {}).no },
         people, linked, names: Object.fromEntries((await sql`select id, name from members where circle_id = ${circle.id} and not remembered`).map(m => [m.id, m.name])), minors: kids.map(k => k.id), marked: kids.filter(k => k.is_child).map(k => k.id),
-        inbox: inbox.map(r => cardOut(r, me.id)),
+        inbox,
         sent: sent.map(r => ({ ...cardOut(r, me.id),
           replies: replies.filter(x => x.ashirwad_id === r.id).map(x => ({ memberId: x.member_id, name: x.name, kind: x.kind, line: x.line, hasVoice: !!x.has_audio, secs: x.audio_secs || null, at: x.at, via: x.via || null })) })),
         trips: { mine: trips.filter(t => t.member_id === me.id && t.status === 'open').map(t => tripOut(t, now))[0] || null,

@@ -176,9 +176,9 @@ let rohanFirst;
   ok('then tomorrow: Chachu\'s birthday and the lunch at 1:00 pm', /Tomorrow is Chachu's birthday\./.test(t) && /Tomorrow at 1:00 pm: Sunday lunch\./.test(t), t);
   ok('Papa checked in, with the time in Rohan\'s zone', new RegExp('Papa checked in at ' + R.digestClock(Date.now(), EVE.zone).replace(/:\d\d /, ':\\d\\d ') + '\\.').test(t), t);
   ok('Priya\'s recommendation for Rohan is there', /Priya recommended something for you: Panchayat\./.test(t), t);
-  ok('Maa\'s story for everyone is there (the fact, not its words)', /Maa told a new story\./.test(t) || /more small thing/.test(t), t);
+  ok('Maa\'s story for everyone is there (the fact, not its words)', /Maa told a new story\./.test(t), t);
   ok('the plan made today for tomorrow is said once', (t.match(/Sunday lunch/g) || []).length === 1);
-  ok('3 to 6 sentences and a count of the rest', t.split(/(?<=\.)\s+/).length >= 3 && t.split(/(?<=\.)\s+/).length <= 7 && t.length <= 700, t);
+  ok('3 to 6 sentences, and it never ends with a count of what was left out', t.split(/(?<=\.)\s+/).length >= 3 && t.split(/(?<=\.)\s+/).length <= 6 && t.length <= 700 && !/small thing|happened too/.test(t), t);
   ok('NOTHING PRIVATE: no private note, no "only me" register entry, no recommendation between two other people, no private medicine or story, no card meant for him',
      SECRETS.every(s => t.indexOf(s) < 0), SECRETS.filter(s => t.indexOf(s) >= 0).join());
   ok('Papa\'s private medicine is not counted for Rohan', !/Papa's medicines/.test(t));
@@ -197,8 +197,13 @@ let rohanFirst;
   ok('Papa sees his own: "You checked in", and his own private medicine', /You checked in at /.test(p) && /Your medicines were all marked as taken today\./.test(p), p);
   ok('Papa is not told about Priya\'s recommendations or her note', !/Panchayat|SECRET-SHOW|PRIVATE-NOTE/.test(p));
   ok('Maa sees the recommendation sent to her, not the one sent to Rohan', /SECRET-SHOW-4455/.test(m) && !/Panchayat/.test(m), m);
-  ok('Maa sees that Priya started a card for Rohan; Rohan does not', /Priya started a card for Rohan\./.test(m) || /more small thing/.test(m), m);
-  ok('Maa: "Your medicines were not marked today."', m.startsWith('Your medicines were not marked today.'), m);
+  // The note is the six that matter most to Maa; the card is in what she may be told, and never in Rohan's.
+  const maaList = R.digestFacts(await D.digestGather(sql, { id: fam, kind: 'family' }, { id: maa.id }, EVE.zone, Date.now() + 3000));
+  const rohanList = R.digestFacts(await D.digestGather(sql, { id: fam, kind: 'family' }, { id: rohan.id }, EVE.zone, Date.now() + 3000));
+  ok('Maa may be told that Priya started a card for Rohan; Rohan may not', maaList.some(f => f.text === 'Priya started a card for Rohan.') && !rohanList.some(f => /card/.test(f.text)), m);
+  ok('WHAT IS FOR MAA LEADS: the plan waiting for her answer, then "Your medicines were not marked today."',
+     m.startsWith('Rohan planned Sunday lunch for tomorrow at 1:00 pm and is waiting for your answer. Your medicines were not marked today.') && (m.match(/Sunday lunch/g) || []).length === 1, m);
+  ok('nobody joining is in anybody\'s note', !/joined the/.test(m + p) && !maaList.concat(rohanList).some(f => f.kind === 'joined'));
   ok('nobody but Papa is told his "only me" entry or his private story exist', !/REGISTER|SECRET-STORY/.test(p + m));
 }
 
@@ -226,7 +231,9 @@ let rohanFirst;
   ok('once it is closed, the line says so', /^Since then: Papa raised an SOS at .* and it was closed at \d{1,2}:\d\d [ap]m\.$/.test(closed.since), closed.since);
   // Someone who has not looked yet today gets it in the digest itself, first.
   const c = (await digest(chachu)).digest;
-  ok('for someone opening now, the SOS leads the digest', c.text.startsWith('Papa raised an SOS at ') && c.since === '', c.text);
+  // A closed SOS is said, right after what is waiting for the reader's own answer.
+  ok('for someone opening now, the closed SOS is in the digest itself, after only what is for them', / Papa raised an SOS at \d{1,2}:\d\d [ap]m, and it was closed at /.test(' ' + c.text)
+     && c.text.split(/(?<=\.)\s+/).findIndex(x => /^Papa raised an SOS/.test(x)) <= 1 && c.since === '', c.text);
   ok('and tomorrow is "your birthday" for Chachu', /Tomorrow is your birthday\./.test(c.text), c.text);
 }
 

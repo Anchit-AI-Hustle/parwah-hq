@@ -29,6 +29,7 @@ import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 import { pushTopic } from './_safetyrules.mjs';
 import { dialConfig, dialLadder } from './_sosdial.mjs';
+import { shortName } from './_todayrules.mjs';
 
 export const LADDER_MAX = 6;          // people per person
 export const LADDER_RUNGS = 2;        // how many Parwah calls during one SOS
@@ -197,7 +198,7 @@ function send(res, status, html) {
   res.statusCode = status; return res.end(html);
 }
 const last4 = (p) => String(p || '').replace(/\D/g, '').slice(-4);
-const firstName = (n) => String(n || '').split(' ')[0];
+const firstName = (n) => shortName(n);
 
 // The page itself, from one ladder row (pure, so it can be looked at).
 export function consentHtml(r, said = '') {

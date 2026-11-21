@@ -284,7 +284,7 @@ ok('no coach marks on top of it', !(await P.isVisible('#coach')));
     const chat = fixed.find(f => f.s === '#chat-fab'), sos = fixed.find(f => f.s === '#sos-fab');
     ok('New chat sits in the top bar for a parent too (' + w + 'px)', !!chat && chat.y >= 0 && chat.y + chat.h <= 64, JSON.stringify(chat));
     ok('SOS is docked in the tab bar, big enough to hit (' + w + 'px)', !!sos && sos.w >= 56 && sos.h >= 56 && sos.y + sos.h <= vh + 1, JSON.stringify(sos));
-    ok('Ekta is a tab of its own (' + w + 'px)', await P.isVisible('#tabs button[data-tab="ekta"]'));
+    ok('Chat is a tab of its own, and Ekta is one tap from Today (' + w + 'px)', await P.isVisible('#tabs button[data-tab="chat"]') && await P.isVisible('#tn-ekta-today'));
     ok('and none of them cover All is well, Medicines taken or SOS (' + w + 'px)', bigs.length >= 3 && !clash.length, clash.join() || bigs.map(b => b.s).join());
   }
   await P.setViewportSize({ width: 390, height: 844 }); await P.waitForTimeout(200);
@@ -308,8 +308,8 @@ ok('the hero is the family name and a status, without the code, invite or call',
 ok('Family call is under More', !!(await A.$('#more #callnow')));
 const tiles = await A.$$eval('#widgets .widget b', bs => bs.map(b => b.textContent));
 const tabs = await A.$$eval('#tabs .inner > button:not(.deskonly)', bs => bs.map(b => b.textContent.trim()));
-ok('the tiles and tabs use the same names', tiles.join() === 'Vault,Health,To do,Family' && tabs.some(t => /To do$/.test(t)) && tabs.some(t => /Family$/.test(t)), tiles.join() + ' / ' + tabs.join());
-ok('New chat is one tap from Today in the top bar, and Ekta is a tab', await A.isVisible('#chat-fab') && await A.isVisible('#tabs button[data-tab="ekta"]'));
+ok('the tiles keep their names, and the tabs are the five places', tiles.join() === 'Vault,Health,To do,Family' && tabs.slice(0, 5).join() === 'Today,Chat,Together,Family,More', tiles.join() + ' / ' + tabs.join());
+ok('New chat is one tap from Today in the top bar, and so is Ekta', await A.isVisible('#chat-fab') && await A.isVisible('#tn-ekta-today'));
 ok('the round profile tile goes straight to Profile', await A.isVisible('#metile'));
 await A.click('#metile'); await A.waitForTimeout(400);
 ok('Profile opens on You', await A.isVisible('#pane-profile') && (await A.$eval('#pane-profile .card h3', h => h.textContent)) === 'You');
@@ -344,7 +344,7 @@ await A.click('#hamb'); await A.waitForTimeout(200);
 if (process.env.FR_SHOT_DIR) { await A.screenshot({ path: process.env.FR_SHOT_DIR + '/drawer-390-light.png' }); await A.emulateMedia({ colorScheme: 'dark' }); await A.waitForTimeout(100); await A.screenshot({ path: process.env.FR_SHOT_DIR + '/drawer-390-dark.png' }); await A.emulateMedia({ colorScheme: 'light' }); }
 ok('the menu takes focus', await A.evaluate(() => document.getElementById('drawer').contains(document.activeElement)));
 const dnames = await A.$$eval('#drawer .ditem:not(.sub)', bs => bs.map(b => b.textContent.replace('▾', '').trim()));
-ok('the menu uses the same names, with the rest under More', dnames.slice(0, 8).join('|') === 'Today|Chat|Ask Ekta|Together|Vault|Health & contacts|To do|Family' && /More/.test(await A.textContent('#drawer')), dnames.join('|'));
+ok('the menu is the same five places, with the rest folded inside them', dnames.slice(0, 5).join('|') === 'Today|Chat|Together|Family|More' && /Vault/.test(await A.textContent('#drawer')) && /Ask Ekta/.test(await A.textContent('#drawer')), dnames.join('|'));
 await A.keyboard.press('Escape'); await A.waitForTimeout(200);
 ok('Escape closes it and focus returns to the menu button', await A.isHidden('#drawer') && await A.evaluate(() => document.activeElement && document.activeElement.id === 'hamb'));
 

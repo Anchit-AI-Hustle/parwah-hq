@@ -399,7 +399,7 @@ export default async function handler(req, res) {
           await sql`update sos set status = 'acked', acked_by = ${memberId}, acked_at = now()
                     where id = ${row[0].id} and status = 'open'`;
           await sql`insert into events (circle_id, member_id, type, text)
-                    values (${circle.id}, ${memberId}, 'care', ${am[0].name + ' is on their way to ' + row[0].name + ' 🧡'})`;
+                    values (${circle.id}, ${memberId}, 'care', ${am[0].name + ' has seen the SOS and is calling ' + row[0].name + ' 🧡'})`;
           await pushCircle(sql, circle.id, { kind: 'safety', title: '🧡 ' + am[0].name + ' is on it',
             body: 'They are helping ' + row[0].name + ' - you do not need to call as well' }, { except: memberId });
           return res.status(200).json({ ok: true });
@@ -574,7 +574,13 @@ async function raiseSos(sql, res, circle, me, said, body) {
       places.push({ circleId: o.id, memberId: o.member_id, name: o.member_name, sosId: s.sosId, again: s.again });
     } catch (e) { /* the next family still hears */ }
   }
-  const words = name => sosText(name, pos, Date.now(), body && body.tz) + (said ? ' "' + said + '"' : '');
+  // The words carry the sender's own clock with its zone named (for a text
+  // message, which has no reader's clock). The phone says its zone; when it
+  // did not, the zone saved for this person is used before falling back to
+  // UTC. In the chat the app shows the time on the READER's own clock.
+  let sosTz = body && body.tz;
+  if (!sosTz) { try { sosTz = ((await sql`select to_jsonb(m)->>'tz' as tz from members m where m.id = ${me.id}`)[0] || {}).tz || null; } catch (e) { /* UTC */ } }
+  const words = name => sosText(name, pos, Date.now(), sosTz) + (said ? ' "' + said + '"' : '');
   const text = words(me.name);
   const lists = [], gone = new Set();
   for (const p of places) {

@@ -42,10 +42,30 @@ family coins.
 - **"Your family"**, the list of each person and what is missing for them.
   It repeated the Family tile; it lives on the People screen.
 
+## Today is different for each person (2026-11-20)
+
+A family of five walked through the app on a phone. A message from a son
+was 3,000 pixels down on his father's Today; a 14-year-old got the adult
+admin home. So the order below now starts with what the family sent THIS
+person, and three people get three Todays:
+
+- **Senior mode**: the big buttons, then "From the family", then the
+  rest. No setup list. The status line speaks to the person: "You said
+  all is well".
+- **An adult**: "From the family", the family header, then a card for each
+  parent the family looks after, then the five things.
+- **Under 18**: "From the family", then games, polls, Pasand, stories, a
+  question for an elder and their own plans. No vault tile, no setup
+  list, no readiness score.
+
+The mood card "Aaj kaisa lag raha hai?" is near the top for all three.
+The five things and their order are unchanged.
+
 ## The screen, top to bottom
 
 1. Alerts and offline notices, when they apply.
 2. For a parent in senior mode: All is well, Pills taken, SOS.
+   Then, for everyone, "From the family": what is waiting for this person.
 3. The family header: name and today's status, one line - a header, not a
    poster.
 4. The four tiles, in the order above, then the emergency card. The tiles

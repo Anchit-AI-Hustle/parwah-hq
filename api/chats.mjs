@@ -36,6 +36,7 @@ import { classify, mentionsUrgent, urgentToo, renderEmergency, renderCrisis, LOC
 import { ensureChatBond, checkVoice, voiceLabel, attachBond, react, createPoll, votePoll, closePoll, remindPoll } from './_chatbond.mjs';
 import heardApi from './_heard.mjs';
 import ashirwadApi from './_ashirwad.mjs';
+import todayApi from './_today.mjs';
 
 export const CHAT_PAGE = 50;
 // Many pushes at once, never one awaited after another: a family of twelve
@@ -54,7 +55,9 @@ async function chatForMember(sql, circle, chatId, memberId) {
   return m[0] ? chat : null;
 }
 
-async function listChats(sql, circle, me) {
+// Exported so Today's "From the family" (api/_today.mjs) lists exactly the
+// chats this route lists for a member: the family chat and their own.
+export async function listChats(sql, circle, me) {
   await ensureCircleChat(sql, circle.id);
   const chats = await sql`
     select c.id, c.kind, c.name, c.created_at,
@@ -188,6 +191,9 @@ export default async function handler(req, res) {
   // Ashirwad, "How is your day?" and "Reached safely" ride along here: they
   // are messages between two people, and share the voice-note rules.
   if (area === 'ashirwad') return ashirwadApi(req, res);
+  // Today, for each person: "From the family" and a card per parent, each
+  // part read by the rule of the module that owns it (api/_today.mjs).
+  if (area === 'today') return todayApi(req, res);
   let sql;
   try { sql = db(); await ensureSchema(sql); await ensureChatBond(sql); }
   catch (e) { return failDb(res, e); }

@@ -1571,7 +1571,7 @@ check("day: the verdict, band, coming up and hours all read one timeline",
       and "segs.slice(at + 1, at + 6)" in appday)
 check("day: the detail is in tabs, and the day opens on the overview",
       'role="tablist"' in appday and 'id="mu-tabs"' in appday
-      and "if (t === 'day' && curTab !== 'day') showMuTab('overview');" in appday)
+      and "if (t === 'day' && tnWasTab !== 'day') showMuTab('overview');" in appday)
 check("day: no city is told apart from an unknown one",
       "unset: true" in plc and "j.place.unset" in appday and 'id="mu-addcity"' in appday)
 _coins_src = (API_DIR / "_coins.mjs").read_text(encoding="utf-8")
@@ -2100,23 +2100,44 @@ check("theme: a status button keeps its status colour under the Mela gradient",
 # The day, Profile). The Today screen's own cards and shortcuts are ranked in
 # docs/design/TODAY.md and guarded by the "today:" checks.
 _navseg = _appt[_appt.index('<nav class="tabs" id="tabs"'):_appt.index('id="side-groups-head"')]
-_nav = re.findall(r'<button data-tab="(\w+)"(?! data-sec)([^>]*)>', _navseg)
+_nav = re.findall(r'<button data-tab="(\w+)"(?! data-(?:sec|mbv))([^>]*)>', _navseg)
 # Owner (2026-10-04): Chat, Ask Ekta and Together (Plans & calls, Games,
 # Drawing board) sit right under Today, ahead of the records. On a phone,
 # Ekta is a tab, New chat is in the top bar, and Together is in the menu.
-_want_nav = ["home", "chat", "ekta", "fun", "vault", "memory", "care", "people", "notifs", "day", "profile"]
-check("order: the sidebar runs by real-life use",
+# Owner (2026-11-20, after the family walkthrough): FIVE PLACES. A phone had
+# five tabs, five top-bar icons and a 30-item menu, and Chat had no tab
+# while Vault did. Now: Today, Chat, Together, Family, More, on the phone's
+# tab bar, in the menu and in the laptop sidebar alike. Vault, To do, Ekta,
+# The day, Notifications and Profile are under More. The rules for which
+# screen belongs to which place are in api/_todayrules.mjs (placeOf).
+_want_nav = ["home", "chat", "fun", "people", "memory", "menu", "vault", "care", "ekta", "notifs", "day", "profile"]
+check("order: the sidebar is the five places, then what More holds",
       [t for t, _ in _nav] == _want_nav, " > ".join(t for t, _ in _nav))
-check("order: the phone tab bar is Today, Vault, Ekta, To do, Family - one bar, SOS docked at its left",
-      [t for t, a in _nav if "deskonly" not in a] == ["home", "ekta", "vault", "care", "people"]
-      and all(x in _appt for x in ('.tabs button[data-tab="home"]{order:1}', '.tabs button[data-tab="vault"]{order:2}',
-                                   '.tabs button[data-tab="ekta"]{order:3}', '.tabs button[data-tab="care"]{order:4}',
-                                   '.tabs button[data-tab="people"]{order:5}', ".tabs .inner{padding-left:68px}")),
+check("order: the phone tab bar is Today, Chat, Together, Family, More - one bar, SOS docked at its left",
+      [t for t, a in _nav if "deskonly" not in a] == ["home", "chat", "fun", "people", "menu"]
+      and all(x in _appt for x in ('.tabs button[data-tab="home"]{order:1}', '.tabs button[data-tab="chat"]{order:2}',
+                                   '.tabs button[data-tab="fun"]{order:3}', '.tabs button[data-tab="people"]{order:4}',
+                                   '.tabs button[data-tab="menu"]{order:5}', ".tabs .inner{padding-left:68px}")),
       " > ".join(t for t, a in _nav if "deskonly" not in a))
 _drw = _appt[_appt.index('<div class="dhead">'):_appt.index('id="d-groups-wrap"')]
 _drw_top = re.findall(r'class="ditem(?: dparent)?" data-(?:tab|grp)="(\w+)"', _drw)
-check("order: the menu drawer runs by real-life use",
-      _drw_top == _want_nav, " > ".join(_drw_top))
+check("order: the menu drawer is the same five places, each folded until it is where you are",
+      _drw_top == ["home", "chat", "fun", "people", "menu"] and _drw.count('class="dgroup closed" data-place=') == 3
+      and len(re.findall(r'class="ditem sub"', _drw)) <= 18,
+      " > ".join(_drw_top))
+_today_rules = (API_DIR / "_todayrules.mjs").read_text(encoding="utf-8")
+check("nav: every old address is still a screen, and More is one more",
+      all(("'" + t + "'") in _appt[_appt.index("var TABS = ["):_appt.index("];", _appt.index("var TABS = ["))]
+          for t in ("home", "people", "person", "memory", "vault", "care", "day", "chat", "ekta", "profile", "fun", "notifs", "menu"))
+      and all(('id="pane-' + t + '"') in _appt for t in ("home", "people", "person", "memory", "vault", "care", "day", "chat", "ekta", "profile", "fun", "notifs", "menu")))
+check("nav: stories, recipes and the album are reached from Together, not from Health & contacts",
+      all(x in _appt for x in ('id="tn-together"', 'data-goto="memory" data-mbv="album">', 'data-goto="memory" data-mbv="stories">', 'data-goto="memory" data-mbv="recipes">'))
+      and "view === 'stories' || view === 'recipes' || view === 'album'" in _today_rules and "b.hidden = v === 'health';" in _appt)
+check("nav: To do opens on one list with three filters at most; the other sections fold under More",
+      len(re.findall(r'data-tfilter="', _appt[_appt.index('id="task-filter-seg"'):_appt.index('id="rlist"')])) <= 3
+      and _appt.count('class="tn-extra"') == 6 and 'id="tn-care-more"' in _appt and "#care-seg .tn-extra{display:none}" in _appt)
+check("nav: Ekta is one tap from Today and from Chat",
+      'id="tn-ekta-today" data-goto="ekta"' in _appt and 'id="tn-ekta-chat" data-goto="ekta"' in _appt)
 # Owner (2026-10-13): nothing floats on a phone. New chat sits in the top
 # bar, SOS is docked in the tab bar, Ekta is a tab - for parents too; that
 # none of them cover All is well, Pills or SOS is proved in firstrun.e2e.
@@ -2714,7 +2735,7 @@ check("repairs: the phone that forgot waits for the family with its secret, then
       and "setInterval(function(){ rsPoll(false); }, 10000)" in _app_src and "document.hidden" in _app_src[_app_src.index("function rsPoll("):_app_src.index("function rsPoll(") + 400])
 check("repairs: the server's newer replies are read: a voice task's own title and time, a throttled SOS, Ekta's emergency in chat, a horoscope feed that is down",
       "intent.task.title" in _app_src and "voiceDue(intent.task.time" in _app_src and "if (j.throttled)" in _app_src
-      and "if (j.ektaEmergency) chatUrgent(v)" in _app_src and "h.feedDown" in _app_src)
+      and "if (j.ektaEmergency) chatUrgent(u.text)" in _app_src and "h.feedDown" in _app_src)
 check("repairs: the To do filters call the function that exists",
       "renderReminders(" not in _js)
 
@@ -3757,8 +3778,21 @@ check("digest: what is gathered is only what the viewer may open - each feature'
       and "s.visibility = 'circle' or s.about_member = ${mid} or (s.visibility = 'some' and ${mid} = any(s.share_with))" in _dg_gather
       and "join pasand_rec_to t on t.rec_id = r.id and t.member_id = ${mid}" in _dg_gather
       and "for_member is distinct from ${mid} and for_member2 is distinct from ${mid}" in _dg_gather
-      and not re.search(r"from\s+(notes|vault_\w+|legacy_asset_\w+|biomarker_records|pulse|messages|care_bills|care_expenses|pay_\w+|book_consent)\b", _dg)
+      and not re.search(r"from\s+(notes|vault_\w+|legacy_asset_\w+|biomarker_records|pulse|care_bills|care_expenses|pay_\w+|book_consent)\b", _dg)
       and "b.name" not in _dg_gather and "answer_text" not in _dg and "export function digestMaySee(" in _dgr)
+# Changed Nov 2026 (the family walkthrough): the note leads with what is FOR
+# the reader, so it now knows WHO wrote to them today and HOW MANY times. It
+# still never reads a word of any message: one query, a count grouped by
+# sender, only in chats the reader is in, and the only use of the text
+# column is to leave SOS messages out.
+check("digest: MESSAGES ARE COUNTED, NEVER READ - who wrote and how many, in chats the reader is in; joins are not in the note",
+      _dg.count("from messages") == 1
+      and "select m.member_id as by, (c.kind = 'dm') as dm, count(*)::int as n" in _dg_gather
+      and "(c.kind = 'circle' or exists (select 1 from chat_members x where x.chat_id = c.id and x.member_id = ${mid}))" in _dg_gather
+      and _dg_gather.count("m.text") == 1 and "m.text not like" in _dg_gather
+      and "where circle_id = ${cid} and to_member = ${mid}" in _dg_gather
+      and "raw.joined" not in _dg and "joined:" not in _dgr and "happened too" not in _dgr
+      and "message: 94, thanks: 92, plan_ask: 90" in _dgr)
 check("digest: ONE CALL PER MEMBER PER DAY - the row is claimed final once, and only the claimer may ask the model",
       "primary key (member_id, day)" in _dg and "where digest_daily.final = false" in _dg_open
       and "if (mine[0] && evening) row = await digestByModel(" in _dg_open and _dg.count("digestByModel(") == 2
@@ -4806,6 +4840,89 @@ check("needs: the rules test runs in the gate; every db and browser test runs in
 check("needs: the coverage map says what is live, and the review is written down",
       "### The remaining family needs (stream J, live)" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
       and "(stream J)" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
+
+# ---------- 10zz. Today for each person, and five places (stream G) ----------
+# Found by a family of five walking through the real app. The journeys run
+# in site/tests/db/todaynav.e2e.dbtest.mjs and the read's visibility in
+# todaynav.dbtest.mjs; these keep the source honest.
+_tn_app = (REPO / "site" / "public" / "index.html").read_text(encoding="utf-8")
+_tn_api = (API_DIR / "_today.mjs").read_text(encoding="utf-8")
+_tn_rules = (API_DIR / "_todayrules.mjs").read_text(encoding="utf-8")
+_tn_chats = (API_DIR / "chats.mjs").read_text(encoding="utf-8")
+check("today: 'From the family' rides /api/chats in an underscore module, behind requireMember, and only reads",
+      not (API_DIR / "today.mjs").exists() and "if (area === 'today') return todayApi(req, res);" in _tn_chats
+      and "const g = await requireMember(sql, q.circle, q.member, tokenOf(req));" in _tn_api
+      and "if (!isUuid(q.member))" in _tn_api and "if (req.method !== 'GET')" in _tn_api
+      and not re.search(r"\b(insert into|update \w+ set|delete from)\b", _tn_api))
+check("today: GATHERING NEVER WIDENS WHAT A MEMBER MAY SEE - each part is read through the module that owns it",
+      all(x in _tn_api for x in ("import { listChats } from './chats.mjs';", "import { baatList } from './_baat.mjs';",
+                                 "import { ashirwadInbox } from './_ashirwad.mjs';", "shukriyaList } from './_heard.mjs';",
+                                 "sealedTo } from './_bond.mjs';", "import { doseState, ensureDoseSchema } from './_doses.mjs';",
+                                 "memberCards } from './_standing.mjs';"))
+      and "m.chat_id = any(${ids}::uuid[])" in _tn_api and "if (!s.forMe" in _tn_api and "if (b.mine || b.reply) continue;" in _tn_api
+      and "!sealedTo(c, me) && c.for_member !== me.id && c.for_member2 !== me.id" in _tn_api
+      and "export async function listChats(" in _tn_chats
+      and "export async function ashirwadInbox(" in (API_DIR / "_ashirwad.mjs").read_text(encoding="utf-8")
+      and "const inbox = await ashirwadInbox(sql, circle, me);" in (API_DIR / "_ashirwad.mjs").read_text(encoding="utf-8"))
+check("today: a child is never sent a request to join, by the one adult rule, on the server and again in the order",
+      "const adult = !minor && (await soft(async () => (await standingOfCaller(sql, circle, me.id, nowMs)).may, false));" in _tn_api
+      and "if (adult) {" in _tn_api and "fromFamily(items, { minor })" in _tn_api
+      and "export const ADULT_ONLY = ['join'];" in _tn_rules and "minorOf(sql, circle.id, me.id)" in _tn_api
+      and not re.search(r"is_child|adult_confirmed", _tn_api.split("async function parentCards", 1)[0]))
+check("today: a parent's card never names a medicine, never shows a kept-back number, and is never made for a child or about someone remembered",
+      "parents: (!minor && !senior" in _tn_api and "!m.remembered && !m.minor" in _tn_rules
+      and "phones.get(m.id) || null" in _tn_api and "await memberCards(sql, circle, me," in _tn_api
+      and "family_book" not in _tn_api and "d.name" not in _tn_api and "meds: mine.length ? { total: mine.length, taken:" in _tn_api
+      and "okToday(sql, m.id, today, tz)" in _tn_api)
+check("today: the rules import nothing, the app carries its own copy between two marks, and the gate runs both",
+      not re.search(r"^\s*import\s", _tn_rules, flags=re.M)
+      and "/*tn-rules-start*/" in _tn_app and "/*tn-rules-end*/" in _tn_app
+      and "node site/tests/todaytest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and "new Function(app.slice(a, b)" in (REPO / "site/tests/todaytest.mjs").read_text(encoding="utf-8"))
+check("today: no name is cut at the first space in the app; the rule is tnShort (an honorific, or a script that is not Latin, keeps the whole name)",
+      len(re.findall(r"split\(' '\)\[0\]", _tn_app)) == 1 and "var first = full.split(' ')[0];" in _tn_app
+      and "split(/\\s+/)[0]" not in _tn_app and "if (!TN_LATIN.test(full)) return full;" in _tn_app
+      and "'shri'" in _tn_rules and "'smt'" in _tn_rules and "'dr'" in _tn_rules)
+check("today: From the family comes right after the elder's buttons; the mood card stays above the tiles; a card per parent and the young Today follow the header",
+      _tn_app.index('id="seniorui"') < _tn_app.index('id="tn-from"') < _tn_app.index('class="homehero"')
+      < _tn_app.index('id="tn-parents"') < _tn_app.index('id="tn-young"') < _tn_app.index('id="hd-today"') < _tn_app.index('id="frslot"')
+      and _tn_app.count('id="tn-from"') == 1)
+check("today: senior mode and a young member get no setup list; the hero says You to the person who checked in",
+      "if (!state || frDone() || state.role === 'parent' || tnYoung()) { $('firstrun').hidden = true; return; }" in _tn_app
+      and "var tnWho = e.member_id === state.memberId ? 'You' : e.member_name;" in _tn_app
+      and "body.tn-isyoung #firstrun,body.tn-isyoung #readycard" in _tn_app)
+check("words: an SOS that did not go says NOT sent, hides the waiting rows and offers to try again; nobody is ever 'on their way'",
+      "$('ss-live-title').textContent = bad ? '⚠️ SOS NOT sent' : '🆘 SOS sent';" in _tn_app
+      and "live.querySelector('.ss-checks').hidden = bad;" in _tn_app and 'id="tn-sos-retry"' in _tn_app
+      and "on their way" not in _tn_app and "on their way" not in (API_DIR / "events.mjs").read_text(encoding="utf-8")
+      and "has seen it and is calling" in _tn_app and ".tn-sosfail #ss-calls .ss-btn,.tn-sosfail #ss-sms{min-height:72px" in _tn_app)
+check("words: a chat message leaves the box only into a bubble that is kept until it goes",
+      "tnUnsentSave(tnUnsent().concat([u]));" in _tn_app and "Not sent. Tap to retry" in _tn_app
+      and _tn_app.index("tnUnsentSave(tnUnsent().concat([u]));") < _tn_app.index("$('msg').value = '';\n    tnUnsentDraw();")
+      and ".catch(function(){ tnUnsentSet(u.id, { failed: true }); });" in _tn_app)
+check("first run: the tour is written down when it ends and skipped for an invite; one family opens straight away; Mother or Father is asked",
+      "function afterTour(){\n    // The introduction is over; carry on to whatever this person actually has.\n    tnToured();" in _tn_app
+      and "if (pendingJoin) tnToured();" in _tn_app
+      and "if (circles && circles.length === 1) { enterCircle(circles[0]); return; }" in _tn_app
+      and "$(p[1]).checked = grand;" in _tn_app and "Use the simpler, larger screen?" in _tn_app
+      and "Who are you to this family?" in _tn_app and "everyone is an equal admin" not in _tn_app)
+check("words: a new cost is shared between everyone, a new medicine asks when it is taken, and a living person's page has no bereavement link",
+      "d.members.map(function(m){ return m.id; });" in _tn_app and "Who is this shared between?" in _tn_app
+      and "if (!bEditId && body.kind === 'med' && body.aboutId && j.id) tnAskTimes = j.id;" in _tn_app
+      and "b.hidden = !state || id === state.memberId || !rmGone(tnWho);" in _tn_app
+      and '<details class="card fmore" id="pp-todo-card" hidden>' in _tn_app)
+_tn_static = set(re.findall(r'\bid="(tn-[a-z0-9-]+)"', _tn_app))
+_tn_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("today: its screens keep to their own names (ids tn-, functions tn...), and its tests run in test:db without fixed waits",
+      len(_tn_static) >= 20 and len(re.findall(r"\n  function tn[A-Z]\w*\(", _tn_app)) >= 20
+      and all(("site/tests/db/" + f) in _tn_testdb and (REPO / "site/tests/db" / f).exists() for f in ("todaynav.dbtest.mjs", "todaynav.e2e.dbtest.mjs"))
+      and "waitForTimeout" not in (REPO / "site/tests/db/todaynav.e2e.dbtest.mjs").read_text(encoding="utf-8")
+      and all(x in (REPO / "site/tests/db/todaynav.dbtest.mjs").read_text(encoding="utf-8")
+              for x in ("A PRIVATE WORD BETWEEN TWO OTHERS NEVER APPEARS", "A CHILD IS NEVER SENT IT", "A MEMBER OF ANOTHER FAMILY GETS NOTHING OF THIS ONE")))
+check("today: the coverage map says what is live, and the review is written down",
+      "| **What the family sent me, first on Today** | Live |" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
+      and "Today for each person and five places" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8")
+      and "Today is different for each person" in (REPO / "docs/design/TODAY.md").read_text(encoding="utf-8"))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

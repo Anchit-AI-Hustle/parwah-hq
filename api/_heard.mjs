@@ -37,6 +37,7 @@ import { ensureBaatSchema, baatList, baatAudio, baatAction, baatSweep } from './
 import { ensureRememberSchema } from './_remember.mjs';
 import { remembranceDue, remembranceLine, yearsLine } from './_rememberrules.mjs';
 import { linkLabel } from './_eldlinkrules.mjs';
+import { shortName } from './_todayrules.mjs';
 import { MOODS, MOOD_ASK, BAAT_KINDS, BAAT_REPLIES, BAAT_WHEN_DEFAULT, SHUKRIYA_REST_DAYS, shukriyaPick, shukriyaClean,
          questionFor, weekOfDay, SAWAAL_MAX, toldByLine, waitingFor, waitingLine } from './_heardrules.mjs';
 
@@ -44,7 +45,7 @@ const HOME_TZ = 'Asia/Kolkata';
 export const RCARD_PER_PERSON = 3;
 const PHOTO_URI = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 const PHOTO_MAX = 220000;
-const first = n => String(n || '').trim().split(/\s+/)[0] || 'Someone';
+const first = n => shortName(n, 'Someone');
 const clip = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
 
 let ready = false;
@@ -147,7 +148,7 @@ async function shukriyaPrompt(sql, circle, me, week) {
   return t ? { toId: t.id, name: t.name, onApp: t.on_app } : null;
 }
 // What this member may read: sent by them, sent to them, or shown to the family.
-async function shukriyaList(sql, circle, me, limit = 40) {
+export async function shukriyaList(sql, circle, me, limit = 40) {
   const rows = await sql`
     select s.id, s.line, (s.audio is not null) as has_audio, s.audio_secs, s.audience, s.created_at,
            s.from_member, f.name as from_name, s.to_member, t.name as to_name, (t.user_id is not null) as to_on_app
