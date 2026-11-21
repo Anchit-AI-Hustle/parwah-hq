@@ -9332,7 +9332,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
 
   // ---------- TODAY, FOR EACH PERSON (api/_today.mjs) ----------
   // One read fills "From the family" and the card for each parent. It is
-  // asked for with every refresh of Today, at most once in fifteen seconds,
+  // asked for with every refresh of Today, at most once in thirty seconds,
   // and at once after anything that changes it.
   var tnData = null, tnAt = 0, tnBusy = false, tnHoldChat = null;
   function tnYoung(){
@@ -9344,7 +9344,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if (!state || tnBusy) return;
     // Another family, or another person on this phone: nothing is carried over.
     if (tnData && tnData.me && tnData.me.id !== state.memberId) { tnData = null; tnAt = 0; }
-    if (!force && Date.now() - tnAt < 15000) { tnRender(); return; }
+    if (!force && Date.now() - tnAt < 30000) { tnRender(); return; }
     tnBusy = true;
     var code = state.code, mid = state.memberId;
     apiGet(API.chats + '?area=today&circle=' + encodeURIComponent(code) + '&member=' + encodeURIComponent(mid))
@@ -9404,15 +9404,18 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     } else return '';
     return '<div class="tn-row' + (tap ? ' tap' : '') + '" data-tnkind="' + x.kind + '"' + tap + '><span class="txt"><b>' + t + '</b><small>' + sub + '</small></span><span class="tn-acts">' + acts + '</span></div>';
   }
+  // Drawn again only when the words change: a button is never swapped out
+  // from under a finger just because Today refreshed.
+  function tnPut(box, html){ if (box.tnHtml !== html) { box.innerHTML = html; box.tnHtml = html; } }
   function tnRender(){
     var box = $('tn-from'); if (!box || !state) return;
     var d = tnData, senior = state.role === 'parent';
     // Somebody is holding the talk button: the rows are not redrawn under their finger.
     if (vrec && vrec.mode === 'hold' && tnHoldChat) return;
     var items = d ? tnFromFamily(d.items || [], { minor: !!(d.me && d.me.minor) }) : [];
-    box.innerHTML = items.length
+    tnPut(box, items.length
       ? '<section class="tn-from" aria-labelledby="tn-from-h"><h2 id="tn-from-h">🧡 From the family</h2>' + items.map(function(x){ return tnRow(x, senior); }).join('') + '</section>'
-      : '';
+      : '');
     // The chat bubble says what it will do: with something new it opens it.
     var n = d && d.unread ? d.unread.messages : 0, fab = $('chat-fab'), dot = $('tn-chat-dot');
     dot.hidden = !n; dot.textContent = n > 9 ? '9+' : (n || '');
@@ -9429,8 +9432,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   function tnParents(){
     var box = $('tn-parents'); if (!box) return;
     var ps = (tnData && tnData.parents) || [];
-    if (!ps.length || tnKind() !== 'family') { box.innerHTML = ''; return; }
-    box.innerHTML = '<section class="tn-parents" aria-labelledby="tn-parents-h"><h2 id="tn-parents-h">How they are today</h2>' + ps.map(function(p){
+    if (!ps.length || tnKind() !== 'family') { tnPut(box, ''); return; }
+    tnPut(box, '<section class="tn-parents" aria-labelledby="tn-parents-h"><h2 id="tn-parents-h">How they are today</h2>' + ps.map(function(p){
       var f = esc(tnShort(p.name, 'They'));
       var ok = p.ok ? '✅ Said all is well today, ' + esc(fmtTime(p.ok.at).replace(/^Today, /, 'at ')) : (p.onApp ? '🕚 Not checked in yet today' : 'Not on Parwah, so no check-in here');
       var meds = p.meds ? '💊 Medicines today: ' + p.meds.taken + ' of ' + p.meds.total + ' marked taken' + (p.meds.late ? ', ' + p.meds.late + ' with no tick yet' : '') : '💊 No medicine times you can see';
@@ -9440,9 +9443,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         '<div class="tn-acts">' +
         (p.phone ? '<a class="cbtn" href="tel:' + encodeURIComponent(p.phone) + '">📞 Call ' + f + '</a>' : '') +
         (p.onApp ? '<button type="button" class="cbtn' + (p.phone ? ' ghost' : '') + '" data-tndm="' + esc(p.id) + '">💬 Message ' + f + '</button>' : '') +
-        '<button type="button" class="cbtn ghost" data-person="' + esc(p.id) + '">Open ' + f + '\'s page</button>' +
+        '<button type="button" class="cbtn ghost" data-tnperson="' + esc(p.id) + '">Open ' + f + '\'s page</button>' +
         '</div></div>';
-    }).join('') + '</section>';
+    }).join('') + '</section>');
   }
   // Who a young member can ask: an elder who is on Parwah and with us.
   function tnElder(){
@@ -9454,17 +9457,17 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var box = $('tn-young'); if (!box) return;
     var young = tnKind() === 'young';
     box.hidden = !young;
-    if (!young) { box.innerHTML = ''; return; }
+    if (!young) { tnPut(box, ''); return; }
     var el = tnElder(), ask = el ? 'Ask ' + tnShort(el.name) + ' a question' : 'Ask the family a question';
     var tile = function(attrs, icon, name, sub){ return '<button type="button" class="widget" ' + attrs + '><span class="wic" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#' + icon + '"/></svg></span><b>' + esc(name) + '</b><small>' + esc(sub) + '</small></button>'; };
-    box.innerHTML = '<section class="tn-young" aria-labelledby="tn-young-h"><h2 id="tn-young-h">For you today</h2><div class="widgets">' +
+    tnPut(box, '<section class="tn-young" aria-labelledby="tn-young-h"><h2 id="tn-young-h">For you today</h2><div class="widgets">' +
       tile('data-goto="fun" data-sec="games"', 'i-dice', 'Games', 'Play with the family') +
       tile('data-tnyoung="polls"', 'i-chat', 'Polls', 'Ask everyone, or vote') +
       tile('data-goto="fun" data-sec="pasand"', 'i-spark', 'Pasand', 'What to watch, read and hear') +
       tile('data-goto="memory" data-mbv="stories"', 'i-book', 'Stories', 'The family\'s own stories') +
       tile('data-tnyoung="ask"', 'i-bulb', ask, 'They would love to tell you') +
       tile('data-goto="fun" data-sec="plans"', 'i-cal', 'My plans', 'Birthdays, trips and get-togethers') +
-      '</div></section>';
+      '</div></section>');
   }
   function tnOpenChat(chatId, prefill){
     var open = function(){
@@ -9520,6 +9523,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     if ((b = e.target.closest('[data-tncard]'))) { bondCardOpen(b.getAttribute('data-tncard')); return; }
     if ((b = e.target.closest('[data-tngo]'))) { tnGo(b.getAttribute('data-tngo')); return; }
     if ((b = e.target.closest('[data-tndm]'))) { tnDm(b.getAttribute('data-tndm')); return; }
+    if ((b = e.target.closest('[data-tnperson]'))) { openPerson(b.getAttribute('data-tnperson')); return; }
     if ((b = e.target.closest('[data-tnyoung]'))) {
       if (b.getAttribute('data-tnyoung') === 'polls') { tnFamilyChat(''); return; }
       var el = tnElder();

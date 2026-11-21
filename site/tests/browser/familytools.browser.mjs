@@ -131,7 +131,9 @@ async function app(theme, w, h, { role = 'family', sos = false } = {}) {
   await page.goto(BASE + '/#home'); await page.waitForTimeout(700);
   return { page, errs, posts };
 }
-const careSec = async (page, sec) => { await page.evaluate(() => { location.hash = '#care'; }); await page.waitForTimeout(250); await page.click('#care-seg [data-sec="' + sec + '"]'); await page.waitForTimeout(400); };
+const careSec = async (page, sec) => { await page.evaluate(() => { location.hash = '#care'; }); await page.waitForTimeout(250);
+  if (!(await page.isVisible('#care-seg [data-sec="' + sec + '"]'))) await page.click('#tn-care-more');
+  await page.click('#care-seg [data-sec="' + sec + '"]'); await page.waitForTimeout(400); };
 async function check(page, key, scopeSel) {
   await page.evaluate((s) => { document.querySelectorAll('[data-measure]').forEach(x => x.removeAttribute('data-measure')); const el = s && document.querySelector(s); if (el) el.setAttribute('data-measure', '1'); window.scrollTo(0, 0); }, scopeSel || null);
   const w = page.viewportSize().width;

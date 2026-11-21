@@ -90,6 +90,8 @@ ok('a message for me leads the note: who, and how many, never the words', forMe[
 ok('then the thanks I received, then the plan waiting for my answer', forMe[1].text === 'Chachu said thank you to you today.' && forMe[2].text === 'Priya planned Diwali cleaning and is waiting for your answer.');
 ok('an SOS that is closed comes after what is for me; it does not lead', forMe.findIndex(f => f.kind === 'sos_closed') === 3 && /^You raised an SOS at 11:20 am, and it was closed at 11:40 am\.$/.test(forMe[3].text), forMe[3].text);
 ok('a plan that asks for my answer is said once, as the question', forMe.filter(f => /Diwali cleaning/.test(f.text)).length === 1);
+ok('a plan for tomorrow that asks for my answer keeps its time', digestFacts({ ...busy, viewerId: 'papa', plansAsk: [{ planId: 'p1', title: 'Sunday lunch', by: 'rohan' }] })
+   .filter(f => /Sunday lunch/.test(f.text)).map(f => f.text).join('|') === 'Rohan planned Sunday lunch for tomorrow at 1:00 pm and is waiting for your answer.');
 ok('the family chat is one line, and I am not told I wrote in it', forMe.some(f => f.text === 'Maa and Priya wrote in the family chat today.') && !forMe.some(f => f.kind === 'family_chat' && /You|Papa/.test(f.text)));
 ok('an SOS still open comes before everything', digestFacts({ ...busy, viewerId: 'papa', messages: [{ by: 'rohan', dm: true, n: 1 }], sos: [{ sosId: 'k2', id: 'maa', at: at(9, 0), open: true }] })[0].kind === 'sos_open');
 ok('one message is "a message"; two people are named together', digestFacts({ viewerId: 'papa', tz: TZ, people, messages: [{ by: 'rohan', dm: true, n: 1 }] })[0].text === 'Rohan sent you a message today.'

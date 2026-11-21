@@ -564,7 +564,13 @@ async function raiseSos(sql, res, circle, me, said, body) {
       places.push({ circleId: o.id, memberId: o.member_id, name: o.member_name, sosId: s.sosId, again: s.again });
     } catch (e) { /* the next family still hears */ }
   }
-  const words = name => sosText(name, pos, Date.now(), body && body.tz) + (said ? ' "' + said + '"' : '');
+  // The words carry the sender's own clock with its zone named (for a text
+  // message, which has no reader's clock). The phone says its zone; when it
+  // did not, the zone saved for this person is used before falling back to
+  // UTC. In the chat the app shows the time on the READER's own clock.
+  let sosTz = body && body.tz;
+  if (!sosTz) { try { sosTz = ((await sql`select to_jsonb(m)->>'tz' as tz from members m where m.id = ${me.id}`)[0] || {}).tz || null; } catch (e) { /* UTC */ } }
+  const words = name => sosText(name, pos, Date.now(), sosTz) + (said ? ' "' + said + '"' : '');
   const text = words(me.name);
   const lists = [], gone = new Set();
   for (const p of places) {

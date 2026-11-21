@@ -150,7 +150,10 @@ export function digestFacts(raw) {
   for (const p of arr('plansAsk')) {
     const t = one(p.title, 60); if (!t || (p.by && !known(p.by)) || p.by === me) continue;
     asked.add(p.planId);
-    add('plan_ask', p.by ? nm(p.by) : '', 'planask:' + p.planId, (p.by ? nm(p.by) + ' planned ' + t + ' and is' : 'A plan, ' + t + ', is') + ' waiting for your answer.');
+    // A plan for tomorrow keeps its time: it is said once, as the question.
+    const tom = arr('plansTomorrow').find(x => x.planId === p.planId);
+    const when = tom ? ' for tomorrow at ' + digestClock(tom.at, tz) : '';
+    add('plan_ask', p.by ? nm(p.by) : '', 'planask:' + p.planId, (p.by ? nm(p.by) + ' planned ' + t + when + ' and is' : 'A plan, ' + t + when + ', is') + ' waiting for your answer.');
   }
 
   for (const s of arr('sos')) {

@@ -236,16 +236,16 @@ const v = (await admin.query(`select audio, audio_secs, visibility, share_with f
 ok('the voice answer is kept: webm or ogg, a few seconds, for Anchit only', v && /^data:audio\/(webm|ogg);base64,/.test(v.audio) && v.audio_secs >= 2 && v.audio_secs <= 5 && v.visibility === 'some' && v.share_with.length === 1, v && (v.audio.slice(0, 30) + ' ' + v.audio_secs));
 
 // ---- Anchit sees both in Stories, grouped under Papa; Rahul sees one
-await A.goto(BASE + '/#memory'); await A.waitForTimeout(1300);
-await A.click('#mb-switch [data-mbv="stories"]'); await A.waitForTimeout(1300);
+await A.goto(BASE + '/#fun'); await A.waitForTimeout(1300);
+await A.click('#tn-together [data-mbv="stories"]'); await A.waitForTimeout(1300);
 const st = await A.textContent('#mb-stories');
 ok('Stories: Papa, 2 stories, newest first', /Papa · 2 stories/.test(st) && st.indexOf('What games did you play') < st.indexOf('What is your earliest memory'), st.slice(0, 200));
 await A.click('#mb-stories [data-mblisten]'); await A.waitForTimeout(900);
 ok('Listen loads the voice only on a tap, and never plays it by itself', await A.$eval('#mb-stories audio', a => a.paused && /^data:audio/.test(a.src)));
 await shotAll(A, 'stories-list');
 await design(A, '#mb-stories', 'Stories in Family Memory');
-const R = await phone(as('Rahul'), { hash: '#memory' });
-await R.click('#mb-switch [data-mbv="stories"]'); await R.waitForTimeout(1300);
+const R = await phone(as('Rahul'), { hash: '#fun' });
+await R.click('#tn-together [data-mbv="stories"]'); await R.waitForTimeout(1300);
 ok('Rahul sees only the story Papa shared with everyone', /Papa · 1 story/.test(await R.textContent('#mb-stories')));
 await R.close();
 
@@ -340,8 +340,8 @@ await G.fill('#as-in', 'Sharma sir. Still scared.'); await G.click('#as-yes'); a
 ok('Anchit answers: both answers side by side', (await G.$$('#mb-today .mbside div')).length === 2 && /Change my answer/.test(await G.textContent('#mb-today')));
 await shotAll(G, 'group-throwback');
 await design(G, '#mb-today', 'the group throwback on Today');
-await G.goto(BASE + '/#memory'); await G.waitForTimeout(1300);
-await G.click('#mb-switch [data-mbv="recipes"]'); await G.waitForTimeout(1300);
+await G.goto(BASE + '/#fun'); await G.waitForTimeout(1300);
+await G.click('#tn-together [data-mbv="recipes"]'); await G.waitForTimeout(1300);
 ok('the group gets a group cookbook', /group cookbook/.test(await G.textContent('#mb-recipes')) && /hostel classic/.test(await G.textContent('#mb-recipes')));
 await G.click('#mb-switch [data-mbv="stories"]'); await G.waitForTimeout(400);
 ok('group Stories keep the throwback answers', /Throwback answers/.test(await G.textContent('#mb-stories')) && /Sharma sir/.test(await G.textContent('#mb-stories')));

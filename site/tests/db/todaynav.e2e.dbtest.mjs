@@ -174,9 +174,17 @@ const wide = async (page, sel, label) => {
   const was = page.viewportSize();
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.waitForFunction(() => innerWidth === 1280, null, T);
-  await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
-  const m = await page.evaluate(measureIn, sel);
-  ok('design: ' + label + ' at 1280 - nothing sideways, 12px floor, AA contrast', m.overflow <= 0 && m.inner <= 1 && !m.bad.some(b => /tiny|contrast|off the side/.test(b)), m.overflow + ' ' + m.inner + ' ' + m.bad.slice(0, 4).join(' | '));
+  const bad = [];
+  for (const sc of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: sc });
+    await page.waitForFunction((dark) => matchMedia('(prefers-color-scheme: dark)').matches === dark, sc === 'dark', T);
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const m = await page.evaluate(measureIn, sel);
+    if (m.overflow > 0 || m.inner > 1) bad.push(sc + ' sideways ' + m.overflow + '/' + m.inner);
+    m.bad.filter(b => /tiny|contrast|off the side/.test(b)).forEach(b => bad.push(sc + ' ' + b));
+  }
+  ok('design: ' + label + ' at 1280 - nothing sideways, 12px floor, AA contrast in light and dark', bad.length === 0, bad.slice(0, 5).join(' | '));
+  await page.emulateMedia({ colorScheme: 'light' });
   await page.setViewportSize(was); await page.waitForFunction((w) => innerWidth === w, was.width, T);
 };
 
