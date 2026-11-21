@@ -33,6 +33,7 @@ import { ektaNudgeSweep } from './_ektaday.mjs';
 import { heardSweepAll } from './_heard.mjs';
 import { sweepTripsAll } from './_ashirwad.mjs';
 import { memberCards, standingSweepAll } from './_standing.mjs';
+import { eldlinkApi } from './_eldlink.mjs';
 
 import { index as kinIndex, kinLabel, generations, kinEveryone, kinChainWords } from './_kin.mjs';
 import { pulseToday, pulseSave } from './_pulse.mjs';
@@ -192,6 +193,11 @@ export default async function handler(req, res) {
     await sql`create index if not exists sos_circle_open on sos (circle_id, status, created_at desc)`;
     await ensureSosSchema(sql);
   } catch (e) { return failDb(res, e); }
+
+  // A link for someone who is not on the app (api/_eldlink.mjs): the family's
+  // side signed in, the page's side by its key alone. It raises the family's
+  // own SOS, so that function is handed in rather than copied.
+  if (String((req.query && req.query.area) || (req.body && req.body.area) || '') === 'eldlink') return eldlinkApi(req, res, { raiseSos });
 
   try {
     // THE TIMER. Reminders and every other timed alert are also checked by

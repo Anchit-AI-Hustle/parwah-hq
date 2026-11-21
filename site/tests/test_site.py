@@ -17,8 +17,13 @@ PAGES = sorted((ROOT / "public").rglob("*.html"))
 # suite, where visibility is knowable); and the shared stylesheet is the
 # marketing design system, which the app deliberately does not use.
 APP_PAGE = ROOT / "public" / "index.html"
+# /apna/ is one person's own no-sign-in page (api/_eldlink.mjs): an
+# application too, and a private one. It fetches no font and no shared
+# stylesheet on purpose (a slow network), has no share card and is never
+# measured; its own rules are checked under "eldlink:" below.
+ELD_PAGE = ROOT / "public" / "apna" / "index.html"
 SITE_PAGES = [p for p in PAGES
-              if p != APP_PAGE and "demo" not in p.relative_to(ROOT / "public").parts]
+              if p != APP_PAGE and p != ELD_PAGE and "demo" not in p.relative_to(ROOT / "public").parts]
 
 def markup_only(html):
     """Drop script and style bodies. A href inside a JS template string is
@@ -876,6 +881,7 @@ CIRCLE_WIDE_OK = {
     ("_standing.mjs", "Anyone with the code can now join"): "two adults opened the door: it changes who can walk in, for everyone",
     ("_standing.mjs", "will be deleted in"): "the whole family is about to be deleted: every member must hear, with the way to stop it",
     ("_remember.mjs", "A quiet day to remember"): "a day of remembrance is the whole family's, once a year",
+    ("_eldlink.mjs", "fineLine(L.name)"): "someone not on the app tapped 'I am fine' on their link: the whole family hears, once a day, when no daily check-in is set",
 }
 def _push_calls(src):
     out = []
@@ -1213,7 +1219,7 @@ _an = _an_path.read_text(encoding="utf-8") if _an_path.exists() else ""
 # it is a page we send traffic to.
 # The app is excluded by being the app, wherever it lives - it moved from
 # /app/ to the root, and a path-based rule would have demanded analytics on it.
-_measured = [q for q in PAGES if q != APP_PAGE]
+_measured = [q for q in PAGES if q != APP_PAGE and q != ELD_PAGE]
 check("analytics: there are marketing pages to measure", len(_measured) >= 5,
       f"{len(_measured)} pages")
 for _mp in _measured:
@@ -4524,6 +4530,188 @@ check("standing: the rules test runs in the gate; the db and browser tests run i
 check("standing: the coverage map says what is live, and the review is written down",
       "| Equal standing: who decides what |" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
       and "accounts, joining and equal standing" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
+
+# ---------- 10z. A link for someone not on the app (api/_eldlink.mjs, /apna/) ----------
+# Dadi has WhatsApp and no app. One personal link opens one page with no
+# sign-in. Everything that keeps that door narrow is checked here, so a later
+# change cannot widen it by accident.
+_el = (API_DIR / "_eldlink.mjs").read_text(encoding="utf-8")
+_elr = (API_DIR / "_eldlinkrules.mjs").read_text(encoding="utf-8")
+_el_page = ELD_PAGE.read_text(encoding="utf-8")
+_el_app = (REPO / "site/public/index.html").read_text(encoding="utf-8")
+_el_evt = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_el_code = "\n".join(l for l in _el.splitlines() if not l.strip().startswith("//"))
+check("eldlink: no new serverless function - it rides /api/events by area, and is handed the family's own SOS rather than copying it",
+      not (API_DIR / "eldlink.mjs").exists()
+      and "=== 'eldlink') return eldlinkApi(req, res, { raiseSos });" in _el_evt
+      and "await hooks.raiseSos(sql, cap, circle, herRow, ''," in _el and "insert into sos" not in _el_code)
+check("eldlink: the rules module imports nothing, and its test runs in the gate before npm install",
+      not re.search(r"^\s*import\s", _elr, re.M) and "node site/tests/eldlinktest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
+check("eldlink: the key is 256 bits from the secure source, and ONLY its hash is stored or looked up",
+      "tokenBytes: 32" in _elr and "randomBytes(ELD.tokenBytes).toString('base64url')" in _el
+      and "createHash('sha256')" in _el and "token_hash text not null unique" in _elr
+      and "where l.token_hash = ${hashOf(key)}" in _el
+      and not re.search(r"insert into eld_links[^`]*\$\{key\}", _el) and "Math.random" not in _el)
+check("eldlink: the key travels in a header, never in an address; a GET with a key is refused; nothing here writes it to a log",
+      "header: 'x-parwah-link'" in _elr and "const key = h[ELD.header] || h['X-Parwah-Link'];" in _el
+      and "req.query.k" not in _el and "query.key" not in _el and "query.token" not in _el
+      and "if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return no(405, 'POST only'); }" in _el
+      and "console." not in _el_code)
+check("eldlink: one link per person, 90 days, and a link stops when its person joins or is remembered (in the lookup itself)",
+      "create unique index if not exists eld_links_one on eld_links (member_id) where revoked_at is null" in _elr
+      and "days: 90" in _elr
+      and _el.count("l.revoked_at is null and l.expires_at > now()") >= 2
+      and _el.count("m.user_id is null and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)") >= 3
+      and "await eldCloseFor(sql, circle.id, linked[0].id, 'joined');" in (API_DIR / "circle.mjs").read_text(encoding="utf-8"))
+check("eldlink: someone remembered, or already on Parwah, can never be given a link; a child can neither make one nor turn one off",
+      "if (member.remembered) return member.name + ' is remembered here, so no link is made.';" in _elr
+      and "const why = mayHaveLink(p);" in _el
+      and "const adult = !(await minorOf(sql, circle.id, me.id));" in _el
+      and "if (!adult) return no(403, 'An adult in the family does this.');" in _el
+      and _el.index("if (!adult) return no(403") < _el.index("if (action === 'eld_make')") < _el.index("// eld_off"))
+check("eldlink: every limit fails CLOSED, a wrong key is limited by address, and every action on the page is counted",
+      "rateLimit(sql, 'eld' + name, key, ELD_LIMITS[name][0], ELD_LIMITS[name][1], { failClosed: true })" in _el
+      and "await lim(sql, 'wrong', clientIp(req))" in _el and "await lim(sql, 'act', L.id)" in _el
+      and all(("await lim(sql, '" + k + "'") in _el for k in ("create", "createFamily", "say", "bless", "vote", "callmeGap", "callme", "audio"))
+      and _el.index("await lim(sql, 'act', L.id)") < _el.index("if (op === 'open')"))
+check("eldlink: a wrong, old or turned-off key gets ONE plain answer that names nobody",
+      "const OFF_WORDS = 'This link is not on now. Ask your family to send you a new one.';" in _el
+      and _el.count("OFF_WORDS") == 2 and "return no(404, OFF_WORDS, { off: true });" in _el)
+check("eldlink: consent first - before 'All right' the page is told who set it up and what is seen, and nothing else works",
+      "if (!L.consent_at) return no(403, 'Please read the first page and tap All right.', { consent: true });" in _el
+      and _el.index("if (op === 'consent')") < _el.index("if (!L.consent_at) return no(403") < _el.index("if (op === 'ok')")
+      and "return { ok: true, agreed: false, me, setBy: first(L.by_name || 'Your family'), sees: CONSENT_SEES };" in _el
+      and "await eldCloseFor(sql, cid, her, 'declined');" in _el and "await eldCloseFor(sql, cid, her, 'self');" in _el)
+# EVERY query the page can reach names her AND her family. The page half of
+# the module is everything after "the page" marker; a query there that reads
+# a family table without both is how one family's key would read another's.
+_el_pagehalf = _el[_el.index("// ================================================================ the page"):_el.index("// ================================================================ the route")]
+_el_q = re.findall(r"sql`(.*?)`", _el_pagehalf, re.S)
+_el_unscoped = [q.strip()[:70] for q in _el_q
+                # The one lookup that has neither yet: it is how the key BECOMES her and her family.
+                if "where l.token_hash = ${hashOf(key)}" not in q
+                and not re.search(r"\$\{(cid|L\.circle_id|circleId|c\.id|c\.about\.id|L\.id|her|L\.member_id|p\.id|b\.id)\}", q)]
+_el_nocircle = [q.strip()[:70] for q in _el_q
+                if re.search(r"\bfrom (ashirwad|shukriya|cards|card_entries|chat_polls|album_photos|eld_says|sawaal_answers|requests|members|sos)\b", q)
+                and not re.search(r"\$\{(cid|L\.circle_id|circleId)\}", q)
+                and not re.search(r"where e\.card_id = \$\{c\.id\}", q)]
+check(f"eldlink: every query the page can reach is tied to her AND her family ({len(_el_q)} queries)",
+      len(_el_q) >= 40 and not _el_unscoped and not _el_nocircle, "; ".join((_el_unscoped + _el_nocircle)[:3]))
+check("eldlink: the page is never handed a member id, a code or a circle from the request",
+      not re.search(r"\bb\.(memberId|code|circle|member|circleId)\b", _el_pagehalf)
+      and "requireMember" not in _el_pagehalf and "tokenOf(req)" not in _el_pagehalf)
+check("eldlink: what she is shown is what was sent to HER or to everyone - a blessing, a thank-you, her card on its day",
+      "and (a.to_member = ${her} or a.to_member is null)" in _el and "and s.to_member = ${her}" in _el
+      and "and (c.for_member = ${her} or c.for_member2 = ${her})" in _el and "and c.date <= ${today}::date" in _el
+      and "and exists (select 1 from card_entries e where e.card_id = c.id)" in _el)
+check("eldlink: a photo comes only from an album for the WHOLE family, checked before the picture is read",
+      "a.audience = 'family'" in _el and "if (!(await familyPhoto(sql, circleId, photoId))) return null;" in _el
+      and "'chosen'" not in _el_code and "a.by_member" not in _el_code)
+check("eldlink: nothing else can be read from the page - no chat, health, documents, register, costs or location",
+      not re.search(r"\bfrom\s+(messages|notes|vault_\w+|family_book|biomarker_\w+|medicine_\w+|care_\w+|pay_\w+|location_\w+|fam_register\w*|register_\w+|expenses|split_\w+|pulse|baat\w*)\b", _el_code)
+      and all(x in _elr for x in ("'chat history'", "'health'", "'documents'", "'the register'", "'costs'", "'location'", "'private albums'")))
+check("eldlink: her vote is HER vote in the family chat only, her answer to the question is recorded by nobody, and both are marked",
+      "where p.id = ${b.pollId} and c.circle_id = ${cid} and c.kind = 'circle'" in _el
+      and "votePoll(sql, { id: p.chat_id, kind: 'circle' }, { id: her }, { pollId: p.id, choices: b.choices })" in _el
+      and "update poll_votes set via = 'link', by_member = null" in _el
+      and "values (${cid}, ${q.week}::date, ${her}, null," in _el)
+check("eldlink: a voice note goes through the chat's own check (type, first bytes, one minute, size), and words through the card-number and OTP check",
+      _el.count("checkVoice(b.voice, b.secs)") == 3 and _el.count("noteRisk(") >= 2 and "sayMax: 240" in _elr
+      and "audioCheck" not in _el)
+check("eldlink: 'I am fine' is once a day, claimed in the database, and is a real check-in under her name",
+      "insert into eld_days (member_id, day, kind) values (${her}, ${today}::date, 'ok') on conflict do nothing returning day" in _el
+      and "if (!claim[0]) return good({ already: true });" in _el
+      and "values (${cid}, ${her}, 'checkin', ${linkLabel(L.name)})" in _el)
+check("eldlink: the SOS sends no place unless she tapped to share it, and the family's numbers are not passed to the page",
+      "const pos = b.share === true ? { lat: b.lat, lng: b.lng, accuracy: b.accuracy } : {};" in _el
+      and "return good({ again: !!j.again, located: !!j.located, throttled: !!j.throttled }, 201);" in _el
+      and "j.contacts" not in _el and "j.text" not in _el and "j.map" not in _el)
+check("eldlink: she sees and deletes only what SHE sent",
+      "delete from eld_says where id = ${b.id} and circle_id = ${cid} and member_id = ${her}" in _el
+      and "delete from ashirwad where id = ${b.id} and circle_id = ${cid} and from_member = ${her}" in _el
+      and "delete from sawaal_answers where id = ${b.id} and circle_id = ${cid} and member_id = ${her} and via = 'link'" in _el)
+check("eldlink: the WhatsApp link can only ever be wa.me with digits - in the rules and in the app - and Parwah itself sends nothing",
+      "return 'https://wa.me/' + waDigits(phone) + '?text=' + encodeURIComponent(String(text || ''));" in _elr
+      and "return 'https://wa.me/' + (d.length >= 8 && d.length <= 15 ? d : '') + '?text=' + encodeURIComponent(text);" in _el_app
+      and "var d = String(digits || '').replace(/\\D/g, '');" in _el_app
+      and not re.search(r"twilio|dialOut|sendSms|fetch\(", _el_code, re.I)
+      and "Parwah does not send it: you do, from your own WhatsApp" in _el_app)
+check("eldlink: the server never builds the link from the request's host",
+      "req.headers.host" not in _el and "x-forwarded-host" not in _el.lower() and "words: inviteWords(p.name, me.name, '')" in _el)
+# ---- the page itself
+check("eldlink: the page is not indexed, sends no referrer, and vercel.json says the same in headers",
+      '<meta name="robots" content="noindex,nofollow,noarchive">' in _el_page and '<meta name="referrer" content="no-referrer">' in _el_page
+      and _hblocks.get("/apna/(.*)", {}).get("Referrer-Policy") == "no-referrer"
+      and "noindex" in _hblocks.get("/apna/(.*)", {}).get("X-Robots-Tag", "")
+      and "Disallow: /apna/" in (ROOT / "public" / "robots.txt").read_text(encoding="utf-8")
+      and "/apna/" not in (ROOT / "public" / "sitemap.xml").read_text(encoding="utf-8"))
+check("eldlink: the API answers the page with no-store, no-referrer and noindex",
+      "res.setHeader('Cache-Control', 'no-store');" in _el and "res.setHeader('Referrer-Policy', 'no-referrer');" in _el and "res.setHeader('X-Robots-Tag', 'noindex');" in _el)
+check("eldlink: the page is NOT measured, and fetches nothing from another site (no font, script or stylesheet)",
+      "analytics.js" not in _el_page and "attrib.js" not in _el_page and "googletagmanager" not in _el_page and "gtag(" not in _el_page
+      and "fonts.googleapis.com" not in _el_page and "<link rel=\"stylesheet\"" not in _el_page
+      and not re.search(r"<script[^>]+src=", _el_page)
+      and not re.findall(r"https?://(?!wa\.me)[a-z0-9.-]+", re.sub(r"<!--.*?-->", "", _el_page, flags=re.S)))
+check("eldlink: the key is read from after the #, sent only in a header, and taken out of the address bar at once",
+      "/[#&]k=([A-Za-z0-9_-]{43})(?:&|$)/.exec(location.hash || '')" in _el_page
+      and "history.replaceState(null, '', location.pathname)" in _el_page
+      and "'X-Parwah-Link': key" in _el_page and "referrerPolicy: 'no-referrer'" in _el_page and "credentials: 'omit'" in _el_page
+      and "location.search" not in _el_page and "?k=" not in _el_page
+      and "var API = '/api/events?area=eldlink';" in _el_page)
+check("eldlink: opening the link never signs anyone in - the page never touches the app's session",
+      "parwah-token" not in _el_page and "parwah-user" not in _el_page and "X-Parwah-Token" not in _el_page
+      and "document.cookie" not in _el_page and "href=\"/\"" not in _el_page)
+_el_btns = re.findall(r"\bB\('([a-z]+)', '([^']*)', '([^']*)'", _el_page)
+_el_onelang = [a for a, hi, en in _el_btns if not re.search("[ऀ-ॿ]", hi) or not re.search("[A-Za-z]", en)]
+check(f"eldlink: every button on the page is in Hindi AND in English ({len(_el_btns)} buttons)",
+      len(_el_btns) >= 30 and not _el_onelang, ", ".join(_el_onelang[:5]))
+check("eldlink: built for a small phone and old eyes - 64px buttons, 20px text, a read-aloud button, no menus, one listener",
+      "--tap:64px" in _el_page and "min-height:var(--tap)" in _el_page and "font:var(--fs-20)/1.45 system-ui" in _el_page
+      and "SpeechSynthesisUtterance" in _el_page and "/^hi/i.test(vs[i].lang)" in _el_page
+      and "<nav" not in _el_page and "<select" not in _el_page and "<details" not in _el_page
+      and _el_page.count("view.addEventListener('click'") == 1)
+check("eldlink: both themes, a visible focus ring, and motion only when it is welcome",
+      "@media (prefers-color-scheme: dark)" in _el_page and ".b:focus-visible,textarea:focus-visible{outline:4px solid var(--focus-ring)" in _el_page
+      and "@media (prefers-reduced-motion:no-preference)" in _el_page)
+_el_css = _el_page[_el_page.index("<style>"):_el_page.index("</style>")]
+_el_css_comp = _el_css[_el_css.index("*{box-sizing"):]
+check("eldlink: the page's colours are tokens, with the site's own names - none loose in the components",
+      not re.findall(r"#[0-9A-Fa-f]{3,8}\b", _el_css_comp)
+      and all(t in _el_css for t in ("--dusk:#2A1235", "--day:#FFF6EA", "--marigold:#FFB31A", "--flame:#FF5B2E", "--ink:#221428"))
+      and all(t + ":" in (ROOT / "public" / "styles.css").read_text(encoding="utf-8") for t in ("--dusk", "--day", "--marigold", "--flame", "--ink")))
+check("eldlink: 'I need help' waits five seconds with a Cancel, then shows 112 and the people she was given, as tel: links",
+      "sosCancelSecs: 5" in _elr and "helpstop" in _el_page and "tel('112'," in _el_page
+      and "var p = String(phone || '').replace(/[^\\d+]/g, '');" in _el_page
+      and "navigator.geolocation.getCurrentPosition" in _el_page and _el_page.index("helpwhere") > _el_page.index("function helpCount"))
+check("eldlink: the page's words pass the banned-words scan and the app's link section has no Devanagari",
+      not re.search(r"[ऀ-ॿ]", _el_app[_el_app.index("// ---------- a link for someone not on the app"):_el_app.index("// ---------- consent, control and care both ways ----------")]))
+# ---- in the app
+_el_sec = _el_app[_el_app.index("// ---------- a link for someone not on the app (api/_eldlink.mjs) ----------"):_el_app.index("// ---------- consent, control and care both ways ----------")]
+_el_ids = re.findall(r'\bid="(el-[a-z0-9-]+)"', _el_app)
+check(f"eldlink: in the app its ids start with el- ({len(set(_el_ids))}), none twice, and its functions start with el",
+      len(set(_el_ids)) >= 6 and len(_el_ids) == len(set(_el_ids))
+      and all(f.startswith("el") for f in re.findall(r"\n  function (\w+)\(", _el_sec)) and len(re.findall(r"\n  function el[A-Z]\w*\(", _el_sec)) >= 12)
+check("eldlink: the person's page says whether the link is on, when it was last used, and lets an adult send again, keep it on, or turn it off",
+      all(x in _el_sec for x in ("'Last used '", "Send again on WhatsApp", "Keep it on 90 more days", "data-eloff", "Turn off '", "An adult in the family can send it"))
+      and 'id="el-card"' in _el_app and "elPersonRender(id);" in _el_app)
+check("eldlink: what came through a link carries its label - on Today, in the feed, on a blessing, a weekly answer and a vote",
+      "x.label" in _el_sec and "/^from .+ link$/.test(e.text || '')" in _el_app and "c.via === 'link'" in _el_app
+      and "a.via === 'link' ? linkLabel(a.name)" in (API_DIR / "_heard.mjs").read_text(encoding="utf-8")
+      and "v.via === 'link' ? v.name + ' (' + linkLabel(v.name) + ')'" in (API_DIR / "_chatbond.mjs").read_text(encoding="utf-8"))
+check("eldlink: people writing a thank-you, a card, the weekly question, a family poll or a blessing are told it also shows on the link",
+      "elNoteBind('hd-s-to', 'el-s-note');" in _el_app and "elAlso('This question is also on ')" in _el_app
+      and "elAlso('This poll is also on '" in _el_app and "elCardNote(c)" in _el_app and "(on their link)" in _el_app)
+check("eldlink: a daily check-in can be answered from a link, and only while that link is on and agreed to",
+      (API_DIR / "_familycare.mjs").read_text(encoding="utf-8").count("l.revoked_at is null and l.expires_at > now() and l.consent_at is not null") >= 3
+      and "quiet_nudged_for = ${today}::date, quiet_alerted_for = ${today}::date" in _el)
+_el_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+_el_e2e = (REPO / "site/tests/db/eldlink.e2e.dbtest.mjs").read_text(encoding="utf-8") if (REPO / "site/tests/db/eldlink.e2e.dbtest.mjs").exists() else ""
+check("eldlink: the db and browser tests run in test:db; the browser test opens the page with no session and never waits a fixed time",
+      all(("site/tests/db/" + f) in _el_testdb and (REPO / "site/tests/db" / f).exists() for f in ("eldlink.dbtest.mjs", "eldlink.e2e.dbtest.mjs"))
+      and "waitForTimeout" not in _el_e2e and "const fresh = await browser.newContext(" in _el_e2e and "await design(D, '#apna'," in _el_e2e)
+check("eldlink: the coverage map says what is live, and the leader review is written down",
+      "Dadi's link: a voice for someone not on the app" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
+      and "Dadi's link: a page for someone who will never install the app" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

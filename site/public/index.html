@@ -2043,6 +2043,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
          quiet shukriya, the family's weekly question, and the memory card
          of a day of remembrance. Senior mode shows it too, larger. -->
     <div id="hd-today" aria-live="polite"></div>
+    <!-- What someone not on the app said from their own link (api/_eldlink.mjs). -->
+    <div id="el-today" aria-live="polite"></div>
     <!-- AAJ KYA HUA (api/_digest.mjs): what happened in the family today,
          from Ekta. One row, from 6pm, that opens the day's note. -->
     <div id="dg-today"></div>
@@ -3013,6 +3015,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     </div>
     <!-- BEING HEARD: thank this person, or send them a private word. -->
     <div class="card" id="hd-person" hidden></div>
+    <!-- A LINK OF THEIR OWN, for someone in the family who is not on the app
+         (api/_eldlink.mjs): an adult sends it on WhatsApp; no sign-in. -->
+    <div class="card" id="el-card" hidden></div>
     <div class="card" id="pp-todo-card" hidden><h3 id="pp-todo-title">To complete</h3><div class="feed" id="pp-todo"></div></div>
     <!-- CARE CYCLE: medicine times and ticks, doctor visits, hospital stays. -->
     <div class="card" id="pp-doses-card">
@@ -5286,6 +5291,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   }
   function evLine(e){
     var who = e.member_name || 'Someone';
+    // Tapped on their own no-sign-in link (api/_eldlink.mjs): the feed says so.
+    if (e.type === 'checkin' && /^from .+ link$/.test(e.text || '')) return { cls:'good', text: who + ' said: I am fine ✅ (' + e.text + ')' };
     if (e.type === 'checkin') return { cls:'good', text: who + ' checked in - all is well ✅' };
     if (e.type === 'pill')    return { cls:'good', text: who + ' took their pills 💊' };
     if (e.type === 'sos')     return { cls:'bad',  text: '🆘 SOS from ' + who + ' - call now!' };
@@ -5623,6 +5630,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     pasandRefresh();
     albumTodayLoad();
     hdTodayLoad();
+    elLoad();
     digestRenderToday();
     ek2RenderToday();
     refreshChats();
@@ -9554,6 +9562,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     $('pp-back').textContent = '← ' + ({ people: 'Family', home: 'Today', memory: 'Health & contacts', vault: 'Vault', care: 'To do' }[personFrom] || 'Back');
     switchTab('person');
     bondPersonRender(id);
+    elPersonRender(id);
     pasandPersonRender(id);
     afterlossPersonLink(id);
     albumPersonRender(id);
@@ -13719,7 +13728,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       : '<button type="button" class="cbtn" data-hdsawaal="voice">🎙 Answer by voice</button><button type="button" class="cbtn ghost" data-hdsawaal="type">⌨️ Type it</button>';
     if ((q.offApp || []).length) acts += '<button type="button" class="cbtn ghost" data-hdsawaal="for">✍️ Answer for someone not on Parwah</button>';
     return mbCard('hdcard', '💬 This week, for the whole family', esc(q.question),
-      q.answered ? '' : 'Everyone answers, by voice or by typing. You read the others once you have answered.', acts, mid);
+      q.answered ? '' : 'Everyone answers, by voice or by typing. You read the others once you have answered.', acts, mid + elAlso('This question is also on '));
   }
   function hdRememberHtml(){
     var h = '';
@@ -13819,7 +13828,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       '<div class="pkind" id="hd-s-aud" role="group" aria-label="Who sees it">' +
       '<button type="button" class="sel" aria-pressed="true" data-hdsa="two">🔒 Just the two of us</button><button type="button" aria-pressed="false" data-hdsa="family">👪 Show the family</button></div>' +
       '<p class="hint">Someone not on Parwah does not get a message. It is kept for the day they join, and you can read it out or share it.</p>' +
+      '<p class="hint" id="el-s-note" hidden></p>' +
       '<p class="mberr" id="mbs-err" role="alert" hidden></p><button class="go" type="button" id="hd-s-send">Say shukriya</button>');
+    elNoteBind('hd-s-to', 'el-s-note');
     mbSheetRec = mbRecorder($('hd-s-rec'));
     $('hd-s-send').addEventListener('click', function(){
       var rec = mbSheetRec; if (hdBusy(rec)) return;
@@ -13986,6 +13997,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var acts = '';
     if (p.canRemind) acts += '<button type="button" class="cbtn ghost" data-hdplremind="' + esc(m.id) + '">🔔 Remind them once</button>';
     if (!p.closed && (p.offApp || []).length) acts += '<button type="button" class="cbtn ghost" data-hdplfor="' + esc(m.id) + '">✍️ Vote for someone not on Parwah</button>';
+    // In the family chat an open poll is also on the link of someone not on the app.
+    if (!p.closed && curChat && curChat.kind === 'circle') { var also = elAlso('This poll is also on ', ', to vote themselves.'); if (also) h += '<small class="pl-meta">' + also.replace(/<\/?p[^>]*>/g, '') + '</small>'; }
     return h + (acts ? '<div class="pl-acts">' + acts + '</div>' : '');
   }
   function hdPollFor(mid){
@@ -14057,9 +14070,11 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     });
     if (c.canThank) h += '<button type="button" class="go" data-hdthanks="tap">🙏 Say thank you to everyone who wrote</button>' +
       '<button type="button" class="cbtn ghost bondwide" data-hdthanks="voice">🎙 Say thank you by voice</button>';
-    if (c.offApp && j.entries.length) h += '<p class="hint" style="margin-top:var(--space-12)">' + esc(c.for_member ? bondName(c.for_member) : (c.for_name || 'They')) + ' is not on Parwah. Show it on this phone, print it, or send the words.</p>' +
+    if (c.offApp && j.entries.length) h += '<p class="hint" style="margin-top:var(--space-12)">' + esc(c.for_member ? bondName(c.for_member) : (c.for_name || 'They')) + ' is not on Parwah. Show it on this phone, print it, or send the words.</p>' + elCardNote(c) +
       '<button type="button" class="cbtn bondwide" data-hdcardprint="1">🖨 Show or print this card</button>' +
       '<button type="button" class="cbtn ghost bondwide" data-hdcardshare="1">📤 Share the words</button>';
+    // Still being written: the writers are told it will open on the link on the day.
+    if (c.offApp && !j.entries.length) h += elCardNote(c);
     return h;
   }
   function hdCardWords(j){
@@ -18669,6 +18684,167 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     else if (!$('ff-sheet').hidden) ffClose();
   });
 
+  // ---------- a link for someone not on the app (api/_eldlink.mjs) ----------
+  // Dadi has WhatsApp and no app. An adult makes her one personal link from
+  // her page here and sends it on WhatsApp themselves; it opens a page of her
+  // own with no sign-in (site/public/apna/). This section shows whether the
+  // link is on, what came through it, and tells people writing a card, a
+  // question or a poll that it will show there too. Every function starts
+  // with "el".
+  var EL_API = '/api/events?area=eldlink';
+  var elData = null, elAt = 0, elFresh = {};
+  function elLabel(name){ return 'from ' + ftFirst(name) + "'s link"; }
+  function elLoad(force){
+    if (!state) return;
+    if (!force && Date.now() - elAt < 45000) { elTodayRender(); return; }
+    elAt = Date.now();
+    apiGet(EL_API + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId)).then(function(j){
+      if (!j || !j.ok) return;
+      var was = elNames();
+      elData = j; elTodayRender();
+      if (curTab === 'person' && personId) elPersonRender(personId);
+      // The cards that say "also on Dadi's link" are drawn again when that changes.
+      if (was !== elNames() && hdData) hdTodayRender();
+    }).catch(function(){});
+  }
+  function elPost(action, body){
+    return post(EL_API, Object.assign({ area: 'eldlink', code: state.code, memberId: state.memberId, action: action }, body || {}))
+      .catch(function(){ return { ok: false, error: 'No connection. Try again.' }; });
+  }
+  function elLink(id){ return ((elData && elData.links) || []).filter(function(l){ return l.memberId === id; })[0] || null; }
+  // A link that is on AND that its person has agreed to.
+  function elViaLink(id){ var l = elLink(id); return !!(l && l.state === 'on' && l.agreed); }
+  function elNames(){
+    var ns = ((elData && elData.links) || []).filter(function(l){ return l.state === 'on' && l.agreed; }).map(function(l){ return ftFirst(l.name) + "'s link"; });
+    return ns.length > 1 ? ns.slice(0, -1).join(', ') + ' and ' + ns[ns.length - 1] : (ns[0] || '');
+  }
+  // "This question is also on Dadi's link." Nothing when no link is on.
+  function elAlso(before, after){
+    var n = elNames();
+    return n ? '<p class="hdline" data-elalso="1">🔗 ' + esc(before + n + (after || '.')) + '</p>' : '';
+  }
+  function elCardNote(c){
+    return c && c.for_member && elViaLink(c.for_member) ? '<p class="hdline" data-elalso="1">🔗 ' + esc('On the day, this card also opens on ' + ftFirst(bondName(c.for_member)) + "'s link.") + '</p>' : '';
+  }
+  function elNoteBind(selId, noteId){
+    var sel = $(selId), note = $(noteId); if (!sel || !note) return;
+    var paint = function(){
+      var on = elViaLink(sel.value), m = ccMember(sel.value);
+      note.hidden = !on;
+      note.textContent = on ? '🔗 It will also show on ' + ftFirst(m ? m.name : 'their') + "'s link, where it can be heard and answered." : '';
+    };
+    sel.addEventListener('change', paint); paint();
+  }
+  // The address is always wa.me and the number is digits only, so nothing
+  // from anywhere can turn the Send button into a link to another site.
+  function elWa(digits, text){
+    var d = String(digits || '').replace(/\D/g, '');
+    return 'https://wa.me/' + (d.length >= 8 && d.length <= 15 ? d : '') + '?text=' + encodeURIComponent(text);
+  }
+  function elWhen(iso){ var d = new Date(iso); return isNaN(d) ? '' : dtf([], { day: 'numeric', month: 'short' }).format(d); }
+  function elPersonRender(id){
+    var card = $('el-card'); if (!card) return;
+    var m = ccMember(id);
+    // Only for someone in the family by name: not on Parwah, and with us.
+    if (!m || id === state.memberId || m.on_app !== false || rmGone(m) || !elData) { card.hidden = true; if (!elData) elLoad(true); return; }
+    var f = esc(ftFirst(m.name)), l = elLink(id), adult = !!elData.adult, fresh = elFresh[id], h = '<h3>🔗 ' + f + "'s link</h3>";
+    var said = (elData.declined || []).filter(function(d){ return d.memberId === id; })[0];
+    if (!l) {
+      h += '<p class="hint" style="margin:0 0 var(--space-12)">' + f + ' is not on Parwah. A link of their own opens one simple page from WhatsApp, with no sign-in: "I am fine", blessings, the family\'s messages, a call for help. It never shows the chat, health details, documents or costs.</p>';
+      if (said) h += '<p class="hdline">' + f + ' turned the last link off on ' + esc(elWhen(said.at)) + '. Ask them before sending another.</p>';
+      h += adult ? '<button type="button" class="cbtn" data-elmake="' + esc(id) + '">🔗 Send ' + f + ' a link</button>'
+                 : '<p class="hint" style="margin:0">An adult in the family can send it.</p>';
+    } else {
+      var st = l.state === 'expired' ? ['warn', 'Run out'] : l.agreed ? ['ok', 'On'] : ['warn', 'Sent, not opened yet'];
+      h += '<p class="hdline"><span class="ftchip ' + st[0] + '">' + st[1] + '</span> ' +
+        esc(l.state === 'expired' ? 'It ran out on ' + elWhen(l.expiresAt) + '. Keep it on to use the same link again.'
+          : (l.lastUsedAt ? 'Last used ' + locAgo(l.lastUsedAt) + '. ' : 'Not used yet. ') + 'On until ' + elWhen(l.expiresAt) + '.') + '</p>';
+      if (l.checkinBy) h += '<p class="hdline">🕚 Daily check-in by ' + esc(l.checkinBy) + ', from the link.</p>';
+      if (adult) {
+        var acts = '';
+        if (fresh) acts += '<a class="cbtn" id="el-wa" href="' + esc(elWa(fresh.digits, fresh.words + location.origin + fresh.path)) + '" target="_blank" rel="noopener noreferrer">Send on WhatsApp</a>' +
+          '<button type="button" class="cbtn ghost" data-elshare="' + esc(id) + '">Share another way</button>';
+        else acts += '<button type="button" class="cbtn" data-elmake="' + esc(id) + '">Send again on WhatsApp</button>';
+        acts += '<button type="button" class="cbtn ghost" data-elrenew="' + esc(id) + '">Keep it on 90 more days</button>' +
+          '<button type="button" class="cbtn ghost" data-eloff="' + esc(id) + '">Turn off ' + f + "'s link</button>";
+        h += '<div class="mbacts">' + acts + '</div>';
+        h += fresh ? '<p class="hint" style="margin:var(--space-8) 0 0">The link is ready. Parwah does not send it: you do, from your own WhatsApp. Anyone who has the link can open ' + f + "'s page, so send it only to " + f + '.</p>'
+                   : '<p class="hint" style="margin:var(--space-8) 0 0">Sending again makes a fresh link. The one sent before stops working.</p>';
+        // The two people they can ring from the page.
+        var can = elData.callable || [];
+        if (can.length) h += '<p class="eyebrow" style="margin:var(--space-16) 0 var(--space-8)">Who ' + f + ' can call from the page (up to two)</p><div class="pkind" id="el-contacts" role="group" aria-label="Who they can call from the page">' +
+          can.map(function(c){ var on = l.contacts.indexOf(c.id) >= 0; return '<button type="button" data-elcontact="' + esc(c.id) + '" aria-pressed="' + on + '"' + (on ? ' class="sel"' : '') + '>' + esc(ftFirst(c.name)) + '</button>'; }).join('') + '</div>';
+        if (l.state === 'on' && l.agreed && !l.checkinBy) h += '<p class="eyebrow" style="margin:var(--space-16) 0 var(--space-8)">A daily "I am fine"</p>' +
+          '<div class="pickrow"><label class="pick"><span>Ask ' + f + ' to tap by</span><input type="time" id="el-checktime" value="11:00"></label></div>' +
+          '<button type="button" class="cbtn ghost" data-elcheck="' + esc(id) + '" style="margin-top:var(--space-8)">Ask ' + f + '</button>' +
+          '<p class="hint" style="margin:var(--space-8) 0 0">' + f + ' sees the question on the page. It stays off until they say yes.</p>';
+      } else h += '<p class="hint" style="margin:0">An adult in the family can send it again or turn it off.</p>';
+    }
+    card.innerHTML = h; card.hidden = false;
+  }
+  function elMake(id){
+    var m = ccMember(id); if (!m) return;
+    elPost('eld_make', { personId: id }).then(function(j){
+      if (!j.ok) { toast(humanFail(j.error, 'Could not make the link')); return; }
+      elFresh[id] = { path: j.path, digits: j.digits, words: j.words };
+      toast('The link is ready. Send it to ' + ftFirst(m.name) + ' on WhatsApp.');
+      elAt = 0; elLoad(true);
+    });
+  }
+  $('el-card').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    var d = b.dataset, id = d.elmake || d.elrenew || d.eloff || d.elshare || d.elcheck || personId, m = ccMember(id) || {}, f = ftFirst(m.name);
+    if (d.elmake) {
+      var l = elLink(id);
+      if (l) askSheet('Make a fresh link for ' + f + '?', 'The link sent before stops working. ' + f + ' keeps everything already sent.', 'Make a fresh link', 'Not now').then(function(y){ if (y) elMake(id); });
+      else elMake(id);
+    } else if (d.elshare) {
+      var fr = elFresh[id]; if (!fr) return;
+      var text = fr.words + location.origin + fr.path;
+      if (navigator.share) navigator.share({ text: text }).catch(function(){});
+      else { try { navigator.clipboard.writeText(text).then(function(){ toast('Copied. Paste it in a message to ' + f + '.'); }, function(){ toast('Could not copy. Use Send on WhatsApp.'); }); } catch (x) { toast('Could not copy. Use Send on WhatsApp.'); } }
+    } else if (d.elrenew) {
+      elPost('eld_renew', { personId: id }).then(function(j){ toast(j.ok ? 'On for 90 more days' : humanFail(j.error, 'Could not do that')); elAt = 0; elLoad(true); });
+    } else if (d.eloff) {
+      askSheet('Turn off ' + f + "'s link?", 'The page stops opening at once. What ' + f + ' already sent stays in the family.', 'Turn off', 'Keep it on', true).then(function(y){
+        if (!y) return;
+        elPost('eld_off', { personId: id }).then(function(j){ delete elFresh[id]; toast(j.ok ? 'Turned off' : humanFail(j.error, 'Could not turn it off')); elAt = 0; elLoad(true); });
+      });
+    } else if (d.elcontact) {
+      var lk = elLink(personId); if (!lk) return;
+      var ids = lk.contacts.slice(), at = ids.indexOf(d.elcontact);
+      if (at >= 0) ids.splice(at, 1); else { if (ids.length >= 2) { toast('Up to two people. Take one off first.'); return; } ids.push(d.elcontact); }
+      elPost('eld_contacts', { personId: personId, contacts: ids }).then(function(j){ if (!j.ok) toast(humanFail(j.error, 'Could not save that')); elAt = 0; elLoad(true); });
+    } else if (d.elcheck) {
+      var t = ($('el-checktime') || {}).value || '';
+      post(API.events, { code: state.code, memberId: state.memberId, type: 'quiet_ask', targetId: id, checkinBy: t }).then(function(j){
+        toast(j.ok ? f + ' will see the question on the page' : humanFail(j.error, 'Could not ask'));
+      }).catch(function(){ toast('No connection - try again'); });
+    }
+  });
+  // Today: what came through a link, for me or for the whole family.
+  var EL_ABOUT = { ashirwad: 'for your Ashirwad', shukriya: 'for your shukriya', card: 'for the card', photo: 'for the family photo' };
+  function elTodayRender(){
+    var box = $('el-today'); if (!box) return;
+    var said = ((elData && elData.said) || []).filter(function(x){ return Date.now() - Date.parse(x.at) < 7 * 86400000; }).slice(0, 5);
+    var h = said.length ? '<div class="mbcard hdcard" id="el-said"><p class="mbeye">🔗 From the family not on the app</p>' + said.map(function(x){
+      return '<div class="crow"><span class="txt"><b>' + esc(ftFirst(x.name)) + (x.hasVoice ? ' sent a voice note' : ': ' + esc(x.text || '')) + '</b>' +
+        '<small>' + esc((EL_ABOUT[x.about] || '') + ' · ' + x.label) + '</small></span>' +
+        (x.hasVoice ? '<button type="button" class="cbtn ghost" data-elplay="' + esc(x.id) + '">▶ Listen</button>' : '') + '</div>';
+    }).join('') + '</div>' : '';
+    if (h === box.getAttribute('data-sig')) return;
+    box.setAttribute('data-sig', h); box.innerHTML = h;
+  }
+  $('el-today').addEventListener('click', function(e){
+    var b = e.target.closest('[data-elplay]'); if (!b) return;
+    b.disabled = true;
+    elPost('eld_audio', { id: b.getAttribute('data-elplay') }).then(function(j){
+      b.disabled = false;
+      if (!j.ok || !/^data:audio\//.test(j.audio || '')) { toast(humanFail(j.error, 'Could not play it')); return; }
+      try { new Audio(j.audio).play(); } catch (x) { toast('Could not play it'); }
+    });
+  });
+
   // ---------- consent, control and care both ways ----------
   // Care is not only done TO a parent. Here the parent blesses, asks how a
   // child's day is, and answers for themself about their location, their
@@ -18687,7 +18863,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     return m ? m.name : (cnState && cnState.names && cnState.names[id]) || 'Someone';
   }
   function cnPeople(){
-    if (cnState && cnState.people) return cnState.people;
+    // Someone not on Parwah whose own link is on can be sent a blessing too (api/_eldlink.mjs).
+    if (cnState && cnState.people) return cnState.people.concat(cnState.linked || []);
     return (membersCache || []).filter(function(m){ return m.id !== state.memberId && onApp(m); }).map(function(m){ return m.id; });
   }
   function cnLoad(force){
@@ -18754,6 +18931,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
             cnBtn('cnvoice', c.id, '🎙 Say it', true) + '</div></div>';
         } else {
           h += '<div class="cn-card" data-cncard="' + esc(c.id) + '"><h3>🙏 Ashirwad from ' + f + (c.toAll ? ', for everyone' : '') + '</h3>' +
+            (c.via === 'link' ? '<p class="hdtold">' + esc(elLabel(c.fromName)) + '</p>' : '') +
             (c.hasVoice ? '<div class="cn-acts">' + cnVoice('cn-a-' + c.id, c.secs, '&audio=' + c.id) + '</div>' : '<p class="cn-say">' + esc(c.line) + '</p>') +
             '<div class="cn-acts">' + cnBtn('cnpranam', c.id, '🙏 Pranam') + cnBtn('cnvoice', c.id, '🎙 Voice reply', true) + '</div></div>';
         }
@@ -18762,7 +18940,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       var ans = [];
       (j.sent || []).forEach(function(s){ (s.replies || []).forEach(function(r){ if (Date.now() - Date.parse(r.at) < 86400000) ans.push({ s: s, r: r }); }); });
       if (ans.length) h += '<div class="cn-card ok" data-cnanswers="1"><h3>🧡 Answers for you</h3>' + ans.slice(0, 6).map(function(x){
-        return '<p><b>' + esc(cnFirst(x.r.name)) + '</b>' + (x.r.hasVoice ? ' sent a voice reply' : ': ' + esc(x.r.line)) + '</p>' +
+        return '<p><b>' + esc(cnFirst(x.r.name)) + '</b>' + (x.r.hasVoice ? ' sent a voice reply' : ': ' + esc(x.r.line)) + (x.r.via === 'link' ? ' <span class="hdtold">(' + esc(elLabel(x.r.name)) + ')</span>' : '') + '</p>' +
           (x.r.hasVoice ? '<div class="cn-acts">' + cnVoice('cn-r-' + x.s.id + '-' + x.r.memberId, x.r.secs, '&reply=' + x.s.id + '&by=' + x.r.memberId) + '</div>' : '');
       }).join('') + '</div>';
       if (j.me && j.me.rotaNo) h += '<div class="cn-card" data-cnrotaoff="1"><h3>📞 No daily call, as you asked</h3><p>The family does not set one up unless you say so.</p>' +
@@ -18786,8 +18964,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     var ids = cnPeople();
     if (cnTo !== 'all' && ids.indexOf(cnTo) < 0) cnTo = 'all';
     $('cn-who').innerHTML = '<button type="button" data-cnto="all"' + (cnTo === 'all' ? ' class="sel"' : '') + ' aria-pressed="' + (cnTo === 'all') + '">Everyone</button>' +
-      ids.map(function(id){ return '<button type="button" data-cnto="' + esc(id) + '"' + (cnTo === id ? ' class="sel"' : '') + ' aria-pressed="' + (cnTo === id) + '">' + esc(cnFirst(cnName(id))) + '</button>'; }).join('');
-    $('cn-howday').disabled = cnTo === 'all';
+      ids.map(function(id){ return '<button type="button" data-cnto="' + esc(id) + '"' + (cnTo === id ? ' class="sel"' : '') + ' aria-pressed="' + (cnTo === id) + '">' + esc(cnFirst(cnName(id))) + (elViaLink(id) ? ' (on their link)' : '') + '</button>'; }).join('');
+    $('cn-howday').disabled = cnTo === 'all' || elViaLink(cnTo);
     $('cn-howday').textContent = cnTo === 'all' ? '🧡 How is your day? Choose one person first' : '🧡 Ask ' + cnFirst(cnName(cnTo)) + ': how is your day?';
   }
   function cnOpen(mode, replyTo){

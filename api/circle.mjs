@@ -7,6 +7,7 @@ import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
 import { pushCircle } from './_push.mjs';
 import { consentPage } from './_ladder.mjs';
+import { eldCloseFor } from './_eldlink.mjs';
 import { award } from './_coins.mjs';
 import { index as kinIndex, placement, PLACES, GENDERS, FAMILY_TYPES, genderFromRelation } from './_kin.mjs';
 import { famlinkAction } from './_famlink.mjs';
@@ -298,6 +299,9 @@ export default async function handler(req, res) {
         await sql`update join_requests set status = 'approved', decided_by = ${mRow[0].id}, decided_at = now() where id = ${q.id}`;
         await sql`insert into events (circle_id, member_id, type, text)
                   values (${circle.id}, ${linked[0].id}, 'join', ${q.name + ' joined the ' + spaceWord(circle) + ' - ' + mRow[0].name + ' let them in'})`;
+        // They have the whole app now: their no-sign-in link is closed, and
+        // what they sent through it stays under their name (api/_eldlink.mjs).
+        await eldCloseFor(sql, circle.id, linked[0].id, 'joined');
         await pushCircle(sql, circle.id, { title: '🧡 You are in - ' + circle.name, body: mRow[0].name + ' let you in. Open Parwah to say hello.' }, { only: linked[0].id });
         return res.status(200).json({ ok: true, memberId: linked[0].id });
       }

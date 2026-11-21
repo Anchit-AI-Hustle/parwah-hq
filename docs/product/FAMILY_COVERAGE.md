@@ -39,6 +39,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | "All is well" and "Medicines taken" pressed with no network are kept and sent later with their own time | Live | offline queue (`api/_offline.mjs`) |
 | The app opens on a slow or absent network, with the emergency card and Call buttons | Live | service worker, saved shell |
 | An adult can check that Parwah itself is working | Live | "Is Parwah working?" in Profile |
+| **A parent with no app says "I am fine" each day, asks for a call, and calls for help** | Live | Dadi's link (stream I): her own no-sign-in page, sent on WhatsApp by a family adult. "I am fine" is a real check-in under her name and counts as the day's sign of life; the family can ask her for a daily time and she says yes on her own page. "Call me" pushes the person she chose, or today's person on the call rota. "I need help" waits five seconds, then raises the family's own SOS as her, with 112 and her two people to ring; her place goes only if she taps to send it. `api/_eldlink.mjs` behind `/api/events?area=eldlink`, page at `/apna/` |
 
 ### B. Looking after health and care
 | Need | Status | Where |
@@ -101,6 +102,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | **One question a week for the whole family** | Live | at least 40 warm questions; each member answers by voice or text and reads the others once they have answered; someone not on Parwah can be answered for ("told by Dadi, recorded by Rohan") |
 | **Being answered**: heard-by on a story, a thank-you for a card, a reaction on a photo | Live | stories ("Suna, bahut accha laga" or a voice reply, pushed to the teller); cards (reminded the evening before, never handed over empty, "Say thank you", a print and share view for someone not on Parwah); photos (reactions, a voice caption, share one photo, one "new photos" push a day) |
 | **Equal votes** | Live | chat polls and date polls: a secret ballot (no name is sent to any phone; a chat poll's counts stay hidden until it closes, and the screen says so), "Waiting for...", one reminder, a vote "for Dadi, by Rohan", the host sees the tally before a lock and the lock records it. Every vote counts once, whoever cast it |
+| **A voice for the member who will never install the app** | Live | Dadi's link (stream I). She sees only what was sent to HER or to the whole family: blessings, thanks, her cards on their day, the newest photo of a whole-family album, the weekly question, an open family poll. She answers with a heart, a few words or a voice note, sends an Ashirwad to one person or everyone, answers the question, and votes as herself (not "for Dadi, by Rohan"). In the app it all sits under her own name, marked "from Dadi's link". Never shown: the chat, health, documents, the register, costs, location, a private or chosen album |
 | Care that flows back from a parent: Ashirwad (a one-tap blessing or a voice note, answered with "🙏 Pranam" or a voice reply) and "How is your day?" asked of a child | Live | `api/_ashirwad.mjs` behind `/api/chats?area=ashirwad`; the parent's big button is on the senior Today |
 | A daily "what happened today" digest | Live | Aaj kya hua, from Ekta: plain words for everyone; one model call per member per day at most, 12 a circle a day, only when the owner's key is set |
 | A morning note of the day ahead | Live | Aaj ka din, from Ekta (`api/_ektaday.mjs`): medicine times of people the reader may see, plans, birthdays and anniversaries today, renewals this week, who is away. Plain rules by default; a model line only with `EKTA_MORNING_MODEL=on`, on the same one call a day as the evening note. Senior mode has a big "Sunao" button on both notes, and the thumbs |
@@ -386,6 +388,54 @@ an equal, and each rule is enforced on the server:
 
 Not built here: a child's own page; a card saved as an image (Print, and
 the phone's "Save as PDF", is the way today).
+
+### Dadi's link: a voice for someone not on the app (stream I, live)
+
+Three audits named the same gap: check-in, cards, stories, photos, votes
+and thanks all needed an account, so a grandmother with WhatsApp and no
+app had no voice. One personal link now gives her one.
+
+- **The link.** An adult makes it from the person's page ("Send Dadi a
+  link") and sends it THEMSELVES: a `https://wa.me/<number>?text=` button,
+  or the phone's share sheet. Parwah sends nothing: no SMS, no paid
+  telephony. The key is 256 random bits; only its SHA-256 is stored
+  (`eld_links.token_hash`). It rides after the `#` in the address, so no
+  server, log or Referer ever sees it, the page takes it out of the
+  address bar at once, and every call carries it in the `X-Parwah-Link`
+  header. One link per person; 90 days, and any adult can keep it on;
+  any adult turns it off, and so can she. The family is told once, in the
+  feed. A wrong, old or turned-off key gets the same plain page.
+- **Who.** Only someone in the family by name (no `user_id`), who is with
+  us. A remembered person is refused, and a link stops the moment its
+  person is marked as remembered or joins Parwah with "This is me" (what
+  she sent stays hers). A child cannot make, renew or turn off a link.
+- **Consent.** The first open says, in Hindi and English, who set it up
+  and what the family can see, with "All right" and "I do not want this"
+  (which turns the link off and tells the adult kindly). Nothing else
+  works before "All right". She sees and deletes anything she sent.
+- **The page** (`site/public/apna/`). Very large type, 64px buttons, one
+  thing on a screen, Hindi and English on every button, a read-aloud
+  button on every message, no menus. It fetches no font, script or
+  stylesheet from anywhere, carries no analytics, and asks not to be
+  indexed or to send a referrer.
+- **The rule for every read and write**: the key decides the member AND
+  the family, and an id sent by the page is only looked up beside both.
+- **In the app.** Her page in the app shows whether the link is on, when
+  it was last used and until when, "Send again on WhatsApp", "Keep it on
+  90 more days", "Turn off", the two people she can call, and a daily
+  "I am fine" to ask her for. Today shows what she said to me or to the
+  family. The shukriya sheet, the weekly question, a family poll, her
+  card and the Ashirwad picker each say it will also show on her link.
+- **Limits**, all fail closed: 10 links a day for one adult, 30 for a
+  family; 30 wrong keys in ten minutes from one address; 240 actions an
+  hour for one link; "Call me" once in three hours. The SOS keeps the
+  family's own SOS limits, which fail open on purpose.
+
+Not built here: stories told by voice from the page (a relative still
+records them, "told by Dadi, recorded by Rohan"); the weekly question in
+Hindi (it is read aloud in the language it was written in); a link for
+a child. "Send again" makes a fresh link, because the server keeps only
+a hash and cannot show the old one again.
 
 ## 4. What comes next
 
