@@ -239,6 +239,10 @@ await M.fill('#hd-b-line', 'Kal ki baat par thoda bura laga'); await M.fill('#hd
 await M.click('#hd-b-send');
 ok('2. Meena sends "Mujhe baat karni hai" to Rohan', await toastSays(M, /Only Rohan can see it/) && await sees(M, '#hd-today', /You told Rohan: Mujhe baat karni hai/));
 await reloadHome(R);
+// A row in "From the family" first, shown once; "Answer" opens it where it is answered.
+await R.waitForSelector('#tn-from [data-tnkind="word"] [data-tngo]', T);
+ok('2. it is a row in From the family, and not a second time lower down', await sees(R, '#tn-from [data-tnkind="word"]', /Meena: Mujhe baat karni hai/) && !(await R.$('#hd-today [data-hdbreply]')));
+await R.click('#tn-from [data-tnkind="word"] [data-tngo]');
 ok('2. Rohan sees it on Today, with three ways to answer in words', await sees(R, '#hd-today', /Only you and Meena can see this/) && await sees(R, '#hd-today', /Meena: Mujhe baat karni hai \(I need to talk\)/)
   && await sees(R, '#hd-today', /Kal ki baat par thoda bura laga After dinner/)
   && (await R.$$eval('#hd-today [data-hdbreply]', bs => bs.map(b => b.textContent.trim()))).join('|') === '📞 I will call you at...|🫶 Aao, baat karte hain (Come, let us talk)|🎙 Answer by voice');
@@ -309,6 +313,7 @@ ok('7. "Maaf karna" opens ready, for Meena', await R.$eval('#hd-b-to', s => s.va
 await R.click('#hd-b-send');
 ok('7. one tap sends it, privately', await toastSays(R, /Only Meena can see it/) && (await q1(`select count(*)::int as n from baat where kind = 'sorry' and from_member = $1 and to_member = $2`, [rohan.id, meena.id])).n === 1);
 await reloadHome(M);
+await M.waitForSelector('#tn-from [data-tnkind="word"] [data-tngo]', T); await M.click('#tn-from [data-tnkind="word"] [data-tngo]');
 ok('7. Meena sees "Maaf karna" from Rohan', await sees(M, '#hd-today', /Rohan: Maaf karna \(I am sorry\)/));
 await M.click('#hd-today [data-hdbreply^="come|"]');
 ok('7. she answers "Aao, baat karte hain"', await sees(M, '#hd-today', /You answered:.*Aao, baat karte hain/));
@@ -436,8 +441,9 @@ await PP.click('#bs-x');
 const cardD = await api(rohan, 'plans', { action: 'bond_card_start', forMember: dadi.id, occasion: 'birthday', date: today, title: "Dadi's birthday" });
 await api(rohan, 'plans', { action: 'bond_card_add', cardId: cardD.id, kind: 'text', text: 'Pranam Dadi, janamdin mubarak' });
 await reloadHome(M);
-await M.waitForSelector('#bond-today [data-bcopen="' + cardD.id + '"]', T);
-await M.click('#bond-today [data-bcopen="' + cardD.id + '"]');
+// A card she has not written in is shown once: a row in "From the family", or (once it has gone to its person) in Closer together.
+await M.waitForSelector('#tn-from [data-tncard="' + cardD.id + '"], #bond-today [data-bcopen="' + cardD.id + '"]', T);
+await M.click('#tn-from [data-tncard="' + cardD.id + '"], #bond-today [data-bcopen="' + cardD.id + '"]');
 await shown(M, '#bs-body [data-hdcardprint]');
 ok('4. a card for Dadi, who is not on Parwah: show or print it, or share the words', await sees(M, '#bs-body', /Dadi is not on Parwah\. Show it on this phone, print it, or send the words\./) && await shown(M, '#bs-body [data-hdcardshare]'));
 await design(M, '#bondsheet', 'the card for someone not on Parwah');
@@ -450,8 +456,8 @@ await M.click('#mbb-close');
 await call(HANDLERS.book, { token: papa.token, query: { area: 'bond' }, body: { area: 'bond', code: 'SHARMA', memberId: papa.id, action: 'teller_invite', targetId: papa.id } });
 const ask = (await call(HANDLERS.book, { method: 'GET', token: papa.token, query: { area: 'bond', view: 'today', circle: 'SHARMA', member: papa.id } })).ask;
 await call(HANDLERS.book, { token: papa.token, query: { area: 'bond' }, body: { area: 'bond', code: 'SHARMA', memberId: papa.id, action: 'story_answer', id: ask.id, text: 'We walked four kilometres to school, and raced the bus.' } });
-await M.evaluate(() => { location.hash = '#memory'; });
-await M.waitForSelector('#pane-memory [data-mbv="stories"]', T); await M.click('#pane-memory [data-mbv="stories"]');
+await M.evaluate(() => { location.hash = '#fun'; });
+await M.waitForSelector('#tn-together [data-mbv="stories"]', T); await M.click('#tn-together [data-mbv="stories"]');
 await M.waitForSelector('#mb-stories [data-hdheard="' + ask.id + '"]', T);
 ok('4. Papa\'s story offers "Suna, bahut accha laga" and a voice reply, in words', /Suna, bahut accha laga/.test(await M.textContent('#mb-stories [data-hdheard="' + ask.id + '"]')) && /Reply by voice/.test(await M.textContent('#mb-stories [data-hdheardv="' + ask.id + '"]')));
 await M.click('#mb-stories [data-hdheard="' + ask.id + '"]');

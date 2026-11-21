@@ -198,6 +198,10 @@ ok('one tap sends it, and says so', await toastSays(PP, /Ashirwad sent/) && awai
 ok('it is saved for Rohan alone', await until(async () => (await one(`select count(*)::int as n from ashirwad where to_member = $1 and line = 'All the best for the exam'`, [rohan.memberId])).n === 1));
 
 const PR = await home(rohan);
+// It is a row in "From the family" first, shown once; "See it" opens the card.
+ok('Rohan sees it in From the family, once', await sees(PR, '#tn-from [data-tnkind="blessing"]', /Papa sent you Ashirwad/)
+  && await PR.waitForFunction(() => document.getElementById('cn-today').getAttribute('data-ready') === '1' && !document.querySelector('#cn-today [data-cncard]'), null, T).then(() => true, () => false));
+await PR.click('#tn-from [data-tnkind="blessing"] [data-tngo]');
 ok('Rohan sees the card on Today', await sees(PR, '#cn-today [data-cncard]', /Ashirwad from Papa.*All the best for the exam/s));
 ok('with a one-tap Pranam and a voice reply', await shown(PR, '#cn-today [data-cnpranam]') && await shown(PR, '#cn-today [data-cnvoice]'));
 await design(PR, '#cn-today', 'an Ashirwad card on Today');
@@ -217,6 +221,7 @@ ok('with Rohan chosen, the ask names him', await sees(PP, '#cn-howday', /Ask Roh
 await PP.click('#cn-howday');
 ok('Papa asks Rohan how his day is', await toastSays(PP, /Asked Rohan/));
 await PR.reload();
+await PR.waitForSelector('#tn-from [data-tnkind="day"] [data-tngo]', T); await PR.click('#tn-from [data-tnkind="day"] [data-tngo]');
 ok('Rohan gets the ask, with one-tap answers', await sees(PR, '#cn-today [data-cncard]', /Papa asks.*How is your day/s) && await PR.locator('#cn-today [data-cnanswer]').count() >= 3);
 await design(PR, '#cn-today', 'a How is your day card on Today');
 await PR.click('#cn-today [data-cnanswer][data-k="busy"]');
@@ -288,7 +293,9 @@ ok('and his Today says so, with a way back', await sees(PP, '#cn-today [data-cnr
 // =============================================================== B3: costs
 await api('care', rohan, { action: 'expense_add', amount: 500, category: 'medicines', forMemberId: papa.memberId });
 await api('care', papa, { action: 'expense_add', amount: 120, category: 'groceries' });
-const careSec = async (page, sec) => { await page.evaluate(() => { location.hash = '#care'; }); await page.waitForSelector('#care-seg [data-sec="' + sec + '"]', { state: 'visible', ...T }); await page.click('#care-seg [data-sec="' + sec + '"]'); };
+const careSec = async (page, sec) => { await page.evaluate(() => { location.hash = '#care'; }); await page.waitForSelector('#care-seg', { state: 'visible', ...T });
+  if (!(await page.isVisible('#care-seg [data-sec="' + sec + '"]'))) await page.click('#tn-care-more');
+  await page.waitForSelector('#care-seg [data-sec="' + sec + '"]', { state: 'visible', ...T }); await page.click('#care-seg [data-sec="' + sec + '"]'); };
 await careSec(PP, 'expenses');
 ok('Papa has a "Show me the costs" switch, off', await shown(PP, '#cn-costs-row') && !(await PP.isChecked('#cn-costs')) && await sees(PP, '#cn-costs-hint', /only what you paid yourself/));
 ok('and reads only what he paid', await sees(PP, '#ex-list', /120/) && !/500/.test(await PP.textContent('#ex-list')) && !/500/.test(await PP.textContent('#ex-sum')));

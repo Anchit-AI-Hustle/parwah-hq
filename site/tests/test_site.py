@@ -17,8 +17,13 @@ PAGES = sorted((ROOT / "public").rglob("*.html"))
 # suite, where visibility is knowable); and the shared stylesheet is the
 # marketing design system, which the app deliberately does not use.
 APP_PAGE = ROOT / "public" / "index.html"
+# /apna/ is one person's own no-sign-in page (api/_eldlink.mjs): an
+# application too, and a private one. It fetches no font and no shared
+# stylesheet on purpose (a slow network), has no share card and is never
+# measured; its own rules are checked under "eldlink:" below.
+ELD_PAGE = ROOT / "public" / "apna" / "index.html"
 SITE_PAGES = [p for p in PAGES
-              if p != APP_PAGE and "demo" not in p.relative_to(ROOT / "public").parts]
+              if p != APP_PAGE and p != ELD_PAGE and "demo" not in p.relative_to(ROOT / "public").parts]
 
 def markup_only(html):
     """Drop script and style bodies. A href inside a JS template string is
@@ -876,6 +881,7 @@ CIRCLE_WIDE_OK = {
     ("_standing.mjs", "Anyone with the code can now join"): "two adults opened the door: it changes who can walk in, for everyone",
     ("_standing.mjs", "will be deleted in"): "the whole family is about to be deleted: every member must hear, with the way to stop it",
     ("_remember.mjs", "A quiet day to remember"): "a day of remembrance is the whole family's, once a year",
+    ("_eldlink.mjs", "fineLine(L.name)"): "someone not on the app tapped 'I am fine' on their link: the whole family hears, once a day, when no daily check-in is set",
 }
 def _push_calls(src):
     out = []
@@ -1213,7 +1219,7 @@ _an = _an_path.read_text(encoding="utf-8") if _an_path.exists() else ""
 # it is a page we send traffic to.
 # The app is excluded by being the app, wherever it lives - it moved from
 # /app/ to the root, and a path-based rule would have demanded analytics on it.
-_measured = [q for q in PAGES if q != APP_PAGE]
+_measured = [q for q in PAGES if q != APP_PAGE and q != ELD_PAGE]
 check("analytics: there are marketing pages to measure", len(_measured) >= 5,
       f"{len(_measured)} pages")
 for _mp in _measured:
@@ -1565,7 +1571,7 @@ check("day: the verdict, band, coming up and hours all read one timeline",
       and "segs.slice(at + 1, at + 6)" in appday)
 check("day: the detail is in tabs, and the day opens on the overview",
       'role="tablist"' in appday and 'id="mu-tabs"' in appday
-      and "if (t === 'day' && curTab !== 'day') showMuTab('overview');" in appday)
+      and "if (t === 'day' && tnWasTab !== 'day') showMuTab('overview');" in appday)
 check("day: no city is told apart from an unknown one",
       "unset: true" in plc and "j.place.unset" in appday and 'id="mu-addcity"' in appday)
 _coins_src = (API_DIR / "_coins.mjs").read_text(encoding="utf-8")
@@ -2094,23 +2100,44 @@ check("theme: a status button keeps its status colour under the Mela gradient",
 # The day, Profile). The Today screen's own cards and shortcuts are ranked in
 # docs/design/TODAY.md and guarded by the "today:" checks.
 _navseg = _appt[_appt.index('<nav class="tabs" id="tabs"'):_appt.index('id="side-groups-head"')]
-_nav = re.findall(r'<button data-tab="(\w+)"(?! data-sec)([^>]*)>', _navseg)
+_nav = re.findall(r'<button data-tab="(\w+)"(?! data-(?:sec|mbv))([^>]*)>', _navseg)
 # Owner (2026-10-04): Chat, Ask Ekta and Together (Plans & calls, Games,
 # Drawing board) sit right under Today, ahead of the records. On a phone,
 # Ekta is a tab, New chat is in the top bar, and Together is in the menu.
-_want_nav = ["home", "chat", "ekta", "fun", "vault", "memory", "care", "people", "notifs", "day", "profile"]
-check("order: the sidebar runs by real-life use",
+# Owner (2026-11-20, after the family walkthrough): FIVE PLACES. A phone had
+# five tabs, five top-bar icons and a 30-item menu, and Chat had no tab
+# while Vault did. Now: Today, Chat, Together, Family, More, on the phone's
+# tab bar, in the menu and in the laptop sidebar alike. Vault, To do, Ekta,
+# The day, Notifications and Profile are under More. The rules for which
+# screen belongs to which place are in api/_todayrules.mjs (placeOf).
+_want_nav = ["home", "chat", "fun", "people", "memory", "menu", "vault", "care", "ekta", "notifs", "day", "profile"]
+check("order: the sidebar is the five places, then what More holds",
       [t for t, _ in _nav] == _want_nav, " > ".join(t for t, _ in _nav))
-check("order: the phone tab bar is Today, Vault, Ekta, To do, Family - one bar, SOS docked at its left",
-      [t for t, a in _nav if "deskonly" not in a] == ["home", "ekta", "vault", "care", "people"]
-      and all(x in _appt for x in ('.tabs button[data-tab="home"]{order:1}', '.tabs button[data-tab="vault"]{order:2}',
-                                   '.tabs button[data-tab="ekta"]{order:3}', '.tabs button[data-tab="care"]{order:4}',
-                                   '.tabs button[data-tab="people"]{order:5}', ".tabs .inner{padding-left:68px}")),
+check("order: the phone tab bar is Today, Chat, Together, Family, More - one bar, SOS docked at its left",
+      [t for t, a in _nav if "deskonly" not in a] == ["home", "chat", "fun", "people", "menu"]
+      and all(x in _appt for x in ('.tabs button[data-tab="home"]{order:1}', '.tabs button[data-tab="chat"]{order:2}',
+                                   '.tabs button[data-tab="fun"]{order:3}', '.tabs button[data-tab="people"]{order:4}',
+                                   '.tabs button[data-tab="menu"]{order:5}', ".tabs .inner{padding-left:68px}")),
       " > ".join(t for t, a in _nav if "deskonly" not in a))
 _drw = _appt[_appt.index('<div class="dhead">'):_appt.index('id="d-groups-wrap"')]
 _drw_top = re.findall(r'class="ditem(?: dparent)?" data-(?:tab|grp)="(\w+)"', _drw)
-check("order: the menu drawer runs by real-life use",
-      _drw_top == _want_nav, " > ".join(_drw_top))
+check("order: the menu drawer is the same five places, each folded until it is where you are",
+      _drw_top == ["home", "chat", "fun", "people", "menu"] and _drw.count('class="dgroup closed" data-place=') == 3
+      and len(re.findall(r'class="ditem sub"', _drw)) <= 18,
+      " > ".join(_drw_top))
+_today_rules = (API_DIR / "_todayrules.mjs").read_text(encoding="utf-8")
+check("nav: every old address is still a screen, and More is one more",
+      all(("'" + t + "'") in _appt[_appt.index("var TABS = ["):_appt.index("];", _appt.index("var TABS = ["))]
+          for t in ("home", "people", "person", "memory", "vault", "care", "day", "chat", "ekta", "profile", "fun", "notifs", "menu"))
+      and all(('id="pane-' + t + '"') in _appt for t in ("home", "people", "person", "memory", "vault", "care", "day", "chat", "ekta", "profile", "fun", "notifs", "menu")))
+check("nav: stories, recipes and the album are reached from Together, not from Health & contacts",
+      all(x in _appt for x in ('id="tn-together"', 'data-goto="memory" data-mbv="album">', 'data-goto="memory" data-mbv="stories">', 'data-goto="memory" data-mbv="recipes">'))
+      and "view === 'stories' || view === 'recipes' || view === 'album'" in _today_rules and "b.hidden = v === 'health';" in _appt)
+check("nav: To do opens on one list with three filters at most; the other sections fold under More",
+      len(re.findall(r'data-tfilter="', _appt[_appt.index('id="task-filter-seg"'):_appt.index('id="rlist"')])) <= 3
+      and _appt.count('class="tn-extra"') == 6 and 'id="tn-care-more"' in _appt and "#care-seg .tn-extra{display:none}" in _appt)
+check("nav: Ekta is one tap from Today and from Chat",
+      'id="tn-ekta-today" data-goto="ekta"' in _appt and 'id="tn-ekta-chat" data-goto="ekta"' in _appt)
 # Owner (2026-10-13): nothing floats on a phone. New chat sits in the top
 # bar, SOS is docked in the tab bar, Ekta is a tab - for parents too; that
 # none of them cover All is well, Pills or SOS is proved in firstrun.e2e.
@@ -2708,7 +2735,7 @@ check("repairs: the phone that forgot waits for the family with its secret, then
       and "setInterval(function(){ rsPoll(false); }, 10000)" in _app_src and "document.hidden" in _app_src[_app_src.index("function rsPoll("):_app_src.index("function rsPoll(") + 400])
 check("repairs: the server's newer replies are read: a voice task's own title and time, a throttled SOS, Ekta's emergency in chat, a horoscope feed that is down",
       "intent.task.title" in _app_src and "voiceDue(intent.task.time" in _app_src and "if (j.throttled)" in _app_src
-      and "if (j.ektaEmergency) chatUrgent(v)" in _app_src and "h.feedDown" in _app_src)
+      and "if (j.ektaEmergency) chatUrgent(u.text)" in _app_src and "h.feedDown" in _app_src)
 check("repairs: the To do filters call the function that exists",
       "renderReminders(" not in _js)
 
@@ -3751,8 +3778,21 @@ check("digest: what is gathered is only what the viewer may open - each feature'
       and "s.visibility = 'circle' or s.about_member = ${mid} or (s.visibility = 'some' and ${mid} = any(s.share_with))" in _dg_gather
       and "join pasand_rec_to t on t.rec_id = r.id and t.member_id = ${mid}" in _dg_gather
       and "for_member is distinct from ${mid} and for_member2 is distinct from ${mid}" in _dg_gather
-      and not re.search(r"from\s+(notes|vault_\w+|legacy_asset_\w+|biomarker_records|pulse|messages|care_bills|care_expenses|pay_\w+|book_consent)\b", _dg)
+      and not re.search(r"from\s+(notes|vault_\w+|legacy_asset_\w+|biomarker_records|pulse|care_bills|care_expenses|pay_\w+|book_consent)\b", _dg)
       and "b.name" not in _dg_gather and "answer_text" not in _dg and "export function digestMaySee(" in _dgr)
+# Changed Nov 2026 (the family walkthrough): the note leads with what is FOR
+# the reader, so it now knows WHO wrote to them today and HOW MANY times. It
+# still never reads a word of any message: one query, a count grouped by
+# sender, only in chats the reader is in, and the only use of the text
+# column is to leave SOS messages out.
+check("digest: MESSAGES ARE COUNTED, NEVER READ - who wrote and how many, in chats the reader is in; joins are not in the note",
+      _dg.count("from messages") == 1
+      and "select m.member_id as by, (c.kind = 'dm') as dm, count(*)::int as n" in _dg_gather
+      and "(c.kind = 'circle' or exists (select 1 from chat_members x where x.chat_id = c.id and x.member_id = ${mid}))" in _dg_gather
+      and _dg_gather.count("m.text") == 1 and "m.text not like" in _dg_gather
+      and "where circle_id = ${cid} and to_member = ${mid}" in _dg_gather
+      and "raw.joined" not in _dg and "joined:" not in _dgr and "happened too" not in _dgr
+      and "message: 94, thanks: 92, plan_ask: 90" in _dgr)
 check("digest: ONE CALL PER MEMBER PER DAY - the row is claimed final once, and only the claimer may ask the model",
       "primary key (member_id, day)" in _dg and "where digest_daily.final = false" in _dg_open
       and "if (mine[0] && evening) row = await digestByModel(" in _dg_open and _dg.count("digestByModel(") == 2
@@ -4090,9 +4130,12 @@ check("safety: calls and texts not set up is said in words, in Profile and on th
       and "if (!cfg.on) out.line = CALLS_OFF_LINE;" in _sf_dial and 'id="sf-calls"' in _app_src
       and "if (j.dialed && j.dialed.line && !j.throttled) $('ss-status').textContent += " in _app_src)
 check("safety: any sign of life that day counts as checked in (the tap, a pulse, a medicine tick, a chat message), never an SOS message",
-      all(x in _fc_api for x in ("from events where member_id = ${memberId} and type = 'checkin'", "from pulse where member_id = ${memberId} and day = ${today}",
+      all(x in _fc_api for x in ("from events where member_id = ${memberId} and type = 'checkin'", "from pulse where member_id = ${memberId} and at >= ${from}",
                                  "from medicine_doses where marked_by = ${memberId} and taken_at >= ${from}",
                                  "from messages where member_id = ${memberId} and created_at >= ${from} and text not like '🆘%'")))
+check("safety: asking someone for a daily check-in names its push kind, is limited by a limiter that fails closed, and never pushes at someone with no app",
+      "rateLimit(sql, 'quietask', t.id, 3, 86400, { failClosed: true })" in _fc_api
+      and "if (t.on_app) await pushCircle(sql, circle.id, { kind: 'care', title: '🕚 ' + me.name + ' asks: a daily check-in by '" in _fc_api)
 check("safety: pausing someone else's check-in is a question on their own phone, never a notice afterwards",
       "if (t.id !== me.id && t.on_app) {" in _fc_api and "set away_ask = ${until || 'back'}, away_ask_by = ${me.id}" in _fc_api
       and "'quiet_away_answer'" in _fc_api and "paused your daily check-in" not in _fc_api
@@ -4524,6 +4567,366 @@ check("standing: the rules test runs in the gate; the db and browser tests run i
 check("standing: the coverage map says what is live, and the review is written down",
       "| Equal standing: who decides what |" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
       and "accounts, joining and equal standing" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
+
+# ---------- 10z. A link for someone not on the app (api/_eldlink.mjs, /apna/) ----------
+# Dadi has WhatsApp and no app. One personal link opens one page with no
+# sign-in. Everything that keeps that door narrow is checked here, so a later
+# change cannot widen it by accident.
+_el = (API_DIR / "_eldlink.mjs").read_text(encoding="utf-8")
+_elr = (API_DIR / "_eldlinkrules.mjs").read_text(encoding="utf-8")
+_el_page = ELD_PAGE.read_text(encoding="utf-8")
+_el_app = (REPO / "site/public/index.html").read_text(encoding="utf-8")
+_el_evt = (API_DIR / "events.mjs").read_text(encoding="utf-8")
+_el_code = "\n".join(l for l in _el.splitlines() if not l.strip().startswith("//"))
+check("eldlink: no new serverless function - it rides /api/events by area, and is handed the family's own SOS rather than copying it",
+      not (API_DIR / "eldlink.mjs").exists()
+      and "=== 'eldlink') return eldlinkApi(req, res, { raiseSos });" in _el_evt
+      and "await hooks.raiseSos(sql, cap, circle, herRow, ''," in _el and "insert into sos" not in _el_code)
+check("eldlink: the rules module imports nothing, and its test runs in the gate before npm install",
+      not re.search(r"^\s*import\s", _elr, re.M) and "node site/tests/eldlinktest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8"))
+check("eldlink: the key is 256 bits from the secure source, and ONLY its hash is stored or looked up",
+      "tokenBytes: 32" in _elr and "randomBytes(ELD.tokenBytes).toString('base64url')" in _el
+      and "createHash('sha256')" in _el and "token_hash text not null unique" in _elr
+      and "where l.token_hash = ${hashOf(key)}" in _el
+      and not re.search(r"insert into eld_links[^`]*\$\{key\}", _el) and "Math.random" not in _el)
+check("eldlink: the key travels in a header, never in an address; a GET with a key is refused; nothing here writes it to a log",
+      "header: 'x-parwah-link'" in _elr and "const key = h[ELD.header] || h['X-Parwah-Link'];" in _el
+      and "req.query.k" not in _el and "query.key" not in _el and "query.token" not in _el
+      and "if (req.method !== 'POST') { res.setHeader('Allow', 'POST'); return no(405, 'POST only'); }" in _el
+      and "console." not in _el_code)
+check("eldlink: one link per person, 90 days, and a link stops when its person joins or is remembered (in the lookup itself)",
+      "create unique index if not exists eld_links_one on eld_links (member_id) where revoked_at is null" in _elr
+      and "days: 90" in _elr
+      and _el.count("l.revoked_at is null and l.expires_at > now()") >= 2
+      and _el.count("m.user_id is null and not coalesce((to_jsonb(m)->>'remembered')::boolean, false)") >= 3
+      and "await eldCloseFor(sql, circle.id, linked[0].id, 'joined');" in (API_DIR / "circle.mjs").read_text(encoding="utf-8"))
+check("eldlink: someone remembered, or already on Parwah, can never be given a link; a child can neither make one nor turn one off",
+      "if (member.remembered) return member.name + ' is remembered here, so no link is made.';" in _elr
+      and "const why = mayHaveLink(p);" in _el
+      and "const adult = !(await minorOf(sql, circle.id, me.id));" in _el
+      and "if (!adult) return no(403, 'An adult in the family does this.');" in _el
+      and _el.index("if (!adult) return no(403") < _el.index("if (action === 'eld_make')") < _el.index("// eld_off"))
+check("eldlink: every limit fails CLOSED, a wrong key is limited by address, and every action on the page is counted",
+      "rateLimit(sql, 'eld' + name, key, ELD_LIMITS[name][0], ELD_LIMITS[name][1], { failClosed: true })" in _el
+      and "await lim(sql, 'wrong', clientIp(req))" in _el and "await lim(sql, 'act', L.id)" in _el
+      and all(("await lim(sql, '" + k + "'") in _el for k in ("create", "createFamily", "say", "bless", "vote", "callmeGap", "callme", "audio"))
+      and _el.index("await lim(sql, 'act', L.id)") < _el.index("if (op === 'open')"))
+check("eldlink: a wrong, old or turned-off key gets ONE plain answer that names nobody",
+      "const OFF_WORDS = 'This link is not on now. Ask your family to send you a new one.';" in _el
+      and _el.count("OFF_WORDS") == 2 and "return no(404, OFF_WORDS, { off: true });" in _el)
+check("eldlink: consent first - before 'All right' the page is told who set it up and what is seen, and nothing else works",
+      "if (!L.consent_at) return no(403, 'Please read the first page and tap All right.', { consent: true });" in _el
+      and _el.index("if (op === 'consent')") < _el.index("if (!L.consent_at) return no(403") < _el.index("if (op === 'ok')")
+      and "return { ok: true, agreed: false, me, setBy: first(L.by_name || 'Your family'), sees: CONSENT_SEES };" in _el
+      and "await eldCloseFor(sql, cid, her, 'declined');" in _el and "await eldCloseFor(sql, cid, her, 'self');" in _el)
+# EVERY query the page can reach names her AND her family. The page half of
+# the module is everything after "the page" marker; a query there that reads
+# a family table without both is how one family's key would read another's.
+_el_pagehalf = _el[_el.index("// ================================================================ the page"):_el.index("// ================================================================ the route")]
+_el_q = re.findall(r"sql`(.*?)`", _el_pagehalf, re.S)
+_el_unscoped = [q.strip()[:70] for q in _el_q
+                # The one lookup that has neither yet: it is how the key BECOMES her and her family.
+                if "where l.token_hash = ${hashOf(key)}" not in q
+                and not re.search(r"\$\{(cid|L\.circle_id|circleId|c\.id|c\.about\.id|L\.id|her|L\.member_id|p\.id|b\.id)\}", q)]
+_el_nocircle = [q.strip()[:70] for q in _el_q
+                if re.search(r"\bfrom (ashirwad|shukriya|cards|card_entries|chat_polls|album_photos|eld_says|sawaal_answers|requests|members|sos)\b", q)
+                and not re.search(r"\$\{(cid|L\.circle_id|circleId)\}", q)
+                and not re.search(r"where e\.card_id = \$\{c\.id\}", q)]
+check(f"eldlink: every query the page can reach is tied to her AND her family ({len(_el_q)} queries)",
+      len(_el_q) >= 40 and not _el_unscoped and not _el_nocircle, "; ".join((_el_unscoped + _el_nocircle)[:3]))
+check("eldlink: the page is never handed a member id, a code or a circle from the request",
+      not re.search(r"\bb\.(memberId|code|circle|member|circleId)\b", _el_pagehalf)
+      and "requireMember" not in _el_pagehalf and "tokenOf(req)" not in _el_pagehalf)
+check("eldlink: what she is shown is what was sent to HER or to everyone - a blessing, a thank-you, her card on its day",
+      "and (a.to_member = ${her} or a.to_member is null)" in _el and "and s.to_member = ${her}" in _el
+      and "and (c.for_member = ${her} or c.for_member2 = ${her})" in _el and "and c.date <= ${today}::date" in _el
+      and "and exists (select 1 from card_entries e where e.card_id = c.id)" in _el)
+check("eldlink: a photo comes only from an album for the WHOLE family, checked before the picture is read",
+      "a.audience = 'family'" in _el and "if (!(await familyPhoto(sql, circleId, photoId))) return null;" in _el
+      and "'chosen'" not in _el_code and "a.by_member" not in _el_code)
+check("eldlink: nothing else can be read from the page - no chat, health, documents, register, costs or location",
+      not re.search(r"\bfrom\s+(messages|notes|vault_\w+|family_book|biomarker_\w+|medicine_\w+|care_\w+|pay_\w+|location_\w+|fam_register\w*|register_\w+|expenses|split_\w+|pulse|baat\w*)\b", _el_code)
+      and all(x in _elr for x in ("'chat history'", "'health'", "'documents'", "'the register'", "'costs'", "'location'", "'private albums'")))
+check("eldlink: her vote is HER vote in the family chat only, her answer to the question is recorded by nobody, and both are marked",
+      "where p.id = ${b.pollId} and c.circle_id = ${cid} and c.kind = 'circle'" in _el
+      and "votePoll(sql, { id: p.chat_id, kind: 'circle' }, { id: her }, { pollId: p.id, choices: b.choices })" in _el
+      and "update poll_votes set via = 'link', by_member = null" in _el
+      and "values (${cid}, ${q.week}::date, ${her}, null," in _el)
+check("eldlink: a voice note goes through the chat's own check (type, first bytes, one minute, size), and words through the card-number and OTP check",
+      _el.count("checkVoice(b.voice, b.secs)") == 3 and _el.count("noteRisk(") >= 2 and "sayMax: 240" in _elr
+      and "audioCheck" not in _el)
+check("eldlink: 'I am fine' is once a day, claimed in the database, and is a real check-in under her name",
+      "insert into eld_days (member_id, day, kind) values (${her}, ${today}::date, 'ok') on conflict do nothing returning day" in _el
+      and "if (!claim[0]) return good({ already: true });" in _el
+      and "values (${cid}, ${her}, 'checkin', ${linkLabel(L.name)})" in _el)
+check("eldlink: the SOS sends no place unless she tapped to share it, and the family's numbers are not passed to the page",
+      "const pos = b.share === true ? { lat: b.lat, lng: b.lng, accuracy: b.accuracy } : {};" in _el
+      and "return good({ again: !!j.again, located: !!j.located, throttled: !!j.throttled }, 201);" in _el
+      and "j.contacts" not in _el and "j.text" not in _el and "j.map" not in _el)
+check("eldlink: she sees and deletes only what SHE sent",
+      "delete from eld_says where id = ${b.id} and circle_id = ${cid} and member_id = ${her}" in _el
+      and "delete from ashirwad where id = ${b.id} and circle_id = ${cid} and from_member = ${her}" in _el
+      and "delete from sawaal_answers where id = ${b.id} and circle_id = ${cid} and member_id = ${her} and via = 'link'" in _el)
+check("eldlink: the WhatsApp link can only ever be wa.me with digits - in the rules and in the app - and Parwah itself sends nothing",
+      "return 'https://wa.me/' + waDigits(phone) + '?text=' + encodeURIComponent(String(text || ''));" in _elr
+      and "return 'https://wa.me/' + (d.length >= 8 && d.length <= 15 ? d : '') + '?text=' + encodeURIComponent(text);" in _el_app
+      and "var d = String(digits || '').replace(/\\D/g, '');" in _el_app
+      and not re.search(r"twilio|dialOut|sendSms|fetch\(", _el_code, re.I)
+      and "Parwah does not send it: you do, from your own WhatsApp" in _el_app)
+check("eldlink: the server never builds the link from the request's host",
+      "req.headers.host" not in _el and "x-forwarded-host" not in _el.lower() and "words: inviteWords(p.name, me.name, '')" in _el)
+# ---- the page itself
+check("eldlink: the page is not indexed, sends no referrer, and vercel.json says the same in headers",
+      '<meta name="robots" content="noindex,nofollow,noarchive">' in _el_page and '<meta name="referrer" content="no-referrer">' in _el_page
+      and _hblocks.get("/apna/(.*)", {}).get("Referrer-Policy") == "no-referrer"
+      and "noindex" in _hblocks.get("/apna/(.*)", {}).get("X-Robots-Tag", "")
+      and "Disallow: /apna/" in (ROOT / "public" / "robots.txt").read_text(encoding="utf-8")
+      and "/apna/" not in (ROOT / "public" / "sitemap.xml").read_text(encoding="utf-8"))
+check("eldlink: the API answers the page with no-store, no-referrer and noindex",
+      "res.setHeader('Cache-Control', 'no-store');" in _el and "res.setHeader('Referrer-Policy', 'no-referrer');" in _el and "res.setHeader('X-Robots-Tag', 'noindex');" in _el)
+check("eldlink: the page is NOT measured, and fetches nothing from another site (no font, script or stylesheet)",
+      "analytics.js" not in _el_page and "attrib.js" not in _el_page and "googletagmanager" not in _el_page and "gtag(" not in _el_page
+      and "fonts.googleapis.com" not in _el_page and "<link rel=\"stylesheet\"" not in _el_page
+      and not re.search(r"<script[^>]+src=", _el_page)
+      and not re.findall(r"https?://(?!wa\.me)[a-z0-9.-]+", re.sub(r"<!--.*?-->", "", _el_page, flags=re.S)))
+check("eldlink: the key is read from after the #, sent only in a header, and taken out of the address bar at once",
+      "/[#&]k=([A-Za-z0-9_-]{43})(?:&|$)/.exec(location.hash || '')" in _el_page
+      and "history.replaceState(null, '', location.pathname)" in _el_page
+      and "'X-Parwah-Link': key" in _el_page and "referrerPolicy: 'no-referrer'" in _el_page and "credentials: 'omit'" in _el_page
+      and "location.search" not in _el_page and "?k=" not in _el_page
+      and "var API = '/api/events?area=eldlink';" in _el_page)
+check("eldlink: opening the link never signs anyone in - the page never touches the app's session",
+      "parwah-token" not in _el_page and "parwah-user" not in _el_page and "X-Parwah-Token" not in _el_page
+      and "document.cookie" not in _el_page and "href=\"/\"" not in _el_page)
+_el_btns = re.findall(r"\bB\('([a-z]+)', '([^']*)', '([^']*)'", _el_page)
+_el_onelang = [a for a, hi, en in _el_btns if not re.search("[ऀ-ॿ]", hi) or not re.search("[A-Za-z]", en)]
+check(f"eldlink: every button on the page is in Hindi AND in English ({len(_el_btns)} buttons)",
+      len(_el_btns) >= 30 and not _el_onelang, ", ".join(_el_onelang[:5]))
+check("eldlink: built for a small phone and old eyes - 64px buttons, 20px text, a read-aloud button, no menus, one listener",
+      "--tap:64px" in _el_page and "min-height:var(--tap)" in _el_page and "font:var(--fs-20)/1.45 system-ui" in _el_page
+      and "SpeechSynthesisUtterance" in _el_page and "/^hi/i.test(vs[i].lang)" in _el_page
+      and "<nav" not in _el_page and "<select" not in _el_page and "<details" not in _el_page
+      and _el_page.count("view.addEventListener('click'") == 1)
+check("eldlink: both themes, a visible focus ring, and motion only when it is welcome",
+      "@media (prefers-color-scheme: dark)" in _el_page and ".b:focus-visible,textarea:focus-visible{outline:4px solid var(--focus-ring)" in _el_page
+      and "@media (prefers-reduced-motion:no-preference)" in _el_page)
+_el_css = _el_page[_el_page.index("<style>"):_el_page.index("</style>")]
+_el_css_comp = _el_css[_el_css.index("*{box-sizing"):]
+check("eldlink: the page's colours are tokens, with the site's own names - none loose in the components",
+      not re.findall(r"#[0-9A-Fa-f]{3,8}\b", _el_css_comp)
+      and all(t in _el_css for t in ("--dusk:#2A1235", "--day:#FFF6EA", "--marigold:#FFB31A", "--flame:#FF5B2E", "--ink:#221428"))
+      and all(t + ":" in (ROOT / "public" / "styles.css").read_text(encoding="utf-8") for t in ("--dusk", "--day", "--marigold", "--flame", "--ink")))
+check("eldlink: 'I need help' waits five seconds with a Cancel, then shows 112 and the people she was given, as tel: links",
+      "sosCancelSecs: 5" in _elr and "helpstop" in _el_page and "tel('112'," in _el_page
+      and "var p = String(phone || '').replace(/[^\\d+]/g, '');" in _el_page
+      and "navigator.geolocation.getCurrentPosition" in _el_page and _el_page.index("helpwhere") > _el_page.index("function helpCount"))
+check("eldlink: the page's words pass the banned-words scan and the app's link section has no Devanagari",
+      not re.search(r"[ऀ-ॿ]", _el_app[_el_app.index("// ---------- a link for someone not on the app"):_el_app.index("// ---------- consent, control and care both ways ----------")]))
+# ---- in the app
+_el_sec = _el_app[_el_app.index("// ---------- a link for someone not on the app (api/_eldlink.mjs) ----------"):_el_app.index("// ---------- consent, control and care both ways ----------")]
+_el_ids = re.findall(r'\bid="(el-[a-z0-9-]+)"', _el_app)
+check(f"eldlink: in the app its ids start with el- ({len(set(_el_ids))}), none twice, and its functions start with el",
+      len(set(_el_ids)) >= 6 and len(_el_ids) == len(set(_el_ids))
+      and all(f.startswith("el") for f in re.findall(r"\n  function (\w+)\(", _el_sec)) and len(re.findall(r"\n  function el[A-Z]\w*\(", _el_sec)) >= 12)
+check("eldlink: the person's page says whether the link is on, when it was last used, and lets an adult send again, keep it on, or turn it off",
+      all(x in _el_sec for x in ("'Last used '", "Send again on WhatsApp", "Keep it on 90 more days", "data-eloff", "Turn off '", "An adult in the family can send it"))
+      and 'id="el-card"' in _el_app and "elPersonRender(id);" in _el_app)
+check("eldlink: what came through a link carries its label - on Today, in the feed, on a blessing, a weekly answer and a vote",
+      "x.label" in _el_sec and "/^from .+ link$/.test(e.text || '')" in _el_app and "c.via === 'link'" in _el_app
+      and "a.via === 'link' ? linkLabel(a.name)" in (API_DIR / "_heard.mjs").read_text(encoding="utf-8")
+      and "v.via === 'link' ? v.name + ' (' + linkLabel(v.name) + ')'" in (API_DIR / "_chatbond.mjs").read_text(encoding="utf-8"))
+check("eldlink: people writing a thank-you, a card, the weekly question, a family poll or a blessing are told it also shows on the link",
+      "elNoteBind('hd-s-to', 'el-s-note');" in _el_app and "elAlso('This question is also on ')" in _el_app
+      and "elAlso('This poll is also on '" in _el_app and "elCardNote(c)" in _el_app and "(on their link)" in _el_app)
+check("eldlink: a daily check-in can be answered from a link, and only while that link is on and agreed to",
+      (API_DIR / "_familycare.mjs").read_text(encoding="utf-8").count("l.revoked_at is null and l.expires_at > now() and l.consent_at is not null") >= 3
+      and "quiet_nudged_for = ${today}::date, quiet_alerted_for = ${today}::date" in _el)
+_el_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+_el_e2e = (REPO / "site/tests/db/eldlink.e2e.dbtest.mjs").read_text(encoding="utf-8") if (REPO / "site/tests/db/eldlink.e2e.dbtest.mjs").exists() else ""
+check("eldlink: the db and browser tests run in test:db; the browser test opens the page with no session and never waits a fixed time",
+      all(("site/tests/db/" + f) in _el_testdb and (REPO / "site/tests/db" / f).exists() for f in ("eldlink.dbtest.mjs", "eldlink.e2e.dbtest.mjs"))
+      and "waitForTimeout" not in _el_e2e and "const fresh = await browser.newContext(" in _el_e2e and "await design(D, '#apna'," in _el_e2e)
+check("eldlink: the coverage map says what is live, and the leader review is written down",
+      "Dadi's link: a voice for someone not on the app" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
+      and "Dadi's link: a page for someone who will never install the app" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
+
+# ---------- 10zb. The remaining family needs (stream J) ----------
+# Roll-call, a child's page, carer load, the function kit, home upkeep, the
+# blood group lookup and the doctor-ready summary. Each is an underscore
+# module behind an existing route, and each rule that protects a person is
+# held here so it cannot quietly go.
+_nd_names = ("_rollcall.mjs", "_rollcallrules.mjs", "_kids.mjs", "_kidsrules.mjs", "_carerload.mjs", "_carerloadrules.mjs",
+             "_eventkit.mjs", "_eventkitrules.mjs", "_home.mjs", "_bloodlookup.mjs", "_needsrules.mjs")
+_nd = {n: (API_DIR / n).read_text(encoding="utf-8") if (API_DIR / n).exists() else "" for n in _nd_names}
+_nd_route = {n: (API_DIR / n).read_text(encoding="utf-8") for n in ("care.mjs", "plans.mjs", "book.mjs", "events.mjs", "_renewals.mjs")}
+_nd_app = (REPO / "site/public/index.html").read_text(encoding="utf-8")
+_nd_marks = ("// ---------- THE REMAINING FAMILY NEEDS (stream J) ----------", "// ---------- end of the remaining family needs (stream J) ----------")
+_nd_block = _nd_app.split(_nd_marks[0])[1].split(_nd_marks[1])[0] if all(m in _nd_app for m in _nd_marks) else ""
+check("needs: every module is there, and none is a new function", all(_nd.values()) and all(n.startswith("_") for n in _nd_names))
+check("needs: each sits behind an existing route, by area or by the name of its actions",
+      all(x in _nd_route["care.mjs"] for x in ("if (area === 'rollcall' || /^rollcall_/.test(act)) return rollcallApi(req, res);",
+                                              "if (area === 'kids' || /^kid_/.test(act)) return kidsApi(req, res);",
+                                              "if (area === 'carerload' || /^carer_/.test(act)) return carerloadApi(req, res);"))
+      and "if (area === 'eventkit' || (typeof body.action === 'string' && /^kit_/.test(body.action)))" in _nd_route["plans.mjs"]
+      and all(x in _nd_route["book.mjs"] for x in ("/^home_/.test(req.body.action))) return homeApi(req, res);", "/^blood_/.test(req.body.action))) return bloodApi(req, res);",
+                                              "if (area === 'summary') return summaryApi(req, res);")))
+check("needs: what is timed runs from the timer, one imported line each; home upkeep has its own line, never inside another sweep's try",
+      _nd_route["events.mjs"].count("await one(() => sweepRollcallAll(sql));") == 1 and _nd_route["events.mjs"].count("await one(() => sweepKidsAll(sql));") == 1
+      and "import { sweepRollcallAll } from './_rollcall.mjs';" in _nd_route["events.mjs"] and "import { sweepKidsAll } from './_kids.mjs';" in _nd_route["events.mjs"]
+      and _nd_route["events.mjs"].count("await one(() => sweepHome(sql, id));") == 1 and "import { sweepHome } from './_home.mjs';" in _nd_route["events.mjs"]
+      and "sweepHome" not in _nd_route["_renewals.mjs"]
+      and all("nowMs = Date.now()" in _nd[n] for n in ("_rollcall.mjs", "_kids.mjs", "_home.mjs")))
+check("needs: every handler asks who is calling, and every push names its kind",
+      all("requireMember(sql," in _nd[n] for n in ("_rollcall.mjs", "_kids.mjs", "_carerload.mjs", "_home.mjs", "_bloodlookup.mjs"))
+      and all("kind: '" in _nd[n] for n in ("_rollcallrules.mjs", "_kidsrules.mjs", "_carerloadrules.mjs", "_needsrules.mjs"))
+      and not re.search(r"pushCircle\(sql, [\w.]+, \{ title:", "".join(_nd.values())))
+check("needs: what one member can send at another is limited, and a limiter that cannot count says no",
+      all(x in "".join(_nd.values()) for x in ("rateLimit(sql, 'rollcall', me.id, 6, 3600, { failClosed: true })", "rateLimit(sql, 'kidnote', me.id, 6, 3600, { failClosed: true })",
+                                               "rateLimit(sql, 'dayoff', me.id, DAYOFF_PER_DAY, 86400, { failClosed: true })", "rateLimit(sql, 'bloodask', me.id, BLOOD_ASKS_PER_DAY, 86400, { failClosed: true })",
+                                               "rateLimit(sql, 'bloodfind', me.id, 20, 3600, { failClosed: true })"))
+      and "{ failClosed: true }" in _nd["_eventkit.mjs"])
+check("needs: there is one adult rule, written the same way in every query that must not reach a child",
+      all("(case when v.dob is not null then v.dob > current_date - interval '18 years' else (v.is_child or v.adult_confirmed is false) end)" in _nd[n]
+          for n in ("_rollcall.mjs", "_kids.mjs", "_home.mjs", "_bloodlookup.mjs"))
+      and not re.search(r"function (isAdult|isMinor|isChild|ageOf)\b", "".join(_nd.values())))
+check("needs: nobody marked as no longer with us is asked, listed, picked or told",
+      all("not m.remembered" in _nd[n] or "not c.remembered" in _nd[n] for n in ("_rollcall.mjs", "_kids.mjs", "_carerload.mjs", "_eventkit.mjs", "_bloodlookup.mjs"))
+      and "if (!m || m.remembered) continue;" in _nd["_rollcallrules.mjs"] and "is remembered here, so is not on a guest list" in _nd["_eventkitrules.mjs"]
+      and "async function goneNames(sql, circleId)" in _nd["_eventkit.mjs"])
+check("roll-call: one open a family, three a day, closed after 24 hours, and it comes through a quiet night",
+      "create unique index if not exists rollcalls_one_open on rollcalls (circle_id) where closed_at is null" in _nd["_rollcall.mjs"]
+      and "export const ROLLCALL_PER_DAY = 3;" in _nd["_rollcallrules.mjs"] and "export const ROLLCALL_HOURS = 24;" in _nd["_rollcallrules.mjs"]
+      and _nd["_rollcallrules.mjs"].count("kind: 'safety'") == 4 and "body: { code: body.code, memberId: body.memberId, type: 'sos'" in _nd["_rollcall.mjs"]
+      and "where rollcall_answers.by_member is distinct from rollcall_answers.member_id or excluded.by_member = rollcall_answers.member_id" in _nd["_rollcall.mjs"])
+check("kids: who reads a child's page is one question, asked in the database by every read",
+      _nd["_kids.mjs"].count("kid_rel_v1(") >= 9 and "create function kid_rel_v1(viewer uuid, child uuid) returns text language sql stable" in _nd["_kids.mjs"]
+      and "when 'fee' then r.rel = 'parent' or (r.rel = 'adult' and pg.share->>'fees' = 'family')" in _nd["_kids.mjs"]
+      and "case when r.rel in ('self', 'parent') or pg.results_share = 'family' then i.result end as result" in _nd["_kids.mjs"]
+      and "results_share text not null default 'parents'" in _nd["_kids.mjs"])
+check("kids: a fee reminder never goes to the child, a late pick-up is a safety push after 20 minutes, and nothing here is advice",
+      "await audienceFor(sql, f.circle_id, 'kid_fee', { only: subs, except: f.child_id })" in _nd["_kids.mjs"] and "export const PICKUP_GRACE_MIN = 20;" in _nd["_kidsrules.mjs"]
+      and "await audienceFor(sql, k.circle_id, 'kid_pickup', { except: k.child_id })" in _nd["_kids.mjs"]
+      and "export const RECORD_LEGAL = ECARD_LEGAL.replace('This card is', 'This is');" in _nd["_kidsrules.mjs"])
+check("carer load: my week is mine alone, the family line holds no number, and a family can switch it off",
+      "counts[k] = thisWeek.filter(a => a.who === me.id && a.kind === k).length;" in _nd["_carerload.mjs"] and "if (!adult || !on) return out;" in _nd["_carerload.mjs"]
+      and "return !!s && !/\\d/.test(s) && !CARER_SHAME.test(s);" in _nd["_carerloadrules.mjs"] and "if (topM && me.id !== forId) {" in _nd["_carerload.mjs"]
+      and not re.search(r"leaderboard|rank(ed|ing)? (of|by)|\bscore\b", _nd["_carerload.mjs"].split("import ")[1] + _nd_block, re.I))
+check("function kit: a guest is a name with no phone, hosts change it, and the money is never read by a child",
+      "phone" not in _nd["_eventkit.mjs"].split("create table if not exists kit_guests")[1].split(")`;")[0]
+      and "if (!host && !ownArrival) return no(403, hostOnly);" in _nd["_eventkit.mjs"] and "if (!meMinor) {" in _nd["_eventkit.mjs"]
+      and "and (t.member_id = ${me.id} or ${me.id}::uuid = any(t.tell))" in _nd["_eventkit.mjs"])
+check("home upkeep: the four choices of who sees an entry are in the SQL, and nothing new is uploaded",
+      all(x in _nd["_home.mjs"] for x in ("h.audience = 'IMMEDIATE'", "(h.audience = 'NOMINEES_ONLY' and v.id = any(h.people))", "(h.audience = 'EMERGENCY_ONLY' and h.created_by = any(${sos}::uuid[])"))
+      and not re.search(r"data:|base64|upload", _nd["_home.mjs"].split("import ")[1], re.I))
+check("blood: the yes is a join in the SQL, each person's own, and the lookup gives no advice",
+      "join blood_consent bc on bc.member_id = m.id and bc.tell" in _nd["_bloodlookup.mjs"]
+      and "values (${me.id}, ${circle.id}, ${on})" in _nd["_bloodlookup.mjs"]
+      and not re.search(r"donate|donor|compatible|universal", _nd["_bloodlookup.mjs"] + _nd["_needsrules.mjs"] + _nd_block, re.I))
+_nd_sum = _nd["_bloodlookup.mjs"].split("export async function summaryApi")[1] if "export async function summaryApi" in _nd["_bloodlookup.mjs"] else "insert into"
+check("summary: it only reads, by the Family book's own rule, and never for a child",
+      "insert into" not in _nd_sum and "update " not in _nd_sum and "if (req.method !== 'GET')" in _nd_sum
+      and "and (b.about_member = v.id or b.by_member = v.id or ba.member_id is not null or b.visibility = 'circle')" in _nd_sum
+      and "export const SUMMARY_LINE = 'Written by the family. This is not a medical record.';" in _nd["_needsrules.mjs"])
+_nd_ids = re.findall(r'\bid="(kd-[a-z0-9-]+)"', _nd_app[:_nd_app.index("<script>\n(function(){")] if "<script>\n(function(){" in _nd_app else _nd_app)
+check("needs: its screens keep to their own names (ids kd-, functions kd...), with no id twice",
+      len(_nd_ids) >= 40 and len(_nd_ids) == len(set(_nd_ids)) and len(re.findall(r"\n  function kd[A-Z]\w*\(", _nd_block)) >= 40
+      and not re.findall(r"\n  function (?!kd)[a-zA-Z]\w*\(", _nd_block))
+check("needs: no banned word and no long dash in what these modules and screens say",
+      not re.search(r"\b(elderly|burden|cure|treat|heal|therapy|remedy|medicinal|prevents|reverses|clinically proven|doctor recommended|pain relief|guaranteed|arthritis|diabetes)\b", "".join(_nd.values()) + _nd_block, re.I)
+      and not re.search("[" + chr(8211) + chr(8212) + "]", "".join(_nd.values()) + _nd_block))
+_nd_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+_nd_tests = ("rollcall", "kids", "carerload", "eventkit", "home", "healthlookup")
+check("needs: the rules test runs in the gate; every db and browser test runs in test:db, and no browser test waits a fixed time",
+      "node site/tests/familyneedstest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all(("site/tests/db/" + t + s) in _nd_testdb and (REPO / "site/tests/db" / (t + s)).exists() for t in _nd_tests for s in (".dbtest.mjs", ".e2e.dbtest.mjs"))
+      and all("waitForTimeout" not in (REPO / "site/tests/db" / (t + ".e2e.dbtest.mjs")).read_text(encoding="utf-8") for t in _nd_tests)
+      and "waitForTimeout" not in (REPO / "site/tests/db/jkit.mjs").read_text(encoding="utf-8"))
+check("needs: the coverage map says what is live, and the review is written down",
+      "### The remaining family needs (stream J, live)" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
+      and "(stream J)" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
+
+# ---------- 10zz. Today for each person, and five places (stream G) ----------
+# Found by a family of five walking through the real app. The journeys run
+# in site/tests/db/todaynav.e2e.dbtest.mjs and the read's visibility in
+# todaynav.dbtest.mjs; these keep the source honest.
+_tn_app = (REPO / "site" / "public" / "index.html").read_text(encoding="utf-8")
+_tn_api = (API_DIR / "_today.mjs").read_text(encoding="utf-8")
+_tn_rules = (API_DIR / "_todayrules.mjs").read_text(encoding="utf-8")
+_tn_chats = (API_DIR / "chats.mjs").read_text(encoding="utf-8")
+check("today: 'From the family' rides /api/chats in an underscore module, behind requireMember, and only reads",
+      not (API_DIR / "today.mjs").exists() and "if (area === 'today') return todayApi(req, res);" in _tn_chats
+      and "const g = await requireMember(sql, q.circle, q.member, tokenOf(req));" in _tn_api
+      and "if (!isUuid(q.member))" in _tn_api and "if (req.method !== 'GET')" in _tn_api
+      and not re.search(r"\b(insert into|update \w+ set|delete from)\b", _tn_api))
+check("today: GATHERING NEVER WIDENS WHAT A MEMBER MAY SEE - each part is read through the module that owns it",
+      all(x in _tn_api for x in ("import { listChats } from './chats.mjs';", "import { baatList } from './_baat.mjs';",
+                                 "import { ashirwadInbox } from './_ashirwad.mjs';", "shukriyaList } from './_heard.mjs';",
+                                 "sealedTo } from './_bond.mjs';", "import { doseState, ensureDoseSchema } from './_doses.mjs';",
+                                 "memberCards } from './_standing.mjs';"))
+      and "m.chat_id = any(${ids}::uuid[])" in _tn_api and "if (!s.forMe" in _tn_api and "if (b.mine || b.reply) continue;" in _tn_api
+      and "!sealedTo(c, me) && c.for_member !== me.id && c.for_member2 !== me.id" in _tn_api
+      and "export async function listChats(" in _tn_chats
+      and "export async function ashirwadInbox(" in (API_DIR / "_ashirwad.mjs").read_text(encoding="utf-8")
+      and "const inbox = await ashirwadInbox(sql, circle, me);" in (API_DIR / "_ashirwad.mjs").read_text(encoding="utf-8"))
+check("today: a child is never sent a request to join, by the one adult rule, on the server and again in the order",
+      "const adult = !minor && (await soft(async () => (await standingOfCaller(sql, circle, me.id, nowMs)).may, false));" in _tn_api
+      and "if (adult) {" in _tn_api and "fromFamily(items, { minor })" in _tn_api
+      and "export const ADULT_ONLY = ['join'];" in _tn_rules and "minorOf(sql, circle.id, me.id)" in _tn_api
+      and not re.search(r"is_child|adult_confirmed", _tn_api.split("async function parentCards", 1)[0]))
+check("today: a parent's card never names a medicine, never shows a kept-back number, and is never made for a child or about someone remembered",
+      "parents: (!minor && !senior" in _tn_api and "!m.remembered && !m.minor" in _tn_rules
+      and "phones.get(m.id) || null" in _tn_api and "await memberCards(sql, circle, me," in _tn_api
+      and "family_book" not in _tn_api and "d.name" not in _tn_api and "meds: mine.length ? { total: mine.length, taken:" in _tn_api
+      and "okToday(sql, m.id, today, tz)" in _tn_api)
+check("today: the rules import nothing, the app carries its own copy between two marks, and the gate runs both",
+      not re.search(r"^\s*import\s", _tn_rules, flags=re.M)
+      and "/*tn-rules-start*/" in _tn_app and "/*tn-rules-end*/" in _tn_app
+      and "node site/tests/todaytest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and "new Function(app.slice(a, b)" in (REPO / "site/tests/todaytest.mjs").read_text(encoding="utf-8"))
+check("today: no name is cut at the first space in the app; the rule is tnShort (an honorific, or a script that is not Latin, keeps the whole name)",
+      len(re.findall(r"split\(' '\)\[0\]", _tn_app)) == 1 and "var first = full.split(' ')[0];" in _tn_app
+      and "split(/\\s+/)[0]" not in _tn_app and "if (!TN_LATIN.test(full)) return full;" in _tn_app
+      and "'shri'" in _tn_rules and "'smt'" in _tn_rules and "'dr'" in _tn_rules)
+check("today: From the family comes right after the elder's buttons; the mood card stays above the tiles; a card per parent and the young Today follow the header",
+      _tn_app.index('id="seniorui"') < _tn_app.index('id="tn-from"') < _tn_app.index('class="homehero"')
+      < _tn_app.index('id="tn-parents"') < _tn_app.index('id="tn-young"') < _tn_app.index('id="hd-today"') < _tn_app.index('id="frslot"')
+      and _tn_app.count('id="tn-from"') == 1)
+check("today: senior mode and a young member get no setup list; the hero says You to the person who checked in",
+      "if (!state || frDone() || state.role === 'parent' || tnYoung()) { $('firstrun').hidden = true; return; }" in _tn_app
+      and "var tnWho = e.member_id === state.memberId ? 'You' : e.member_name;" in _tn_app
+      and "body.tn-isyoung #firstrun,body.tn-isyoung #readycard" in _tn_app)
+check("words: an SOS that did not go says NOT sent, hides the waiting rows and offers to try again; nobody is ever 'on their way'",
+      "$('ss-live-title').textContent = bad ? '⚠️ SOS NOT sent' : '🆘 SOS sent';" in _tn_app
+      and "live.querySelector('.ss-checks').hidden = bad;" in _tn_app and 'id="tn-sos-retry"' in _tn_app
+      and "on their way" not in _tn_app and "on their way" not in (API_DIR / "events.mjs").read_text(encoding="utf-8")
+      and "has seen it and is calling" in _tn_app and ".tn-sosfail #ss-calls .ss-btn,.tn-sosfail #ss-sms{min-height:72px" in _tn_app)
+check("words: a chat message leaves the box only into a bubble that is kept until it goes",
+      "tnUnsentSave(tnUnsent().concat([u]));" in _tn_app and "Not sent. Tap to retry" in _tn_app
+      and _tn_app.index("tnUnsentSave(tnUnsent().concat([u]));") < _tn_app.index("$('msg').value = '';\n    tnUnsentDraw();")
+      and ".catch(function(){ tnUnsentSet(u.id, { failed: true }); });" in _tn_app)
+check("first run: the tour is written down when it ends and skipped for an invite; one family opens straight away; Mother or Father is asked",
+      "function afterTour(){\n    // The introduction is over; carry on to whatever this person actually has.\n    tnToured();" in _tn_app
+      and "if (pendingJoin) tnToured();" in _tn_app
+      and "if (circles && circles.length === 1) { enterCircle(circles[0]); return; }" in _tn_app
+      and "$(p[1]).checked = grand;" in _tn_app and "Use the simpler, larger screen?" in _tn_app
+      and "Who are you to this family?" in _tn_app and "everyone is an equal admin" not in _tn_app)
+check("words: a new cost is shared between everyone, a new medicine asks when it is taken, and a living person's page has no bereavement link",
+      "d.members.map(function(m){ return m.id; });" in _tn_app and "Who is this shared between?" in _tn_app
+      and "if (!bEditId && body.kind === 'med' && body.aboutId && j.id) tnAskTimes = j.id;" in _tn_app
+      and "b.hidden = !state || id === state.memberId || !rmGone(tnWho);" in _tn_app
+      and '<details class="card fmore" id="pp-todo-card" hidden>' in _tn_app)
+_tn_static = set(re.findall(r'\bid="(tn-[a-z0-9-]+)"', _tn_app))
+_tn_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+check("today: its screens keep to their own names (ids tn-, functions tn...), and its tests run in test:db without fixed waits",
+      len(_tn_static) >= 20 and len(re.findall(r"\n  function tn[A-Z]\w*\(", _tn_app)) >= 20
+      and all(("site/tests/db/" + f) in _tn_testdb and (REPO / "site/tests/db" / f).exists() for f in ("todaynav.dbtest.mjs", "todaynav.e2e.dbtest.mjs"))
+      and "waitForTimeout" not in (REPO / "site/tests/db/todaynav.e2e.dbtest.mjs").read_text(encoding="utf-8")
+      and all(x in (REPO / "site/tests/db/todaynav.dbtest.mjs").read_text(encoding="utf-8")
+              for x in ("A PRIVATE WORD BETWEEN TWO OTHERS NEVER APPEARS", "A CHILD IS NEVER SENT IT", "A MEMBER OF ANOTHER FAMILY GETS NOTHING OF THIS ONE")))
+check("today: the coverage map says what is live, and the review is written down",
+      "| **What the family sent me, first on Today** | Live |" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
+      and "Today for each person and five places" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8")
+      and "Today is different for each person" in (REPO / "docs/design/TODAY.md").read_text(encoding="utf-8"))
 
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12

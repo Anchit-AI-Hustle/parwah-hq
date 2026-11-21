@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /apna/
 
 Sitemap: https://parwah-hq.anchit-tandon.com/sitemap.xml

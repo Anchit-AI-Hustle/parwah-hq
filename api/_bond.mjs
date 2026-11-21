@@ -50,6 +50,7 @@ import { FESTIVALS, FEST_NOTE, festivalOf, festivalsDue, nextYearly, daysBetween
 import { isMinor } from './_standingrules.mjs';
 import { awardHeard } from './_coins.mjs';
 import { cardEveDue, dateTally, decidedLine, proxyLabel, waitingFor, waitingLine, festChangeLine } from './_heardrules.mjs';
+import { shortName } from './_todayrules.mjs';
 
 export const CARD_DAYS_BEFORE = 3;
 export const POLL_MIN = 2, POLL_MAX = 5;
@@ -68,7 +69,7 @@ export const OCCASIONS = ['birthday', 'anniversary', 'festival', 'farewell', 'we
 const KINDS = ['call', 'party', 'meet', 'appointment', 'function', 'trip', 'other'];
 
 function roomUrl() { return 'https://meet.jit.si/parwah-' + randomBytes(16).toString('hex'); }
-const first = (n) => String(n || '').split(' ')[0];
+const first = (n) => shortName(n);
 
 let ready = false;
 export async function ensureBondSchema(sql) {

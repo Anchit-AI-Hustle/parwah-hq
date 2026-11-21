@@ -39,9 +39,14 @@ export const DG = {
 };
 
 // What each kind of fact weighs. The writer puts the heaviest first.
+// WHAT IS FOR THIS PERSON LEADS (owner, 2026-11-20): a message sent to
+// them, a thank-you they received, a plan waiting for their answer. The
+// note is theirs; it is not a log of the family's day. Only an SOS that is
+// still open comes before those. Someone joining is not news for a note:
+// it is never said here.
 export const DG_WEIGHT = {
-  sos_open: 100, sos_closed: 95, checkin_missed: 85, meds_unmarked: 75,
-  remembrance: 72, birthday: 66, anniversary: 64, plan_tomorrow: 62, joined: 58,
+  sos_open: 100, message: 94, thanks: 92, plan_ask: 90, sos_closed: 88, checkin_missed: 85, meds_unmarked: 75,
+  remembrance: 72, birthday: 66, anniversary: 64, plan_tomorrow: 62, family_chat: 56,
   checkin: 50, meds_marked: 46, rec: 42, story: 38, task: 34, plan_made: 32,
   recipe: 30, card: 28
 };
@@ -103,7 +108,12 @@ export function digestMaySee(kind, row, viewerId) {
 //   birthdays [id]   anniversaries [[id, id2]]   remembrance [id]   (tomorrow)
 //   tasks [{ id, n }]   stories [{ storyId, id, visibility, shareWith }]
 //   recipes [{ recipeId, by, title }]   recs [{ recId, by, title, to }]
-//   cards [{ cardId, by, forIds, forName }]   joined [{ id, onApp }]
+//   cards [{ cardId, by, forIds, forName }]
+//   messages [{ by, dm, n }]      written today in a chat the viewer is in:
+//                                 who and how many, never the words
+//   thanks [{ id, by }]           a shukriya written FOR the viewer today
+//   plansAsk [{ planId, title, by }]   a plan still waiting for the viewer's answer
+// A list called `joined` is ignored: someone joining is never in the note.
 // Anything else in raw (notes, vault, register, health numbers) is not read.
 export function digestFacts(raw) {
   const r = raw || {}, me = r.viewerId, tz = r.tz, word = r.word === 'group' ? 'group' : 'family';
@@ -119,6 +129,32 @@ export function digestFacts(raw) {
   const out = [];
   const add = (kind, who, key, text) => out.push({ kind, who, text, weight: DG_WEIGHT[kind] || 0, key });
   const arr = (k) => Array.isArray(r[k]) ? r[k] : [];
+
+  // FOR THIS PERSON, FIRST. Who wrote to them (never what was written), who
+  // thanked them, and which plan is waiting for their answer.
+  const dmFrom = [...new Set(arr('messages').filter(m => m && m.dm && known(m.by) && m.by !== me && (m.n | 0) > 0).map(m => m.by))]
+    .sort((a, b) => String(nm(a)).localeCompare(String(nm(b))));
+  if (dmFrom.length === 1) {
+    const n = arr('messages').filter(m => m.dm && m.by === dmFrom[0]).reduce((t, m) => t + (m.n | 0), 0);
+    add('message', nm(dmFrom[0]), 'msg:' + dmFrom[0], nm(dmFrom[0]) + (n === 1 ? ' sent you a message today.' : ' sent you ' + n + ' messages today.'));
+  } else if (dmFrom.length > 1) {
+    add('message', nm(dmFrom[0]), 'msg:' + dmFrom.slice().sort().join(','), listOf(dmFrom.map(nm)) + ' sent you messages today.');
+  }
+  const famFrom = [...new Set(arr('messages').filter(m => m && !m.dm && known(m.by) && m.by !== me && (m.n | 0) > 0).map(m => m.by))]
+    .sort((a, b) => String(nm(a)).localeCompare(String(nm(b))));
+  if (famFrom.length) add('family_chat', nm(famFrom[0]), 'famchat:' + famFrom.slice().sort().join(','), listOf(famFrom.map(nm)) + ' wrote in the ' + word + ' chat today.');
+  const thanked = [...new Set(arr('thanks').filter(t => t && known(t.by) && t.by !== me).map(t => t.by))]
+    .sort((a, b) => String(nm(a)).localeCompare(String(nm(b))));
+  if (thanked.length) add('thanks', nm(thanked[0]), 'thanks:' + thanked.slice().sort().join(','), listOf(thanked.map(nm)) + ' said thank you to you today.');
+  const asked = new Set();
+  for (const p of arr('plansAsk')) {
+    const t = one(p.title, 60); if (!t || (p.by && !known(p.by)) || p.by === me) continue;
+    asked.add(p.planId);
+    // A plan for tomorrow keeps its time: it is said once, as the question.
+    const tom = arr('plansTomorrow').find(x => x.planId === p.planId);
+    const when = tom ? ' for tomorrow at ' + digestClock(tom.at, tz) : '';
+    add('plan_ask', p.by ? nm(p.by) : '', 'planask:' + p.planId, (p.by ? nm(p.by) + ' planned ' + t + when + ' and is' : 'A plan, ' + t + when + ', is') + ' waiting for your answer.');
+  }
 
   for (const s of arr('sos')) {
     if (!known(s.id)) continue;
@@ -180,12 +216,8 @@ export function digestFacts(raw) {
                        : 'Tomorrow is ' + possIn(ids[0]) + ' anniversary.');
   }
   for (const p of arr('plansTomorrow')) {
-    const t = one(p.title, 60); if (!t) continue;
+    const t = one(p.title, 60); if (!t || asked.has(p.planId)) continue;       // said once, as the question
     add('plan_tomorrow', '', 'plantomorrow:' + p.planId, 'Tomorrow at ' + digestClock(p.at, tz) + ': ' + t + '.');
-  }
-  for (const j of arr('joined')) {
-    if (!known(j.id) || j.id === me) continue;
-    add('joined', nm(j.id), 'joined:' + j.id, nm(j.id) + (j.onApp ? ' joined the ' : ' was added to the ') + word + '.');
   }
   for (const x of arr('recs')) {
     if (!digestMaySee('recs', x, me) || !known(x.by)) continue;
@@ -203,7 +235,7 @@ export function digestFacts(raw) {
   }
   const tomorrowIds = new Set(arr('plansTomorrow').map(p => p.planId));
   for (const p of arr('plansMade')) {
-    const t = one(p.title, 60); if (!t || tomorrowIds.has(p.planId)) continue;   // said once
+    const t = one(p.title, 60); if (!t || tomorrowIds.has(p.planId) || asked.has(p.planId)) continue;   // said once
     if (p.by && !known(p.by)) continue;
     add('plan_made', p.by ? nm(p.by) : '', 'planmade:' + p.planId, (p.by ? nm(p.by) + ' made a plan: ' : 'A new plan was made: ') + t + '.');
   }
@@ -234,9 +266,9 @@ export function digestQuiet(word) {
 export function digestWrite(facts, word) {
   const list = (facts || []).slice().sort((a, b) => b.weight - a.weight || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
   if (!list.length) return digestQuiet(word);
+  // The six that matter most to this person, and then it stops. A note is
+  // not a log: what did not fit is not counted out at the end.
   const lines = list.slice(0, DG.maxSentences).map(f => f.text);
-  const rest = list.length - lines.length;
-  if (rest > 0) lines[lines.length - 1] = lines[lines.length - 1] + ' ' + (rest === 1 ? 'One more small thing' : rest + ' more small things') + ' happened too.';
   if (lines.length < DG.minSentences) lines.push('Otherwise the day was quiet.');
   if (lines.length < DG.minSentences) lines.push('That is all from the ' + (word === 'group' ? 'group' : 'family') + ' today.');
   return lines.join(' ');

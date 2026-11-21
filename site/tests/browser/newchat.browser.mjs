@@ -101,9 +101,10 @@ async function sheetOpen(page){ await page.click('#chat-fab'); await page.waitFo
 for (const [label, viewport] of [['phone', { width:390, height:844 }]]) {
   const page = await open(viewport);
   // New chat sits in the top bar on every screen except Chat's own (owner,
-  // 2026-10-13: one bottom bar, nothing floats). Ekta is a tab.
+  // 2026-10-13: one bottom bar, nothing floats). Since the five places
+  // (2026-11-20) Chat is a tab, and Ekta is one tap from Today and from Chat.
   ok(await vis(page, '#chat-fab'), `${label}: the New chat button is there on Today once signed in`);
-  ok(await vis(page, '#tabs button[data-tab="ekta"]'), `${label}: and Ekta is a tab in the one bottom bar`);
+  ok(await vis(page, '#tabs button[data-tab="chat"]') && await vis(page, '#tn-ekta-today'), `${label}: Chat is a tab in the one bottom bar, and Ekta is one tap from Today`);
   const a = await box(page, '#chat-fab'), bell = await box(page, '#bell');
   ok(a && a.y >= 0 && a.y + a.height <= 64, `${label}: it sits in the top bar`);
   ok(a && (!bell || !overlap(a, bell)), `${label}: beside the bell, never over it`);
@@ -146,7 +147,7 @@ for (const [label, viewport] of [['phone', { width:390, height:844 }]]) {
   ok(!(await vis(page, '#chat-fab')), `${label}: inside a chat the New chat button steps aside`);
   await page.click('#chatback'); await page.waitForTimeout(200);
   ok(!(await vis(page, '#chat-fab')), `${label}: and stays aside on Chat's own screen`);
-  ok(await vis(page, '#tabs button[data-tab="ekta"]'), `${label}: Ekta's tab is still right there`);
+  ok(await vis(page, '#tn-ekta-chat'), `${label}: Ekta is one tap from Chat's own screen`);
   const home = async () => { await page.evaluate(() => { location.hash = '#home'; }); await page.waitForTimeout(300); };
 
   // An existing one-to-one chat.
@@ -169,10 +170,10 @@ for (const [label, viewport] of [['phone', { width:390, height:844 }]]) {
   ok(await page.evaluate(() => document.activeElement && document.activeElement.id === 'g-name'), `${label}: ready to type its name`);
   ok(await page.locator('#g-mem input[type=checkbox]').count() === 2, `${label}: with the family to pick from`);
 
-  // Ekta's own screen, reached through its tab.
+  // Ekta's own screen, reached from Today.
   await home();
-  await page.click('#tabs button[data-tab="ekta"]'); await page.waitForTimeout(300);
-  ok(await vis(page, '#pane-ekta'), `${label}: the Ekta tab opens Ekta`);
+  await page.click('#tn-ekta-today'); await page.waitForTimeout(300);
+  ok(await vis(page, '#pane-ekta'), `${label}: "Ask Ekta" on Today opens Ekta`);
   ok(await vis(page, '#chat-fab'), `${label}: and the New chat button stays in the top bar`);
   const solo = await box(page, '#chat-fab'), send = await box(page, '#send');
   ok(solo && send && !overlap(solo, send), `${label}: nowhere near Send`);
@@ -180,7 +181,7 @@ for (const [label, viewport] of [['phone', { width:390, height:844 }]]) {
   // Every other screen has both ways in.
   for (const t of ['vault', 'care', 'people', 'fun', 'day', 'profile', 'notifs', 'memory']) {
     await page.evaluate(h => { location.hash = '#' + h; }, t); await page.waitForTimeout(250);
-    ok(await vis(page, '#chat-fab') && await vis(page, '#tabs button[data-tab="ekta"]'), `${label}: New chat and the Ekta tab are both on ${t}`);
+    ok(await vis(page, '#chat-fab') && await vis(page, '#tabs button[data-tab="chat"]') && await vis(page, '#tabs button[data-tab="menu"]'), `${label}: New chat, the Chat tab and More (with Ekta) are all on ${t}`);
   }
   await page.close();
 }
@@ -231,7 +232,7 @@ for (const [label, viewport] of [['phone', { width:390, height:844 }]]) {
   const fab = await box(page, '#chat-fab'), sos = await box(page, '#sos-fab'), tabs = await box(page, '#tabs');
   ok(fab && fab.width >= 44 && fab.height >= 44 && fab.y + fab.height <= 64, 'small phone: New chat is a top-bar icon with a full tap target (' + (fab && Math.round(fab.width)) + 'px)');
   ok(sos && sos.width >= 56 && tabs && sos.y >= tabs.y - 1 && sos.y + sos.height <= tabs.y + tabs.height + 1, 'small phone: SOS is docked inside the bottom bar');
-  ok(await page.getAttribute('#chat-fab', 'aria-label') === 'Start a new chat' && (await page.getAttribute('#tabs button[data-tab="ekta"]', 'aria-label')) === 'Ask Ekta',
+  ok(await page.getAttribute('#chat-fab', 'aria-label') === 'Start a new chat' && /Ask Ekta/.test(await page.textContent('#tn-ekta-today')),
      'small phone: both still have their names for screen readers');
   ok(await page.evaluate(() => document.querySelectorAll('.fab').length === 0), 'small phone: nothing floats over the page');
   await page.close();

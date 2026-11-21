@@ -133,6 +133,23 @@ node site/tests/consenttest.mjs
 # who is sent a phone and a birth year, and who decides what together.
 # _standingrules.mjs imports nothing, so this runs before npm install too.
 node site/tests/standingtest.mjs
+# A link for someone not on the app: the 256-bit key and where it travels,
+# 90 days and keeping it on, who may have one (never someone remembered),
+# the six things the page may show and what it never does, the limits, and a
+# WhatsApp link that can only ever be wa.me. _eldlinkrules.mjs imports
+# nothing, so this runs before npm install too.
+node site/tests/eldlinktest.mjs
+# The remaining family needs: the roll-call (who starts, who answers for
+# whom, what a child sees), a child's page (who reads and writes what, the
+# late pick-up), the carer-load fairness line, the function kit, home
+# upkeep and the blood group consent. Every rule file here imports nothing
+# but other rule files, so this runs before npm install too.
+node site/tests/familyneedstest.mjs
+# Today, for each person: short names that are never cut after an honorific,
+# which Today a person gets, the order of "From the family", the bell of
+# someone new, and the five places. _todayrules.mjs imports nothing, and the
+# app's own copy of the rules is run from the page's source.
+node site/tests/todaytest.mjs
 # The native apps' copy of the server's rules (PINs, for now) is written by
 # the server itself. If a rule changes in api/ and the contract is not
 # regenerated, the phones would accept what the server then refuses. Vercel's

@@ -1,6 +1,6 @@
 # Prompt Pack (`prompts.md`)
 
-Reusable prompt templates for website and 3D development, organized by project stage. Fill in every `[bracket]` before sending — never send empty brackets.
+Reusable prompt templates for website and 3D development, organized by project stage. Fill in every `[bracket]` before sending - never send empty brackets.
 
 ---
 
@@ -66,7 +66,7 @@ Restyle the [section]. [layout word]. [type words]. [space word]. [surface words
 - **Surface:** `flat`, `soft shadow`, `grain`, `glass`, `border`
 - **Motion:** `fade in`, `slide up`, `stagger`, `parallax`, `hover lift`
 
-### From a reference screenshot (form only — never copy brand, text, or images)
+### From a reference screenshot (form only - never copy brand, text, or images)
 ```text
 Use this screenshot as a reference for layout, spacing and proportions only. Keep our own content, colours and fonts. Rebuild the [section] in this structure.
 ```

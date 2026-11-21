@@ -37,6 +37,7 @@ import { fail } from './_fail.mjs';
 import { dayIn, reqTz, validTz, fromWall } from './_recur.mjs';
 import { pushCircle } from './_push.mjs';
 import { placeOf } from './_places.mjs';
+import { ensureTogetherSchema } from './_together.mjs';
 import { remembranceDue } from './_rememberrules.mjs';
 import { DG, digestFacts, digestWrite, digestFirst, digestSince, digestPrompt, digestCheck, digestHour } from './_digestrules.mjs';
 
@@ -218,8 +219,41 @@ export async function digestGather(sql, circle, me, tz, nowMs = Date.now()) {
       and created_at >= ${w.start} and created_at < ${w.end} and created_at <= ${now}
       and for_member is distinct from ${mid} and for_member2 is distinct from ${mid}
     order by created_at limit 3`)).map(r => ({ cardId: r.id, by: r.by_member, forIds: [r.for_member, r.for_member2].filter(Boolean), forName: r.for_name }));
-  raw.joined = people.filter(p => p.id !== mid && new Date(p.created_at) >= w.start && new Date(p.created_at) < w.end && new Date(p.created_at) <= now)
-    .map(p => ({ id: p.id, onApp: p.on_app }));
+  // FOR THIS MEMBER. Who wrote today in a chat this member is in (the
+  // family chat, a personal chat, a group they belong to): who and how many,
+  // never the words, and never an SOS message. The rule is the chat list's
+  // own (api/chats.mjs): the family chat, or a chat I am a member of.
+  raw.messages = (await q(() => sql`
+    select m.member_id as by, (c.kind = 'dm') as dm, count(*)::int as n
+    from messages m join chats c on c.id = m.chat_id
+    where c.circle_id = ${cid} and m.member_id is not null and m.member_id <> ${mid}
+      and m.created_at >= ${w.start} and m.created_at < ${w.end} and m.created_at <= ${now}
+      and m.text not like '🆘%'
+      and (c.kind = 'circle' or exists (select 1 from chat_members x where x.chat_id = c.id and x.member_id = ${mid}))
+    group by m.member_id, (c.kind = 'dm')`)).map(r => ({ by: r.by, dm: r.dm, n: r.n }));
+  // A shukriya written FOR this member today (api/_heard.mjs): to them, so
+  // theirs to read whatever audience the writer chose.
+  raw.thanks = (await q(() => sql`
+    select id, from_member from shukriya
+    where circle_id = ${cid} and to_member = ${mid}
+      and created_at >= ${w.start} and created_at < ${w.end} and created_at <= ${now}
+    order by created_at limit 6`)).map(r => ({ id: r.id, by: r.from_member }));
+  // A plan still waiting for this member's answer. Plans belong to the
+  // whole circle; one made for named people asks only those people.
+  // The answer columns come from api/_together.mjs: ensured here, so this
+  // read is never quietly empty on a database that has not made them yet.
+  // (No plans table at all means nobody here has ever made a plan.)
+  const hasPlans = (await sql`select to_regclass('plans') is not null as x`)[0].x;
+  if (hasPlans) await ensureTogetherSchema(sql);
+  raw.plansAsk = !hasPlans ? [] : (await sql`
+    select id, title, by_member from plans
+    where circle_id = ${cid} and at > ${now} and (by_member is null or by_member <> ${mid})
+      and not (${mid}::uuid = any(coalesce(going, '{}'::uuid[])))
+      and not (${mid}::uuid = any(coalesce(maybe, '{}'::uuid[])))
+      and not (${mid}::uuid = any(coalesce(cannot, '{}'::uuid[])))
+      and (coalesce(cardinality(invited), 0) = 0 or ${mid}::uuid = any(invited))
+    order by at limit 2`).map(r => ({ planId: r.id, title: r.title, by: r.by_member }));
+  // Someone joining is not said in the note (the bell says it once).
   return raw;
 }
 

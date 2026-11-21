@@ -789,7 +789,7 @@ Checked at 320 and 390, light and dark, and at 1280 for sideways scroll, on the 
 
 New patterns: none. The two-button choice on the sign-in card is the app's `seg`; every notice is a `resetcard`; every row of the decisions card is an `ev` with a `prow2`; the two sheets are the app's `msheet`. No new CSS and no new token. Ids start with `ac-`, functions with `ac`.
 
-### Review N (fix pass), what the review of the combined build found (2026-11-14)
+### Review 27 (fix pass), what the review of the combined build found (2026-11-14)
 
 Checked at 320 and 390, light and dark, on the real app (`standing.e2e`, `consent.e2e` and `heard.e2e` measure the changed screens). No new screen and no new pattern: every change is words, or a row in a card that already exists.
 
@@ -810,3 +810,82 @@ Checked at 320 and 390, light and dark, on the real app (`standing.e2e`, `consen
 | F13 | 3 User control | Open: an adult who is not chosen on Papa's card no longer sees Papa's medicines in the Family book unless they wrote the entry, Papa shared it by name, or an SOS is open | 2 | Open by design: it is the card's own rule. Worth a second look with real families |
 
 New patterns: none.
+
+### Review 28 (stream I), Dadi's link: a page for someone who will never install the app (2026-11-20)
+
+Who: a 70-year-old with a small Android phone, WhatsApp, weak eyes and a slow network, and the adult child who sends her the link. Goal: she tells the family she is fine, hears them and answers, with nothing to learn. Feel: large, calm, hers.
+
+Checked at 320 and 390, light and dark, in a real browser with no session (`eldlink.e2e` measures every screen of the page at a 56px target floor and a 16px text floor, and the app's new card at 44 and 12; the card also at 1280).
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| 1 | 2 Real-world match | An English-only page would be read to her by someone else, which is the dependence this was meant to end | 4 | Fixed: Hindi first and English under it on every button and heading; `lang="hi"` on each Hindi run so a screen reader and the read-aloud voice pick the right language |
+| 2 | 6 Recognition | A list of small links needs reading and aim | 3 | Fixed: one column of 64px buttons, one thing on a screen, a big "वापस / Back" on every screen, no menus |
+| 3 | 5 Error prevention | "I need help" one mis-tap away from ringing every phone | 4 | Fixed: five seconds with a full-width "रुकिए, गलती से दब गया / Stop, I pressed by mistake"; Cancel tells nobody |
+| 4 | 1 Visibility | After a tap she must know it reached someone | 3 | Fixed: "✓ परिवार को बता दिया / Your family has been told you are fine" replaces the button for the day; every send ends on a plain "sent" screen or line |
+| 5 | 3 User control | A page set up for her by someone else | 4 | Fixed: the first screen says who set it up and what the family can see, with "नहीं चाहिए / I do not want this"; "What I sent" lists everything with Delete; she can turn the page off herself |
+| 6 | 9 Error recovery | A dead link showing an error, or naming the family to a stranger | 3 | Fixed: one kind screen for a wrong, old or turned-off link, in both languages, with no name on it |
+| 7 | 7 Flexibility | Typing is hard on a small phone | 3 | Fixed: every answer can be one tap or a voice note; writing is the third choice |
+| 8 | 4 Consistency | The heading took a focus ring when a new screen opened | 1 | Fixed: the heading is focused for screen readers only and draws no ring; every control has a 4px ring |
+| 9 | 10 Privacy | Adults sending the link might think Parwah sent it, or forward it widely | 3 | Fixed: the card says "Parwah does not send it: you do, from your own WhatsApp" and that anyone with the link can open her page |
+| 10 | 2 Real-world match | Open: the weekly question is written in English, so it is shown and read aloud in English | 2 | Open: said in the coverage notes |
+| 11 | 1 Visibility | Open: "Send again" makes a fresh link and the old one stops, because only a hash is kept | 2 | Open by design: the button asks first and says so |
+
+New patterns: one, for the page only. A two-line bilingual button (`.b` with `.hi` and `.en`), 64px tall, in three weights: the gradient for the one main thing, the emergency red for help, an outline for everything else. Tokens are the site's own names and values, kept inline so the page needs no stylesheet. In the app there is no new pattern and no new CSS: the link card is a `card` with `ftchip`, `mbacts`, `pkind` and `pickrow`; what she said is an `mbcard` of `crow`s. Ids start with `el-`, functions with `el`.
+### Review 29 (stream J), the remaining family needs: roll-call, a child's page, carer load, the function kit, home upkeep, the summary and the blood group lookup (2026-11-20)
+
+Checked at 320 and 390, light and dark, and at 1280 for sideways scroll, on the real app with real families in a real database. Six browser tests measure every new surface (44px targets, the 12px floor, AA contrast in both themes, nothing sideways): `rollcall.e2e` (the banner with its two buttons, the banner after answering, the board empty, open and mixed), `kids.e2e` (starting a page, a parent's page, the child's own page, another adult's view with "Your turn today"), `carerload.e2e` (my week, the family line with an open ask, switched off), `eventkit.e2e` (before starting, as a host, as the family, the guest sheet), `home.e2e` (empty with its form, as the writer, as the family) and `healthlookup.e2e` (the blood card, with someone found, the summary card and the printed page).
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| J1 | 1 Visibility | A roll-call that sits only on the Family tab is missed by someone reading a chat | 4 | Fixed: while one is open and I have not answered, two big buttons sit at the top of every screen. After my answer it shrinks to one line |
+| J2 | 5 Error prevention | "I need help" beside "I am safe" is one slip away from an SOS | 4 | Fixed: "I need help" asks once, in plain words ("This sends your SOS to the family"), before it goes. "I am safe" is one tap |
+| J3 | 4 Consistency | The two answers first drew in the marigold gradient: the gate's status-colour rule caught it | 3 | Fixed: they are their own class, in the status colours with a mark and a word each (a tick and "I am safe", an exclamation mark and "I need help") |
+| J4 | 10 Privacy | A child would read "Papa needs help" on the board | 4 | Fixed in the query: to a child that person reads as not answered yet |
+| J5 | 2 Real-world match | "Mark safe" for Dadi could read as a guess | 3 | Fixed: it asks "Have you heard from Dadi?" and shows how it will read: "Rohan says Dadi is safe" |
+| J6 | 10 Privacy | A child's page could show a sibling the fees or the allergy line | 4 | Fixed in the query: a parent chooses, part by part; another child never gets fees, vaccinations or health |
+| J7 | 3 User control | A parent could publish the child's marks to the family | 3 | Fixed: the child chooses ("Who sees my marks": only Mummy Papa, or the whole family). A parent chooses only for a child who is not on Parwah |
+| J8 | 2 Real-world match | A child's page that looks like a form is not a child's page | 2 | Fixed: "Namaste, Aarav! This is your page", "My school", "Who picks me up", "What I want to tell the family" |
+| J9 | 1 Visibility | The person whose turn it is had to find the child's page to tap "Picked up" | 3 | Fixed: "Your turn today: collect Aarav" sits at the top of the section with the one button |
+| J10 | 2 Real-world match | Dignity: a late pick-up alert could blame someone | 3 | Fixed: "Aarav is not marked as picked up yet. Nani was to collect at 2:30 pm. A call to Nani or the school will tell." |
+| J11 | 2 Real-world match | Dignity: any count of who did what becomes a scoreboard | 4 | Fixed: my own week is shown to me alone; the family reads one line with no number and no comparison, and the person being looked after is not shown it at all. A unit test refuses any line with a number or a shaming word |
+| J12 | 3 User control | Some families will not want this at all | 2 | Fixed: one switch, any adult, on and off |
+| J13 | 8 Minimalist | The function kit is five lists; open at once they bury the guest list | 3 | Fixed: each add form is folded ("Pick from the family tree", "Type a name", "Add a task", "Add an arrival"); the lists and counts are what shows |
+| J14 | 10 Privacy | A guest list invites phone numbers | 3 | Fixed: a guest is a name. A number in the name box is refused in words, and the sheet says no numbers are kept |
+| J15 | 2 Real-world match | Dignity: a name of someone who has passed away on a guest list | 4 | Fixed: refused when picked or typed (this family and a linked one), and left out of the list, the counts and the sheet if marked later |
+| J16 | 10 Privacy | The bill behind an appliance may sit in one person's Vault | 3 | Fixed: someone who cannot open it reads "The bill is in Rohan's Vault", and nothing about the paper |
+| J17 | 10 Privacy | A blood group lookup could reveal who has NOT said yes | 4 | Fixed: only people who said yes are in the answer; no count of the others. "Nobody who said yes has AB- written down. Others may have it and have not said yes" |
+| J18 | 2 Real-world match | A lookup that sorts who "can give" is advice | 4 | Fixed: an exact match on what the family wrote, and the line "The hospital checks the blood group and decides everything else" |
+| J19 | 1 Visibility | The summary could pass for a medical record | 4 | Fixed: the date and "Written by the family. This is not a medical record." under the title, and the record line at the foot |
+| J20 | 4 Consistency | Two new cards inside the health list broke its two-column layout on a wide screen (the gate caught it) | 2 | Fixed: they sit above the list, shown and hidden with it |
+| J21 | 6 Recognition | Open: To do now has nine sections and the Vault four; the names are plain but the row is long on a phone | 2 | Open: the navigation is being regrouped in another stream; these are named to move (see the coverage map) |
+| J22 | 1 Visibility | Open: the carer line and "Your turn today" are not on Today | 2 | Open: Today is being rebuilt in another stream; both are one read each (`/api/care?area=carerload`, `?area=kids`) |
+
+New patterns: two, both small and built from tokens. (1) The roll-call's pair of status buttons (`.kd-big.kd-safe`, `.kd-big.kd-help`): 56px, the status colours, a mark and a word. (2) A full-screen working sheet (`#kd-kit`) and a page to print (`#kd-paper`), which reuse the family book's `mbbook` page and its print rule under their own body class. Everything else is the app's `card`, `crow`, `pickrow`, `seg`, `ev` and `msheet`. No new token. Ids start with `kd-`, functions with `kd`.
+### Review 30 (stream G), Today for each person and five places (2026-11-20)
+
+A family of five walked through the real app on a 390 by 844 phone. This is what they found and what was done. Measured on the real app by `todaynav.e2e` at 320 and 390 in light and dark, and Today and the sidebar at 1280.
+
+| # | Heuristic | Finding | Sev | Status |
+|---|---|---|---|---|
+| G1 | 1 Visibility | A message from a son was invisible on his father's Today: a subtitle of a tile inside the collapsed "More", about 3,000 pixels down. The chat bubble had no mark and was labelled "Start a new chat" | 4 | Fixed: "From the family" is first on Today, right under the big buttons in senior mode. "Rohan sent you a message", the first words, "Dekh liya", "Hold to talk" and "Open and reply". The bubble and the Chat tab carry a count, and the bubble's label says what a tap will do |
+| G2 | 2 Real-world match | A 14-year-old got the adult admin home: vault, Aadhaar, emergency-card setup | 3 | Fixed: under 18 gets games, polls, Pasand, stories, a question for an elder and their own plans first; no vault tile, setup list or readiness score |
+| G3 | 1 Visibility | No "how are Papa and Maa" view for a child abroad: Home was one line | 4 | Fixed: a card for each parent, with seen today or not yet, medicines as this person may see them, the last message, Call and Message |
+| G4 | 8 Minimalist | Five tabs, five top-bar icons, a 30-item menu and a 30-entry sidebar. Chat had no tab while Vault and Ekta did | 4 | Fixed: five places, Today, Chat, Together, Family, More, in the tab bar, the menu and the sidebar. The menu shows 10 rows on Today; a place opens to show what is inside it. Every old address still works |
+| G5 | 4 Consistency | Stories, recipes and the album lived inside "Health & contacts" | 3 | Fixed: they are reached from Together and light the Together tab; Health and contacts is reached from Family and no longer carries their switch |
+| G6 | 8 Minimalist | To do carried seven sections | 2 | Fixed: three sections and three filters; bills, costs, home staff and renewals are one tap away and open by themselves when one of them is where you are |
+| G7 | 5 Error prevention | An SOS that failed said "SOS sent", then "could not be sent", then "The alert still went" and "Waiting for someone" | 4 | Fixed: "SOS NOT sent", the waiting rows are put away, Call and SMS are the largest things on the screen, and one button tries again |
+| G8 | 9 Error recovery | With no network a typed chat message was deleted | 4 | Fixed: it stays as a bubble, "Not sent. Tap to retry", is kept on the phone, and goes by itself when the network is back |
+| G9 | 2 Real-world match | "Rohan is on their way to Papa" was untrue from another country; the SOS message named the sender's clock ("5:50 PM UTC") | 3 | Fixed: "Rohan has seen it and is calling"; in the chat the time is the reader's own |
+| G10 | 2 Real-world match | Names were cut at the first space: "Ask श्रीमती" | 3 | Fixed in the app and in eight server modules: never after an honorific, never in a script that is not Latin. Open: two rules files that must import nothing keep the old cut in three sentences |
+| G11 | 3 User control | Choosing "Mother" switched the larger, simpler screen on by itself | 3 | Fixed: it asks "Use the simpler, larger screen?" with Yes and No. Grandparents still start with it on |
+| G12 | 7 Efficiency | First run took 21 taps and 16 screens before a father and son were connected | 4 | Fixed: 4 taps from the invite link to the family's Today, measured in the test. No tour for an invite, the role is already chosen, one family opens straight away, and the adult lets them in from Today in one tap |
+| G13 | 1 Visibility | A new member's bell held eight old notices, their own "has asked to join" among them; "Invite someone" stayed unticked with five members | 2 | Fixed: the bell starts when they joined; "asked to join" and "joined" are one line; the step ticks when a second person is here |
+| G14 | 6 Recognition | A person's page opened with six "Not recorded yet" rows and ended with "When someone passes away" | 3 | Fixed: what is recorded comes first, empty cards are put away, and what is missing is folded under "Add more". The link stays in the Family register and on the page of someone who is remembered |
+| G15 | 5 Error prevention | A new cost was shared only with "You", so the sums said "Everyone is square" | 3 | Fixed: "Who is this shared between?" with everyone listed and ticked |
+| G16 | 7 Efficiency | A medicine was added in one place and its times set in another | 2 | Fixed: after Save the times sheet opens, "When does Papa take it?" |
+| G17 | 2 Real-world match | The evening note read like a log and left out messages and plans | 3 | Fixed: it leads with who wrote to the reader (counted, never read), a thank-you, a plan waiting for their answer; joins are gone, and so is "One more small thing happened too" |
+| G18 | 8 Minimalist | Open: the older Today blocks (a private word, an Ashirwad, a card) still show lower on Today as well as in "From the family" | 2 | Open: each row in "From the family" opens the full card below; folding the two together needs a second look with real families |
+| G19 | 4 Consistency | Open: on a laptop the bell, the chat bubble and Notifications in the sidebar are three ways to the same two lists | 1 | Open |
+
+New patterns: one. `tn-row` is a row of "From the family": a line, a second line and one to three buttons, built from the tokens of `crow` (surface, bone border, radius 12) with a 4px rani edge so it reads as the family speaking, not as an alert (alerts keep sindoor). `tn-pcard` (a card for a parent) is the app's `card` with a row of buttons. The More screen and the young Today reuse `widgets` and `widget` unchanged. No new token. Ids start with `tn-`, functions with `tn`.

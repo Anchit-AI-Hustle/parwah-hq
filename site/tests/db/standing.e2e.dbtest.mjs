@@ -173,6 +173,10 @@ async function wide(page, label) {
   ok('design: ' + label + ' - nothing sideways at 1280', over <= 0, over + 'px');
 }
 const inApp = (page) => page.waitForFunction(() => document.body.classList.contains('inapp'), null, T).then(() => true, () => false);
+// Signed in: straight into the one family, or at the list when there are several.
+const landed = (page, re) => page.waitForFunction((src) => { const m = document.getElementById('main'), c = document.getElementById('circle-step'), t = document.getElementById('m-title'), l = document.getElementById('cs-list');
+  const rx = src ? new RegExp(src) : null;
+  return (m && !m.hidden && document.body.classList.contains('inapp') && (!rx || rx.test(t.textContent))) || (c && !c.hidden && c.getBoundingClientRect().height > 0 && (!rx || rx.test(l.textContent))); }, re ? re.source : null, T).then(() => true, () => false);
 async function open(who, hash) {
   const page = await phone(who, { hash: hash || '#home' });
   await inApp(page);
@@ -368,7 +372,7 @@ const PM2 = await open(M.Maa, '#people');
   await F.click('#au-rs-check').catch(() => {});
   ok('forgot: the yes reaches the phone that asked: choose a new PIN', await shown(F, '#au-pin2') && await sees(F, '#au-pinnote', /family said yes/));
   await F.fill('#au-pin', '5927'); await F.fill('#au-pin2', '5927'); await F.click('#au-go');
-  ok('forgot: and he is back, at the list of his families', await shown(F, '#circle-step') && await sees(F, '#cs-list', /Verma Family/));
+  ok('forgot: and he is back, in his family (or at the list, with several)', await landed(F, /Verma Family/));
   await ctx.close();
 }
 
@@ -447,7 +451,7 @@ const PM2 = await open(M.Maa, '#people');
   await N.goto(BASE + '/'); await shown(N, '#auth-step');
   await N.fill('#au-phone', U.Maa.phone.slice(3)); await N.click('#au-go'); await shown(N, '#au-pin');
   await N.fill('#au-pin', '4819'); await N.click('#au-go');
-  ok('new phone: it is let in at once, nothing waits for an approval', await shown(N, '#circle-step').then(v => v || inApp(N)));
+  ok('new phone: it is let in at once, nothing waits for an approval', await landed(N));
   await PM2.reload(); await inApp(PM2);
   ok('new phone: Maa\'s own phone asks "Was this you?"', await sees(PM2, '#ac-sec', /New sign-in on another phone/) && await sees(PM2, '#ac-sec', /Was this you\?/));
   await design(PM2, '#ac-sec', 'the new sign-in card');
@@ -459,7 +463,7 @@ const PM2 = await open(M.Maa, '#people');
   await PM2.fill('#au-pin', '4819'); await PM2.fill('#au-pin2', '4819'); await PM2.click('#au-go');
   ok('not me: the old PIN again is not a new PIN', await sees(PM2, '#ob-err', /different PIN/));
   await PM2.fill('#au-pin', '6385'); await PM2.fill('#au-pin2', '6385'); await PM2.click('#au-go');
-  ok('not me: a new PIN, and she is back in', await shown(PM2, '#circle-step').then(v => v || inApp(PM2)));
+  ok('not me: a new PIN, and she is back in', await landed(PM2));
   await ctx.close();
 }
 

@@ -40,6 +40,7 @@ import { noteRisk } from './_notesapi.mjs';
 import { passedClean, remembranceDue, remembranceLine, yearsLine, passedWords, wallIn, REMEMBER_LINE_MAX } from './_rememberrules.mjs';
 import { surelyAdult } from './_safetyrules.mjs';
 import { minorOf } from './_audience.mjs';
+import { shortName } from './_todayrules.mjs';
 
 let ready = false;
 export async function ensureRememberSchema(sql) {
@@ -129,7 +130,7 @@ async function applyMark(sql, circle, by, t, p, line) {
 
 const tzOf = m => placeOf(m && m.place, m && m.country, null).tz;
 const passedOf = m => ({ year: m.passed_year || null, month: m.passed_month || null, day: m.passed_day || null });
-const firstName = n => String(n || '').trim().split(/\s+/)[0] || 'them';
+const firstName = n => shortName(n, 'them');
 
 // The days of remembrance that fall today, for the Today screen. Worked out
 // from rows already read, so a poll costs no extra query.

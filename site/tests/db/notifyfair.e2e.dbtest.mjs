@@ -146,6 +146,7 @@ function measureIn(sel) {
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   while (w.nextNode()) {
     const el = w.currentNode.parentElement; if (!w.currentNode.textContent.trim() || !el || !vis(el)) continue;
+    out.seen++;
     const cs = getComputedStyle(el), size = parseFloat(cs.fontSize);
     if (size < 11.99) out.bad.push('tiny ' + el.textContent.trim().slice(0, 20));
     const a = L(cs.color), ratio = Math.min(...bgOf(el).map(bg => { const b = L(bg); return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); }));
@@ -161,7 +162,7 @@ async function design(page, sel, label, widths = [320, 390]) {
     await page.waitForFunction(([w, dark]) => innerWidth === w && matchMedia('(prefers-color-scheme: dark)').matches === dark, [wd, sc === 'dark'], T);
     await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
     // The card is drawn from a request: measure it once it is on screen.
-    await page.waitForFunction(q => { const e = document.querySelector(q); return !!e && e.children.length > 0; }, sel, T).catch(() => {});
+    await page.waitForFunction(q => { const e = document.querySelector(q); return !!e && !e.closest('[hidden]') && e.children.length > 0 && e.getBoundingClientRect().height > 0; }, sel, T).catch(() => {});
     const m = await page.evaluate(measureIn, sel);
     seen += m.seen;
     if (m.overflow > 0) bad.push(wd + ' sideways ' + m.overflow + 'px');
@@ -170,7 +171,8 @@ async function design(page, sel, label, widths = [320, 390]) {
   }
   await page.setViewportSize(was); await page.emulateMedia({ colorScheme: 'light' });
   await page.waitForFunction((w) => innerWidth === w, was.width, T);
-  ok('design: ' + label + ' - 44px targets, 12px floor, AA contrast in light and dark, nothing sideways at ' + widths.join(', '), bad.length === 0 && seen > 0, bad.slice(0, 6).join(' | ') || 'nothing measured');
+  ok('design: ' + label + ' - 44px targets, 12px floor, AA contrast in light and dark, nothing sideways at ' + widths.join(', '), bad.length === 0 && seen > 0, bad.slice(0, 6).join(' | ') || 'nothing measured: ' + await page.evaluate(q => { const e = document.querySelector(q); const h = e && e.closest('[hidden]');
+    return !e ? 'not in the page' : 'children ' + e.children.length + ', hidden by ' + (h ? (h.id || h.tagName) : 'nothing') + ', at ' + location.hash + ', notifications ' + (window.Notification ? Notification.permission : 'none'); }, sel));
 }
 
 // ---- two families through the real API. Asha is one person in both.

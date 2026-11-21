@@ -27,6 +27,8 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | Find a phone that is on silent | Live | find me |
 | A helper nearby is told when family is far | Live | nearby ladder |
 | An SOS reaches every family a person belongs to, and is shouted once more by the timer when nobody answers | Live | SOS fan-out, timer escalation |
+| "Sab theek?": in a flood, a power cut or any emergency, one adult asks the whole family at once | Live | roll-call, `api/_rollcall.mjs`: "I am safe" or "I need help" (which raises that person's own SOS); an adult ticks for someone not on Parwah ("Rohan says Dadi is safe"); one open a family, three a day, closed after 24 hours |
+| An SOS that did not go says so, and says nothing else | Live | with no network the heading is "SOS NOT sent", the rows about waiting and recording are put away, Call and SMS are the largest things on the screen, and "Try to send it again" is one tap. The Call buttons are filled from the family this phone last saw: 112 (or the country's own number), then the first adult who can be reached, never someone remembered. When someone answers, the words are "Rohan has seen it and is calling", never "on their way" |
 | Someone who has passed away is never called, texted, pushed or listed, anywhere | Live | enforced on the server: SOS contacts, the dialler, every push, Lost mode |
 | The family is told honestly when calls and texts are not set up, and when timed reminders last ran | Live | Safety card in Profile, the SOS screen |
 | A parent who chatted, ticked a medicine or answered the pulse is not reported as missing | Live | check-in counts any sign of life that day |
@@ -39,6 +41,7 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | "All is well" and "Medicines taken" pressed with no network are kept and sent later with their own time | Live | offline queue (`api/_offline.mjs`) |
 | The app opens on a slow or absent network, with the emergency card and Call buttons | Live | service worker, saved shell |
 | An adult can check that Parwah itself is working | Live | "Is Parwah working?" in Profile |
+| **A parent with no app says "I am fine" each day, asks for a call, and calls for help** | Live | Dadi's link (stream I): her own no-sign-in page, sent on WhatsApp by a family adult. "I am fine" is a real check-in under her name and counts as the day's sign of life; the family can ask her for a daily time and she says yes on her own page. "Call me" pushes the person she chose, or today's person on the call rota. "I need help" waits five seconds, then raises the family's own SOS as her, with 112 and her two people to ring; her place goes only if she taps to send it. `api/_eldlink.mjs` behind `/api/events?area=eldlink`, page at `/apna/` |
 
 ### B. Looking after health and care
 | Need | Status | Where |
@@ -52,7 +55,10 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | Home staff: attendance, salary, advances, late alerts | Live | staff. The late alert goes to one named owner with a one-tap answer ("Sunita came" / "On leave today"); a day off marked ahead is skipped; salary and advances are for adults only |
 | The daily call rota is the parent's too: they are told, choose the time that suits them, and can say "No daily call, thank you" | Live | `api/_rotaconsent.mjs` |
 | Who does what between brothers and sisters, and who paid | Live | sibling tasks, expenses, split, bills |
-| Care for a child (vaccines, school, growth) | Next | section 4, tranche 3 |
+| Care for a child: school, fees, exams, pick-up, the vaccination record, allergies and the doctor's phone | Live (growth charts are later) | Bachchon ka panna, `api/_kids.mjs` |
+| Who is carrying the looking-after, said gently, and a day off | Live | Thoda sa haath batao, `api/_carerload.mjs`: each adult sees their own week only; the family sees one line with no number in it; a family can switch it off |
+| A page to take to the doctor | Live | Doctor-ready summary, `api/_bloodlookup.mjs` behind `/api/book?area=summary`: built only from what the viewer may already read, printed by the phone, nothing stored; never for a child |
+| Who in the family has a blood group, when someone needs blood | Live | Blood group in the family, `/api/book?area=blood`: only people who said yes on their own phone are ever shown; a record lookup, no advice |
 | Care for a pet | Later | |
 
 ### C. Papers, property and information (the family's memory of facts)
@@ -101,8 +107,12 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | **One question a week for the whole family** | Live | at least 40 warm questions; each member answers by voice or text and reads the others once they have answered; someone not on Parwah can be answered for ("told by Dadi, recorded by Rohan") |
 | **Being answered**: heard-by on a story, a thank-you for a card, a reaction on a photo | Live | stories ("Suna, bahut accha laga" or a voice reply, pushed to the teller); cards (reminded the evening before, never handed over empty, "Say thank you", a print and share view for someone not on Parwah); photos (reactions, a voice caption, share one photo, one "new photos" push a day) |
 | **Equal votes** | Live | chat polls and date polls: a secret ballot (no name is sent to any phone; a chat poll's counts stay hidden until it closes, and the screen says so), "Waiting for...", one reminder, a vote "for Dadi, by Rohan", the host sees the tally before a lock and the lock records it. Every vote counts once, whoever cast it |
+| **A voice for the member who will never install the app** | Live | Dadi's link (stream I). She sees only what was sent to HER or to the whole family: blessings, thanks, her cards on their day, the newest photo of a whole-family album, the weekly question, an open family poll. She answers with a heart, a few words or a voice note, sends an Ashirwad to one person or everyone, answers the question, and votes as herself (not "for Dadi, by Rohan"). In the app it all sits under her own name, marked "from Dadi's link". Never shown: the chat, health, documents, the register, costs, location, a private or chosen album |
 | Care that flows back from a parent: Ashirwad (a one-tap blessing or a voice note, answered with "🙏 Pranam" or a voice reply) and "How is your day?" asked of a child | Live | `api/_ashirwad.mjs` behind `/api/chats?area=ashirwad`; the parent's big button is on the senior Today |
-| A daily "what happened today" digest | Live | Aaj kya hua, from Ekta: plain words for everyone; one model call per member per day at most, 12 a circle a day, only when the owner's key is set |
+| A daily "what happened today" digest | Live | Aaj kya hua, from Ekta: plain words for everyone; one model call per member per day at most, 12 a circle a day, only when the owner's key is set. It leads with what is for the reader: who wrote to them today (counted, never read), a thank-you they received, a plan waiting for their answer. Someone joining is not in it, and it never ends with a count of what was left out |
+| **What the family sent me, first on Today** | Live | "From the family" (`api/_today.mjs`, behind `/api/chats?area=today`): unread messages to me or in the family chat (who, the first words), a private word, an Ashirwad, "How is your day?", a shukriya, a plan with "Going?" and Yes, Maybe, No in place, a poll I have not voted in, a card I have not written in. One read; each part is read by the module that owns it, by that module's own rule. In senior mode it sits right under the big buttons, with "Dekh liya" and hold to talk |
+| **Today is different for each person** | Live | senior mode: the big buttons, then From the family, no setup list, and the status line says "You said all is well". An adult: a card for each parent the family looks after (seen today or not yet, today's medicines as this person may see them, the last message, Call and Message). Under 18 (the one adult rule): games, polls, Pasand, stories, "Ask Dada a question" and their own plans first, with no vault, setup list or readiness score. The mood card is near the top for all three |
+| **Five places, not thirty rows** | Live | Today, Chat, Together, Family, More: the phone's five tabs (SOS still docked), the menu and the laptop sidebar alike. Together holds plans, games, the board, Pasand, the album, stories, recipes, festivals and the week's question. Family holds people, the tree, Rishtedaar and Health and contacts. More holds the Vault, the Family register, To do, Ekta, The day, Notifications and Profile. Every old address (`#vault`, `#care`, `#memory` and the rest) still opens its screen; the rule for which screen is in which place is `placeOf` in `api/_todayrules.mjs` |
 | A morning note of the day ahead | Live | Aaj ka din, from Ekta (`api/_ektaday.mjs`): medicine times of people the reader may see, plans, birthdays and anniversaries today, renewals this week, who is away. Plain rules by default; a model line only with `EKTA_MORNING_MODEL=on`, on the same one call a day as the evening note. Senior mode has a big "Sunao" button on both notes, and the thumbs |
 | An assistant that reads the family's own things back, and does small things for me | Live | Ekta asks before she acts (`api/_ektaagent.mjs`): she reads plans, polls, occasions, likes, renewals, today's medicine times, stories and what is waiting on me, each with that feature's own rule; a message, plan, poll, private note, reminder, request or card line is a card first ("Ekta wants to: ...", "Yes, do it" / "No"), run once on the yes, as me, through the same handler as the screen |
 | Someone who does not type can still send word ("Ekta, tell Rohan I reached") | Live | read by rule, with no AI key and no coins; the same confirm card; spoken and heard in English or Hindi (`members.lang`) |
@@ -127,22 +137,22 @@ Status words: **Live** (in the app today) · **Building** (in this round) ·
 | Bills and their due dates | Live | bills |
 | Shopping lists | Live | notes with checklists |
 | Auspicious times, panchang, horoscope | Live | muhurat, rashi |
-| Home repairs log and warranty dates | Next | a register kind plus renewals |
+| Home repairs log and warranty dates | Live | Ghar ka saaman, `api/_home.mjs`: appliances, vehicles and house papers with the register's four choices of who sees each; reminders ride the renewals sweep |
 | Meal plan for the week | Later | |
 
 ### H. Children and learning
 | Need | Status | Where |
 |---|---|---|
-| A child's or teenager's standing: under 18 by date of birth, or marked as a child by an adult, is not sent SOS details, missed-dose alerts, staff salaries, the safe word, emergency items or cost ledgers, and still gets plans, cards, games, the album, stories and Ashirwad | Live (the pushes and reads listed in section 3; a child's own page is later) | `audienceFor(sql, circleId, kind)` in `api/_audience.mjs` |
-| School timetable, fees, exam dates, pick-up duty | Next | tranche 3 |
-| Vaccination record | Next | tranche 3 |
+| A child's or teenager's standing: under 18 by date of birth, or marked as a child by an adult, is not sent SOS details, missed-dose alerts, staff salaries, the safe word, emergency items or cost ledgers, and still gets plans, cards, games, the album, stories and Ashirwad | Live (the pushes and reads listed in section 3; a child's own page is Bachchon ka panna) | `audienceFor(sql, circleId, kind)` in `api/_audience.mjs` |
+| School, classes, fees, exam dates, pick-up duty | Live | Bachchon ka panna: a parent sees everything, the child a friendly page of their own, the rest of the family what a parent shares |
+| Vaccination record | Live | a record only: the date given and the next date as the family wrote it |
 | Screen-time agreement the family writes together | Later | |
 
 ### I. Faith, custom and big events
 | Need | Status | Where |
 |---|---|---|
 | Festivals the family keeps, planned together | Live | festival kits: 21 festivals with dates to 2030, added and taken off one at a time, with a feed line saying who changed what |
-| A wedding or function: guests, tasks, who is arriving when | Next | an event kit on top of plans and Rishtedaar |
+| A wedding or function: guests, tasks, who is arriving when | Live | Shaadi / function kit, `api/_eventkit.mjs`, on a plan: guests from the tree and typed names (no phone), sides, invite status, tasks, arrivals, the budget beside the plan's costs, a guest sheet to print |
 | Days of remembrance kept gently (the calendar date; a tithi is not worked out yet) | Live | days of remembrance; the yearly reminder opens a memory card the family adds a line, a photo or a voice note to |
 
 ### J. The doors: accounts, joining and equal standing
@@ -182,9 +192,9 @@ whose name starts with an underscore, reached through an existing route by an
 
 | Route | Areas behind it |
 |---|---|
-| `/api/book` | health and contacts, vault, pay, notes, memory bond, **album**, **emergency card (ecard)**, biomarkers, pre-auth, **register (locator)**, audit, admission, **what needs doing (afterloss)** |
-| `/api/care` | reminders, requests, refill, bills, sibling tasks, doses, ladders, expenses, staff, renewals |
-| `/api/plans` | plans, visits, shared cards and polls, **watch together**, **cost split** |
+| `/api/book` | health and contacts, vault, pay, notes, memory bond, **album**, **emergency card (ecard)**, biomarkers, pre-auth, **register (locator)**, audit, admission, **what needs doing (afterloss)**, **home upkeep (home)**, **blood group lookup (blood)**, **doctor-ready summary (summary)** |
+| `/api/care` | reminders, requests, refill, bills, sibling tasks, doses, ladders, expenses, staff, renewals, **roll-call (rollcall)**, **a child's page (kids)**, **carer load (carerload)** |
+| `/api/plans` | plans, visits, shared cards and polls, **watch together**, **cost split**, **function kit (eventkit)** |
 | `/api/games` | games, **pasand** |
 | `/api/circle` | family, members, **tree and kin**, linked families, family facts, days of remembrance |
 | `/api/settings` | keys, push, coins, plan, day, PIN, location |
@@ -384,8 +394,135 @@ an equal, and each rule is enforced on the server:
 - **Ashirwad and "How is your day?"**, **Reached safely**, and **who may
   open an emergency card** (see the rows above).
 
-Not built here: a child's own page; a card saved as an image (Print, and
-the phone's "Save as PDF", is the way today).
+Not built here: a card saved as an image (Print, and the phone's "Save as
+PDF", is the way today). A child's own page is live (below).
+
+### The remaining family needs (stream J, live)
+
+The last of tranche 3, plus care needs an audit found missing. No new
+function: every module is behind a route that already existed.
+
+| Feature | Module | Route | Tables |
+|---|---|---|---|
+| "Sab theek?" the family roll-call | `api/_rollcall.mjs`, `api/_rollcallrules.mjs` | `/api/care?area=rollcall` (`rollcall_start`, `rollcall_answer`, `rollcall_close`) | `rollcalls`, `rollcall_answers` |
+| A child's page, "Bachchon ka panna" | `api/_kids.mjs`, `api/_kidsrules.mjs` | `/api/care?area=kids` (`kid_*`) | `kid_pages`, `kid_items`, `kid_fee_subs`, `kid_alerts`, `kid_pickups`; the function `kid_rel_v1` |
+| Carer load and respite, "Thoda sa haath batao" | `api/_carerload.mjs`, `api/_carerloadrules.mjs` | `/api/care?area=carerload` (`carer_*`) | `carer_prefs`, `carer_asks` (reads `task_log`, `medicine_doses`, `audio_consultations`, `kid_pickups`) |
+| The function kit, "Shaadi / function kit" | `api/_eventkit.mjs`, `api/_eventkitrules.mjs` | `/api/plans?area=eventkit` (`kit_*`) | `plan_kits`, `kit_guests`, `kit_tasks`, `kit_arrivals` |
+| Home: repairs and warranties, "Ghar ka saaman" | `api/_home.mjs`, `api/_needsrules.mjs` | `/api/book?area=home` (`home_*`) | `home_items` (claims in `renewal_alerts`) |
+| Blood group in the family | `api/_bloodlookup.mjs`, `api/_needsrules.mjs` | `/api/book?area=blood` (`blood_*`) | `blood_consent`, `blood_lookups` |
+| Doctor-ready summary | `api/_bloodlookup.mjs`, `api/_needsrules.mjs` | `/api/book?area=summary` (GET only) | none |
+
+Where each lives on screen today (named so they can be regrouped when the
+navigation changes):
+- **Roll-call**: a banner at the top of every screen while one is open
+  (`#kd-rc-banner`), and the card "Sab theek? Family roll-call" on the
+  Family tab (`#kd-rc-card`).
+- **Bachchon ka panna** and **Thoda sa haath batao**: two sections of To do
+  (`data-sec="kids"`, `data-sec="haath"`).
+- **Shaadi / function kit**: a button on every plan of the kind "function"
+  or "party" (`data-kdkit`), opening a full screen (`#kd-kit`).
+- **Ghar ka saaman**: a section of the Vault (`data-sec="home"`).
+- **Doctor-ready summary** and **Blood group in the family**: two cards
+  above the Health & contacts list (`#kd-health`).
+
+Who sees what, each rule on the server:
+- **Roll-call.** An adult starts and closes it. Everyone with us is asked,
+  children too. A child is not shown that someone else needs help. A
+  person's own answer is never replaced by a tick made for them.
+- **A child's page.** How the viewer stands to the child is one question,
+  answered in the database (`kid_rel_v1`): the child ("self"), a parent by
+  the tree (the parent link and that parent's spouse; with no parent on
+  Parwah, the adult who started the page), another adult, another child.
+  A parent reads everything. The child reads school, exams, classes, who
+  collects them and their own notes, and never fees, the vaccination record
+  or the health lines. Anyone else reads only what a parent marked "Whole
+  family" (for fees, vaccinations and health that means the adults of the
+  family; a child never). Exam results go to the wider family only if the
+  child chose that. Fee reminders go to adults who asked, never the child.
+- **Carer load.** For the adults. Each is sent their own numbers and nobody
+  else's. The family line appears only when one person did six parts in ten
+  or more of at least six acts in each of the last two weeks, holds no
+  number, and is not shown to the person being looked after.
+- **Function kit.** The plan's maker and the hosts they name change it; the
+  family reads it. The budget and what was spent follow the cost split's
+  own rule, and a child reads no money. "Reached safely" beside an arrival
+  shows only to someone that trip already tells.
+- **Home upkeep.** Only me, people I choose, whole family, or only in an
+  emergency (the adults, while the writer has an SOS open). The contact and
+  the bill show only as far as the viewer may already read them.
+- **Blood group.** The yes is each person's own, off by default, set from
+  their own sign-in, and it is a join in the query: no yes, no row.
+- **Summary.** The Family book's own rule, written again in the query.
+
+Honest limits:
+- **The roll-call's two buttons are in the app, not on the lock screen.**
+  The alert opens Parwah, where the two buttons are at the top of whatever
+  screen is showing. An answer needs the person's sign-in, which a lock
+  screen button does not have.
+- **Home upkeep is its own list beside the Family register, not new rows in
+  it.** It has the register's four choices of who sees an entry, enforced
+  the same way. It was kept apart because every register kind also carries
+  wording for "What needs doing", and a fridge has none.
+- **A bill is linked, not uploaded.** The entry points at a paper already
+  in the Vault. Nothing new is stored as a file.
+- **A guest from a linked family is a typed name.** The picker suggests
+  names from the Rishtedaar list; only people of this family's own tree are
+  linked to their profile.
+- **The pick-up alert's time is said in India's time** in the push itself;
+  the screen shows each phone's own time.
+- **Growth charts for a child are not built.** The page is records the
+  family writes; nothing is measured or judged.
+- **Nothing here is medical advice.** The vaccination record, the allergy
+  line, the blood group lookup and the summary are what the family wrote,
+  and each says so.
+
+### Dadi's link: a voice for someone not on the app (stream I, live)
+
+Three audits named the same gap: check-in, cards, stories, photos, votes
+and thanks all needed an account, so a grandmother with WhatsApp and no
+app had no voice. One personal link now gives her one.
+
+- **The link.** An adult makes it from the person's page ("Send Dadi a
+  link") and sends it THEMSELVES: a `https://wa.me/<number>?text=` button,
+  or the phone's share sheet. Parwah sends nothing: no SMS, no paid
+  telephony. The key is 256 random bits; only its SHA-256 is stored
+  (`eld_links.token_hash`). It rides after the `#` in the address, so no
+  server, log or Referer ever sees it, the page takes it out of the
+  address bar at once, and every call carries it in the `X-Parwah-Link`
+  header. One link per person; 90 days, and any adult can keep it on;
+  any adult turns it off, and so can she. The family is told once, in the
+  feed. A wrong, old or turned-off key gets the same plain page.
+- **Who.** Only someone in the family by name (no `user_id`), who is with
+  us. A remembered person is refused, and a link stops the moment its
+  person is marked as remembered or joins Parwah with "This is me" (what
+  she sent stays hers). A child cannot make, renew or turn off a link.
+- **Consent.** The first open says, in Hindi and English, who set it up
+  and what the family can see, with "All right" and "I do not want this"
+  (which turns the link off and tells the adult kindly). Nothing else
+  works before "All right". She sees and deletes anything she sent.
+- **The page** (`site/public/apna/`). Very large type, 64px buttons, one
+  thing on a screen, Hindi and English on every button, a read-aloud
+  button on every message, no menus. It fetches no font, script or
+  stylesheet from anywhere, carries no analytics, and asks not to be
+  indexed or to send a referrer.
+- **The rule for every read and write**: the key decides the member AND
+  the family, and an id sent by the page is only looked up beside both.
+- **In the app.** Her page in the app shows whether the link is on, when
+  it was last used and until when, "Send again on WhatsApp", "Keep it on
+  90 more days", "Turn off", the two people she can call, and a daily
+  "I am fine" to ask her for. Today shows what she said to me or to the
+  family. The shukriya sheet, the weekly question, a family poll, her
+  card and the Ashirwad picker each say it will also show on her link.
+- **Limits**, all fail closed: 10 links a day for one adult, 30 for a
+  family; 30 wrong keys in ten minutes from one address; 240 actions an
+  hour for one link; "Call me" once in three hours. The SOS keeps the
+  family's own SOS limits, which fail open on purpose.
+
+Not built here: stories told by voice from the page (a relative still
+records them, "told by Dadi, recorded by Rohan"); the weekly question in
+Hindi (it is read aloud in the language it was written in); a link for
+a child. "Send again" makes a fresh link, because the server keeps only
+a hash and cannot show the old one again.
 
 ## 4. What comes next
 
@@ -420,10 +557,12 @@ the phone's "Save as PDF", is the way today).
   a step owner and a chosen audience.
 
 **Tranche 3: children and the home**
-- A child's page: school, fees, exams, pick-up duty, vaccines.
-- Home repairs and warranties as register kinds with renewal reminders.
+- A child's page: school, fees, exams, pick-up duty, vaccines. **Live**
+  (`api/_kids.mjs`).
+- Home repairs and warranties with renewal reminders. **Live**
+  (`api/_home.mjs`), as its own list with the register's four audiences.
 - An event kit for a wedding or function: guests from Rishtedaar, tasks,
-  arrivals.
+  arrivals. **Live** (`api/_eventkit.mjs`).
 
 **Waiting on the owner**
 - Photo album storage: the album is live on the database, capped at 400 photos a family (about 256 MB at the very most, nearer 120 MB in practice). Choose and pay for file storage only if families outgrow that; the bytes are read and written in two functions (`albumPutBytes`, `albumGetBytes` in `api/_album.mjs`), so the move is one change.
@@ -440,3 +579,39 @@ the phone's "Save as PDF", is the way today).
    `docs/design/CHECKLIST.md`. Record a leader review in
    `docs/design/REVIEWS.md` for a new screen.
 4. Move the row to Live in the same pull request.
+
+### Today for each person, and five places (stream G, live)
+
+Found by a family of five walking through the real app on a phone. What
+changed, and where the rule for each lives:
+
+- **From the family** is one read, `GET /api/chats?area=today`
+  (`api/_today.mjs`). It calls each module's own read (`listChats`,
+  `baatList`, `ashirwadInbox`, `shukriyaList`) or carries that module's own
+  SQL rule, so gathering never shows a member more than the module's own
+  screen would. A child or a teenager is never sent a request to join. The
+  order is one order for everyone (`fromFamily` in `api/_todayrules.mjs`).
+- **A card for each parent** is in the same read: seen today
+  (`okToday`), medicines counted through `doseState` (a private medicine is
+  not counted and no medicine is named), the last message the reader can
+  open, and a phone number only when the parent lets this person see it.
+  Never for a child, never about someone remembered.
+- **Names** are never cut at the first space when the first word is an
+  honorific or the name is not in Latin letters (`shortName`). The app
+  carries its own copy of these rules between two marks, and the unit test
+  runs that copy from the page.
+- **First run**: the tour is written down when it ends and is skipped for
+  an invite; with one family the app opens it; "Invite one person by name"
+  carries who they are, so the join form opens with it chosen; a new
+  member's bell starts when they joined; choosing Mother or Father asks
+  about the larger screen and switches nothing on by itself.
+- **A message is never lost**: with no network it stays on the screen as
+  "Not sent. Tap to retry", is kept on the phone, and goes by itself when
+  the network is back.
+
+Not built here: the link for an elder who is not on Parwah, a child's own
+page, home repairs and the event kit (other streams). One known gap: the
+two rules files that must import nothing (`_safetyrules.mjs`,
+`_rememberrules.mjs`) still shorten a name at the first space in three
+sentences ("Papa's medicines have no tick yet", "Get more medicines for",
+"We remember ... today").

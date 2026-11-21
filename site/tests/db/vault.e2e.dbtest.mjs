@@ -194,10 +194,12 @@ await P.evaluate(() => { location.hash = '#people'; }); await P.waitForTimeout(1
 ok('no preparedness chip says undefined', !/undefined/.test(await P.textContent('#pane-people')));
 await P.click('#members [data-mprof="' + U.Papa.memberId + '"]'); await P.waitForTimeout(300);
 await P.click('#mp-page'); await P.waitForTimeout(500);
-ok('Papa\'s page opens on the emergency card and what to complete', await P.isVisible('#pp-ecard') && await P.isVisible('#pp-todo-card') && /Doctor/.test(await P.textContent('#pp-todo')) && /Insurance/.test(await P.textContent('#pp-todo')), await P.textContent('#pp-todo'));
+ok('Papa\'s page opens on the emergency card, and what is not recorded yet is folded under "Add more"', await P.isVisible('#pp-ecard') && await P.isVisible('#pp-todo-card') && /^Add more/.test(await P.textContent('#pp-todo-title'))
+  && !(await P.isVisible('#pp-todo [data-pptodo]')) && /Doctor/.test(await P.textContent('#pp-todo')) && /Insurance/.test(await P.textContent('#pp-todo')), await P.textContent('#pp-todo'));
 ok('the hero subtitle is readable in light mode', await P.$eval('#pp-sub', el => getComputedStyle(el).color) !== 'rgb(94, 75, 94)');
 ok('Back says where it goes', /Family/.test(await P.textContent('#pp-back')));
 if (process.env.VAULT_SHOT_DIR) { await P.screenshot({ path: process.env.VAULT_SHOT_DIR + '/person-papa-390-light.png' }); await P.emulateMedia({ colorScheme: 'dark' }); await P.screenshot({ path: process.env.VAULT_SHOT_DIR + '/person-papa-390-dark.png' }); await P.emulateMedia({ colorScheme: 'light' }); }
+await P.click('#pp-todo-title');
 await P.click('#pp-todo [data-pptodo="doctor"]');
 await P.waitForFunction((pid) => document.getElementById('b-cat').value === 'doctor' && document.getElementById('b-about').value === pid, U.Papa.memberId, { timeout: 5000 }).catch(() => {});
 ok('a gap opens the form already set to fill it: a doctor, for Papa', await P.isVisible('#pane-memory') && await P.$eval('#b-cat', s => s.value) === 'doctor' && await P.$eval('#b-about', s => s.value) === U.Papa.memberId);

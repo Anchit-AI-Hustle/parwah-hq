@@ -54,6 +54,7 @@ import { STORY_SEED, THROWBACK_SEED } from './_bondseed.mjs';
 import { toldByLine, HEARD_TAP } from './_heardrules.mjs';
 import { awardHeard } from './_coins.mjs';
 import { rateLimit } from './_db.mjs';
+import { shortName } from './_todayrules.mjs';
 
 export const BOND = {
   skipWeeks: 8,                    // a skipped question rests this long
@@ -66,7 +67,7 @@ export const BOND = {
 };
 const HOME_TZ = 'Asia/Kolkata';
 const clip = (v, n) => String(v == null ? '' : v).replace(/\r\n/g, '\n').trim().slice(0, n);
-const first = (n) => String(n || '').split(' ')[0];
+const first = (n) => shortName(n);
 
 // Recipes are for food. A family that types a home cure gets a kind no.
 const NOT_FOOD = /\b(nuskh\w*|gharelu\s+upay|remed(y|ies)|cures?|medicinal|ilaaj|upchar|dawa(i|ai)?)\b/i;
@@ -847,7 +848,7 @@ export default async function bondApi(req, res) {
         if (await rememberRecent(sql, full)) return bad(409, rememberRecentWhy(t.name));
         // Someone on Parwah is never marked by one person alone: that goes
         // through the family tree, where a second adult confirms it.
-        if (full.user_id) return bad(409, 'This needs a second adult to confirm. Open ' + String(t.name).split(' ')[0] + "'s card in Family and choose No longer with us.");
+        if (full.user_id) return bad(409, 'This needs a second adult to confirm. Open ' + shortName(t.name) + "'s card in Family and choose No longer with us.");
         await sql`update members set remembered = true where id = ${t.id}`;
         await sql`update story_tellers set status = 'no', decided_at = now() where member_id = ${t.id}`;
         await rememberTell(sql, circle.id, me, full);

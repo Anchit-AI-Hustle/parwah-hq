@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#2A1235">
+<title>Parwah</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<!-- ONE PERSON'S OWN PAGE, for someone in the family who is not on the app.
+     Opened from a link a family member sent on WhatsApp. No sign-in, no
+     menus, one thing on the screen at a time, Hindi and English together.
+     Built to open on a slow network: no font, script or stylesheet is
+     fetched from anywhere, and nothing here is measured or tracked.
+     The key rides after the # in the address, which a browser never sends
+     to a server; it is taken out of the address bar as soon as it is read. -->
+<style>
+:root{
+  --dusk:#2A1235; --day:#FFF6EA; --bone:#FFE9DA; --bone-2:#F0DCC8;
+  --marigold:#FFB31A; --flame:#FF5B2E; --rani:#D9146F; --peacock:#00A19A;
+  --ink:#221428; --ink-soft:#5E4B5E; --on-bright:#1E0F26; --on-dusk:#FFF3E6; --card:#fff;
+  --grad:linear-gradient(115deg,var(--marigold),var(--flame));
+  --ok:#0B6E4F; --sos:#C8102E; --on-sos:#fff; --focus-ring:#00706B;
+  --space-4:4px; --space-8:8px; --space-12:12px; --space-16:16px; --space-20:20px; --space-24:24px; --space-32:32px;
+  --fs-16:1rem; --fs-18:1.125rem; --fs-20:1.25rem; --fs-24:1.5rem; --fs-32:2rem; --fs-64:4rem;
+  --radius-16:16px; --radius-24:24px;
+  --tap:64px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --day:#1C0B24; --bone:#26112F; --bone-2:#4A2E52; --ink:#FFF3E6; --ink-soft:#D2BCD9; --card:#2A1532;
+    --ok:#5FD3A8; --sos:#FF6B7F; --on-sos:#1E0F26; --focus-ring:#5FE0D8;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--day);color:var(--ink);font:var(--fs-20)/1.45 system-ui,-apple-system,"Segoe UI","Noto Sans Devanagari","Noto Sans",sans-serif}
+.top{background:var(--dusk);color:var(--on-dusk);padding:var(--space-12) var(--space-16);font-weight:700;font-size:var(--fs-18)}
+main{max-width:560px;margin:0 auto;padding:var(--space-20) var(--space-16) var(--space-32)}
+h1{font-size:var(--fs-32);line-height:1.2;margin:0 0 var(--space-4)}
+/* The heading is focused by script so a screen reader reads the new screen; it is not a control, so it draws no ring. */
+h1:focus{outline:none}
+.sub{font-size:var(--fs-20);margin:0 0 var(--space-20);color:var(--ink-soft)}
+p{margin:0 0 var(--space-12)}
+.b{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;min-height:var(--tap);
+  padding:var(--space-12) var(--space-16);margin:0 0 var(--space-16);border-radius:var(--radius-24);border:2px solid var(--ink);
+  background:var(--card);color:var(--ink);font:inherit;font-weight:700;text-align:center;text-decoration:none;cursor:pointer}
+.b .hi{font-size:var(--fs-24);line-height:1.3}
+.b .en{font-size:var(--fs-18);line-height:1.3;font-weight:600}
+.b.go{background:var(--grad);color:var(--on-bright);border-color:transparent}
+.b.help{background:var(--sos);color:var(--on-sos);border-color:transparent}
+.b.done{background:var(--card);color:var(--ok);border-color:var(--ok)}
+.b[disabled]{opacity:.6}
+.b:focus-visible,textarea:focus-visible{outline:4px solid var(--focus-ring);outline-offset:3px}
+.card{background:var(--card);border:1px solid var(--bone-2);border-radius:var(--radius-24);padding:var(--space-16);margin:0 0 var(--space-16)}
+.card .from{font-weight:700;font-size:var(--fs-18);color:var(--ink-soft);margin:0 0 var(--space-8)}
+.card .msg{font-size:var(--fs-24);line-height:1.35;margin:0 0 var(--space-8);overflow-wrap:anywhere}
+.card img{display:block;width:100%;height:auto;border-radius:var(--radius-16);margin:0 0 var(--space-12)}
+.note{font-size:var(--fs-18);color:var(--ink-soft)}
+.good{color:var(--ok);font-weight:700;font-size:var(--fs-24)}
+.count{font-size:var(--fs-64);font-weight:800;text-align:center;margin:var(--space-16) 0;line-height:1}
+ul{margin:0 0 var(--space-16);padding-left:var(--space-24)}
+li{margin:0 0 var(--space-12)}
+textarea{width:100%;min-height:120px;font:inherit;font-size:var(--fs-20);padding:var(--space-12);border-radius:var(--radius-16);border:2px solid var(--ink);background:var(--card);color:var(--ink);margin:0 0 var(--space-16)}
+#toast{position:fixed;left:var(--space-16);right:var(--space-16);bottom:var(--space-16);background:var(--dusk);color:var(--on-dusk);border-radius:var(--radius-16);
+  padding:var(--space-16);font-weight:700;text-align:center}
+#toast[hidden]{display:none}
+@media (prefers-reduced-motion:no-preference){.b{transition:transform .12s}.b:active{transform:scale(.98)}}
+</style>
+</head>
+<body>
+<div class="top" aria-label="Parwah">Parwah <span lang="hi">परवाह</span></div>
+<main id="apna" aria-live="polite">
+  <h1 id="h" tabindex="-1"><span lang="hi">रुकिए…</span></h1>
+  <p class="sub" id="hs">One moment</p>
+  <div id="view"></div>
+</main>
+<div id="toast" role="status" hidden></div>
+<noscript><p style="padding:16px">Please ask your family to phone you. This page needs a newer browser.</p></noscript>
+<script>
+(function(){
+  'use strict';
+  var KEY_STORE = 'parwah-apna';
+  var API = '/api/events?area=eldlink';
+  var $ = function(id){ return document.getElementById(id); };
+  var view = $('view');
+  var key = '', st = null, timer = null, recState = null;
+
+  // ---------- small helpers ----------
+  function esc(s){ return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+  function tzName(){ try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } }
+  function title(hi, en){ $('h').innerHTML = '<span lang="hi">' + esc(hi) + '</span>'; $('hs').textContent = en; }
+  function B(act, hi, en, cls, attrs){
+    return '<button type="button" class="b ' + (cls || '') + '" data-act="' + act + '"' + (attrs || '') + '><span class="hi" lang="hi">' + hi + '</span><span class="en">' + en + '</span></button>';
+  }
+  function back(){ return B('home', '← वापस', 'Back'); }
+  function show(html){ stopAll(); view.innerHTML = html; window.scrollTo(0, 0); try { $('h').focus({ preventScroll: true }); } catch (e) {} }
+  function toast(hi, en){
+    var t = $('toast'); t.innerHTML = '<span lang="hi">' + esc(hi) + '</span><br>' + esc(en); t.hidden = false;
+    clearTimeout(toast.t); toast.t = setTimeout(function(){ t.hidden = true; }, 4000);
+  }
+  function oops(j){
+    if (j && j.off) return offScreen();
+    if (j && j.wait) return toast('थोड़ा रुककर फिर कोशिश करें', j.error || 'Please wait a little and try again.');
+    toast('नहीं हुआ, फिर कोशिश करें', (j && j.error && j.error.length < 90 && j.error) || 'That did not work. Please try again.');
+  }
+  function busy(btn, on){ if (btn) btn.disabled = !!on; }
+
+  // Every call carries the key in a header, never in an address.
+  function call(op, body){
+    var b = body || {}; b.area = 'eldlink'; b.op = op; b.tz = tzName();
+    return fetch(API, { method: 'POST', cache: 'no-store', referrerPolicy: 'no-referrer', credentials: 'omit',
+      headers: { 'Content-Type': 'application/json', 'X-Parwah-Link': key }, body: JSON.stringify(b) })
+      .then(function(r){ return r.json(); });
+  }
+  function offline(){ toast('नेटवर्क नहीं है', 'No network just now. Please try again.'); }
+
+  // ---------- read aloud ----------
+  var canSpeak = 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function';
+  function speak(text){
+    if (!canSpeak || !text) return;
+    try {
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(String(text));
+      var hi = /[ऀ-ॿ]/.test(text);
+      var vs = window.speechSynthesis.getVoices() || [], pick = null;
+      for (var i = 0; i < vs.length; i++) { if (/^hi/i.test(vs[i].lang)) { pick = vs[i]; break; } }
+      if (pick) { u.voice = pick; u.lang = pick.lang; } else { u.lang = hi ? 'hi-IN' : 'en-IN'; }
+      u.rate = 0.9;
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  function listen(text){
+    return canSpeak ? '<button type="button" class="b" data-act="speak" data-text="' + esc(text) + '"><span class="hi" lang="hi">🔊 सुनिए</span><span class="en">Listen</span></button>' : '';
+  }
+  function stopAll(){
+    try { if (canSpeak) window.speechSynthesis.cancel(); } catch (e) {}
+    if (timer) { clearInterval(timer); timer = null; }
+    if (stopAll.audio) { try { stopAll.audio.pause(); } catch (e) {} stopAll.audio = null; }
+    if (recState) recCancel();
+  }
+  function play(kind, id, btn){
+    busy(btn, true);
+    call('audio', { kind: kind, id: id }).then(function(j){
+      busy(btn, false);
+      if (!j.ok) return oops(j);
+      if (!/^data:audio\/[a-z0-9.+-]+;base64,/.test(j.audio || '')) return toast('आवाज़ नहीं चल पाई', 'The voice note could not be played.');
+      try { var a = new Audio(j.audio); stopAll.audio = a; a.play(); } catch (e) { toast('आवाज़ नहीं चल पाई', 'The voice note could not be played.'); }
+    }).catch(function(){ busy(btn, false); offline(); });
+  }
+
+  // ---------- recording a voice note ----------
+  // 60 seconds at most, at a low bitrate, so it is small enough for a slow
+  // network and inside the server's limit.
+  function recStart(done){
+    if (!navigator.mediaDevices || !window.MediaRecorder) { toast('इस फ़ोन पर आवाज़ रिकॉर्ड नहीं होती', 'This phone cannot record here. Please write instead.'); return; }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+      var mime = ['audio/webm', 'audio/mp4', 'audio/ogg'].filter(function(m){ try { return MediaRecorder.isTypeSupported(m); } catch (e) { return false; } })[0] || '';
+      var mr = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : { audioBitsPerSecond: 32000 });
+      var chunks = [], t0 = Date.now();
+      recState = { mr: mr, stream: stream, sent: false };
+      mr.ondataavailable = function(e){ if (e.data && e.data.size) chunks.push(e.data); };
+      mr.onstop = function(){
+        stream.getTracks().forEach(function(t){ t.stop(); });
+        var keep = recState && recState.sent; recState = null;
+        if (timer) { clearInterval(timer); timer = null; }
+        if (!keep) return;
+        var secs = Math.max(1, Math.min(60, Math.round((Date.now() - t0) / 1000)));
+        var blob = new Blob(chunks, { type: (mr.mimeType || mime || 'audio/webm') });
+        var fr = new FileReader();
+        fr.onload = function(){
+          var s = String(fr.result), cut = s.indexOf(',');
+          var base = String(blob.type || 'audio/webm').split(';')[0];
+          done('data:' + base + ';base64,' + s.slice(cut + 1), secs);
+        };
+        fr.readAsDataURL(blob);
+      };
+      title('बोलिए', 'Speak now');
+      view.innerHTML = '<p class="count" id="rec-n" aria-live="off">0</p>' +
+        '<p class="note"><span lang="hi">एक मिनट तक बोल सकते हैं।</span> You can speak for up to one minute.</p>' +
+        B('recsend', '✓ रोककर भेजें', 'Stop and send', 'go') + B('reccancel', 'रहने दें', 'Cancel');
+      mr.start();
+      timer = setInterval(function(){
+        var n = Math.round((Date.now() - t0) / 1000), el = $('rec-n');
+        if (el) el.textContent = n;
+        if (n >= 60) recSend();
+      }, 500);
+    }).catch(function(){ toast('माइक की इजाज़त नहीं मिली', 'The microphone was not allowed. Please write instead.'); });
+  }
+  function recSend(){
+    if (!recState) return;
+    recState.sent = true; title('भेज रहे हैं', 'Sending'); view.innerHTML = '<p class="note">One moment</p>';
+    try { recState.mr.stop(); } catch (e) {}
+  }
+  function recCancel(){ if (recState) { recState.sent = false; try { recState.mr.stop(); } catch (e) { recState = null; } } }
+
+  // ---------- screens ----------
+  function offScreen(){
+    try { localStorage.removeItem(KEY_STORE); } catch (e) {}
+    key = ''; st = null;
+    title('यह लिंक अब बंद है', 'This link is not on now');
+    show('<p><span lang="hi">परिवार से कहिए कि नया लिंक भेज दें।</span></p><p>Ask your family to send you a new link.</p>');
+  }
+  function consentScreen(){
+    title('नमस्ते ' + st.me.first, 'Namaste ' + st.me.first);
+    var by = esc(st.setBy);
+    show('<div class="card"><p class="msg"><span lang="hi">' + by + ' ने यह पन्ना आपके लिए बनाया है।</span></p><p>' + by + ' set up this page for you. It is only yours.</p></div>' +
+      '<p><b><span lang="hi">परिवार यह देख सकता है:</span></b><br>What your family can see:</p><ul>' +
+      st.sees.map(function(s){ return '<li><span lang="hi">' + esc(s.hi) + '</span><br><span class="note">' + esc(s.en) + '</span></li>'; }).join('') + '</ul>' +
+      '<p class="note"><span lang="hi">पासवर्ड नहीं चाहिए। आप जब चाहें इसे बंद कर सकते हैं।</span> No password is needed. You can turn this off whenever you like.</p>' +
+      B('yes', 'ठीक है', 'All right', 'go') + B('no', 'नहीं चाहिए', 'I do not want this'));
+  }
+  function home(){
+    if (!st) return load();
+    if (!st.agreed) return consentScreen();
+    title('नमस्ते ' + st.me.first, 'Namaste ' + st.me.first);
+    var h = '';
+    if (st.sosOpen) h += '<div class="card"><p class="good"><span lang="hi">मदद का संदेश परिवार को गया है।</span></p><p>Your family has been told you need help.</p></div>';
+    if (st.checkin && st.checkin.ask) {
+      h += '<div class="card"><p class="msg"><span lang="hi">' + esc(st.checkin.ask.from) + ' पूछ रहे हैं: अगर आप रोज़ ' + esc(st.checkin.ask.by) + ' बजे तक "मैं ठीक हूँ" न दबाएँ, तो परिवार को बताया जाए?</span></p>' +
+        '<p>' + esc(st.checkin.ask.from) + ' asks: if you have not tapped "I am fine" by ' + esc(st.checkin.ask.by) + ' each day, should the family be told?</p>' +
+        B('askyes', 'हाँ', 'Yes', 'go') + B('askno', 'नहीं', 'No') + '</div>';
+    }
+    h += st.okToday
+      ? '<div class="b done" role="status"><span class="hi" lang="hi">✓ परिवार को बता दिया</span><span class="en">Your family has been told you are fine</span></div>'
+      : B('ok', 'मैं ठीक हूँ', 'I am fine', 'go');
+    var n = (st.items || []).filter(function(i){ return !i.answered; }).length;
+    if ((st.items || []).length) h += B('inbox', 'परिवार ने भेजा है' + (n ? ' (' + n + ')' : ''), 'From your family' + (n ? ' (' + n + ' new)' : ''));
+    if (st.photo) h += B('photo', '📷 नई फ़ोटो', 'New family photo');
+    if ((st.people || []).length) h += B('bless', '🙏 आशीर्वाद भेजें', 'Send a blessing');
+    if (st.question) h += B('question', '💬 इस हफ़्ते का सवाल' + (st.question.answered ? ' ✓' : ''), "This week's family question" + (st.question.answered ? ' (answered)' : ''));
+    (st.polls || []).forEach(function(p, i){ h += B('poll', '🗳 अपनी राय दें' + (p.mine.length ? ' ✓' : ''), 'Give your vote' + (p.mine.length ? ' (voted)' : ''), '', ' data-i="' + i + '"'); });
+    if ((st.people || []).length) h += B('callme', '📞 मुझे फ़ोन करो', 'Call me');
+    (st.contacts || []).forEach(function(c){ h += tel(c.phone, c.name + ' को फ़ोन करें', 'Call ' + c.name); });
+    h += B('help', '🆘 मदद चाहिए', 'I need help', 'help');
+    h += B('mine', 'मेरी भेजी हुई चीज़ें', 'What I sent, and settings');
+    show(h);
+  }
+  function tel(phone, hi, en, cls){
+    var p = String(phone || '').replace(/[^\d+]/g, '');
+    return '<a class="b ' + (cls || '') + '" href="tel:' + p + '"><span class="hi" lang="hi">📞 ' + esc(hi) + '</span><span class="en">' + esc(en) + '</span></a>';
+  }
+  function load(){
+    return call('open').then(function(j){
+      if (!j.ok) { if (j.off) return offScreen(); title('थोड़ा रुकिए', 'Please wait a little'); show('<p>' + esc(j.error || 'Please open the link again in a few minutes.') + '</p>' + B('reload', 'फिर से खोलें', 'Try again', 'go')); return; }
+      st = j; home();
+    }).catch(function(){
+      title('नेटवर्क नहीं है', 'No network just now');
+      show('<p><span lang="hi">नेटवर्क आने पर फिर कोशिश करें।</span> Try again when the network is back.</p>' + B('reload', 'फिर से खोलें', 'Try again', 'go'));
+    });
+  }
+  function refresh(then){ return call('open').then(function(j){ if (j.ok) st = j; else if (j.off) return offScreen(); if (then) then(); else home(); }).catch(function(){ if (then) then(); else home(); }); }
+
+  // ---- what the family sent her, one at a time
+  var at = 0;
+  var ITEM_WORD = { ashirwad: ['आशीर्वाद', 'A blessing'], shukriya: ['शुक्रिया', 'A thank-you'], card: ['आपके लिए कार्ड', 'A card for you'] };
+  function inbox(i){
+    var list = st.items || [];
+    if (!list.length) return home();
+    at = Math.max(0, Math.min(list.length - 1, i));
+    var it = list[at], w = ITEM_WORD[it.kind] || ['संदेश', 'A message'];
+    title(w[0], w[1] + ' · ' + (at + 1) + ' / ' + list.length);
+    var h = '<div class="card"><p class="from"><span lang="hi">' + esc(it.from) + ' की ओर से</span> · From ' + esc(it.from) + '</p>';
+    if (it.text) h += '<p class="msg">' + esc(it.text) + '</p>';
+    h += '<div id="card-in"></div></div>';
+    if (it.text) h += listen(it.text);
+    if (it.hasVoice) h += B('play', '▶ आवाज़ सुनें', 'Play the voice note', '', ' data-kind="' + it.kind + '" data-id="' + it.id + '"');
+    h += it.answered ? '<p class="good"><span lang="hi">✓ आपने जवाब भेज दिया</span><br>You answered this</p>'
+      : B('heart', '❤️ बहुत अच्छा लगा', 'I loved it', 'go') + B('sayvoice', '🎙 बोलकर जवाब दें', 'Answer by voice') + B('saytext', '✍️ कुछ शब्द लिखें', 'Write a few words');
+    if (at < list.length - 1) h += B('next', 'आगे →', 'Next');
+    h += back();
+    show(h);
+    if (it.kind === 'card') call('card', { id: it.id }).then(function(j){
+      var box = $('card-in'); if (!box || !j.ok) return;
+      box.innerHTML = j.entries.map(function(e){
+        return '<p class="from">' + esc(e.from) + '</p>' +
+          (e.kind === 'photo' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(e.data || '') ? '<img alt="A photo from ' + esc(e.from) + '" src="' + esc(e.data) + '">' : '') +
+          (e.text ? '<p class="msg">' + esc(e.text) + '</p>' : '') +
+          (e.kind === 'voice' ? B('play', '▶ ' + esc(e.from) + ' की आवाज़', 'Play ' + esc(e.from) + "'s voice note", '', ' data-kind="cardentry" data-id="' + e.id + '"') : '');
+      }).join('');
+    }).catch(function(){});
+  }
+  function say(about, kind, extra, btn){
+    var b = extra || {}; b.about = about; b.kind = kind;
+    busy(btn, true);
+    return call('say', b).then(function(j){
+      busy(btn, false);
+      if (!j.ok) { if (!btn) { if (about.kind === 'photo') photo(); else inbox(at); } return oops(j); }
+      toast('भेज दिया', 'Sent. They will see it in the family app.');
+      refresh(function(){ if (about.kind === 'photo') photo(); else inbox(at); });
+    }).catch(function(){ busy(btn, false); if (!btn) inbox(at); offline(); });
+  }
+  function writeScreen(hi, en, onSend){
+    title(hi, en);
+    show('<label for="words" class="note"><span lang="hi">यहाँ लिखिए</span> · Write here</label><textarea id="words" maxlength="240"></textarea>' + B('sendwords', '✓ भेजें', 'Send', 'go') + back());
+    writeScreen.send = onSend;
+  }
+
+  // ---- the newest family photo
+  function photo(){
+    var p = st.photo; if (!p) return home();
+    title('नई फ़ोटो', 'New family photo');
+    show('<div class="card"><p class="from"><span lang="hi">' + esc(p.by) + ' ने लगाई</span> · Added by ' + esc(p.by) + '</p><div id="ph"><p class="note">One moment</p></div>' +
+      (p.caption ? '<p class="msg">' + esc(p.caption) + '</p>' : '') + '</div>' + (p.caption ? listen(p.caption) : '') +
+      B('heartphoto', '❤️ बहुत अच्छी लगी', 'I loved it', 'go') + B('bigphoto', '🔍 बड़ी करके देखें', 'See it bigger') + back());
+    drawPhoto('thumb');
+  }
+  function drawPhoto(size){
+    call('photo', { id: st.photo.id, size: size }).then(function(j){
+      var box = $('ph'); if (!box) return;
+      if (!j.ok) { box.innerHTML = '<p class="note">The photo could not be opened.</p>'; return; }
+      if (!/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(j.data || '')) { box.innerHTML = '<p class="note">The photo could not be opened.</p>'; return; }
+      box.innerHTML = '<img alt="' + esc(st.photo.caption || 'A family photo') + '" src="' + esc(j.data) + '">';
+    }).catch(offline);
+  }
+
+  // ---- Ashirwad
+  var HI_LINE = { khush: 'खुश रहो', exam: 'परीक्षा के लिए शुभकामनाएँ', reach: 'सकुशल पहुँचो', proud: 'तुम पर गर्व है' };
+  var blessTo = null;
+  function blessWho(){
+    title('आशीर्वाद किसे?', 'A blessing for whom?');
+    show(B('blessto', 'सबको', 'Everyone', 'go', ' data-to="all"') +
+      st.people.map(function(p){ return B('blessto', esc(p.name), 'For ' + esc(p.name), '', ' data-to="' + p.id + '"'); }).join('') + back());
+  }
+  function blessWhat(){
+    title('क्या कहना है?', 'What would you like to say?');
+    show(st.lines.map(function(l){ return B('blessline', '🙏 ' + (HI_LINE[l.k] || esc(l.t)), esc(l.t), '', ' data-line="' + l.k + '"'); }).join('') +
+      B('blessvoice', '🎙 अपनी आवाज़ में कहें', 'Say it in your own voice', 'go') + back());
+  }
+  function blessSend(body, btn){
+    body.to = blessTo; busy(btn, true);
+    call('bless', body).then(function(j){
+      busy(btn, false);
+      if (!j.ok) { if (!btn) blessWhat(); return oops(j); }
+      title('आशीर्वाद पहुँच गया', 'Your blessing has been sent');
+      show('<p class="good"><span lang="hi">✓ भेज दिया</span><br>Sent</p>' + back());
+    }).catch(function(){ busy(btn, false); if (!btn) blessWhat(); offline(); });
+  }
+
+  // ---- the weekly question
+  function question(){
+    var q = st.question; if (!q) return home();
+    title('इस हफ़्ते का सवाल', "This week's family question");
+    show('<div class="card"><p class="msg">' + esc(q.text) + '</p></div>' + listen(q.text) +
+      (q.answered ? '<p class="good"><span lang="hi">✓ आपका जवाब परिवार के पास है</span><br>Your family has your answer. You can answer again.</p>' : '') +
+      B('qvoice', '🎙 बोलकर जवाब दें', 'Answer by voice', 'go') + B('qtext', '✍️ लिखकर जवाब दें', 'Write your answer') + back());
+  }
+  function questionSend(body){
+    call('sawaal', body).then(function(j){
+      if (!j.ok) { question(); return oops(j); }
+      toast('जवाब भेज दिया', 'Your answer has been sent.');
+      refresh(question);
+    }).catch(function(){ question(); offline(); });
+  }
+
+  // ---- a family poll
+  var pollAt = 0;
+  function poll(i){
+    pollAt = i; var p = (st.polls || [])[i]; if (!p) return home();
+    title('आपकी राय', 'Your vote');
+    show('<div class="card"><p class="from"><span lang="hi">' + esc(p.by) + ' ने पूछा</span> · ' + esc(p.by) + ' asks</p><p class="msg">' + esc(p.question) + '</p></div>' + listen(p.question) +
+      p.options.map(function(o, k){
+        var on = p.mine.indexOf(k) >= 0;
+        return B('vote', (on ? '✓ ' : '') + esc(o), on ? 'Your choice' : 'Choose this', on ? 'done' : '', ' data-k="' + k + '" aria-pressed="' + (on ? 'true' : 'false') + '"');
+      }).join('') + back());
+  }
+
+  // ---- "Call me"
+  function callWho(){
+    title('कौन फ़ोन करे?', 'Who should call you?');
+    show(B('callto', 'जो भी आज फ़ोन करने वाला है', 'Whoever is calling today', 'go', ' data-to=""') +
+      st.people.map(function(p){ return B('callto', esc(p.name), esc(p.name) + ' should call', '', ' data-to="' + p.id + '"'); }).join('') + back());
+  }
+
+  // ---- "I need help": five seconds to say it was a mistake
+  function helpCount(){
+    var n = (st && st.cancelSecs) || 5;
+    title('मदद बुला रहे हैं', 'Calling your family for help');
+    show('<p class="count" id="sos-n" role="timer">' + n + '</p>' + B('helpstop', 'रुकिए, गलती से दब गया', 'Stop, I pressed by mistake'));
+    timer = setInterval(function(){
+      n--; var el = $('sos-n'); if (el) el.textContent = Math.max(0, n);
+      if (n <= 0) { clearInterval(timer); timer = null; helpSend(null); }
+    }, 1000);
+  }
+  function helpScreen(told, note){
+    title(told ? 'परिवार को बता दिया गया है' : 'अभी फ़ोन कीजिए', told ? 'Your family has been told' : 'Please phone now');
+    var h = told ? '<p class="good"><span lang="hi">✓ सबके फ़ोन पर संदेश गया है।</span><br>Everyone in your family has been sent the message.</p>'
+                 : '<p><span lang="hi">संदेश नहीं जा पाया। कृपया फ़ोन करें।</span> The message could not be sent. Please phone.</p>';
+    if (note) h += '<p class="good">' + note + '</p>';
+    h += tel('112', '112 पर फ़ोन करें', 'Call 112', 'help');
+    ((st && st.contacts) || []).forEach(function(c){ h += tel(c.phone, c.name + ' को फ़ोन करें', 'Call ' + c.name); });
+    if (told) h += B('helpwhere', '📍 मेरी जगह भी भेजें', 'Send where I am too');
+    show(h + back());
+  }
+  function helpSend(pos){
+    var b = pos ? { share: true, lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy } : {};
+    call('sos', b).then(function(j){
+      if (j && j.off) return offScreen();
+      if (j && j.ok && st) st.sosOpen = true;
+      helpScreen(!!(j && j.ok), pos && j && j.ok ? '<span lang="hi">✓ आपकी जगह भेज दी</span><br>Where you are has been sent.' : '');
+    }).catch(function(){ helpScreen(false); });
+  }
+
+  // ---- what she sent, and settings
+  function mine(){
+    title('मेरी भेजी हुई चीज़ें', 'What I sent');
+    show('<p class="note">One moment</p>');
+    call('mine').then(function(j){
+      if (!j.ok) return oops(j);
+      var h = j.list.length ? '' : '<p><span lang="hi">अभी तक कुछ नहीं भेजा।</span> Nothing sent yet.</p>';
+      j.list.forEach(function(x){
+        h += '<div class="card"><p class="from">' + (x.to ? 'To ' + esc(x.to) : 'To the family') + '</p><p class="msg">' + esc(x.text || (x.hasVoice ? '🎙 Voice note' : '')) + '</p>' +
+          B('forget', 'हटा दें', 'Delete this', '', ' data-kind="' + x.kind + '" data-id="' + x.id + '"') + '</div>';
+      });
+      if (j.checkinBy) h += B('stopcheck', 'रोज़ की जाँच बंद करें', 'Stop the daily check at ' + esc(j.checkinBy));
+      h += B('offask', 'यह पन्ना बंद करें', 'Turn off this page') + back();
+      show(h);
+    }).catch(offline);
+  }
+  function offAsk(){
+    title('यह पन्ना बंद करें?', 'Turn off this page?');
+    show('<p><span lang="hi">बंद करने पर यह लिंक नहीं खुलेगा। परिवार को प्यार से बता दिया जाएगा।</span></p><p>After this the link will not open. Your family is told kindly, and can send a new one if you ask.</p>' +
+      B('off', 'हाँ, बंद करें', 'Yes, turn it off') + B('home', 'नहीं, रहने दें', 'No, keep it', 'go'));
+  }
+  function goneScreen(){
+    try { localStorage.removeItem(KEY_STORE); } catch (e) {}
+    key = ''; st = null;
+    title('यह पन्ना बंद कर दिया गया', 'This page is turned off');
+    show('<p><span lang="hi">धन्यवाद। परिवार को बता दिया गया है।</span></p><p>Thank you. Your family has been told. A phone call is always welcome.</p>');
+  }
+
+  // ---------- one listener for every button ----------
+  view.addEventListener('click', function(e){
+    var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+    var act = b.getAttribute('data-act'), it = st && st.items ? st.items[at] : null;
+    if (act === 'home') return home();
+    if (act === 'reload') return load();
+    if (act === 'speak') return speak(b.getAttribute('data-text'));
+    if (act === 'yes' || act === 'no') {
+      busy(b, true);
+      return call('consent', { yes: act === 'yes' }).then(function(j){
+        busy(b, false);
+        if (!j.ok) return oops(j);
+        if (j.off) return goneScreen();
+        st = j; home();
+      }).catch(function(){ busy(b, false); offline(); });
+    }
+    if (act === 'ok') {
+      busy(b, true);
+      return call('ok').then(function(j){
+        busy(b, false);
+        if (!j.ok) return oops(j);
+        st.okToday = true; home();
+        toast('परिवार को बता दिया', 'Your family has been told.');
+      }).catch(function(){ busy(b, false); offline(); });
+    }
+    if (act === 'askyes' || act === 'askno') {
+      busy(b, true);
+      return call('checkin', { yes: act === 'askyes' }).then(function(j){ if (!j.ok) oops(j); refresh(); }).catch(function(){ busy(b, false); offline(); });
+    }
+    if (act === 'inbox') return inbox(0);
+    if (act === 'next') return inbox(at + 1);
+    if (act === 'play') return play(b.getAttribute('data-kind'), b.getAttribute('data-id'), b);
+    if (act === 'heart' && it) return say({ kind: it.kind, id: it.id }, 'heart', null, b);
+    if (act === 'sayvoice' && it) return recStart(function(uri, secs){ say({ kind: it.kind, id: it.id }, 'voice', { voice: uri, secs: secs }); });
+    if (act === 'saytext' && it) return writeScreen('कुछ शब्द लिखें', 'Write a few words', function(t){ say({ kind: it.kind, id: it.id }, 'text', { text: t }); });
+    if (act === 'sendwords') { var t = ($('words').value || '').trim(); if (!t) return toast('पहले कुछ लिखिए', 'Write a few words first.'); return writeScreen.send(t); }
+    if (act === 'recsend') return recSend();
+    if (act === 'reccancel') { recCancel(); return home(); }
+    if (act === 'photo') return photo();
+    if (act === 'heartphoto') return say({ kind: 'photo', id: st.photo.id }, 'heart', null, b);
+    if (act === 'bigphoto') return drawPhoto('full');
+    if (act === 'bless') return blessWho();
+    if (act === 'blessto') { blessTo = b.getAttribute('data-to'); return blessWhat(); }
+    if (act === 'blessline') return blessSend({ line: b.getAttribute('data-line') }, b);
+    if (act === 'blessvoice') return recStart(function(uri, secs){ blessSend({ voice: uri, secs: secs }); });
+    if (act === 'question') return question();
+    if (act === 'qvoice') return recStart(function(uri, secs){ questionSend({ voice: uri, secs: secs }); });
+    if (act === 'qtext') return writeScreen('अपना जवाब लिखें', 'Write your answer', function(t2){ questionSend({ text: t2 }); });
+    if (act === 'poll') return poll(+b.getAttribute('data-i'));
+    if (act === 'vote') {
+      var p = st.polls[pollAt], k = +b.getAttribute('data-k'), picks;
+      if (p.multi) { picks = p.mine.slice(); var ix = picks.indexOf(k); if (ix >= 0) picks.splice(ix, 1); else picks.push(k); }
+      else picks = [k];
+      busy(b, true);
+      return call('vote', { pollId: p.id, choices: picks }).then(function(j){
+        busy(b, false);
+        if (!j.ok) return oops(j);
+        p.mine = picks; poll(pollAt);
+        toast('आपकी राय गिन ली गई', 'Your vote is counted.');
+      }).catch(function(){ busy(b, false); offline(); });
+    }
+    if (act === 'callme') return callWho();
+    if (act === 'callto') {
+      busy(b, true);
+      return call('callme', { to: b.getAttribute('data-to') || null }).then(function(j){
+        busy(b, false);
+        if (!j.ok && !j.told) return oops(j);
+        title('बता दिया है', 'They have been told');
+        show('<p class="good"><span lang="hi">✓ ' + (j.to ? esc(j.to) + ' को' : 'परिवार को') + ' बता दिया कि आप फ़ोन चाहते हैं।</span><br>' +
+          (j.ok ? (j.to ? esc(j.to) + ' has' : 'Your family has') + ' been told you would like a call.' : 'They were told a little while ago. Please give them some time.') + '</p>' +
+          (st.contacts || []).map(function(c){ return tel(c.phone, c.name + ' को फ़ोन करें', 'Call ' + c.name); }).join('') + back());
+      }).catch(function(){ busy(b, false); offline(); });
+    }
+    if (act === 'help') return helpCount();
+    if (act === 'helpstop') { stopAll(); toast('रोक दिया', 'Stopped. Nobody was told.'); return home(); }
+    if (act === 'helpwhere') {
+      if (!navigator.geolocation) return toast('इस फ़ोन से जगह नहीं भेजी जा सकती', 'This phone cannot send where you are.');
+      busy(b, true);
+      return navigator.geolocation.getCurrentPosition(function(g){
+        helpSend({ lat: g.coords.latitude, lng: g.coords.longitude, accuracy: Math.round(g.coords.accuracy || 0) });
+      }, function(){ busy(b, false); toast('जगह नहीं मिल पाई', 'Your place could not be found. Please phone.'); }, { enableHighAccuracy: true, timeout: 15000 });
+    }
+    if (act === 'mine') return mine();
+    if (act === 'forget') {
+      busy(b, true);
+      return call('forget', { kind: b.getAttribute('data-kind'), id: b.getAttribute('data-id') }).then(function(j){
+        if (!j.ok) { busy(b, false); return oops(j); }
+        toast('हटा दिया', 'Deleted.'); refresh(mine);
+      }).catch(function(){ busy(b, false); offline(); });
+    }
+    if (act === 'stopcheck') return call('checkin', { stop: true }).then(function(j){ if (!j.ok) return oops(j); toast('बंद कर दिया', 'The daily check is off.'); refresh(mine); }).catch(offline);
+    if (act === 'offask') return offAsk();
+    if (act === 'off') {
+      busy(b, true);
+      return call('off').then(function(j){ busy(b, false); if (!j.ok) return oops(j); goneScreen(); }).catch(function(){ busy(b, false); offline(); });
+    }
+  });
+
+  // ---------- start ----------
+  // The key is read from after the #, kept on this phone, and taken out of
+  // the address bar at once so it is in no screenshot and no history entry.
+  (function boot(){
+    var m = /[#&]k=([A-Za-z0-9_-]{43})(?:&|$)/.exec(location.hash || '');
+    try {
+      if (m) { key = m[1]; localStorage.setItem(KEY_STORE, key); }
+      else key = localStorage.getItem(KEY_STORE) || '';
+    } catch (e) { if (m) key = m[1]; }
+    try { if (location.hash) history.replaceState(null, '', location.pathname); } catch (e) {}
+    if (!/^[A-Za-z0-9_-]{43}$/.test(key)) return offScreen();
+    load();
+  })();
+})();
+</script>
+</body>
+</html>

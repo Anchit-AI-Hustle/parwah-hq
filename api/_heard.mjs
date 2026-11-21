@@ -36,6 +36,8 @@ import { awardHeard } from './_coins.mjs';
 import { ensureBaatSchema, baatList, baatAudio, baatAction, baatSweep } from './_baat.mjs';
 import { ensureRememberSchema } from './_remember.mjs';
 import { remembranceDue, remembranceLine, yearsLine } from './_rememberrules.mjs';
+import { linkLabel } from './_eldlinkrules.mjs';
+import { shortName } from './_todayrules.mjs';
 import { MOODS, MOOD_ASK, BAAT_KINDS, BAAT_REPLIES, BAAT_WHEN_DEFAULT, SHUKRIYA_REST_DAYS, shukriyaPick, shukriyaClean,
          questionFor, weekOfDay, SAWAAL_MAX, toldByLine, waitingFor, waitingLine } from './_heardrules.mjs';
 
@@ -43,7 +45,7 @@ const HOME_TZ = 'Asia/Kolkata';
 export const RCARD_PER_PERSON = 3;
 const PHOTO_URI = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 const PHOTO_MAX = 220000;
-const first = n => String(n || '').trim().split(/\s+/)[0] || 'Someone';
+const first = n => shortName(n, 'Someone');
 const clip = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
 
 let ready = false;
@@ -146,7 +148,7 @@ async function shukriyaPrompt(sql, circle, me, week) {
   return t ? { toId: t.id, name: t.name, onApp: t.on_app } : null;
 }
 // What this member may read: sent by them, sent to them, or shown to the family.
-async function shukriyaList(sql, circle, me, limit = 40) {
+export async function shukriyaList(sql, circle, me, limit = 40) {
   const rows = await sql`
     select s.id, s.line, (s.audio is not null) as has_audio, s.audio_secs, s.audience, s.created_at,
            s.from_member, f.name as from_name, s.to_member, t.name as to_name, (t.user_id is not null) as to_on_app
@@ -177,7 +179,8 @@ async function sawaalState(sql, circle, me, week) {
   // THE RULE: other people's answers are read only by someone who has
   // answered. It is in the query, so a phone that asks early gets nothing.
   const answers = await sql`
-    select a.id, a.member_id, m.name, a.by_member, b.name as by_name, a.answer_text, (a.audio is not null) as has_audio, a.audio_secs, a.created_at
+    select a.id, a.member_id, m.name, a.by_member, b.name as by_name, a.answer_text, (a.audio is not null) as has_audio, a.audio_secs, a.created_at,
+           to_jsonb(a)->>'via' as via
     from sawaal_answers a join members m on m.id = a.member_id left join members b on b.id = a.by_member
     where a.circle_id = ${circle.id} and a.week = ${week}::date
       and exists (select 1 from sawaal_answers x where x.circle_id = a.circle_id and x.week = a.week and x.member_id = ${me.id})
@@ -188,7 +191,8 @@ async function sawaalState(sql, circle, me, week) {
   const waiting = waitingFor(people.filter(p => p.on_app), done);
   return { week, question: q.question, answered: !!mine,
     answers: answers.map(a => ({ id: a.id, memberId: a.member_id, name: a.name, text: a.answer_text, hasAudio: a.has_audio, secs: a.audio_secs,
-      mine: a.member_id === me.id, told: a.by_member && a.by_member !== a.member_id ? toldByLine(a.name, a.by_name) : null })),
+      // Told by them and typed by someone else, or their own answer from their link (api/_eldlink.mjs).
+      mine: a.member_id === me.id, told: a.by_member && a.by_member !== a.member_id ? toldByLine(a.name, a.by_name) : a.via === 'link' ? linkLabel(a.name) : null })),
     // Who can be answered for: in the family, not on the app, no answer yet.
     offApp: people.filter(p => !p.on_app && !done.includes(p.id)).map(p => ({ id: p.id, name: p.name })),
     waiting: mine ? waitingLine(waiting) : null, count: done.length };

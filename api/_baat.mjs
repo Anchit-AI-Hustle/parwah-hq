@@ -22,6 +22,7 @@ import { pushCircle } from './_push.mjs';
 import { noteRisk } from './_notesapi.mjs';
 import { audioCheck } from './_memorybond.mjs';
 import { BAAT_KINDS, BAAT_REPLIES, BAAT_REMIND_MS, BAAT_PER_DAY, baatClean, baatReplyClean, baatPush } from './_heardrules.mjs';
+import { shortName } from './_todayrules.mjs';
 
 let ready = false;
 export async function ensureBaatSchema(sql) {
@@ -56,7 +57,7 @@ async function baatTables(sql) {
   await sql`create index if not exists baat_from on baat (from_member, created_at desc)`;
 }
 
-const first = n => String(n || '').trim().split(/\s+/)[0] || 'Someone';
+const first = n => shortName(n, 'Someone');
 const bad = (error, status = 400, extra) => ({ status, json: { ok: false, error, ...(extra || {}) } });
 const good = (json, status = 200) => ({ status, json: { ok: true, ...(json || {}) } });
 

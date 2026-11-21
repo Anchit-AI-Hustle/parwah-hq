@@ -306,6 +306,19 @@ for (const who of [priyaV, priyaF]) await call(events, who, { method: 'GET' });
   await clean();
   await call(events, mummy, { body: { type: 'pulse', value: (await call(events, mummy, { method: 'GET' })).pulse.options[0].k, tz: TZ } });
   ok('A6 a pulse answer counts', !!(await okToday(sql, mummy.id, today, TZ)));
+  // 18:30 to 24:00 UTC is already tomorrow in India. An answer filed then
+  // from a phone that sent no zone is filed under the UTC day, which is
+  // her yesterday: it still counts, because it is counted by the moment
+  // it was given. The clock is handed in: 20:00 UTC on a fixed day.
+  await clean();
+  const lateMs = Date.parse('2026-03-10T20:00:00Z'), herDay = dayIn(TZ, lateMs);
+  await admin.query(`insert into pulse (circle_id, member_id, day, style, value, at) values ($1, $2, '2026-03-10', 'mood', 'x', $3)`, [verma, mummy.id, new Date(lateMs)]);
+  ok('A6 (the clock: 20:00 UTC is the next day in India)', herDay === '2026-03-11');
+  ok('A6 A PULSE ANSWER GIVEN BETWEEN 18:30 AND 24:00 UTC COUNTS FOR HER DAY', !!(await okToday(sql, mummy.id, herDay, TZ)));
+  ok('A6 and it does not count for the day after', (await okToday(sql, mummy.id, '2026-03-12', TZ)) === null);
+  await clean();
+  await admin.query(`insert into pulse (circle_id, member_id, day, style, value, at) values ($1, $2, '2026-03-11', 'mood', 'x', '2026-03-10T10:00:00Z')`, [verma, mummy.id]);
+  ok('A6 an answer given the day before is not today, whatever day it is filed under', (await okToday(sql, mummy.id, '2026-03-11', TZ)) === null);
   await clean();
   await call(events, mummy, { body: { type: 'checkin', text: 'All is well' } });
   ok('A6 and the tap itself, "All is well", still does', !!(await okToday(sql, mummy.id, today, TZ)));

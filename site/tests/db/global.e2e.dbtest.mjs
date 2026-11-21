@@ -105,7 +105,7 @@ ok('the SOS sheet calls 999 for a member in the UK', /tel:999/.test(await P.$eva
 
 // ---- a household bill, in pounds, with no UPI
 await P.evaluate(() => { location.hash = '#care'; }); await settle(P);
-await P.click('#care-seg [data-sec="bills"]'); await settle(P);
+await P.click('#tn-care-more'); await P.click('#care-seg [data-sec="bills"]'); await settle(P);
 // The currency comes with the member's country, which arrives by request.
 await P.waitForFunction(() => { const l = document.querySelector('label:has(#bill-amount)'); return !!l && l.textContent.includes('£'); }, null, { timeout: 20000 }).catch(() => {});
 ok('the amount box says pounds', (await P.textContent('label:has(#bill-amount)')).includes('£'), await P.textContent('label:has(#bill-amount)'));
@@ -145,7 +145,7 @@ ok('the payment cap is in pounds', /£/.test(await P.textContent('label[for="vp-
 const Q = await phone(papa, 'Asia/Kolkata');
 ok('Papa\'s SOS sheet still calls 112', /tel:112/.test(await Q.$eval('#ss-calls', e => e.innerHTML)));
 await Q.evaluate(() => { location.hash = '#care'; }); await settle(Q);
-await Q.click('#care-seg [data-sec="bills"]'); await settle(Q);
+await Q.click('#tn-care-more'); await Q.click('#care-seg [data-sec="bills"]'); await settle(Q);
 ok('and the bill amount in rupees, with UPI offered', (await Q.textContent('label:has(#bill-amount)')).includes('₹') && await Q.isVisible('#bill-upi'));
 
 ok('no script errors', errors.length === 0, errors.join(' | '));

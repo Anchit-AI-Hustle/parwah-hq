@@ -16,6 +16,7 @@ import { ensureVisitSchema, visitState, visitAction } from './_visits.mjs';
 import { reqTz } from './_recur.mjs';
 import { ensureBondSchema, bondState, bondAction, cardRead, entryAudio, thanksAudio } from './_bond.mjs';
 import { TOGETHER_KIND, ensureTogetherSchema, togetherPrepare, togetherAnswer, isTogetherAnswer } from './_together.mjs';
+import { kitState, kitAction } from './_eventkit.mjs';
 import { ensureSplitSchema, splitState, splitAction, splitSettling } from './_split.mjs';
 
 // `together` is watch or listen together (api/_together.mjs): a plan that
@@ -116,6 +117,15 @@ export default async function handler(req, res) {
       }
       if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return res.status(405).json({ ok: false, error: 'GET or POST only' }); }
       const out = await splitAction(sql, circle, me, body);
+      return res.status(out.status).json(out.json);
+    }
+
+    // The function kit (api/_eventkit.mjs): guests, sides, tasks, arrivals and
+    // the budget of a wedding or a function, built on a plan.
+    if (area === 'eventkit' || (typeof body.action === 'string' && /^kit_/.test(body.action))) {
+      if (req.method === 'GET') { const r = await kitState(sql, circle, me, q.plan); return res.status(r.status).json(r.json); }
+      if (req.method !== 'POST') { res.setHeader('Allow', 'GET, POST'); return res.status(405).json({ ok: false, error: 'GET or POST only' }); }
+      const out = await kitAction(sql, circle, me, { ...body, tz: body.tz || reqTz(req) });
       return res.status(out.status).json(out.json);
     }
 

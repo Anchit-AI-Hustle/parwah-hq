@@ -323,7 +323,7 @@ for (const vp of [{ width:320, height:640 }, { width:390, height:844 }]) {
       const tabs = box(document.getElementById('tabs'));
       const sos = document.getElementById('sos-fab'), sb = shown(sos) ? box(sos) : null;
       const chat = document.getElementById('chat-fab'), cb = shown(chat) ? box(chat) : null;
-      const ekta = document.querySelector('#tabs button[data-tab="ekta"]');
+      const ekta = document.querySelector('#tabs button[data-tab="chat"]'), more = document.querySelector('#tabs button[data-tab="menu"]');
       const over = [];
       // SOS sits inside the tab bar band, at its left, 56px or bigger.
       const sosDocked = sb && sb.width >= 56 && sb.height >= 56 && sb.top >= tabs.top - 1 && sb.bottom <= tabs.bottom + 1 && sb.left < 80;
@@ -337,10 +337,10 @@ for (const vp of [{ width:320, height:640 }, { width:390, height:844 }]) {
       const bar = document.querySelector('.inputbar'); const inBar = bar && shown(bar) ? box(bar).bottom : null;
       return { sosDocked, over, chatInBar: !!cb && cb.top >= 0 && cb.bottom <= 64,
                chatHidden: !cb, tab: location.hash.slice(1),
-               ektaTab: shown(ekta), lastBottom: last ? box(last).bottom : 0, tabsTop: tabs.top, inBar };
+               ektaTab: shown(ekta) && shown(more), lastBottom: last ? box(last).bottom : 0, tabsTop: tabs.top, inBar };
     });
     ok(r.sosDocked && !r.over.length, vp.width + 'px ' + tab + ': SOS is docked in the one bottom bar, on no tab' + (r.over.length ? ' (' + r.over.join() + ')' : ''));
-    ok(r.ektaTab, vp.width + 'px ' + tab + ': Ekta is a tab of its own');
+    ok(r.ektaTab, vp.width + 'px ' + tab + ': Chat is a tab of its own, and More holds the rest (Ekta among them)');
     ok(tab === 'chat' ? r.chatHidden : r.chatInBar, vp.width + 'px ' + tab + ': New chat sits in the top bar' + (tab === 'chat' ? ', except on Chat itself' : ''));
     ok(r.lastBottom <= r.tabsTop + 1, vp.width + 'px ' + tab + ': the page ends above the bar, nothing under it (' + Math.round(r.lastBottom) + ' vs ' + Math.round(r.tabsTop) + ')');
     if (r.inBar !== null) ok(r.inBar <= r.tabsTop + 1, vp.width + 'px ' + tab + ': the message box sits above the bar');
@@ -375,26 +375,27 @@ for (const vp of [{ width:320, height:640 }, { width:390, height:844 }]) {
 // ---------- MOVING BETWEEN FEATURES ----------
 {
   const pg = await fresh({ viewport:{ width:390, height:844 }, signedIn:true });
-  // Only four tabs are reachable on a phone without opening the drawer, in
-  // order of utility: Today, Vault, To do, Family (docs/design/TODAY.md).
-  // Everything else is behind the hamburger, which is why its size (checked
-  // below) matters so much.
-  const tabs = ['people', 'vault', 'care'];
-  for (const t of tabs) {
-    await pg.locator('#tabs [data-tab="' + t + '"]:visible').first().click();
-    await pg.waitForTimeout(350);
-  }
+  // Five places are on a phone's tab bar: Today, Chat, Together, Family,
+  // More. Vault and To do are one more tap away, on the More screen.
+  await pg.locator('#tabs [data-tab="people"]:visible').first().click(); await pg.waitForTimeout(350);
+  await pg.locator('#tabs [data-tab="menu"]:visible').first().click(); await pg.waitForTimeout(350);
+  await pg.locator('#pane-menu [data-goto="vault"][data-sec="docs"]').click(); await pg.waitForTimeout(350);
+  await pg.locator('#tabs [data-tab="menu"]:visible').first().click(); await pg.waitForTimeout(350);
+  await pg.locator('#pane-menu [data-goto="care"]').click(); await pg.waitForTimeout(350);
   ok((await pg.evaluate(() => location.hash)) === '#care', 'the address bar says which feature you are on');
 
   // Back used to leave the app entirely, because every switch REPLACED
   // the history entry instead of pushing one.
   await pg.goBack(); await pg.waitForTimeout(450);
-  ok((await pg.evaluate(() => location.hash)) === '#vault', 'Back steps back a feature');
+  // The way here was Family, More, Vault, More, To do: Back retraces it.
+  ok((await pg.evaluate(() => location.hash)) === '#menu', 'Back steps back a screen (To do was opened from More)');
   await pg.goBack(); await pg.waitForTimeout(450);
-  ok((await pg.evaluate(() => location.hash)) === '#people', 'and again');
-  ok(await pg.locator('#pane-people').isVisible(), 'and the screen follows the address, not just the URL');
+  ok((await pg.evaluate(() => location.hash)) === '#vault', 'and again');
+  await pg.goBack(); await pg.waitForTimeout(450);
+  await pg.goBack(); await pg.waitForTimeout(450);
+  ok((await pg.evaluate(() => location.hash)) === '#people' && await pg.locator('#pane-people').isVisible(), 'and the screen follows the address, not just the URL');
   await pg.goForward(); await pg.waitForTimeout(450);
-  ok((await pg.evaluate(() => location.hash)) === '#vault', 'Forward works too');
+  ok((await pg.evaluate(() => location.hash)) === '#menu' && await pg.locator('#pane-menu').isVisible(), 'Forward works too');
   ok(await pg.locator('#app').count() > 0 || await pg.locator('#tabs').isVisible(), 'Back never left the app');
   await pg.close();
 }
@@ -421,12 +422,15 @@ for (const vp of [{ width:320, height:640 }, { width:390, height:844 }]) {
     ok(b && b.width >= 44 && b.height >= 44, `the menu button is thumb-sized (${Math.round(b?b.width:0)}x${Math.round(b?b.height:0)})`);
   } else ok(true, 'the menu button is not shown at this width');
 
-  // Seven of the eleven features live behind that button on a phone, so it
-  // has to open, and what it opens has to be reachable without a fight.
+  // The menu is the same five places as the tab bar, each folded until it
+  // is opened. "More" holds what the tab bar cannot, so it has to open, and
+  // what it opens has to be reachable without a fight.
   if (await hamb.isVisible()) {
     await hamb.click(); await pg.waitForTimeout(400);
+    ok(await pg.locator('#drawer [data-tab]:visible').count() <= 8, 'the menu opens as a short list, not thirty rows');
+    await pg.locator('#drawer .dparent[data-grp="menu"]').click(); await pg.waitForTimeout(200);
     const items = pg.locator('#drawer [data-tab]:visible');
-    ok(await items.count() >= 8, 'the drawer carries the features the tab bar cannot');
+    ok(await items.count() >= 8, 'and "More" opens to the features the tab bar cannot carry');
     const prof = pg.locator('#drawer [data-tab="profile"]');
     const pb = await prof.boundingBox();
     ok(pb !== null, 'Profile is in the drawer');

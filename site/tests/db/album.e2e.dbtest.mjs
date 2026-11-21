@@ -135,11 +135,11 @@ async function phone(who, { big = false, block = null, touch = false } = {}) {
 // The app is in the family and the family has loaded (whichever screen a reload lands on).
 const home = (P) => P.waitForFunction(() => { const w = document.getElementById('w-fam');
   return document.body.classList.contains('inapp') && w && !/Loading/.test(w.textContent); }, null, T);
-// Open Family Memory, then the album; `until` is what must be on screen before going on.
+// Open Together, then the album (it moved there from Health & contacts); `until` is what must be on screen before going on.
 async function album(P, until = '#ab-tools:not([hidden])') {
-  await P.evaluate(() => { location.hash = '#memory'; });
-  await P.waitForSelector('#pane-memory:not([hidden])', T);
-  await P.click('#mb-switch [data-mbv="album"]');
+  await P.evaluate(() => { location.hash = '#fun'; });
+  await P.waitForSelector('#pane-fun:not([hidden])', T);
+  await P.click('#tn-together [data-mbv="album"]');
   await P.waitForSelector('#ab-root:not([hidden])', T);
   await P.waitForSelector(until, T);
 }

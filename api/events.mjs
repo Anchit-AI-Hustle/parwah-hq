@@ -11,6 +11,7 @@ import { dialOut, dialConfig } from './_sosdial.mjs';
 import { ladderFor, ladderEscalate } from './_ladder.mjs';
 import { sweepStaffLate } from './_staff.mjs';
 import { sweepRenewals } from './_renewals.mjs';
+import { sweepHome } from './_home.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
@@ -33,6 +34,9 @@ import { ektaNudgeSweep } from './_ektaday.mjs';
 import { heardSweepAll } from './_heard.mjs';
 import { sweepTripsAll } from './_ashirwad.mjs';
 import { memberCards, standingSweepAll } from './_standing.mjs';
+import { eldlinkApi } from './_eldlink.mjs';
+import { sweepRollcallAll } from './_rollcall.mjs';
+import { sweepKidsAll } from './_kids.mjs';
 
 import { index as kinIndex, kinLabel, generations, kinEveryone, kinChainWords } from './_kin.mjs';
 import { pulseToday, pulseSave } from './_pulse.mjs';
@@ -76,6 +80,7 @@ async function dueCircles(sql) {
   await q(() => sql`select distinct circle_id from medicine_schedules where active limit 500`);
   await q(() => sql`select distinct circle_id from home_staff where arrive_time is not null limit 500`);
   await q(() => sql`select distinct circle_id from renewals where expires_on <= current_date + 31 limit 500`);
+  await q(() => sql`select distinct circle_id from home_items where warranty_until between current_date - 1 and current_date + 32 or service_due between current_date - 1 and current_date + 32 limit 500`);
   // Shared cards (birthdays, anniversaries), chosen festivals, storytellers.
   await q(() => sql`select distinct circle_id from members where dob is not null or anniversary is not null limit 500`);
   await q(() => sql`select distinct circle_id from circle_festivals limit 500`);
@@ -103,6 +108,8 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
   // yet, or a bad row) must not stop the other alerts for that family.
   const one = async f => { try { return (await f()) || 0; } catch (e) { tickNote(e, 'sweep'); return 0; } };
   await one(() => sweepTripsAll(sql));   // "Reached safely" not tapped by the expected time + 30 minutes
+  await one(() => sweepRollcallAll(sql));   // "Sab theek?": one reminder after half an hour, closed after 24 hours
+  await one(() => sweepKidsAll(sql));   // a child's page: a pick-up not marked 20 minutes after its time, and fee reminders
   await one(() => standingSweepAll(sql));   // account and family deletes whose 7 days are up, tree links whose 48 hours are up
   for (const id of circles) {
     if (Date.now() - t0 > budgetMs) break;
@@ -115,6 +122,7 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
     await one(() => sweepVisitAsk(sql, id));
     await one(() => sweepStaffLate(sql, id));
     await one(() => sweepRenewals(sql, id));
+    await one(() => sweepHome(sql, id));   // home upkeep: a warranty running out, a service due (api/_home.mjs)
     await one(() => rotaSweep(sql, id));
     await one(async () => { await ensureBondSchema(sql); const c = (await sql`select id, name, kind, code from circles where id = ${id}`)[0]; return c ? sweepBond(sql, c) : 0; });
     await one(async () => { await ensureMemoryBondSchema(sql); return storySweep(sql, id); });
@@ -192,6 +200,11 @@ export default async function handler(req, res) {
     await sql`create index if not exists sos_circle_open on sos (circle_id, status, created_at desc)`;
     await ensureSosSchema(sql);
   } catch (e) { return failDb(res, e); }
+
+  // A link for someone who is not on the app (api/_eldlink.mjs): the family's
+  // side signed in, the page's side by its key alone. It raises the family's
+  // own SOS, so that function is handed in rather than copied.
+  if (String((req.query && req.query.area) || (req.body && req.body.area) || '') === 'eldlink') return eldlinkApi(req, res, { raiseSos });
 
   try {
     // THE TIMER. Reminders and every other timed alert are also checked by
@@ -389,7 +402,7 @@ export default async function handler(req, res) {
           await sql`update sos set status = 'acked', acked_by = ${memberId}, acked_at = now()
                     where id = ${row[0].id} and status = 'open'`;
           await sql`insert into events (circle_id, member_id, type, text)
-                    values (${circle.id}, ${memberId}, 'care', ${am[0].name + ' is on their way to ' + row[0].name + ' 🧡'})`;
+                    values (${circle.id}, ${memberId}, 'care', ${am[0].name + ' has seen the SOS and is calling ' + row[0].name + ' 🧡'})`;
           await pushCircle(sql, circle.id, { kind: 'safety', title: '🧡 ' + am[0].name + ' is on it',
             body: 'They are helping ' + row[0].name + ' - you do not need to call as well' }, { except: memberId });
           return res.status(200).json({ ok: true });
@@ -564,7 +577,13 @@ async function raiseSos(sql, res, circle, me, said, body) {
       places.push({ circleId: o.id, memberId: o.member_id, name: o.member_name, sosId: s.sosId, again: s.again });
     } catch (e) { /* the next family still hears */ }
   }
-  const words = name => sosText(name, pos, Date.now(), body && body.tz) + (said ? ' "' + said + '"' : '');
+  // The words carry the sender's own clock with its zone named (for a text
+  // message, which has no reader's clock). The phone says its zone; when it
+  // did not, the zone saved for this person is used before falling back to
+  // UTC. In the chat the app shows the time on the READER's own clock.
+  let sosTz = body && body.tz;
+  if (!sosTz) { try { sosTz = ((await sql`select to_jsonb(m)->>'tz' as tz from members m where m.id = ${me.id}`)[0] || {}).tz || null; } catch (e) { /* UTC */ } }
+  const words = name => sosText(name, pos, Date.now(), sosTz) + (said ? ' "' + said + '"' : '');
   const text = words(me.name);
   const lists = [], gone = new Set();
   for (const p of places) {
