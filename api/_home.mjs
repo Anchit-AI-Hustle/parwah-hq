@@ -28,10 +28,13 @@ import { ensureAudienceSchema, audienceFor, minorOf } from './_audience.mjs';
 import { noteRisk } from './_notesapi.mjs';
 import { registerSecretRisk } from './_register.mjs';
 import { openSos } from './_ecard.mjs';
+import { dayIn } from './_recur.mjs';
 import { HOME_KINDS, HOME_KIND_ICON, HOME_WHO, HOME_MAX, HOME_SERVICE_OFFSET, homeClean, homeLogClean, homeStage, homePush } from './_needsrules.mjs';
 
 const bad = (res, status, error) => res.status(status).json({ ok: false, error });
-const dayOf = (ms) => new Date(ms).toISOString().slice(0, 10);
+// A family's day is the India day: at 1am in Lucknow it is still
+// yesterday in UTC, and "days left" must not be a day out.
+const dayOf = (ms) => dayIn('Asia/Kolkata', ms);
 
 let ready = false;
 export async function ensureHomeSchema(sql) {
@@ -214,8 +217,9 @@ export default async function homeApi(req, res) {
   } catch (e) { return fail(res, e); }
 }
 
-// THE TIMER'S SHARE, called from the renewals sweep the timer already runs
-// (sweepRenewals in api/_renewals.mjs): 30 and 7 days before a warranty
+// THE TIMER'S SHARE, its own line in runTick (api/events.mjs), so an error
+// here is written down by the timer and never hidden inside another
+// sweep: 30 and 7 days before a warranty
 // runs out or a service is due, once each, claimed in the same alert-once
 // table the renewals use. Told only to people who may see the entry: the
 // person who wrote it; the people they chose; for "whole family", the adults.

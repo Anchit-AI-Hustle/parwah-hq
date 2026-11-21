@@ -78,6 +78,13 @@ export function rollcallLine(name, answer, byName) {
   return byName ? first(byName) + ' says ' + first(name) + ' ' + what : first(name) + ' ' + what;
 }
 
+// The line on the family feed when an answer is "I need help". The feed is
+// read by everyone, children too, and a child is never shown that somebody
+// else needs help: so the line says that an answer came, and not which.
+export function rollcallFeedLine(name, byName) {
+  return byName ? first(byName) + ' answered the roll-call for ' + first(name) : first(name) + ' answered the roll-call';
+}
+
 // The words of each push. Every one is a safety push: it comes through a
 // quiet night, because that is when a flood comes.
 export function rollcallAskPush(starter, reasonKey, note) {

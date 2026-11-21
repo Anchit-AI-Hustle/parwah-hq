@@ -192,7 +192,9 @@ async function pageFor(sql, circle, me, kid, tz, nowMs) {
              when 'vaccine' then r.rel = 'parent' or (r.rel = 'adult' and pg.share->>'vaccines' = 'family')
              when 'exam' then r.rel in ('self', 'parent') or pg.share->>'exams' = 'family'
              when 'activity' then r.rel in ('self', 'parent') or pg.share->>'activities' = 'family'
-             when 'note' then r.rel in ('self', 'parent') or i.share = 'family'
+             -- A note kept "for the parents" that a parent wrote is not sent
+             -- to the child; the child still reads what they wrote themself.
+             when 'note' then r.rel = 'parent' or i.share = 'family' or (r.rel = 'self' and i.by_member = ${me.id})
              else false end)
     order by i.on_date nulls last, i.created_at`;
   const today = dayIn(tz, nowMs);

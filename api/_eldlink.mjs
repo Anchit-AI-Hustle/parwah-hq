@@ -252,7 +252,7 @@ async function linkOf(sql, req) {
   if (!tokenShape(key)) return null;
   const r = await sql`
     select l.id, l.circle_id, l.member_id, l.created_by, l.consent_at, l.contacts, l.expires_at,
-           m.name, m.place, m.country, m.phone_cc, to_jsonb(m)->>'checkin_by' as checkin_by, to_jsonb(m)->>'checkin_ask' as checkin_ask,
+           m.name, m.place, m.country, m.phone_cc, to_jsonb(m)->>'tz' as tz, to_jsonb(m)->>'checkin_by' as checkin_by, to_jsonb(m)->>'checkin_ask' as checkin_ask,
            (to_jsonb(m)->>'checkin_ask_by')::uuid as checkin_ask_by,
            c.code, c.name as circle_name, c.kind as circle_kind, b.name as by_name
     from eld_links l
@@ -264,7 +264,13 @@ async function linkOf(sql, req) {
   return r[0] || null;
 }
 
-const todayOf = (b) => dayIn(validTz(b && b.tz) || HOME_TZ, Date.now());
+// The clock can be handed in by a test; nothing else sets it.
+export const eldSeams = { now: null };
+const nowOf = () => (eldSeams.now ? eldSeams.now() : Date.now());
+// "Today" is HER day: the zone saved on her member row, else the home zone.
+// Never the zone the page sends: a far-ahead zone would open a sealed card
+// a day early, and changing zones would claim a second "I am fine".
+const todayOf = (L) => dayIn(validTz(L && L.tz) || HOME_TZ, nowOf());
 
 // What the family sent HER. Each query names her and her circle; a feature
 // the family never opened has no table, and that is simply nothing from it.
@@ -369,7 +375,7 @@ async function rotaToday(sql, L) {
 }
 
 async function pageState(sql, L, body) {
-  const today = todayOf(body), cid = L.circle_id, her = L.member_id;
+  const today = todayOf(L), cid = L.circle_id, her = L.member_id;
   const me = { name: L.name, first: first(L.name) };
   if (!L.consent_at) {
     // Before she has said "All right" the page is told who set this up and
@@ -425,7 +431,7 @@ async function pageApi(sql, req, res, hooks) {
   const cid = L.circle_id, her = L.member_id;
   const herRow = { id: her, name: L.name, user_id: null, place: L.place, country: L.country, phone_cc: L.phone_cc };
   const circle = { id: cid, code: L.code, name: L.circle_name, kind: L.circle_kind };
-  const today = todayOf(b);
+  const today = todayOf(L);
   const good = (extra, status = 200) => res.status(status).json({ ok: true, ...(extra || {}) });
   const tellMaker = async (title, body) => { if (L.created_by) await pushCircle(sql, cid, { kind: 'care', title, body, url: '/#people' }, { only: L.created_by }); };
 
@@ -467,8 +473,11 @@ async function pageApi(sql, req, res, hooks) {
   // ---- a daily check-in the family asked for: her own yes or no
   if (op === 'checkin') {
     if (b.stop === true) {
-      await sql`update members set checkin_by = null, checkin_ask = null, checkin_ask_by = null where id = ${her} and circle_id = ${cid}`;
-      await feed(sql, cid, her, first(L.name) + ' turned off the daily check-in');
+      // Said only when it changes something: no feed line for a check-in that was not on.
+      const was = await sql`update members set checkin_by = null, checkin_ask = null, checkin_ask_by = null
+                            where id = ${her} and circle_id = ${cid} and checkin_by is not null returning id`;
+      if (was[0]) await feed(sql, cid, her, first(L.name) + ' turned off the daily check-in');
+      else await sql`update members set checkin_ask = null, checkin_ask_by = null where id = ${her} and circle_id = ${cid} and checkin_ask is not null`;
       return good({});
     }
     const ask = validHHMM(L.checkin_ask);

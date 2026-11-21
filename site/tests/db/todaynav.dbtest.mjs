@@ -300,6 +300,31 @@ let planId;
   ok('9. the read still works when called straight, with a member of that family', (await Today.todayState(sql, { id: other, kind: 'family' }, { id: vikram.id })).items.length === 0);
 }
 
+// ================================================================ 10. a parent with no app, and her link
+{
+  const Eld = await import('../../../api/_eldlink.mjs');
+  await Eld.ensureEldSchema(sql);
+  const nani = await seat(fam, 'SHARMA24', { name: 'Nani' }, 'parent', '1940-01-01');
+  const card = async () => (await T(rohan)).parents.find(p => p.name === 'Nani');
+  let c = await card();
+  ok('10. someone not on Parwah, with no link: no check-in to show, and the card says there is no link', !!c && c.onApp === false && c.link === false && c.ok === null, blob(c));
+  await admin.query(`insert into eld_links (circle_id, member_id, token_hash, created_by, expires_at, consent_at) values ($1,$2,$3,$4, now() + interval '30 days', now())`, [fam, nani.id, 'h-' + nani.id, rohan.id]);
+  c = await card();
+  ok('10. with her link on: not checked in yet today', c.link === true && c.ok === null, blob(c));
+  // "I am fine" on her page writes this row (api/_eldlink.mjs).
+  await admin.query(`insert into events (circle_id, member_id, type, text) values ($1,$2,'checkin','from Nani''s link')`, [fam, nani.id]);
+  c = await card();
+  ok('10. A CHECK-IN MADE FROM HER LINK IS ON HER CARD', c.link === true && !!c.ok && !!c.ok.at, blob(c));
+  await admin.query(`update eld_links set revoked_at = now() where member_id = $1`, [nani.id]);
+  c = await card();
+  ok('10. a link turned off is not shown as on (today\'s check-in still stands)', c.link === false && !!c.ok);
+  // A message from someone since marked as remembered is never "who wrote last".
+  await C(rohan, 'read', { chatId: famChat }).catch(() => {});
+  await admin.query(`insert into messages (chat_id, member_id, text) values ($1,$2,'An old line from Dadaji')`, [famChat, dadaji.id]);
+  const r = await T(priya);
+  ok('10. SOMEONE WHO HAS PASSED AWAY IS NEVER NAMED AS WHO WROTE LAST', !kinds(r, 'message').some(m => m.fromName === 'Dadaji') && !/An old line from Dadaji/.test(blob(r.items)), blob(kinds(r, 'message')));
+}
+
 await admin.end();
 for (const pl of globalThis.__parwahPools || []) await pl.end();
 if (fails.length) { console.error(`todaynav.dbtest: ${fails.length} FAILED of ${pass + fails.length}`); for (const f of fails) console.error('  - ' + f); process.exit(1); }

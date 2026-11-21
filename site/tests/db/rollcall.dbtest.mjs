@@ -54,6 +54,9 @@ ok('1. nor by sending a member id that is not theirs', r.status === 403);
 r = await G(outsider);
 ok('1. and cannot read this family\'s roll-call', r.status === 403 && !r.open);
 
+r = await P(rohan, 'rollcall_start', { reason: 'flood', note: 'my OTP is 482910' });
+ok('1. a note with an OTP or a card number is refused, and nothing starts', r.status === 400 && /never keeps/.test(r.error) && !(await G(rohan)).open
+  && (await P(rohan, 'rollcall_start', { reason: 'flood', note: 'card 4111 1111 1111 1111' })).status === 400, JSON.stringify(r));
 let mark = pushed.length;
 r = await P(rohan, 'rollcall_start', { reason: 'flood', note: 'Water on the road in Lucknow' });
 ok('1. an adult starts it', r.status === 201 && r.open && r.open.reasonWords === 'Heavy rain or flood' && r.open.mine === 'safe', JSON.stringify(r).slice(0, 200));
@@ -113,6 +116,15 @@ ok('4. and the child\'s own tap then takes its place', r.ok && r.open.board.safe
 r = await G(kabir);
 ok('5. a child is not shown that Papa needs help: he reads as waiting', r.open.board.help.length === 0 && names(r.open.board.waiting) === 'Papa' && !JSON.stringify(r.open.board).includes('needs help'));
 ok('5. a child cannot close the roll-call', (await P(kabir, 'rollcall_close')).status === 403 && r.open.canClose === false);
+// The family feed is read by the child too: it must not say what the board hides.
+r = await P(rohan, 'rollcall_answer', { answer: 'help', forId: dadi.id });
+ok('5. (Rohan ticks "needs help" for Dadi; an adult sees it on the board)', r.ok && r.open.board.help.some(x => x.name === 'Dadi'));
+const feedLines = (await admin.query(`select text from events where circle_id = $1 and type = 'care'`, [fam.id])).rows.map(x => x.text);
+ok('5. THE FEED DOES NOT TELL A CHILD WHO NEEDS HELP: it says only that an answer came', !feedLines.some(t => /needs help/i.test(t))
+  && feedLines.includes('🛟 Rohan answered the roll-call for Dadi') && feedLines.includes('🛟 Papa answered the roll-call'), JSON.stringify(feedLines));
+ok('5. and the child\'s board still hides it', (await G(kabir)).open.board.help.length === 0);
+r = await P(rohan, 'rollcall_answer', { answer: 'safe', forId: dadi.id });
+ok('5. (Dadi is ticked safe again)', r.ok && r.open.board.safe.some(x => x.name === 'Dadi'));
 
 // ------------------------------------------------------------ 6. reminder
 // A second family with its own roll-call, to prove the sweep keeps them apart.

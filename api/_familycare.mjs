@@ -170,7 +170,10 @@ export async function okToday(sql, memberId, today, tz) {
   const from = dayStart(today, tz);
   const signs = [
     () => sql`select max(created_at) as at from events where member_id = ${memberId} and type = 'checkin' and created_at >= ${from}`,
-    () => sql`select at from pulse where member_id = ${memberId} and day = ${today} limit 1`,
+    // By the moment it was answered, like every other sign: the day a pulse
+    // is filed under comes from the phone's zone, which need not be the
+    // member's saved zone, and a real answer must count either way.
+    () => sql`select max(at) as at from pulse where member_id = ${memberId} and at >= ${from}`,
     () => sql`select max(taken_at) as at from medicine_doses where marked_by = ${memberId} and taken_at >= ${from}`,
     () => sql`select max(created_at) as at from messages where member_id = ${memberId} and created_at >= ${from} and text not like '🆘%'`
   ];
@@ -417,9 +420,10 @@ export async function familyCarePost(sql, req, res, reqTzValue) {
     // (api/_eldlink.mjs): the question waits on that page for their yes.
     const linked = !t.on_app && !!(await sql`select 1 as x from members m where m.id = ${t.id} and exists (select 1 from eld_links l where l.member_id = m.id and l.revoked_at is null and l.expires_at > now() and l.consent_at is not null)`)[0];
     if (!t.on_app && !linked) return no(res, 400, t.name + ' is not on Parwah, so cannot check in here');
-    if (!(await rateLimit(sql, 'quietask', t.id, 3, 86400))) return no(res, 429, t.name + ' has been asked already today');
+    if (!(await rateLimit(sql, 'quietask', t.id, 3, 86400, { failClosed: true }))) return no(res, 429, t.name + ' has been asked already today');
     await sql`update members set checkin_ask = ${by}, checkin_ask_by = ${me.id} where id = ${t.id}`;
-    await pushCircle(sql, circle.id, { title: '🕚 ' + me.name + ' asks: a daily check-in by ' + by + '?',
+    // A link holder has no app to push at: the question waits on their page.
+    if (t.on_app) await pushCircle(sql, circle.id, { kind: 'care', title: '🕚 ' + me.name + ' asks: a daily check-in by ' + by + '?',
       body: 'It stays off until you say yes on your phone.', url: '/#home' }, { only: t.id });
     return send(res, 200, { ok: true, onLink: linked });
   }

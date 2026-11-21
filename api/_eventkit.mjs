@@ -250,6 +250,8 @@ export async function kitAction(sql, circle, me, b) {
   if (act === 'kit_sides_set') {
     const sides = kitSides(b.sides);
     if (!sides.length) return no(400, 'Write at least one side, like "Our family".');
+    const why = sides.map(s => noteRisk(s)).find(Boolean);
+    if (why) return no(400, why);
     await sql`update plan_kits set sides = ${sides}::text[] where plan_id = ${plan.id}`;
     return done();
   }
@@ -295,6 +297,9 @@ export async function kitAction(sql, circle, me, b) {
     if (b.status !== undefined && !KIT_STATUSES.includes(b.status)) return no(400, 'Choose where this invite stands.');
     const c = kitGuestClean(merged, { sides, goneNames: row.member_id ? new Set() : await goneNames(sql, circle.id) });
     if (c.error) return no(400, c.error);
+    // The same check as when a guest is added: never a card number, PIN or OTP.
+    const why = (!row.member_id && noteRisk(c.value.name)) || (c.value.note && noteRisk(c.value.note));
+    if (why) return no(400, why);
     await sql`update kit_guests set name = ${row.member_id ? row.name : c.value.name}, side = ${c.value.side}, people = ${c.value.people}, status = ${c.value.status}, note = ${c.value.note}
               where id = ${row.id}`;
     return done();
@@ -316,6 +321,8 @@ export async function kitAction(sql, circle, me, b) {
     if (n >= KIT_MAX.arrivals) return no(400, 'This kit has ' + KIT_MAX.arrivals + ' arrivals already.');
     const c = kitArrivalClean({ ...b, memberId: b.travellerId || null });
     if (c.error) return no(400, c.error);
+    const why = noteRisk(c.value.who) || noteRisk(c.value.from);
+    if (why) return no(400, why);
     let memberId = null;
     if (b.travellerId) {
       if (!isUuid(b.travellerId)) return no(400, 'Pick someone from this family, or type a name.');

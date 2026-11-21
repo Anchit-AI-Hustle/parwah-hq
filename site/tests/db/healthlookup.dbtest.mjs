@@ -99,6 +99,8 @@ ok('3. the linked family finds the Sharmas who said yes, too', /Meena|Rohan/.tes
 
 // ---------------------------------------------------------- 4. tell them
 let mark = pushed.length;
+r = await P(papa, 'blood_ask', { group: 'O+', note: 'OTP 482910 for the form' });
+ok('4. a note with an OTP or a card number is refused, nobody is told, and it does not use up an ask', r.status === 400 && /never keeps/.test(r.error) && pushed.length === mark, JSON.stringify(r));
 r = await P(papa, 'blood_ask', { group: 'O+', note: 'For Maa at Medanta' });
 const told = pushedTo(mark, /Papa is looking for O\+ blood/);
 ok('4. "Tell them" reaches only the people found, across the link', r.ok && r.told === 3 && told.sort().join() === [meena.id, rohan.id, mama.id].sort().join(), told.join());

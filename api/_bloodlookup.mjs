@@ -30,6 +30,8 @@ import { ensureAudienceSchema, minorOf } from './_audience.mjs';
 import { ensureBookSchema } from './_bookschema.mjs';
 import { memberCards } from './_standing.mjs';
 import { ensureEcardSchema, mayOpen } from './_ecard.mjs';
+import { ensureVisitSchema } from './_visits.mjs';
+import { noteRisk } from './_notesapi.mjs';
 import { BLOOD_GROUPS, BLOOD_CONSENT_LINE, BLOOD_LEGAL, BLOOD_ASKS_PER_DAY, bloodGroupOf, bloodMayAsk, bloodAskPush,
          SUMMARY_LINE, summaryMayOpen, summaryBuild } from './_needsrules.mjs';
 
@@ -138,6 +140,9 @@ export async function bloodApi(req, res) {
         return res.status(200).json({ ok: true, group, legal: BLOOD_LEGAL,
           matches: rows.map(r => ({ id: r.id, name: r.name, family: r.circle_id === circle.id ? null : r.family, phone: r.circle_id === circle.id ? (shown.get(r.id) || null) : null })) });
       }
+      // The note is pushed to other people's phones: never a card number, PIN or OTP.
+      const risk = noteRisk(clip(b.note, 100));
+      if (risk) return bad(res, 400, risk);
       // Telling the people found: limited, and a limiter that cannot count says no.
       if (!(await rateLimit(sql, 'bloodask', me.id, BLOOD_ASKS_PER_DAY, 86400, { failClosed: true }))) {
         return bad(res, 429, 'You have asked ' + BLOOD_ASKS_PER_DAY + ' times today. Please call the people on the list.');
@@ -186,7 +191,10 @@ export async function summaryApi(req, res) {
         and (b.kind = 'med' or (b.kind = 'fact' and b.category in ('blood', 'allergy')) or (b.kind = 'contact' and b.category in ('doctor', 'emergency')))
       order by b.kind, lower(b.name) limit 200`;
     // Past visits and follow-ups: the family's, the ones I wrote, and my own.
-    const visits = await maybe(() => sql`
+    // The visit columns (next_due, the plan) are made by api/_visits.mjs:
+    // ensured here, so a summary is never short of its visits in silence.
+    await ensureVisitSchema(sql);
+    const visits = await sql`
       select a.recorded_at, a.next_due, a.transcript_raw as new_notes, p.title as plan_title
       from audio_consultations a
       join members v on v.id = ${me.id} and v.circle_id = a.circle_id
@@ -195,7 +203,7 @@ export async function summaryApi(req, res) {
         and not (case when v.dob is not null then v.dob > current_date - interval '18 years' else (v.is_child or v.adult_confirmed is false) end)
         and (a.visibility = 'family' or a.created_by = v.id or a.person_id = v.id)
         and a.recorded_at > now() - interval '400 days'
-      order by a.recorded_at desc limit 12`);
+      order by a.recorded_at desc limit 12`;
     // Who to call: the emergency contacts written for this person, and the
     // two people on their emergency card when this viewer may open it.
     const contacts = entries.filter(e => e.kind === 'contact' && e.category === 'emergency').map(e => ({ name: e.name, phone: e.phone, note: e.forwhat }));

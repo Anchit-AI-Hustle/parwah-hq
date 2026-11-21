@@ -29,8 +29,9 @@ import { tokenOf } from './_token.mjs';
 import { pushCircle } from './_push.mjs';
 import { ensureAudienceSchema, minorOf, pushAudience } from './_audience.mjs';
 import { memberCards } from './_standing.mjs';
+import { noteRisk } from './_notesapi.mjs';
 import { ROLLCALL_PER_DAY, ROLLCALL_REMIND_MIN, ROLLCALL_ANSWERS, ROLLCALL_REASONS, rollcallReason, rollcallIsOpen, rollcallClosesAt,
-         rollcallMayStart, rollcallMayAnswerFor, rollcallBoard, rollcallLine,
+         rollcallMayStart, rollcallMayAnswerFor, rollcallBoard, rollcallFeedLine,
          rollcallAskPush, rollcallRemindPush, rollcallHelpPush, rollcallDonePush } from './_rollcallrules.mjs';
 
 // The clock can be handed in by a test; nothing else sets it.
@@ -162,6 +163,9 @@ export default async function rollcallApi(req, res) {
       }
       const reason = ROLLCALL_REASONS.some(r => r[0] === b.reason) ? b.reason : 'other';
       const note = clip(b.note, 120) || null;
+      // The note is stored and pushed to every phone: never a card number, PIN or OTP.
+      const risk = note && noteRisk(note);
+      if (risk) return res.status(400).json({ ok: false, error: risk });
       let rc;
       try {
         rc = (await sql`insert into rollcalls (circle_id, by_member, reason, note, started_at, closes_at)
@@ -210,8 +214,10 @@ export default async function rollcallApi(req, res) {
         if (!may.self || !sos || !sos.json || !sos.json.ok) {
           await pushAudience(sql, circle.id, 'sos_details', rollcallHelpPush(target.name, may.self ? null : me.name), { except: me.id });
         }
+        // The feed is read by children too, and the board hides "needs
+        // help" from them: so the feed line says only that an answer came.
         await sql`insert into events (circle_id, member_id, type, text)
-                  values (${circle.id}, ${me.id}, 'care', ${'🛟 ' + rollcallLine(target.name, 'help', may.self ? null : me.name)})`;
+                  values (${circle.id}, ${me.id}, 'care', ${'🛟 ' + rollcallFeedLine(target.name, may.self ? null : me.name)})`;
       }
       // The moment the last person is accounted for, whoever asked is told, once.
       if (b.answer === 'safe') {

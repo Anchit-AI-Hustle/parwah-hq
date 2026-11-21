@@ -11,6 +11,7 @@ import { dialOut, dialConfig } from './_sosdial.mjs';
 import { ladderFor, ladderEscalate } from './_ladder.mjs';
 import { sweepStaffLate } from './_staff.mjs';
 import { sweepRenewals } from './_renewals.mjs';
+import { sweepHome } from './_home.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
 import { ownedMember } from './_owned.mjs';
@@ -79,6 +80,7 @@ async function dueCircles(sql) {
   await q(() => sql`select distinct circle_id from medicine_schedules where active limit 500`);
   await q(() => sql`select distinct circle_id from home_staff where arrive_time is not null limit 500`);
   await q(() => sql`select distinct circle_id from renewals where expires_on <= current_date + 31 limit 500`);
+  await q(() => sql`select distinct circle_id from home_items where warranty_until between current_date - 1 and current_date + 32 or service_due between current_date - 1 and current_date + 32 limit 500`);
   // Shared cards (birthdays, anniversaries), chosen festivals, storytellers.
   await q(() => sql`select distinct circle_id from members where dob is not null or anniversary is not null limit 500`);
   await q(() => sql`select distinct circle_id from circle_festivals limit 500`);
@@ -120,6 +122,7 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
     await one(() => sweepVisitAsk(sql, id));
     await one(() => sweepStaffLate(sql, id));
     await one(() => sweepRenewals(sql, id));
+    await one(() => sweepHome(sql, id));   // home upkeep: a warranty running out, a service due (api/_home.mjs)
     await one(() => rotaSweep(sql, id));
     await one(async () => { await ensureBondSchema(sql); const c = (await sql`select id, name, kind, code from circles where id = ${id}`)[0]; return c ? sweepBond(sql, c) : 0; });
     await one(async () => { await ensureMemoryBondSchema(sql); return storySweep(sql, id); });

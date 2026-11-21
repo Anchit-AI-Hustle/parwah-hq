@@ -5600,7 +5600,7 @@ details.kd{margin-bottom:var(--space-12)}
     document.querySelectorAll('#tabs .subnav[data-parent="' + pane + '"] button').forEach(function(b){
       b.classList.toggle('sel', b.getAttribute('data-sec') === sec);
     });
-    if (pane === 'care') tnCareFold(['bills', 'expenses', 'staff', 'renewals'].indexOf(sec) >= 0 ? true : null);
+    if (pane === 'care') tnCareFold(['bills', 'expenses', 'staff', 'renewals', 'kids', 'haath'].indexOf(sec) >= 0 ? true : null);
     if (pane === 'care' && sec === 'notes') refreshNotes();
     if (pane === 'care' && sec === 'bills') loadBills();
     if (pane === 'care' && sec === 'expenses') loadExpenses();
@@ -5609,14 +5609,15 @@ details.kd{margin-bottom:var(--space-12)}
     if (pane === 'vault' && sec === 'locator') loadAssetLocators();
     if (pane === 'fun' && sec === 'pasand') pasandRefresh();
   }
-  // To do opens on one list. Bills, costs, home staff and renewals stay
+  // To do opens on one list. Bills, costs, home staff, renewals, children
+  // and sharing the work stay
   // folded until asked for, or until one of them is the section shown.
   function tnCareFold(open){
     var seg = $('care-seg'), btn = $('tn-care-more');
     if (open === null) open = seg.classList.contains('tn-all');
     seg.classList.toggle('tn-all', !!open);
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    btn.textContent = open ? 'Fewer sections' : 'More: bills, costs, home staff, renewals';
+    btn.textContent = open ? 'Fewer sections' : 'More: bills, costs, home staff, renewals, children, sharing the work';
   }
   $('tn-care-more').addEventListener('click', function(){
     var open = !$('care-seg').classList.contains('tn-all');
@@ -9517,6 +9518,18 @@ details.kd{margin-bottom:var(--space-12)}
   // asked for with every refresh of Today, at most once in thirty seconds,
   // and at once after anything that changes it.
   var tnData = null, tnAt = 0, tnBusy = false, tnHoldChat = null;
+  // SHOWN ONCE. A private word, "How is your day?", an Ashirwad and a card
+  // to write in are rows in "From the family". The older blocks lower down
+  // (Being heard, Care both ways, Closer together) leave those same items
+  // out, until "Answer" on the row opens one there. If Today's read did not
+  // load, tnShown is empty and the older blocks show everything, as before.
+  var tnShown = {}, tnOpened = {}, tnShownSig = '';
+  function tnHas(kind, id){ var k = kind + ':' + id; return !!tnShown[k] && !tnOpened[k]; }
+  function tnLower(){
+    try { hdTodayRender(); } catch (e) {}
+    try { cnRender(); } catch (e) {}
+    try { bondRenderToday(); } catch (e) {}
+  }
   function tnYoung(){
     if (tnData && tnData.me) return !!tnData.me.minor;
     try { return localStorage.getItem('parwah-young:' + (state && state.memberId)) === '1'; } catch (e) { return false; }
@@ -9525,7 +9538,7 @@ details.kd{margin-bottom:var(--space-12)}
   function tnLoad(force){
     if (!state || tnBusy) return;
     // Another family, or another person on this phone: nothing is carried over.
-    if (tnData && tnData.me && tnData.me.id !== state.memberId) { tnData = null; tnAt = 0; }
+    if (tnData && tnData.me && tnData.me.id !== state.memberId) { tnData = null; tnAt = 0; tnOpened = {}; }
     if (!force && Date.now() - tnAt < 30000) { tnRender(); return; }
     tnBusy = true;
     var code = state.code, mid = state.memberId;
@@ -9584,7 +9597,7 @@ details.kd{margin-bottom:var(--space-12)}
       t = '💌 ' + esc(x.text); sub = 'You have not written in it yet.';
       acts = '<button type="button" class="cbtn" data-tncard="' + esc(x.id) + '">Write in it</button>';
     } else return '';
-    return '<div class="tn-row' + (tap ? ' tap' : '') + '" data-tnkind="' + x.kind + '"' + tap + '><span class="txt"><b>' + t + '</b><small>' + sub + '</small></span><span class="tn-acts">' + acts + '</span></div>';
+    return '<div class="tn-row' + (tap ? ' tap' : '') + '" data-tnkind="' + x.kind + '"' + (x.id ? ' data-tnid="' + esc(x.id) + '"' : '') + tap + '><span class="txt"><b>' + t + '</b><small>' + sub + '</small></span><span class="tn-acts">' + acts + '</span></div>';
   }
   // Drawn again only when the words change: a button is never swapped out
   // from under a finger just because Today refreshed.
@@ -9595,6 +9608,10 @@ details.kd{margin-bottom:var(--space-12)}
     // Somebody is holding the talk button: the rows are not redrawn under their finger.
     if (vrec && vrec.mode === 'hold' && tnHoldChat) return;
     var items = d ? tnFromFamily(d.items || [], { minor: !!(d.me && d.me.minor) }) : [];
+    var shown = {}, sig = '';
+    items.forEach(function(x){ if (x.id && (x.kind === 'word' || x.kind === 'day' || x.kind === 'blessing' || x.kind === 'card')) { shown[x.kind + ':' + x.id] = true; sig += x.kind + ':' + x.id + '|'; } });
+    tnShown = shown;
+    if (sig !== tnShownSig) { tnShownSig = sig; tnLower(); }
     tnPut(box, items.length
       ? '<section class="tn-from" aria-labelledby="tn-from-h"><h2 id="tn-from-h">🧡 From the family</h2>' + items.map(function(x){ return tnRow(x, senior); }).join('') + '</section>'
       : '');
@@ -9617,7 +9634,7 @@ details.kd{margin-bottom:var(--space-12)}
     if (!ps.length || tnKind() !== 'family') { tnPut(box, ''); return; }
     tnPut(box, '<section class="tn-parents" aria-labelledby="tn-parents-h"><h2 id="tn-parents-h">How they are today</h2>' + ps.map(function(p){
       var f = esc(tnShort(p.name, 'They'));
-      var ok = p.ok ? '✅ Said all is well today, ' + esc(fmtTime(p.ok.at).replace(/^Today, /, 'at ')) : (p.onApp ? '🕚 Not checked in yet today' : 'Not on Parwah, so no check-in here');
+      var ok = p.ok ? (p.onApp ? '✅ Said all is well today, ' : '✅ Checked in from their link today, ') + esc(fmtTime(p.ok.at).replace(/^Today, /, 'at ')) : (p.onApp ? '🕚 Not checked in yet today' : p.link ? '🕚 Not checked in from their link yet today' : 'Not on Parwah and no link, so no check-in here');
       var meds = p.meds ? '💊 Medicines today: ' + p.meds.taken + ' of ' + p.meds.total + ' marked taken' + (p.meds.late ? ', ' + p.meds.late + ' with no tick yet' : '') : '💊 No medicine times you can see';
       var last = p.last ? '💬 Last message: “' + esc(p.last.text) + '” · ' + esc(fmtTime(p.last.at)) : '💬 No message yet';
       return '<div class="tn-pcard" data-tnparent="' + esc(p.id) + '"><h3>' + esc(p.name) + '</h3>' +
@@ -9670,11 +9687,17 @@ details.kd{margin-bottom:var(--space-12)}
     var go = function(){ var c = (chatsCache || []).filter(function(x){ return x.kind === 'circle'; })[0]; if (c) tnOpenChat(c.id, prefill); else switchTab('chat'); };
     if ((chatsCache || []).length) go(); else refreshChats(go);
   }
-  function tnGo(where){
+  function tnGo(where, kind, id){
     if (where === 'joinreq') { switchTab('people'); setTimeout(function(){ try { $('joinreq-card').scrollIntoView({ block: 'center' }); } catch (e) {} }, 150); return; }
     if (where === 'plans') { switchTab('fun'); setSec('fun', 'plans'); return; }
-    var el = $(where === 'heard' ? 'hd-today' : 'cn-today');
-    try { el.scrollIntoView({ block: 'start', behavior: 'auto' }); var f = el.querySelector('button, [tabindex]'); if (f) f.focus({ preventScroll: true }); } catch (e) {}
+    var el = $(where === 'heard' ? 'hd-today' : 'cn-today'), one = null;
+    // The item asked for is opened in its own block, where it is answered.
+    if (kind && id) {
+      tnOpened[kind + ':' + id] = true; tnLower();
+      try { one = kind === 'word' ? el.querySelector('[data-hdbreply$="|' + id + '"], [data-hdbclose="' + id + '"]') : el.querySelector('[data-cncard="' + id + '"]'); } catch (e) {}
+      if (one && kind === 'word') one = one.closest('.mbcard') || one;
+    }
+    try { (one || el).scrollIntoView({ block: one ? 'center' : 'start', behavior: 'auto' }); var f = (one || el).querySelector('button, [tabindex]'); if (f) f.focus({ preventScroll: true }); } catch (e) {}
   }
   function tnClick(e){
     var b;
@@ -9703,7 +9726,7 @@ details.kd{margin-bottom:var(--space-12)}
     }
     if (e.target.closest('[data-tnhold]')) return;   // held, not tapped
     if ((b = e.target.closest('[data-tncard]'))) { bondCardOpen(b.getAttribute('data-tncard')); return; }
-    if ((b = e.target.closest('[data-tngo]'))) { tnGo(b.getAttribute('data-tngo')); return; }
+    if ((b = e.target.closest('[data-tngo]'))) { var tr = b.closest('.tn-row'); tnGo(b.getAttribute('data-tngo'), tr && tr.getAttribute('data-tnkind'), tr && tr.getAttribute('data-tnid')); return; }
     if ((b = e.target.closest('[data-tndm]'))) { tnDm(b.getAttribute('data-tndm')); return; }
     if ((b = e.target.closest('[data-tnperson]'))) { openPerson(b.getAttribute('data-tnperson')); return; }
     if ((b = e.target.closest('[data-tnyoung]'))) {
@@ -14562,6 +14585,7 @@ details.kd{margin-bottom:var(--space-12)}
   function hdBaatHtml(){
     var h = '';
     ((hdData.baat && hdData.baat.list) || []).forEach(function(b){
+      if (!b.mine && !b.reply && tnHas('word', b.id)) return;   // it is a row in "From the family"
       var play = b.hasAudio ? hdPlayBtn('baat:' + b.id, 'Play the voice note') : '';
       var rep = b.reply ? '<p class="hdline"><b>' + esc(b.mine ? hdFirst(b.toName) : 'You') + ' answered:</b> ' + b.reply.emoji + ' ' + esc(b.reply.title) + (b.reply.at ? ' ' + esc(b.reply.at) : '') + '</p>' +
         (b.reply.hasAudio ? hdPlayBtn('baatreply:' + b.id, 'Play the answer') : '') : '';
@@ -16604,6 +16628,7 @@ details.kd{margin-bottom:var(--space-12)}
         return;
       }
       if (c.inDays < 0 || c.inDays > 3) return;
+      if (!c.mine && tnHas('card', c.id)) return;   // "Write in it" is a row in "From the family"
       var label = c.occasion === 'festival' ? 'Add to ' + c.title.replace(/^Our /, 'our ') : 'Add to ' + c.title + ' card';
       var sub = c.title + ' ' + bondIn(c.inDays) + '. ' + (c.mine ? 'You added ' + c.mine + '.' : (c.n ? c.n + ' added so far.' : 'Be the first.')) + (c.for_member ? ' It stays a surprise.' : '');
       h += bondRow(BOND_OCC[c.occasion] || '💌', label, sub, '<button type="button" class="cbtn" data-bcopen="' + c.id + '">' + (c.mine ? 'Open the card' : 'Add to the card') + '</button>');
@@ -19810,6 +19835,7 @@ details.kd{margin-bottom:var(--space-12)}
         else h += '<div class="cn-card"><h3>🧳 ' + f + ' is on the way to ' + esc(w.to) + (w.byWords ? ', ' + esc(w.byWords) : '') + '</h3><p>Expected by ' + esc(locClock(w.expectAt)) + '. You will hear when ' + f + ' reaches.</p></div>';
       });
       (j.inbox || []).forEach(function(c){
+        if (tnHas(c.kind === 'howday' ? 'day' : 'blessing', c.id)) return;   // it is a row in "From the family"
         var f = esc(cnFirst(c.fromName));
         if (c.kind === 'howday') {
           h += '<div class="cn-card" data-cncard="' + esc(c.id) + '"><h3>🧡 ' + f + ' asks</h3><p class="cn-say">How is your day?</p><div class="cn-acts">' +
