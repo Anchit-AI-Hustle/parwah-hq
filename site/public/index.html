@@ -1683,6 +1683,52 @@ body.senior .hdmood small{font-size:var(--fs-14)}
 .abview .mbacts a.cbtn[hidden]{display:none}
 body.senior .abview-cap{font-size:var(--fs-24)}
 body.senior .abview-meta{font-size:var(--fs-16)}
+/* THE REMAINING FAMILY NEEDS (stream J: api/_rollcall.mjs, _kids.mjs,
+   _carerload.mjs, _eventkit.mjs, _home.mjs, _summary.mjs). Built from the
+   shared parts and the tokens; no new token. Safe and help are the status
+   colours with their words and marks, never a vibe colour. */
+.kd-rc{background:var(--surface);border:1px solid var(--bone-2);border-left:4px solid var(--alert);border-radius:var(--radius-16);padding:var(--space-16);margin-bottom:var(--space-16);box-shadow:var(--sh-1);display:flex;flex-direction:column;gap:var(--space-8)}
+.kd-rc.kd-done{border-left-color:var(--ok)}
+.kd-rc-t{font-family:var(--disp);font-size:var(--fs-18);color:var(--ink)}
+.kd-rc-s{font-size:var(--fs-14);color:var(--ink-soft)}
+.kd-row{display:flex;gap:var(--space-8);flex-wrap:wrap;align-items:center}
+.kd-big{flex:1 1 130px;min-height:56px;border:0;border-radius:var(--radius-12);padding:var(--space-8) var(--space-16);font-family:var(--body);font-weight:700;font-size:var(--fs-16);cursor:pointer}
+.kd-safe{background:var(--ok);color:var(--on-accent)}
+.kd-help{background:var(--alert);color:var(--on-accent)}
+.kd-tap{min-height:var(--tap-min)}
+.kd-wide{width:100%;min-height:var(--tap-min);margin-top:var(--space-12)}
+.kd-call{display:inline-flex;align-items:center;justify-content:center;min-height:var(--tap-min);text-decoration:none}
+.crow.kd-bad{border-left:4px solid var(--alert)}
+.crow.kd-ok{border-left:4px solid var(--ok)}
+.kd-lead{font-size:var(--fs-14);font-weight:600;margin:var(--space-8) 0 var(--space-12)}
+.kd-sub{font-family:var(--disp);font-size:var(--fs-14);margin:var(--space-16) 0 var(--space-8);color:var(--ink)}
+.kd .cbtn,.kd .seg button{min-height:var(--tap-min)}
+.kd .card h3{font-size:var(--fs-16)}
+.kd-list{display:flex;flex-direction:column;gap:var(--space-8);margin:0 0 var(--space-12)}
+.kd-chk{display:flex;flex-wrap:wrap;gap:var(--space-4) var(--space-16);margin-top:var(--space-12)}
+.kd-chk label{display:flex;align-items:center;gap:var(--space-8);min-height:var(--tap-min);font-size:var(--fs-14);color:var(--ink);cursor:pointer}
+.kd-chk input{width:24px;height:24px;flex:none;accent-color:var(--marigold)}
+.kd-legal{font-size:var(--fs-12);color:var(--ink-soft);margin-top:var(--space-12)}
+.kd-hi{font-family:var(--disp);font-size:var(--fs-20);color:var(--ink);margin:0 0 var(--space-12)}
+.kd-line{font-size:var(--fs-14);color:var(--ink);margin:0 0 var(--space-8)}
+.kd details summary,details.kd > summary{cursor:pointer;font-weight:700;min-height:var(--tap-min);display:flex;align-items:center;color:var(--ink)}
+details.kd{margin-bottom:var(--space-12)}
+.kd .seg{margin-bottom:var(--space-12)}
+#kd-kit,#kd-paper{position:fixed;inset:0;z-index:var(--z-sheet);background:var(--day);overflow-y:auto;padding:var(--space-16);overscroll-behavior:contain}
+.kd-bar{display:flex;gap:var(--space-8);align-items:center;justify-content:space-between;max-width:720px;margin:0 auto var(--space-16)}
+.kd-bar h2{font-family:var(--disp);font-size:var(--fs-20);color:var(--ink);margin:0}
+.kd-wrap{max-width:720px;margin:0 auto}
+.kd-rowpick{flex:1 1 150px;margin:0}
+.kd-side{font-size:var(--fs-12);font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin:var(--space-12) 0 var(--space-4)}
+@media print{
+  body.kdprint{background:none}
+  body.kdprint > *:not(#kd-paper){display:none!important}
+  body.kdprint #kd-paper{display:block!important;position:static;padding:0;overflow:visible;background:none}
+  body.kdprint .mbbook-bar{display:none}
+  body.kdprint .mbbook{box-shadow:none;max-width:none;padding:0;color:var(--card-ink);background:none}
+  body.kdprint .mbbook section{break-inside:avoid}
+}
+/* end of stream J styles */
 </style>
 </head>
 <body>
@@ -1978,6 +2024,10 @@ body.senior .abview-meta{font-size:var(--fs-16)}
 <!-- ============ MAIN (tabbed) ============ -->
 <div class="wrap" id="main" hidden>
 
+  <!-- "SAB THEEK?" THE FAMILY ROLL-CALL (api/_rollcall.mjs). On every screen
+       while one is open: two big buttons until this person has answered. -->
+  <div class="kd-rc" id="kd-rc-banner" hidden role="region" aria-label="Family roll-call" aria-live="polite"></div>
+
   <!-- HOME -->
   <section id="pane-home">
     <div class="homemain">
@@ -2166,6 +2216,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button data-sec="expenses">💸 Costs</button>
       <button data-sec="staff">🧹 Home staff</button>
       <button data-sec="renewals">📅 Renewals</button>
+      <button data-sec="kids">🎒 Bachchon ka panna</button>
+      <button data-sec="haath">🤲 Thoda sa haath batao</button>
     </div>
     <div class="subsec" data-sec="rem">
     <p class="hint" style="margin:0 0 var(--space-12)">What needs doing, who is handling it, and when it is done - the whole family sees the same list.</p>
@@ -2417,6 +2469,24 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       </div>
     </div>
 
+    <!-- A CHILD'S PAGE, "Bachchon ka panna" (api/_kids.mjs): one page for
+         each member under 18. Parents see it all; the child sees a friendly
+         page of their own; the rest of the family sees what a parent shares. -->
+    <div class="subsec kd" data-sec="kids" hidden>
+      <p class="hint" id="kd-kid-hint" style="margin:0 0 var(--space-12)">One page for each child: school, fee dates, exams, who collects them, the vaccination record and classes. Parents see everything. The rest of the family sees only what a parent shares.</p>
+      <div class="feed" id="kd-kid-today" hidden></div>
+      <div class="seg" id="kd-kid-pick" role="group" aria-label="Whose page" hidden></div>
+      <div id="kd-kid-page"><div class="ev">Loading…</div></div>
+    </div>
+
+    <!-- CARER LOAD AND RESPITE, "Thoda sa haath batao" (api/_carerload.mjs):
+         what I did this week (only I see it), one gentle line for the
+         family with no numbers, and "I need a day off". -->
+    <div class="subsec kd" data-sec="haath" hidden>
+      <p class="hint" id="kd-cl-hint" style="margin:0 0 var(--space-12)">Looking after the family is shared work. Here you see what you did this week, and only you see it. You can also ask the family for a day off.</p>
+      <div id="kd-cl-body"><div class="ev">Loading…</div></div>
+    </div>
+
 
   </section>
 
@@ -2424,6 +2494,24 @@ body.senior .abview-meta{font-size:var(--fs-16)}
   <!-- FAMILY - who is who, and how ready the family is for each person -->
   <section id="pane-people" hidden>
     <div class="ektahead"><span class="phead" aria-hidden="true"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg></span><span><b>Family</b><small>Who is who, and how ready the family is for each person</small></span></div>
+    <!-- "SAB THEEK?" THE FAMILY ROLL-CALL: start one, see who has answered. -->
+    <div class="card" id="kd-rc-card">
+      <h3>🛟 Sab theek? Family roll-call</h3>
+      <p class="hint" id="kd-rc-hint" style="margin:0 0 var(--space-12)">In a flood, a power cut or any emergency, ask the whole family at once. Each person taps "I am safe" or "I need help". It closes by itself after 24 hours.</p>
+      <div id="kd-rc-open" hidden>
+        <p class="kd-lead" id="kd-rc-who"></p>
+        <div class="feed" id="kd-rc-board"></div>
+        <button type="button" class="cbtn ghost kd-wide" id="kd-rc-close" hidden>Close the roll-call</button>
+      </div>
+      <div id="kd-rc-startbox" hidden>
+        <div class="pickrow">
+          <label class="pick"><span>What is happening</span><select id="kd-rc-reason"></select></label>
+          <label class="pick"><span>A few words</span><input type="text" id="kd-rc-note" maxlength="120" placeholder="e.g. Water on the road"></label>
+        </div>
+        <button type="button" class="cbtn kd-wide" id="kd-rc-start">Ask everyone now</button>
+      </div>
+      <p class="hint" id="kd-rc-last" hidden></p>
+    </div>
     <div class="card" id="joinreq-card" hidden>
       <h3>🙋 Waiting to join</h3>
       <p class="hint" id="jr-count" style="margin:var(--space-2) 0 var(--space-12)"></p>
@@ -2617,6 +2705,29 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <div class="abnote" id="ab-state" aria-live="polite"></div>
       <div class="abgrid" id="ab-grid"></div>
     </div>
+    <div id="kd-health" class="kd" hidden>
+    <!-- THE DOCTOR-READY SUMMARY and THE BLOOD GROUP LOOKUP
+         (api/_bloodlookup.mjs): both read what is already written here,
+         and neither gives advice. For the adults of the family. -->
+    <details class="card kd" id="kd-sum-card" hidden>
+      <summary>🩺 Doctor-ready summary</summary>
+      <p class="hint" style="margin:0 0 var(--space-12)">One page to take to the doctor: medicines, allergies, blood group, past visits and who to call. It shows only what you can already see. Written by the family, not a medical record.</p>
+      <div class="pickrow"><label class="pick"><span>For whom</span><select id="kd-sum-who"></select></label></div>
+      <button type="button" class="cbtn kd-wide" id="kd-sum-open">Open the page</button>
+    </details>
+    <details class="card kd" id="kd-bl-card" hidden>
+      <summary>🩸 Blood group in the family</summary>
+      <p class="hint" style="margin:0 0 var(--space-12)">Find who in your family, and in families linked to yours, has a blood group. Only people who said yes are shown.</p>
+      <div class="pickrow"><label class="pick"><span>Blood group</span><select id="kd-bl-group"></select></label></div>
+      <button type="button" class="cbtn kd-wide" id="kd-bl-find">Find in the family</button>
+      <div class="feed" id="kd-bl-out" style="margin-top:var(--space-12)" hidden></div>
+      <button type="button" class="cbtn ghost kd-wide" id="kd-bl-ask" hidden>Tell them someone is looking</button>
+      <h4 class="kd-sub">Your own answer</h4>
+      <div class="kd-chk" style="margin-top:0"><label><input type="checkbox" id="kd-bl-consent"> <span id="kd-bl-line">Tell my family, and the families linked to ours, my blood group if someone needs blood.</span></label></div>
+      <p class="hint" id="kd-bl-mine"></p>
+      <p class="kd-legal" id="kd-bl-legal"></p>
+    </details>
+    </div>
     <div id="book-list-view">
       <div class="addrow" style="margin-top:0">
         <input type="search" id="b-search" maxlength="60" placeholder="Search health and contacts…" aria-label="Search health and contacts">
@@ -2749,6 +2860,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button data-sec="docs" class="sel">🔐 Documents</button>
       <button data-sec="pay">💳 Payments</button>
       <button data-sec="locator">📒 Family register</button>
+      <button data-sec="home">🔧 Ghar ka saaman</button>
     </div>
     <!-- "What needs doing" (api/_afterlossapi.mjs): one quiet line when a
          list is waiting for this person or is open. Nothing otherwise. -->
@@ -2992,6 +3104,45 @@ body.senior .abview-meta{font-size:var(--fs-16)}
           <select id="al-person"><option value="">Choose a person</option></select>
           <div id="al-body"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- HOME: REPAIRS AND WARRANTIES, "Ghar ka saaman" (api/_home.mjs):
+         appliances, vehicles and house papers, with the same four choices
+         of who sees each one as the Family register. -->
+    <div class="subsec kd" data-sec="home" hidden>
+      <p class="hint" id="kd-hm-hint" style="margin:0 0 var(--space-12)">Appliances, vehicles and house papers: when the warranty ends, when the service is due, who to call, and who fixed it last time. You are reminded a month and a week before.</p>
+      <div class="feed" id="kd-hm-list"><div class="ev">Loading…</div></div>
+      <div class="card" id="kd-hm-form" style="margin-top:var(--space-16)">
+        <h3 id="kd-hm-head">Add something</h3>
+        <div class="pickrow">
+          <label class="pick"><span>What it is</span><select id="kd-hm-kind"></select></label>
+          <label class="pick"><span>Name it</span><input type="text" id="kd-hm-title" maxlength="80" placeholder="e.g. Fridge"></label>
+        </div>
+        <div class="pickrow">
+          <label class="pick"><span>Bought on</span><input type="date" id="kd-hm-bought"></label>
+          <label class="pick"><span>Bought where</span><input type="text" id="kd-hm-where" maxlength="80" placeholder="Shop or website"></label>
+        </div>
+        <div class="pickrow">
+          <label class="pick"><span>Warranty until</span><input type="date" id="kd-hm-warranty"></label>
+          <label class="pick"><span>Service due on</span><input type="date" id="kd-hm-service"></label>
+        </div>
+        <div class="pickrow">
+          <label class="pick"><span>Who to call</span><select id="kd-hm-contact"></select></label>
+          <label class="pick"><span>Or write a name</span><input type="text" id="kd-hm-calltext" maxlength="80" placeholder="e.g. Company helpline"></label>
+        </div>
+        <div class="pickrow">
+          <label class="pick"><span>The bill, in the Vault</span><select id="kd-hm-bill"></select></label>
+          <label class="pick"><span>Bill number</span><input type="text" id="kd-hm-billnote" maxlength="80" placeholder="e.g. Invoice 4471"></label>
+        </div>
+        <div class="pickrow">
+          <label class="pick"><span>Who fixed it last time</span><input type="text" id="kd-hm-fixed" maxlength="200" placeholder="Name, and what was done"></label>
+          <label class="pick"><span>Who can see this</span><select id="kd-hm-who"></select></label>
+        </div>
+        <div class="kd-chk" id="kd-hm-people" hidden></div>
+        <button type="button" class="cbtn kd-wide" id="kd-hm-save">Add it</button>
+        <button type="button" class="cbtn ghost kd-wide" id="kd-hm-cancel" hidden>Leave it as it was</button>
+        <p class="kd-legal">Parwah never keeps a card number, a password or a PIN. To keep the bill itself, add it in Documents first.</p>
       </div>
     </div>
   </section>
@@ -4083,6 +4234,7 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button data-tab="vault" data-sec="docs">Documents</button>
       <button data-tab="vault" data-sec="pay">Payments</button>
       <button data-tab="vault" data-sec="locator">Family register</button>
+      <button data-tab="vault" data-sec="home">Ghar ka saaman</button>
     </div>
     <button data-tab="memory" class="deskonly"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-health"/></svg></span>Health &amp; contacts</button>
     <button data-tab="care"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-check"/></svg></span>To do<i class="dot" id="care-dot" hidden></i></button>
@@ -4093,6 +4245,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
       <button data-tab="care" data-sec="expenses">Costs</button>
       <button data-tab="care" data-sec="staff">Home staff</button>
       <button data-tab="care" data-sec="renewals">Renewals</button>
+      <button data-tab="care" data-sec="kids">Bachchon ka panna</button>
+      <button data-tab="care" data-sec="haath">Thoda sa haath batao</button>
     </div>
     <button data-tab="people" id="tab-people"><span class="ic" aria-hidden="true"><svg class="i"><use href="#i-users"/></svg></span><span id="tab-people-l">Family</span></button>
     <p class="side-more side-only">More</p>
@@ -4213,6 +4367,8 @@ body.senior .abview-meta{font-size:var(--fs-16)}
         <button class="ditem sub" data-tab="care" data-sec="expenses">Costs</button>
         <button class="ditem sub" data-tab="care" data-sec="staff">Home staff</button>
         <button class="ditem sub" data-tab="care" data-sec="renewals">Renewals</button>
+        <button class="ditem sub" data-tab="care" data-sec="kids">Bachchon ka panna</button>
+        <button class="ditem sub" data-tab="care" data-sec="haath">Thoda sa haath batao</button>
       </div>
     </div>
     <button class="ditem" data-tab="people"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg> Family</button>
@@ -4887,6 +5043,21 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     <div id="ac-claimlist"></div>
     <button class="go" id="ac-claim-save" type="button" style="margin-top:var(--space-12)">Save my choices</button>
   </div>
+</div>
+<!-- THE FUNCTION KIT, "Shaadi / function kit" (api/_eventkit.mjs): guests,
+     sides, tasks, arrivals and the budget of a plan. Opened from a plan. -->
+<div id="kd-kit" class="kd" hidden role="dialog" aria-modal="true" aria-labelledby="kd-kit-title">
+  <div class="kd-bar"><h2 id="kd-kit-title">🎊 Shaadi / function kit</h2><button class="cbtn ghost" id="kd-kit-x" type="button">Close</button></div>
+  <div class="kd-wrap" id="kd-kit-body"></div>
+</div>
+<!-- A page to print: the guest sheet, or the doctor-ready summary. The
+     phone's own Print (and "Save as PDF") does the rest; nothing leaves it. -->
+<div id="kd-paper" class="kd" hidden role="dialog" aria-modal="true" aria-labelledby="kd-paper-title">
+  <div class="mbbook-bar">
+    <button class="cbtn" id="kd-paper-print" type="button">🖨 Print or save as PDF</button>
+    <button class="cbtn ghost" id="kd-paper-x" type="button">Close</button>
+  </div>
+  <article class="mbbook" id="kd-paper-body"><h1 id="kd-paper-title">Family page</h1></article>
 </div>
 <div class="msheet" id="asksheet" hidden role="dialog" aria-modal="true" aria-labelledby="as-q">
   <div class="mp">
@@ -21815,6 +21986,756 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     showStep('auth');
     rsResume();
   }
+  // ---------- THE REMAINING FAMILY NEEDS (stream J) ----------
+  // Roll-call, a child's page, carer load, the function kit, home upkeep,
+  // the doctor-ready summary and the blood group lookup. Every rule is on
+  // the server; these screens only show what it sends.
+  function kdFirst(n){ return String(n || '').trim().split(/\s+/)[0] || 'Someone'; }
+  function kdGet(route, area, extra){
+    return apiGet(route + (route.indexOf('?') < 0 ? '?' : '&') + 'area=' + area + '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId) + (extra || ''));
+  }
+  function kdPost(route, action, body){ var b = body || {}; b.code = state.code; b.memberId = state.memberId; b.action = action; return post(route, b); }
+  function kdDay(s){ if (!s) return ''; var d = new Date(String(s).slice(0, 10) + 'T12:00:00'); return isNaN(d) ? '' : d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }); }
+  function kdTime(s){ var d = new Date(s); return isNaN(d) ? '' : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+  function kdTel(p){ return 'tel:' + encodeURIComponent(String(p || '')); }
+  // Run fn each time a part of the screen comes into view (its own hidden
+  // attribute, or a parent's, is taken off). No shared code is touched.
+  function kdShown(el, fn){
+    if (!el || typeof MutationObserver === 'undefined') return;
+    var was = false;
+    function look(){ var now = el.offsetParent !== null; if (now && !was && state) { try { fn(); } catch (e) {} } was = now; }
+    var mo = new MutationObserver(look);
+    for (var n = el; n && n !== document.body; n = n.parentElement) mo.observe(n, { attributes: true, attributeFilter: ['hidden'] });
+    mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    look();
+  }
+
+  // ---- "Sab theek?" the family roll-call (api/_rollcall.mjs)
+  var kdRc = null, kdRcBusy = false;
+  function kdRcLoad(){
+    if (!state) return;
+    kdGet(API.care, 'rollcall').then(function(j){ if (j && j.ok) { kdRc = j; kdRcRender(); } }).catch(function(){});
+  }
+  function kdRcRow(r, kind, adult){
+    var call = r.phone ? '<a class="cbtn ghost kd-call" href="' + kdTel(r.phone) + '">📞 Call ' + esc(kdFirst(r.name)) + '</a>' : '';
+    if (kind === 'help') return '<div class="crow kd-bad"><span class="txt"><b>! ' + esc(r.line) + '</b><small>Call now. If you cannot reach them, call ' + esc(myEmergencyNo()) + '.</small></span>' + call + '</div>';
+    if (kind === 'safe') return '<div class="crow kd-ok"><span class="txt"><b>✓ ' + esc(r.line) + '</b><small>' + esc(kdTime(r.at)) + '</small></span></div>';
+    return '<div class="crow"><span class="txt"><b>' + esc(r.name) + '</b><small>' + (r.onApp ? 'Has not answered yet' : 'Not on Parwah. Call, then tick for them.') + '</small></span>' + call +
+      (adult ? '<button type="button" class="cbtn" data-kdrcfor="' + esc(r.id) + '" data-name="' + esc(r.name) + '">Mark safe</button>' : '') + '</div>';
+  }
+  function kdRcRender(){
+    var j = kdRc, o = j && j.open, bn = $('kd-rc-banner');
+    if (!o) { bn.hidden = true; bn.innerHTML = ''; }
+    else {
+      var why = o.reasonWords + (o.note ? ': ' + o.note : '');
+      bn.classList.toggle('kd-done', !!o.mine);
+      bn.innerHTML = !o.mine
+        ? '<b class="kd-rc-t">🛟 Sab theek? ' + esc(kdFirst(o.byName)) + ' is asking everyone</b><span class="kd-rc-s">' + esc(why) + '. One tap tells the family.</span>' +
+          '<div class="kd-row"><button type="button" class="kd-big kd-safe" id="kd-rc-safe" data-kdrc="safe">✓ I am safe</button>' +
+          '<button type="button" class="kd-big kd-help" id="kd-rc-help" data-kdrc="help">! I need help</button></div>' +
+          '<button type="button" class="cbtn ghost kd-tap" data-kdrc="see">See who has answered</button>'
+        : '<span class="kd-rc-s"><b>🛟 Roll-call is open.</b> You said: ' + (o.mine === 'safe' ? '✓ I am safe' : '! I need help') + '. ' +
+          (o.board.waiting.length ? o.board.waiting.length + ' yet to answer.' : 'Everyone has answered.') + '</span>' +
+          '<div class="kd-row"><button type="button" class="cbtn ghost kd-tap" data-kdrc="see">See everyone</button>' +
+          (o.mine === 'help' ? '<button type="button" class="cbtn ghost kd-tap" data-kdrc="safe">I am safe now</button>' : '') + '</div>';
+      bn.hidden = false;
+    }
+    if (!j) return;
+    $('kd-rc-open').hidden = !o; $('kd-rc-startbox').hidden = !!o || !j.canStart; $('kd-rc-hint').hidden = !!o;
+    if (!$('kd-rc-reason').options.length) $('kd-rc-reason').innerHTML = j.reasons.map(function(r){ return '<option value="' + esc(r[0]) + '">' + esc(r[1]) + '</option>'; }).join('');
+    var last = $('kd-rc-last');
+    if (o) {
+      $('kd-rc-who').textContent = kdFirst(o.byName) + ' asked at ' + kdTime(o.startedAt) + ': ' + o.reasonWords + (o.note ? ' (' + o.note + ')' : '') + '.';
+      var b = o.board, adult = j.me && j.me.adult;
+      $('kd-rc-board').innerHTML =
+        (b.help.length ? '<h4 class="kd-sub">Needs help</h4>' + b.help.map(function(r){ return kdRcRow(r, 'help', adult); }).join('') : '') +
+        (b.waiting.length ? '<h4 class="kd-sub">Not answered yet</h4>' + b.waiting.map(function(r){ return kdRcRow(r, 'wait', adult); }).join('') : '') +
+        (b.safe.length ? '<h4 class="kd-sub">Safe</h4>' + b.safe.map(function(r){ return kdRcRow(r, 'safe', adult); }).join('') : '');
+      $('kd-rc-close').hidden = !o.canClose;
+      last.hidden = true;
+    } else if (j.last) {
+      last.textContent = 'The last roll-call (' + j.last.reasonWords + ', asked by ' + kdFirst(j.last.byName) + ') closed at ' + kdTime(j.last.closedAt) + '.'; last.hidden = false;
+    } else if (!j.canStart) {
+      last.textContent = j.me && j.me.adult ? 'The family has been asked ' + j.perDay + ' times today. Call the people you are worried about, or press SOS.' : 'An adult in the family starts a roll-call. In an emergency, press SOS.';
+      last.hidden = false;
+    } else last.hidden = true;
+  }
+  function kdRcAnswer(answer, forId){
+    if (kdRcBusy || !state) return;
+    kdRcBusy = true;
+    var send = function(pos){
+      var body = { answer: answer, tz: homeTz() };
+      if (forId) body.forId = forId;
+      if (pos) { body.lat = pos.lat; body.lng = pos.lng; body.accuracy = Math.round(pos.accuracy || 0); }
+      return kdPost(API.care, 'rollcall_answer', body).then(function(j){
+        kdRcBusy = false;
+        if (!j.ok) { toast(j.error || 'Could not send. Try again.'); kdRcLoad(); return; }
+        kdRc = j; kdRcRender();
+        if (answer === 'help' && !forId) { toast('Your family has been alerted. Call ' + myEmergencyNo() + ' if you need help now.'); try { refresh(); } catch (e) {} }
+        else toast(forId ? 'Marked safe. The family can see it.' : 'The family can see you are safe 🧡');
+      }).catch(function(){ kdRcBusy = false; toast(answer === 'help' ? 'No connection. Call ' + myEmergencyNo() + ' or your family now.' : 'No connection - try again'); });
+    };
+    // A position helps, but "I need help" never waits more than 3 seconds for one.
+    if (answer === 'help' && !forId) { var p; try { p = sosPos(3000); } catch (e) { p = Promise.resolve(null); } p.then(send, function(){ send(null); }); }
+    else send(null);
+  }
+  $('kd-rc-banner').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-kdrc]'); if (!b) return;
+    var what = b.getAttribute('data-kdrc');
+    if (what === 'see') { switchTab('people'); try { $('kd-rc-card').scrollIntoView({ block: 'start' }); } catch (x) {} return; }
+    if (what === 'safe') { kdRcAnswer('safe'); return; }
+    askSheet('Tell the family you need help?', 'This sends your SOS to the family, with where you are if location is on.', 'Yes, I need help', 'No, go back', true)
+      .then(function(y){ if (y) kdRcAnswer('help'); });
+  });
+  $('kd-rc-board').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-kdrcfor]'); if (!b) return;
+    var nm = kdFirst(b.getAttribute('data-name'));
+    askSheet('Have you heard from ' + nm + '?', 'It will show as: ' + kdFirst(state.name) + ' says ' + nm + ' is safe.', 'Yes, ' + nm + ' is safe', 'Not yet')
+      .then(function(y){ if (y) kdRcAnswer('safe', b.getAttribute('data-kdrcfor')); });
+  });
+  $('kd-rc-start').addEventListener('click', function(){
+    var btn = this;
+    askSheet('Ask everyone in the family now?', 'Every member gets an alert with two buttons, even at night.', 'Yes, ask everyone', 'No, go back').then(function(y){
+      if (!y) return;
+      btn.disabled = true;
+      kdPost(API.care, 'rollcall_start', { reason: $('kd-rc-reason').value, note: $('kd-rc-note').value }).then(function(j){
+        btn.disabled = false;
+        if (!j.ok) { toast(j.error || 'Could not start the roll-call'); kdRcLoad(); return; }
+        $('kd-rc-note').value = ''; kdRc = j; kdRcRender(); toast('Everyone has been asked 🛟');
+      }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
+    });
+  });
+  $('kd-rc-close').addEventListener('click', function(){
+    askSheet('Close the roll-call?', 'Nobody will be asked again. It also closes by itself after 24 hours.', 'Yes, close it', 'Keep it open').then(function(y){
+      if (!y) return;
+      kdPost(API.care, 'rollcall_close', {}).then(function(j){ if (!j.ok) toast(j.error || 'Could not close it'); else { kdRc = j; kdRcRender(); toast('Roll-call closed'); } })
+        .catch(function(){ toast('No connection - try again'); });
+    });
+  });
+  // Looked at when the app opens, when this phone comes back to the front,
+  // when the Family tab opens, and once a minute while the app is in view.
+  kdShown($('main'), kdRcLoad);
+  kdShown($('pane-people'), kdRcLoad);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden && state && !$('main').hidden) kdRcLoad(); });
+  setInterval(function(){ if (state && !document.hidden && !$('main').hidden) kdRcLoad(); }, 60000);
+  // ---- a child's page, "Bachchon ka panna" (api/_kids.mjs)
+  var kdKids = null, kdKidCur = null, kdKid = null;
+  var KD_DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  function kdDate(s){ if (!s) return ''; var d = new Date(String(s).slice(0, 10) + 'T12:00:00'); return isNaN(d) ? '' : d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }); }
+  function kdClock(t){ if (!t) return ''; var h = +t.slice(0, 2); return (h % 12 || 12) + ':' + t.slice(3, 5) + (h < 12 ? ' am' : ' pm'); }
+  function kdAddDays(day, n){ var d = new Date(day + 'T12:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function kdCard(id, title, inner){ return '<div class="card" id="' + id + '"><h3>' + title + '</h3>' + inner + '</div>'; }
+  function kdNone(t){ return '<p class="hint" style="margin:0 0 var(--space-12)">' + esc(t) + '</p>'; }
+  function kdPickIn(label, id, type, val, more){ return '<label class="pick"><span>' + esc(label) + '</span><input type="' + type + '" id="' + id + '" value="' + esc(val || '') + '" ' + (more || '') + '></label>'; }
+  function kdKidsLoad(){
+    if (!state) return;
+    kdGet(API.care, 'kids').then(function(j){
+      if (!j.ok) { $('kd-kid-page').innerHTML = '<div class="ev">Could not load this page. ' + esc(humanFail(j.error, 'Try again in a minute.')) + '</div>'; return; }
+      // My own page first, then my children, then the rest of the family's.
+      var rank = { self: 0, parent: 1 };
+      kdKids = j.kids.map(function(x, i){ return { x: x, i: i }; }).sort(function(a, b){
+        return ((rank[a.x.rel] === undefined ? 2 : rank[a.x.rel]) - (rank[b.x.rel] === undefined ? 2 : rank[b.x.rel])) || (a.i - b.i);
+      }).map(function(o){ return o.x; });
+      if (!kdKidCur || !kdKids.some(function(x){ return x.id === kdKidCur; })) kdKidCur = (kdKids[0] || {}).id || null;
+      var pick = $('kd-kid-pick');
+      pick.hidden = kdKids.length < 2;
+      pick.innerHTML = kdKids.map(function(x){ return '<button type="button" data-kdkid="' + esc(x.id) + '"' + (x.id === kdKidCur ? ' class="sel" aria-pressed="true"' : ' aria-pressed="false"') + '>' + (x.rel === 'self' ? 'My page' : esc(kdFirst(x.name))) + '</button>'; }).join('');
+      if (!kdKidCur) { $('kd-kid-page').innerHTML = '<div class="ev">No one under 18 is in this family yet. A page appears here once a child is in the family tree with a date of birth.</div>'; $('kd-kid-today').hidden = true; return; }
+      kdKidOpen(kdKidCur);
+      kdKidTurns();
+    }).catch(function(){ $('kd-kid-page').innerHTML = '<div class="ev">No connection. This page will load when you are back online.</div>'; });
+  }
+  // "Your turn today": whoever collects a child today has the one tap at the top.
+  function kdKidTurns(){
+    var box = $('kd-kid-today'), rows = [], left = kdKids.length;
+    if (!left) { box.hidden = true; return; }
+    kdKids.forEach(function(x){
+      if (x.rel === 'self' || x.rel === 'minor' || !x.hasPage) { if (!--left) fin(); return; }
+      kdGet(API.care, 'kids', '&child=' + encodeURIComponent(x.id)).then(function(j){
+        if (j.ok && j.page) j.page.pickups.forEach(function(p){ if (p.day === j.page.today && p.mine && !p.pickedAt) rows.push({ kid: x, p: p }); });
+        if (!--left) fin();
+      }).catch(function(){ if (!--left) fin(); });
+    });
+    function fin(){
+      box.hidden = !rows.length;
+      box.innerHTML = rows.map(function(r){
+        return '<div class="crow' + (r.p.late ? ' kd-bad' : '') + '"><span class="txt"><b>🚗 Your turn today: collect ' + esc(kdFirst(r.kid.name)) + '</b><small>At ' + esc(kdTime(r.p.expectAt)) + '. One tap tells the parents.</small></span>' +
+          '<button type="button" class="cbtn" data-kdturn="' + esc(r.kid.id) + '">✓ Picked up</button></div>';
+      }).join('');
+    }
+  }
+  function kdKidOpen(id){
+    kdKidCur = id;
+    kdGet(API.care, 'kids', '&child=' + encodeURIComponent(id)).then(function(j){
+      if (!j.ok) { $('kd-kid-page').innerHTML = '<div class="ev">' + esc(humanFail(j.error, 'That page is not here.')) + '</div>'; return; }
+      kdKid = j; kdKidShow();
+    }).catch(function(){ $('kd-kid-page').innerHTML = '<div class="ev">No connection. This page will load when you are back online.</div>'; });
+  }
+  function kdKidDetailsForm(p, starting){
+    var s = (p && p.school) || {}, h = (p && p.health) || {};
+    return '<div class="pickrow">' + kdPickIn('School', 'kd-kf-school', 'text', s.name, 'maxlength="80" placeholder="e.g. City Montessori"') + kdPickIn('Class', 'kd-kf-class', 'text', s.className, 'maxlength="40" placeholder="e.g. 5 B"') + '</div>' +
+      '<div class="pickrow">' + kdPickIn('Class teacher', 'kd-kf-teacher', 'text', s.teacher, 'maxlength="80"') + kdPickIn('School phone', 'kd-kf-sphone', 'tel', s.phone, 'maxlength="20" inputmode="tel"') + '</div>' +
+      '<div class="pickrow">' + kdPickIn('Allergies, as you know them', 'kd-kf-allergy', 'text', h.allergies, 'maxlength="300" placeholder="e.g. Peanuts"') + kdPickIn("Doctor's name", 'kd-kf-doc', 'text', h.doctorName, 'maxlength="80"') + '</div>' +
+      '<div class="pickrow">' + kdPickIn("Doctor's phone", 'kd-kf-dphone', 'tel', h.doctorPhone, 'maxlength="20" inputmode="tel"') + '</div>' +
+      '<button type="button" class="cbtn kd-wide" data-kdact="save">' + (starting ? 'Start this page' : 'Save details') + '</button>';
+  }
+  function kdKidPickups(p, friendly){
+    if (!p.pickups.length) return kdNone(friendly ? 'Nobody has written who picks you up yet.' : 'No pick-up is set for this week yet.');
+    return '<div class="kd-list">' + p.pickups.map(function(k){
+      var day = k.day === p.today ? 'Today' : kdDay(k.day);
+      var who = k.mine ? 'You' : esc(kdFirst(k.byName || 'Someone'));
+      var st = k.pickedAt ? '✓ Picked up' + (k.pickedName ? ' (marked by ' + esc(kdFirst(k.pickedName)) + ')' : '') : k.late ? '! Not marked as picked up yet' : 'At ' + esc(kdTime(k.expectAt));
+      return '<div class="crow' + (k.pickedAt ? ' kd-ok' : k.late ? ' kd-bad' : '') + '"><span class="txt"><b>' + day + ': ' + who + (friendly ? (k.mine ? '' : ' picks you up') : (k.mine ? ' collect' : ' collects')) + '</b><small>' + st + '</small></span>' +
+        (k.canTap && !k.pickedAt && k.day === p.today ? '<button type="button" class="cbtn" data-kdact="picked" data-day="' + esc(k.day) + '">✓ Picked up</button>' : '') +
+        (p.can.edit && !k.pickedAt ? '<button type="button" class="cbtn ghost" data-kdact="pclear" data-day="' + esc(k.day) + '">Remove</button>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+  function kdKidItems(list, kind, p, friendly){
+    if (!list || !list.length) return '';
+    return '<div class="kd-list">' + list.map(function(i){
+      var mineOrParent = p.can.edit || ((kind === 'exam' || kind === 'note') && p.rel === 'self' && i.by_member === state.memberId);
+      var sub = kind === 'fee' ? 'Due ' + kdDate(i.on_date) + (i.paid ? ' · ✓ Paid' : '')
+        : kind === 'exam' ? kdDate(i.on_date) + (i.result ? ' · Result: ' + i.result : '')
+        : kind === 'vaccine' ? 'Given on ' + kdDate(i.on_date) + (i.next_due ? ' · Next date, as written: ' + kdDate(i.next_due) : '')
+        : kind === 'activity' ? (i.days || []).map(function(d){ return KD_DOW[d]; }).join(', ') + (i.at_time ? ' · ' + kdClock(i.at_time) : '')
+        : (i.by_name ? 'From ' + kdFirst(i.by_name) : '') + (i.share === 'family' ? ' · for the whole family' : ' · for the parents');
+      return '<div class="crow' + (kind === 'fee' && i.paid ? ' kd-ok' : '') + '"><span class="txt"><b>' + esc(i.title) + '</b><small>' + esc(sub) + '</small></span>' +
+        (kind === 'fee' && p.can.edit && !i.paid ? '<button type="button" class="cbtn" data-kdact="paid" data-id="' + esc(i.id) + '">Mark paid</button>' : '') +
+        (kind === 'exam' && mineOrParent ? '<button type="button" class="cbtn ghost" data-kdact="result" data-id="' + esc(i.id) + '">' + (friendly ? 'Write my marks' : 'Write the result') + '</button>' : '') +
+        (mineOrParent ? '<button type="button" class="cbtn ghost" data-kdact="remove" data-id="' + esc(i.id) + '">Remove</button>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+  function kdKidShow(){
+    var j = kdKid, p = j.page, name = esc(kdFirst(j.kid.name)), h = '';
+    if (!p) {
+      $('kd-kid-page').innerHTML = j.mayStart
+        ? kdCard('kd-kc-start', '🎒 Start ' + name + "'s page", kdNone('Write what you know. You can add fees, exams, pick-up and the vaccination record after this.') + kdKidDetailsForm(null, true))
+        : '<div class="ev">' + (j.kid.rel === 'self' ? 'Your parents have not started your page yet.' : name + "'s parents have not started this page yet.") + '</div>';
+      return;
+    }
+    var me = p.rel === 'self', par = p.rel === 'parent';
+    if (me) h += '<p class="kd-hi">Namaste, ' + name + '! This is your page 🎒</p>';
+    // School
+    if (p.sees.school) {
+      var s = p.school;
+      h += kdCard('kd-kc-school', me ? '🏫 My school' : '🏫 School',
+        (s.name || s.className || s.teacher || s.phone
+          ? '<p class="kd-line"><b>' + esc(s.name || 'School not written yet') + '</b>' + (s.className ? ' · Class ' + esc(s.className) : '') + '</p>' +
+            (s.teacher ? '<p class="kd-line">Class teacher: ' + esc(s.teacher) + '</p>' : '') +
+            (s.phone && !me ? '<a class="cbtn ghost kd-call" href="' + kdTel(s.phone) + '">📞 Call the school</a>' : '')
+          : kdNone('Nothing written yet.')));
+    }
+    // Pick-up
+    if (p.sees.pickup) {
+      var form = '';
+      if (par) {
+        form = '<details><summary>Set who collects</summary><div class="pickrow"><label class="pick"><span>Who collects</span><select id="kd-kp-who">' +
+          p.collectors.map(function(c){ return '<option value="' + esc(c.id) + '">' + (c.id === state.memberId ? 'Me' : esc(c.name) + (c.onApp ? '' : ' (by name)')) + '</option>'; }).join('') + '</select></label>' +
+          kdPickIn('School ends at', 'kd-kp-time', 'time', '14:30') + '</div><div class="kd-chk" id="kd-kp-days">' +
+          [0, 1, 2, 3, 4, 5, 6].map(function(n){ var d = kdAddDays(p.today, n); return '<label><input type="checkbox" value="' + d + '"' + (n === 0 ? ' checked' : '') + '> ' + (n === 0 ? 'Today' : esc(kdDay(d))) + '</label>'; }).join('') +
+          '</div><button type="button" class="cbtn kd-wide" data-kdact="pset">Save pick-up</button></details>';
+      }
+      h += kdCard('kd-kc-pickup', me ? '🚗 Who picks me up' : '🚗 Pick-up duty', kdKidPickups(p, me) + form +
+        (par ? '<p class="kd-legal">If "Picked up" is not tapped 20 minutes after the time, the adults of the family are told.</p>' : ''));
+    }
+    // Exams
+    if (p.sees.exams) {
+      h += kdCard('kd-kc-exams', me ? '📝 My exams' : '📝 Exams', (kdKidItems(p.exams, 'exam', p, me) || kdNone(me ? 'No exam dates yet. Add one below.' : 'No exam dates yet.')) +
+        (p.can.addExam ? '<div class="pickrow">' + kdPickIn(me ? 'Which exam' : 'Exam', 'kd-ke-title', 'text', '', 'maxlength="80" placeholder="e.g. Maths unit test"') + kdPickIn('Date', 'kd-ke-date', 'date', '') + '</div>' +
+          '<button type="button" class="cbtn kd-wide" data-kdact="exam">Add exam date</button>' : '') +
+        (p.can.resultsShare ? '<p class="kd-line" style="margin-top:var(--space-16)"><b>' + (me ? 'Who sees my marks' : 'Who sees the results') + '</b></p><div class="seg" id="kd-ke-share" role="group" aria-label="Who sees the results">' +
+            '<button type="button" data-kdres="parents"' + (p.resultsShare !== 'family' ? ' class="sel" aria-pressed="true"' : ' aria-pressed="false"') + '>' + (me ? 'Only Mummy Papa' : 'Parents only') + '</button>' +
+            '<button type="button" data-kdres="family"' + (p.resultsShare === 'family' ? ' class="sel" aria-pressed="true"' : ' aria-pressed="false"') + '>Whole family</button></div>'
+          : par ? '<p class="kd-legal">' + name + ' chooses whether results are shown to the wider family. Right now: ' + (p.resultsShare === 'family' ? 'whole family' : 'parents only') + '.</p>' : ''));
+    }
+    // Classes
+    if (p.sees.activities) {
+      h += kdCard('kd-kc-classes', me ? '🎨 My classes' : '🎨 Classes and activities', (kdKidItems(p.activities, 'activity', p, me) || kdNone('No classes written yet.')) +
+        (par ? '<details><summary>Add a class</summary><div class="pickrow">' + kdPickIn('Class', 'kd-ka-title', 'text', '', 'maxlength="80" placeholder="e.g. Tabla class"') + kdPickIn('Time', 'kd-ka-time', 'time', '17:00') + '</div>' +
+          '<div class="kd-chk" id="kd-ka-days">' + KD_DOW.map(function(d, n){ return '<label><input type="checkbox" value="' + n + '"> ' + d + '</label>'; }).join('') + '</div>' +
+          '<button type="button" class="cbtn kd-wide" data-kdact="class">Add class</button></details>' : ''));
+    }
+    // Fees: never on the child's own page.
+    if (p.sees.fees) {
+      h += kdCard('kd-kc-fees', '🧾 Fee dates', (kdKidItems(p.fees, 'fee', p) || kdNone('No fee dates yet.')) +
+        (par ? '<div class="pickrow">' + kdPickIn('Which fee', 'kd-kfee-title', 'text', '', 'maxlength="80" placeholder="e.g. Term 2 fee"') + kdPickIn('Due on', 'kd-kfee-date', 'date', '') + '</div>' +
+          '<button type="button" class="cbtn kd-wide" data-kdact="fee">Add fee date</button>' : '') +
+        (p.can.feeReminder ? '<div class="kd-chk"><label><input type="checkbox" id="kd-kfee-sub"' + (p.feeReminder ? ' checked' : '') + '> Remind me a week before and the day before</label></div>' : '') +
+        '<p class="kd-legal">Reminders go only to the adults who ask for them, never to ' + name + '.</p>');
+    }
+    // Vaccination record
+    if (p.sees.vaccines) {
+      h += kdCard('kd-kc-vaccines', '💉 Vaccination record', (kdKidItems(p.vaccines, 'vaccine', p) || kdNone('Nothing written yet.')) +
+        (par ? '<details><summary>Add an entry</summary><div class="pickrow">' + kdPickIn('Which one', 'kd-kv-title', 'text', '', 'maxlength="80" placeholder="As on the card"') + kdPickIn('Date given', 'kd-kv-date', 'date', '') + '</div>' +
+          '<div class="pickrow">' + kdPickIn('Next date, if the card says one', 'kd-kv-next', 'date', '') + '</div>' +
+          '<button type="button" class="cbtn kd-wide" data-kdact="vaccine">Add to the record</button></details>' : '') +
+        '<p class="kd-legal">' + esc(j.legal) + '</p>');
+    }
+    // Allergies and the doctor: adults only.
+    if (p.sees.health) {
+      var hl = p.health;
+      h += kdCard('kd-kc-health', '🩺 Allergies and doctor',
+        '<p class="kd-line"><b>Allergies, as the family wrote them:</b> ' + esc(hl.allergies || 'none written') + '</p>' +
+        (hl.doctorName ? '<p class="kd-line">Doctor: ' + esc(hl.doctorName) + '</p>' : '') +
+        (hl.doctorPhone ? '<a class="cbtn ghost kd-call" href="' + kdTel(hl.doctorPhone) + '">📞 Call the doctor</a>' : '') +
+        '<p class="kd-legal">' + esc(j.legal) + '</p>');
+    }
+    // Notes
+    if (p.notes.length || p.can.addNote) {
+      h += kdCard('kd-kc-notes', me ? '💬 What I want to tell the family' : '💬 From ' + name, (kdKidItems(p.notes, 'note', p, me) || kdNone(me ? 'Anything you want them to know. A wish, a worry, a plan.' : 'Nothing yet.')) +
+        (me ? '<div class="pickrow">' + kdPickIn('What I want to say', 'kd-kn-text', 'text', '', 'maxlength="300"') +
+          '<label class="pick"><span>Who can read it</span><select id="kd-kn-who"><option value="parents">Only Mummy Papa</option><option value="family">Whole family</option></select></label></div>' +
+          '<button type="button" class="cbtn kd-wide" data-kdact="note">Tell them</button>' : ''));
+    }
+    if (par) {
+      h += kdCard('kd-kc-share', '👪 What the rest of the family sees', kdNone('Each part is for the parents only until you choose "Whole family". ' + name + ' never sees fees, the vaccination record or the health lines.') +
+        '<div class="pickrow">' + p.sections.map(function(sc){
+          return '<label class="pick"><span>' + esc(sc.label) + '</span><select data-kdshare="' + esc(sc.key) + '"><option value="parents"' + (sc.who !== 'family' ? ' selected' : '') + '>Parents only</option><option value="family"' + (sc.who === 'family' ? ' selected' : '') + '>' + (sc.key === 'health' || sc.key === 'fees' || sc.key === 'vaccines' ? 'Adults of the family' : 'Whole family') + '</option></select></label>';
+        }).join('') + '</div>');
+      h += kdCard('kd-kc-edit', '✏️ School, allergies and doctor', '<details><summary>Change these details</summary>' + kdKidDetailsForm(p, false) + '</details>');
+    }
+    if (!h) h = '<div class="ev">' + name + "'s parents have not shared this page with the family yet.</div>";
+    $('kd-kid-page').innerHTML = h;
+  }
+  function kdKidDo(action, body, okMsg, btn){
+    if (btn) btn.disabled = true;
+    return kdPost(API.care, action, body).then(function(j){
+      if (btn) btn.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not save. Try again.'); return false; }
+      if (j.page) { kdKid = { ok: true, legal: kdKid.legal, page: j.page, kid: { id: kdKid.kid.id, name: kdKid.kid.name, rel: j.page.rel } }; kdKidShow(); }
+      if (okMsg) toast(okMsg);
+      return true;
+    }).catch(function(){ if (btn) btn.disabled = false; toast('No connection - try again'); return false; });
+  }
+  function kdVal(id){ var e = $(id); return e ? e.value.trim() : ''; }
+  function kdChecked(id){ return Array.prototype.map.call($(id).querySelectorAll('input:checked'), function(x){ return x.value; }); }
+  $('kd-kid-pick').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-kdkid]'); if (!b) return;
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('sel', x === b); x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+    kdKidOpen(b.getAttribute('data-kdkid'));
+  });
+  $('kd-kid-today').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-kdturn]'); if (!b) return;
+    b.disabled = true;
+    kdPost(API.care, 'kid_pickup_done', { childId: b.getAttribute('data-kdturn') }).then(function(j){
+      toast(j.ok ? 'Marked as picked up. The parents have been told ✓' : (j.error || 'Could not save. Try again.'));
+      kdKidsLoad();
+    }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+  });
+  $('kd-kid-page').addEventListener('click', function(e){
+    var res = e.target.closest('button[data-kdres]');
+    if (res) { kdKidDo('kid_results_share', { childId: kdKidCur, who: res.getAttribute('data-kdres') }, res.getAttribute('data-kdres') === 'family' ? 'The whole family can see the results now' : 'Results are for the parents only'); return; }
+    var b = e.target.closest('button[data-kdact]'); if (!b || !kdKid) return;
+    var act = b.getAttribute('data-kdact'), id = b.getAttribute('data-id'), kid = kdKidCur;
+    if (act === 'save') {
+      kdKidDo('kid_page_save', { childId: kid, school: kdVal('kd-kf-school'), className: kdVal('kd-kf-class'), teacher: kdVal('kd-kf-teacher'), schoolPhone: kdVal('kd-kf-sphone'),
+        allergies: kdVal('kd-kf-allergy'), doctorName: kdVal('kd-kf-doc'), doctorPhone: kdVal('kd-kf-dphone') }, 'Saved ✓', b).then(function(ok){ if (ok) kdKidsLoad(); });
+    } else if (act === 'pset') {
+      var days = kdChecked('kd-kp-days');
+      if (!days.length) { toast('Tick at least one day'); return; }
+      kdKidDo('kid_pickup_set', { childId: kid, days: days, byId: kdVal('kd-kp-who'), time: kdVal('kd-kp-time') }, 'Pick-up saved ✓', b).then(function(ok){ if (ok) kdKidTurns(); });
+    } else if (act === 'pclear') kdKidDo('kid_pickup_clear', { childId: kid, day: b.getAttribute('data-day') }, 'Removed', b).then(function(ok){ if (ok) kdKidTurns(); });
+    else if (act === 'picked') kdKidDo('kid_pickup_done', { childId: kid, day: b.getAttribute('data-day') }, 'Marked as picked up. The parents have been told ✓', b).then(function(ok){ if (ok) kdKidTurns(); });
+    else if (act === 'exam') kdKidDo('kid_item_add', { childId: kid, kind: 'exam', title: kdVal('kd-ke-title'), onDate: kdVal('kd-ke-date') }, 'Exam date added ✓', b);
+    else if (act === 'fee') kdKidDo('kid_item_add', { childId: kid, kind: 'fee', title: kdVal('kd-kfee-title'), onDate: kdVal('kd-kfee-date') }, 'Fee date added ✓', b);
+    else if (act === 'vaccine') kdKidDo('kid_item_add', { childId: kid, kind: 'vaccine', title: kdVal('kd-kv-title'), onDate: kdVal('kd-kv-date'), nextDue: kdVal('kd-kv-next') || undefined }, 'Added to the record ✓', b);
+    else if (act === 'class') kdKidDo('kid_item_add', { childId: kid, kind: 'activity', title: kdVal('kd-ka-title'), atTime: kdVal('kd-ka-time'), days: kdChecked('kd-ka-days').map(Number) }, 'Class added ✓', b);
+    else if (act === 'note') kdKidDo('kid_item_add', { childId: kid, kind: 'note', title: kdVal('kd-kn-text'), share: kdVal('kd-kn-who') }, 'Sent 🧡', b);
+    else if (act === 'paid') kdKidDo('kid_item_update', { id: id, paid: true }, 'Marked as paid ✓', b);
+    else if (act === 'remove') askSheet('Remove this entry?', '', 'Yes, remove it', 'Keep it').then(function(y){ if (y) kdKidDo('kid_item_remove', { id: id }, 'Removed'); });
+    else if (act === 'result') askText(kdKid.page.rel === 'self' ? 'What marks did you get?' : 'What was the result?', 'Like 18 of 20, or A grade', 'Save', 'Not now').then(function(v){ if (v) kdKidDo('kid_item_update', { id: id, result: v }, 'Saved ✓'); });
+  });
+  $('kd-kid-page').addEventListener('change', function(e){
+    var t = e.target;
+    if (t.hasAttribute && t.hasAttribute('data-kdshare')) kdKidDo('kid_share_set', { childId: kdKidCur, section: t.getAttribute('data-kdshare'), who: t.value }, t.value === 'family' ? 'Shared with the family ✓' : 'For the parents only ✓');
+    else if (t.id === 'kd-kfee-sub') kdKidDo('kid_fee_sub', { childId: kdKidCur, on: t.checked }, t.checked ? 'You will be reminded ✓' : 'Reminders are off for you');
+  });
+  kdShown(document.querySelector('#pane-care .subsec[data-sec="kids"]'), kdKidsLoad);
+  // ---- carer load and respite, "Thoda sa haath batao" (api/_carerload.mjs)
+  var kdCl = null;
+  function kdClLoad(){
+    if (!state) return;
+    kdGet(API.care, 'carerload').then(function(j){
+      if (!j.ok) { $('kd-cl-body').innerHTML = '<div class="ev">Could not load this. ' + esc(humanFail(j.error, 'Try again in a minute.')) + '</div>'; return; }
+      kdCl = j; kdClShow();
+    }).catch(function(){ $('kd-cl-body').innerHTML = '<div class="ev">No connection. This will load when you are back online.</div>'; });
+  }
+  function kdClShow(){
+    var j = kdCl, h = '';
+    if (!j.adult) { $('kd-cl-body').innerHTML = '<div class="ev">This part is for the adults of the family.</div>'; return; }
+    if (!j.on) {
+      $('kd-cl-body').innerHTML = kdCard('kd-cl-off', '🤲 Switched off for your family', kdNone('Nobody sees a summary or a line here while it is off.') +
+        '<button type="button" class="cbtn kd-wide" data-kdcl="on">Switch it on again</button>');
+      return;
+    }
+    if (j.line) h += '<div class="ev" id="kd-cl-line">🤲 ' + esc(j.line.text) + '</div>';
+    h += kdCard('kd-cl-mine', '🧡 What you did this week', (j.mine.lines.length ? '<div class="kd-list">' + j.mine.lines.map(function(l){ return '<p class="kd-line">' + esc(l) + '</p>'; }).join('') + '</div>' : '') +
+      '<p class="kd-legal" id="kd-cl-note">' + esc(j.mine.note) + '</p>');
+    h += kdCard('kd-cl-ask', '🤲 I need a day off', kdNone('The other adults in the family are asked. Whoever can, says yes.') +
+      '<div class="pickrow"><label class="pick"><span>Which day</span><select id="kd-cl-day">' + j.days.map(function(d){ return '<option value="' + esc(d.day) + '">' + esc(d.words) + '</option>'; }).join('') + '</select></label>' +
+      '<label class="pick"><span>Something to hand over</span><select id="kd-cl-task"><option value="">Just the day</option>' +
+        j.duties.map(function(d){ return '<option value="' + esc(d.id) + '" data-day="' + esc(d.day) + '">' + esc(d.title) + ' (' + esc(kdDay(d.day)) + ')</option>'; }).join('') + '</select></label></div>' +
+      '<button type="button" class="cbtn kd-wide" id="kd-cl-go" data-kdcl="ask">Ask the family</button>');
+    if (j.asks.length) {
+      h += kdCard('kd-cl-asks', '📅 Days off asked for', '<div class="kd-list">' + j.asks.map(function(a){
+        var what = a.taskTitle ? ' · ' + a.taskTitle : '';
+        if (a.status === 'taken') return '<div class="crow kd-ok"><span class="txt"><b>✓ ' + (a.takenByMe ? 'You' : esc(kdFirst(a.takenByName))) + ' will take ' + esc(a.dayWords) + '</b><small>' + (a.mine ? 'Your day off' : esc(kdFirst(a.byName)) + "'s day off") + esc(what) + '</small></span></div>';
+        return '<div class="crow"><span class="txt"><b>' + (a.mine ? 'You asked for ' : esc(kdFirst(a.byName)) + ' needs a day off on ') + esc(a.dayWords) + '</b><small>' + (a.taskTitle ? 'To hand over: ' + esc(a.taskTitle) : 'Just the day') + '</small></span>' +
+          (a.mine ? '<button type="button" class="cbtn ghost" data-kdcl="cancel" data-id="' + esc(a.id) + '">Take it back</button>' : '<button type="button" class="cbtn" data-kdcl="take" data-id="' + esc(a.id) + '">I will take it</button>') + '</div>';
+      }).join('') + '</div>');
+    }
+    h += kdCard('kd-cl-switch', '⚙️ For the family', '<details><summary>Switch this off for our family</summary>' + kdNone('Nobody is ranked here and nobody sees what someone else did. If your family would still like it off, any adult can switch it off, and on again.') +
+      '<button type="button" class="cbtn ghost kd-wide" data-kdcl="off">Switch it off</button></details>');
+    $('kd-cl-body').innerHTML = h;
+  }
+  $('kd-cl-body').addEventListener('change', function(e){
+    // Choosing a task to hand over sets the day it falls on.
+    if (e.target.id === 'kd-cl-task') { var o = e.target.options[e.target.selectedIndex], d = o && o.getAttribute('data-day'); if (d && $('kd-cl-day').querySelector('option[value="' + d + '"]')) $('kd-cl-day').value = d; }
+  });
+  $('kd-cl-body').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-kdcl]'); if (!b) return;
+    var act = b.getAttribute('data-kdcl'), send = function(action, body, msg){
+      b.disabled = true;
+      kdPost(API.care, action, body).then(function(j){
+        b.disabled = false;
+        if (!j.ok) { toast(j.error || 'Could not save. Try again.'); return; }
+        kdCl = j; kdClShow(); toast(msg);
+      }).catch(function(){ b.disabled = false; toast('No connection - try again'); });
+    };
+    if (act === 'ask') send('carer_dayoff', { day: kdVal('kd-cl-day'), taskId: kdVal('kd-cl-task') || undefined }, 'The family has been asked 🤲');
+    else if (act === 'take') send('carer_take', { id: b.getAttribute('data-id') }, 'Thank you. They have been told 🧡');
+    else if (act === 'cancel') send('carer_cancel', { id: b.getAttribute('data-id') }, 'Taken back');
+    else if (act === 'on') send('carer_switch', { on: true }, 'Switched on for the family');
+    else if (act === 'off') askSheet('Switch this off for the whole family?', 'Nobody will see a summary or a line. Any adult can switch it on again.', 'Yes, switch it off', 'Keep it on').then(function(y){ if (y) send('carer_switch', { on: false }, 'Switched off for the family'); });
+  });
+  kdShown(document.querySelector('#pane-care .subsec[data-sec="haath"]'), kdClLoad);
+  // ---- a page to print (the guest sheet, the doctor-ready summary)
+  function kdPaperOpen(html){ $('kd-paper-body').innerHTML = html; $('kd-paper').hidden = false; document.body.classList.add('kdprint'); try { $('kd-paper').scrollTop = 0; } catch (e) {} }
+  function kdPaperClose(){ $('kd-paper').hidden = true; document.body.classList.remove('kdprint'); }
+  $('kd-paper-print').addEventListener('click', function(){ try { window.print(); } catch (e) {} });
+  $('kd-paper-x').addEventListener('click', kdPaperClose);
+
+  // ---- the function kit, "Shaadi / function kit" (api/_eventkit.mjs)
+  var kdKit = null, kdKitPlan = null;
+  function kdWhen(s){ var d = new Date(s); return isNaN(d) ? '' : d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+  // The kit hangs off a plan of the "function" or "party" kind: its button
+  // is added to that plan's card each time the plans are drawn.
+  function kdKitButtons(){
+    var list = $('plist'); if (!list) return;
+    list.querySelectorAll('button[data-pcancel]').forEach(function(c){
+      var card = c.closest('.plan'); if (!card || card.querySelector('[data-kdkit]')) return;
+      var id = c.getAttribute('data-pcancel'), p = (plansCache || []).filter(function(x){ return x.id === id; })[0];
+      if (!p || (p.kind !== 'function' && p.kind !== 'party')) return;
+      var row = document.createElement('div'); row.className = 'prow';
+      row.innerHTML = '<button type="button" class="cbtn ghost kd-tap" data-kdkit="' + esc(id) + '">🎊 Shaadi / function kit</button>';
+      card.appendChild(row);
+    });
+  }
+  if (typeof MutationObserver !== 'undefined') new MutationObserver(kdKitButtons).observe($('plist'), { childList: true });
+  document.addEventListener('click', function(e){ var b = e.target.closest('button[data-kdkit]'); if (b && state) kdKitOpen(b.getAttribute('data-kdkit')); });
+  function kdKitOpen(planId){
+    kdKitPlan = planId; kdKit = null;
+    $('kd-kit-body').innerHTML = '<div class="ev">Loading…</div>'; $('kd-kit').hidden = false;
+    try { $('kd-kit').scrollTop = 0; $('kd-kit-x').focus(); } catch (e) {}
+    kdGet(API.plans, 'eventkit', '&plan=' + encodeURIComponent(planId)).then(function(j){
+      if (!j.ok) { $('kd-kit-body').innerHTML = '<div class="ev">' + esc(humanFail(j.error, 'Could not open the kit. Try again in a minute.')) + '</div>'; return; }
+      kdKit = j; kdKitShow();
+    }).catch(function(){ $('kd-kit-body').innerHTML = '<div class="ev">No connection. The kit will open when you are back online.</div>'; });
+  }
+  function kdKitClose(){ $('kd-kit').hidden = true; }
+  $('kd-kit-x').addEventListener('click', kdKitClose);
+  function kdOpts(list, pick, first){ return (first ? '<option value="">' + esc(first) + '</option>' : '') + list.map(function(o){ return '<option value="' + esc(o[0]) + '"' + (o[0] === pick ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join(''); }
+  function kdKitShow(){
+    var j = kdKit, k = j.kit, p = j.plan, h = '';
+    $('kd-kit-title').textContent = '🎊 ' + p.title;
+    h += '<p class="kd-line" id="kd-kit-when">' + esc(kdWhen(p.at)) + (p.place ? ' · ' + esc(p.place) : '') + '</p>';
+    if (!k) {
+      $('kd-kit-body').innerHTML = h + (j.canStart
+        ? kdCard('kd-kit-start', '🎊 Shaadi / function kit', kdNone('One place for the guest list, tasks, who arrives when, and the budget. You and the hosts you name can change it. The whole family can see it.') +
+            '<button type="button" class="cbtn kd-wide" data-kdk="start">Start the kit</button>')
+        : '<div class="ev">' + esc(kdFirst(p.byName || 'Whoever made this plan')) + ' made this plan, and can start its kit.</div>');
+      return;
+    }
+    var hosts = [kdFirst(p.byName || 'The maker') + ' (made the plan)'].concat(k.hosts.map(function(x){ return kdFirst(x.name); }));
+    h += '<p class="kd-line" id="kd-kit-hosts"><b>Hosts:</b> ' + esc(hosts.join(', ')) + '. ' + (k.canEdit ? 'You can change this kit.' : 'The hosts change it. Everyone in the family can see it.') + '</p>';
+    // Guests
+    var c = k.counts, sideOpts = k.sides.map(function(s){ return [s, s]; });
+    var gl = '';
+    k.sides.concat([null]).forEach(function(side){
+      var rows = k.guests.filter(function(g){ return side === null ? !g.side || k.sides.indexOf(g.side) < 0 : g.side === side; });
+      if (!rows.length) return;
+      gl += '<p class="kd-side">' + esc(side || 'Others') + '</p>' + rows.map(function(g){
+        return '<div class="crow"><span class="txt"><b>' + esc(g.name) + '</b><small>' + (g.people > 1 ? g.people + ' people' : '1 person') + (g.note ? ' · ' + esc(g.note) : '') + (k.canEdit ? '' : ' · ' + esc(g.statusWords)) + '</small></span>' +
+          (k.canEdit ? '<label class="pick kd-rowpick"><span>Invite</span><select data-kdgstat="' + esc(g.id) + '">' + kdOpts(j.statuses, g.status) + '</select></label>' +
+            '<button type="button" class="cbtn ghost" data-kdk="gdel" data-id="' + esc(g.id) + '">Remove</button>' : '') + '</div>';
+      }).join('');
+    });
+    var names = [];
+    try { ['ghar', 'kareebi', 'door'].forEach(function(grp){ flRzList(grp, '').forEach(function(x){ if (x[1] && x[1].name && !x[1].same && names.indexOf(x[1].name) < 0) names.push(x[1].name); }); }); } catch (e) {}
+    h += kdCard('kd-kit-guests', '👥 Guest list',
+      '<p class="kd-line" id="kd-kit-counts">' + (c.invites ? c.invites + (c.invites === 1 ? ' invite' : ' invites') + ' · ' + c.to_invite + ' to invite · ' + c.invited + ' invited · ' + c.coming + ' coming · ' + c.not_coming + ' not coming · ' + c.peopleComing + ' people coming so far' : 'No guests yet.') + '</p>' +
+      (gl ? '<div class="kd-list">' + gl + '</div>' : '') +
+      (k.canEdit ? '<details id="kd-kit-pick"><summary>Pick from the family tree</summary><div class="kd-chk" id="kd-kit-people">' +
+          (j.people || []).filter(function(m){ return !k.guests.some(function(g){ return g.memberId === m.id; }); }).map(function(m){ return '<label><input type="checkbox" value="' + esc(m.id) + '"> ' + esc(m.name) + (m.onApp ? '' : ' (by name)') + '</label>'; }).join('') + '</div>' +
+          '<div class="pickrow"><label class="pick"><span>Side</span><select id="kd-kit-pside">' + kdOpts(sideOpts) + '</select></label></div>' +
+          '<button type="button" class="cbtn kd-wide" data-kdk="gpick">Add the people ticked</button></details>' +
+        '<details id="kd-kit-type"><summary>Type a name</summary><div class="pickrow">' + kdPickIn('Name', 'kd-kit-gname', 'text', '', 'maxlength="60" list="kd-kit-names" placeholder="e.g. Gupta ji and family"') +
+          '<label class="pick"><span>Side</span><select id="kd-kit-gside">' + kdOpts(sideOpts) + '</select></label></div>' +
+          '<datalist id="kd-kit-names">' + names.map(function(n){ return '<option value="' + esc(n) + '">'; }).join('') + '</datalist>' +
+          '<div class="pickrow">' + kdPickIn('How many people', 'kd-kit-gpeople', 'number', '1', 'min="1" max="30" inputmode="numeric"') + kdPickIn('A note', 'kd-kit-gnote', 'text', '', 'maxlength="120"') + '</div>' +
+          '<p class="kd-legal">Only the name is kept. No phone number is needed.</p>' +
+          '<button type="button" class="cbtn kd-wide" data-kdk="gadd">Add guest</button></details>' : '') +
+      '<button type="button" class="cbtn ghost kd-wide" data-kdk="sheet">🖨 Guest sheet to print</button>');
+    // Tasks
+    var owners = (j.people || []).filter(function(m){ return m.onApp; }).map(function(m){ return [m.id, m.id === state.memberId ? 'Me' : m.name]; });
+    h += kdCard('kd-kit-tasks', '✅ Tasks', (k.tasks.length ? '<div class="kd-list">' + k.tasks.map(function(t){
+        return '<div class="crow' + (t.status === 'done' ? ' kd-ok' : '') + '"><span class="txt"><b>' + (t.status === 'done' ? '✓ ' : '') + esc(t.title) + '</b><small>' + esc((t.ownerName ? kdFirst(t.ownerName) + ' has it' : 'Nobody has it yet') + (t.dueDate ? ' · by ' + kdDay(t.dueDate) : '')) + '</small></span></div>';
+      }).join('') + '</div>' : kdNone('No tasks yet.')) +
+      (k.canEdit ? '<details id="kd-kit-taskadd"><summary>Add a task</summary><div class="pickrow">' + kdPickIn('What needs doing', 'kd-kit-ttitle', 'text', '', 'maxlength="200" placeholder="e.g. Book the halwai"') +
+          '<label class="pick"><span>Who</span><select id="kd-kit-towner">' + kdOpts(owners, '', 'Anyone who takes it') + '</select></label></div>' +
+          '<div class="pickrow">' + kdPickIn('By when', 'kd-kit-tdate', 'date', '') + '</div><button type="button" class="cbtn kd-wide" data-kdk="tadd">Add task</button></details>' : '') +
+      '<p class="kd-legal">These are ordinary family tasks. They also show in To do.</p>');
+    // Arrivals
+    var recv = (j.people || []).map(function(m){ return [m.id, m.id === state.memberId ? 'Me' : m.name]; });
+    h += kdCard('kd-kit-arrivals', '🚉 Who is arriving when', (k.arrivals.length ? '<div class="kd-list">' + k.arrivals.map(function(a){
+        var trip = a.trip ? (a.trip.status === 'reached' ? ' · ✓ Reached safely' : a.trip.status === 'open' ? ' · 🧳 On the way, expected by ' + kdTime(a.trip.expectAt) : '') : '';
+        return '<div class="crow"><span class="txt"><b>' + esc(a.who) + '</b><small>' + esc(kdWhen(a.arriveAt) + (a.modeWords ? ' · ' + a.modeWords : '') + (a.from ? ' from ' + a.from : '')) + esc(trip) +
+          '<br>' + (a.receiverName ? 'Received by ' + esc(kdFirst(a.receiverName)) : 'Nobody is receiving them yet') + '</small></span>' +
+          (!a.receiverId && !a.mine ? '<button type="button" class="cbtn" data-kdk="recv" data-id="' + esc(a.id) + '">I will receive them</button>' : '') +
+          (a.mine && !a.trip ? '<button type="button" class="cbtn ghost" data-kdk="trip">🧳 Start Reached safely</button>' : '') +
+          (k.canEdit || a.mine ? '<button type="button" class="cbtn ghost" data-kdk="adel" data-id="' + esc(a.id) + '">Remove</button>' : '') + '</div>';
+      }).join('') + '</div>' : kdNone('Nobody is written down yet.')) +
+      '<details id="kd-kit-arradd"><summary>' + (k.canEdit ? 'Add an arrival' : 'Add my own arrival') + '</summary>' +
+        (k.canEdit ? '<div class="pickrow"><label class="pick"><span>Who is arriving</span><select id="kd-kit-awho"><option value="">Someone I will name</option>' + kdOpts(recv) + '</select></label>' +
+          kdPickIn('Their name', 'kd-kit-aname', 'text', '', 'maxlength="60" placeholder="e.g. Mausi from Pune"') + '</div>' : '') +
+        '<div class="pickrow">' + kdPickIn('Day and time', 'kd-kit-aat', 'datetime-local', '') + '<label class="pick"><span>How</span><select id="kd-kit-amode">' + kdOpts([['train', 'By train'], ['flight', 'By flight'], ['car', 'By car'], ['bus', 'By bus'], ['other', 'Another way']]) + '</select></label></div>' +
+        '<div class="pickrow">' + kdPickIn('Coming from', 'kd-kit-afrom', 'text', '', 'maxlength="60"') +
+          (k.canEdit ? '<label class="pick"><span>Who receives them</span><select id="kd-kit-arecv">' + kdOpts(recv, '', 'Not decided yet') + '</select></label>' : '') + '</div>' +
+        '<button type="button" class="cbtn kd-wide" data-kdk="aadd">' + (k.canEdit ? 'Add arrival' : 'Add my arrival') + '</button></details>' +
+      '<p class="kd-legal">"Reached safely" shows here only to the people the traveller chose to tell.</p>');
+    // Budget
+    if (k.budget) {
+      var b = k.budget;
+      h += kdCard('kd-kit-budget', '💰 Budget', (b.hidden
+        ? kdNone('The costs of this plan are seen by the people who share them.')
+        : '<p class="kd-line"><b>Planned:</b> ' + esc(b.planned || 'not set yet') + '</p><p class="kd-line"><b>Spent so far:</b> ' + esc(b.spent) + '</p>' +
+          (b.left ? '<p class="kd-line"><b>' + (b.over ? '! Over by:' : 'Left:') + '</b> ' + esc(b.left) + '</p>' : '') +
+          '<button type="button" class="cbtn ghost kd-wide" data-kdk="costs">Open the costs of this plan</button>') +
+        (k.canEdit ? '<div class="pickrow">' + kdPickIn('Planned budget', 'kd-kit-bamt', 'text', '', 'maxlength="14" inputmode="numeric" placeholder="e.g. 500000"') + '</div><button type="button" class="cbtn kd-wide" data-kdk="bset">Save budget</button>' : '') +
+        '<p class="kd-legal">Parwah does not move money. This only does the sums.</p>');
+    }
+    if (k.canEdit) {
+      h += kdCard('kd-kit-setup', '⚙️ Sides and hosts', '<details><summary>Change the sides</summary><div class="pickrow">' + kdPickIn('Sides, with a comma between', 'kd-kit-sides', 'text', k.sides.join(', '), 'maxlength="200"') + '</div>' +
+        '<button type="button" class="cbtn kd-wide" data-kdk="sides">Save sides</button></details>' +
+        (k.isMaker ? '<details><summary>Choose the hosts</summary>' + kdNone('Hosts can add guests, tasks and arrivals. They must be on Parwah.') + '<div class="kd-chk" id="kd-kit-hostpick">' +
+          (j.people || []).filter(function(m){ return m.onApp && m.id !== state.memberId; }).map(function(m){ return '<label><input type="checkbox" value="' + esc(m.id) + '"' + (k.hosts.some(function(x){ return x.id === m.id; }) ? ' checked' : '') + '> ' + esc(m.name) + '</label>'; }).join('') +
+          '</div><button type="button" class="cbtn kd-wide" data-kdk="hosts">Save hosts</button></details>' : ''));
+    }
+    $('kd-kit-body').innerHTML = h;
+  }
+  function kdKitDo(action, body, okMsg, btn){
+    if (btn) btn.disabled = true;
+    return kdPost(API.plans, action, body).then(function(j){
+      if (btn) btn.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not save. Try again.'); return false; }
+      kdKit = j; kdKitShow(); if (okMsg) toast(okMsg);
+      return true;
+    }).catch(function(){ if (btn) btn.disabled = false; toast('No connection - try again'); return false; });
+  }
+  function kdKitSheet(){
+    var j = kdKit, p = j.plan, k = j.kit;
+    var h = '<h1 id="kd-paper-title">' + esc(p.title) + '</h1><p class="mbbsub">Guest sheet · ' + esc(kdWhen(p.at)) + (p.place ? ' · ' + esc(p.place) : '') + ' · ' + k.counts.peopleInvited + ' people invited, ' + k.counts.peopleComing + ' coming so far</p>';
+    k.sheet.forEach(function(s){
+      h += '<section><h2>' + esc(s.side) + ' (' + s.people + (s.people === 1 ? ' person' : ' people') + ')</h2>' + s.guests.map(function(g){
+        return '<p>☐ ' + esc(g.name) + ' · ' + g.people + (g.people === 1 ? ' person' : ' people') + ' · ' + esc(g.status) + (g.note ? ' · ' + esc(g.note) : '') + '</p>';
+      }).join('') + '</section>';
+    });
+    if (!k.sheet.length) h += '<p>No guests yet.</p>';
+    h += '<small>Printed from Parwah on ' + esc(new Date().toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })) + '. Names only: no phone numbers are kept on this list.</small>';
+    kdPaperOpen(h);
+  }
+  $('kd-kit-body').addEventListener('change', function(e){
+    var t = e.target;
+    if (t.hasAttribute && t.hasAttribute('data-kdgstat')) kdKitDo('kit_guest_update', { id: t.getAttribute('data-kdgstat'), status: t.value }, 'Saved ✓');
+  });
+  $('kd-kit-body').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-kdk]'); if (!b || !kdKit) return;
+    var act = b.getAttribute('data-kdk'), id = b.getAttribute('data-id'), pid = kdKitPlan;
+    if (act === 'start') kdKitDo('kit_start', { planId: pid }, 'The kit is ready 🎊', b);
+    else if (act === 'gpick') { var ids = kdChecked('kd-kit-people'); if (!ids.length) { toast('Tick at least one person'); return; } kdKitDo('kit_guest_add', { planId: pid, memberIds: ids, side: kdVal('kd-kit-pside') }, 'Added to the guest list ✓', b); }
+    else if (act === 'gadd') kdKitDo('kit_guest_add', { planId: pid, name: kdVal('kd-kit-gname'), side: kdVal('kd-kit-gside'), people: Number(kdVal('kd-kit-gpeople') || 1), note: kdVal('kd-kit-gnote') }, 'Added to the guest list ✓', b);
+    else if (act === 'gdel') askSheet('Take this guest off the list?', '', 'Yes, remove', 'Keep them').then(function(y){ if (y) kdKitDo('kit_guest_remove', { id: id }, 'Removed'); });
+    else if (act === 'sheet') kdKitSheet();
+    else if (act === 'tadd') kdKitDo('kit_task_add', { planId: pid, title: kdVal('kd-kit-ttitle'), ownerId: kdVal('kd-kit-towner') || undefined, dueDate: kdVal('kd-kit-tdate') || undefined, tz: homeTz() }, 'Task added ✓', b).then(function(ok){ if (ok) { try { refresh(); } catch (x) {} } });
+    else if (act === 'aadd') {
+      var at = kdVal('kd-kit-aat'); if (!at) { toast('Pick the day and time they arrive'); return; }
+      var who = $('kd-kit-awho') ? kdVal('kd-kit-awho') : state.memberId;
+      kdKitDo('kit_arrival_add', { planId: pid, travellerId: who || undefined, who: who ? undefined : kdVal('kd-kit-aname'), arriveAt: new Date(at).toISOString(), mode: kdVal('kd-kit-amode'), from: kdVal('kd-kit-afrom'),
+        receiverId: ($('kd-kit-arecv') && kdVal('kd-kit-arecv')) || undefined }, 'Arrival added ✓', b);
+    }
+    else if (act === 'recv') kdKitDo('kit_arrival_receive', { id: id }, 'Thank you. It shows you will receive them 🧡', b);
+    else if (act === 'adel') kdKitDo('kit_arrival_remove', { id: id }, 'Removed', b);
+    else if (act === 'trip') { kdKitClose(); try { cnTripOpen(); if (kdKit.plan.place) $('cn-trip-to').value = kdKit.plan.place; } catch (x) {} }
+    else if (act === 'costs') { kdKitClose(); try { splitOpen(pid); } catch (x) {} }
+    else if (act === 'bset') kdKitDo('kit_budget_set', { planId: pid, amount: kdVal('kd-kit-bamt') }, 'Budget saved ✓', b);
+    else if (act === 'sides') kdKitDo('kit_sides_set', { planId: pid, sides: kdVal('kd-kit-sides').split(',') }, 'Sides saved ✓', b);
+    else if (act === 'hosts') kdKitDo('kit_hosts_set', { planId: pid, hosts: kdChecked('kd-kit-hostpick') }, 'Hosts saved ✓', b);
+  });
+  // ---- home: repairs and warranties, "Ghar ka saaman" (api/_home.mjs)
+  var kdHm = null, kdHmEdit = null;
+  function kdBook(action, body){ return kdPost(API.notes.split('?')[0], action, body); }
+  function kdInDays(n){ return n === null || n === undefined ? '' : n < 0 ? 'ended ' + (-n) + (n === -1 ? ' day ago' : ' days ago') : n === 0 ? 'today' : n === 1 ? 'tomorrow' : 'in ' + n + ' days'; }
+  function kdHmLoad(){
+    if (!state) return;
+    kdGet(API.notes.split('?')[0], 'home').then(function(j){
+      if (!j.ok) { $('kd-hm-list').innerHTML = '<div class="ev">Could not load this list. ' + esc(humanFail(j.error, 'Try again in a minute.')) + '</div>'; return; }
+      kdHm = j; kdHmShow();
+    }).catch(function(){ $('kd-hm-list').innerHTML = '<div class="ev">No connection. This list will load when you are back online.</div>'; });
+  }
+  function kdHmFormFill(it){
+    var j = kdHm;
+    $('kd-hm-kind').innerHTML = kdOpts(j.kinds, it ? it.kind : 'appliance');
+    $('kd-hm-contact').innerHTML = kdOpts(j.contacts.map(function(c){ return [c.id, c.name]; }), it && it.contact ? it.contact.id : '', 'Nobody chosen');
+    $('kd-hm-bill').innerHTML = kdOpts(j.docs.map(function(d){ return [d.id, d.label]; }), it && it.bill ? it.bill.id : '', 'No paper chosen');
+    $('kd-hm-who').innerHTML = kdOpts(j.who, it ? it.audience : 'IMMEDIATE');
+    $('kd-hm-people').innerHTML = j.people.map(function(p){ return '<label><input type="checkbox" value="' + esc(p.id) + '"' + (it && it.people && it.people.indexOf(p.id) >= 0 ? ' checked' : '') + '> ' + esc(p.name) + '</label>'; }).join('');
+    $('kd-hm-people').hidden = $('kd-hm-who').value !== 'NOMINEES_ONLY';
+    $('kd-hm-title').value = it ? it.title : ''; $('kd-hm-bought').value = (it && it.boughtOn) || ''; $('kd-hm-where').value = (it && it.boughtWhere) || '';
+    $('kd-hm-warranty').value = (it && it.warrantyUntil) || ''; $('kd-hm-service').value = (it && it.serviceDue) || '';
+    $('kd-hm-calltext').value = (it && it.callText) || ''; $('kd-hm-billnote').value = (it && it.billNote) || ''; $('kd-hm-fixed').value = '';
+    $('kd-hm-fixed').closest('label').hidden = !!it;
+    $('kd-hm-head').textContent = it ? 'Change: ' + it.title : 'Add something';
+    $('kd-hm-save').textContent = it ? 'Save changes' : 'Add it'; $('kd-hm-cancel').hidden = !it;
+  }
+  function kdHmShow(){
+    var j = kdHm;
+    $('kd-hm-list').innerHTML = j.items.length ? j.items.map(function(i){
+      var chip = function(n){ return n === null ? '' : ' <span class="ftchip ' + (n < 0 ? 'bad' : n <= 30 ? 'warn' : 'ok') + '">' + esc(kdInDays(n)) + '</span>'; };
+      var who = j.who.filter(function(w){ return w[0] === i.audience; })[0];
+      return '<div class="crow"><span class="txt"><b>' + i.icon + ' ' + esc(i.title) + '</b>' +
+        (i.boughtOn || i.boughtWhere ? '<small>Bought' + (i.boughtOn ? ' on ' + esc(kdDate(i.boughtOn)) : '') + (i.boughtWhere ? ' at ' + esc(i.boughtWhere) : '') + '</small>' : '') +
+        (i.warrantyUntil ? '<small>Warranty until ' + esc(kdDate(i.warrantyUntil)) + chip(i.warrantyDays) + '</small>' : '') +
+        (i.serviceDue ? '<small>Service due ' + esc(kdDate(i.serviceDue)) + chip(i.serviceDays) + '</small>' : '') +
+        (i.contact ? '<small>To call: ' + esc(i.contact.name) + '</small>' : i.contactKept ? '<small>To call: a contact ' + esc(kdFirst(i.byName)) + ' keeps. Ask ' + esc(kdFirst(i.byName)) + '.</small>' : '') +
+        (i.callText ? '<small>To call: ' + esc(i.callText) + '</small>' : '') +
+        (i.bill ? '<small>Bill: ' + esc(i.bill.label) + (i.billNote ? ' · ' + esc(i.billNote) : '') + '</small>' : i.billKept ? '<small>The bill is in ' + esc(kdFirst(i.byName)) + "'s Vault" + (i.billNote ? ' · ' + esc(i.billNote) : '') + '</small>' : i.billNote ? '<small>Bill: ' + esc(i.billNote) + '</small>' : '') +
+        (i.fixedNote ? '<small>Fixed last time: ' + esc(i.fixedNote) + (i.fixedByName ? ' (written by ' + esc(kdFirst(i.fixedByName)) + (i.fixedAt ? ', ' + esc(kdDate(i.fixedAt)) : '') + ')' : '') + '</small>' : '') +
+        '<small>' + (i.mine ? 'You wrote this' : 'Written by ' + esc(kdFirst(i.byName))) + ' · ' + esc(who ? who[1] : '') + '</small></span>' +
+        (i.contact && i.contact.phone ? '<a class="cbtn ghost kd-call" href="' + kdTel(i.contact.phone) + '">📞 Call</a>' : '') +
+        (i.bill ? '<button type="button" class="cbtn ghost" data-kdhm="bill" data-id="' + esc(i.bill.id) + '">Open the bill</button>' : '') +
+        (j.canLog ? '<button type="button" class="cbtn" data-kdhm="log" data-id="' + esc(i.id) + '">Write down a repair</button>' : '') +
+        (i.mine ? '<button type="button" class="cbtn ghost" data-kdhm="edit" data-id="' + esc(i.id) + '">Change</button><button type="button" class="cbtn ghost" data-kdhm="del" data-id="' + esc(i.id) + '">Remove</button>' : '') + '</div>';
+    }).join('') : '<div class="ev">Nothing here yet. Add the fridge, the scooter or the house tax receipt, and the family will know who to call.</div>';
+    kdHmFormFill(kdHmEdit ? j.items.filter(function(i){ return i.id === kdHmEdit; })[0] || null : null);
+  }
+  function kdHmSend(action, body, msg){
+    return kdBook(action, body).then(function(j){
+      if (!j.ok) { toast(j.error || 'Could not save. Try again.'); return false; }
+      kdHm = j; kdHmEdit = null; kdHmShow(); toast(msg); return true;
+    }).catch(function(){ toast('No connection - try again'); return false; });
+  }
+  $('kd-hm-who').addEventListener('change', function(){ $('kd-hm-people').hidden = this.value !== 'NOMINEES_ONLY'; });
+  $('kd-hm-cancel').addEventListener('click', function(){ kdHmEdit = null; kdHmShow(); });
+  $('kd-hm-save').addEventListener('click', function(){
+    var b = { kind: kdVal('kd-hm-kind'), title: kdVal('kd-hm-title'), boughtOn: kdVal('kd-hm-bought'), boughtWhere: kdVal('kd-hm-where'), warrantyUntil: kdVal('kd-hm-warranty'), serviceDue: kdVal('kd-hm-service'),
+      callContactId: kdVal('kd-hm-contact') || undefined, callText: kdVal('kd-hm-calltext'), billDocId: kdVal('kd-hm-bill') || undefined, billNote: kdVal('kd-hm-billnote'), fixedNote: kdVal('kd-hm-fixed'),
+      audience: kdVal('kd-hm-who'), people: kdChecked('kd-hm-people') };
+    if (!b.title) { toast('Say what it is, like "Fridge"'); return; }
+    if (kdHmEdit) { b.id = kdHmEdit; kdHmSend('home_update', b, 'Saved ✓'); } else kdHmSend('home_add', b, 'Added ✓');
+  });
+  $('kd-hm-list').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-kdhm]'); if (!b || !kdHm) return;
+    var act = b.getAttribute('data-kdhm'), id = b.getAttribute('data-id');
+    if (act === 'edit') { kdHmEdit = id; kdHmShow(); try { $('kd-hm-form').scrollIntoView({ block: 'start' }); $('kd-hm-title').focus(); } catch (x) {} }
+    else if (act === 'del') askSheet('Remove this entry?', 'Its reminders stop too.', 'Yes, remove it', 'Keep it').then(function(y){ if (y) kdHmSend('home_remove', { id: id }, 'Removed'); });
+    else if (act === 'log') askText('Who fixed it, and what was done?', 'Like: Imran from Sharma Electricals changed the gasket', 'Save', 'Not now').then(function(v){ if (v) kdHmSend('home_log', { id: id, note: v }, 'Written down ✓'); });
+    else if (act === 'bill') { setSec('vault', 'docs'); var tries = 0, go = function(){ try { if (vDoc(id)) openDoc(id); else if (tries++ < 20) setTimeout(go, 150); } catch (x) {} }; go(); }
+  });
+  kdShown(document.querySelector('#pane-vault .subsec[data-sec="home"]'), kdHmLoad);
+
+  // ---- the doctor-ready summary and the blood group lookup (api/_bloodlookup.mjs)
+  var kdBl = null, kdBlGroup = null;
+  function kdHealthLoad(){
+    if (!state) return;
+    var base = API.notes.split('?')[0];
+    kdGet(base, 'summary').then(function(j){
+      if (!j.ok) return;
+      $('kd-sum-card').hidden = !j.adult;
+      $('kd-sum-who').innerHTML = j.people.map(function(p){ return '<option value="' + esc(p.id) + '">' + (p.me ? 'Me' : esc(p.name)) + '</option>'; }).join('');
+    }).catch(function(){});
+    kdGet(base, 'blood').then(function(j){
+      if (!j.ok) return;
+      kdBl = j; $('kd-bl-card').hidden = !j.adult;
+      if (!j.adult) return;
+      if (!$('kd-bl-group').options.length) $('kd-bl-group').innerHTML = j.groups.map(function(g){ return '<option value="' + esc(g) + '">' + esc(g) + '</option>'; }).join('');
+      $('kd-bl-line').textContent = j.consentLine; $('kd-bl-legal').textContent = j.legal;
+      kdBlMine(j.mine);
+    }).catch(function(){});
+  }
+  function kdBlMine(m){
+    $('kd-bl-consent').checked = !!m.consent;
+    $('kd-bl-mine').textContent = (m.group ? 'Your blood group on record: ' + m.group + '.' : m.written ? 'Your blood group is written as "' + m.written + '". Write it like O+ or AB- so it can be found.' : 'Your blood group is not written down yet. Add it below, under Health & contacts.') +
+      (m.consent ? ' The family can find you.' : ' Nobody can find you until you tick this.') +
+      (m.looks && m.looks.length ? ' Looked for lately by: ' + m.looks.map(function(l){ return kdFirst(l.name); }).filter(function(n, i, a){ return a.indexOf(n) === i; }).join(', ') + '.' : '');
+  }
+  $('kd-bl-consent').addEventListener('change', function(){
+    var box = this, on = box.checked;
+    kdBook('blood_consent_set', { on: on }).then(function(j){
+      if (!j.ok) { box.checked = !on; toast(j.error || 'Could not save. Try again.'); return; }
+      kdBlMine(j.mine); toast(on ? 'The family can find your blood group now' : 'Your blood group is yours alone again');
+    }).catch(function(){ box.checked = !on; toast('No connection - try again'); });
+  });
+  $('kd-bl-find').addEventListener('click', function(){
+    var btn = this, grp = kdVal('kd-bl-group');
+    btn.disabled = true;
+    kdBook('blood_find', { group: grp }).then(function(j){
+      btn.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not look this up. Try again.'); return; }
+      kdBlGroup = grp;
+      var out = $('kd-bl-out');
+      out.innerHTML = j.matches.length ? j.matches.map(function(m){
+        return '<div class="crow"><span class="txt"><b>' + esc(m.name) + '</b><small>' + esc(grp) + ', as they wrote it' + (m.family ? ' · ' + esc(m.family) : '') + (m.phone || !m.family ? '' : ' · ask your family for the number') + '</small></span>' +
+          (m.phone ? '<a class="cbtn ghost kd-call" href="' + kdTel(m.phone) + '">📞 Call ' + esc(kdFirst(m.name)) + '</a>' : '') + '</div>';
+      }).join('') : '<div class="ev">Nobody who said yes has ' + esc(grp) + ' written down. Others may have it and have not said yes: a call is the way to ask.</div>';
+      out.hidden = false; $('kd-bl-ask').hidden = !j.matches.length;
+    }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
+  });
+  $('kd-bl-ask').addEventListener('click', function(){
+    var btn = this;
+    askText('Tell them someone is looking for ' + kdBlGroup + ' blood?', 'A few words, like: For Maa at the hospital', 'Tell them', 'Not now').then(function(v){
+      if (!v) return;
+      btn.disabled = true;
+      kdBook('blood_ask', { group: kdBlGroup, note: v }).then(function(j){ btn.disabled = false; toast(j.ok ? 'They have been told. A call is still the quickest.' : (j.error || 'Could not send. Try again.')); })
+        .catch(function(){ btn.disabled = false; toast('No connection - try again'); });
+    });
+  });
+  $('kd-sum-open').addEventListener('click', function(){
+    var btn = this, who = kdVal('kd-sum-who'); if (!who) return;
+    btn.disabled = true;
+    kdGet(API.notes.split('?')[0], 'summary', '&person=' + encodeURIComponent(who)).then(function(j){
+      btn.disabled = false;
+      if (!j.ok) { toast(j.error || 'Could not open the page. Try again.'); return; }
+      var s = j.summary, sec = function(title, inner){ return '<section><h2>' + title + '</h2>' + inner + '</section>'; }, none = '<p>Nothing written down.</p>';
+      var h = '<h1 id="kd-paper-title">' + esc(s.name) + ': summary for the doctor</h1><p class="mbbsub">' + esc(kdDate(s.date)) + ' · ' + esc(s.line) + '</p>';
+      if (s.empty) h += '<p>Nothing is written down for ' + esc(kdFirst(s.name)) + ' yet, or it has not been shared with you.</p>';
+      h += sec('Blood group', s.blood ? '<p>' + esc(s.blood) + '</p>' : none) +
+        sec('Allergies, as the family wrote them', s.allergies.length ? s.allergies.map(function(a){ return '<p>' + esc(a) + '</p>'; }).join('') : none) +
+        sec('Medicines list', s.medicines.length ? s.medicines.map(function(m){ return '<p><b>' + esc(m.name) + '</b>' + (m.note ? ' · ' + esc(m.note) : '') + '</p>'; }).join('') : none) +
+        sec('Doctors', s.doctors.length ? s.doctors.map(function(d){ return '<p><b>' + esc(d.name) + '</b>' + (d.note ? ' · ' + esc(d.note) : '') + (d.phone ? ' · ' + esc(d.phone) : '') + '</p>'; }).join('') : none) +
+        sec('Past visits and follow-ups', s.visits.length ? s.visits.map(function(v){ return '<h3>' + esc(kdDate(v.on)) + ' · ' + esc(v.title) + '</h3>' + (v.notes ? '<p>' + esc(v.notes) + '</p>' : '') + (v.next ? '<small>Follow-up written for ' + esc(kdDate(v.next)) + '</small>' : ''); }).join('') : none) +
+        sec('Who to call', s.contacts.length ? s.contacts.map(function(c){ return '<p><b>' + esc(c.name) + '</b>' + (c.note ? ' · ' + esc(c.note) : '') + (c.phone ? ' · ' + esc(c.phone) : '') + '</p>'; }).join('') : none) +
+        '<small>' + esc(s.line) + ' ' + esc(s.legal) + '</small>';
+      kdPaperOpen(h);
+    }).catch(function(){ btn.disabled = false; toast('No connection - try again'); });
+  });
+  // The two cards sit above the health list and are shown with it (not
+  // inside it: that list is a grid with its own count of children).
+  function kdHealthSync(){ $('kd-health').hidden = $('book-list-view').hidden; }
+  if (typeof MutationObserver !== 'undefined') new MutationObserver(kdHealthSync).observe($('book-list-view'), { attributes: true, attributeFilter: ['hidden'] });
+  kdHealthSync();
+  kdShown($('book-list-view'), kdHealthLoad);
+  // ---------- end of the remaining family needs (stream J) ----------
+
   // Inside the iPhone and Android apps this page runs in a frame, and the
   // app shows its own loading screen until it hears this. It says only that
   // Parwah has started - nothing about the family, so any origin may hear it.

@@ -14,6 +14,8 @@
 //   doctor / meds / allergies / blood group / emergency contact / insurance
 //   are recorded, missing, or due a re-check.
 // POST /api/book {code, memberId, action:'add'|'update'|'remove'|'verify'}
+import homeApi from './_home.mjs';
+import { bloodApi, summaryApi } from './_bloodlookup.mjs';
 import { db, ensureSchema, circleByCode, isUuid, normPhone, phoneError , requireMember, spaceWord} from './_db.mjs';
 import { fail, failDb } from './_fail.mjs';
 import { tokenOf } from './_token.mjs';
@@ -60,6 +62,10 @@ export default async function handler(req, res) {
   if (area === 'preauth') return preauthApi(req, res);
   if (area === 'locator' || (req.body && typeof req.body.action === 'string' && /^locator_/.test(req.body.action))) return locatorApi(req, res);
   if (area === 'audit') return auditApi(req, res);
+  // Home upkeep, the blood group lookup and the doctor-ready summary (stream J).
+  if (area === 'home' || (req.body && typeof req.body.action === 'string' && /^home_/.test(req.body.action))) return homeApi(req, res);
+  if (area === 'blood' || (req.body && typeof req.body.action === 'string' && /^blood_/.test(req.body.action))) return bloodApi(req, res);
+  if (area === 'summary') return summaryApi(req, res);
   if (area === 'afterloss' || (req.body && typeof req.body.action === 'string' && /^afterloss_/.test(req.body.action))) return afterlossApi(req, res);
   // The hospital screen (api/_admission.mjs).
   if (area === 'admission' || (req.body && typeof req.body.action === 'string' && /^admission_/.test(req.body.action))) return admissionApi(req, res);

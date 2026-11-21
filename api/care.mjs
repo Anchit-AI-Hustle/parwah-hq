@@ -13,6 +13,9 @@ import dosesApi from './_doses.mjs';
 import { ladderApi } from './_ladder.mjs';
 import { expensesApi } from './_expenses.mjs';
 import { staffApi } from './_staff.mjs';
+import rollcallApi from './_rollcall.mjs';
+import kidsApi from './_kids.mjs';
+import carerloadApi from './_carerload.mjs';
 import { renewalsApi } from './_renewals.mjs';
 import { FC_CARE_ACTIONS, familyTaskAction, rotaSweep } from './_familycare.mjs';
 
@@ -167,6 +170,10 @@ export default async function handler(req, res) {
   if (area === 'expenses' || /^(expense_|split_)/.test(act)) return expensesApi(req, res);
   if (area === 'staff' || /^staff_/.test(act)) return staffApi(req, res);
   if (area === 'renewals' || /^renewal_/.test(act)) return renewalsApi(req, res);
+  // The remaining family needs (stream J): the roll-call, a child's page, carer load.
+  if (area === 'rollcall' || /^rollcall_/.test(act)) return rollcallApi(req, res);
+  if (area === 'kids' || /^kid_/.test(act)) return kidsApi(req, res);
+  if (area === 'carerload' || /^carer_/.test(act)) return carerloadApi(req, res);
 
   let sql;
   try {

@@ -4713,6 +4713,100 @@ check("eldlink: the coverage map says what is live, and the leader review is wri
       "Dadi's link: a voice for someone not on the app" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
       and "Dadi's link: a page for someone who will never install the app" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
 
+# ---------- 10zb. The remaining family needs (stream J) ----------
+# Roll-call, a child's page, carer load, the function kit, home upkeep, the
+# blood group lookup and the doctor-ready summary. Each is an underscore
+# module behind an existing route, and each rule that protects a person is
+# held here so it cannot quietly go.
+_nd_names = ("_rollcall.mjs", "_rollcallrules.mjs", "_kids.mjs", "_kidsrules.mjs", "_carerload.mjs", "_carerloadrules.mjs",
+             "_eventkit.mjs", "_eventkitrules.mjs", "_home.mjs", "_bloodlookup.mjs", "_needsrules.mjs")
+_nd = {n: (API_DIR / n).read_text(encoding="utf-8") if (API_DIR / n).exists() else "" for n in _nd_names}
+_nd_route = {n: (API_DIR / n).read_text(encoding="utf-8") for n in ("care.mjs", "plans.mjs", "book.mjs", "events.mjs", "_renewals.mjs")}
+_nd_app = (REPO / "site/public/index.html").read_text(encoding="utf-8")
+_nd_marks = ("// ---------- THE REMAINING FAMILY NEEDS (stream J) ----------", "// ---------- end of the remaining family needs (stream J) ----------")
+_nd_block = _nd_app.split(_nd_marks[0])[1].split(_nd_marks[1])[0] if all(m in _nd_app for m in _nd_marks) else ""
+check("needs: every module is there, and none is a new function", all(_nd.values()) and all(n.startswith("_") for n in _nd_names))
+check("needs: each sits behind an existing route, by area or by the name of its actions",
+      all(x in _nd_route["care.mjs"] for x in ("if (area === 'rollcall' || /^rollcall_/.test(act)) return rollcallApi(req, res);",
+                                              "if (area === 'kids' || /^kid_/.test(act)) return kidsApi(req, res);",
+                                              "if (area === 'carerload' || /^carer_/.test(act)) return carerloadApi(req, res);"))
+      and "if (area === 'eventkit' || (typeof body.action === 'string' && /^kit_/.test(body.action)))" in _nd_route["plans.mjs"]
+      and all(x in _nd_route["book.mjs"] for x in ("/^home_/.test(req.body.action))) return homeApi(req, res);", "/^blood_/.test(req.body.action))) return bloodApi(req, res);",
+                                              "if (area === 'summary') return summaryApi(req, res);")))
+check("needs: what is timed runs from the timer, one imported line each; home upkeep rides the renewals sweep",
+      _nd_route["events.mjs"].count("await one(() => sweepRollcallAll(sql));") == 1 and _nd_route["events.mjs"].count("await one(() => sweepKidsAll(sql));") == 1
+      and "import { sweepRollcallAll } from './_rollcall.mjs';" in _nd_route["events.mjs"] and "import { sweepKidsAll } from './_kids.mjs';" in _nd_route["events.mjs"]
+      and _nd_route["_renewals.mjs"].count("n += await sweepHome(sql, circleId, nowMs);") == 1 and "sweepHome" not in _nd_route["events.mjs"]
+      and all("nowMs = Date.now()" in _nd[n] for n in ("_rollcall.mjs", "_kids.mjs", "_home.mjs")))
+check("needs: every handler asks who is calling, and every push names its kind",
+      all("requireMember(sql," in _nd[n] for n in ("_rollcall.mjs", "_kids.mjs", "_carerload.mjs", "_home.mjs", "_bloodlookup.mjs"))
+      and all("kind: '" in _nd[n] for n in ("_rollcallrules.mjs", "_kidsrules.mjs", "_carerloadrules.mjs", "_needsrules.mjs"))
+      and not re.search(r"pushCircle\(sql, [\w.]+, \{ title:", "".join(_nd.values())))
+check("needs: what one member can send at another is limited, and a limiter that cannot count says no",
+      all(x in "".join(_nd.values()) for x in ("rateLimit(sql, 'rollcall', me.id, 6, 3600, { failClosed: true })", "rateLimit(sql, 'kidnote', me.id, 6, 3600, { failClosed: true })",
+                                               "rateLimit(sql, 'dayoff', me.id, DAYOFF_PER_DAY, 86400, { failClosed: true })", "rateLimit(sql, 'bloodask', me.id, BLOOD_ASKS_PER_DAY, 86400, { failClosed: true })",
+                                               "rateLimit(sql, 'bloodfind', me.id, 20, 3600, { failClosed: true })"))
+      and "{ failClosed: true }" in _nd["_eventkit.mjs"])
+check("needs: there is one adult rule, written the same way in every query that must not reach a child",
+      all("(case when v.dob is not null then v.dob > current_date - interval '18 years' else (v.is_child or v.adult_confirmed is false) end)" in _nd[n]
+          for n in ("_rollcall.mjs", "_kids.mjs", "_home.mjs", "_bloodlookup.mjs"))
+      and not re.search(r"function (isAdult|isMinor|isChild|ageOf)\b", "".join(_nd.values())))
+check("needs: nobody marked as no longer with us is asked, listed, picked or told",
+      all("not m.remembered" in _nd[n] or "not c.remembered" in _nd[n] for n in ("_rollcall.mjs", "_kids.mjs", "_carerload.mjs", "_eventkit.mjs", "_bloodlookup.mjs"))
+      and "if (!m || m.remembered) continue;" in _nd["_rollcallrules.mjs"] and "is remembered here, so is not on a guest list" in _nd["_eventkitrules.mjs"]
+      and "async function goneNames(sql, circleId)" in _nd["_eventkit.mjs"])
+check("roll-call: one open a family, three a day, closed after 24 hours, and it comes through a quiet night",
+      "create unique index if not exists rollcalls_one_open on rollcalls (circle_id) where closed_at is null" in _nd["_rollcall.mjs"]
+      and "export const ROLLCALL_PER_DAY = 3;" in _nd["_rollcallrules.mjs"] and "export const ROLLCALL_HOURS = 24;" in _nd["_rollcallrules.mjs"]
+      and _nd["_rollcallrules.mjs"].count("kind: 'safety'") == 4 and "body: { code: body.code, memberId: body.memberId, type: 'sos'" in _nd["_rollcall.mjs"]
+      and "where rollcall_answers.by_member is distinct from rollcall_answers.member_id or excluded.by_member = rollcall_answers.member_id" in _nd["_rollcall.mjs"])
+check("kids: who reads a child's page is one question, asked in the database by every read",
+      _nd["_kids.mjs"].count("kid_rel_v1(") >= 9 and "create function kid_rel_v1(viewer uuid, child uuid) returns text language sql stable" in _nd["_kids.mjs"]
+      and "when 'fee' then r.rel = 'parent' or (r.rel = 'adult' and pg.share->>'fees' = 'family')" in _nd["_kids.mjs"]
+      and "case when r.rel in ('self', 'parent') or pg.results_share = 'family' then i.result end as result" in _nd["_kids.mjs"]
+      and "results_share text not null default 'parents'" in _nd["_kids.mjs"])
+check("kids: a fee reminder never goes to the child, a late pick-up is a safety push after 20 minutes, and nothing here is advice",
+      "await audienceFor(sql, f.circle_id, 'kid_fee', { only: subs, except: f.child_id })" in _nd["_kids.mjs"] and "export const PICKUP_GRACE_MIN = 20;" in _nd["_kidsrules.mjs"]
+      and "await audienceFor(sql, k.circle_id, 'kid_pickup', { except: k.child_id })" in _nd["_kids.mjs"]
+      and "export const RECORD_LEGAL = ECARD_LEGAL.replace('This card is', 'This is');" in _nd["_kidsrules.mjs"])
+check("carer load: my week is mine alone, the family line holds no number, and a family can switch it off",
+      "counts[k] = thisWeek.filter(a => a.who === me.id && a.kind === k).length;" in _nd["_carerload.mjs"] and "if (!adult || !on) return out;" in _nd["_carerload.mjs"]
+      and "return !!s && !/\\d/.test(s) && !CARER_SHAME.test(s);" in _nd["_carerloadrules.mjs"] and "if (topM && me.id !== forId) {" in _nd["_carerload.mjs"]
+      and not re.search(r"leaderboard|rank(ed|ing)? (of|by)|\bscore\b", _nd["_carerload.mjs"].split("import ")[1] + _nd_block, re.I))
+check("function kit: a guest is a name with no phone, hosts change it, and the money is never read by a child",
+      "phone" not in _nd["_eventkit.mjs"].split("create table if not exists kit_guests")[1].split(")`;")[0]
+      and "if (!host && !ownArrival) return no(403, hostOnly);" in _nd["_eventkit.mjs"] and "if (!meMinor) {" in _nd["_eventkit.mjs"]
+      and "and (t.member_id = ${me.id} or ${me.id}::uuid = any(t.tell))" in _nd["_eventkit.mjs"])
+check("home upkeep: the four choices of who sees an entry are in the SQL, and nothing new is uploaded",
+      all(x in _nd["_home.mjs"] for x in ("h.audience = 'IMMEDIATE'", "(h.audience = 'NOMINEES_ONLY' and v.id = any(h.people))", "(h.audience = 'EMERGENCY_ONLY' and h.created_by = any(${sos}::uuid[])"))
+      and not re.search(r"data:|base64|upload", _nd["_home.mjs"].split("import ")[1], re.I))
+check("blood: the yes is a join in the SQL, each person's own, and the lookup gives no advice",
+      "join blood_consent bc on bc.member_id = m.id and bc.tell" in _nd["_bloodlookup.mjs"]
+      and "values (${me.id}, ${circle.id}, ${on})" in _nd["_bloodlookup.mjs"]
+      and not re.search(r"donate|donor|compatible|universal", _nd["_bloodlookup.mjs"] + _nd["_needsrules.mjs"] + _nd_block, re.I))
+_nd_sum = _nd["_bloodlookup.mjs"].split("export async function summaryApi")[1] if "export async function summaryApi" in _nd["_bloodlookup.mjs"] else "insert into"
+check("summary: it only reads, by the Family book's own rule, and never for a child",
+      "insert into" not in _nd_sum and "update " not in _nd_sum and "if (req.method !== 'GET')" in _nd_sum
+      and "and (b.about_member = v.id or b.by_member = v.id or ba.member_id is not null or b.visibility = 'circle')" in _nd_sum
+      and "export const SUMMARY_LINE = 'Written by the family. This is not a medical record.';" in _nd["_needsrules.mjs"])
+_nd_ids = re.findall(r'\bid="(kd-[a-z0-9-]+)"', _nd_app[:_nd_app.index("<script>\n(function(){")] if "<script>\n(function(){" in _nd_app else _nd_app)
+check("needs: its screens keep to their own names (ids kd-, functions kd...), with no id twice",
+      len(_nd_ids) >= 40 and len(_nd_ids) == len(set(_nd_ids)) and len(re.findall(r"\n  function kd[A-Z]\w*\(", _nd_block)) >= 40
+      and not re.findall(r"\n  function (?!kd)[a-zA-Z]\w*\(", _nd_block))
+check("needs: no banned word and no long dash in what these modules and screens say",
+      not re.search(r"\b(elderly|burden|cure|treat|heal|therapy|remedy|medicinal|prevents|reverses|clinically proven|doctor recommended|pain relief|guaranteed|arthritis|diabetes)\b", "".join(_nd.values()) + _nd_block, re.I)
+      and not re.search("[" + chr(8211) + chr(8212) + "]", "".join(_nd.values()) + _nd_block))
+_nd_testdb = _json.loads((REPO / "package.json").read_text(encoding="utf-8"))["scripts"]["test:db"]
+_nd_tests = ("rollcall", "kids", "carerload", "eventkit", "home", "healthlookup")
+check("needs: the rules test runs in the gate; every db and browser test runs in test:db, and no browser test waits a fixed time",
+      "node site/tests/familyneedstest.mjs" in (REPO / "scripts/checks.sh").read_text(encoding="utf-8")
+      and all(("site/tests/db/" + t + s) in _nd_testdb and (REPO / "site/tests/db" / (t + s)).exists() for t in _nd_tests for s in (".dbtest.mjs", ".e2e.dbtest.mjs"))
+      and all("waitForTimeout" not in (REPO / "site/tests/db" / (t + ".e2e.dbtest.mjs")).read_text(encoding="utf-8") for t in _nd_tests)
+      and "waitForTimeout" not in (REPO / "site/tests/db/jkit.mjs").read_text(encoding="utf-8"))
+check("needs: the coverage map says what is live, and the review is written down",
+      "### The remaining family needs (stream J, live)" in (REPO / "docs/product/FAMILY_COVERAGE.md").read_text(encoding="utf-8")
+      and "(stream J)" in (REPO / "docs/design/REVIEWS.md").read_text(encoding="utf-8"))
+
 # ---------- 11. Serverless function budget (Hobby plan allows 12) ----------
 FN_CAP = 12
 fns = [f for f in sorted(API_DIR.glob("*.mjs")) if not f.name.startswith("_")]

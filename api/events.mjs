@@ -34,6 +34,8 @@ import { heardSweepAll } from './_heard.mjs';
 import { sweepTripsAll } from './_ashirwad.mjs';
 import { memberCards, standingSweepAll } from './_standing.mjs';
 import { eldlinkApi } from './_eldlink.mjs';
+import { sweepRollcallAll } from './_rollcall.mjs';
+import { sweepKidsAll } from './_kids.mjs';
 
 import { index as kinIndex, kinLabel, generations, kinEveryone, kinChainWords } from './_kin.mjs';
 import { pulseToday, pulseSave } from './_pulse.mjs';
@@ -104,6 +106,8 @@ export async function runTick(sql, budgetMs = TICK_BUDGET_MS) {
   // yet, or a bad row) must not stop the other alerts for that family.
   const one = async f => { try { return (await f()) || 0; } catch (e) { tickNote(e, 'sweep'); return 0; } };
   await one(() => sweepTripsAll(sql));   // "Reached safely" not tapped by the expected time + 30 minutes
+  await one(() => sweepRollcallAll(sql));   // "Sab theek?": one reminder after half an hour, closed after 24 hours
+  await one(() => sweepKidsAll(sql));   // a child's page: a pick-up not marked 20 minutes after its time, and fee reminders
   await one(() => standingSweepAll(sql));   // account and family deletes whose 7 days are up, tree links whose 48 hours are up
   for (const id of circles) {
     if (Date.now() - t0 > budgetMs) break;
