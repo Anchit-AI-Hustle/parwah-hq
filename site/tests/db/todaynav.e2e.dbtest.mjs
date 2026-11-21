@@ -118,6 +118,8 @@ const sees = (page, sel, re, opts) => page.waitForFunction(([s, src, fl]) => { c
 const gone = (page, sel) => page.waitForSelector(sel, { state: 'hidden', ...T }).then(() => true, () => false);
 const shown = (page, sel) => page.waitForSelector(sel, { state: 'visible', ...T }).then(() => true, () => false);
 const q1 = async (text, p) => (await admin.query(text, p)).rows[0];
+// TN_SHOT_DIR=/some/folder keeps a picture of each new screen, for a person to look at.
+const shot = async (page, name, full = true) => { if (process.env.TN_SHOT_DIR) await page.screenshot({ path: process.env.TN_SHOT_DIR + '/' + name + '.png', fullPage: full }); };
 const until = async (fn, ms = 20000) => { const t0 = Date.now(); for (;;) { const v = await fn(); if (v) return v; if (Date.now() - t0 > ms) return v; await new Promise(r => setTimeout(r, 120)); } };
 // Today's gathered read is asked for again at once (the app does this by
 // itself after anything that changes it; a test cannot wait fifteen seconds).
@@ -226,6 +228,7 @@ ok('1. the chat bubble carries a mark and says what it will do', await sees(P, '
 ok('1. and so does the Chat tab', await P.isVisible('#tabs button[data-tab="chat"]') && await sees(P, '#tn-tab-dot', /^1$/));
 ok('1. the mood card "Aaj kaisa lag raha hai?" is near the top for him too', await shown(P, '#hd-today [data-hdmood]')
   && await P.evaluate(() => document.getElementById('hd-today').getBoundingClientRect().top < document.getElementById('widgets').getBoundingClientRect().top));
+await shot(P, 'today-papa-senior');
 await design(P, '#tn-from', 'From the family, in senior mode');
 // All is well: the hero speaks TO him.
 await P.click('#btn-checkin');
@@ -271,6 +274,7 @@ ok('2. Maa\'s card: not checked in yet', await sees(R, `#tn-parents [data-tnpare
 ok('2. the last thing Papa wrote that Rohan may read', await sees(R, pcard, /Sab theek hai, chinta mat karo/));
 ok('2. Call and Message, by name', (await R.getAttribute(pcard + ' a[href^="tel:"]', 'href')) === 'tel:' + encodeURIComponent('+919811200003') && /Call Papa/.test(await R.textContent(pcard + ' a[href^="tel:"]')) && /Message Papa/.test(await R.textContent(pcard + ' [data-tndm]')));
 ok('2. A NAME IS NEVER CUT AFTER AN HONORIFIC: "Call श्रीमती कमला देवी", not "Call श्रीमती"', /Call श्रीमती कमला देवी/.test(await R.textContent(`#tn-parents [data-tnparent="${dadi.id}"]`)));
+await shot(R, 'today-rohan');
 await design(R, '#tn-parents', 'a card for each parent');
 await design(R, '#tn-from', 'From the family');
 await wide(R, '#pane-home', 'Today');
@@ -302,6 +306,7 @@ ok('3. no vault tile, no setup list, no readiness score, no "add a document"', !
 ok('3. no card for each parent on a child\'s Today', (await K.$$('#tn-parents .tn-pcard')).length === 0);
 ok('3. the poll his mother started is on his Today', await sees(K, '#tn-from [data-tnkind="poll"]', /Sunday ko kya khayenge/));
 ok('3. the mood card stays near the top for him too', await shown(K, '#hd-today [data-hdmood]'));
+await shot(K, 'today-kabir-14');
 await design(K, '#tn-young', 'a young member\'s Today');
 await K.click('#tn-young [data-tnyoung="ask"]');
 ok('3. "Ask ... a question" opens a chat with an elder, with the first words written', await shown(K, '#chatview') && await K.waitForFunction(() => /ek sawaal hai: $/.test(document.getElementById('msg').value), null, T).then(() => true, () => false),
@@ -353,6 +358,7 @@ ok('3. and the card leaves Today', await R.waitForFunction(() => !document.query
   await R.click('#tabs button[data-tab="menu"]');
   ok('4. More holds Vault, Family register, To do, Ekta and Profile', (await R.$$eval('#pane-menu .widget b', bs => bs.map(b => b.textContent))).join('|') === 'Vault|Family register|To do|Ask Ekta|The day|Notifications|Profile and settings|Health & contacts',
     (await R.$$eval('#pane-menu .widget b', bs => bs.map(b => b.textContent))).join('|'));
+  await shot(R, 'more');
   await design(R, '#pane-menu', 'the More screen');
   await design(R, '#tabs', 'the five tabs and SOS');
   await R.click('#pane-menu [data-goto="vault"][data-sec="locator"]');
@@ -369,6 +375,7 @@ ok('3. and the card leaves Today', await R.waitForFunction(() => !document.query
   const menu = await R.$$eval('#drawer .ditem', bs => bs.filter(b => b.getBoundingClientRect().height > 0).map(b => b.textContent.replace(/[▾\s]+/g, ' ').trim()));
   ok('4. the menu is a short list by the same five places, not thirty rows', menu.length <= 12 && ['Today', 'Chat', 'Together', 'Family', 'More'].every(x => menu.includes(x)) && !menu.includes('Vault'), menu.length + ': ' + menu.join(' / '));
   ok('4. Photo album and Family register are in the menu now', await R.$$eval('#drawer .ditem', bs => ['Photo album', 'Family register'].every(t => bs.some(b => b.textContent.trim() === t))));
+  await shot(R, 'menu-drawer', false);
   await design(R, '#drawer .dpanel', 'the menu');
   await R.click('#drawer .dparent[data-grp="fun"]');
   await shown(R, '#drawer [data-mbv="album"]'); await R.click('#drawer [data-mbv="album"]');
@@ -376,6 +383,7 @@ ok('3. and the card leaves Today', await R.waitForFunction(() => !document.query
   await R.evaluate(() => { location.hash = '#fun'; });
   ok('4. Together holds Album, Stories, Recipes, Festivals and the week\'s question', (await R.$$eval('#tn-together button', bs => bs.map(b => b.textContent.replace(/^\S+\s/, '')))).join('|') === 'Album|Stories|Recipes|Festivals|This week\'s question'
     && (await R.$$eval('#fun-seg button', bs => bs.map(b => b.getAttribute('data-sec')))).join() === 'plans,games,board,pasand');
+  await shot(R, 'together', false);
   await design(R, '#tn-together', 'Together\'s shortcuts');
   for (const [v, root] of [['stories', '#mb-stories'], ['recipes', '#mb-recipes'], ['album', '#ab-root']]) {
     await R.evaluate(() => { location.hash = '#fun'; }); await shown(R, `#tn-together [data-mbv="${v}"]`);
@@ -413,6 +421,7 @@ ok('3. and the card leaves Today', await R.waitForFunction(() => !document.query
   ok('4. a place shows its own shortcuts while you are in it', await shown(W, '#tabs .subnav[data-parent="fun"] [data-mbv="album"]') && !(await W.isVisible('#tabs .subnav[data-parent="care"] button')));
   await W.click('#tabs .subnav[data-parent="fun"] [data-mbv="stories"]');
   ok('4. Stories opens from the sidebar, under Together', await shown(W, '#mb-stories') && await W.$eval('#tabs button[data-tab="fun"]', b => b.classList.contains('sel')) && !(await W.$eval('#tabs button[data-tab="memory"]', b => b.classList.contains('sel'))));
+  await shot(W, 'sidebar-1280', false);
   await wide(W, '#tabs', 'the sidebar');
   await W.context().close();
 }
@@ -443,6 +452,7 @@ ok('3. and the card leaves Today', await R.waitForFunction(() => !document.query
   ok('5. no tour for someone who came by an invite: straight to the join form', await shown(N, '#joincard') && !(await N.isVisible('#tour-step')));
   ok('5. it asks "Who are you to this family?" in plain words', /Who are you to this family\?/.test(await N.textContent('#joincard')) && !/equal admin/.test(await N.textContent('#joincard')));
   ok('5. and "Brother" is already chosen, with the code filled in', await N.$eval('#j-role .sel', b => b.getAttribute('data-role')) === 'brother' && (await N.inputValue('#j-code')) === 'SHARMA24' && await sees(N, '#tn-jrole-hint', /invited you as Brother/));
+  await shot(N, 'join-form');
   await design(N, '#joincard', 'the join form');
   // Mother or Father is ASKED about the larger screen; nothing switches by itself.
   await N.click('#j-role [data-role="mother"]');
@@ -501,6 +511,7 @@ ok('3. and the card leaves Today', await R.waitForFunction(() => !document.query
   ok('6. Call and SMS are the largest things on the screen', await P.evaluate(() => { const h = s => document.querySelector(s).getBoundingClientRect().height;
     return h('#ss-calls a') >= 72 && h('#ss-sms') >= 72 && /^sms:/.test(document.getElementById('ss-sms').getAttribute('href')) && h('#ss-wa') < h('#ss-sms'); }));
   ok('6. no SOS was made', (await q1(`select count(*)::int as n from sos where member_id = $1`, [papa.id]).catch(() => ({ n: 0 }))).n === 0);
+  await shot(P, 'sos-not-sent', false);
   await design(P, '#ss-live', 'the SOS screen when it did not go');
   await P.context().setOffline(false);
   await P.click('#tn-sos-retry');
@@ -516,6 +527,7 @@ ok('3. and the card leaves Today', await R.waitForFunction(() => !document.query
   await R.fill('#msg', 'Papa aap theek ho?'); await R.click('#send');
   ok('6. offline, the typed message is kept on the screen: "Not sent. Tap to retry"', await sees(R, '#cmsgs .tn-unsent.failed', /Papa aap theek ho\?/) && await sees(R, '#cmsgs .tn-unsent.failed', /Not sent\. Tap to retry/));
   ok('6. nothing reached the server', (await q1(`select count(*)::int as n from messages where text = 'Papa aap theek ho?'`)).n === 0);
+  await shot(R, 'chat-not-sent', false);
   await design(R, '#chatview', 'the chat, with the bubble that did not go');
   await R.click('#cmsgs .tn-unsent.failed');
   ok('6. a tap tries again; still no network, so it is still kept', await sees(R, '#cmsgs .tn-unsent.failed', /Not sent\. Tap to retry/) && (await q1(`select count(*)::int as n from messages where text = 'Papa aap theek ho?'`)).n === 0);

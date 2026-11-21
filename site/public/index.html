@@ -5984,6 +5984,9 @@ body.senior .abview-meta{font-size:var(--fs-16)}
     membersCache = members;
     // The setup list ticks "Invite someone" the moment a second person is here.
     if (tnHad !== members.length) { try { renderFirstRunList(); } catch (e) {} }
+    // The bell starts when I joined, which is only known once the family is:
+    // drawn again here, so nothing older slips in on the first load.
+    try { renderNotifs(); } catch (e) {}
     if (pasandData) pasandRender();   // names to tick come from the family list
     // The register's "Whose it is" list was filled once, when the screen
     // opened: if the family arrived after that, it stayed empty.
