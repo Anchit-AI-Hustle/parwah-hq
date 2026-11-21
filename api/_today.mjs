@@ -124,7 +124,7 @@ async function cardsToWrite(sql, circle, me) {
       and c.date >= current_date and c.date <= current_date + ${CARD_DAYS}::int
     order by c.date asc limit 20`;
   return rows.filter(c => !c.mine && !sealedTo(c, me) && c.for_member !== me.id && c.for_member2 !== me.id).slice(0, 3)
-    .map(c => ({ kind: 'card', id: c.id, text: c.title, occasion: c.occasion, at: c.created_at }));
+    .map(c => ({ kind: 'card', id: c.id, text: c.title, occasion: c.occasion, surprise: !!c.for_member, at: c.created_at }));
 }
 
 // ---------------------------------------------- a card for each parent
@@ -203,8 +203,11 @@ export async function todayState(sql, circle, me, nowMs = Date.now()) {
   }
   // The answer columns are made by api/_together.mjs: they are ensured
   // here, so a plan waiting for an answer is never lost to a quiet error.
-  await ensureTogetherSchema(sql);
-  for (const p of await plansToAnswer(sql, circle, me)) items.push(p);
+  // (No plans table at all means nobody here has ever made a plan.)
+  if ((await sql`select to_regclass('plans') is not null as x`)[0].x) {
+    await ensureTogetherSchema(sql);
+    for (const p of await plansToAnswer(sql, circle, me)) items.push(p);
+  }
   for (const p of await soft(() => openPolls(sql, circle, me, chatIds), [])) items.push(p);
   for (const c of await soft(async () => { await ensureBondSchema(sql); return cardsToWrite(sql, circle, me); }, [])) items.push(c);
 

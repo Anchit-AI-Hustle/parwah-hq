@@ -242,8 +242,10 @@ export async function digestGather(sql, circle, me, tz, nowMs = Date.now()) {
   // whole circle; one made for named people asks only those people.
   // The answer columns come from api/_together.mjs: ensured here, so this
   // read is never quietly empty on a database that has not made them yet.
-  await ensureTogetherSchema(sql);
-  raw.plansAsk = (await sql`
+  // (No plans table at all means nobody here has ever made a plan.)
+  const hasPlans = (await sql`select to_regclass('plans') is not null as x`)[0].x;
+  if (hasPlans) await ensureTogetherSchema(sql);
+  raw.plansAsk = !hasPlans ? [] : (await sql`
     select id, title, by_member from plans
     where circle_id = ${cid} and at > ${now} and (by_member is null or by_member <> ${mid})
       and not (${mid}::uuid = any(coalesce(going, '{}'::uuid[])))

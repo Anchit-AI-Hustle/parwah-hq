@@ -170,14 +170,16 @@ T.FESTIVALS.push({ key: 'testfest', name: 'Test Festival', icon: '🎉', dates: 
 
 // ================================================================ 1. the card
 const R = await phone(rohan);
-await R.waitForSelector('#bond-today .crow', { timeout: 8000 }).catch(() => {});
-const rToday = await R.textContent('#bond-today');
-ok('Rohan\'s Today: "Add to Chachu\'s birthday card", a surprise', /Add to Chachu's birthday card/.test(rToday) && /surprise/.test(rToday), rToday);
+// A card he has not written in is a row in "From the family", shown once.
+await R.waitForSelector('#tn-from [data-tncard]', { timeout: 8000 }).catch(() => {});
+const rToday = await R.textContent('#tn-from');
+ok('Rohan\'s Today: Chachu\'s birthday card to write in, a surprise, and shown once', /Chachu's birthday/.test(rToday) && /You have not written in it yet/.test(rToday) && /surprise/.test(rToday)
+  && !/Chachu's birthday/.test(await R.textContent('#bond-today')), rToday);
 const C = await phone(chachu);
 ok('Chachu\'s Today does not give it away', !/Chachu's birthday/.test(await C.textContent('#bond-today')) && !/card/i.test(await C.textContent('#bond-today')));
-await design(R, '#bond-today', 'Today cards');
+await design(R, '#tn-from', 'Today cards');
 await shotAll(R, 'today-card');
-await R.click('#bond-today [data-bcopen]'); await R.waitForTimeout(900);
+await R.click('#tn-from [data-tncard]'); await R.waitForTimeout(900);
 ok('the card opens in a sheet', await R.isVisible('#bondsheet') && /Chachu's birthday/.test(await R.textContent('#bs-title')));
 ok('it says Chachu sees it on the day, not before', /will see it on the day, not before/.test(await R.textContent('#bs-body')));
 await R.fill('#bcv-text', 'Happy birthday Chachu! Thank you for the cricket lessons.');

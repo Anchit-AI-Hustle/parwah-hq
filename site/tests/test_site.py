@@ -4133,6 +4133,9 @@ check("safety: any sign of life that day counts as checked in (the tap, a pulse,
       all(x in _fc_api for x in ("from events where member_id = ${memberId} and type = 'checkin'", "from pulse where member_id = ${memberId} and at >= ${from}",
                                  "from medicine_doses where marked_by = ${memberId} and taken_at >= ${from}",
                                  "from messages where member_id = ${memberId} and created_at >= ${from} and text not like '🆘%'")))
+check("safety: asking someone for a daily check-in names its push kind, is limited by a limiter that fails closed, and never pushes at someone with no app",
+      "rateLimit(sql, 'quietask', t.id, 3, 86400, { failClosed: true })" in _fc_api
+      and "if (t.on_app) await pushCircle(sql, circle.id, { kind: 'care', title: '🕚 ' + me.name + ' asks: a daily check-in by '" in _fc_api)
 check("safety: pausing someone else's check-in is a question on their own phone, never a notice afterwards",
       "if (t.id !== me.id && t.on_app) {" in _fc_api and "set away_ask = ${until || 'back'}, away_ask_by = ${me.id}" in _fc_api
       and "'quiet_away_answer'" in _fc_api and "paused your daily check-in" not in _fc_api

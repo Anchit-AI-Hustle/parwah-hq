@@ -305,6 +305,10 @@ let blessAll, thanks, thanksOther, card, cardOther, famPhoto, privPhoto, chosenP
 
   // ---- id tampering: every id she sends is looked up beside HER and HER family
   ok('SEC. Meena\'s card cannot be opened by sending its id', (await page(key, 'card', { id: cardOther })).status === 404);
+  {
+    const kindsNow = (await page(key, 'open')).items.map(i => i.kind);
+    ok('I2b. HER CARD COMES FIRST AT ANY HOUR (a card has a day, not a time), then the newest', kindsNow[0] === 'card', kindsNow.join());
+  }
   ok('SEC. a card whose day has not come stays a surprise', (await page(key, 'card', { id: sealed })).status === 404);
   // 8pm in India: in a +14 zone it is already tomorrow, the card's day.
   Eld.eldSeams.now = () => Date.parse(today + 'T14:30:00Z');

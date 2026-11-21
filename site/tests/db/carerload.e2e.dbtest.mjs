@@ -33,11 +33,13 @@ await doneTask(rohan, 2, 'Bought vegetables'); await doneTask(rohan, 9, 'Paid th
 await admin.query(`insert into requests (circle_id, by_member, title, status, claimed_by, about_member, due_at) values ($1,$2,'Evening medicines for Maa','claimed',$2,$3,$4)`,
   [fam.id, priya.id, maa.id, new Date(now + 3 * DAY)]);
 
-const haath = async (page) => { await page.click('#care-seg [data-sec="haath"]'); await page.waitForSelector('#kd-cl-body .card, #kd-cl-body .ev:not(:has-text("Loading"))', T); };
+// One of the folded sections of To do: a person opens "More" first.
+const haath = async (page) => { await page.waitForSelector('#tn-care-more', T); if (!(await page.isVisible('#care-seg [data-sec="haath"]'))) await page.click('#tn-care-more'); await page.click('#care-seg [data-sec="haath"]'); await page.waitForSelector('#kd-cl-body .card, #kd-cl-body .ev:not(:has-text("Loading"))', T); };
 
 // ---- Priya
 const P = await phone(priya, { hash: '#care' });
-ok('to do: "Thoda sa haath batao" is its own section', await shown(P, '#care-seg [data-sec="haath"]'));
+await P.waitForSelector('#tn-care-more', T); await P.click('#tn-care-more');
+ok('to do: "Thoda sa haath batao" is its own section, one tap away under "More"', await shown(P, '#care-seg [data-sec="haath"]'));
 await haath(P);
 ok('mine: what she did this week, in words, and that only she sees it', await sees(P, '#kd-cl-mine', /5 things done for the family/) && await sees(P, '#kd-cl-note', /Only you can see it/));
 ok('line: her own, kinder line', await sees(P, '#kd-cl-line', /You have been doing a lot for Maa lately\. It is fine to ask for a hand/));

@@ -306,7 +306,12 @@ async function itemsFor(sql, L, today) {
   const done = await tryq(() => sql`select about_kind, about_id from eld_says where circle_id = ${cid} and member_id = ${her} and about_id is not null`);
   const answered = new Set(done.map(d => d.about_kind + ':' + d.about_id));
   out.forEach(o => { o.answered = answered.has(o.kind + ':' + o.id); });
-  out.sort((a, b) => new Date(b.at) - new Date(a.at));
+  // Newest first. A card carries a day, not a moment, so by the clock it
+  // would fall above or below the rest depending on the hour (it sat under
+  // this morning's blessings until 18:30 UTC). A card she has not answered
+  // is the day's main thing: it comes first, at any hour.
+  const top = o => (o.kind === 'card' && !o.answered ? 1 : 0);
+  out.sort((a, b) => top(b) - top(a) || new Date(b.at) - new Date(a.at));
   return out.slice(0, ELD.itemsMax);
 }
 

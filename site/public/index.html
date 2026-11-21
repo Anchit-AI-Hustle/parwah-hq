@@ -9594,7 +9594,7 @@ details.kd{margin-bottom:var(--space-12)}
       acts = x.poll === 'chat' ? '<button type="button" class="cbtn" data-tnchat="' + esc(x.chatId) + '">Vote</button>'
                                : '<button type="button" class="cbtn" data-tngo="plans">Pick a day</button>';
     } else if (x.kind === 'card') {
-      t = '💌 ' + esc(x.text); sub = 'You have not written in it yet.';
+      t = '💌 ' + esc(x.text); sub = 'You have not written in it yet.' + (x.surprise ? ' It stays a surprise.' : '');
       acts = '<button type="button" class="cbtn" data-tncard="' + esc(x.id) + '">Write in it</button>';
     } else return '';
     return '<div class="tn-row' + (tap ? ' tap' : '') + '" data-tnkind="' + x.kind + '"' + (x.id ? ' data-tnid="' + esc(x.id) + '"' : '') + tap + '><span class="txt"><b>' + t + '</b><small>' + sub + '</small></span><span class="tn-acts">' + acts + '</span></div>';
@@ -14543,7 +14543,7 @@ details.kd{margin-bottom:var(--space-12)}
   function hdGet(extra){ return apiGet(HD_API + hdQs() + (extra || '')); }
   function hdPost(body){
     body.area = 'heard'; body.code = state.code; body.memberId = state.memberId;
-    return post(HD_API, body).catch(function(){ return { ok: false, error: 'No connection. Try again.' }; });
+    return post(HD_API, body).then(function(j){ if (j && j.ok) { try { tnLoad(true); } catch (e) {} } return j; }).catch(function(){ return { ok: false, error: 'No connection. Try again.' }; });
   }
   function hdFirst(n){ return tnShort(n, 'Someone'); }
   function hdPerson(id){ return ((hdData && hdData.people) || []).filter(function(p){ return p.id === id; })[0] || null; }
@@ -19766,7 +19766,8 @@ details.kd{margin-bottom:var(--space-12)}
   var CN_LINES = [{ k: 'khush', t: 'Khush raho' }, { k: 'exam', t: 'All the best for the exam' }, { k: 'reach', t: 'Reach safely' }, { k: 'proud', t: 'So proud of you' }];
   var cnState = null, cnFor = '', cnAt = 0, cnBusy = false, cnMode = 'bless', cnTo = 'all', cnReplyTo = null, cnRec = null;
   function cnQs(){ return '&circle=' + encodeURIComponent(state.code) + '&member=' + encodeURIComponent(state.memberId); }
-  function cnPost(body){ body.area = 'ashirwad'; body.code = state.code; body.memberId = state.memberId; return post(CN_API, body); }
+  // What was just answered leaves "From the family" too.
+  function cnPost(body){ body.area = 'ashirwad'; body.code = state.code; body.memberId = state.memberId; return post(CN_API, body).then(function(j){ if (j && j.ok) { try { tnLoad(true); } catch (e) {} } return j; }); }
   function cnFirst(n){ return tnShort(n, 'Someone'); }
   function cnName(id){
     var m = (membersCache || []).filter(function(x){ return x.id === id; })[0];
